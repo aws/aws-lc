@@ -93,50 +93,42 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
-  //allocate buffers to store key pair
+  int ret = 0;
   uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-  if (public_key == NULL) {
-    return 0;
-  }
-
   uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
-  if (private_key == NULL) {
-    OPENSSL_free(public_key);
-    return 0;
-  }
-
   uint8_t *seed = OPENSSL_malloc(key->pqdsa->keygen_seed_len);
-  if (seed == NULL) {
-    OPENSSL_free(private_key);
-    OPENSSL_free(public_key);
-    return 0;
+  if (public_key == NULL || private_key == NULL || seed == NULL) {
+    goto err;
   }
 
-  // attempt to generate the key from the provided seed
-  if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
-                                                 private_key,
-                                                 CBS_data(in))) {
-    OPENSSL_free(public_key);
-    OPENSSL_free(private_key);
-    OPENSSL_free(seed);
+  if (!key->pqdsa->method->pqdsa_keygen_internal(public_key, private_key,
+                                                  CBS_data(in))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  // copy the seed data
   if (!CBS_copy_bytes(in, seed, key->pqdsa->keygen_seed_len)) {
-    OPENSSL_free(public_key);
-    OPENSSL_free(private_key);
-    OPENSSL_free(seed);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  // set the public key, private key, and seed
+  // Success: transfer ownership to key.
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = public_key;
   key->private_key = private_key;
   key->seed = seed;
-  return 1;
+  public_key = NULL;
+  private_key = NULL;
+  seed = NULL;
+  ret = 1;
+
+err:
+  OPENSSL_free(public_key);
+  OPENSSL_free(private_key);
+  OPENSSL_free(seed);
+  return ret;
 }
 
 int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
@@ -146,29 +138,31 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
-  key->private_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->private_key_len);
-  if (key->private_key == NULL) {
-    return 0;
+  int ret = 0;
+  uint8_t *private_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->private_key_len);
+  uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  if (private_key == NULL || public_key == NULL) {
+    goto err;
   }
 
-  // Create buffers to store public key based on size
-  size_t pk_len = key->pqdsa->public_key_len;
-  uint8_t *public_key = OPENSSL_malloc(pk_len);
-
-  if (public_key == NULL) {
-    return 0;
-  }
-
-  // Construct the public key from the private key
-  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, key->private_key)) {
-    OPENSSL_free(public_key);
+  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, private_key)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
+  // Success: transfer ownership to key.
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->private_key);
   key->public_key = public_key;
+  key->private_key = private_key;
+  public_key = NULL;
+  private_key = NULL;
+  ret = 1;
 
-  return 1;
+err:
+  OPENSSL_free(public_key);
+  OPENSSL_free(private_key);
+  return ret;
 }
 
 /*
@@ -183,88 +177,83 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
  * 4. If consistent, stores the seed, expanded private key, and derived public key
  *    in the PQDSA_KEY structure.
  */
-int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed, CBS *expanded_key) {
-  // Check if the parsed lengths correspond with the expected lengths.
+int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed,
+                                        CBS *expanded_key) {
+  // Check if the parsed length corresponds with the expected length.
   if (CBS_len(seed) != key->pqdsa->keygen_seed_len ||
       CBS_len(expanded_key) != key->pqdsa->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
 
-  // first allocate buffers to store keypair from seed
-  uint8_t *seed_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-  if (seed_public_key == NULL) {
-    return 0;
+  int ret = 0;
+  uint8_t *seed_public_key = NULL;
+  uint8_t *seed_private_key = NULL;
+  uint8_t *expanded_public_key = NULL;
+  uint8_t *new_private_key = NULL;
+  uint8_t *new_seed = NULL;
+
+  // Allocate temp buffers for seed-derived keypair.
+  seed_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  seed_private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (seed_public_key == NULL || seed_private_key == NULL) {
+    goto err;
   }
 
-  uint8_t *seed_private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
-  if (seed_private_key == NULL) {
-    OPENSSL_free(seed_public_key);
-    return 0;
-  }
-
-  // generate the key from the provided seed
+  // Generate keypair from seed.
   if (!key->pqdsa->method->pqdsa_keygen_internal(seed_public_key,
                                                  seed_private_key,
                                                  CBS_data(seed))) {
-    OPENSSL_free(seed_public_key);
-    OPENSSL_free(seed_private_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  // allocate buffers to store derived public key from the provided expanded private
-  uint8_t *expanded_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  // Derive public key from the expanded private key.
+  expanded_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
   if (expanded_public_key == NULL) {
-    OPENSSL_free(seed_public_key);
-    OPENSSL_free(seed_private_key);
-    return 0;
+    goto err;
   }
 
-  // construct the public key from the expanded private key
   if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(expanded_public_key,
                                                  CBS_data(expanded_key))) {
-    OPENSSL_free(seed_public_key);
-    OPENSSL_free(seed_private_key);
-    OPENSSL_free(expanded_public_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  // compare public keys for consistency
+  // Compare public keys for consistency.
   if (CRYPTO_memcmp(seed_public_key, expanded_public_key,
                     key->pqdsa->public_key_len) != 0) {
-    OPENSSL_free(seed_public_key);
-    OPENSSL_free(seed_private_key);
-    OPENSSL_free(expanded_public_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  // copy expanded private key and public key
+  // Allocate final copies of private key and seed.
+  new_private_key = OPENSSL_memdup(CBS_data(expanded_key),
+                                   key->pqdsa->private_key_len);
+  new_seed = OPENSSL_memdup(CBS_data(seed), key->pqdsa->keygen_seed_len);
+  if (new_private_key == NULL || new_seed == NULL) {
+    goto err;
+  }
+
+  // Success: transfer ownership to key.
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = expanded_public_key;
+  key->private_key = new_private_key;
+  key->seed = new_seed;
+  expanded_public_key = NULL;
+  new_private_key = NULL;
+  new_seed = NULL;
+  ret = 1;
+
+err:
   OPENSSL_free(seed_public_key);
   OPENSSL_free(seed_private_key);
-
-  key->private_key = OPENSSL_memdup(CBS_data(expanded_key),
-                                    key->pqdsa->private_key_len);
-  if (key->private_key == NULL) {
-    OPENSSL_free(key->public_key);
-    key->public_key = NULL;
-    return 0;
-  }
-
-  // copy seed into key struct
-  key->seed = OPENSSL_memdup(CBS_data(seed), key->pqdsa->keygen_seed_len);
-  if (key->seed == NULL) {
-    OPENSSL_free(key->private_key);
-    key->private_key = NULL;
-    OPENSSL_free(key->public_key);
-    key->public_key = NULL;
-    return 0;
-  }
-
-  return 1;
+  OPENSSL_free(expanded_public_key);
+  OPENSSL_free(new_private_key);
+  OPENSSL_free(new_seed);
+  return ret;
 }
 
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
