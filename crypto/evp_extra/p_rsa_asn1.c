@@ -158,7 +158,7 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *
     return 0;
   }
 
-  // Per RFC 3447, A.1, the parameters have type NULL.
+  // Per RFC 8017, A.1, the parameters have type NULL.
   CBS null;
   if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
       CBS_len(&null) != 0 ||
