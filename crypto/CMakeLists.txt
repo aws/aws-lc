@@ -629,33 +629,21 @@ if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
-    # On Windows we use capture_hash.go: build crypto.dll with a placeholder
-    # hash, then run fips_empty_main.exe (which triggers the integrity check
-    # and prints the correct hash), then patch the placeholder in crypto.dll.
-    #
-    # The fips_integrity target (marked ALL) ensures the hash injection runs
-    # before 'install' copies crypto.dll. Without this, Cargo builds (which
-    # run 'cmake --build --target install') would skip the hash injection
-    # because fips_empty_main is not in crypto's dependency chain.
+    # On Windows, inject_hash.go parses the linker map file and the PE to locate
+    # module boundaries, computes the integrity hash, and patches it directly
+    # into the DLL. This matches the Linux/Apple approach and does not require
+    # running a binary, enabling cross-compilation without Wine.
+    set(CRYPTO_MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/fips_crypto.map")
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
-
-    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
-    target_link_libraries(fips_empty_main PUBLIC crypto)
-    target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
+    target_link_options(crypto PRIVATE "/MAP:${CRYPTO_MAP_FILE}")
 
     add_custom_command(
-      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
+      TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
-        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-        -in-executable $<TARGET_FILE:fips_empty_main>
-        -patch-dll $<TARGET_FILE:crypto>
-      COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
-      DEPENDS fips_empty_main crypto
-        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -map ${CRYPTO_MAP_FILE} -windows
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
-    )
-    add_custom_target(fips_integrity ALL
-      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
     )
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
