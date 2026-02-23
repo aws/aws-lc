@@ -251,10 +251,6 @@ jobs:
       matrix:
         gcc_version: ["9", "10", "11", "12", "13", "14", "15"]
         fips: ["0", "1"]
-        exclude:
-          # TODO: Broken FIPS build w/ gcc 15
-          - gcc_version: "15"
-            fips: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
