@@ -248,10 +248,20 @@ TEST_F(PassUtilTest, DirectPasswordEdgeCases) {
   EXPECT_TRUE(result) << "Should succeed with empty direct password";
   EXPECT_TRUE(source.empty()) << "Password should be empty";
 
+  // Test password containing colons
+  source = Password("pass:test:123");
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with colons in password";
+  EXPECT_EQ(source.get(), "test:123") << "Password with colons should be preserved";
+
+  source = Password("pass:a:b:c:d");
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with multiple colons in password";
+  EXPECT_EQ(source.get(), "a:b:c:d") << "All colons in password should be preserved";
+
   // Test invalid format strings
   const char *invalid_formats[] = {
       "pass",           // Missing colon
-      "pass:test:123",  // Multiple colons
       ":password",      // Missing prefix
       "invalid:pass",   // Invalid prefix
       "file:",          // Empty file path

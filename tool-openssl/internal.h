@@ -55,7 +55,7 @@ private:
   // Helper method to securely clear current data
   void secure_clear() {
     if (!data_.empty()) {
-      OPENSSL_cleanse(&data_[0], data_.size());
+      OPENSSL_cleanse(&data_[0], data_.capacity());
     }
   }
 
