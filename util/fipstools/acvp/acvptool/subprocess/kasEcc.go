@@ -1,16 +1,5 @@
-// Copyright (c) 2020, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 package subprocess
 
@@ -52,17 +41,17 @@ type kasEccTestGroup struct {
 type kasEccTest struct {
 	ID uint64 `json:"tcId"`
 
-	EphemeralXHex          string       `json:"ephemeralPublicServerX"`
-	EphemeralYHex          string       `json:"ephemeralPublicServerY"`
-	EphemeralPrivateKeyHex string       `json:"ephemeralPrivateIut"`
-	EphemeralPublicIutXHex string       `json:"ephemeralPublicIutX"`
-	EphemeralPublicIutYHex string       `json:"ephemeralPublicIutY"`
-	KdfParameter           kdfParameter `json:"kdfParameter"`
-	Dkm                    string       `json:"dkm"`
+	EphemeralXHex          hexEncodedByteString `json:"ephemeralPublicServerX"`
+	EphemeralYHex          hexEncodedByteString `json:"ephemeralPublicServerY"`
+	EphemeralPrivateKeyHex hexEncodedByteString `json:"ephemeralPrivateIut"`
+	EphemeralPublicIutXHex hexEncodedByteString `json:"ephemeralPublicIutX"`
+	EphemeralPublicIutYHex hexEncodedByteString `json:"ephemeralPublicIutY"`
+	KdfParameter           kdfParameter         `json:"kdfParameter"`
+	ExpectedOutput         hexEncodedByteString `json:"dkm"`
 
-	StaticXHex          string `json:"staticPublicServerX"`
-	StaticYHex          string `json:"staticPublicServerY"`
-	StaticPrivateKeyHex string `json:"staticPrivateIut"`
+	StaticXHex          hexEncodedByteString `json:"staticPublicServerX"`
+	StaticYHex          hexEncodedByteString `json:"staticPublicServerY"`
+	StaticPrivateKeyHex hexEncodedByteString `json:"staticPrivateIut"`
 }
 
 type kasEccTestGroupResponse struct {
@@ -99,7 +88,6 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 	// See https://pages.nist.gov/ACVP/draft-fussell-acvp-kas-ecc.html#name-test-vectors
 	var ret []kasEccTestGroupResponse
 	for _, group := range parsed.Groups {
-		group := group
 		response := kasEccTestGroupResponse{
 			ID: group.ID,
 		}
@@ -116,14 +104,12 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 
 		switch group.Curve {
 		case "P-224", "P-256", "P-384", "P-521":
-			break
 		default:
 			return nil, fmt.Errorf("unknown curve %q", group.Curve)
 		}
 
 		switch group.Role {
 		case "initiator", "responder":
-			break
 		default:
 			return nil, fmt.Errorf("unknown role %q", group.Role)
 		}
@@ -131,52 +117,37 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 		var useOnePassNameFields bool
 		switch group.Scheme {
 		case "ephemeralUnified":
-			break
 		case "onePassDh":
 			useOnePassNameFields = true
-			break
 		default:
 			return nil, fmt.Errorf("unknown scheme %q", group.Scheme)
 		}
 
 		switch group.KdfConfiguration.KdfType {
-			case "oneStep":
-				break
-			default:
-				return nil, fmt.Errorf("unknown KDF type %q", group.KdfConfiguration.KdfType)
+		case "oneStep":
+		default:
+			return nil, fmt.Errorf("unknown KDF type %q", group.KdfConfiguration.KdfType)
 		}
 
 		method := "KAS-ECC/OneStep/" + group.Curve + "/" + group.KdfConfiguration.AuxFunction
 
 		for _, test := range group.Tests {
-			test := test
-
-			var xHex, yHex, privateKeyHex string
+			var peerX, peerY, privateKey hexEncodedByteString
 			if useOnePassNameFields {
 				if group.Role == "initiator" {
-					xHex, yHex, privateKeyHex = test.StaticXHex, test.StaticYHex, test.StaticPrivateKeyHex
+					peerX, peerY, privateKey = test.StaticXHex, test.StaticYHex, test.StaticPrivateKeyHex
 				} else {
-					xHex, yHex, privateKeyHex = test.EphemeralXHex, test.EphemeralYHex, test.StaticPrivateKeyHex
+					peerX, peerY, privateKey = test.EphemeralXHex, test.EphemeralYHex, test.StaticPrivateKeyHex
 				}
 			} else {
-				xHex, yHex, privateKeyHex = test.EphemeralXHex, test.EphemeralYHex, test.EphemeralPrivateKeyHex
+				peerX, peerY, privateKey = test.EphemeralXHex, test.EphemeralYHex, test.EphemeralPrivateKeyHex
 			}
 
-			if len(xHex) == 0 || len(yHex) == 0 {
+			if len(peerX) == 0 || len(peerY) == 0 {
 				return nil, fmt.Errorf("%d/%d is missing peer's point", group.ID, test.ID)
 			}
 
-			peerX, err := hex.DecodeString(xHex)
-			if err != nil {
-				return nil, err
-			}
-
-			peerY, err := hex.DecodeString(yHex)
-			if err != nil {
-				return nil, err
-			}
-
-			if (len(privateKeyHex) != 0) != privateKeyGiven {
+			if (len(privateKey) != 0) != privateKeyGiven {
 				return nil, fmt.Errorf("%d/%d incorrect private key presence", group.ID, test.ID)
 			}
 
@@ -213,17 +184,9 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 				if !useOnePassNameFields {
 					// ephemeralUnified: IUT has ephemeral key
 					if privateKeyGiven {
-						// VAL mode: use provided public key
-						iutPubX, err := hex.DecodeString(test.EphemeralPublicIutXHex)
-						if err != nil {
-							return nil, err
-						}
-						iutPubY, err := hex.DecodeString(test.EphemeralPublicIutYHex)
-						if err != nil {
-							return nil, err
-						}
-						fixedInfo = append(fixedInfo, iutPubX...)
-						fixedInfo = append(fixedInfo, iutPubY...)
+						// VAL mode: use provided public keyreturn nil, err
+						fixedInfo = append(fixedInfo, test.EphemeralPublicIutXHex...)
+						fixedInfo = append(fixedInfo, test.EphemeralPublicIutYHex...)
 					}
 				}
 				fixedInfo = append(fixedInfo, serverId...)
@@ -239,37 +202,19 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 					// ephemeralUnified: IUT has ephemeral key
 					if privateKeyGiven {
 						// VAL mode: use provided public key
-						iutPubX, err := hex.DecodeString(test.EphemeralPublicIutXHex)
-						if err != nil {
-							return nil, err
-						}
-						iutPubY, err := hex.DecodeString(test.EphemeralPublicIutYHex)
-						if err != nil {
-							return nil, err
-						}
-						fixedInfo = append(fixedInfo, iutPubX...)
-						fixedInfo = append(fixedInfo, iutPubY...)
+						fixedInfo = append(fixedInfo, test.EphemeralPublicIutXHex...)
+						fixedInfo = append(fixedInfo, test.EphemeralPublicIutYHex...)
 					}
 				}
 			}
 
 			if privateKeyGiven {
-				privateKey, err := hex.DecodeString(privateKeyHex)
-				if err != nil {
-					return nil, err
-				}
-
-				expectedOutput, err := hex.DecodeString(test.Dkm)
-				if err != nil {
-					return nil, err
-				}
-
 				result, err := m.Transact(method, 3, peerX, peerY, privateKey, fixedInfo, outLenBytes[:], nil)
 				if err != nil {
 					return nil, err
 				}
 
-				ok := bytes.Equal(result[2], expectedOutput)
+				ok := bytes.Equal(result[2], test.ExpectedOutput)
 				response.Tests = append(response.Tests, kasEccTestResponse{
 					ID:     test.ID,
 					Passed: &ok,
