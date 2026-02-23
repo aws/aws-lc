@@ -12,10 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if defined(BORINGSSL_FIPS) && defined(BORINGSSL_SHARED_LIBRARY)
 #include <stdint.h>
 
-
-#if defined(BORINGSSL_FIPS) && defined(BORINGSSL_SHARED_LIBRARY)
 // BORINGSSL_bcm_text_hash is is default hash value for the FIPS integrity check
 // that must be replaced with the real value during the build process. This
 // value need only be distinct, i.e. so that we can safely search-and-replace it
@@ -25,4 +24,9 @@ const uint8_t BORINGSSL_bcm_text_hash[32] = {
     0xf6, 0x94, 0x9a, 0xfc, 0x83, 0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f,
     0x6b, 0x6f, 0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
 };
+#else
+// C requires a translation unit to contain at least one declaration. Since
+// BORINGSSL_FIPS or BORINGSSL_SHARED_LIBRARY is not defined, this file is
+// otherwise empty. This typedef prevents MSVC warning C4206.
+typedef int fips_shared_support_dummy;
 #endif  // FIPS && SHARED_LIBRARY
