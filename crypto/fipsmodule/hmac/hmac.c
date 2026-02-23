@@ -242,7 +242,7 @@ OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0, HMAC_STATE_UNINITIALIZED_is
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
-  
+
   if (out == NULL) {
     // Prevent further work from being done
     return NULL;
@@ -277,6 +277,11 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
                               size_t key_len, const uint8_t *data,
                               size_t data_len, uint8_t *out,
                               unsigned int *out_len) {
+  if (out == NULL) {
+    // Prevent further work from being done
+    return NULL;
+  }
+
   HMAC_CTX ctx;
   OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
   int result;
@@ -396,6 +401,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
         OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
       }
       // If nothing is changing then we can return without doing any further work.
+      ctx->state = HMAC_STATE_INIT_NO_DATA;
       return 1;
     }
   }
@@ -498,6 +504,8 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
   ctx->state = HMAC_STATE_READY_NEEDS_INIT; // Mark that we are ready for use but still need HMAC_Init_ex called.
 end:
+  // Cleanse sensitive intermediate inner hash from the stack.
+  OPENSSL_cleanse(tmp, sizeof(tmp));
   FIPS_service_indicator_unlock_state();
   if (result) {
     HMAC_verify_service_indicator(evp_md);
@@ -506,6 +514,8 @@ end:
     }
     return 1;
   } else {
+    // On error, return context to a known and well-defined zero state.
+    HMAC_CTX_cleanup(ctx);
     if (out_len) {
       *out_len = 0;
     }
@@ -584,19 +594,22 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   // is false". Note this should not be necessary because get_state cannot fail.
   uint64_t o_ctx_n = 0;
 
-  const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
-      ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);
-
-  // ok should always be true as in our setting: get_state should always be
-  // successful since i_ctx/o_ctx have processed exactly one block
-  assert(ok);
-  (void)ok; // avoid unused variable warning when asserts disabled
+  if (!ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) ||
+      !ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n)) {
+    // get_state should always succeed since i_ctx/o_ctx have processed exactly
+    // one block, but handle failure defensively.
+    assert(0); // Should never happen
+    OPENSSL_cleanse(out, actual_out_len);
+    return 0;
+  }
 
   // Sanity check: we must have processed a single block at this time
   size_t block_size = EVP_MD_block_size(ctx->md);
-  assert(8 * block_size == i_ctx_n);
-  assert(8 * block_size == o_ctx_n);
-  (void)block_size; // avoid unused variable warning when asserts disabled
+  if (8 * block_size != i_ctx_n || 8 * block_size != o_ctx_n) {
+    assert(0); // Should never happen
+    OPENSSL_cleanse(out, actual_out_len);
+    return 0;
+  }
 
   // The context is ready to be used to compute HMAC values at this point.
   ctx->state = HMAC_STATE_INIT_NO_DATA;
@@ -691,10 +704,13 @@ end:
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
+  if (key && key_len < 0) {
+    return 0;
+  }
   if (key && md) {
     HMAC_CTX_init(ctx);
   }
-  return HMAC_Init_ex(ctx, key, key_len, md, NULL);
+  return HMAC_Init_ex(ctx, key, (size_t)key_len, md, NULL);
 }
 
 int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
