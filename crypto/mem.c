@@ -236,7 +236,17 @@ void OPENSSL_free(void *orig_ptr) {
     return;
   }
 
+  // |OPENSSL_memory_free| is a weak symbol, so check for definition
+  // before preferring it.
   if (OPENSSL_memory_free != NULL) {
+    // If weak symbol |OPENSSL_memory_get_size| is also defined, zeroize
+    // |orig_ptr| for defense in depth.
+    if (OPENSSL_memory_get_size != NULL) {
+      const size_t orig_ptr_size = OPENSSL_memory_get_size(orig_ptr);
+      if (orig_ptr_size > 0) {
+        OPENSSL_cleanse(orig_ptr, orig_ptr_size);
+      }
+    }
     OPENSSL_memory_free(orig_ptr);
     return;
   }
