@@ -2663,6 +2663,19 @@ struct CERT {
   explicit CERT(const SSL_X509_METHOD *x509_method);
   ~CERT();
 
+  // SetKeyMethod sets |key_method| for private key callback operations and
+  // clears any software private key in slot |slot_idx| to maintain mutual
+  // exclusivity between |key_method| and per-slot |privatekey|. It returns
+  // true on success. If |slot_idx| is out of range and |method| is non-NULL,
+  // it returns false because the mutual exclusivity invariant cannot be
+  // enforced.
+  bool SetKeyMethod(const SSL_PRIVATE_KEY_METHOD *method, int slot_idx);
+
+  // SetSlotPrivateKey sets the software private key for |slot_idx| and clears
+  // |key_method| to maintain mutual exclusivity between per-slot |privatekey|
+  // and |key_method|. It returns false if |slot_idx| is out of range.
+  bool SetSlotPrivateKey(int slot_idx, EVP_PKEY *pkey);
+
   // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
   // array. OpenSSL implements this as a pointer, but an index is more
   // efficient.

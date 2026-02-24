@@ -145,6 +145,29 @@ CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
 
 CERT::~CERT() { x509_method->cert_free(this); }
 
+bool CERT::SetKeyMethod(const SSL_PRIVATE_KEY_METHOD *method, int slot_idx) {
+  key_method = method;
+  if (slot_idx >= 0 &&
+      slot_idx < static_cast<int>(cert_private_keys.size())) {
+    cert_private_keys[slot_idx].privatekey.reset();
+    return true;
+  }
+  // If |method| is non-NULL and |slot_idx| is out of range, the mutual
+  // exclusivity invariant with per-slot |privatekey| cannot be enforced.
+  return method == nullptr;
+}
+
+bool CERT::SetSlotPrivateKey(int slot_idx, EVP_PKEY *pkey) {
+  if (slot_idx < 0 ||
+      slot_idx >= static_cast<int>(cert_private_keys.size())) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+  cert_private_keys[slot_idx].privatekey = UpRef(pkey);
+  key_method = nullptr;
+  return true;
+}
+
 CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
   CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buffer));
   return const_cast<CRYPTO_BUFFER *>(buffer);
@@ -321,17 +344,14 @@ static int cert_set_chain_and_key(
   // |check_leaf_cert_and_privkey|.
   CERT_PKEY *cert_pkey = &cert->cert_private_keys[slot_idx];
 
-  // If privatekey is currently set then reset it.
-  // We either set a new |privatekey| or |privkey_method|
-  // later below.
-  if (cert_pkey->privatekey) {
-    cert_pkey->privatekey.reset();
-  }
-
   if(privkey != nullptr) {
-    cert_pkey->privatekey = UpRef(privkey);
+    if (!cert->SetSlotPrivateKey(slot_idx, privkey)) {
+      return 0;
+    }
   } else {
-    cert->key_method = privkey_method;
+    if (!cert->SetKeyMethod(privkey_method, slot_idx)) {
+      return 0;
+    }
   }
 
   if (cert_pkey->chain) {
