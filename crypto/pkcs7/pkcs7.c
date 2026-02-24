@@ -1731,11 +1731,14 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
 out:
   X509_STORE_CTX_free(cert_ctx);
   // If |indata| was passed for detached signature, |PKCS7_dataInit| has pushed
-  // it onto |p7bio|. Pop the reference so caller retains ownership of |indata|.
-  if (indata) {
-    BIO_pop(p7bio);
+  // it onto the end of |p7bio|'s chain. Walk the chain freeing BIOs until we
+  // find |indata| so the caller retains ownership
+  while (p7bio != NULL && p7bio != indata) {
+    BIO *b = BIO_pop(p7bio);
+    BIO_free(p7bio);
+    p7bio = b;
   }
-  BIO_free_all(p7bio);
+  assert(BIO_next(p7bio) == NULL);
   sk_X509_free(signers);
   sk_X509_free(untrusted);
   return ret;
