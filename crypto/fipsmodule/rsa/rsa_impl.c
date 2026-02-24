@@ -413,6 +413,11 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
   if(rsa->meth && rsa->meth->verify_raw) {
+    if (max_out > INT_MAX) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
+      *out_len = 0;
+      return 0;
+    }
     // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
     // not directly take and initialize an |out_len| parameter. Instead, it
     // returns the size of the recovered plaintext or negative number for error.
