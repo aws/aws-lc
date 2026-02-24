@@ -2043,22 +2043,25 @@ TEST(PKCS7Test, TestSigned) {
 // Regression test: PKCS7_verify with detached data and multiple digest
 // algorithms must free all intermediate digest BIOs, not just the head.
 TEST(PKCS7Test, VerifyDetachedMultiDigestNoLeak) {
-  // Generate two distinct RSA key-pairs and leaf certificates so that each
+  // Generate two distinct ECDSA key-pairs and leaf certificates so that each
   // signer can use a different digest algorithm.
-  bssl::UniquePtr<RSA> root_rsa(RSA_new());
-  ASSERT_TRUE(RSA_generate_key_fips(root_rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EC_KEY> root_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(root_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(root_ec.get()));
   bssl::UniquePtr<EVP_PKEY> root_pkey(EVP_PKEY_new());
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(root_pkey.get(), root_rsa.get()));
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(root_pkey.get(), root_ec.get()));
 
-  bssl::UniquePtr<RSA> leaf1_rsa(RSA_new());
-  ASSERT_TRUE(RSA_generate_key_fips(leaf1_rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EC_KEY> leaf1_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf1_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf1_ec.get()));
   bssl::UniquePtr<EVP_PKEY> leaf1_pkey(EVP_PKEY_new());
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(leaf1_pkey.get(), leaf1_rsa.get()));
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf1_pkey.get(), leaf1_ec.get()));
 
-  bssl::UniquePtr<RSA> leaf2_rsa(RSA_new());
-  ASSERT_TRUE(RSA_generate_key_fips(leaf2_rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EC_KEY> leaf2_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf2_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf2_ec.get()));
   bssl::UniquePtr<EVP_PKEY> leaf2_pkey(EVP_PKEY_new());
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(leaf2_pkey.get(), leaf2_rsa.get()));
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf2_pkey.get(), leaf2_ec.get()));
 
   bssl::UniquePtr<ASN1_TIME> not_before(ASN1_TIME_set_posix(nullptr, 0L));
   bssl::UniquePtr<ASN1_TIME> not_after(
