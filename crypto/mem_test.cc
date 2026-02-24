@@ -92,12 +92,15 @@ TEST(MemTest, BasicOverrides) {
   ASSERT_EQ(starting_realloc + 1, realloc_count);
   ASSERT_EQ(0, size_count);
 
-  // Check |OPENSSL_memory_free| calls our symbol as expected
+  // Check |OPENSSL_memory_free| calls our symbol as expected, which results
+  // in one additional call to |OPENSSL_memory_get_size|.
+  test_size = 200;  // reset |test_size| to |realloc_ptr_1| value above
   OPENSSL_free(realloc_ptr_1);
   ASSERT_EQ(starting_alloc + 2, alloc_count);
   ASSERT_EQ(starting_free + 1, free_count);
   ASSERT_EQ(starting_realloc + 1, realloc_count);
-  ASSERT_EQ(0, size_count);
+  ASSERT_EQ(1, size_count);
+  test_size = 300;  // reset |test_size| to |realloc_ptr_2| value above
   OPENSSL_free(realloc_ptr_2);
 }
 
