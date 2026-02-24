@@ -80,10 +80,10 @@ exit /b 0
 :build
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build started with cmake generation started
-cd %SRC_ROOT%
+cd /d %SRC_ROOT%
 rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%
-cd %BUILD_DIR%
+cd /d %BUILD_DIR%
 
 cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 %SRC_ROOT% || goto error
 
