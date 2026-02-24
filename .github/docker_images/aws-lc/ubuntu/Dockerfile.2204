@@ -31,8 +31,10 @@ apt-get -y --no-install-recommends install \
     build-essential \
     ca-certificates \
     check \
+    clang-11 \
+    clang-12 \
+    clang-13 \
     clang-14 \
-    clang++-14 \
     clang-format \
     cmake \
     curl \
@@ -109,9 +111,9 @@ apt-get -y --no-install-recommends install \
     libuv1-dev \
     libxml2-dev \
     libyaml-dev \
-    lld \
-    llvm \
-    llvm-dev \
+    lld-14 \
+    llvm-14 \
+    llvm-14-dev \
     make \
     meson \
     net-tools \

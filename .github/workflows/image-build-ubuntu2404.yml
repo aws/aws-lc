@@ -66,6 +66,58 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.28
             ./.github/docker_images/scripts/verify-perl-version.sh 5.38
+            # Check GCC Default Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
+            # Check GCC 9 Compilers
+            source /opt/compiler-env/setup-gcc-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 9.5
+            # Check GCC 10 Compilers
+            source /opt/compiler-env/setup-gcc-10.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 10.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 10.5
+            # Check GCC 11 Compilers
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check GCC 12 Compilers
+            source /opt/compiler-env/setup-gcc-12.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.4
+            # Check GCC 13 Compilers
+            source /opt/compiler-env/setup-gcc-13.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
+            # Check GCC 14 Compilers
+            source /opt/compiler-env/setup-gcc-14.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 14.2
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 14.2
+            # Check Clang 14 Compilers
+            source /opt/compiler-env/setup-clang-14.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 14.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 14.0
+            # Check Clang 15 Compilers
+            source /opt/compiler-env/setup-clang-15.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 16 Compilers
+            source /opt/compiler-env/setup-clang-16.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 16.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 16.0
+            # Check Clang 17 Compilers
+            source /opt/compiler-env/setup-clang-17.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 17.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 17.0
+            # Check Clang 18 Compilers
+            source /opt/compiler-env/setup-clang-18.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 18.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 18.1
+            # Check Clang 19 Compilers
+            source /opt/compiler-env/setup-clang-19.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
 
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
@@ -138,6 +190,58 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.28
             ./.github/docker_images/scripts/verify-perl-version.sh 5.38
+            # Check GCC Default Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
+            # Check GCC 9 Compilers
+            source /opt/compiler-env/setup-gcc-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 9.5
+            # Check GCC 10 Compilers
+            source /opt/compiler-env/setup-gcc-10.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 10.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 10.5
+            # Check GCC 11 Compilers
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check GCC 12 Compilers
+            source /opt/compiler-env/setup-gcc-12.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.4
+            # Check GCC 13 Compilers
+            source /opt/compiler-env/setup-gcc-13.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
+            # Check GCC 14 Compilers
+            source /opt/compiler-env/setup-gcc-14.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 14.2
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 14.2
+            # Check Clang 14 Compilers
+            source /opt/compiler-env/setup-clang-14.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 14.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 14.0
+            # Check Clang 15 Compilers
+            source /opt/compiler-env/setup-clang-15.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 16 Compilers
+            source /opt/compiler-env/setup-clang-16.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 16.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 16.0
+            # Check Clang 17 Compilers
+            source /opt/compiler-env/setup-clang-17.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 17.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 17.0
+            # Check Clang 18 Compilers
+            source /opt/compiler-env/setup-clang-18.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 18.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 18.1
+            # Check Clang 19 Compilers
+            source /opt/compiler-env/setup-clang-19.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
 
   aarch64_push:
     if: ${{ github.event_name != 'pull_request' }}

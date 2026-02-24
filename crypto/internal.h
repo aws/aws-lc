@@ -937,7 +937,10 @@ static inline void *OPENSSL_memchr(const void *s, int c, size_t n) {
     return NULL;
   }
 
-  return memchr(s, c, n);
+  // C23 makes memchr const-correct, returning const void * when the input is
+  // const void *. Some C libraries apply this change even in C11 mode. Cast to
+  // match our return type.
+  return (void *)memchr(s, c, n);
 }
 
 #endif  // __cplusplus
