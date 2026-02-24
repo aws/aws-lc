@@ -37,7 +37,7 @@ PKCS7 *d2i_PKCS7(PKCS7 **a, const unsigned char **in, long len) {
   PKCS7 *ret = NULL;
   CBS cbs, cbs_der;
 
-  if (!in) {
+  if (!in || len < 0) {
     return NULL;
   }
 
