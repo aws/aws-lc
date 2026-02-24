@@ -814,11 +814,9 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   const uint8_t *ptr = der_bytes;
   bssl::UniquePtr<PKCS7> pkcs7_obj(d2i_PKCS7(nullptr, &ptr, der_len));
   ASSERT_TRUE(pkcs7_obj);
-  if (is_ber) {
-    EXPECT_EQ(ptr, der_bytes + CBS_len(&der_conv_out));
-  } else {
-    EXPECT_EQ(ptr, der_bytes + der_len);
-  }
+  // |ASN1_item_d2i| natively handles BER, so the pointer always advances by
+  // the full input length regardless of whether the input is BER or DER.
+  EXPECT_EQ(ptr, der_bytes + der_len);
   bssl::UniquePtr<PKCS7> pkcs7_dup(PKCS7_dup(pkcs7_obj.get()));
   ASSERT_TRUE(pkcs7_dup);
   EXPECT_EQ(OBJ_obj2nid(pkcs7_obj.get()->type),
