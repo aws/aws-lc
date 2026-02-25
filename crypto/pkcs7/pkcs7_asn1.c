@@ -29,22 +29,7 @@ ASN1_ADB(PKCS7) = {
 ASN1_SEQUENCE(PKCS7) = {ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
                         ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END(PKCS7)
 
-IMPLEMENT_ASN1_ALLOC_FUNCTIONS(PKCS7)
-
-// |ASN1_item_d2i| natively handles BER encoding (indefinite-length elements
-// and constructed strings), so no BER-to-DER pre-conversion is needed.
-PKCS7 *d2i_PKCS7(PKCS7 **a, const unsigned char **in, long len) {
-  if (!in) {
-    return NULL;
-  }
-
-  return (PKCS7 *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-                                ASN1_ITEM_rptr(PKCS7));
-}
-
-int i2d_PKCS7(PKCS7 *a, unsigned char **out) {
-  return ASN1_item_i2d((ASN1_VALUE *)a, out, ASN1_ITEM_rptr(PKCS7));
-}
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(PKCS7)
 
