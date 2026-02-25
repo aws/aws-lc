@@ -659,10 +659,17 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // RFC 5280 §4.2.1.10 specifies that URI name constraints "MUST be specified
+  // as a fully qualified domain name". IPv6 literal URIs (e.g.
+  // "https://[2001:db8::1]/") are not domain names, and matching them by string
+  // comparison would be unreliable because IPv6 addresses have many equivalent
+  // textual representations. Reject them as unsupported.
+  if (starts_with(&uri_cbs, '[')) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
   // Look for a port indicator as end of hostname first. Otherwise look for
   // trailing slash, or the end of the string.
-  // TODO(davidben): This is not a correct URI parser and mishandles IPv6
-  // literals.
   CBS host;
   if (!CBS_get_until_first(&uri_cbs, &host, ':') &&
       !CBS_get_until_first(&uri_cbs, &host, '/')) {
