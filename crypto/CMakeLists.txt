@@ -702,8 +702,9 @@ endif()
 #
 # For now we assume embedded OSes do not have threads. Additionally, the Threads
 # package does not work with Android, but Android does not require any extra
-# parameters to link pthreads.
-if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android)$")
+# parameters to link pthreads. Emscripten provides its own pthread implementation
+# via Web Workers and SharedArrayBuffer, configured through compiler flags.
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
   target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()
