@@ -2043,6 +2043,104 @@ TEST(PKCS7Test, TestSigned) {
                             bio_out.get(), /*flags*/ 0));
 }
 
+// Regression test: PKCS7_verify with detached data and multiple digest
+// algorithms must free all intermediate digest BIOs, not just the head.
+TEST(PKCS7Test, VerifyDetachedMultiDigestNoLeak) {
+  // Generate two distinct ECDSA key-pairs and leaf certificates so that each
+  // signer can use a different digest algorithm.
+  bssl::UniquePtr<EC_KEY> root_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(root_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(root_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> root_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(root_pkey.get(), root_ec.get()));
+
+  bssl::UniquePtr<EC_KEY> leaf1_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf1_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf1_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> leaf1_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf1_pkey.get(), leaf1_ec.get()));
+
+  bssl::UniquePtr<EC_KEY> leaf2_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf2_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf2_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> leaf2_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf2_pkey.get(), leaf2_ec.get()));
+
+  bssl::UniquePtr<ASN1_TIME> not_before(ASN1_TIME_set_posix(nullptr, 0L));
+  bssl::UniquePtr<ASN1_TIME> not_after(
+      ASN1_TIME_set_posix(nullptr, INT64_C(253402300799)));
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", root_pkey.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_set_notBefore(root.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(root.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(root.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf1 =
+      MakeTestCert("Root", "Leaf1", leaf1_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf1);
+  ASSERT_TRUE(X509_set_notBefore(leaf1.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf1.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(leaf1.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf2 =
+      MakeTestCert("Root", "Leaf2", leaf2_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf2);
+  ASSERT_TRUE(X509_set_notBefore(leaf2.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf2.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(leaf2.get(), root_pkey.get(), EVP_sha256()));
+
+  // Build a PKCS7 signed structure with two signers using *different* digest
+  // algorithms. This causes PKCS7_dataInit to create two digest BIOs.
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Signer 1: SHA-256
+  PKCS7_SIGNER_INFO *si1 = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(si1);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(si1, leaf1.get(), leaf1_pkey.get(), EVP_sha256()));
+  ASSERT_TRUE(PKCS7_add_signer(p7.get(), si1));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), leaf1.get()));
+
+  // Signer 2: SHA-384 (different digest => second digest BIO in chain)
+  PKCS7_SIGNER_INFO *si2 = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(si2);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(si2, leaf2.get(), leaf2_pkey.get(), EVP_sha384()));
+  ASSERT_TRUE(PKCS7_add_signer(p7.get(), si2));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), leaf2.get()));
+
+  // Make it a detached signature.
+  ASN1_OCTET_STRING_free(p7->d.sign->contents->d.data);
+  p7->d.sign->contents->d.data = NULL;
+
+  // The signatures don't need to be valid for this leak test -- the leak
+  // happens during teardown regardless of verification outcome. Just add dummy
+  // signer info entries so PKCS7_get_signer_info returns them and the code
+  // path that builds the BIO chain in PKCS7_dataInit is reached.
+
+  // Call PKCS7_verify with detached indata. The BIO chain teardown is where
+  // intermediate digest BIOs are leaked.
+  uint8_t buf[64];
+  OPENSSL_memset(buf, 'A', sizeof(buf));
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+
+  bssl::UniquePtr<BIO> indata(BIO_new_mem_buf(buf, sizeof(buf)));
+  ASSERT_TRUE(indata);
+  bssl::UniquePtr<BIO> outdata(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(outdata);
+
+  // Verification will fail (signatures are not computed), but the BIO chain
+  // teardown still runs to exercise the leak.
+  PKCS7_verify(p7.get(), nullptr, store.get(), indata.get(), outdata.get(),
+               PKCS7_NOVERIFY);
+}
+
 TEST(PKCS7Test, PKCS7PrintNoop) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());

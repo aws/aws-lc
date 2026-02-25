@@ -834,8 +834,8 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      // |bio |needs a copy of |os->data| instead of a pointer because the data
-      // will be used after |os |has been freed
+      // |bio| needs a copy of |content->data| instead of a pointer because the
+      // data may be used after |content| has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
         BIO_free(bio);
         goto err;
@@ -1739,11 +1739,13 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
 out:
   X509_STORE_CTX_free(cert_ctx);
   // If |indata| was passed for detached signature, |PKCS7_dataInit| has pushed
-  // it onto |p7bio|. Pop the reference so caller retains ownership of |indata|.
-  if (indata) {
-    BIO_pop(p7bio);
+  // it onto the end of |p7bio|'s chain. Walk the chain freeing BIOs until we
+  // find |indata| so the caller retains ownership
+  while (p7bio != NULL && p7bio != indata) {
+    BIO *b = BIO_pop(p7bio);
+    BIO_free(p7bio);
+    p7bio = b;
   }
-  BIO_free_all(p7bio);
   sk_X509_free(signers);
   sk_X509_free(untrusted);
   return ret;
