@@ -791,6 +791,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     }
 
     if (EVP_CipherInit_ex(ctx, evp_cipher, NULL, key, iv, /*enc*/ 1) <= 0) {
+      OPENSSL_cleanse(key, keylen);
       goto err;
     }
 
@@ -812,6 +813,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     for (size_t i = 0; i < sk_PKCS7_RECIP_INFO_num(rsk); i++) {
       ri = sk_PKCS7_RECIP_INFO_value(rsk, i);
       if (pkcs7_encode_rinfo(ri, key, keylen) <= 0) {
+        OPENSSL_cleanse(key, keylen);
         goto err;
       }
     }
@@ -835,6 +837,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
+        BIO_free(bio);
         goto err;
       }
     }
@@ -876,7 +879,7 @@ int PKCS7_set_detached(PKCS7 *p7, int detach) {
       ASN1_OCTET_STRING_free(p7->d.sign->contents->d.data);
       p7->d.sign->contents->d.data = NULL;
     }
-    return detach;
+    return 1;
   } else {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_OPERATION_NOT_SUPPORTED_ON_THIS_TYPE);
     return 0;
@@ -1082,7 +1085,8 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       goto err;
     }
     // Mark the BIO read only then we can use its copy of the data instead of
-    // making an extra copy.
+    // making an extra copy. |content| will intentionally point directly into
+    // the relevant BIO's buffer, as the BIO's lifetime is owned by |p7|.
     BIO_set_flags(bio_tmp, BIO_FLAGS_MEM_RDONLY);
     BIO_set_mem_eof_return(bio_tmp, /*eof_value*/ 0);
     ASN1_STRING_set0(content, (unsigned char *)cont, contlen);
@@ -1362,6 +1366,9 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   }
   // Always generate random bytes for the dummy key, regardless of |cek| decrypt
   dummy_key = OPENSSL_malloc(len);
+  if (dummy_key == NULL) {
+    goto err;
+  }
   RAND_bytes(dummy_key, len);
   // At this point, null |cek| indicates that no content encryption key was
   // successfully decrypted. We don't want to return early due to MMA. So, swap
@@ -1380,6 +1387,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   cek = NULL;
   dummy_key = NULL;
   out = cipher_bio;
+  cipher_bio = NULL;
 
   // We verify data_body != NULL above
   if (data_body->length > 0) {
