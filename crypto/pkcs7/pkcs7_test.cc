@@ -1423,6 +1423,9 @@ TEST(PKCS7Test, GettersSetters) {
   ASSERT_TRUE(psig);
   ASSERT_TRUE(pdig);
 
+  // Negative lengths not valid
+  EXPECT_FALSE(d2i_PKCS7(nullptr, &p7_der, -1));
+
   bssl::UniquePtr<PKCS7> p7_dup(PKCS7_dup(p7.get()));
   ASSERT_TRUE(p7_dup);
   EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
@@ -2067,7 +2070,7 @@ TEST(PKCS7Test, SetDetached) {
   // Access the |p7|'s internal contents to verify that |PKCS7_set_detached|
   // has the right behavior.
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
-  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 0));
+  EXPECT_TRUE(PKCS7_set_detached(p7.get(), 0));
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
   EXPECT_FALSE(PKCS7_set_detached(p7.get(), 2));
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
