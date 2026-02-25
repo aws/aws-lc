@@ -502,18 +502,23 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
     goto err;
   }
 
-  size_t max_out = plaintext_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < plaintext_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
+  // |EVP_CipherUpdate| takes |int| for the input length and may output up to
+  // |plaintext_len + block_size| bytes. Ensure the total fits in |int| to avoid
+  // truncation and cannot overflow.
+  size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
+  if (plaintext_len + block_size < plaintext_len ||
+      plaintext_len + block_size > INT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
+  size_t max_out = plaintext_len + block_size;
 
   CBB ciphertext;
   uint8_t *ptr;
   int n1, n2;
   if (!CBB_add_asn1(&epki, &ciphertext, CBS_ASN1_OCTETSTRING) ||
       !CBB_reserve(&ciphertext, &ptr, max_out) ||
-      !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, plaintext_len) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, (int)plaintext_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&ciphertext, n1 + n2) ||
       !CBB_flush(out)) {
