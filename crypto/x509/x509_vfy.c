@@ -683,6 +683,9 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       }
     }
 
+    // The |num > 1| condition intentionally skips this check for single-certificate chains
+    // (e.g., a self-signed leaf or a partial chain with only the target certificate). This
+    // maintains consistency with OpenSSL 1.1.1 behavior.
     if (num > 1 && (ctx->param->awslc_flags&AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS) == 0) {
       // In OpenSSL 1.1.1 this check was done if |X509_V_FLAG_X509_STRICT| was enabled.
       // We did not perform this check explicitly before, but the behavior was baked into
@@ -1564,7 +1567,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
   EVP_PKEY *pkey = X509_get0_pubkey(xs);
   if(pkey == NULL) {
     ctx->error = X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
-    ctx->current_cert = xi;
+    ctx->current_cert = xs;
     ok = 0;
     goto end;
   }
