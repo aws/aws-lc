@@ -832,8 +832,8 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      // |bio |needs a copy of |os->data| instead of a pointer because the data
-      // will be used after |os |has been freed
+      // |bio| needs a copy of |content->data| instead of a pointer because the
+      // data may be used after |content| has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
         goto err;
       }
@@ -1738,7 +1738,6 @@ out:
     BIO_free(p7bio);
     p7bio = b;
   }
-  assert(BIO_next(p7bio) == NULL);
   sk_X509_free(signers);
   sk_X509_free(untrusted);
   return ret;
