@@ -2287,6 +2287,17 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_PERMITTED_VIOLATION},
       {GEN_URI, "foo://example.com/whatever", ".xample.com",
        X509_V_ERR_PERMITTED_VIOLATION},
+
+      // RFC 5280 §4.2.1.10 specifies URI name constraints "MUST be specified
+      // as a fully qualified domain name". IPv6 literal URIs are not domain
+      // names and cannot be reliably matched by string comparison due to
+      // multiple equivalent textual representations. They are rejected as
+      // unsupported syntax (fail-closed).
+      {GEN_URI, "foo://[2001:db8::1]", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // An incomplete IPv6 literal is also rejected.
+      {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);
@@ -5911,13 +5922,13 @@ TEST(X509Test, Print) {
         X509v3 extensions:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
-            X509v3 Extended Key Usage: 
+            X509v3 Extended Key Usage:
                 TLS Web Server Authentication, TLS Web Client Authentication
             X509v3 Basic Constraints: critical
                 CA:FALSE
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:
                 A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:
                 keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
 
     Signature Algorithm: sha256WithRSAEncryption
