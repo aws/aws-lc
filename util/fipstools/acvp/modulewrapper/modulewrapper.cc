@@ -1488,9 +1488,9 @@ static bool GetConfig(const Span<const uint8_t> args[],
       R"({
         "algorithm": "KTS-IFC",
         "revision": "Sp800-56Br2",
+        "iutId": "ABCD",
         "function": ["keyPairGen", "partialVal"],
-        "iutId": "123456ABCD",
-        "keyGenerationMethods": ["rsakpg1-basic", "rsakpg1-prime-factor", "rsakpg1-crt"],
+        "keyGenerationMethods": ["rsakpg1-basic"],
         "modulo": [2048, 3072, 4096],
         "fixedPubExp": "010001",
         "scheme": {
@@ -1498,8 +1498,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "kasRole": ["initiator", "responder"],
             "ktsMethod": {
               "hashAlgs": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
-              "associatedDataPattern": "uPartyInfo||vPartyInfo",
-              "encoding": ["concatenation"]
+              "supportsNullAssociatedData": true
             },
             "l": 1024
           }
