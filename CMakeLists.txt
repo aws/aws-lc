@@ -94,6 +94,9 @@ option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" O
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
+set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
+
 include(cmake/go.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
@@ -112,6 +115,60 @@ enable_language(C)
 # The validated entropy source will always be configured to be CPU Jitter
 # Entropy by default; because it's the root of the Tree DRBG.
 message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
+
+# Validate Rust bindings prerequisites
+if(GENERATE_RUST_BINDINGS)
+  find_program(BINDGEN_EXECUTABLE NAMES bindgen)
+  if(NOT BINDGEN_EXECUTABLE)
+    message(FATAL_ERROR "GENERATE_RUST_BINDINGS is enabled but bindgen-cli was not found. "
+                        "Install it with: cargo install --force --locked bindgen-cli")
+  endif()
+
+  # Verify minimum version (0.69.5)
+  execute_process(
+    COMMAND ${BINDGEN_EXECUTABLE} --version
+    OUTPUT_VARIABLE BINDGEN_VERSION_OUTPUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE BINDGEN_VERSION_RESULT
+  )
+
+  if(NOT BINDGEN_VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to get bindgen version")
+  endif()
+
+  # Extract version number (format: "bindgen X.Y.Z")
+  string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" BINDGEN_VERSION "${BINDGEN_VERSION_OUTPUT}")
+
+  if(BINDGEN_VERSION VERSION_LESS "0.69.5")
+    message(FATAL_ERROR "bindgen version ${BINDGEN_VERSION} is too old. "
+                        "Minimum required version is 0.69.5. "
+                        "Upgrade with: cargo install --force --locked bindgen-cli")
+  endif()
+
+  message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
+  message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
+
+  # Check for rustfmt (required for --formatter rustfmt option)
+  find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
+  if(NOT RUSTFMT_EXECUTABLE)
+    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
+                        "Install it with: rustup component add rustfmt")
+  endif()
+  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+endif()
+
+if(DISABLE_CPU_JITTER_ENTROPY)
+  if(FIPS)
+    message(FATAL_ERROR "Cannot opt-out of CPU Jitter for the FIPS build")
+  endif()
+  add_definitions(-DDISABLE_CPU_JITTER_ENTROPY)
+  message(STATUS "Entropy source configuration: CPU Jitter opt-out")
+  message(STATUS "Entropy source configured: Dynamic (default: Operating system)")
+else()
+  # The validated entropy source will always be configured to be CPU Jitter
+  # Entropy by default; because it's the root of the Tree DRBG.
+  message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
+endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
@@ -344,6 +401,60 @@ else()
           PATTERN boringssl_prefix_symbols.h
           PATTERN boringssl_prefix_symbols_asm.h
           PATTERN boringssl_prefix_symbols_nasm.inc
+  )
+endif()
+
+# Rust bindings generation
+if(GENERATE_RUST_BINDINGS)
+  include(cmake/rust_bindings.cmake)
+
+  # Generate the rust_wrapper.h header from template
+  generate_rust_wrapper_header()
+
+  set(RUST_BINDINGS_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/rust/aws_lc_bindings.rs")
+
+  # Build list of include directories for bindgen.
+  # Prefix symbols header is intentionally excluded; see cmake/rust_bindings.cmake.
+  set(RUST_BINDINGS_INCLUDE_DIRS
+    "${CMAKE_CURRENT_BINARY_DIR}/include"   # Generated rust_wrapper.h location
+    "${AWSLC_SOURCE_DIR}/include"           # Main AWS-LC headers (unprefixed)
+  )
+
+  # Conditionally set optional arguments for generate_rust_bindings
+  if(BORINGSSL_PREFIX)
+    set(_rust_prefix_arg PREFIX "${BORINGSSL_PREFIX}")
+  else()
+    set(_rust_prefix_arg "")
+  endif()
+
+  if(BUILD_LIBSSL)
+    set(_rust_ssl_arg INCLUDE_SSL)
+  else()
+    set(_rust_ssl_arg "")
+  endif()
+
+  generate_rust_bindings(
+    OUTPUT_FILE "${RUST_BINDINGS_OUTPUT}"
+    INCLUDE_DIRS ${RUST_BINDINGS_INCLUDE_DIRS}
+    ${_rust_prefix_arg}
+    ${_rust_ssl_arg}
+  )
+
+  # Install the generated Rust bindings.
+  # The rust_bindings target is not part of ALL, so we build it on-demand during install.
+  install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" --build \"${CMAKE_BINARY_DIR}\" --target rust_bindings)")
+
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/rust/aws_lc_bindings.rs"
+    DESTINATION "share/rust"
+    COMPONENT Development
+  )
+
+  # Install the generated rust_wrapper.h header
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/include/rust_wrapper.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    COMPONENT Development
   )
 endif()
 
