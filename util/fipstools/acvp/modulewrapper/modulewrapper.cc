@@ -2810,11 +2810,23 @@ static bool RSAOAEPEncrypt(const Span<const uint8_t> args[],
 
   BIGNUM *n = BN_new();
   BIGNUM *e = BN_new();
-  bssl::UniquePtr<RSA> key(RSA_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
 
   if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
       !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
-      !RSA_set0_key(key.get(), n, e, nullptr)) {
+      !RSA_set0_key(rsa.get(), n, e, nullptr)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_encrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
     return false;
   }
 
@@ -2822,10 +2834,13 @@ static bool RSAOAEPEncrypt(const Span<const uint8_t> args[],
   std::vector<uint8_t> out(out_len);
   RAND_bytes(out.data(), out.size());
 
-  std::vector<uint8_t> ct(RSA_size(key.get()));
   size_t ct_len = 0;
-  if (!RSA_encrypt(key.get(), &ct_len, ct.data(), ct.size(), out.data(),
-                   out.size(), RSA_PKCS1_OAEP_PADDING)) {
+  if (!EVP_PKEY_encrypt(ctx.get(), nullptr, &ct_len, out.data(), out.size())) {
+    return false;
+  }
+  std::vector<uint8_t> ct(ct_len);
+  if (!EVP_PKEY_encrypt(ctx.get(), ct.data(), &ct_len, out.data(),
+                        out.size())) {
     return false;
   }
   return write_reply({Span<const uint8_t>(ct), Span<const uint8_t>(out)});
@@ -2846,25 +2861,39 @@ static bool RSAOAEPDecrypt(const Span<const uint8_t> args[],
   BIGNUM *p = BN_new();
   BIGNUM *q = BN_new();
   BIGNUM *d = BN_new();
-  bssl::UniquePtr<RSA> key(RSA_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
 
   if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
       !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
       !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
       !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
       !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
-      !RSA_set0_key(key.get(), n, e, d) ||
-      !RSA_set0_factors(key.get(), p, q)) {
+      !RSA_set0_key(rsa.get(), n, e, d) || !RSA_set0_factors(rsa.get(), p, q)) {
     return false;
   }
 
-  std::vector<uint8_t> out(RSA_size(key.get()));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_decrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
+    return false;
+  }
+
   size_t out_len = 0;
-  if (!RSA_decrypt(key.get(), &out_len, out.data(), out.size(), input.data(),
-                   input.size(), RSA_PKCS1_OAEP_PADDING)) {
+  if (!EVP_PKEY_decrypt(ctx.get(), nullptr, &out_len, input.data(),
+                        input.size())) {
     return false;
   }
-
+  std::vector<uint8_t> out(out_len);
+  if (!EVP_PKEY_decrypt(ctx.get(), out.data(), &out_len, input.data(),
+                        input.size())) {
+    return false;
+  }
   out.resize(out_len);
   return write_reply({Span<const uint8_t>(out)});
 }
