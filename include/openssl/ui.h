@@ -22,18 +22,18 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED UI *UI_new(void);
 /// UI_free invokes OPENSSL_free on its parameter.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void UI_free(UI *ui);
 
-/// UI_add_input_string does nothing, always returns 0.
+/// UI_add_input_string does nothing, always returns -1 for failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int UI_add_input_string(UI *ui, const char *prompt, int flags,
         char *result_buf, int minsize, int maxsize);
 
-/// UI_add_verify_string does nothing, always returns 0.
+/// UI_add_verify_string does nothing, always returns -1 for failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int UI_add_verify_string(UI *ui, const char *prompt, int flags,
         char *result_buf, int minsize, int maxsize, const char *test_buf);
 
-/// UI_add_info_string does nothing, always returns 0.
+/// UI_add_info_string does nothing, always returns -1 for failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int UI_add_info_string(UI *ui, const char *text);
 
-/// UI_process does nothing, always returns 0.
+/// UI_process does nothing, always returns -1 for failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int UI_process(UI *ui);
 
 #endif //UI_H
