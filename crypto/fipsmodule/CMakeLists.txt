@@ -634,7 +634,32 @@ elseif(FIPS_SHARED)
       DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+  elseif(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # Windows with Clang: use llvm-lib to combine object files into a static library.
+    # Similar to the MSVC case, we use start/end markers to control symbol placement.
+    set(BCM_NAME bcm.lib)
+    get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+    find_program(LIB_TOOL "llvm-lib.exe" HINTS "${COMPILER_DIR}" REQUIRED)
+
+    add_custom_command(
+      OUTPUT fips_windows_start.obj
+      COMMAND ${CMAKE_C_COMPILER} -c -DAWSLC_FIPS_SHARED_START -o fips_windows_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_windows_end.obj
+      COMMAND ${CMAKE_C_COMPILER} -c -DAWSLC_FIPS_SHARED_END -o fips_windows_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      COMMAND ${LIB_TOOL} /nologo fips_windows_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_windows_end.obj /OUT:${BCM_NAME}
+      DEPENDS bcm_library fips_windows_start.obj fips_windows_end.obj
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   else()
+    # Linux/Unix: use ld -r with a linker script to create a relocatable object file.
     set(BCM_NAME bcm.o)
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
     set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")

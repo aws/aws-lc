@@ -1297,7 +1297,7 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message);
 #else
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 __declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
 void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
