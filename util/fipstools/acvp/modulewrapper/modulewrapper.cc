@@ -1484,6 +1484,25 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "internal", 
           "external"
         ]
+      },)"
+      R"({
+        "algorithm": "KTS-IFC",
+        "revision": "Sp800-56Br2",
+        "iutId": "ABCD",
+        "function": ["keyPairGen", "partialVal"],
+        "keyGenerationMethods": ["rsakpg1-basic"],
+        "modulo": [2048, 3072, 4096],
+        "fixedPubExp": "010001",
+        "scheme": {
+          "KTS-OAEP-basic": {
+            "kasRole": ["initiator", "responder"],
+            "ktsMethod": {
+              "hashAlgs": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
+              "supportsNullAssociatedData": true
+            },
+            "l": 1024
+          }
+        }
       }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
@@ -2780,6 +2799,106 @@ static bool RSASigVer(const Span<const uint8_t> args[],
 }
 
 template <const EVP_MD *(MDFunc)()>
+static bool RSAOAEPEncrypt(const Span<const uint8_t> args[],
+                           ReplyCallback write_reply) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+
+  uint32_t out_len = 0;
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !RSA_set0_key(rsa.get(), n, e, nullptr)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_encrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
+    return false;
+  }
+
+  // Randomly generate the keying material to encrypt
+  std::vector<uint8_t> out(out_len);
+  RAND_bytes(out.data(), out.size());
+
+  size_t ct_len = 0;
+  if (!EVP_PKEY_encrypt(ctx.get(), nullptr, &ct_len, out.data(), out.size())) {
+    return false;
+  }
+  std::vector<uint8_t> ct(ct_len);
+  if (!EVP_PKEY_encrypt(ctx.get(), ct.data(), &ct_len, out.data(),
+                        out.size())) {
+    return false;
+  }
+  return write_reply({Span<const uint8_t>(ct), Span<const uint8_t>(out)});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool RSAOAEPDecrypt(const Span<const uint8_t> args[],
+                           ReplyCallback write_reply) {
+  const Span<const uint8_t> input = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+  const Span<const uint8_t> q_bytes = args[3];
+  const Span<const uint8_t> p_bytes = args[4];
+  const Span<const uint8_t> d_bytes = args[5];
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  BIGNUM *p = BN_new();
+  BIGNUM *q = BN_new();
+  BIGNUM *d = BN_new();
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
+      !RSA_set0_key(rsa.get(), n, e, d) || !RSA_set0_factors(rsa.get(), p, q)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_decrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
+    return false;
+  }
+
+  size_t out_len = 0;
+  if (!EVP_PKEY_decrypt(ctx.get(), nullptr, &out_len, input.data(),
+                        input.size())) {
+    return false;
+  }
+  std::vector<uint8_t> out(out_len);
+  if (!EVP_PKEY_decrypt(ctx.get(), out.data(), &out_len, input.data(),
+                        input.size())) {
+    return false;
+  }
+  out.resize(out_len);
+  return write_reply({Span<const uint8_t>(out)});
+}
+
+template <const EVP_MD *(MDFunc)()>
 static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
   const Span<const uint8_t> out_len_bytes = args[0];
@@ -3674,6 +3793,16 @@ static struct {
     {"KDA/OneStep/HMAC-SHA2-512", 4, SSKDF_HMAC<EVP_sha512>},
     {"KDA/OneStep/HMAC-SHA2-512/224", 4, SSKDF_HMAC<EVP_sha512_224>},
     {"KDA/OneStep/HMAC-SHA2-512/256", 4, SSKDF_HMAC<EVP_sha512_256>},
+    {"KTS/OAEP/SHA-1/initiate", 3, RSAOAEPEncrypt<EVP_sha1>},
+    {"KTS/OAEP/SHA2-224/initiate", 3, RSAOAEPEncrypt<EVP_sha224>},
+    {"KTS/OAEP/SHA2-256/initiate", 3, RSAOAEPEncrypt<EVP_sha256>},
+    {"KTS/OAEP/SHA2-384/initiate", 3, RSAOAEPEncrypt<EVP_sha384>},
+    {"KTS/OAEP/SHA2-512/initiate", 3, RSAOAEPEncrypt<EVP_sha512>},
+    {"KTS/OAEP/SHA-1/respond", 6, RSAOAEPDecrypt<EVP_sha1>},
+    {"KTS/OAEP/SHA2-224/respond", 6, RSAOAEPDecrypt<EVP_sha224>},
+    {"KTS/OAEP/SHA2-256/respond", 6, RSAOAEPDecrypt<EVP_sha256>},
+    {"KTS/OAEP/SHA2-384/respond", 6, RSAOAEPDecrypt<EVP_sha384>},
+    {"KTS/OAEP/SHA2-512/respond", 6, RSAOAEPDecrypt<EVP_sha512>},
     {"SSHKDF/SHA-1/ivCli", 4,
      SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
     {"SSHKDF/SHA2-224/ivCli", 4,
