@@ -553,6 +553,14 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 		d.writeNode(statement)
 		return statement, nil
 
+	case "fmov":
+		// fmov can take a floating-point immediate (e.g. #2.0e+0) whose
+		// decimal point and exponent notation can be misinterpreted as a
+		// symbol reference by the parser. fmov only operates on registers
+		// and immediates, never memory, so it is safe to pass through.
+		d.writeNode(statement)
+		return statement, nil
+
 	case "mrs":
 		// Functions that take special register names also look like a symbol
 		// reference to the parser.
