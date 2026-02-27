@@ -6,7 +6,6 @@
 #include <openssl/asn1t.h>
 #include <openssl/pem.h>
 
-#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -30,52 +29,7 @@ ASN1_ADB(PKCS7) = {
 ASN1_SEQUENCE(PKCS7) = {ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
                         ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END(PKCS7)
 
-IMPLEMENT_ASN1_ALLOC_FUNCTIONS(PKCS7)
-
-PKCS7 *d2i_PKCS7(PKCS7 **a, const unsigned char **in, long len) {
-  uint8_t *der_bytes = NULL;
-  PKCS7 *ret = NULL;
-  CBS cbs, cbs_der;
-
-  if (!in || len < 0) {
-    return NULL;
-  }
-
-  CBS_init(&cbs, *in, len);
-  // |CBS_asn1_ber_to_der| will allocate memory and point |der_bytes| to it.
-  // we're responsible for freeing this below.
-  if (!CBS_asn1_ber_to_der(&cbs, &cbs_der, &der_bytes)) {
-    goto err;
-  }
-
-  // |CBS_asn1_ber_to_der| will set |der_bytes| to NULL if it doesn't detect
-  // any convertible BER elements in |in|.
-  if (der_bytes == NULL) {
-    ret = (PKCS7 *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
-                                 ASN1_ITEM_rptr(PKCS7));
-  } else {
-    // |ASN1_item_d2i| will increment the input pointer by |der_len| length, so
-    // save off another pointer so we can free |der_bytes| at the end of this
-    // function.
-    uint8_t *der_bytes_ptr = der_bytes;
-    size_t der_len = CBS_len(&cbs_der);
-    ret = (PKCS7 *)ASN1_item_d2i((ASN1_VALUE **)a,
-                                 (const uint8_t **)&der_bytes_ptr, der_len,
-                                 ASN1_ITEM_rptr(PKCS7));
-    // Advance |*in| by however many bytes |ASN1_item_d2i| advanced
-    // |der_bytes_ptr|
-    *in += der_bytes_ptr - der_bytes;
-  }
-
-err:
-  OPENSSL_free(der_bytes);
-  der_bytes = NULL;
-  return ret;
-}
-
-int i2d_PKCS7(PKCS7 *a, unsigned char **out) {
-  return ASN1_item_i2d((ASN1_VALUE *)a, out, ASN1_ITEM_rptr(PKCS7));
-}
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(PKCS7)
 
