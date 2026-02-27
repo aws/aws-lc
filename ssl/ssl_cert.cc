@@ -1155,10 +1155,10 @@ const STACK_OF(CRYPTO_BUFFER) *SSL_get0_peer_certificates(const SSL *ssl) {
 }
 
 const STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(const SSL *ssl) {
-  if (ssl->s3->hs == NULL) {
-    return NULL;
+  if (ssl->s3->hs != NULL) {
+    return ssl->s3->hs->ca_names.get();
   }
-  return ssl->s3->hs->ca_names.get();
+  return NULL;
 }
 
 static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,

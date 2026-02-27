@@ -2166,11 +2166,6 @@ struct SSL_HANDSHAKE {
   // CertificateRequest message.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
-  // cached_x509_ca_names contains a cache of parsed versions of the elements of
-  // |ca_names|. This pointer is left non-owning so only
-  // |ssl_crypto_x509_method| needs to link against crypto/x509.
-  STACK_OF(X509_NAME) *cached_x509_ca_names = nullptr;
-
   // certificate_types, on the client, contains the set of certificate types
   // received in a CertificateRequest message.
   Array<uint8_t> certificate_types;
@@ -2854,7 +2849,8 @@ struct SSL_X509_METHOD {
   bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
                                     uint8_t *out_alert);
 
-  // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
+  // hs_flush_cached_ca_names drops any cached peer CA |X509_NAME|s from
+  // |hs->ssl->s3|. Called when |hs->ca_names| is reparsed.
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
   // ssl_new does any necessary initialisation of |hs|. It returns true on
   // success or false on error.
@@ -3103,6 +3099,12 @@ struct SSL3_STATE {
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
+
+  // cached_x509_peer_ca_names, on the client, contains the list of CAs
+  // received in a CertificateRequest message, as X509_NAMEs. This is eagerly
+  // populated from |hs->ca_names| before the handshake object is destroyed, so
+  // that |SSL_get_client_CA_list| can return it after the handshake.
+  STACK_OF(X509_NAME) *cached_x509_peer_ca_names = nullptr;
 
   // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
   // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
@@ -3776,6 +3778,13 @@ void ssl_set_read_error(SSL *ssl);
 void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
 
 BSSL_NAMESPACE_END
+
+// ssl_x509_persist_peer_ca_names eagerly converts the peer CA names from
+// |hs->ca_names| to X509_NAMEs and stores them in
+// |ssl->s3->cached_x509_peer_ca_names|, so they remain available via
+// |SSL_get_client_CA_list| after the handshake object is destroyed. It returns
+// true on success and false on allocation failure.
+bool ssl_x509_persist_peer_ca_names(SSL *ssl);
 
 
 // Opaque C types.

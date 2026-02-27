@@ -160,9 +160,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
   RAND_bytes(grease_seed, sizeof(grease_seed));
 }
 
-SSL_HANDSHAKE::~SSL_HANDSHAKE() {
-  ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
-}
+SSL_HANDSHAKE::~SSL_HANDSHAKE() {}
 
 void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
   if (hash_len > SSL_MAX_MD_SIZE) {
