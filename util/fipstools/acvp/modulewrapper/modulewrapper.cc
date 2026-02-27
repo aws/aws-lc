@@ -2904,10 +2904,11 @@ static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
   }
 
   std::vector<uint8_t> sig(RSA_size(key.get()));
-  size_t sig_len;
+  size_t sig_len = 0;
   uint8_t success_flag[1] = {0};
   if (!RSA_sign_raw(key.get(), &sig_len, sig.data(), sig.size(), msg.data(),
                     msg.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
     return write_reply(
         {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
   }
@@ -2941,7 +2942,7 @@ static bool RSADecryptionPrimitive(const Span<const uint8_t> args[],
   }
 
   std::vector<uint8_t> pt(RSA_size(key.get()));
-  size_t pt_len;
+  size_t pt_len = 0;
 
   if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
                    ct.size(), RSA_NO_PADDING)) {
@@ -2998,7 +2999,7 @@ static bool RSADecryptionPrimitiveCRT(const Span<const uint8_t> args[],
   }
 
   std::vector<uint8_t> pt(RSA_size(key.get()));
-  size_t pt_len;
+  size_t pt_len = 0;
   if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
                    ct.size(), RSA_NO_PADDING)) {
     ERR_clear_error();
