@@ -52,7 +52,7 @@ target_add_awslc_include_paths(TARGET ssl SCOPE PUBLIC)
 set_target_properties(ssl PROPERTIES
     OUTPUT_NAME "${SSL_LIB_NAME}")
 
-if(PERFORM_SONAME_BUILD)
+if(SET_LIB_SONAME)
   set_target_properties(ssl PROPERTIES
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
@@ -112,13 +112,19 @@ if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 
-install(TARGETS ssl
-        EXPORT ssl-targets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          NAMELINK_SKIP
-)
+if(NOT CMAKE_VERSION VERSION_LESS "3.12")
+  install(TARGETS ssl
+          EXPORT ssl-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            NAMELINK_COMPONENT Development)
+else()
+  install(TARGETS ssl
+          EXPORT ssl-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install(FILES $<TARGET_FILE_DIR:ssl>/ssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -142,13 +148,3 @@ install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
-
-if(PERFORM_SONAME_BUILD)
-  install(CODE "
-set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
-set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
-message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
-"
-    COMPONENT Development)
-endif()
