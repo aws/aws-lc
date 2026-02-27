@@ -647,6 +647,32 @@ static bool GetConfig(const Span<const uint8_t> args[],
       },
       {
         "algorithm": "ECDSA",
+        "mode": "sigGen",
+        "revision": "FIPS186-5",
+        "componentTest": true,
+        "capabilities": [{
+          "curve": [
+            "P-224",
+            "P-256",
+            "P-384",
+            "P-521"
+          ],
+          "hashAlg": [
+            "SHA2-224",
+            "SHA2-256",
+            "SHA2-384",
+            "SHA2-512",
+            "SHA2-512/224",
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
+          ]
+        }]
+      },
+      {
+        "algorithm": "ECDSA",
         "mode": "sigVer",
         "revision": "1.0",
         "capabilities": [{
@@ -718,8 +744,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "qMod8": 0
           }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigGen",
         "revision": "FIPS186-5",
@@ -901,8 +927,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-4",
@@ -986,8 +1012,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-5",
@@ -1171,6 +1197,23 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "signaturePrimitive",
+        "revision": "2.0",
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "keyFormat": ["standard"],
+        "modulo": [2048, 3072, 4096]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "decryptionPrimitive",
+        "revision": "Sp800-56Br2",
+        "pubExpMode": "random",
+        "keyFormat": ["standard", "crt"],
+        "modulo": [2048, 3072, 4096]
       },)"
       R"({
         "algorithm": "CMAC-AES",
@@ -1325,6 +1368,12 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "kasRole": [
               "initiator",
               "responder"
+            ]
+          },
+          "onePassDh": {
+              "kasRole": [
+                "initiator",
+                "responder"
             ]
           }
         },
