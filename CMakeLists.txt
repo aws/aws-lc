@@ -75,6 +75,7 @@ endif()
 set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
 
 include(cmake/go.cmake)
+include(cmake/GenerateVersionScript.cmake)
 
 if(ENABLE_DIST_PKG_OPENSSL_SHIM AND NOT ENABLE_DIST_PKG)
   message(FATAL_ERROR "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
@@ -109,6 +110,15 @@ message(STATUS "INSTALL_OPENSSL_SHIM: ${INSTALL_OPENSSL_SHIM}")
 if(SET_LIB_SONAME)
   set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
   set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
+endif()
+
+# Enable symbol versioning for shared libraries on UNIX platforms.
+# Version scripts are derived from the symbol registry files and have stable
+# filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
+# recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
+if(SET_LIB_SONAME AND BUILD_SHARED_LIBS)
+  set(ENABLE_SYMBOL_VERSIONING TRUE)
+  message(STATUS "Symbol versioning enabled")
 endif()
 
 enable_language(C)
