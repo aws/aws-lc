@@ -194,3 +194,54 @@ runs in AWS EFS. Cryptofuzz is built with 3 modules:
 -----------|--------------|--------------|--------------|--------|
  CodeBuild | clang 10.0.0 | x86-64       | Ubuntu 20.04 | ASAN=1 |
  CodeBuild | clang 10.0.0 | aarch64      | Ubuntu 20.04 | ASAN=1 |
+
+
+### ABI and Symbol Monitoring
+
+AWS-LC monitors Application Binary Interface (ABI) stability and symbol versioning on every pull request
+and push to ensure backward compatibility.
+
+#### ABI Compatibility Checks
+
+Using [libabigail](https://sourceware.org/libabigail/), the CI compares the ABI of libcrypto and libssl
+between the current commit and:
+- **Incremental checks**: Previous commit (for all branches)
+- **Release checks**: Latest semantic version release tag
+
+ABI-incompatible changes block the build. See `.github/workflows/abidiff.yml` for configuration.
+
+#### Symbol Version Registry Checks
+
+The symbol version registries (`crypto/libcrypto.txt`, `ssl/libssl.txt`) record
+every public API symbol and the version node it was introduced in. CI checks
+that these registries remain accurate:
+
+- **Incremental checks**: Diff the registry files between previous and current
+  commit. No library build required.
+  - ⚠️ **Symbols added to registry**: Warning (new API registered)
+  - ❌ **Symbols removed from registry**: Error (blocks build — ABI break)
+
+- **Baseline checks**: Extract symbols from public headers using
+  `util/read_public_symbols.go` and compare against the registry. No library
+  build required.
+  - ❌ **Symbols in headers but not in registry**: Error — new public API
+    must be registered with `util/update_symbol_version.sh <version>`
+  - ⚠️ **Symbols in registry but not in headers**: Warning — may be
+    platform-specific (FIPS-only, ARM-specific) or unimplemented declarations
+
+Symbol checks run using Docker containers in `.github/docker_images/symbol_check/`.
+See [docs/SymbolVersioning.md](../../docs/SymbolVersioning.md) for full details.
+
+#### Registering New Public API
+
+When new `OPENSSL_EXPORT` symbols are added to public headers:
+
+```bash
+# Assign them to a new version node and regenerate the map files
+./util/update_symbol_version.sh AWS_LC_1_0
+
+# Commit the updated registry and map files
+git add crypto/libcrypto.txt ssl/libssl.txt
+git add crypto/libcrypto.map ssl/libssl.map
+git commit -m "Register new public API symbols in AWS_LC_1_0"
+```

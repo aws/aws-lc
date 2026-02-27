@@ -58,6 +58,19 @@ if(SET_LIB_SONAME)
       SOVERSION "${ABI_VERSION}")
 endif()
 
+# Apply symbol versioning for shared libraries.
+if(ENABLE_SYMBOL_VERSIONING)
+  set(VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libssl.map")
+  if(EXISTS "${VERSION_SCRIPT}")
+    apply_version_script(
+      TARGET ssl
+      VERSION_SCRIPT "${VERSION_SCRIPT}"
+    )
+  else()
+    message(WARNING "Symbol version script not found: ${VERSION_SCRIPT}")
+  endif()
+endif()
+
 if(BUILD_TESTING)
   # ocsp_integration_test.cc does integration tests with the Amazon Trust
   # Services OCSP responder. This is ran as its own test executable because

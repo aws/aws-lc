@@ -66,6 +66,20 @@ If you use another CPU and would like to make sure we test it or discuss adding
 an assembly optimized algorithm implementation, please open an issue to discuss
 adding it to our CI.
 
+### Distribution Packaging
+
+AWS-LC supports distribution packaging mode for system-wide installation on Linux
+and BSD systems. When built with `-DENABLE_DIST_PKG=1`, AWS-LC enables:
+
+- **SONAME versioning**: Libraries use standard SONAME (e.g., `libcrypto-awslc.so.0`)
+- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_0_0`)
+- **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other crypto libraries
+
+Symbol versioning assigns every public API symbol to a named version node. New symbols
+introduced in future releases get new version nodes that inherit from their predecessors,
+enabling fine-grained compatibility tracking. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
+for details.
+
 ## Platform Support
 
 AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).
