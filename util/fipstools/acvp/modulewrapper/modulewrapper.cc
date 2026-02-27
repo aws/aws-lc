@@ -2939,17 +2939,68 @@ static bool ECDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(x.get()), BIGNUMBytes(y.get()), output});
 }
 
+static bool BuildFixedInfo(std::unique_ptr<uint8_t[]> &fixed_info,
+                           size_t &fixed_info_size,
+                           const Span<const uint8_t> &fixed_info_prefix,
+                           const Span<const uint8_t> &party_u_info,
+                           const Span<const uint8_t> &party_v_info,
+                           const std::vector<uint8_t> &x,
+                           const std::vector<uint8_t> &y) {
+  // Build fixedInfo: fixed_info_prefix || partyUInfo || partyVInfo
+  fixed_info_size = fixed_info_prefix.size() + party_u_info.size() +
+                    party_v_info.size() + x.size() + y.size();
+
+  fixed_info.reset(new uint8_t[fixed_info_size]);
+
+  if (!fixed_info) {
+    return false;
+  }
+
+  uint32_t p = 0;
+  memcpy(fixed_info.get(), fixed_info_prefix.data(), fixed_info_prefix.size());
+  p += fixed_info_prefix.size();
+
+  memcpy(fixed_info.get() + p, party_u_info.data(), party_u_info.size());
+  p += party_u_info.size();
+
+  if (party_u_info.size() < party_v_info.size()) {
+    memcpy(fixed_info.get() + p, x.data(), x.size());
+    p += x.size();
+
+    memcpy(fixed_info.get() + p, y.data(), y.size());
+    p += y.size();
+  }
+
+  memcpy(fixed_info.get() + p, party_v_info.data(), party_v_info.size());
+  p += party_v_info.size();
+
+  if (party_v_info.size() < party_u_info.size()) {
+    memcpy(fixed_info.get() + p, x.data(), x.size());
+    p += x.size();
+
+    memcpy(fixed_info.get() + p, y.data(), y.size());
+    p += y.size();
+  }
+
+  return true;
+}
+
 template <int Nid, const EVP_MD *(MDFunc)()>
 static bool ECDH_SSKDF(const Span<const uint8_t> args[],
                        ReplyCallback write_reply) {
   bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
   bssl::UniquePtr<BIGNUM> their_y(BytesToBIGNUM(args[1]));
   const Span<const uint8_t> private_key = args[2];
-  const Span<const uint8_t> info = args[3];
-  const Span<const uint8_t> out_len_bytes = args[4];
+  const Span<const uint8_t> fixed_info_prefix = args[3];
+  const Span<const uint8_t> party_u_info = args[4];
+  const Span<const uint8_t> party_v_info = args[5];
+  const Span<const uint8_t> out_len_bytes = args[6];
+  const Span<const uint8_t> add_pub_keys = args[7];
 
-  uint32_t out_len;
+  uint32_t out_len = 0;
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  bool should_add_pub_keys = add_pub_keys.size() > 0 && add_pub_keys[0] != 0;
 
   // Step 1: ECDH - compute shared secret Z
   bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
@@ -2986,19 +3037,35 @@ static bool ECDH_SSKDF(const Span<const uint8_t> args[],
   }
   z.resize(z_len);
 
-  // Step 2: One-Step KDF (SSKDF with digest)
-  std::vector<uint8_t> output(out_len);
-  if (!::SSKDF_digest(output.data(), out_len, MDFunc(), z.data(), z.size(),
-                      info.data(), info.size())) {
-    return false;
-  }
-
-  // Return public key and DKM
+  // Get generated public key
   const EC_POINT *pub = EC_KEY_get0_public_key(ec_key.get());
   bssl::UniquePtr<BIGNUM> x(BN_new());
   bssl::UniquePtr<BIGNUM> y(BN_new());
   if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
                                            ctx.get())) {
+    return false;
+  }
+
+  // Determine if IUT is party V: in AFT mode, if party_v_info is shorter than
+  // party_u_info, it means IUT is party V (only has ID, no public key yet)
+  std::unique_ptr<uint8_t[]> fixed_info;
+  size_t fixed_info_size = 0;
+  std::vector<uint8_t> x_bytes, y_bytes;
+
+  if (should_add_pub_keys) {
+    x_bytes = BIGNUMBytes(x.get());
+    y_bytes = BIGNUMBytes(y.get());
+  }
+
+  if (!BuildFixedInfo(fixed_info, fixed_info_size, fixed_info_prefix,
+                      party_u_info, party_v_info, x_bytes, y_bytes)) {
+    return false;
+  }
+
+  // Step 2: One-Step KDF (SSKDF with digest)
+  std::vector<uint8_t> output(out_len);
+  if (!::SSKDF_digest(output.data(), out_len, MDFunc(), z.data(), z.size(),
+                      fixed_info.get(), fixed_info_size)) {
     return false;
   }
 
@@ -3783,9 +3850,9 @@ static struct {
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
-    {"KAS-ECC/OneStep/P-224/SHA2-384", 6,
+    {"KAS-ECC/OneStep/P-224/SHA2-384", 8,
      ECDH_SSKDF<NID_secp224r1, EVP_sha384>},
-    {"KAS-ECC/OneStep/P-384/SHA2-384", 6,
+    {"KAS-ECC/OneStep/P-384/SHA2-384", 8,
      ECDH_SSKDF<NID_secp384r1, EVP_sha384>},
     {"FFDH", 6, FFDH},
     {"PBKDF", 5, PBKDF},

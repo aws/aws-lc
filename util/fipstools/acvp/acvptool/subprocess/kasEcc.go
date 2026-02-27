@@ -16,8 +16,10 @@ type kasEccVectorSet struct {
 }
 
 type kdfConfiguration struct {
-	KdfType     string `json:"kdfType"`
-	AuxFunction string `json:"auxFunction"`
+	KdfType           string `json:"kdfType"`
+	FixedInfoPattern  string `json:"fixedInfoPattern"`
+	FixedInfoEncoding string `json:"fixedInfoEncoding"`
+	AuxFunction       string `json:"auxFunction"`
 }
 
 type kdfParameter struct {
@@ -26,16 +28,16 @@ type kdfParameter struct {
 }
 
 type kasEccTestGroup struct {
-	ID               uint64           `json:"tgId"`
-	Type             string           `json:"testType"`
-	Curve            string           `json:"domainParameterGenerationMode"`
-	Role             string           `json:"kasRole"`
-	Scheme           string           `json:"scheme"`
-	KdfConfiguration kdfConfiguration `json:"kdfConfiguration"`
-	L                uint32           `json:"l"`
-	IutId            string           `json:"iutId"`
-	ServerId         string           `json:"serverId"`
-	Tests            []kasEccTest     `json:"tests"`
+	ID               uint64               `json:"tgId"`
+	Type             string               `json:"testType"`
+	Curve            string               `json:"domainParameterGenerationMode"`
+	Role             string               `json:"kasRole"`
+	Scheme           string               `json:"scheme"`
+	KdfConfiguration kdfConfiguration     `json:"kdfConfiguration"`
+	L                uint32               `json:"l"`
+	IutId            hexEncodedByteString `json:"iutId"`
+	ServerId         hexEncodedByteString `json:"serverId"`
+	Tests            []kasEccTest         `json:"tests"`
 }
 
 type kasEccTest struct {
@@ -59,22 +61,14 @@ type kasEccTestGroupResponse struct {
 	Tests []kasEccTestResponse `json:"tests"`
 }
 
-type kasEccResponse struct {
-	VsId       uint64                    `json:"vsId,omitempty"`
-	Algorithm  string                    `json:"algorithm,omitempty"`
-	Revision   string                    `json:"revision,omitempty"`
-	IsSample   bool                      `json:"isSample,omitempty"`
-	TestGroups []kasEccTestGroupResponse `json:"testGroups"`
-}
-
 type kasEccTestResponse struct {
-	ID uint64 `json:"tcId"`
-
-	EphemeralXHex string `json:"ephemeralPublicIutX,omitempty"`
-	EphemeralYHex string `json:"ephemeralPublicIutY,omitempty"`
-
-	Dkm    string `json:"dkm,omitempty"`
-	Passed *bool  `json:"testPassed,omitempty"`
+	ID            uint64               `json:"tcId"`
+	EphemeralXHex hexEncodedByteString `json:"ephemeralPublicIutX,omitempty"`
+	EphemeralYHex hexEncodedByteString `json:"ephemeralPublicIutY,omitempty"`
+	StaticXHex    hexEncodedByteString `json:"staticPublicIutX,omitempty"`
+	StaticYHex    hexEncodedByteString `json:"staticPublicIutY,omitempty"`
+	Dkm           hexEncodedByteString `json:"dkm,omitempty"`
+	Passed        *bool                `json:"testPassed,omitempty"`
 }
 
 type kasEcc struct{}
@@ -114,11 +108,20 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 			return nil, fmt.Errorf("unknown role %q", group.Role)
 		}
 
-		var useOnePassNameFields bool
+		var useEphemeralPeerKeys bool
+		var useEphemeralPrivateKey bool
 		switch group.Scheme {
 		case "ephemeralUnified":
+			useEphemeralPeerKeys = true
+			useEphemeralPrivateKey = true
 		case "onePassDh":
-			useOnePassNameFields = true
+			if group.Role == "initiator" {
+				useEphemeralPeerKeys = false
+				useEphemeralPrivateKey = true
+			} else {
+				useEphemeralPeerKeys = true
+				useEphemeralPrivateKey = false
+			}
 		default:
 			return nil, fmt.Errorf("unknown scheme %q", group.Scheme)
 		}
@@ -129,18 +132,33 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 			return nil, fmt.Errorf("unknown KDF type %q", group.KdfConfiguration.KdfType)
 		}
 
+		switch group.KdfConfiguration.FixedInfoPattern {
+		case "algorithmId||l||uPartyInfo||vPartyInfo":
+		default:
+			return nil, fmt.Errorf("unsupported fixed info pattern %q", group.KdfConfiguration.FixedInfoPattern)
+		}
+
+		switch group.KdfConfiguration.FixedInfoEncoding {
+		case "concatenation":
+		default:
+			return nil, fmt.Errorf("unsupported fixed info encoding %q", group.KdfConfiguration.FixedInfoEncoding)
+		}
+
 		method := "KAS-ECC/OneStep/" + group.Curve + "/" + group.KdfConfiguration.AuxFunction
 
 		for _, test := range group.Tests {
 			var peerX, peerY, privateKey hexEncodedByteString
-			if useOnePassNameFields {
-				if group.Role == "initiator" {
-					peerX, peerY, privateKey = test.StaticXHex, test.StaticYHex, test.StaticPrivateKeyHex
-				} else {
-					peerX, peerY, privateKey = test.EphemeralXHex, test.EphemeralYHex, test.StaticPrivateKeyHex
-				}
+
+			if useEphemeralPeerKeys {
+				peerX, peerY = test.EphemeralXHex, test.EphemeralYHex
 			} else {
-				peerX, peerY, privateKey = test.EphemeralXHex, test.EphemeralYHex, test.EphemeralPrivateKeyHex
+				peerX, peerY = test.StaticXHex, test.StaticYHex
+			}
+
+			if useEphemeralPrivateKey {
+				privateKey = test.EphemeralPrivateKeyHex
+			} else {
+				privateKey = test.StaticPrivateKeyHex
 			}
 
 			if len(peerX) == 0 || len(peerY) == 0 {
@@ -148,15 +166,13 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 			}
 
 			if (len(privateKey) != 0) != privateKeyGiven {
-				return nil, fmt.Errorf("%d/%d incorrect private key presence", group.ID, test.ID)
+				jsonBytes, _ := json.MarshalIndent(group, "", " ")
+				return nil, fmt.Errorf("%d/%d incorrect private key presence\n%s", group.ID, test.ID, jsonBytes)
 			}
 
 			var outLenBytes [4]byte
 			NativeEndian.PutUint32(outLenBytes[:], group.L/8) // Convert bits to bytes
 
-			// Build fixedInfo: algorithmId || l || uPartyInfo || vPartyInfo
-			// uPartyInfo = uPartyId || ephemeralKey (when available)
-			// vPartyInfo = vPartyId || ephemeralKey (when available)
 			algorithmId, err := hex.DecodeString(test.KdfParameter.AlgorithmId)
 			if err != nil {
 				return nil, err
@@ -165,51 +181,44 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 			var lBytes [4]byte
 			binary.BigEndian.PutUint32(lBytes[:], group.L)
 
-			iutId, err := hex.DecodeString(group.IutId)
-			if err != nil {
-				return nil, err
+			// Concatenate algorithmId || l
+			fixedInfoPrefix := append([]byte{}, algorithmId...)
+			fixedInfoPrefix = append(fixedInfoPrefix, lBytes[:]...)
+
+			// Build partyUInfo and partyVInfo
+			var iutInfo, serverInfo []byte
+			var partyUInfo, partyVInfo []byte
+
+			if privateKeyGiven {
+				iutInfo = append(iutInfo, group.IutId...)
+				iutInfo = append(iutInfo, test.EphemeralPublicIutXHex...)
+				iutInfo = append(iutInfo, test.EphemeralPublicIutYHex...)
+			} else {
+				// AFT mode: only iutId, modulewrapper will add generated public key
+				iutInfo = append(iutInfo, group.IutId...)
 			}
 
-			serverId, err := hex.DecodeString(group.ServerId)
-			if err != nil {
-				return nil, err
+			serverInfo = append(serverInfo, group.ServerId...)
+			if useEphemeralPeerKeys {
+				serverInfo = append(serverInfo, peerX...)
+				serverInfo = append(serverInfo, peerY...)
 			}
-
-			fixedInfo := append([]byte{}, algorithmId...)
-			fixedInfo = append(fixedInfo, lBytes[:]...)
 
 			if group.Role == "initiator" {
-				// IUT is party U (initiator), Server is party V (responder)
-				fixedInfo = append(fixedInfo, iutId...)
-				if !useOnePassNameFields {
-					// ephemeralUnified: IUT has ephemeral key
-					if privateKeyGiven {
-						// VAL mode: use provided public keyreturn nil, err
-						fixedInfo = append(fixedInfo, test.EphemeralPublicIutXHex...)
-						fixedInfo = append(fixedInfo, test.EphemeralPublicIutYHex...)
-					}
-				}
-				fixedInfo = append(fixedInfo, serverId...)
-				fixedInfo = append(fixedInfo, peerX...)
-				fixedInfo = append(fixedInfo, peerY...)
+				partyUInfo = iutInfo
+				partyVInfo = serverInfo
 			} else {
-				// Server is U party (initiator), IUT is V party (responder)
-				fixedInfo = append(fixedInfo, serverId...)
-				fixedInfo = append(fixedInfo, peerX...)
-				fixedInfo = append(fixedInfo, peerY...)
-				fixedInfo = append(fixedInfo, iutId...)
-				if !useOnePassNameFields {
-					// ephemeralUnified: IUT has ephemeral key
-					if privateKeyGiven {
-						// VAL mode: use provided public key
-						fixedInfo = append(fixedInfo, test.EphemeralPublicIutXHex...)
-						fixedInfo = append(fixedInfo, test.EphemeralPublicIutYHex...)
-					}
-				}
+				partyUInfo = serverInfo
+				partyVInfo = iutInfo
+			}
+
+			addPubKeys := []byte{0}
+			if useEphemeralPrivateKey && !privateKeyGiven {
+				addPubKeys[0] = 1
 			}
 
 			if privateKeyGiven {
-				result, err := m.Transact(method, 3, peerX, peerY, privateKey, fixedInfo, outLenBytes[:], nil)
+				result, err := m.Transact(method, 3, peerX, peerY, privateKey, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys)
 				if err != nil {
 					return nil, err
 				}
@@ -220,16 +229,27 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 					Passed: &ok,
 				})
 			} else {
-				result, err := m.Transact(method, 3, peerX, peerY, nil, fixedInfo, outLenBytes[:], nil)
+				result, err := m.Transact(method, 3, peerX, peerY, nil, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys)
 				if err != nil {
 					return nil, err
 				}
 
-				testResponse := kasEccTestResponse{
-					ID:            test.ID,
-					EphemeralXHex: hex.EncodeToString(result[0]),
-					EphemeralYHex: hex.EncodeToString(result[1]),
-					Dkm:           hex.EncodeToString(result[2]),
+				var testResponse kasEccTestResponse
+
+				if useEphemeralPrivateKey {
+					testResponse = kasEccTestResponse{
+						ID:            test.ID,
+						EphemeralXHex: result[0],
+						EphemeralYHex: result[1],
+						Dkm:           result[2],
+					}
+				} else {
+					testResponse = kasEccTestResponse{
+						ID:         test.ID,
+						StaticXHex: result[0],
+						StaticYHex: result[1],
+						Dkm:        result[2],
+					}
 				}
 
 				response.Tests = append(response.Tests, testResponse)
