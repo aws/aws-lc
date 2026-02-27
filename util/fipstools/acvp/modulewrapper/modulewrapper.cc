@@ -1338,27 +1338,72 @@ static bool GetConfig(const Span<const uint8_t> args[],
       {
         "algorithm": "KAS-ECC",
         "revision": "Sp800-56Ar3",
-        "function": ["fullVal"],
-        "iutId": ["initiator", "responder"],
+        "function": ["keyPairGen", "fullVal"],
+        "iutId": "123456ABCD",
         "scheme": {
           "ephemeralUnified": {
             "kasRole": ["initiator", "responder"],
             "kdfMethods": {
               "oneStepKdf": {
                 "auxFunctions": [
-                  {"auxFunctionName": "SHA2-224"},
-                  {"auxFunctionName": "SHA2-256"},
-                  {"auxFunctionName": "SHA2-384"},
-                  {"auxFunctionName": "SHA2-512"}
+                  {"auxFunctionName": "SHA2-384"}
                 ],
-                "fixedInfoPattern": "algorithmId",
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
                 "encoding": ["concatenation"]
               }
-            }
+            },
+            "l": 256
+          },
+          "onePassDh": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 256
           }
         },
-        "domainParameterGenerationMethods": ["P-224", "P-256", "P-384", "P-521"],
-        "l": 2048
+        "domainParameterGenerationMethods": ["P-384"]
+      },
+      {
+        "algorithm": "KAS-ECC",
+        "revision": "Sp800-56Ar3",
+        "function": ["keyPairGen", "fullVal"],
+        "iutId": "123456ABCD",
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": ["responder", "initiator"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 512
+          },
+          "onePassDh": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 512
+          }
+        },
+        "domainParameterGenerationMethods": ["P-224"]
       },
       {
         "algorithm": "KAS-FFC-SSC",
