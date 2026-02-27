@@ -509,8 +509,10 @@ void mld_poly_power2round(mld_poly *a1, mld_poly *a0, const mld_poly *a)
   mld_assert_bound(a1->coeffs, MLDSA_N, 0, ((MLDSA_Q - 1) / MLD_2_POW_D) + 1);
 }
 
+#ifndef MLD_POLY_UNIFORM_NBLOCKS
 #define MLD_POLY_UNIFORM_NBLOCKS \
   ((768 + MLD_STREAM128_BLOCKBYTES - 1) / MLD_STREAM128_BLOCKBYTES)
+#endif
 /* Reference: `mld_rej_uniform()` in the reference implementation @[REF].
  *            - Our signature differs from the reference implementation
  *              in that it adds the offset and always expects the base of the

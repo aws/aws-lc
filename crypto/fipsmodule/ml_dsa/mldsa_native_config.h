@@ -116,4 +116,8 @@ static MLD_INLINE void *mld_memset(void *s, int c, size_t n) {
 #define MLD_CONFIG_NO_ASM
 #endif
 
+// Enable x86_64 native arithmetic backend and set path
+#define MLD_CONFIG_USE_NATIVE_BACKEND_ARITH
+#define MLD_CONFIG_ARITH_BACKEND_FILE "../mldsa_native_backend.h"
+
 #endif // MLD_CONFIG_H
