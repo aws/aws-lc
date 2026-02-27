@@ -209,8 +209,10 @@ OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
 // and zero otherwise. Since |PKCS12_parse| doesn't take a length parameter,
 // it's not actually possible to use a non-NUL-terminated password to actually
 // get anything from a |PKCS12|. Thus |password| and |password_len| may be
-// |NULL| and zero, respectively, or else |password_len| may be -1, or else
-// |password[password_len]| must be zero and no other NUL bytes may appear in
+// |NULL| and zero, respectively, or else |password_len| may be -1 to indicate
+// that |password| is a NUL-terminated C string whose length is determined via
+// |strlen|, or else |password_len| must be non-negative,
+// |password[password_len]| must be zero, and no other NUL bytes may appear in
 // |password|. If the |password_len| checks fail, zero is returned
 // immediately.
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
