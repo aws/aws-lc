@@ -1091,16 +1091,20 @@ static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
     goto err;
   }
 
-  size_t max_out = in_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < in_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
+  // |EVP_CipherUpdate| takes |int| for the input length and may output up to
+  // |in_len + block_size| bytes. Ensure the total fits in |int| to avoid
+  // truncation and cannot overflow.
+  size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
+  if (in_len + block_size < in_len || in_len + block_size > INT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
+  size_t max_out = in_len + block_size;
 
   uint8_t *ptr;
   int n1, n2;
   if (!CBB_reserve(&encrypted_content, &ptr, max_out) ||
-      !EVP_CipherUpdate(&ctx, ptr, &n1, in, in_len) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, in, (int)in_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&encrypted_content, n1 + n2) ||
       !CBB_flush(out)) {
