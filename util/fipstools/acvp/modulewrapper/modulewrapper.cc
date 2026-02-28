@@ -647,6 +647,32 @@ static bool GetConfig(const Span<const uint8_t> args[],
       },
       {
         "algorithm": "ECDSA",
+        "mode": "sigGen",
+        "revision": "FIPS186-5",
+        "componentTest": true,
+        "capabilities": [{
+          "curve": [
+            "P-224",
+            "P-256",
+            "P-384",
+            "P-521"
+          ],
+          "hashAlg": [
+            "SHA2-224",
+            "SHA2-256",
+            "SHA2-384",
+            "SHA2-512",
+            "SHA2-512/224",
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
+          ]
+        }]
+      },
+      {
+        "algorithm": "ECDSA",
         "mode": "sigVer",
         "revision": "1.0",
         "capabilities": [{
@@ -718,8 +744,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "qMod8": 0
           }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigGen",
         "revision": "FIPS186-5",
@@ -901,8 +927,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-4",
@@ -986,8 +1012,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-5",
@@ -1171,6 +1197,23 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "signaturePrimitive",
+        "revision": "2.0",
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "keyFormat": ["standard"],
+        "modulo": [2048, 3072, 4096]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "decryptionPrimitive",
+        "revision": "Sp800-56Br2",
+        "pubExpMode": "random",
+        "keyFormat": ["standard", "crt"],
+        "modulo": [2048, 3072, 4096]
       },)"
       R"({
         "algorithm": "CMAC-AES",
@@ -1325,6 +1368,12 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "kasRole": [
               "initiator",
               "responder"
+            ]
+          },
+          "onePassDh": {
+              "kasRole": [
+                "initiator",
+                "responder"
             ]
           }
         },
@@ -2559,6 +2608,28 @@ static bool ECDSASigGen(const Span<const uint8_t> args[],
       {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
 }
 
+static bool ECDSASigGenComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  bssl::UniquePtr<BIGNUM> d = BytesToBIGNUM(args[1]);
+  auto digest = args[3];
+  if (!key || !EC_KEY_set_private_key(key.get(), d.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<ECDSA_SIG> sig(
+      ECDSA_do_sign(digest.data(), digest.size(), key.get()));
+  if (!sig) {
+    return false;
+  }
+
+  std::vector<uint8_t> r_bytes(BIGNUMBytes(sig->r));
+  std::vector<uint8_t> s_bytes(BIGNUMBytes(sig->s));
+
+  return write_reply(
+      {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
+}
+
 static bool ECDSASigVer(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
   bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
@@ -2595,6 +2666,41 @@ static bool ECDSASigVer(const Span<const uint8_t> args[],
   uint8_t reply[1];
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, hash, nullptr, evp_pkey.get()) ||
       !EVP_DigestVerify(ctx.get(), der, der_len, msg.data(), msg.size())) {
+    reply[0] = 0;
+  } else {
+    reply[0] = 1;
+  }
+  ERR_clear_error();
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
+static bool ECDSASigVerComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  auto digest = args[2];
+  bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[3]));
+  bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[4]));
+  bssl::UniquePtr<BIGNUM> r(BytesToBIGNUM(args[5]));
+  bssl::UniquePtr<BIGNUM> s(BytesToBIGNUM(args[6]));
+  ECDSA_SIG sig;
+  sig.r = r.get();
+  sig.s = s.get();
+
+  if (!key) {
+    return false;
+  }
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
+  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           point.get(), x.get(), y.get(),
+                                           /*ctx=*/nullptr) ||
+      !EC_KEY_set_public_key(key.get(), point.get()) ||
+      !EC_KEY_check_fips(key.get())) {
+    return false;
+  }
+
+  uint8_t reply[1];
+  if (ECDSA_do_verify(digest.data(), digest.size(), &sig, key.get()) != 1) {
     reply[0] = 0;
   } else {
     reply[0] = 1;
@@ -2777,6 +2883,134 @@ static bool RSASigVer(const Span<const uint8_t> args[],
   ERR_clear_error();
 
   return write_reply({Span<const uint8_t>(&ok, 1)});
+}
+
+static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
+  const Span<const uint8_t> d_bytes = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+  const Span<const uint8_t> msg = args[3];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !RSA_set0_key(key.get(), n, e, d)) {
+    return false;
+  }
+
+  std::vector<uint8_t> sig(RSA_size(key.get()));
+  size_t sig_len = 0;
+  uint8_t success_flag[1] = {0};
+  if (!RSA_sign_raw(key.get(), &sig_len, sig.data(), sig.size(), msg.data(),
+                    msg.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+  sig.resize(sig_len);
+  success_flag[0] = 1;
+
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(sig)});
+}
+
+static bool RSADecryptionPrimitive(const Span<const uint8_t> args[],
+                                   ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> n_bytes = args[2];
+  const Span<const uint8_t> e_bytes = args[3];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> key(RSA_new());
+
+  uint8_t success_flag[1] = {0};
+  RSA_set_flags(key.get(), RSA_FLAG_LARGE_PUBLIC_EXPONENT);
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !RSA_set0_key(key.get(), n, e, d) || !RSA_check_key(key.get())) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len = 0;
+
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
+}
+
+static bool RSADecryptionPrimitiveCRT(const Span<const uint8_t> args[],
+                                      ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> dmp1_bytes = args[2];
+  const Span<const uint8_t> dmq1_bytes = args[3];
+  const Span<const uint8_t> iqmp_bytes = args[4];
+  const Span<const uint8_t> p_bytes = args[5];
+  const Span<const uint8_t> q_bytes = args[6];
+  const Span<const uint8_t> n_bytes = args[7];
+  const Span<const uint8_t> e_bytes = args[8];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  BIGNUM *p = BN_new();
+  BIGNUM *q = BN_new();
+  BIGNUM *dmp1 = BN_new();
+  BIGNUM *dmq1 = BN_new();
+  BIGNUM *iqmp = BN_new();
+
+  uint8_t success_flag[1] = {0};
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
+      !BN_bin2bn(dmp1_bytes.data(), dmp1_bytes.size(), dmp1) ||
+      !BN_bin2bn(dmq1_bytes.data(), dmq1_bytes.size(), dmq1) ||
+      !BN_bin2bn(iqmp_bytes.data(), iqmp_bytes.size(), iqmp)) {
+    return false;
+  }
+  bssl::UniquePtr<RSA> key(
+      RSA_new_private_key_large_e(n, e, d, p, q, dmp1, dmq1, iqmp));
+
+  if (key == NULL) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len = 0;
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
 }
 
 template <const EVP_MD *(MDFunc)()>
@@ -3587,7 +3821,9 @@ static struct {
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
     {"ECDSA/keyVer", 3, ECDSAKeyVer},
     {"ECDSA/sigGen", 4, ECDSASigGen},
+    {"ECDSA/sigGen/componentTest", 4, ECDSASigGenComponentTest},
     {"ECDSA/sigVer", 7, ECDSASigVer},
+    {"ECDSA/sigVer/componentTest", 7, ECDSASigVerComponentTest},
     {"CMAC-AES", 3, CMAC_AES},
     {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},
@@ -3639,6 +3875,9 @@ static struct {
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
     {"RSA/sigVer/SHAKE-128/pss", 4, RSASigVer<EVP_shake128, true>},
     {"RSA/sigVer/SHAKE-256/pss", 4, RSASigVer<EVP_shake256, true>},
+    {"RSA/signaturePrimitive", 4, RSASignaturePrimitive},
+    {"RSA/decryptionPrimitive", 4, RSADecryptionPrimitive},
+    {"RSA/decryptionPrimitive/crt", 9, RSADecryptionPrimitiveCRT},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
