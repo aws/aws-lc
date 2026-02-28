@@ -473,7 +473,7 @@ int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
   int ret = 0;
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY)) {
     // Initialize and set purpose of |ctx| for verification.
-    if (!X509_STORE_CTX_init(ctx, store, signer, NULL) &&
+    if (!X509_STORE_CTX_init(ctx, store, signer, NULL) ||
         !X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
       OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
       goto end;
