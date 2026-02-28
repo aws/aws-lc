@@ -428,7 +428,8 @@ TEST(AESTest, ABI) {
       block_counts = {0, 1, 8};
     }
 
-    if (bsaes_capable()) {
+#if defined(BSAES)
+    if (vpaes_capable()) {
       ASSERT_EQ(vpaes_set_encrypt_key(kKey, bits, &key), 0);
       CHECK_ABI(vpaes_encrypt_key_to_bsaes, &key, &key);
       for (size_t blocks : block_counts) {
@@ -446,6 +447,7 @@ TEST(AESTest, ABI) {
                   block, AES_DECRYPT);
       }
     }
+#endif
 
     if (vpaes_capable()) {
       ASSERT_EQ(CHECK_ABI(vpaes_set_encrypt_key, kKey, bits, &key), 0);
