@@ -150,7 +150,7 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 }
 
 // kVersionTwoPrime is the value of the version field for a two-prime
-// RSAPrivateKey structure (RFC 3447).
+// RSAPrivateKey structure (RFC 8017).
 static const uint64_t kVersionTwoPrime = 0;
 
 // Distinguisher for stripped JCA RSA private keys, sets zeroed values to NULL
