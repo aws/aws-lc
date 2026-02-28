@@ -342,6 +342,14 @@ if(ARCH STREQUAL "aarch64")
   )
 endif()
 
+if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
+  list(APPEND BCM_ASM_SOURCES
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/x86/sha3/sha3_keccak4_f1600_alt.S
+  )
+endif()
+
+
 # mlkem-native assembly files can be compiled on Unix platforms for x86_64 and arm64 only.
 if((ARCH STREQUAL "aarch64") AND UNIX)
 
