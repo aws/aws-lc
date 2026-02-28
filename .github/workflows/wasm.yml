@@ -1,0 +1,85 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: WASM Build & Test
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+env:
+  EMSDK_VERSION: "4.0.23"
+  WASI_SDK_VERSION: "25"
+  WASMTIME_VERSION: "29.0.1"
+
+jobs:
+  emscripten-build-test:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake ninja-build
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+
+      - name: Verify Emscripten installation
+        run: |
+          emcc --version
+          node --version
+
+      - name: Run Emscripten tests
+        env:
+          EMSDK_PATH: ${{ env.EMSDK }}
+        run: |
+          ./tests/ci/run_emscripten_tests.sh
+
+  wasi-build-test:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake ninja-build
+
+      - name: Setup WASI SDK
+        run: |
+          curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz | tar xz
+          sudo mv wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux /opt/wasi-sdk
+
+      - name: Setup wasmtime
+        run: |
+          curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/wasmtime-v${WASMTIME_VERSION}-x86_64-linux.tar.xz | tar xJ
+          sudo mv wasmtime-v${WASMTIME_VERSION}-x86_64-linux/wasmtime /usr/local/bin/
+
+      - name: Verify installations
+        run: |
+          /opt/wasi-sdk/bin/clang --version
+          wasmtime --version
+
+      - name: Run WASI tests
+        env:
+          WASI_SDK_PREFIX: /opt/wasi-sdk
+          WASI_RUNTIME: wasmtime
+        run: |
+          ./tests/ci/run_wasi_tests.sh

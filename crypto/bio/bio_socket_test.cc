@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
+
+#if !defined(OPENSSL_NO_SOCK)
 
 #include <algorithm>
 #include <string>
@@ -1025,3 +1028,5 @@ TEST_F(BIOAddrTest, ClearAddress) {
 
   BIO_ADDR_free(before_clear);
 }
+
+#endif  // !OPENSSL_NO_SOCK
