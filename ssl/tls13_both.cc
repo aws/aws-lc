@@ -385,7 +385,7 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   if (verify_data.size() > sizeof(ssl->s3->previous_client_finished) ||
       verify_data.size() > sizeof(ssl->s3->previous_server_finished)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
+    return false;
   }
 
   if (ssl->server) {
@@ -625,7 +625,7 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs) {
   if (verify_data_len > sizeof(ssl->s3->previous_client_finished) ||
       verify_data_len > sizeof(ssl->s3->previous_server_finished)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
+    return false;
   }
 
   if (ssl->server) {
