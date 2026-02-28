@@ -8362,6 +8362,31 @@ TEST(X509Test, X509MultipleCustomExtensions) {
   EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 }
 
+// Test that |X509_STORE_CTX_add_custom_crit_oid| does not leak memory. Under
+// ASAN/LSAN, this test will catch leaks on both the success path and the
+// cleanup path in |X509_STORE_CTX_cleanup|.
+TEST(X509Test, AddCustomCritOidNoLeak) {
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  // |X509_STORE_CTX_init| must be called before adding custom OIDs.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), nullptr, nullptr));
+
+  // Add several OIDs. Each call duplicates the object internally.
+  bssl::UniquePtr<ASN1_OBJECT> oid1(OBJ_txt2obj("1.2.3.4.5", 1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(OBJ_txt2obj("1.2.3.4.6", 1));
+  ASSERT_TRUE(oid2);
+
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid1.get()));
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid2.get()));
+
+  // |X509_STORE_CTX_cleanup| (called by the destructor) must free all
+  // duplicated OIDs and the stack itself without leaking.
+}
+
 TEST(X509Test, StoreVerifyCallback) {
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
   ASSERT_TRUE(store);
