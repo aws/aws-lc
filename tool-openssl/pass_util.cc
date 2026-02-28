@@ -5,6 +5,8 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <cerrno>
+#include <climits>
 #include <cstring>
 #include <string>
 #include "internal.h"
@@ -41,6 +43,11 @@ static pass_util::Source DetectSource(const Password &source) {
 static bool ValidateSource(Password &passin,
                            Password *passout = nullptr,
                            bool *same_file = nullptr) {
+  // Always initialize same_file
+  if (same_file) {
+    *same_file = false;
+  }
+
   // Validate passin format (if not empty)
   if (!passin.empty()) {
     pass_util::Source passin_type = DetectSource(passin);
@@ -69,25 +76,14 @@ static bool ValidateSource(Password &passin,
     }
   }
 
-  // Initialize same_file to false if not detected
-  if (same_file && (!passout || passout->empty())) {
-    *same_file = false;
-  }
-
   return true;
 }
 
 static bool ExtractDirectPassword(Password &source) {
-  // Check for additional colons in password portion after prefix
-  if (source.get().find(':', 5) != std::string::npos) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
-    return false;
-  }
-
   // Check length before modification
-  if (source.get().length() - 5 > PEM_BUFSIZE) {
+  if (source.get().length() - 5 >= PEM_BUFSIZE) {
     fprintf(stderr, "Password exceeds maximum allowed length (%d bytes)\n",
-            PEM_BUFSIZE);
+            PEM_BUFSIZE - 1);
     return false;
   }
 
@@ -118,15 +114,17 @@ static bool ExtractPasswordFromStream(Password &source,
     source.get().erase(0, 3);
     
     if (source.empty() || strspn(source.get().c_str(), "0123456789") != source.get().length()) {
-      fprintf(stderr, "Invalid file descriptor: %s\n", source.get().c_str());
+      fprintf(stderr, "Invalid file descriptor\n");
       return false;
     }
     
-    int fd = atoi(source.get().c_str());
-    if (fd < 0) {
-      fprintf(stderr, "Invalid file descriptor: %s\n", source.get().c_str());
+    errno = 0;
+    unsigned long fd_val = strtoul(source.get().c_str(), nullptr, 10);
+    if (errno != 0 || fd_val > INT_MAX) {
+      fprintf(stderr, "Invalid file descriptor\n");
       return false;
     }
+    int fd = static_cast<int>(fd_val);
     bio.reset(BIO_new_fd(fd, BIO_NOCLOSE));
 #endif
   } else {
@@ -185,6 +183,7 @@ static bool ExtractPasswordFromStream(Password &source,
     }
     
     target.assign(buf, len);
+    OPENSSL_cleanse(buf, sizeof(buf));
     return true;
   };
 
@@ -196,8 +195,8 @@ static bool ExtractPasswordFromStream(Password &source,
   } else {
     // Handle skip_first_line if needed
     if (skip_first_line) {
-      std::string dummy;
-      if (!read_password_line(dummy)) {
+      Password dummy;
+      if (!read_password_line(dummy.get())) {
         return false;
       }
     }
@@ -208,7 +207,6 @@ static bool ExtractPasswordFromStream(Password &source,
     }
   }
 
-  OPENSSL_cleanse(buf, sizeof(buf));
   return true;
 }
 
@@ -223,23 +221,23 @@ static bool ExtractPasswordFromEnv(Password &source) {
 
   const char *env_val = getenv(source.get().c_str());
   if (!env_val) {
-    fprintf(stderr, "Environment variable '%s' not set\n", source.get().c_str());
+    fprintf(stderr, "Environment variable not set\n");
     return false;
   }
 
   size_t env_val_len = strlen(env_val);
   if (env_val_len == 0) {
-    fprintf(stderr, "Environment variable '%s' is empty\n", source.get().c_str());
+    fprintf(stderr, "Environment variable is empty\n");
     return false;
   }
-  if (env_val_len > PEM_BUFSIZE) {
+  if (env_val_len >= PEM_BUFSIZE) {
     fprintf(stderr, "Environment variable value too long (maximum %d bytes)\n",
-            PEM_BUFSIZE);
+            PEM_BUFSIZE - 1);
     return false;
   }
 
   // Replace source content with environment value
-  source.get() = std::string(env_val);
+  source.get().assign(env_val, env_val_len);
   return true;
 }
 
@@ -297,7 +295,7 @@ bool ExtractPasswords(Password &passin, Password &passout) {
   // Handle same_file case with single extraction call
   if (same_file && !passin.empty() && !passout.empty()) {
     pass_util::Source source_type = DetectSource(passin);
-    return ExtractPasswordFromSource(passin, source_type, same_file, &passout);
+    return ExtractPasswordFromSource(passin, source_type, false, &passout);
   }
 
   // Extract passin (always from first line)
