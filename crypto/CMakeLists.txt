@@ -622,33 +622,23 @@ if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
-    # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
-    # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
-    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
-    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
-    target_link_libraries(fips_empty_main PUBLIC precrypto)
-    target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-    add_custom_command(OUTPUT generated_fips_shared_support.c
-            COMMAND ${GO_EXECUTABLE} run
-            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-            )
-    add_library(
-      generated_fipsmodule
+    # On Windows, inject_hash.go parses the linker map file and the PE to locate
+    # module boundaries, computes the integrity hash, and patches it directly
+    # into the DLL. This matches the Linux/Apple approach and does not require
+    # running a binary, enabling cross-compilation without Wine.
+    set(CRYPTO_MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/fips_crypto.map")
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    target_link_options(crypto PRIVATE "/MAP:${CRYPTO_MAP_FILE}")
 
-      OBJECT
-
-      generated_fips_shared_support.c
-      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+    add_custom_command(
+      TARGET crypto POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -map ${CRYPTO_MAP_FILE} -windows
+      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
-    add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
-    target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-
-    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
