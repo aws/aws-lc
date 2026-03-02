@@ -70,12 +70,6 @@
 #include "../../test/test_util.h"
 
 
-static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
-  BIGNUM *bn = nullptr;
-  BN_hex2bn(&bn, hex);
-  return bssl::UniquePtr<BIGNUM>(bn);
-}
-
 // Though we do not support secp160r1, it is reachable from the deprecated
 // custom curve APIs and has some unique properties (n is larger than p with the
 // difference crossing a word boundary on 32-bit), so test it explicitly.
