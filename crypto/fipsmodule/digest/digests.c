@@ -293,6 +293,8 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_224) {
   out->init = sha512_224_init;
   out->update = sha512_224_update;
   out->final = sha512_224_final;
+  out->squeezeXOF = NULL;
+  out->finalXOF = NULL;
   out->block_size = 128;
   out->ctx_size = sizeof(SHA512_CTX);
 }
