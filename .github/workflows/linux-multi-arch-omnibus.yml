@@ -134,6 +134,18 @@ jobs:
           # Ubuntu 22.04 (x86_64)
           - image: ubuntu:22.04
             arch: x86_64
+            compiler: clang-11
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-12
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-13
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-14
+          - image: ubuntu:22.04
+            arch: x86_64
             compiler: gcc-10
           - image: ubuntu:22.04
             arch: x86_64
@@ -143,6 +155,18 @@ jobs:
             compiler: gcc-12
 
           # Ubuntu 22.04 (aarch64)
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-11
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-12
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-13
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-14
           - image: ubuntu:22.04
             arch: aarch64
             compiler: gcc-10
@@ -281,6 +305,18 @@ jobs:
           # Ubuntu 22.04 (x86_64)
           - image: ubuntu:22.04
             arch: x86_64
+            compiler: clang-11
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-12
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-13
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: clang-14
+          - image: ubuntu:22.04
+            arch: x86_64
             compiler: gcc-10
           - image: ubuntu:22.04
             arch: x86_64
@@ -290,6 +326,18 @@ jobs:
             compiler: gcc-12
 
           # Ubuntu 22.04 (aarch64)
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-11
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-12
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-13
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: clang-14
           - image: ubuntu:22.04
             arch: aarch64
             compiler: gcc-10

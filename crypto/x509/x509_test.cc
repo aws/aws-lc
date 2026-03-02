@@ -8296,8 +8296,17 @@ TEST(X509Test, X509CustomExtensions) {
   EXPECT_EQ(X509_V_OK,
             Verify(cert.get(), {ca.get()}, {}, {}, /*flags=*/0,
                    set_custom_ext_with_callback));
-  // Check that |EXFLAG_CRITICAL| has been removed after validation.
-  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+  // Check that |EXFLAG_CRITICAL| is preserved after validation.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+
+  // Check that verification is unsuccessful with the same cert without
+  // the callback.
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {}, /*flags=*/0,
+                   set_no_custom_ext_with_callback));
+  EXPECT_EQ(X509_V_OK,
+            Verify(cert.get(), {ca.get()}, {}, {}, /*flags=*/0,
+                   set_custom_ext_with_callback));
 }
 
 TEST(X509Test, X509MultipleCustomExtensions) {
@@ -8346,8 +8355,8 @@ TEST(X509Test, X509MultipleCustomExtensions) {
   };
   EXPECT_EQ(X509_V_OK, Verify(cert.get(), {ca.get()}, {}, {},
                               /*flags=*/0, set_custom_exts_with_callback));
-  // Check that |EXFLAG_CRITICAL| has been removed after validation.
-  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+  // Check that |EXFLAG_CRITICAL| is preserved after validation.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 }
 
 TEST(X509Test, StoreVerifyCallback) {
