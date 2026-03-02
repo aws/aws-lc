@@ -1694,14 +1694,14 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
         goto out;
       }
       X509_STORE_CTX_set0_crls(cert_ctx, p7->d.sign->crl);
-    }
-    // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
-    if (X509_verify_cert(cert_ctx) <= 0) {
+      // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
+      if (X509_verify_cert(cert_ctx) <= 0) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-      // For fuzz testing, we do not want to bail out early.
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
-      goto out;
+        // For fuzz testing, we do not want to bail out early.
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
+        goto out;
 #endif
+      }
     }
   }
 
