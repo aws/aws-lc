@@ -418,3 +418,11 @@ bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
   BN_hex2bn(&bn, hex);
   return bssl::UniquePtr<BIGNUM>(bn);
 }
+
+std::string BIGNUMToHex(const BIGNUM *bn) {
+  bssl::UniquePtr<char> hex(BN_bn2hex(bn));
+  if (hex == nullptr) {
+    return "error";
+  }
+  return hex.get();
+}

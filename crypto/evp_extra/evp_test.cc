@@ -125,6 +125,28 @@ using KeyMap = std::map<std::string, bssl::UniquePtr<EVP_PKEY>>;
 
 enum class KeyRole { kPublic, kPrivate };
 
+static void CheckRSAParam(FileTest *t, const std::string &attr_name,
+                          const EVP_PKEY *pkey,
+                          const BIGNUM *(*rsa_getter)(const RSA *)) {
+  SCOPED_TRACE(attr_name);
+  if (t->HasAttribute(attr_name)) {
+    bssl::UniquePtr<BIGNUM> want =
+        HexToBIGNUM(t->GetAttributeOrDie(attr_name).c_str());
+    ASSERT_TRUE(want);
+
+    const RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+    ASSERT_TRUE(rsa);
+    const BIGNUM *got = rsa_getter(rsa);
+    ASSERT_TRUE(got);
+    EXPECT_EQ(BN_cmp(want.get(), got), 0)
+        << "wanted: " << BIGNUMToHex(want.get())
+        << "\ngot: " << BIGNUMToHex(got);
+  }
+  // We have many test RSA keys so, for now, don't require that all RSA keys
+  // list out these parameters. That is, the absence of an RSA parameter does
+  // not currently assert that we omit them.
+}
+
 static bool ImportKey(FileTest *t, KeyMap *key_map, KeyRole key_role,
                       int (*marshal_func)(CBB *cbb, const EVP_PKEY *key)) {
   auto parse_func = key_role == KeyRole::kPublic ? &EVP_parse_public_key
@@ -183,6 +205,61 @@ static bool ImportKey(FileTest *t, KeyMap *key_map, KeyRole key_role,
     keys.emplace_back("raw private", std::move(new_key));
   }
 
+  // Import RSA key from parameters.
+  if (key_type == EVP_PKEY_RSA) {
+    if (key_role == KeyRole::kPublic && t->HasAttribute("RSAParamN") &&
+        t->HasAttribute("RSAParamE")) {
+      bssl::UniquePtr<BIGNUM> n =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamN").c_str());
+      bssl::UniquePtr<BIGNUM> e =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamE").c_str());
+      if (n == nullptr || e == nullptr) {
+        return false;
+      }
+      bssl::UniquePtr<RSA> rsa(RSA_new_public_key(n.get(), e.get()));
+      new_key.reset(EVP_PKEY_new());
+      if (rsa == nullptr || new_key == nullptr ||
+          !EVP_PKEY_set1_RSA(new_key.get(), rsa.get())) {
+        return false;
+      }
+      keys.emplace_back("RSA public params", std::move(new_key));
+    }
+    if (key_role == KeyRole::kPrivate && t->HasAttribute("RSAParamN") &&
+        t->HasAttribute("RSAParamE") && t->HasAttribute("RSAParamD") &&
+        t->HasAttribute("RSAParamP") && t->HasAttribute("RSAParamQ") &&
+        t->HasAttribute("RSAParamDMP1") && t->HasAttribute("RSAParamDMQ1") &&
+        t->HasAttribute("RSAParamIQMP")) {
+      bssl::UniquePtr<BIGNUM> n =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamN").c_str());
+      bssl::UniquePtr<BIGNUM> e =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamE").c_str());
+      bssl::UniquePtr<BIGNUM> d =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamD").c_str());
+      bssl::UniquePtr<BIGNUM> p =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamP").c_str());
+      bssl::UniquePtr<BIGNUM> q =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamQ").c_str());
+      bssl::UniquePtr<BIGNUM> dmp1 =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamDMP1").c_str());
+      bssl::UniquePtr<BIGNUM> dmq1 =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamDMQ1").c_str());
+      bssl::UniquePtr<BIGNUM> iqmp =
+          HexToBIGNUM(t->GetAttributeOrDie("RSAParamIQMP").c_str());
+      if (n == nullptr || e == nullptr) {
+        return false;
+      }
+      bssl::UniquePtr<RSA> rsa(RSA_new_private_key(n.get(), e.get(), d.get(),
+                                                   p.get(), q.get(), dmp1.get(),
+                                                   dmq1.get(), iqmp.get()));
+      new_key.reset(EVP_PKEY_new());
+      if (rsa == nullptr || new_key == nullptr ||
+          !EVP_PKEY_set1_RSA(new_key.get(), rsa.get())) {
+        return false;
+      }
+      keys.emplace_back("RSA private params", std::move(new_key));
+    }
+  }
+
   // Check properties of the keys.
   for (const auto &entry : keys) {
     const std::string &name = entry.first;
@@ -206,6 +283,15 @@ static bool ImportKey(FileTest *t, KeyMap *key_map, KeyRole key_role,
       }
       OPENSSL_END_ALLOW_DEPRECATED
     }
+
+    CheckRSAParam(t, "RSAParamN", pkey.get(), RSA_get0_n);
+    CheckRSAParam(t, "RSAParamE", pkey.get(), RSA_get0_e);
+    CheckRSAParam(t, "RSAParamD", pkey.get(), RSA_get0_d);
+    CheckRSAParam(t, "RSAParamP", pkey.get(), RSA_get0_p);
+    CheckRSAParam(t, "RSAParamQ", pkey.get(), RSA_get0_q);
+    CheckRSAParam(t, "RSAParamDMP1", pkey.get(), RSA_get0_dmp1);
+    CheckRSAParam(t, "RSAParamDMQ1", pkey.get(), RSA_get0_dmq1);
+    CheckRSAParam(t, "RSAParamIQMP", pkey.get(), RSA_get0_iqmp);
 
     // All keys must compare equal.
     EXPECT_EQ(EVP_PKEY_cmp(pkey.get(), keys.front().second.get()), 1);
