@@ -388,11 +388,14 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
-  return key != NULL;
+  return 1;
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
@@ -424,11 +427,14 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
-  return key != NULL;
+  return 1;
 }
 
 DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
@@ -460,11 +466,14 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
-  return key != NULL;
+  return 1;
 }
 
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
