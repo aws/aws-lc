@@ -629,7 +629,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       return -1;
     }
     // Validate the tag and invalidate the output if it doesn't match.
-    if (OPENSSL_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
+    if (CRYPTO_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
       OPENSSL_cleanse(out, len);
       return -1;
     }
