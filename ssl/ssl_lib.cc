@@ -717,11 +717,17 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   if (ctx->cipher_list) {
     ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    ssl->config->cipher_list->Init(*ctx->cipher_list.get());
+    if (!ssl->config->cipher_list ||
+        !ssl->config->cipher_list->Init(*ctx->cipher_list.get())) {
+      return nullptr;
+    }
   }
   if (ctx->tls13_cipher_list) {
     ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get());
+    if (!ssl->config->tls13_cipher_list ||
+        !ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get())) {
+      return nullptr;
+    }
   }
 
   if (ctx->psk_identity_hint) {
