@@ -373,6 +373,12 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
   GUARD_PTR(ctx);
 
+  // HMAC does not support SHAKE (XOF) algorithms
+  if (md && (EVP_MD_flags(md) & EVP_MD_FLAG_XOF)) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
   if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
       HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
     ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
@@ -602,6 +608,13 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
                                    const uint8_t *precomputed_key,
                                    size_t precomputed_key_len,
                                    const EVP_MD *md) {
+
+  // HMAC does not support SHAKE (XOF) algorithms
+  if (md && (EVP_MD_flags(md) & EVP_MD_FLAG_XOF)) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
   if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
       HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
     ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
