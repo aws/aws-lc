@@ -157,7 +157,7 @@ static int pkey_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
         return 0;
       }
       if (EVP_MD_flags((const EVP_MD *)p2) & EVP_MD_FLAG_XOF) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+        OPENSSL_PUT_ERROR(EVP, HKDF_R_UNSUPPORTED_DIGEST);
         return 0;
       }
       hctx->md = (const EVP_MD *)p2;
