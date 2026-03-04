@@ -746,7 +746,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     }
 
     OPENSSL_memcpy(out->exporter_secret, CBS_data(&exporter_secret),
-                   SSL_MAX_MD_SIZE);
+                   exporter_secret_len);
     out->exporter_secret_len = exporter_secret_len;
 
     out->hs_buf.reset(BUF_MEM_new());
