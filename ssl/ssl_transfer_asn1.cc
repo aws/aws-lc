@@ -873,6 +873,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   out->total_renegotiations = total_renegotiations;
   out->send_connection_binding = !!send_connection_binding;
   out->established_session.get()->not_resumable = !!not_resumable;
+  out->key_update_pending = key_update_pending;
   return 1;
 }
 
