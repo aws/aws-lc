@@ -18,10 +18,6 @@ CONFIGURE_OPTS="--prefix=/opt/cmake --system-libarchive"
 if [[ "${CMAKE_VERSION}" =~ ^[0-3]\. ]]; then
     # CMake versions 3.x and earlier: use bundled curl to avoid compatibility issues
     echo "Using bundled curl for CMake ${CMAKE_VERSION}"
-else
-    # CMake 4.0 and later: safe to use system curl
-    echo "Using system curl for CMake ${CMAKE_VERSION}"
-    CONFIGURE_OPTS="${CONFIGURE_OPTS} --system-curl"
 fi
 
 ./configure ${CONFIGURE_OPTS}
