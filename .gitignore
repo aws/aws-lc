@@ -3,7 +3,7 @@ cmake-build-debug/
 build/
 build32/
 build64/
-build-fips/
+build-*/
 *_BUILD_ROOT/
 ssl/test/runner/runner
 *.pyc
