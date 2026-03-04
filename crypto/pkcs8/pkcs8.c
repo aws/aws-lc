@@ -174,21 +174,23 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
     }
   }
 
+  uint8_t A[EVP_MAX_MD_SIZE];
+  unsigned A_len = 0;
   while (out_len != 0) {
     // A. Set A_i=H^r(D||I). (i.e., the r-th hash of D||I,
     // H(H(H(... H(D||I))))
-    uint8_t A[EVP_MAX_MD_SIZE];
-    unsigned A_len;
     if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
         !EVP_DigestUpdate(&ctx, D, block_size) ||
         !EVP_DigestUpdate(&ctx, I, I_len) ||
         !EVP_DigestFinal_ex(&ctx, A, &A_len)) {
+      OPENSSL_cleanse(A, sizeof(A));
       goto err;
     }
     for (uint32_t iter = 1; iter < iterations; iter++) {
       if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
           !EVP_DigestUpdate(&ctx, A, A_len) ||
           !EVP_DigestFinal_ex(&ctx, A, &A_len)) {
+        OPENSSL_cleanse(A, sizeof(A));
         goto err;
       }
     }
@@ -198,6 +200,7 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
     out += todo;
     out_len -= todo;
     if (out_len == 0) {
+      OPENSSL_cleanse(A, sizeof(A));
       break;
     }
 
@@ -220,11 +223,14 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
         carry >>= 8;
       }
     }
+
+    OPENSSL_cleanse(A, sizeof(A));
   }
 
   ret = 1;
 
 err:
+  OPENSSL_cleanse(A, sizeof(A));
   OPENSSL_free(I);
   OPENSSL_free(pass_raw);
   EVP_MD_CTX_cleanup(&ctx);
@@ -241,15 +247,15 @@ static int pkcs12_pbe_cipher_init(const struct pbe_suite *suite,
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
+  int ret = 0;
   if (!pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_KEY_ID, iterations,
                       EVP_CIPHER_key_length(cipher), key, md) ||
       !pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_IV_ID, iterations,
                       EVP_CIPHER_iv_length(cipher), iv, md)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
-    return 0;
+  } else {
+    ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
   }
-
-  int ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
   OPENSSL_cleanse(key, EVP_MAX_KEY_LENGTH);
   OPENSSL_cleanse(iv, EVP_MAX_IV_LENGTH);
   return ret;
@@ -362,7 +368,7 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
                       const char *pass, size_t pass_len, const uint8_t *in,
                       size_t in_len) {
   int ret = 0;
-  uint8_t *buf = NULL;;
+  uint8_t *buf = NULL;
   EVP_CIPHER_CTX ctx;
   EVP_CIPHER_CTX_init(&ctx);
 
@@ -508,6 +514,12 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
   if (plaintext_len > INT_MAX - block_size) {
     OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
+    goto err;
+  }
+
+  size_t max_out = plaintext_len + EVP_CIPHER_CTX_block_size(&ctx);
+  if (max_out < plaintext_len) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
     goto err;
   }
   size_t max_out = plaintext_len + block_size;
