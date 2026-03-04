@@ -4,6 +4,7 @@ build/
 build32/
 build64/
 build-*/
+build_*/
 *_BUILD_ROOT/
 ssl/test/runner/runner
 *.pyc
