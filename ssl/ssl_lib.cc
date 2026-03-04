@@ -926,6 +926,20 @@ int SSL_do_handshake(SSL *ssl) {
 
   // Destroy the handshake object if the handshake has completely finished.
   if (!early_return) {
+    // On the client, persist the CA names received in the CertificateRequest
+    // message so that |SSL_get_client_CA_list| can return them after the
+    // handshake. This eagerly converts to X509_NAMEs since the raw
+    // CRYPTO_BUFFERs in |hs->ca_names| will be destroyed with |hs|.
+    if (!ssl->server && ssl->s3->hs->ca_names &&
+        ssl->ctx->x509_method == &ssl_crypto_x509_method) {
+      // Failure is non-fatal: the handshake has already completed, so
+      // |SSL_get_client_CA_list| will simply return NULL post-handshake.
+      ssl_x509_persist_peer_ca_names(ssl);
+    } else if (!ssl->s3->hs->ca_names) {
+      // No CertificateRequest in this handshake — clear any stale peer
+      // CA names left over from a previous handshake.
+      ssl->ctx->x509_method->hs_flush_cached_ca_names(ssl->s3->hs.get());
+    }
     ssl->s3->hs.reset();
     ssl_maybe_shed_handshake_config(ssl);
   }
