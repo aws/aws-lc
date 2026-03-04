@@ -180,7 +180,9 @@ SSL3_STATE::SSL3_STATE()
       used_hello_retry_request(false),
       was_key_usage_invalid(false) {}
 
-SSL3_STATE::~SSL3_STATE() {}
+SSL3_STATE::~SSL3_STATE() {
+  sk_X509_NAME_pop_free(cached_x509_peer_ca_names, X509_NAME_free);
+}
 
 bool tls_new(SSL *ssl) {
   UniquePtr<SSL3_STATE> s3 = MakeUnique<SSL3_STATE>();
