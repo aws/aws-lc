@@ -75,7 +75,8 @@ extern "C" {
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
 // |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
+// negative and |pass| is non-NULL, |strlen(pass)| is used.
 //
 // If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
 // |salt_len| is zero, a default salt length is used instead.
@@ -104,7 +105,8 @@ OPENSSL_EXPORT int PKCS8_marshal_encrypted_private_key(
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
 // |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
+// negative and |pass| is non-NULL, |strlen(pass)| is used.
 //
 // The resulting structure must be freed by the caller.
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
