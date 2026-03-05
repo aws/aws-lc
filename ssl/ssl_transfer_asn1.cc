@@ -853,9 +853,9 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(out->send_alert, CBS_data(&send_alert), SSL3_SEND_ALERT_SIZE);
   OPENSSL_memcpy(out->previous_client_finished,
-                 CBS_data(&previous_client_finished), PREV_FINISHED_MAX_SIZE);
+                 CBS_data(&previous_client_finished), previous_client_finished_len);
   OPENSSL_memcpy(out->previous_server_finished,
-                 CBS_data(&previous_server_finished), PREV_FINISHED_MAX_SIZE);
+                 CBS_data(&previous_server_finished), previous_server_finished_len);
   out->early_data_reason =
       static_cast<ssl_early_data_reason_t>(early_data_reason);
   out->rwstate = rwstate;
