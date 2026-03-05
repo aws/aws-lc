@@ -467,3 +467,61 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   EXPECT_FALSE(PEM_write_bio_PrivateKey_traditional(
       write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
 }
+
+TEST(PEMTest, WriteReadECPemEmptyPassword) {
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new());
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_GROUP> ec_group(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(ec_group);
+  ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), ec_group.get()));
+
+#if defined(BORINGSSL_FIPS)
+  ASSERT_TRUE(EC_KEY_generate_key_fips(ec_key.get()));
+#else
+  ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+#endif
+
+  bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(write_bio);
+  const EVP_CIPHER* cipher = EVP_get_cipherbynid(NID_aes_256_cbc);
+  ASSERT_TRUE(cipher);
+  ASSERT_TRUE(PEM_write_bio_ECPrivateKey(write_bio.get(), ec_key.get(), cipher, nullptr, 0, pem_password_callback, (void*)""));
+
+  const uint8_t* content;
+  size_t content_len;
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+
+  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
+  ASSERT_TRUE(read_bio);
+  bssl::UniquePtr<EC_KEY> ec_key_read(PEM_read_bio_ECPrivateKey(read_bio.get(), nullptr, pem_password_callback, (void*)""));
+  ASSERT_TRUE(ec_key_read);
+  const BIGNUM* orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
+  const BIGNUM* read_priv_key = EC_KEY_get0_private_key(ec_key_read.get());
+  ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));
+}
+
+TEST(PEMTest, WriteReadPKCS8DerEmptyPassword) {
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(ec_key);
+  ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ec_key.get()));
+
+  bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(write_bio);
+  ASSERT_TRUE(i2d_PKCS8PrivateKey_bio(write_bio.get(), pkey.get(), EVP_aes_256_cbc(), nullptr, 0, pem_password_callback, (void*)""));
+
+  const uint8_t* content;
+  size_t content_len;
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+
+  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
+  ASSERT_TRUE(read_bio);
+  bssl::UniquePtr<EVP_PKEY> pkey_read(d2i_PKCS8PrivateKey_bio(read_bio.get(), nullptr, pem_password_callback, (void*)""));
+  ASSERT_TRUE(pkey_read);
+
+  const EC_KEY* read_ec = EVP_PKEY_get0_EC_KEY(pkey_read.get());
+  ASSERT_TRUE(read_ec);
+  ASSERT_EQ(0, BN_cmp(EC_KEY_get0_private_key(ec_key.get()), EC_KEY_get0_private_key(read_ec)));
+}
