@@ -46,6 +46,12 @@ function(apply_version_script)
     "LINKER:--version-script=${ARG_VERSION_SCRIPT}"
   )
 
+  if(LINKER_HAS_UNDEFINED_VERSION)
+    target_link_options(${ARG_TARGET} PRIVATE
+      "LINKER:--undefined-version"
+    )
+  endif()
+
   get_filename_component(VERSION_SCRIPT_NAME "${ARG_VERSION_SCRIPT}" NAME)
   message(STATUS "Applied symbol version script to ${ARG_TARGET}: ${VERSION_SCRIPT_NAME}")
 endfunction()
