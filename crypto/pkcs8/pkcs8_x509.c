@@ -153,7 +153,7 @@ err:
 PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
                                    int pass_len_in) {
   size_t pass_len;
-  if (pass_len_in == -1 && pass != NULL) {
+  if (pass_len_in < 0 && pass != NULL) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
