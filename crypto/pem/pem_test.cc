@@ -487,8 +487,8 @@ TEST(PEMTest, WriteReadECPemEmptyPassword) {
   ASSERT_TRUE(cipher);
   ASSERT_TRUE(PEM_write_bio_ECPrivateKey(write_bio.get(), ec_key.get(), cipher, nullptr, 0, pem_password_callback, (void*)""));
 
-  const uint8_t* content;
-  size_t content_len;
+  const uint8_t* content = nullptr;
+  size_t content_len = 0;
   BIO_mem_contents(write_bio.get(), &content, &content_len);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
@@ -512,8 +512,8 @@ TEST(PEMTest, WriteReadPKCS8DerEmptyPassword) {
   ASSERT_TRUE(write_bio);
   ASSERT_TRUE(i2d_PKCS8PrivateKey_bio(write_bio.get(), pkey.get(), EVP_aes_256_cbc(), nullptr, 0, pem_password_callback, (void*)""));
 
-  const uint8_t* content;
-  size_t content_len;
+  const uint8_t* content = nullptr;
+  size_t content_len = 0;
   BIO_mem_contents(write_bio.get(), &content, &content_len);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
