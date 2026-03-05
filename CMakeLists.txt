@@ -19,6 +19,10 @@ set(REPORTED_PKGCONFIG_VERSION "1.1.1")
 # Defer enabling C and CXX languages.
 project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
+if(DEFINED ENABLE_PRE_SONAME_BUILD)
+  message(WARNING "ENABLE_PRE_SONAME_BUILD option will be deprecated in a future release. Please see ENABLE_DIST_PKG and ENABLE_DIST_PKG_OPENSSL_SHIM")
+endif()
+
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
@@ -32,7 +36,7 @@ option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for sh
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
-option(ENABLE_DIST_PKG "Enables a set of packaging that take highest presedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
+option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim componenets are installed when ENABLE_DIST_PKG is enabled" OFF)
 
 if(MSVC)
@@ -72,23 +76,35 @@ set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for g
 
 include(cmake/go.cmake)
 
-if(ENABLE_DIST_PKG AND UNIX AND NOT APPLE)
-  set(SET_LIB_SONAME TRUE)
-  set(COHABITANT_HEADERS TRUE)
-  if(ENABLE_DIST_PKG_OPENSSL_SHIM)
-    set(INSTALL_OPENSSL_SHIM TRUE)
+if(ENABLE_DIST_PKG_OPENSSL_SHIM AND NOT ENABLE_DIST_PKG)
+  message(WARNING "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
+endif()
+
+if(ENABLE_DIST_PKG)
+  if(NOT UNIX OR APPLE)
+    message(WARNING "ENABLE_DIST_PKG is not supported on macOS or Windows and will be ignored.")
   else()
-    set(INSTALL_OPENSSL_SHIM FALSE)
+    set(SET_LIB_SONAME 1)
+    set(COHABITANT_HEADERS 1)
+    if(ENABLE_DIST_PKG_OPENSSL_SHIM)
+      set(INSTALL_OPENSSL_SHIM 1)
+    else()
+      set(INSTALL_OPENSSL_SHIM 0)
+    endif()
   endif()
 elseif(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
-  set(SET_LIB_SONAME TRUE)
-  set(COHABITANT_HEADERS FALSE)
-  set(INSTALL_OPENSSL_SHIM TRUE)
+  set(SET_LIB_SONAME 1)
+  set(COHABITANT_HEADERS 0)
+  set(INSTALL_OPENSSL_SHIM 1)
 else()
-  set(SET_LIB_SONAME FALSE)
-  set(COHABITANT_HEADERS FALSE)
-  set(INSTALL_OPENSSL_SHIM TRUE)
+  set(SET_LIB_SONAME 0)
+  set(COHABITANT_HEADERS 0)
+  set(INSTALL_OPENSSL_SHIM 1)
 endif()
+
+message(STATUS "SET_LIB_SONAME: ${SET_LIB_SONAME}")
+message(STATUS "COHABITANT_HEADERS: ${COHABITANT_HEADERS}")
+message(STATUS "INSTALL_OPENSSL_SHIM: ${INSTALL_OPENSSL_SHIM}")
 
 if(SET_LIB_SONAME)
   set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
@@ -110,10 +126,6 @@ if(COHABITANT_HEADERS)
   set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/aws-lc")
 else()
   set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
-endif()
-
-if(NOT ENABLE_PRE_SONAME_BUILD)
-message(WARNING "ENABLE_PRE_SONAME_BUILD option will be deprecated in a future release. Please see ENABLE_DIST_PKG and ENABLE_DIST_PKG_OPENSSL_SHIM")
 endif()
 
 function(target_add_awslc_include_paths)
@@ -1503,11 +1515,6 @@ endif()
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
-
-# AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
-# the downstream integration may build with the system's OpenSSL version instead.
-# Consider adjusting the PKG_CONFIG_PATH environment to get around this.
-file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
 
 include(cmake/JoinPaths.cmake)
 join_paths(LIBDIR_FOR_PC_FILE "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
