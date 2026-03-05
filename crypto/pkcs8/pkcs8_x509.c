@@ -922,6 +922,8 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
     if (password_len != 0) {
       return 0;
     }
+  } else if (password_len < -1) {
+    return 0;
   } else if (password_len != -1 &&
              (password[password_len] != 0 ||
               OPENSSL_memchr(password, 0, password_len) != NULL)) {
