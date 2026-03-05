@@ -75,7 +75,8 @@ extern "C" {
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
 // |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
+// negative and |pass| is non-NULL, |strlen(pass)| is used.
 //
 // If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
 // |salt_len| is zero, a default salt length is used instead.
@@ -104,7 +105,8 @@ OPENSSL_EXPORT int PKCS8_marshal_encrypted_private_key(
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
 // |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
+// negative and |pass| is non-NULL, |strlen(pass)| is used.
 //
 // The resulting structure must be freed by the caller.
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
@@ -209,8 +211,10 @@ OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
 // and zero otherwise. Since |PKCS12_parse| doesn't take a length parameter,
 // it's not actually possible to use a non-NUL-terminated password to actually
 // get anything from a |PKCS12|. Thus |password| and |password_len| may be
-// |NULL| and zero, respectively, or else |password_len| may be -1, or else
-// |password[password_len]| must be zero and no other NUL bytes may appear in
+// |NULL| and zero, respectively, or else |password_len| may be -1 to indicate
+// that |password| is a NUL-terminated C string whose length is determined via
+// |strlen|, or else |password_len| must be non-negative,
+// |password[password_len]| must be zero, and no other NUL bytes may appear in
 // |password|. If the |password_len| checks fail, zero is returned
 // immediately.
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,

@@ -153,7 +153,7 @@ err:
 PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
                                    int pass_len_in) {
   size_t pass_len;
-  if (pass_len_in == -1 && pass != NULL) {
+  if (pass_len_in < 0 && pass != NULL) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
@@ -922,6 +922,8 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
     if (password_len != 0) {
       return 0;
     }
+  } else if (password_len < -1) {
+    return 0;
   } else if (password_len != -1 &&
              (password[password_len] != 0 ||
               OPENSSL_memchr(password, 0, password_len) != NULL)) {
