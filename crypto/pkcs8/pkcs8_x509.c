@@ -188,7 +188,9 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
                         int pass_len_in, const uint8_t *salt, size_t salt_len,
                         int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   size_t pass_len;
-  if (pass_len_in < 0 && pass != NULL) {
+  if (pass == NULL) {
+    pass_len = 0;
+  } else if (pass_len_in < 0) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
@@ -1093,16 +1095,20 @@ static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
     goto err;
   }
 
-  size_t max_out = in_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < in_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
+  // |EVP_CipherUpdate| takes |int| for the input length and may output up to
+  // |in_len + block_size| bytes. Ensure the total fits in |int| to avoid
+  // truncation and cannot overflow.
+  size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
+  if (in_len > INT_MAX - block_size) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
+  size_t max_out = in_len + block_size;
 
   uint8_t *ptr;
   int n1, n2;
   if (!CBB_reserve(&encrypted_content, &ptr, max_out) ||
-      !EVP_CipherUpdate(&ctx, ptr, &n1, in, in_len) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, in, (int)in_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&encrypted_content, n1 + n2) ||
       !CBB_flush(out)) {
