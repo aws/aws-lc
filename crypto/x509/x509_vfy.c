@@ -625,10 +625,6 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
     return 0;
   }
 
-  // Remove the |EXFLAG_CRITICAL| flag from |x|, now that all unknown
-  // critical extensions have been handled.
-  x->ex_flags &= ~EXFLAG_CRITICAL;
-
   sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
   return 1;
 }

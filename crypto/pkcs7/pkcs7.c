@@ -1620,7 +1620,6 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
                              ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
     if (alen <= 0 || abuf == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
-      ret = -1;
       goto out;
     }
     if (!EVP_VerifyUpdate(mdc_tmp, abuf, alen)) {
@@ -1703,14 +1702,14 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
         goto out;
       }
       X509_STORE_CTX_set0_crls(cert_ctx, p7->d.sign->crl);
-    }
-    // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
-    if (X509_verify_cert(cert_ctx) <= 0) {
+      // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
+      if (X509_verify_cert(cert_ctx) <= 0) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-      // For fuzz testing, we do not want to bail out early.
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
-      goto out;
+        // For fuzz testing, we do not want to bail out early.
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
+        goto out;
 #endif
+      }
     }
   }
 
@@ -1725,7 +1724,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   for (size_t ii = 0; ii < sk_PKCS7_SIGNER_INFO_num(sinfos); ii++) {
     PKCS7_SIGNER_INFO *si = sk_PKCS7_SIGNER_INFO_value(sinfos, ii);
     X509 *signer = sk_X509_value(signers, ii);
-    if (!pkcs7_signature_verify(p7bio, p7, si, signer)) {
+    if (pkcs7_signature_verify(p7bio, p7, si, signer) != 1) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
       // For fuzz testing, we do not want to bail out early.
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);
