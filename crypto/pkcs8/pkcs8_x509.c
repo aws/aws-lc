@@ -1345,8 +1345,8 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   //                        OpenSSL 3.x.
   const EVP_MD *mac_md = EVP_sha1();
   uint8_t mac_salt[PKCS12_SALT_LEN];
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(mac_salt, sizeof(mac_salt)));
   if (!CBB_flush(&auth_safe_data) ||
-      !RAND_bytes(mac_salt, sizeof(mac_salt)) ||
       !pkcs12_gen_and_write_mac(
           &pfx, CBB_data(&auth_safe_data), CBB_len(&auth_safe_data), password,
           password_len, mac_salt, sizeof(mac_salt), mac_iterations, mac_md)) {

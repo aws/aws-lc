@@ -461,9 +461,8 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       // lock functions to avoid updating the service indicator with the DRBG
       // functions.
       FIPS_service_indicator_lock_state();
-      if (c->encrypt && !RAND_bytes(gctx->iv + arg, gctx->ivlen - arg)) {
-        FIPS_service_indicator_unlock_state();
-        return 0;
+      if (c->encrypt) {
+        AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(gctx->iv + arg, gctx->ivlen - arg));
       }
       FIPS_service_indicator_unlock_state();
       gctx->iv_gen = 1;
