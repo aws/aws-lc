@@ -20,6 +20,12 @@
 #include "internal.h"
 
 static int dh_pub_encode(CBB *out, const EVP_PKEY *key) {
+  const DH *dh = key->pkey.dh;
+  if (dh == NULL || dh->pub_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
+  }
+
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -54,7 +60,7 @@ static int dh_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   }
 
   pubkey = BN_new();
-  if (pubkey == NULL || !BN_parse_asn1_unsigned(key, pubkey)) {
+  if (pubkey == NULL || !BN_parse_asn1_unsigned(key, pubkey) || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
@@ -65,6 +71,7 @@ static int dh_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
     goto err;
   }
   dh->pub_key = pubkey;
+  pubkey = NULL;
 
   if (!EVP_PKEY_assign_DH(out, dh)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -97,6 +104,14 @@ static int dh_param_copy(EVP_PKEY *to, const EVP_PKEY *from) {
   if (dh_param_missing(from)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     return 0;
+  }
+
+  // Ensure the target has an allocated DH structure.
+  if (to->pkey.dh == NULL) {
+    to->pkey.dh = DH_new();
+    if (to->pkey.dh == NULL) {
+      return 0;
+    }
   }
 
   const DH *dh = from->pkey.dh;

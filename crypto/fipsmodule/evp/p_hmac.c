@@ -81,7 +81,7 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   sctx = src->data;
   dctx = dst->data;
   dctx->md = sctx->md;
-  if(sctx->ktmp.key != NULL && !HMAC_KEY_copy(&sctx->ktmp, &dctx->ktmp)) {
+  if(sctx->ktmp.key != NULL && !HMAC_KEY_copy(&dctx->ktmp, &sctx->ktmp)) {
     OPENSSL_free(dctx);
     return 0;
   }

@@ -32,9 +32,9 @@ information about required dependencies and build options. If you’re intereste
 getting involved [open an issue](https://github.com/aws/aws-lc/issues/new/choose) to discuss your plan.
 [Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
 info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
-If you just want to use AWS-LC see our existing documentation in the public header
-files, if you’re moving your application from OpenSSL see
-[Porting_to_AWS-LC.md](https://github.com/aws/aws-lc/blob/main/PORTING_TO_AWSLC.md)
+If you just want to use AWS-LC, see our existing documentation in the public header
+files. If you’re moving your application from OpenSSL, see the
+[porting guide](https://github.com/aws/aws-lc/blob/main/PORTING.md)
 for more information.
 
 ## Why AWS-LC?
@@ -68,24 +68,24 @@ adding it to our CI.
 
 ## Platform Support
 
-AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).  
-The following is an overview of the platforms we actively support or are 
-known to be of interest to our community. 
+AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).
+The following is an overview of the platforms we actively support or are
+known to be of interest to our community.
 
 If you use a platform not listed below and would like to request it be added to our CI,
 please open an [issue](https://github.com/aws/aws-lc/issues/new/choose) for discussion.
-Regardless of our support level for a particular platform, we will gladly consider contributions that 
+Regardless of our support level for a particular platform, we will gladly consider contributions that
 improve or extend our support.
 
 ### Supported Platforms
 
-The following platforms are actively tested in our CI pipeline. A few of these platforms are tested across 
-multiple compilers or compiler versions. For each pull request, the proposed change is validated to confirm that it 
-successfully builds and tests pass for these platform. 
-A more complete description of our test setup can be found in the 
+The following platforms are actively tested in our CI pipeline. A few of these platforms are tested across
+multiple compilers or compiler versions. For each pull request, the proposed change is validated to confirm that it
+successfully builds and tests pass for these platform.
+A more complete description of our test setup can be found in the
 [CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 
-| OS      | CPU     | 
+| OS      | CPU     |
 |---------|---------|
 | Linux   | x86     |
 | Linux   | x86-64  |
@@ -100,21 +100,33 @@ A more complete description of our test setup can be found in the
 
 ### Other platforms
 
-The platforms listed below are of interest to us or to our community. However, problems reported 
-against them might not be prioritized for immediate action by our team. We welcome contributions 
+The platforms listed below are of interest to us or to our community. However, problems reported
+against them might not be prioritized for immediate action by our team. We welcome contributions
 that improve the experience for consumers on these platforms.
 
-| OS        | CPU         |
-|-----------|-------------|
-| Android   | arm32       |
-| iOS       | aarch64     |
-| Linux     | arm32       |
-| Linux     | loongarch64 |
-| Linux     | risc-v64    |
-| Linux     | s390x       |
-| Windows   | aarch64     |
-| OpenBSD   | x86-64      |
-| FreeBSD   | x86-64      |
+| OS         | CPU         |
+|------------|-------------|
+| Android    | arm32       |
+| Emscripten | wasm32      |
+| iOS        | aarch64     |
+| Linux      | arm32       |
+| Linux      | loongarch64 |
+| Linux      | risc-v64    |
+| Linux      | s390x       |
+| Windows    | aarch64     |
+| OpenBSD    | x86-64      |
+| FreeBSD    | x86-64      |
+
+### WebAssembly (WASM) Support
+
+AWS-LC can be built for WebAssembly using Emscripten. This support is experimental and has important security considerations:
+
+- **No FIPS mode**: WASM builds cannot be FIPS-validated
+- **Randomness**: Relies on the runtime's `getentropy()` implementation
+- **No side-channel protections**: Timing and cache-based side-channel mitigations that exist for native builds may not apply in the WASM environment
+- **Threading limitations**: Uses Web Workers which have different security properties than native threads
+
+For build instructions, see [BUILDING.md](./BUILDING.md).
 
 ### FIPS Compliance
 
@@ -193,5 +205,3 @@ Security via our
 Please do **not** create a public GitHub issue.
 
 If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
-
-
