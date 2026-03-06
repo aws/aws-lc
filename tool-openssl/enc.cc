@@ -56,8 +56,8 @@ bool encTool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, hex_iv, cipher_name;
-  Password hex_key;
+  std::string in_path, out_path, cipher_name;
+  Password hex_key, hex_iv;
   bool help = false, encode = false, decode = false;
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
@@ -66,7 +66,7 @@ bool encTool(const args_list_t &args) {
   ordered_args::GetBoolArgument(&encode, "-e", parsed_args);
   ordered_args::GetBoolArgument(&decode, "-d", parsed_args);
   ordered_args::GetString(&hex_key.get(), "-K", "", parsed_args);
-  ordered_args::GetString(&hex_iv, "-iv", "", parsed_args);
+  ordered_args::GetString(&hex_iv.get(), "-iv", "", parsed_args);
   ordered_args::GetExclusiveBoolArgument(&cipher_name, kArguments, "",
                                          parsed_args);
 
@@ -123,7 +123,7 @@ bool encTool(const args_list_t &args) {
       fprintf(stderr, "Warning: IV is not used by cipher %s\n",
               cipher_name.c_str());
     } else {
-      if (!HexToBinary(iv, hex_iv, iv_length)) {
+      if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
         fprintf(stderr, "Error: Invalid hex IV value\n");
         return false;
       }
