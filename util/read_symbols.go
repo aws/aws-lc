@@ -30,7 +30,7 @@ import (
 	"sort"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
+	"github.com/aws/aws-lc/util/ar"
 )
 
 const (

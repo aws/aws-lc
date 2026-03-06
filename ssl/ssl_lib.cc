@@ -717,11 +717,17 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   if (ctx->cipher_list) {
     ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    ssl->config->cipher_list->Init(*ctx->cipher_list.get());
+    if (!ssl->config->cipher_list ||
+        !ssl->config->cipher_list->Init(*ctx->cipher_list.get())) {
+      return nullptr;
+    }
   }
   if (ctx->tls13_cipher_list) {
     ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get());
+    if (!ssl->config->tls13_cipher_list ||
+        !ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get())) {
+      return nullptr;
+    }
   }
 
   if (ctx->psk_identity_hint) {
@@ -926,6 +932,20 @@ int SSL_do_handshake(SSL *ssl) {
 
   // Destroy the handshake object if the handshake has completely finished.
   if (!early_return) {
+    // On the client, persist the CA names received in the CertificateRequest
+    // message so that |SSL_get_client_CA_list| can return them after the
+    // handshake. This eagerly converts to X509_NAMEs since the raw
+    // CRYPTO_BUFFERs in |hs->ca_names| will be destroyed with |hs|.
+    if (!ssl->server && ssl->s3->hs->ca_names &&
+        ssl->ctx->x509_method == &ssl_crypto_x509_method) {
+      // Failure is non-fatal: the handshake has already completed, so
+      // |SSL_get_client_CA_list| will simply return NULL post-handshake.
+      ssl_x509_persist_peer_ca_names(ssl);
+    } else if (!ssl->s3->hs->ca_names) {
+      // No CertificateRequest in this handshake — clear any stale peer
+      // CA names left over from a previous handshake.
+      ssl->ctx->x509_method->hs_flush_cached_ca_names(ssl->s3->hs.get());
+    }
     ssl->s3->hs.reset();
     ssl_maybe_shed_handshake_config(ssl);
   }
@@ -2856,7 +2876,8 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   if (!ssl->config) {
     return NULL;
   }
-  if (ssl->ctx.get() == ctx) {
+
+  if (!ctx || ssl->ctx.get() == ctx) {
     return ssl->ctx.get();
   }
 

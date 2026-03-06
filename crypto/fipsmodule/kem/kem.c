@@ -3,7 +3,6 @@
 
 #include <openssl/base.h>
 
-#include "../../kyber/kem_kyber.h"
 #include "../delocate.h"
 #include "../ml_kem/ml_kem.h"
 #include "internal.h"
@@ -209,13 +208,6 @@ const KEM *KEM_find_kem_by_nid(int nid) {
       return KEM_ml_kem_768();
     case NID_MLKEM1024:
       return KEM_ml_kem_1024();
-    // Try legacy KEMs.
-    case NID_KYBER512_R3:
-      return get_legacy_kem_kyber512_r3();
-    case NID_KYBER768_R3:
-      return get_legacy_kem_kyber768_r3();
-    case NID_KYBER1024_R3:
-      return get_legacy_kem_kyber1024_r3();
     default:
       return NULL;
   }
@@ -280,6 +272,7 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
 }
 
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
+  OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
   if (key->public_key == NULL) {
     return 0;
@@ -289,6 +282,7 @@ int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
 }
 
 int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
+  OPENSSL_free(key->secret_key);
   key->secret_key = OPENSSL_memdup(in, key->kem->secret_key_len);
   if (key->secret_key == NULL) {
     return 0;
@@ -299,6 +293,8 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
 
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret) {
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->secret_key);
   key->public_key = OPENSSL_memdup(in_public, key->kem->public_key_len);
   key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
   if (key->public_key == NULL || key->secret_key == NULL) {

@@ -7,7 +7,11 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    txt_db/txt_db.cc
+
     asn1parse.cc
+    ca.cc
+    ca_req_common.cc
     crl.cc
     dgst.cc
     dhparam.cc
@@ -92,8 +96,14 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        txt_db/txt_db.cc
+        txt_db/txt_db_test.cc
+
         asn1parse.cc
         asn1parse_test.cc
+        ca.cc
+        ca_test.cc
+        ca_req_common.cc
         crl.cc
         crl_test.cc
         dgst.cc

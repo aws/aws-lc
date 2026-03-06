@@ -62,12 +62,6 @@
 #include "../digest/internal.h"
 #include "internal.h"
 
-#if defined(NDEBUG)
-#define CHECK(x) (void) (x)
-#else
-#define CHECK(x) assert(x)
-#endif
-
 enum evp_sign_verify_t {
   evp_sign,
   evp_verify,

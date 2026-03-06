@@ -16,6 +16,24 @@ SPECIFICATION: [Test Vector Specification](vectors_spec.md)
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_encaps_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_512_encaps_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_768_encaps_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
@@ -55,6 +73,24 @@ SPECIFICATION: [Test Vector Specification](vectors_spec.md)
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_encaps_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_512_encaps_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_768_encaps_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.

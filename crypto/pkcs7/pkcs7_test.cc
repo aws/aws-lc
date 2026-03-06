@@ -814,11 +814,9 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   const uint8_t *ptr = der_bytes;
   bssl::UniquePtr<PKCS7> pkcs7_obj(d2i_PKCS7(nullptr, &ptr, der_len));
   ASSERT_TRUE(pkcs7_obj);
-  if (is_ber) {
-    EXPECT_EQ(ptr, der_bytes + CBS_len(&der_conv_out));
-  } else {
-    EXPECT_EQ(ptr, der_bytes + der_len);
-  }
+  // |ASN1_item_d2i| natively handles BER, so the pointer always advances by
+  // the full input length regardless of whether the input is BER or DER.
+  EXPECT_EQ(ptr, der_bytes + der_len);
   bssl::UniquePtr<PKCS7> pkcs7_dup(PKCS7_dup(pkcs7_obj.get()));
   ASSERT_TRUE(pkcs7_dup);
   EXPECT_EQ(OBJ_obj2nid(pkcs7_obj.get()->type),
@@ -1422,6 +1420,9 @@ TEST(PKCS7Test, GettersSetters) {
   ASSERT_FALSE(pkey);  // no attached pkey
   ASSERT_TRUE(psig);
   ASSERT_TRUE(pdig);
+
+  // Negative lengths not valid
+  EXPECT_FALSE(d2i_PKCS7(nullptr, &p7_der, -1));
 
   bssl::UniquePtr<PKCS7> p7_dup(PKCS7_dup(p7.get()));
   ASSERT_TRUE(p7_dup);
@@ -2040,6 +2041,104 @@ TEST(PKCS7Test, TestSigned) {
                             bio_out.get(), /*flags*/ 0));
 }
 
+// Regression test: PKCS7_verify with detached data and multiple digest
+// algorithms must free all intermediate digest BIOs, not just the head.
+TEST(PKCS7Test, VerifyDetachedMultiDigestNoLeak) {
+  // Generate two distinct ECDSA key-pairs and leaf certificates so that each
+  // signer can use a different digest algorithm.
+  bssl::UniquePtr<EC_KEY> root_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(root_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(root_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> root_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(root_pkey.get(), root_ec.get()));
+
+  bssl::UniquePtr<EC_KEY> leaf1_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf1_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf1_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> leaf1_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf1_pkey.get(), leaf1_ec.get()));
+
+  bssl::UniquePtr<EC_KEY> leaf2_ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(leaf2_ec);
+  ASSERT_TRUE(EC_KEY_generate_key(leaf2_ec.get()));
+  bssl::UniquePtr<EVP_PKEY> leaf2_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(leaf2_pkey.get(), leaf2_ec.get()));
+
+  bssl::UniquePtr<ASN1_TIME> not_before(ASN1_TIME_set_posix(nullptr, 0L));
+  bssl::UniquePtr<ASN1_TIME> not_after(
+      ASN1_TIME_set_posix(nullptr, INT64_C(253402300799)));
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", root_pkey.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_set_notBefore(root.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(root.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(root.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf1 =
+      MakeTestCert("Root", "Leaf1", leaf1_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf1);
+  ASSERT_TRUE(X509_set_notBefore(leaf1.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf1.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(leaf1.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf2 =
+      MakeTestCert("Root", "Leaf2", leaf2_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf2);
+  ASSERT_TRUE(X509_set_notBefore(leaf2.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf2.get(), not_after.get()));
+  ASSERT_TRUE(X509_sign(leaf2.get(), root_pkey.get(), EVP_sha256()));
+
+  // Build a PKCS7 signed structure with two signers using *different* digest
+  // algorithms. This causes PKCS7_dataInit to create two digest BIOs.
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Signer 1: SHA-256
+  PKCS7_SIGNER_INFO *si1 = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(si1);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(si1, leaf1.get(), leaf1_pkey.get(), EVP_sha256()));
+  ASSERT_TRUE(PKCS7_add_signer(p7.get(), si1));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), leaf1.get()));
+
+  // Signer 2: SHA-384 (different digest => second digest BIO in chain)
+  PKCS7_SIGNER_INFO *si2 = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(si2);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(si2, leaf2.get(), leaf2_pkey.get(), EVP_sha384()));
+  ASSERT_TRUE(PKCS7_add_signer(p7.get(), si2));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), leaf2.get()));
+
+  // Make it a detached signature.
+  ASN1_OCTET_STRING_free(p7->d.sign->contents->d.data);
+  p7->d.sign->contents->d.data = NULL;
+
+  // The signatures don't need to be valid for this leak test -- the leak
+  // happens during teardown regardless of verification outcome. Just add dummy
+  // signer info entries so PKCS7_get_signer_info returns them and the code
+  // path that builds the BIO chain in PKCS7_dataInit is reached.
+
+  // Call PKCS7_verify with detached indata. The BIO chain teardown is where
+  // intermediate digest BIOs are leaked.
+  uint8_t buf[64];
+  OPENSSL_memset(buf, 'A', sizeof(buf));
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+
+  bssl::UniquePtr<BIO> indata(BIO_new_mem_buf(buf, sizeof(buf)));
+  ASSERT_TRUE(indata);
+  bssl::UniquePtr<BIO> outdata(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(outdata);
+
+  // Verification will fail (signatures are not computed), but the BIO chain
+  // teardown still runs to exercise the leak.
+  PKCS7_verify(p7.get(), nullptr, store.get(), indata.get(), outdata.get(),
+               PKCS7_NOVERIFY);
+}
+
 TEST(PKCS7Test, PKCS7PrintNoop) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());
@@ -2067,7 +2166,7 @@ TEST(PKCS7Test, SetDetached) {
   // Access the |p7|'s internal contents to verify that |PKCS7_set_detached|
   // has the right behavior.
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
-  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 0));
+  EXPECT_TRUE(PKCS7_set_detached(p7.get(), 0));
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
   EXPECT_FALSE(PKCS7_set_detached(p7.get(), 2));
   EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
@@ -2335,4 +2434,184 @@ TEST(PKCS7Test, SerdeOtherField) {
   EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
                            sizeof(test_data)),
             0);
+}
+
+// Test for signature bypass when authenticated attributes contain a
+// malformed attribute that causes ASN.1 re-encoding to fail.
+TEST(PKCS7Test, SignatureBypassWithMalformedAuthAttr) {
+  const unsigned char original_data[] = "Original legitimate content";
+  const size_t original_len = sizeof(original_data) - 1;
+  const unsigned char malicious_data[] = "MALICIOUS MODIFIED CONTENT!";
+  const size_t malicious_len = sizeof(malicious_data) - 1;
+
+  // Generate RSA key pair
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  ASSERT_TRUE(pkey_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pkey_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_ctx.get(), 2048));
+  EVP_PKEY *pkey_raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pkey_ctx.get(), &pkey_raw));
+  pkey.reset(pkey_raw);
+
+  // Create self-signed certificate
+  bssl::UniquePtr<X509> cert(X509_new());
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(X509_set_version(cert.get(), 2));
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
+  X509_gmtime_adj(X509_get_notBefore(cert.get()), 0);
+  X509_gmtime_adj(X509_get_notAfter(cert.get()), 31536000L);
+  ASSERT_TRUE(X509_set_pubkey(cert.get(), pkey.get()));
+  X509_NAME *name = X509_get_subject_name(cert.get());
+  ASSERT_TRUE(X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                                          (const unsigned char *)"Test",
+                                          -1, -1, 0));
+  ASSERT_TRUE(X509_set_issuer_name(cert.get(), name));
+  ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha256()));
+
+  // Set up trust store
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), cert.get()));
+
+  // Compute SHA-256 digest of original data
+  unsigned char md[SHA256_DIGEST_LENGTH];
+  SHA256(original_data, original_len, md);
+
+  // Create the PKCS7 SignedData structure
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Set the content payload
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(p7->d.sign->contents->d.data,
+                                     original_data, (int)original_len));
+
+  // Add SHA-256 to the digest algorithms set
+  X509_ALGOR *alg = X509_ALGOR_new();
+  ASSERT_TRUE(alg);
+  ASSERT_TRUE(
+      X509_ALGOR_set0(alg, OBJ_nid2obj(NID_sha256), V_ASN1_NULL, nullptr));
+  ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+
+  // Create and configure SIGNER_INFO
+  PKCS7_SIGNER_INFO *sinfo = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(sinfo);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(sinfo, cert.get(), pkey.get(), EVP_sha256()));
+
+  // Build authenticated attributes: contentType + messageDigest
+  sinfo->auth_attr = sk_X509_ATTRIBUTE_new_null();
+  ASSERT_TRUE(sinfo->auth_attr);
+
+  // Add contentType attribute (pkcs7-data)
+  ASN1_OBJECT *content_type_obj = OBJ_dup(OBJ_nid2obj(NID_pkcs7_data));
+  ASSERT_TRUE(content_type_obj);
+  X509_ATTRIBUTE *ct_attr = X509_ATTRIBUTE_create(
+      NID_pkcs9_contentType, V_ASN1_OBJECT, content_type_obj);
+  ASSERT_TRUE(ct_attr);
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo->auth_attr, ct_attr));
+
+  // Add messageDigest attribute
+  ASN1_OCTET_STRING *digest_os = ASN1_OCTET_STRING_new();
+  ASSERT_TRUE(digest_os);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(digest_os, md, SHA256_DIGEST_LENGTH));
+  X509_ATTRIBUTE *md_attr = X509_ATTRIBUTE_create(
+      NID_pkcs9_messageDigest, V_ASN1_OCTET_STRING, digest_os);
+  ASSERT_TRUE(md_attr);
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo->auth_attr, md_attr));
+
+  // DER-encode the authenticated attributes for signing
+  unsigned char *attr_der = nullptr;
+  int attr_der_len = ASN1_item_i2d((ASN1_VALUE *)sinfo->auth_attr, &attr_der,
+                                    ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
+  ASSERT_GT(attr_der_len, 0);
+  ASSERT_TRUE(attr_der);
+
+  // Sign the DER-encoded authenticated attributes
+  bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+  ASSERT_TRUE(md_ctx);
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                  pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), attr_der, attr_der_len));
+
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
+  unsigned char *sig =
+      (unsigned char *)OPENSSL_malloc(sig_len);
+  ASSERT_TRUE(sig);
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), sig, &sig_len));
+
+  // Set the signature on the signer info
+  ASSERT_TRUE(
+      ASN1_OCTET_STRING_set(sinfo->enc_digest, sig, (int)sig_len));
+  OPENSSL_free(sig);
+  OPENSSL_free(attr_der);
+
+  // Attach signer info and certificate to the PKCS7
+  ASSERT_TRUE(sk_PKCS7_SIGNER_INFO_push(p7->d.sign->signer_info, sinfo));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), cert.get()));
+
+  // Verify the original (unmodified) message succeeds
+  bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out_bio);
+  EXPECT_TRUE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                            out_bio.get(), /*flags*/ 0));
+
+  // Now tamper with the message to attempt bypass
+
+  // Get the signer info back for modification
+  STACK_OF(PKCS7_SIGNER_INFO) *sinfos = PKCS7_get_signer_info(p7.get());
+  ASSERT_TRUE(sinfos);
+  ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sinfos), (size_t)0);
+  PKCS7_SIGNER_INFO *sinfo_ptr = sk_PKCS7_SIGNER_INFO_value(sinfos, 0);
+  ASSERT_TRUE(sinfo_ptr);
+
+  // Modify the content to malicious data
+  ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
+  ASSERT_TRUE(p7->d.sign && p7->d.sign->contents);
+  ASSERT_EQ(OBJ_obj2nid(p7->d.sign->contents->type), NID_pkcs7_data);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(p7->d.sign->contents->d.data,
+                                     malicious_data, (int)malicious_len));
+
+  // Update the messageDigest attribute to match the malicious content
+  unsigned char new_md[SHA256_DIGEST_LENGTH];
+  SHA256(malicious_data, malicious_len, new_md);
+  ASN1_TYPE *md_type =
+      PKCS7_get_signed_attribute(sinfo_ptr, NID_pkcs9_messageDigest);
+  ASSERT_TRUE(md_type);
+  ASSERT_EQ(md_type->type, V_ASN1_OCTET_STRING);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(md_type->value.octet_string, new_md,
+                                     SHA256_DIGEST_LENGTH));
+
+  // Add a malformed attribute whose ASN1_OBJECT has zero length.
+  // This causes ASN1_item_i2d() to fail with ASN1_R_ILLEGAL_OBJECT when
+  // pkcs7_signature_verify() tries to re-encode auth_attr for signature
+  // verification.
+  ASN1_OCTET_STRING *bad_os = ASN1_OCTET_STRING_new();
+  ASSERT_TRUE(bad_os);
+  ASSERT_TRUE(
+      ASN1_OCTET_STRING_set(bad_os, (const unsigned char *)"test", 4));
+  X509_ATTRIBUTE *bad_attr = X509_ATTRIBUTE_create(
+      NID_id_smime_aa_signingCertificate, V_ASN1_OCTET_STRING, bad_os);
+  ASSERT_TRUE(bad_attr);
+
+  // Create an ASN1_OBJECT with zero-length OID data. When ASN1_item_i2d
+  // tries to encode this, i2d_ASN1_OBJECT returns -1 because length <= 0,
+  // which makes the overall encoding fail safely.
+  bssl::UniquePtr<ASN1_OBJECT> empty_obj(
+      ASN1_OBJECT_create(NID_undef, nullptr, 0, nullptr, nullptr));
+  ASSERT_TRUE(empty_obj);
+  ASSERT_TRUE(X509_ATTRIBUTE_set1_object(bad_attr, empty_obj.get()));
+
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo_ptr->auth_attr, bad_attr));
+
+  // Verify that the tampered message is correctly rejected
+  out_bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out_bio);
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                             out_bio.get(), /*flags*/ 0));
 }

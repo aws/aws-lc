@@ -114,6 +114,7 @@ EVP_PKEY *DecryptPrivateKey(const char *path, const char *password);
 bool CompareKeyEquality(EVP_PKEY *key1, EVP_PKEY *key2);
 bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
                                 unsigned int expected_bits);
+bool ValidateCertificateKeyPair(X509 *cert, EVP_PKEY *private_key);
 
 
 // Additional PEM format boundary markers used by PKCS8

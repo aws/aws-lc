@@ -20,7 +20,7 @@ import (
 	"net"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"github.com/aws/aws-lc/ssl/test/runner/hpke"
 	"golang.org/x/crypto/cryptobyte"
 )
 

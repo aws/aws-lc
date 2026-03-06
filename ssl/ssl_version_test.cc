@@ -2332,8 +2332,7 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
   for (SSL *ssl : {client_.get(), server_.get()}) {
     SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
     EVP_PKEY *key = nullptr;
-    uint16_t preferred_group = tls1_get_default_grouplist()[0];
-    if (getVersionParam().version == TLS1_3_VERSION && preferred_group == SSL_GROUP_X25519_MLKEM768) {
+    if (getVersionParam().version == TLS1_3_VERSION) {
       // TLS 1.3 default should be using X25519MLKEM768 as the key exchange.
       // We expect SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE because there is no EVP_PKEY type
       // for hybrid keys, only individual X25519 or MLKEM768 keys.
@@ -2341,8 +2340,6 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
       EXPECT_FALSE(SSL_get_peer_tmp_key(ssl, &key));
       ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
     } else {
-      // Otherwise x25519 should be used
-      EXPECT_TRUE(preferred_group == SSL_GROUP_X25519);
       EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
       EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_X25519);
       bssl::UniquePtr<EVP_PKEY> pkey(key);

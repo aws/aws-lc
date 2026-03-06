@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/testconfig"
+	"github.com/aws/aws-lc/util/testconfig"
 )
 
 var (

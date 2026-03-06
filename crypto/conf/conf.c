@@ -56,8 +56,8 @@
 
 #include <openssl/conf.h>
 
-#include <string.h>
 #include <ctype.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
@@ -65,9 +65,9 @@
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
 #include "conf_def.h"
 #include "internal.h"
-#include "../internal.h"
 
 
 static const char kDefaultSectionName[] = "default";
@@ -186,7 +186,10 @@ err:
 }
 
 static int str_copy(CONF *conf, char *section, char **pto, char *from) {
-  int q, to = 0, len = 0;
+  int q = 0, to = 0, len = 0, r = 0;
+  char *rrp = NULL, *s = NULL, *cp = NULL, *e = NULL, *rp = NULL, *np = NULL;
+  const char *p = NULL;
+  char rr = 0;
   char v;
   BUF_MEM *buf;
 
@@ -215,6 +218,9 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
       }
       if (*from == q) {
         from++;
+      } else {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_QUOTE);
+        goto err;
       }
     } else if (IS_ESC(conf, *from)) {
       from++;
@@ -234,10 +240,79 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
     } else if (IS_EOF(conf, *from)) {
       break;
     } else if (*from == '$') {
-      // Historically, $foo would expand to a previously-parsed value. This
-      // feature has been removed as it was unused and is a DoS vector.
-      OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_NOT_SUPPORTED);
-      goto err;
+      size_t newsize = 0;
+
+      // try to expand it
+      rrp = NULL;
+      s = &(from[1]);
+      if (*s == '{') {
+        q = '}';
+      } else if (*s == '(') {
+        q = ')';
+      } else {
+        q = 0;
+      }
+
+      if (q) {
+        s++;
+      }
+      cp = section;
+      e = np = s;
+      while (IS_ALPHA_NUMERIC(conf, *e)) {
+        e++;
+      }
+      if ((e[0] == ':') && (e[1] == ':')) {
+        cp = np;
+        rrp = e;
+        rr = *e;
+        *rrp = '\0';
+        e += 2;
+        np = e;
+        while (IS_ALPHA_NUMERIC(conf, *e)) {
+          e++;
+        }
+      }
+      r = *e;
+      *e = '\0';
+      rp = e;
+      if (q) {
+        if (r != q) {
+          OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_BRACE);
+          goto err;
+        }
+        e++;
+      }
+      //  So at this point we have
+      //  np which is the start of the name string which is
+      //    '\0' terminated.
+      //  cp which is the start of the section string which is
+      //    '\0' terminated.
+      //  e is the 'next point after'.
+      //  r and rr are the chars replaced by the '\0'
+      //  rp and rrp is where 'r' and 'rr' came from.
+      p = NCONF_get_string(conf, cp, np);
+      if (rrp != NULL) {
+        *rrp = rr;
+      }
+      *rp = r;
+      if (p == NULL) {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_HAS_NO_VALUE);
+        goto err;
+      }
+      newsize = strlen(p) + buf->length - (e - from);
+      if (newsize > UINT16_MAX) {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_TOO_LONG);
+        goto err;
+      }
+      if (!BUF_MEM_grow_clean(buf, newsize)) {
+        OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+      while (*p) {
+        buf->data[to++] = *(p++);
+      }
+
+      from = e;
     } else {
       buf->data[to++] = *(from++);
     }
@@ -258,7 +333,7 @@ static CONF_VALUE *get_section(const CONF *conf, const char *section) {
   CONF_VALUE template;
 
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
+  template.section = (char *)section;
   return lh_CONF_VALUE_retrieve(conf->data, &template);
 }
 
@@ -268,30 +343,39 @@ const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
   if (section_value == NULL) {
     return NULL;
   }
-  return (STACK_OF(CONF_VALUE)*) section_value->value;
+  return (STACK_OF(CONF_VALUE) *)section_value->value;
 }
 
 const char *NCONF_get_string(const CONF *conf, const char *section,
                              const char *name) {
   CONF_VALUE template, *value;
 
-  if (section == NULL) {
-    section = kDefaultSectionName;
+  OPENSSL_memset(&template, 0, sizeof(template));
+
+  if (section != NULL) {
+    template.section = (char *)section;
+    template.name = (char *)name;
+    value = lh_CONF_VALUE_retrieve(conf->data, &template);
+    if (value != NULL) {
+      return value->value;
+    }
   }
 
-  OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
-  template.name = (char *) name;
+  char defaultSectionName[] = "default";
+
+  template.section = defaultSectionName;
+  template.name = (char *)name;
   value = lh_CONF_VALUE_retrieve(conf->data, &template);
-  if (value == NULL) {
-    return NULL;
+  if (value != NULL) {
+    return value->value;
   }
-  return value->value;
+
+  return NULL;
 }
 
 static int add_string(const CONF *conf, CONF_VALUE *section,
                       CONF_VALUE *value) {
-  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE)*) section->value;
+  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE) *)section->value;
   CONF_VALUE *old_value;
 
   value->section = OPENSSL_strdup(section->section);

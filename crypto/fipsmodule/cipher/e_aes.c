@@ -152,18 +152,6 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
   const int mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
 
-  if (mode == EVP_CIPH_CTR_MODE) {
-    switch (ctx->key_len) {
-      case 16:
-        boringssl_fips_inc_counter(fips_counter_evp_aes_128_ctr);
-        break;
-
-      case 32:
-        boringssl_fips_inc_counter(fips_counter_evp_aes_256_ctr);
-        break;
-    }
-  }
-
   if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
     if (hwaes_capable()) {
       ret = aes_hw_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
@@ -304,27 +292,27 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt, 1);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt_wrapper, 1);
     }
     if (out_block) {
-      *out_block = aes_hw_encrypt;
+      *out_block = aes_hw_encrypt_wrapper;
     }
-    return aes_hw_ctr32_encrypt_blocks;
+    return aes_hw_ctr32_encrypt_blocks_wrapper;
   }
 
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (out_block) {
-      *out_block = vpaes_encrypt;
+      *out_block = vpaes_encrypt_wrapper;
     }
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt, 0);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt_wrapper, 0);
     }
 #if defined(BSAES)
     assert(bsaes_capable());
     return vpaes_ctr32_encrypt_blocks_with_bsaes;
 #elif defined(VPAES_CTR32)
-    return vpaes_ctr32_encrypt_blocks;
+    return vpaes_ctr32_encrypt_blocks_wrapper;
 #else
     return NULL;
 #endif
@@ -332,12 +320,12 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 
   aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
   if (gcm_key != NULL) {
-    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
+    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt_wrapper, 0);
   }
   if (out_block) {
-    *out_block = aes_nohw_encrypt;
+    *out_block = aes_nohw_encrypt_wrapper;
   }
-  return aes_nohw_ctr32_encrypt_blocks;
+  return aes_nohw_ctr32_encrypt_blocks_wrapper;
 }
 
 #if defined(OPENSSL_32_BIT)
@@ -371,16 +359,6 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
   if (!iv && !key) {
     return 1;
-  }
-
-  switch (ctx->key_len) {
-    case 16:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_128_gcm);
-      break;
-
-    case 32:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
-      break;
   }
 
   if (key) {
@@ -1080,16 +1058,6 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
                                   size_t *out_tag_len, const uint8_t *key,
                                   size_t key_len, size_t tag_len) {
   const size_t key_bits = key_len * 8;
-
-  switch (key_bits) {
-    case 128:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_128_gcm);
-      break;
-
-    case 256:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
-      break;
-  }
 
   if (key_bits != 128 && key_bits != 192 && key_bits != 256) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);

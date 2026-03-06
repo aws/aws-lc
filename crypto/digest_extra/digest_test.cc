@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/md4.h>
+#include <openssl/rand.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/obj.h>
@@ -399,6 +400,8 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(nullptr, EVP_get_digestbyname("nonsense"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("SHA512"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512"));
+  EXPECT_EQ(EVP_md4(), EVP_get_digestbyname("md4"));
+  EXPECT_EQ(EVP_md4(), EVP_get_digestbyname("MD4"));
 
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbynid(NID_sha512));
   EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_sha512WithRSAEncryption));

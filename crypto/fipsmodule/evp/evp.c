@@ -72,6 +72,7 @@
 #include "../../pem/internal.h"
 #include "../../console/internal.h"
 #include "../../internal.h"
+#include "../pqdsa/internal.h"
 #include "internal.h"
 
 
@@ -101,9 +102,10 @@ EVP_PKEY *EVP_PKEY_new(void) {
 static void free_it(EVP_PKEY *pkey) {
   if (pkey->ameth && pkey->ameth->pkey_free) {
     pkey->ameth->pkey_free(pkey);
-    pkey->pkey.ptr = NULL;
-    pkey->type = EVP_PKEY_NONE;
   }
+  pkey->pkey.ptr = NULL;
+  pkey->type = EVP_PKEY_NONE;
+  pkey->ameth = NULL;
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
@@ -290,6 +292,18 @@ int EVP_PKEY_bits(const EVP_PKEY *pkey) {
 int EVP_PKEY_id(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;
   return pkey->type;
+}
+
+int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
+  if (pkey->type != EVP_PKEY_PQDSA) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_PQDSA_KEY);
+    return 0;
+  }
+  if (!pkey->pkey.pqdsa_key || !pkey->pkey.pqdsa_key->pqdsa) {
+    return 0;
+  }
+  return pkey->pkey.pqdsa_key->pqdsa->nid;
 }
 
 int EVP_MD_get_pkey_type(const EVP_MD *md) {
@@ -509,7 +523,7 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;
   if (pkey->type != EVP_PKEY_EC) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_EC_KEY_KEY);
     return NULL;
   }
   return pkey->pkey.ec;

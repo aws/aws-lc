@@ -31,8 +31,8 @@ import (
 	"os"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	"github.com/aws/aws-lc/util/ar"
+	"github.com/aws/aws-lc/util/fipstools/fipscommon"
 )
 
 func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {

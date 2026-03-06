@@ -1,6 +1,6 @@
 @echo on
 set SRC_ROOT=%cd%
-set BUILD_DIR=%SRC_ROOT%\test_build_dir
+set BUILD_DIR=%TEMP%\awslc
 
 @rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
 @rem %2 specifies the architecture option to build against: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
@@ -80,10 +80,10 @@ exit /b 0
 :build
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build started with cmake generation started
-cd %SRC_ROOT%
+cd /d %SRC_ROOT%
 rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%
-cd %BUILD_DIR%
+cd /d %BUILD_DIR%
 
 cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 %SRC_ROOT% || goto error
 

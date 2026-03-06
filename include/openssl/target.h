@@ -26,7 +26,7 @@
 #  if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #    define OPENSSL_BIG_ENDIAN
 #  endif
-#elif defined(__has_include)
+#elif !defined(_MSC_VER) && defined(__has_include)
 #  if __has_include(<endian.h>)
 #    include <endian.h>
 #  elif __has_include(<sys/param.h>)
@@ -87,7 +87,8 @@
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_PNACL
-#elif defined(__wasm__) // Allowed but no macro defined
+#elif defined(__wasm__)
+#define OPENSSL_WASM
 #elif defined(__asmjs__) // Allowed but no macro defined
 #elif defined(__myriad2__) // Allowed but no macro defined
 #else

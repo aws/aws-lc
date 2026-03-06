@@ -27,9 +27,12 @@ def format_header(filename: str, algorithm: str) -> str:
 """
 
 
-def write_instruction(out, name: str, value: Union[str, int, dict]) -> None:
+def write_instruction(out, name: str, value: Union[str, int, dict, None]) -> None:
     """Write an instruction line: [name = value]"""
-    if isinstance(value, (str, int)):
+    if value is None:
+        # Skip None values - they indicate optional fields not present in this test group
+        return
+    elif isinstance(value, (str, int)):
         out.write(f"[{name} = {value}]\n")
     elif isinstance(value, dict):
         for key in sorted(value.keys()):

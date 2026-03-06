@@ -33,7 +33,7 @@ import (
 	"strings"
 	"syscall"
 
-	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/acvp"
+	"github.com/aws/aws-lc/util/fipstools/acvp/acvptool/acvp"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

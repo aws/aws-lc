@@ -473,8 +473,8 @@ static void rand_bytes_core(
   CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 }
 
-static void rand_bytes_private(uint8_t *out, size_t out_len,
-  const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
+static void rand_bytes_impl(thread_local_data_t tls_key, uint8_t *out,
+  size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
   int use_user_pred_resistance) {
 
   if (out_len == 0) {
@@ -482,18 +482,18 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
   }
 
   // Lock state here because CTR-DRBG-generate can be invoked multiple times
-  // and every successful invocation increments updates service indicator.
+  // and every successful invocation increments the service indicator.
   FIPS_service_indicator_lock_state();
 
   struct rand_thread_local_state *state =
-      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+      CRYPTO_get_thread_local(tls_key);
 
   int ctr_drbg_state_is_fresh = 0;
 
   if (state == NULL) {
     state = OPENSSL_zalloc(sizeof(struct rand_thread_local_state));
     if (state == NULL ||
-        CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, state,
+        CRYPTO_set_thread_local(tls_key, state,
                                    rand_thread_local_state_free) != 1) {
       abort();
     }
@@ -516,16 +516,16 @@ int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
 
   GUARD_PTR_ABORT(user_pred_resistance);
 
-  rand_bytes_private(out, out_len, user_pred_resistance,
-    RAND_USE_USER_PRED_RESISTANCE);
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+    user_pred_resistance, RAND_USE_USER_PRED_RESISTANCE);
   return 1;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
 
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_bytes_private(out, out_len, kZeroPredResistance,
-    RAND_NO_USER_PRED_RESISTANCE);
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+    kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
   return 1;
 }
 
@@ -533,13 +533,21 @@ int RAND_priv_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
+int RAND_public_bytes(uint8_t *out, size_t out_len) {
+  static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PUBLIC_RAND, out, out_len,
+    kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
+  return 1;
+}
+
 int RAND_pseudo_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
-// Returns the number of generate calls made on the thread-local state since
-// last seed/reseed. Returns 0 if thread-local state has not been initialized.
-uint64_t get_thread_generate_calls_since_seed(void) {
+// Returns the number of generate calls made on the private thread-local state
+// since last seed/reseed. Returns 0 if private thread-local state has not been
+// initialized.
+uint64_t get_private_thread_generate_calls_since_seed(void) {
 
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
@@ -550,12 +558,41 @@ uint64_t get_thread_generate_calls_since_seed(void) {
   return state->generate_calls_since_seed;
 }
 
-// Returns the number of reseed calls made on the thread-local state since
-// initialization. Returns 0 if thread-local state has not been initialized.
-uint64_t get_thread_reseed_calls_since_initialization(void) {
+// Returns the number of reseed calls made on the private thread-local state
+// since initialization. Returns 0 if private thread-local state has not been
+// initialized.
+uint64_t get_private_thread_reseed_calls_since_initialization(void) {
 
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->reseed_calls_since_initialization;
+}
+
+// Returns the number of generate calls made on the public thread-local state
+// since last seed/reseed. Returns 0 if public thread-local state has not been
+// initialized.
+uint64_t get_public_thread_generate_calls_since_seed(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PUBLIC_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->generate_calls_since_seed;
+}
+
+// Returns the number of reseed calls made on the public thread-local state
+// since initialization. Returns 0 if public thread-local state has not been
+// initialized.
+uint64_t get_public_thread_reseed_calls_since_initialization(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PUBLIC_RAND);
   if (state == NULL) {
     return 0;
   }

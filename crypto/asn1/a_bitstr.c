@@ -212,6 +212,10 @@ int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value) {
   int w, v, iv;
   unsigned char *c;
 
+  // n is an index, cannot be negative
+  if (n < 0) {
+    return 0;
+  }
   w = n / 8;
   v = 1 << (7 - (n & 0x07));
   iv = ~v;

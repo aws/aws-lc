@@ -629,7 +629,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       return -1;
     }
     // Validate the tag and invalidate the output if it doesn't match.
-    if (OPENSSL_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
+    if (CRYPTO_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
       OPENSSL_cleanse(out, len);
       return -1;
     }
@@ -741,7 +741,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_192_ccm;
   out->block_size = 1; // stream cipher
   out->key_len = 24;
   out->iv_len = 13;
@@ -757,7 +757,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_256_ccm;
   out->block_size = 1; // stream cipher
   out->key_len = 32;
   out->iv_len = 13;

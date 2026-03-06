@@ -118,9 +118,6 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
-  crypto/kyber/kat/kyber512r3.txt
-  crypto/kyber/kat/kyber768r3.txt
-  crypto/kyber/kat/kyber1024r3.txt
   crypto/ocsp/test/aws/certs.txt
   crypto/ocsp/test/aws/certs_revoked.txt
   crypto/ocsp/test/aws/certs_unknown.txt
@@ -291,6 +288,15 @@ set(
   crypto/x509/test/trailing_data_leaf_subject_alt_name.pem
   crypto/x509/test/trailing_data_leaf_subject_key_identifier.pem
   third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_verify_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_verify_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_verify_test.txt
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
   third_party/wycheproof_testvectors/aes_ccm_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
@@ -380,4 +386,13 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
   third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_test.txt
 )

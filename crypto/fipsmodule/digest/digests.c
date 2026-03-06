@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/ripemd.h>
@@ -69,44 +68,9 @@
 #include "../sha/internal.h"
 #include "internal.h"
 
-#if defined(NDEBUG)
-#define CHECK(x) (void) (x)
-#else
-#define CHECK(x) assert(x)
-#endif
-
-
-static void md4_init(EVP_MD_CTX *ctx) {
-  CHECK(MD4_Init(ctx->md_data));
-}
-
-static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  // MD4_Update always returns 1. Internally called function
-  // |crypto_md32_update| is void. For test consistency and future
-  // compatibility, the return value is propagated and returned
-  return MD4_Update(ctx->md_data, data, count);
-}
-
-static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD4_Final(out, ctx->md_data));
-}
-
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4) {
-  out->type = NID_md4;
-  out->md_size = MD4_DIGEST_LENGTH;
-  out->flags = 0;
-  out->init = md4_init;
-  out->update = md4_update;
-  out->final = md4_final;
-  out->squeezeXOF = NULL;
-  out->finalXOF = NULL;
-  out->block_size = 64;
-  out->ctx_size = sizeof(MD4_CTX);
-}
-
 
 static void md5_init(EVP_MD_CTX *ctx) {
-  CHECK(MD5_Init(ctx->md_data));
+  AWSLC_ASSERT(MD5_Init(ctx->md_data));
 }
 
 static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -117,7 +81,7 @@ static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD5_Final(out, ctx->md_data));
+  AWSLC_ASSERT(MD5_Final(out, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
@@ -135,7 +99,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
 
 
 static void ripemd160_init(EVP_MD_CTX *ctx) {
-  CHECK(RIPEMD160_Init(ctx->md_data));
+  AWSLC_ASSERT(RIPEMD160_Init(ctx->md_data));
 }
 
 static int ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -146,7 +110,7 @@ static int ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void ripemd160_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(RIPEMD160_Final(out, ctx->md_data));
+  AWSLC_ASSERT(RIPEMD160_Final(out, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_ripemd160) {
@@ -164,7 +128,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_ripemd160) {
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA1_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA1_Init(ctx->md_data));
 }
 
 static int sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -175,7 +139,7 @@ static int sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA1_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA1_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
@@ -193,7 +157,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
 
 
 static void sha224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA224_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA224_Init(ctx->md_data));
 }
 
 static int sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -204,7 +168,7 @@ static int sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA224_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA224_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
@@ -222,7 +186,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
 
 
 static void sha256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA256_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA256_Init(ctx->md_data));
 }
 
 static int sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -233,7 +197,7 @@ static int sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA256_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA256_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
@@ -251,7 +215,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
 
 
 static void sha384_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA384_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA384_Init(ctx->md_data));
 }
 
 static int sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -262,7 +226,7 @@ static int sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA384_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA384_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
@@ -280,7 +244,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
 
 
 static void sha512_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA512_Init(ctx->md_data));
 }
 
 static int sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -290,7 +254,7 @@ static int sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA512_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA512_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512) {
@@ -308,7 +272,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512) {
 
 
 static void sha512_224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_224_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA512_224_Init(ctx->md_data));
 }
 
 static int sha512_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -319,7 +283,7 @@ static int sha512_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha512_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA512_224_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA512_224_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_224) {
@@ -335,7 +299,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_224) {
 
 
 static void sha512_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_256_Init(ctx->md_data));
+  AWSLC_ASSERT(SHA512_256_Init(ctx->md_data));
 }
 
 static int sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -346,7 +310,7 @@ static int sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha512_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA512_256_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA512_256_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
@@ -364,7 +328,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
 
 
 static void sha3_224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_224_DIGEST_BITLENGTH));
+  AWSLC_ASSERT(SHA3_Init(ctx->md_data, SHA3_224_DIGEST_BITLENGTH));
 }
 
 static int sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -373,7 +337,7 @@ static int sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha3_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA3_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA3_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_224) {
@@ -391,7 +355,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_224) {
 
 
 static void sha3_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_256_DIGEST_BITLENGTH));
+  AWSLC_ASSERT(SHA3_Init(ctx->md_data, SHA3_256_DIGEST_BITLENGTH));
 }
 
 static int sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -400,7 +364,7 @@ static int sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha3_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA3_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA3_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
@@ -418,7 +382,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
 
 
 static void sha3_384_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_384_DIGEST_BITLENGTH));
+  AWSLC_ASSERT(SHA3_Init(ctx->md_data, SHA3_384_DIGEST_BITLENGTH));
 }
 
 static int sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -427,7 +391,7 @@ static int sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha3_384_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA3_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA3_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_384) {
@@ -445,7 +409,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_384) {
 
 
 static void sha3_512_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_512_DIGEST_BITLENGTH));
+  AWSLC_ASSERT(SHA3_Init(ctx->md_data, SHA3_512_DIGEST_BITLENGTH));
 }
 
 static int sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -454,7 +418,7 @@ static int sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void sha3_512_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA3_Final(md, ctx->md_data));
+  AWSLC_ASSERT(SHA3_Final(md, ctx->md_data));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_512) {
@@ -472,7 +436,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_512) {
 
 
 static void shake128_init(EVP_MD_CTX *ctx) {
-  CHECK(SHAKE_Init(ctx->md_data, SHAKE128_BLOCKSIZE));
+  AWSLC_ASSERT(SHAKE_Init(ctx->md_data, SHAKE128_BLOCKSIZE));
 }
 
 // shake128_update returns 1 on success and 0 on failure, returned 
@@ -489,7 +453,7 @@ static int shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
 }
 
 static void shake128_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  CHECK(SHAKE_Squeeze(md, ctx->md_data, len));
+  AWSLC_ASSERT(SHAKE_Squeeze(md, ctx->md_data, len));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake128) {
@@ -506,7 +470,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake128) {
 }
 
 static void shake256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHAKE_Init(ctx->md_data, SHAKE256_BLOCKSIZE));
+  AWSLC_ASSERT(SHAKE_Init(ctx->md_data, SHAKE256_BLOCKSIZE));
 }
 
 // shake256_update returns 1 on success and 0 on failure, returned 
@@ -523,7 +487,7 @@ static int shake256_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
 }
 
 static void shake256_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  CHECK(SHAKE_Squeeze(md, ctx->md_data, len));
+  AWSLC_ASSERT(SHAKE_Squeeze(md, ctx->md_data, len));
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake256) {
@@ -546,7 +510,7 @@ typedef struct {
 
 static void md5_sha1_init(EVP_MD_CTX *md_ctx) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1));
+  AWSLC_ASSERT(MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1));
 }
 
 static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
@@ -562,7 +526,7 @@ static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
 
 static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Final(out, &ctx->md5) &&
+  AWSLC_ASSERT(MD5_Final(out, &ctx->md5) &&
         SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1));
 }
 
@@ -578,5 +542,3 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
   out->block_size = 64;
   out->ctx_size = sizeof(MD5_SHA1_CTX);
 }
-
-#undef CHECK

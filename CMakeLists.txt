@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.66.2")
+set(SOFTWARE_VERSION "1.69.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -79,7 +79,7 @@ function(target_add_awslc_include_paths)
 
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
-    $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<$<BOOL:${INCLUDE_PREFIX_HEADERS}>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -96,6 +96,8 @@ option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-I
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
+option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
+set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
 
 include(cmake/go.cmake)
 
@@ -111,6 +113,47 @@ message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
 message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
+
+# Validate Rust bindings prerequisites
+if(GENERATE_RUST_BINDINGS)
+  find_program(BINDGEN_EXECUTABLE NAMES bindgen)
+  if(NOT BINDGEN_EXECUTABLE)
+    message(FATAL_ERROR "GENERATE_RUST_BINDINGS is enabled but bindgen-cli was not found. "
+                        "Install it with: cargo install --force --locked bindgen-cli")
+  endif()
+
+  # Verify minimum version (0.69.5)
+  execute_process(
+    COMMAND ${BINDGEN_EXECUTABLE} --version
+    OUTPUT_VARIABLE BINDGEN_VERSION_OUTPUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE BINDGEN_VERSION_RESULT
+  )
+
+  if(NOT BINDGEN_VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to get bindgen version")
+  endif()
+
+  # Extract version number (format: "bindgen X.Y.Z")
+  string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" BINDGEN_VERSION "${BINDGEN_VERSION_OUTPUT}")
+
+  if(BINDGEN_VERSION VERSION_LESS "0.69.5")
+    message(FATAL_ERROR "bindgen version ${BINDGEN_VERSION} is too old. "
+                        "Minimum required version is 0.69.5. "
+                        "Upgrade with: cargo install --force --locked bindgen-cli")
+  endif()
+
+  message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
+  message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
+
+  # Check for rustfmt (required for --formatter rustfmt option)
+  find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
+  if(NOT RUSTFMT_EXECUTABLE)
+    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
+                        "Install it with: rustup component add rustfmt")
+  endif()
+  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+endif()
 
 if(DISABLE_CPU_JITTER_ENTROPY)
   if(FIPS)
@@ -344,10 +387,13 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
-elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
-  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
-elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND NOT GO_EXECUTABLE)
+  # This case is reached when both BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS are set,
+  # but GO_EXECUTABLE is not available (checked after the first if-branch).
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
+  # Only one of BORINGSSL_PREFIX or BORINGSSL_PREFIX_SYMBOLS is set
+  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 else()
   add_custom_target(boringssl_prefix_symbols)
 
@@ -358,6 +404,60 @@ else()
           PATTERN boringssl_prefix_symbols.h
           PATTERN boringssl_prefix_symbols_asm.h
           PATTERN boringssl_prefix_symbols_nasm.inc
+  )
+endif()
+
+# Rust bindings generation
+if(GENERATE_RUST_BINDINGS)
+  include(cmake/rust_bindings.cmake)
+
+  # Generate the rust_wrapper.h header from template
+  generate_rust_wrapper_header()
+
+  set(RUST_BINDINGS_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/rust/aws_lc_bindings.rs")
+
+  # Build list of include directories for bindgen.
+  # Prefix symbols header is intentionally excluded; see cmake/rust_bindings.cmake.
+  set(RUST_BINDINGS_INCLUDE_DIRS
+    "${CMAKE_CURRENT_BINARY_DIR}/include"   # Generated rust_wrapper.h location
+    "${AWSLC_SOURCE_DIR}/include"           # Main AWS-LC headers (unprefixed)
+  )
+
+  # Conditionally set optional arguments for generate_rust_bindings
+  if(BORINGSSL_PREFIX)
+    set(_rust_prefix_arg PREFIX "${BORINGSSL_PREFIX}")
+  else()
+    set(_rust_prefix_arg "")
+  endif()
+
+  if(BUILD_LIBSSL)
+    set(_rust_ssl_arg INCLUDE_SSL)
+  else()
+    set(_rust_ssl_arg "")
+  endif()
+
+  generate_rust_bindings(
+    OUTPUT_FILE "${RUST_BINDINGS_OUTPUT}"
+    INCLUDE_DIRS ${RUST_BINDINGS_INCLUDE_DIRS}
+    ${_rust_prefix_arg}
+    ${_rust_ssl_arg}
+  )
+
+  # Install the generated Rust bindings.
+  # The rust_bindings target is not part of ALL, so we build it on-demand during install.
+  install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" --build \"${CMAKE_BINARY_DIR}\" --target rust_bindings)")
+
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/rust/aws_lc_bindings.rs"
+    DESTINATION "share/rust"
+    COMPONENT Development
+  )
+
+  # Install the generated rust_wrapper.h header
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/include/rust_wrapper.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    COMPONENT Development
   )
 endif()
 
@@ -504,7 +604,10 @@ if(GCC OR CLANG)
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wno-overlength-strings")
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions -Wvla -Wtype-limits -Wno-unused-parameter")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla -Wtype-limits -Wno-unused-parameter")
+    if(CLANG)
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions")
+    endif()
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
@@ -826,23 +929,18 @@ if(KEEP_ASM_LOCAL_SYMBOLS)
 endif()
 
 if(FIPS)
-
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND (WIN32 OR APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-
-
-  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
-  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
+  if(CMAKE_C_FLAGS MATCHES "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" AND BUILD_SHARED_LIBS)
     message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
-  endif ()
+  endif()
 
-  add_definitions(-DBORINGSSL_FIPS)
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
@@ -851,14 +949,17 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED AND ANDROID)
-    # The Android CMake files set -ffunction-sections and -fdata-sections,
-    # which is incompatible with FIPS_SHARED.
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
-  endif()
+
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
+# The Android CMake files set -ffunction-sections and -fdata-sections, which
+# is incompatible with FIPS_SHARED.
+if(FIPS_SHARED AND ANDROID)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
 endif()
 
 if(OPENSSL_SMALL)
@@ -1183,7 +1284,7 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
-      if(MSVC)
+      if(WIN32)
         set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
         set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
@@ -1198,7 +1299,7 @@ if(BUILD_TESTING)
       set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         util/go_fips_tests.txt)
 
-      if(MSVC)
+      if(WIN32)
         # Delocator doesn't support Windows. So, this test would fail.
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
@@ -1220,9 +1321,9 @@ if(BUILD_TESTING)
       add_custom_target(
         build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool/testmodulewrapper
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
@@ -1343,7 +1444,7 @@ if(BUILD_TESTING)
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
-      add_custom_command(
+      add_custom_target(
           run_minimal_tests
           COMMAND crypto/crypto_test
           COMMAND crypto/urandom_test

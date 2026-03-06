@@ -432,39 +432,6 @@ static const CurveTest kCurveTests[] = {
         },
     },
     {
-        "SecP256r1Kyber768Draft00:prime256v1:secp384r1:secp521r1:x25519",
-        {
-            SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-            SSL_GROUP_SECP256R1,
-            SSL_GROUP_SECP384R1,
-            SSL_GROUP_SECP521R1,
-            SSL_GROUP_X25519,
-        },
-    },
-    {
-        "X25519Kyber768Draft00:prime256v1:secp384r1",
-        {
-            SSL_GROUP_X25519_KYBER768_DRAFT00,
-            SSL_GROUP_SECP256R1,
-            SSL_GROUP_SECP384R1,
-        },
-    },
-    {
-        "X25519:X25519Kyber768Draft00",
-        {
-            SSL_GROUP_X25519,
-            SSL_GROUP_X25519_KYBER768_DRAFT00,
-        },
-    },
-    {
-        "X25519:SecP256r1Kyber768Draft00:prime256v1",
-        {
-            SSL_GROUP_X25519,
-            SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-            SSL_GROUP_SECP256R1,
-        },
-    },
-    {
         "SecP256r1MLKEM768:prime256v1:secp384r1:secp521r1:x25519",
         {
             SSL_GROUP_SECP256R1_MLKEM768,
@@ -534,8 +501,6 @@ static const char *kBadCurvesLists[] = {
     "P-256:RSA",
     "X25519:P-256:",
     ":X25519:P-256",
-    "kyber768_r3",
-    "x25519_kyber768:prime256v1",
     "mlkem768",
     "x25519_mlkem768:prime256v1",
 };

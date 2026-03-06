@@ -100,6 +100,10 @@ static int pkey_hkdf_derive(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     return 0;
   }
+  if (EVP_MD_size(hctx->md) <= 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+    return 0;
+  }
   if (hctx->key_len == 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -148,7 +152,11 @@ static int pkey_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       hctx->mode = p1;
       return 1;
     case EVP_PKEY_CTRL_HKDF_MD:
-      hctx->md = p2;
+      if (p2 == NULL || EVP_MD_size((const EVP_MD *)p2) <= 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+        return 0;
+      }
+      hctx->md = (const EVP_MD *)p2;
       return 1;
     case EVP_PKEY_CTRL_HKDF_KEY: {
       const CBS *key = p2;

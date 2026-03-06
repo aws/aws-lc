@@ -55,6 +55,7 @@ def update_sources(
     cwd: pathlib.Path,
     sources: dict,
     new_files: typing.Optional[typing.List[str]],
+    check_only: bool = False,
 ):
     # Ensure upstream directories exist
     for source_name, source_info in sources.items():
@@ -62,6 +63,7 @@ def update_sources(
 
     # Add new files first to catch invalid file names and sources early
     if new_files:
+        assert not check_only
         for new_file in new_files:
             file_path = pathlib.Path(new_file)
             source_name = file_path.parts[0]
@@ -83,12 +85,9 @@ def update_sources(
             if upstream_file.exists():
                 raise SyncError(f"file already exists in upstream: {upstream_file}")
 
-            upstream_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(local_file, upstream_file)
-            utils.info(f"copied new file to upstream: {upstream_file}")
-
     # Update existing files from all sources
     missing_files = []
+    outdated_files = []
     for source_name, source_info in sources.items():
         upstream_path = source_info["upstream_path"]
         local_path = source_info["local_path"]
@@ -103,13 +102,22 @@ def update_sources(
             if not local_file.exists():
                 missing_files.append(f"{source_name}/{relative_path}")
             elif not filecmp.cmp(local_file, upstream_file, shallow=False):
-                shutil.copy2(local_file, upstream_file)
-                utils.info(f"updated upstream file: {source_name}/{relative_path}")
+                if check_only:
+                    outdated_files.append(f"{source_name}/{relative_path}")
+                else:
+                    shutil.copy2(local_file, upstream_file)
+                    utils.info(f"updated upstream file: {source_name}/{relative_path}")
 
     if missing_files:
         files_list = "\n  ".join(missing_files)
         raise SyncError(
             f"the following files are in ./upstream but cannot be found in a new clone of the source repo:\n  {files_list}"
+        )
+
+    if outdated_files:
+        files_list = "\n  ".join(outdated_files)
+        raise SyncError(
+            f"the following files are outdated and need to be updated:\n  {files_list}"
         )
 
 
@@ -186,9 +194,13 @@ def sync_sources(
     if not args.skip_update:
         reuse_existing = args.clone_dir is not None
         fetch_sources(clone_dir, sources, reuse_existing)
-        update_sources(cwd, sources, args.new)
+        update_sources(cwd, sources, args.new, check_only=args.check)
     else:
         utils.info("skipping update")
+
+    if args.check:
+        utils.info("check complete: files are up-to-date")
+        return
 
     if not args.skip_convert:
         convert_sources(cwd, clone_dir, sources)
@@ -247,6 +259,10 @@ def main() -> int:
         help="use custom directory for cloned repositories (persistent across runs)",
     )
     args = parser.parse_args()
+
+    if args.check and args.new:
+        print("ERROR: --check and --new cannot be used together", file=sys.stderr)
+        return 1
 
     with open("sources.toml", "rb") as f:
         sources = tomllib.load(f)

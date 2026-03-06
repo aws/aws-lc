@@ -15,7 +15,6 @@
 package subprocess
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -117,7 +116,7 @@ func (d *drbg) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 			outLen := group.RetBits / 8
 			var outLenBytes [4]byte
-			binary.LittleEndian.PutUint32(outLenBytes[:], uint32(outLen))
+			NativeEndian.PutUint32(outLenBytes[:], uint32(outLen))
 
 			var result [][]byte
 			if group.PredictionResistance {

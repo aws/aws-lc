@@ -42,6 +42,7 @@ static void test_all_exported_functions(size_t request_len, uint8_t *out_buf,
   uint8_t user_pred_res[RAND_PRED_RESISTANCE_LEN]) {
   ASSERT_TRUE(RAND_bytes(out_buf, request_len));
   ASSERT_TRUE(RAND_priv_bytes(out_buf, request_len));
+  ASSERT_TRUE(RAND_public_bytes(out_buf, request_len));
   ASSERT_TRUE(RAND_pseudo_bytes(out_buf, request_len));
   ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(out_buf, request_len, user_pred_res));
 }
@@ -108,23 +109,23 @@ static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
   // If in a new thread, this will initialize the state.
   ASSERT_TRUE(RAND_bytes(randomness, global_request_len));
 
-  uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
-  uint64_t generate_calls_since_seed = get_thread_generate_calls_since_seed();
+  uint64_t reseed_calls_since_initialization = get_private_thread_reseed_calls_since_initialization();
+  uint64_t generate_calls_since_seed = get_private_thread_generate_calls_since_seed();
 
   // First check that we can predict when a reseed happens based on the current
   // number of invoked generate calls. After the loop, we expect to be one
   // invoke generate call from a reseed.
   for(size_t i = 0; i < (kCtrDrbgReseedInterval - generate_calls_since_seed); i++) {
     ASSERT_TRUE(RAND_bytes(randomness, 1));
-    ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization);
+    ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization);
   }
   ASSERT_TRUE(RAND_bytes(randomness, 1));
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 1ULL);
 
   ASSERT_TRUE(RAND_bytes(randomness, 1));
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 2ULL);
 
   // Should be able to perform kCtrDrbgReseedInterval-2 generate calls before a
   // reseed is emitted. Requesting
@@ -134,14 +135,14 @@ static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
   // much smaller buffer.
   for(size_t i = 0; i < (kCtrDrbgReseedInterval - 7); i++) {
     ASSERT_TRUE(RAND_bytes(randomness, 1));
-    ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
-    ASSERT_EQ(get_thread_generate_calls_since_seed(), 2 + (i + 1));
+    ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+    ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 2 + (i + 1));
   }
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), kCtrDrbgReseedInterval - 5);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), kCtrDrbgReseedInterval - 5);
   size_t request_len_new_reseed = CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1;
   ASSERT_TRUE(RAND_bytes(randomness, request_len_new_reseed));
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 1ULL);
 
   *returnFlag = true;
 }
@@ -160,8 +161,8 @@ static void randReseedIntervalUbeNotSupportedTests(bool *returnFlag) {
   // If in a new thread, this will initialize the state.
   ASSERT_TRUE(RAND_bytes(randomness, global_request_len));
 
-  uint64_t generate_calls_since_seed = get_thread_generate_calls_since_seed();
-  uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
+  uint64_t generate_calls_since_seed = get_private_thread_generate_calls_since_seed();
+  uint64_t reseed_calls_since_initialization = get_private_thread_reseed_calls_since_initialization();
 
   if (kCtrDrbgReseedInterval - generate_calls_since_seed < 2) {
     // Ensure the reseed interval doesn't conflict with logic below.
@@ -172,12 +173,12 @@ static void randReseedIntervalUbeNotSupportedTests(bool *returnFlag) {
   // Each invocation of the randomness generation induce a reseed due to UBE
   // detection not being supported.
   ASSERT_TRUE(RAND_bytes(randomness, 1));
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
 
   ASSERT_TRUE(RAND_bytes(randomness, 1));
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
 
   *returnFlag = true;
 }
@@ -202,22 +203,22 @@ static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_metho
   // current_reseed_calls last in case RAND_bytes() invokes a reseed.
   set_detection_method_gn(1);
   ASSERT_TRUE(RAND_bytes(randomness, request_size_one_generate));
-  current_reseed_calls = get_thread_reseed_calls_since_initialization();
+  current_reseed_calls = get_private_thread_reseed_calls_since_initialization();
 
   // Bump fork generation number and expect one reseed. In addition, expect one
   // generate call since request size is less than CTR_DRBG_MAX_GENERATE_LENGTH.
   set_detection_method_gn(2);
   ASSERT_TRUE(RAND_bytes(randomness, request_size_one_generate));
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), current_reseed_calls + 1ULL);
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), current_reseed_calls + 1ULL);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 1ULL);
 
   // Bump fork generation number again and expect one reseed. In addition,
   // expect two generate call since request size is higher than
   // CTR_DRBG_MAX_GENERATE_LENGTH.
   set_detection_method_gn(3);
   ASSERT_TRUE(RAND_bytes(randomness, request_size_two_generate));
-  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), current_reseed_calls + 2ULL);
-  ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
+  ASSERT_EQ(get_private_thread_reseed_calls_since_initialization(), current_reseed_calls + 2ULL);
+  ASSERT_EQ(get_private_thread_generate_calls_since_seed(), 2ULL);
 }
 
 TEST_F(randTest, UbeDetectionMocked) {
@@ -239,6 +240,32 @@ TEST_F(randTest, UbeDetectionMocked) {
 
 #endif
 
+// Attempts to verify that |RAND_bytes| (equivalent to |RAND_priv_bytes|) and
+// |RAND_public_bytes| are independent. That is, calling one API should not
+// affect the other's state counters and outputs should be different.
+TEST_F(randTest, PublicPrivateStateIsolation) {
+  uint8_t private_buf[64];
+  uint8_t public_buf[64];
+
+  // Make sure both are initialized.
+  ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
+  ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
+
+  // Calling |RAND_bytes| shouldn't affect |RAND_public_bytes| counters.
+  uint64_t public_reseed_initial = get_public_thread_reseed_calls_since_initialization();
+  ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
+  ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
+  uint64_t public_reseed_after_rand = get_public_thread_reseed_calls_since_initialization();
+  EXPECT_EQ(public_reseed_after_rand, public_reseed_initial);
+
+  // Calling |RAND_public_bytes| shouldn't affect |RAND_bytes| counters.
+  uint64_t private_reseed_before_public = get_private_thread_reseed_calls_since_initialization();
+  ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
+  ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
+  uint64_t private_reseed_after_public = get_private_thread_reseed_calls_since_initialization();
+  EXPECT_EQ(private_reseed_after_public, private_reseed_before_public);
+}
+
 // These tests are, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
 
@@ -254,6 +281,30 @@ TEST_F(randTest, NotObviouslyBroken) {
   EXPECT_NE(Bytes(buf1), Bytes(buf2));
   EXPECT_NE(Bytes(buf1), Bytes(kZeros));
   EXPECT_NE(Bytes(buf2), Bytes(kZeros));
+
+  uint8_t buf3[256], buf4[256];
+  RAND_public_bytes(buf3, sizeof(buf3));
+  RAND_public_bytes(buf4, sizeof(buf4));
+
+  EXPECT_NE(Bytes(buf3), Bytes(buf4));
+  EXPECT_NE(Bytes(buf3), Bytes(kZeros));
+  EXPECT_NE(Bytes(buf4), Bytes(kZeros));
+
+  EXPECT_NE(Bytes(buf1), Bytes(buf3));
+  EXPECT_NE(Bytes(buf1), Bytes(buf4));
+  EXPECT_NE(Bytes(buf2), Bytes(buf3));
+  EXPECT_NE(Bytes(buf2), Bytes(buf4));
+
+  // Now try with private/public
+  ASSERT_TRUE(RAND_priv_bytes(buf1, sizeof(buf1)));
+  ASSERT_TRUE(RAND_public_bytes(buf2, sizeof(buf2)));
+  EXPECT_NE(Bytes(buf1), Bytes(buf2));
+
+  ASSERT_TRUE(RAND_priv_bytes(buf3, sizeof(buf3)));
+  ASSERT_TRUE(RAND_public_bytes(buf4, sizeof(buf4)));
+  EXPECT_NE(Bytes(buf3), Bytes(buf4));
+  EXPECT_NE(Bytes(buf1), Bytes(buf3));
+  EXPECT_NE(Bytes(buf2), Bytes(buf4));
 }
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
@@ -362,19 +413,23 @@ TEST_F(randTest, Fork) {
     }
   }
 }
+
 #endif  // !OPENSSL_WINDOWS && !OPENSSL_IOS &&
         // !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
 #if defined(OPENSSL_THREADS)
-static void RunConcurrentRands(size_t num_threads) {
+
+using RandFunc = int (*)(uint8_t *, size_t);
+
+static void RunConcurrentRands(size_t num_threads, RandFunc rand_func) {
   static const uint8_t kZeros[256] = {0};
 
   std::vector<std::array<uint8_t, 256>> bufs(num_threads);
   std::vector<std::thread> threads(num_threads);
 
   for (size_t i = 0; i < num_threads; i++) {
-    threads[i] =
-        std::thread([i, &bufs] { RAND_bytes(bufs[i].data(), bufs[i].size()); });
+    threads[i] = std::thread(
+        [i, &bufs, rand_func] { rand_func(bufs[i].data(), bufs[i].size()); });
   }
   for (size_t i = 0; i < num_threads; i++) {
     threads[i].join();
@@ -396,11 +451,76 @@ TEST_F(randTest, Threads) {
   maybeDisableSomeForkUbeDetectMechanisms();
 
   // Draw entropy in parallel.
-  RunConcurrentRands(kFewerThreads);
+  RunConcurrentRands(kFewerThreads, RAND_bytes);
+  RunConcurrentRands(kFewerThreads, RAND_public_bytes);
   // Draw entropy in parallel with higher concurrency than the previous maximum.
-  RunConcurrentRands(kMoreThreads);
+  RunConcurrentRands(kMoreThreads, RAND_bytes);
+  RunConcurrentRands(kMoreThreads, RAND_public_bytes);
   // Draw entropy in parallel with lower concurrency than the previous maximum.
-  RunConcurrentRands(kFewerThreads);
+  RunConcurrentRands(kFewerThreads, RAND_bytes);
+  RunConcurrentRands(kFewerThreads, RAND_public_bytes);
+}
+
+// This test attempts to verify that when both |RAND_bytes| and
+// |RAND_public_bytes| are called across multiple threads, each thread's
+// private and public states produce unique output.
+TEST_F(randTest, MixedUsageMultiThreaded) {
+  static const uint8_t kZeros[256] = {0};
+  static constexpr size_t kNumThreads = 10;
+  static constexpr size_t kIterationsPerThread = 5;
+
+  maybeDisableSomeForkUbeDetectMechanisms();
+
+  // Each thread will store its outputs from both APIs
+  // For each thread: kIterationsPerThread outputs from |RAND_bytes| and
+  // kIterationsPerThread outputs from |RAND_public_bytes|
+  std::vector<std::array<uint8_t, 256>> private_bufs(kNumThreads * kIterationsPerThread);
+  std::vector<std::array<uint8_t, 256>> public_bufs(kNumThreads * kIterationsPerThread);
+  std::vector<std::thread> threads(kNumThreads);
+
+  for (size_t t = 0; t < kNumThreads; t++) {
+    threads[t] = std::thread([t, &private_bufs, &public_bufs] {
+      // Each thread alternates between |RAND_bytes| and |RAND_public_bytes|
+      for (size_t i = 0; i < kIterationsPerThread; i++) {
+        size_t idx = t * kIterationsPerThread + i;
+        RAND_bytes(private_bufs[idx].data(), private_bufs[idx].size());
+        RAND_public_bytes(public_bufs[idx].data(), public_bufs[idx].size());
+      }
+    });
+  }
+
+  // Wait for all threads to complete
+  for (size_t t = 0; t < kNumThreads; t++) {
+    threads[t].join();
+  }
+
+  // Tests below are theoretically probabilistic (could draw all zeros). But in
+  // practice, this will rarely happen. They are also crude tests catching
+  // obvious errors in isolation of the two thread-local states.
+
+  // Verify all outputs from |RAND_bytes| are non-zero and unique.
+  for (size_t i = 0; i < private_bufs.size(); i++) {
+    EXPECT_NE(Bytes(private_bufs[i]), Bytes(kZeros));
+    for (size_t j = i + 1; j < private_bufs.size(); j++) {
+      EXPECT_NE(Bytes(private_bufs[i]), Bytes(private_bufs[j]));
+    }
+  }
+
+  // Verify all outputs from |RAND_public_bytes| are non-zero and unique.
+  for (size_t i = 0; i < public_bufs.size(); i++) {
+    EXPECT_NE(Bytes(public_bufs[i]), Bytes(kZeros));
+    for (size_t j = i + 1; j < public_bufs.size(); j++) {
+      EXPECT_NE(Bytes(public_bufs[i]), Bytes(public_bufs[j]));
+    }
+  }
+
+  // Verify outputs from |RAND_bytes| and |RAND_public_bytes| are different from
+  // each other.
+  for (size_t i = 0; i < private_bufs.size(); i++) {
+    for (size_t j = 0; j < public_bufs.size(); j++) {
+      EXPECT_NE(Bytes(private_bufs[i]), Bytes(public_bufs[j]));
+    }
+  }
 }
 #endif  // OPENSSL_THREADS
 
