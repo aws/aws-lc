@@ -74,9 +74,11 @@ extern "C" {
 //
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
-// |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
-// negative and |pass| is non-NULL, |strlen(pass)| is used.
+// |pass| is NULL, it is treated as an empty password and |pass_len| is ignored.
+// This will be encoded as the empty byte string rather than two zero bytes, the
+// PKCS #12 encoding of the empty string. If |pass| is non-NULL and |pass_len|
+// is negative, |strlen(pass)| is used. If |pass| is non-NULL and |pass_len| is
+// non-negative, |pass_len| bytes are used as the password.
 //
 // If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
 // |salt_len| is zero, a default salt length is used instead.
