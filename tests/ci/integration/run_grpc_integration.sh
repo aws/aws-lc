@@ -37,7 +37,13 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 mkdir -p "${GRPC_SRC_FOLDER}/cmake/build"
 cd "${GRPC_SRC_FOLDER}/cmake/build"
-time cmake -GNinja -DgRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release  -DgRPC_SSL_PROVIDER=package  -DBUILD_SHARED_LIBS=ON  -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" ../..
+# gRPC gates BoringSSL-specific features (e.g. SSL_PRIVATE_KEY_METHOD for private
+# key offload, optimized session caching) behind #ifdef OPENSSL_IS_BORINGSSL.
+# AWS-LC is a BoringSSL fork that supports these APIs but defines OPENSSL_IS_AWSLC
+# instead, so we set OPENSSL_IS_BORINGSSL explicitly to enable those code paths.
+time cmake -GNinja -DgRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release  -DgRPC_SSL_PROVIDER=package\
+      -DBUILD_SHARED_LIBS=ON -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" \
+      -DCMAKE_C_FLAGS="-DOPENSSL_IS_BORINGSSL=1" -DCMAKE_CXX_FLAGS="-DOPENSSL_IS_BORINGSSL=1" ../..
 grpc_tests=$(grep add_executable ../../CMakeLists.txt | grep _test | grep -E '(tls|ssl|cert)' | cut -d '(' -f2)
 echo Building $grpc_tests
 time ninja $grpc_tests

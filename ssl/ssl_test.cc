@@ -1396,6 +1396,104 @@ TEST(SSLTest, ClientCABuffers) {
   EXPECT_TRUE(cert_cb_called);
 }
 
+// Test that |SSL_get_client_CA_list| returns the server's CA list on the
+// client both during the cert callback and after the handshake completes.
+TEST(SSLTest, PeerCANamesX509DuringAndAfterHandshake) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(version);
+
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+
+    bssl::UniquePtr<X509> cert = GetChainTestCertificate();
+    bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+    bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+    ASSERT_TRUE(cert && intermediate && key);
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+    ASSERT_TRUE(
+        SSL_CTX_add1_chain_cert(server_ctx.get(), intermediate.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+    // Configure the server's CA list using X509_NAMEs.
+    bssl::UniquePtr<X509_NAME> ca_name(X509_NAME_new());
+    ASSERT_TRUE(ca_name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        ca_name.get(), "CN", MBSTRING_ASC,
+        reinterpret_cast<const unsigned char *>("Test CA"), -1, -1, 0));
+
+    bssl::UniquePtr<X509_NAME> ca_name_copy(X509_NAME_dup(ca_name.get()));
+    ASSERT_TRUE(ca_name_copy);
+    bssl::UniquePtr<STACK_OF(X509_NAME)> ca_list(sk_X509_NAME_new_null());
+    ASSERT_TRUE(ca_list);
+    ASSERT_TRUE(PushToStack(ca_list.get(), std::move(ca_name_copy)));
+    // SSL_CTX_set_client_CA_list takes ownership.
+    SSL_CTX_set_client_CA_list(server_ctx.get(), ca_list.release());
+
+    // The server must request client certificates.
+    SSL_CTX_set_verify(server_ctx.get(), SSL_VERIFY_PEER, nullptr);
+
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+    // Accept any server certificate.
+    SSL_CTX_set_custom_verify(
+        client_ctx.get(), SSL_VERIFY_PEER,
+        [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+          return ssl_verify_ok;
+        });
+
+    // Use a cert callback to verify CA names are available during the
+    // handshake via the X509-based API.
+    bool cert_cb_called = false;
+    SSL_CTX_set_cert_cb(
+        client_ctx.get(),
+        [](SSL *ssl, void *arg) -> int {
+          STACK_OF(X509_NAME) *ca_list = SSL_get_client_CA_list(ssl);
+          EXPECT_TRUE(ca_list);
+          EXPECT_EQ(1u, sk_X509_NAME_num(ca_list));
+          *reinterpret_cast<bool *>(arg) = true;
+          return 1;
+        },
+        &cert_cb_called);
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+    EXPECT_TRUE(cert_cb_called);
+
+    // After the handshake, verify the same CA list is still available.
+    // The handshake config has been shed by default, so ssl->config is NULL,
+    // but the client-side peer CA names are persisted in ssl->s3.
+    STACK_OF(X509_NAME) *client_ca_list =
+        SSL_get_client_CA_list(client.get());
+    ASSERT_TRUE(client_ca_list);
+    ASSERT_EQ(1u, sk_X509_NAME_num(client_ca_list));
+    EXPECT_EQ(0,
+              X509_NAME_cmp(sk_X509_NAME_value(client_ca_list, 0),
+                            ca_name.get()));
+
+    // Now do a second handshake with the same client context but a server
+    // that does NOT request client certificates (no CertificateRequest).
+    // The client should see no peer CA names after this handshake.
+    bssl::UniquePtr<SSL_CTX> server_ctx2(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx2);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx2.get(), cert.get()));
+    ASSERT_TRUE(
+        SSL_CTX_add1_chain_cert(server_ctx2.get(), intermediate.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx2.get(), key.get()));
+
+    bssl::UniquePtr<SSL> client2, server2;
+    ASSERT_TRUE(ConnectClientAndServer(&client2, &server2, client_ctx.get(),
+                                       server_ctx2.get()));
+    EXPECT_FALSE(SSL_get_client_CA_list(client2.get()));
+  }
+}
+
 // Configuring the empty cipher list, though an error, should still modify the
 // configuration.
 TEST(SSLTest, EmptyCipherList) {
