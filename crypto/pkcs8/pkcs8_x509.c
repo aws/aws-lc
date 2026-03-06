@@ -1385,9 +1385,23 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
                    const EVP_MD *md) {
   GUARD_PTR(p12);
   int ret = 0;
+  uint8_t *storage = NULL;
+
+  // Validate and normalize |password_len|. A value of -1 means the password is
+  // NUL-terminated and we should use strlen, matching |PKCS12_verify_mac|.
+  if (password == NULL) {
+    password_len = 0;
+  } else if (password_len == -1) {
+    password_len = (int)strlen(password);
+  } else if (password_len < 0) {
+    return 0;
+  }
 
   if (mac_iterations == 0) {
     mac_iterations = 1;
+  }
+  if (salt_len < 0) {
+    return 0;
   }
   if (salt_len == 0) {
     salt_len = PKCS12_SALT_LEN;
@@ -1410,7 +1424,6 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     md = EVP_sha1();
   }
 
-  uint8_t *storage = NULL;
   CBS ber_bytes, in, pfx, authsafe, content_type, wrapped_authsafes, authsafes;
   uint64_t version;
   // The input may be in BER format.
@@ -1419,9 +1432,6 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     goto out;
   }
-  // There's no use case for |storage| anymore, so we free early.
-  OPENSSL_free(storage);
-
   if (!CBS_get_asn1(&in, &pfx, CBS_ASN1_SEQUENCE) || CBS_len(&in) != 0 ||
       !CBS_get_asn1_uint64(&pfx, &version)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
@@ -1462,9 +1472,15 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     goto out;
   }
 
+  // Free the old buffer and null it out before |CBB_finish| so that |p12|
+  // remains in a safe (empty) state rather than holding a dangling pointer
+  // if |CBB_finish| fails.
+  OPENSSL_free(p12->ber_bytes);
+  p12->ber_bytes = NULL;
+  p12->ber_len = 0;
+
   // Verify that the new password is consistent with the original. This is
   // behavior specific to AWS-LC.
-  OPENSSL_free(p12->ber_bytes);
   if (!CBB_finish(&cbb, &p12->ber_bytes, &p12->ber_len) ||
       !PKCS12_verify_mac(p12, password, password_len)) {
     CBB_cleanup(&cbb);
@@ -1474,6 +1490,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
   ret = 1;
 
 out:
+  OPENSSL_free(storage);
   OPENSSL_free(mac_salt);
   return ret;
 }
