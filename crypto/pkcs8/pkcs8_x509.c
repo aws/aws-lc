@@ -1061,9 +1061,7 @@ static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
                               size_t password_len, uint32_t iterations,
                               const uint8_t *in, size_t in_len) {
   uint8_t salt[PKCS12_SALT_LEN];
-  if (!RAND_bytes(salt, sizeof(salt))) {
-    return 0;
-  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt, sizeof(salt)));
 
   int ret = 0;
   EVP_CIPHER_CTX ctx;
@@ -1398,9 +1396,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     goto out;
   }
   if (salt == NULL) {
-    if (!RAND_bytes(mac_salt, salt_len)) {
-      goto out;
-    }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(mac_salt, salt_len));
   } else {
     OPENSSL_memcpy(mac_salt, salt, salt_len);
   }
@@ -1477,4 +1473,3 @@ out:
   OPENSSL_free(mac_salt);
   return ret;
 }
-

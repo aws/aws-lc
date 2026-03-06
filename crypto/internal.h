@@ -1455,6 +1455,8 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define AWSLC_ASSERT(x) __AWS_LC_ENSURE(x, abort())
 #endif
 
+#define AWSLC_ABORT_IF_NOT_ONE(x) __AWS_LC_ENSURE(1 == (x), abort())
+
 // Windows doesn't really support weak symbols as of May 2019, and Clang on
 // Windows will emit strong symbols instead. See
 // https://bugs.llvm.org/show_bug.cgi?id=37598

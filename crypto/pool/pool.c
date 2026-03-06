@@ -54,7 +54,7 @@ CRYPTO_BUFFER_POOL* CRYPTO_BUFFER_POOL_new(void) {
   }
 
   CRYPTO_MUTEX_init(&pool->lock);
-  RAND_bytes((uint8_t *)&pool->hash_key, sizeof(pool->hash_key));
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes((uint8_t *)&pool->hash_key, sizeof(pool->hash_key)));
 
   return pool;
 }

@@ -72,13 +72,13 @@
 
 
 static void rand_nonzero(uint8_t *out, size_t len) {
-  RAND_bytes(out, len);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out, len));
 
   for (size_t i = 0; i < len; i++) {
     // Zero values are replaced, and the distribution of zero and non-zero bytes
     // is public, so leaking this is safe.
     while (constant_time_declassify_int(out[i] == 0)) {
-      RAND_bytes(out + i, 1);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out + i, 1));
     }
   }
 }
@@ -124,9 +124,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   OPENSSL_memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
   db[emlen - from_len - mdlen - 1] = 0x01;
   OPENSSL_memcpy(db + emlen - from_len - mdlen, from, from_len);
-  if (!RAND_bytes(seed, mdlen)) {
-    goto out;
-  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(seed, mdlen));
 
   dbmask = OPENSSL_malloc(emlen - mdlen);
   if (dbmask == NULL) {

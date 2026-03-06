@@ -784,10 +784,10 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     ASN1_OBJECT_free(xalg->algorithm);
     xalg->algorithm = OBJ_nid2obj(EVP_CIPHER_nid(evp_cipher));
     if (ivlen > 0) {
-      RAND_bytes(iv, ivlen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, ivlen));
     }
     if (keylen > 0) {
-      RAND_bytes(key, keylen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(key, keylen));
     }
 
     if (EVP_CipherInit_ex(ctx, evp_cipher, NULL, key, iv, /*enc*/ 1) <= 0) {
@@ -1369,7 +1369,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   if (dummy_key == NULL) {
     goto err;
   }
-  RAND_bytes(dummy_key, len);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(dummy_key, len));
   // At this point, null |cek| indicates that no content encryption key was
   // successfully decrypted. We don't want to return early due to MMA. So, swap
   // in the dummy key and proceed. Content decryption result will be gibberish.

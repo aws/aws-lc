@@ -87,8 +87,8 @@ static int ocsp_add_nonce(STACK_OF(X509_EXTENSION) **exts, unsigned char *val,
   ASN1_put_object(&tmpval, 0, len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
   if (val != NULL) {
     OPENSSL_memcpy(tmpval, val, len);
-  } else if (RAND_bytes(tmpval, len) <= 0) {
-    goto err;
+  } else {
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(tmpval, len));
   }
   if (X509V3_add1_i2d(exts, NID_id_pkix_OCSP_Nonce, &os, 0,
                       X509V3_ADD_REPLACE) <= 0) {
