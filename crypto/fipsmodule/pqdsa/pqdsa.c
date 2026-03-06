@@ -48,9 +48,9 @@ int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
   PQDSA_KEY_clear(key);
 
   key->pqdsa = pqdsa;
-  key->public_key = OPENSSL_malloc(pqdsa->public_key_len);
-  key->private_key = OPENSSL_malloc(pqdsa->private_key_len);
-  key->seed = OPENSSL_malloc(pqdsa->keygen_seed_len);
+  key->public_key = OPENSSL_zalloc(pqdsa->public_key_len);
+  key->private_key = OPENSSL_zalloc(pqdsa->private_key_len);
+  key->seed = OPENSSL_zalloc(pqdsa->keygen_seed_len);
   if (key->public_key == NULL || key->private_key == NULL || key->seed == NULL) {
     PQDSA_KEY_clear(key);
     return 0;
@@ -67,6 +67,9 @@ void PQDSA_KEY_free(PQDSA_KEY *key) {
 }
 
 const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key) {
+  if (key == NULL) {
+    return NULL;
+  }
   return key->pqdsa;
 }
 
@@ -153,8 +156,10 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   // Success: transfer ownership to key.
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = public_key;
   key->private_key = private_key;
+  key->seed = NULL;
   public_key = NULL;
   private_key = NULL;
   ret = 1;

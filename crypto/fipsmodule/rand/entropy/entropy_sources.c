@@ -14,22 +14,32 @@ DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_ove
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
 DEFINE_STATIC_MUTEX(global_entropy_source_lock)
 
-static int entropy_get_prediction_resistance(
-  const struct entropy_source_t *entropy_source,
-  uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
+static int entropy_cpu_get_entropy(uint8_t *entropy, size_t entropy_len) {
 #if defined(OPENSSL_X86_64)
-  if (rdrand_multiple8(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
+  if (rdrand_multiple8(entropy, entropy_len) == 1) {
     return 1;
   }
 #elif defined(OPENSSL_AARCH64)
-  if (rndr_multiple8(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
+  if (rndr_multiple8(entropy, entropy_len) == 1) {
     return 1;
   }
 #endif
   return 0;
 }
 
-static int entropy_get_extra_entropy(
+static int entropy_cpu_get_prediction_resistance(
+  const struct entropy_source_t *entropy_source,
+  uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
+  return entropy_cpu_get_entropy(pred_resistance, RAND_PRED_RESISTANCE_LEN);
+}
+
+static int entropy_cpu_get_extra_entropy(
+  const struct entropy_source_t *entropy_source,
+  uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
+  return entropy_cpu_get_entropy(extra_entropy, CTR_DRBG_ENTROPY_LEN);
+}
+
+static int entropy_os_get_extra_entropy(
   const struct entropy_source_t *entropy_source,
   uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
   CRYPTO_sysrand(extra_entropy, CTR_DRBG_ENTROPY_LEN);
@@ -47,10 +57,10 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->zeroize_thread = tree_jitter_zeroize_thread_drbg;
   out->free_thread = tree_jitter_free_thread_drbg;
   out->get_seed = tree_jitter_get_seed;
-  out->get_extra_entropy = entropy_get_extra_entropy;
+  out->get_extra_entropy = entropy_os_get_extra_entropy;
   if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
-    out->get_prediction_resistance = entropy_get_prediction_resistance;
+    out->get_prediction_resistance = entropy_cpu_get_prediction_resistance;
   } else {
     out->get_prediction_resistance = NULL;
   }
@@ -103,7 +113,7 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, opt_out_cpu_jitter_entropy_sour
   out->get_seed = opt_out_cpu_jitter_get_seed_wrap;
   if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
-    out->get_extra_entropy = entropy_get_prediction_resistance;
+    out->get_extra_entropy = entropy_cpu_get_extra_entropy;
   } else {
     // Fall back to seed source because a second source must always be present.
     out->get_extra_entropy = opt_out_cpu_jitter_get_seed_wrap;
