@@ -105,7 +105,7 @@ typedef struct cipher_aes_ccm_ctx {
 #define CCM_INNER_STATE(ccm_ctx) (&ccm_ctx->ccm_state)
 
 // As per RFC3610, the nonce length in bytes is 15 - L.
-#define CCM_L_TO_NONCE_LEN(L) (15 - L)
+#define CCM_L_TO_NONCE_LEN(L) (15 - (L))
 
 static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
                               ctr128_f ctr, unsigned M, unsigned L) {
@@ -665,7 +665,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       cipher_ctx->message_len = 0;
       return 1;
     case EVP_CTRL_GET_IVLEN:
-      *(uint32_t *)ptr = CCM_L_TO_NONCE_LEN(cipher_ctx->L);
+      *(int *)ptr = CCM_L_TO_NONCE_LEN(cipher_ctx->L);
       return 1;
     case EVP_CTRL_AEAD_SET_IVLEN:
       // The nonce (IV) length is 15-L, compute L here and set it below to "set"
