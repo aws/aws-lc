@@ -8,18 +8,22 @@ SSLSerializationVersion ::= INTEGER {v1 (1)}
 
 SSL ::= SEQUENCE {
     serializationVersion SSLSerializationVersion,
-    protocolVersionn INTEGER,
-    maxSendFragement INTEGER,
+    protocolVersion INTEGER,
+    maxSendFragment INTEGER,
     state          SSL3State,
     mode           INTEGER,
     options        INTEGER,
     quietShutdown  [0] INTEGER OPTIONAL,
-    config         [1] SSLConfig OPTIONAL
+    config         [1] SSLConfig OPTIONAL,
+    verifyResult   [2] INTEGER OPTIONAL
 }
 
 SSL3StateSerializationVersion ::= INTEGER {
                    v1 (1),
-                   v2 (2)  -- Added additional fields to support TLS 1.3
+                   v2 (2), -- Added additional fields to support TLS 1.3
+                   v3 (3)  -- Exact-length serialization of variable-length secrets
+                            -- (finished messages, traffic secrets, exporter secret).
+                            -- v1/v2 padded these to their maximum buffer size.
                }
 
 SSL3State ::= SEQUENCE {
@@ -47,7 +51,7 @@ SSL3State ::= SEQUENCE {
     channelIdValid [5] BOOLEAN OPTIONAL,
     channelId      [6] OCTET STRING OPTIONAL,
     sendConnectionBinding [7] BOOLEAN OPTIONAL,
-    -- pending_app_data is a Span in the SS3_STATE that points into read_buffer
+    -- pending_app_data is a Span in the SSL3_STATE that points into read_buffer
     pendingAppData [8] Span OPTIONAL,
     readBuffer     [9] SSLBuffer OPTIONAL,
     -- An artifact of reusing the session ticket serialization, this is a member that is not included so we put it here.
@@ -72,7 +76,8 @@ SSL3State ::= SEQUENCE {
     pendingHsData  [24] OCTET STRING OPTIONAL,
     pendingFlight  [25] OCTET STRING OPTIONAL,
     aeadReadCtx    [26] SSLAEADContext OPTIONAL,
-    aeadWriteCtx   [27] SSLAEADContext OPTIONAL
+    aeadWriteCtx   [27] SSLAEADContext OPTIONAL,
+    keyUpdatePending [28] INTEGER OPTIONAL
     ]],
     ...
 }
@@ -109,14 +114,38 @@ Span ::= SEQUENCE {
     size           INTEGER
 }
 
-SSLBufferSerializationVersion ::= INTEGER {v1 (1)}
+SSLBufferSerializationVersion ::= INTEGER {
+    v1 (1),
+    v2 (2) -- Added alignment-aware buffer layout
+}
 
-SSLBuffer ::= SEQUENCE {
-    serializationVersion SSLBufferSerializationVersion,
+-- The V1 Serialization
+SSLBufferV1 ::= SEQUENCE {
+    serializationVersion SSLBufferSerializationVersion, -- (1)
     bufferAllocated BOOLEAN,
     offset         INTEGER,
     size           INTEGER,
-    capacity       INTEGER
+    capacity       INTEGER,
+    buf            OCTET STRING
+}
+
+-- The V2 Serialization (alignment-aware)
+SSLBufferV2 ::= SEQUENCE {
+    serializationVersion SSLBufferSerializationVersion, -- (2)
+    bufferAllocated BOOLEAN,
+    bufferCapacity INTEGER,
+    headerLength   INTEGER,
+    relativeOffset INTEGER,
+    remainingCapacity INTEGER,
+    buf            OCTET STRING
+}
+
+-- SSLBuffer is serialized as either SSLBufferV1 or SSLBufferV2
+-- depending on the serialization version. The version field
+-- disambiguates which layout to use during deserialization.
+SSLBuffer ::= CHOICE {
+    v1             SSLBufferV1,
+    v2             SSLBufferV2
 }
 
 SSLConfigSerializationVersion ::= INTEGER {
