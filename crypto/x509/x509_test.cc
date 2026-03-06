@@ -5894,6 +5894,9 @@ TEST(X509Test, Print) {
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
   std::string print(reinterpret_cast<const char*>(data), data_len);
+  // Some lines in the X509_print_ex output have trailing whitespace. The raw
+  // string is split and concatenated with " " at those points so that editors
+  // configured to strip trailing whitespace do not break this test.
   static const char expected_certificate_string[] = R"(Certificate:
     Data:
         Version: 3 (0x2)
@@ -5922,13 +5925,13 @@ TEST(X509Test, Print) {
         X509v3 extensions:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
-            X509v3 Extended Key Usage:
+            X509v3 Extended Key Usage:)" " " R"(
                 TLS Web Server Authentication, TLS Web Client Authentication
             X509v3 Basic Constraints: critical
                 CA:FALSE
-            X509v3 Subject Key Identifier:
+            X509v3 Subject Key Identifier:)" " " R"(
                 A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
-            X509v3 Authority Key Identifier:
+            X509v3 Authority Key Identifier:)" " " R"(
                 keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
 
     Signature Algorithm: sha256WithRSAEncryption
