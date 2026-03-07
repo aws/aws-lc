@@ -186,7 +186,7 @@ TEST_F(X509Test, Days) {
 }
 
 // Test -dates
-TEST_F(X509Test, Daest) {
+TEST_F(X509Test, Dates) {
   args_list_t args = {"-in", in_path, "-dates"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);

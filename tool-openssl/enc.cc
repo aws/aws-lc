@@ -43,7 +43,7 @@ static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
 
   int ret = BN_bn2bin_padded(buffer, size, raw);
   BN_free(raw);
-  return ret != -1;
+  return ret != 0;
 }
 
 bool encTool(const args_list_t &args) {
