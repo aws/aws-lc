@@ -564,7 +564,14 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
   // The input to the RSA private transform may be secret, but padding is
   // expected to construct a value within range, so we can leak this comparison.
-  if (constant_time_declassify_int(BN_ucmp(f, rsa->n) >= 0)) {
+  BIGNUM *n_minus_one = BN_CTX_get(ctx);
+  if (n_minus_one == NULL || !BN_copy(n_minus_one, rsa->n) ||
+      !BN_sub_word(n_minus_one, 1)) {
+    goto err;
+  }
+  if (constant_time_declassify_int(BN_ucmp(f, n_minus_one) >= 0) ||
+      constant_time_declassify_int(BN_is_zero(f)) ||
+      constant_time_declassify_int(BN_is_one(f))) {
     // Usually the padding functions would catch this.
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
