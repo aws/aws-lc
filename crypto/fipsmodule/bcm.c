@@ -205,7 +205,7 @@ static void assert_within(const void *start, const void *symbol,
     return;
   }
 
-  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
+  assert(strlen(symbol_name) < MAX_FUNCTION_NAME);
   char message[MAX_WITHIN_MSG_LEN] = {0};
   snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
   AWS_LC_FIPS_failure(message);
@@ -221,8 +221,8 @@ static void assert_not_within(const void *start, const void *symbol,
     return;
   }
 
-  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
-  char message[MAX_WITHIN_MSG_LEN] = {0};
+  assert(strlen(symbol_name) < MAX_FUNCTION_NAME);
+  char message[MAX_OUTSIDE_MSG_LEN] = {0};
   snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
   AWS_LC_FIPS_failure(message);
 }

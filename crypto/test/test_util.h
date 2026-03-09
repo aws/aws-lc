@@ -152,6 +152,10 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
 
+// HexToBIGNUM decodes |hex| as a hexadecimal, big-endian, unsigned integer and
+// returns it as a |BIGNUM|, or nullptr on error.
+bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex);
+
 // ExpectParse does a d2i parse using the corresponding template and function
 // pointer.
 template <typename T>
