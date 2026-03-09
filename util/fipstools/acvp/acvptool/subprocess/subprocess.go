@@ -163,6 +163,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 				"OneStep": &kdaOneStepMode{},
 			},
 		},
+		"KTS-IFC":        &kts{},
 		"TLS-v1.3":       &tls13{},
 		"CMAC-AES":       &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":            &rsa{},
