@@ -18,6 +18,7 @@
 #include <ostream>
 #include <inttypes.h>
 
+#include <openssl/bn.h>
 #include <openssl/err.h>
 
 #include <thread>
@@ -390,4 +391,10 @@ bool addressSanitizerIsEnabled(void) {
 #else
   return false;
 #endif
+}
+
+bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
+  BIGNUM *bn = nullptr;
+  BN_hex2bn(&bn, hex);
+  return bssl::UniquePtr<BIGNUM>(bn);
 }

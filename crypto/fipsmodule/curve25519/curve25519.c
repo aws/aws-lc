@@ -110,6 +110,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
     ED25519_PUBLIC_KEY_LEN);
+
+  OPENSSL_cleanse(az, sizeof(az));
 }
 
 static int ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
@@ -275,6 +277,7 @@ int ed25519_sign_internal(
 
   if (!dom2(alg, dom2_buffer, &dom2_buffer_len, ctx, ctx_len)) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    OPENSSL_cleanse(az, sizeof(az));
     return 0;
   }
 
@@ -303,6 +306,9 @@ int ed25519_sign_internal(
 
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
+
+  OPENSSL_cleanse(az, sizeof(az));
+  OPENSSL_cleanse(r, sizeof(r));
 
   return 1;
 }
