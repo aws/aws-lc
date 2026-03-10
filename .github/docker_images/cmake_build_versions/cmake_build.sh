@@ -15,14 +15,7 @@ NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 # For older versions, we use CMake's bundled curl instead of the system curl.
 CONFIGURE_OPTS="--prefix=/opt/cmake --system-libarchive"
 
-if [[ "${CMAKE_VERSION}" =~ ^[0-3]\. ]]; then
-    # CMake versions 3.x and earlier: use bundled curl to avoid compatibility issues
-    echo "Using bundled curl for CMake ${CMAKE_VERSION}"
-else
-    # CMake 4.0 and later: safe to use system curl
-    echo "Using system curl for CMake ${CMAKE_VERSION}"
-    CONFIGURE_OPTS="${CONFIGURE_OPTS} --system-curl"
-fi
+echo "Using bundled curl for CMake ${CMAKE_VERSION}"
 
 ./configure ${CONFIGURE_OPTS}
 make -j"${NUM_CPU_THREADS}"

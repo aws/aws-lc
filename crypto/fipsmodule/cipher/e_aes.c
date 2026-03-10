@@ -490,6 +490,9 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (gctx->iv_gen == 0 || gctx->key_set == 0 || c->encrypt) {
         return 0;
       }
+      if (arg <= 0 || arg > gctx->ivlen) {
+        return 0;
+      }
       OPENSSL_memcpy(gctx->iv + gctx->ivlen - arg, ptr, arg);
       CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, gctx->iv, gctx->ivlen);
       gctx->iv_set = 1;

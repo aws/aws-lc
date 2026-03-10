@@ -289,14 +289,24 @@ static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
       EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size());
 
   if (result > 0) {
-    BIO_printf(out_bio, "Verified OK\n");
+    if (BIO_printf(out_bio, "Verified OK\n") <= 0) {
+      goto end;
+    }
   } else if (result == 0) {
-    BIO_printf(out_bio, "Verification failure\n");
+    if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
+      goto end;
+    }
   } else {
-    BIO_printf(out_bio, "Error verifying data\n");
+    if (BIO_printf(out_bio, "Error verifying data\n") <= 0) {
+      goto end;
+    }
   }
 
   return true;
+
+end:
+  fprintf(stderr, "Error writing output to %s.\n", in_path.c_str());
+  return false;
 }
 
 static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
@@ -304,27 +314,47 @@ static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
                         const std::string &digest_name,
                         const std::string &in_path, bool out_bin) {
   if (out_bin) {
-    BIO_write(out_bio, data.data(), data.size());
+    if (BIO_write(out_bio, data.data(), data.size()) <= 0) {
+      goto end;
+    }
   } else {
     if (!sig_name.empty()) {
-      BIO_printf(out_bio, "%s-%s", sig_name.c_str(), digest_name.c_str());
+      if (BIO_printf(out_bio, "%s-%s", sig_name.c_str(), digest_name.c_str()) <=
+          0) {
+        goto end;
+      }
     } else {
-      BIO_printf(out_bio, "%s", digest_name.c_str());
+      if (BIO_printf(out_bio, "%s", digest_name.c_str()) <= 0) {
+        goto end;
+      }
     }
 
     if (!in_path.empty()) {
-      BIO_printf(out_bio, "(%s)=", in_path.c_str());
+      if (BIO_printf(out_bio, "(%s)=", in_path.c_str()) <= 0) {
+        goto end;
+      }
     } else {
-      BIO_printf(out_bio, "(stdin)=");
+      if (BIO_printf(out_bio, "(stdin)=") <= 0) {
+        goto end;
+      }
     }
 
     for (size_t i = 0; i < data.size(); i++) {
-      BIO_printf(out_bio, "%02x", data[i]);
+      if (BIO_printf(out_bio, "%02x", data[i]) <= 0) {
+        goto end;
+      }
     }
-    BIO_printf(out_bio, "\n");
+
+    if (BIO_printf(out_bio, "\n") <= 0) {
+      goto end;
+    }
   }
 
   return true;
+
+end:
+  fprintf(stderr, "Error writing output to %s.\n", in_path.c_str());
+  return false;
 }
 
 static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {

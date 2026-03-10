@@ -334,6 +334,7 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
   ret = EVP_DigestInit_ex(&ctx, type, impl) &&
         EVP_DigestUpdate(&ctx, data, count);
   if (ret == 0) {
+    EVP_MD_CTX_cleanup(&ctx);
     return 0;
   }
 
