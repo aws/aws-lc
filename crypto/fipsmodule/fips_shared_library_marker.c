@@ -1,9 +1,5 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // The FIPS build on macOS/iOS/Windows is different than the build on Linux.
 // Apple's and Windows' linkers don't support linker scripts so we have to build

@@ -1,9 +1,5 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // The contents of this file were copied from crypto/crypto.c to this file
 // as part of the change that moves the CPU capability logic inside the FIPS
