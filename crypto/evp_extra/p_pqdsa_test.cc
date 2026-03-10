@@ -2650,9 +2650,6 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
 // matches |expected_mu| if provided. If |has_msg| is false, uses |expected_mu|
 // directly (for internal signing tests with Sign_internal).
 //
-// Always signs using EVP_PKEY_sign with mu. If |msg_ctx| is empty, also
-// performs standard signing with EVP_DigestSign to verify both paths work.
-//
 // It returns one on success and zero on error.
 static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
                                 const std::vector<uint8_t> &pk,
@@ -2682,18 +2679,39 @@ static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
                      mu.size())) {
     return 0;
   }
+  if (sig_len != sig.size()) {
+    return 0;
+  }
 
-  // If no context, also do standard signing
-  if (msg_ctx.empty()) {
-    bssl::ScopedEVP_MD_CTX md_ctx;
-    if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
-      return 0;
-    }
-    size_t digest_sig_len = sig.size();
-    if (!EVP_DigestSign(md_ctx.get(), sig.data(), &digest_sig_len, msg.data(),
-                        msg.size())) {
-      return 0;
-    }
+  return 1;
+}
+
+// DigestSignMLDSA signs |msg| with |pkey| using EVP_DigestSign and verifies
+// the resulting signature with EVP_DigestVerify. This exercises the standard
+// signing path (without context strings).
+//
+// It returns one on success and zero on error.
+static int DigestSignMLDSA(EVP_PKEY *pkey, size_t sig_len,
+                            const std::vector<uint8_t> &msg) {
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
+    return 0;
+  }
+  std::vector<uint8_t> sig(sig_len);
+  size_t actual_sig_len = sig.size();
+  if (!EVP_DigestSign(md_ctx.get(), sig.data(), &actual_sig_len, msg.data(),
+                      msg.size())) {
+    return 0;
+  }
+
+  bssl::ScopedEVP_MD_CTX verify_ctx;
+  if (!EVP_DigestVerifyInit(verify_ctx.get(), nullptr, nullptr, nullptr,
+                            pkey)) {
+    return 0;
+  }
+  if (!EVP_DigestVerify(verify_ctx.get(), sig.data(), actual_sig_len,
+                        msg.data(), msg.size())) {
+    return 0;
   }
   return 1;
 }
@@ -2822,6 +2840,12 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
                                            expected_mu, has_msg);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
+      // Also test the standard EVP_DigestSign path when there is a message and
+      // no context string.
+      if (has_msg && msg_ctx.empty()) {
+        EXPECT_TRUE(DigestSignMLDSA(signing_key, expected_sig.size(), msg))
+            << "EVP_DigestSign round-trip failed for valid test case";
+      }
     } else {
       EXPECT_FALSE(sign_result) << "Signing succeeded for invalid test case";
     }
@@ -2879,6 +2903,13 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
                              msg_ctx, expected_mu, has_msg);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
+      // Also test the standard EVP_DigestSign path when there is a message and
+      // no context string.
+      if (has_msg && msg_ctx.empty()) {
+        EXPECT_TRUE(DigestSignMLDSA(sec_pkey_from_expanded.get(),
+                                     expected_sig.size(), msg))
+            << "EVP_DigestSign round-trip failed for valid test case";
+      }
     } else {
       EXPECT_FALSE(sign_result) << "Signing succeeded for invalid test case";
     }
