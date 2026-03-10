@@ -320,7 +320,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_kem_pkey_meth) {
   out->verify_recover = NULL;
   out->encrypt = NULL;
   out->decrypt = NULL;
-  out->derive = pkey_hkdf_derive;
+  out->derive = NULL;
   out->paramgen = NULL;
   out->ctrl = NULL;
   out->ctrl_str = NULL;

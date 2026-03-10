@@ -16,7 +16,6 @@ package subprocess
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 )
@@ -37,15 +36,15 @@ type kasTestGroup struct {
 type kasTest struct {
 	ID uint64 `json:"tcId"`
 
-	EphemeralXHex          string `json:"ephemeralPublicServerX"`
-	EphemeralYHex          string `json:"ephemeralPublicServerY"`
-	EphemeralPrivateKeyHex string `json:"ephemeralPrivateIut"`
+	EphemeralXHex          hexEncodedByteString `json:"ephemeralPublicServerX"`
+	EphemeralYHex          hexEncodedByteString `json:"ephemeralPublicServerY"`
+	EphemeralPrivateKeyHex hexEncodedByteString `json:"ephemeralPrivateIut"`
 
-	StaticXHex          string `json:"staticPublicServerX"`
-	StaticYHex          string `json:"staticPublicServerY"`
-	StaticPrivateKeyHex string `json:"staticPrivateIut"`
+	StaticXHex          hexEncodedByteString `json:"staticPublicServerX"`
+	StaticYHex          hexEncodedByteString `json:"staticPublicServerY"`
+	StaticPrivateKeyHex hexEncodedByteString `json:"staticPrivateIut"`
 
-	ResultHex string `json:"z"`
+	Result hexEncodedByteString `json:"z"`
 }
 
 type kasTestGroupResponse struct {
@@ -56,14 +55,14 @@ type kasTestGroupResponse struct {
 type kasTestResponse struct {
 	ID uint64 `json:"tcId"`
 
-	EphemeralXHex string `json:"ephemeralPublicIutX,omitempty"`
-	EphemeralYHex string `json:"ephemeralPublicIutY,omitempty"`
+	EphemeralXHex hexEncodedByteString `json:"ephemeralPublicIutX,omitempty"`
+	EphemeralYHex hexEncodedByteString `json:"ephemeralPublicIutY,omitempty"`
 
-	StaticXHex string `json:"staticPublicIutX,omitempty"`
-	StaticYHex string `json:"staticPublicIutY,omitempty"`
+	StaticXHex hexEncodedByteString `json:"staticPublicIutX,omitempty"`
+	StaticYHex hexEncodedByteString `json:"staticPublicIutY,omitempty"`
 
-	ResultHex string `json:"z,omitempty"`
-	Passed    *bool  `json:"testPassed,omitempty"`
+	Result hexEncodedByteString `json:"z,omitempty"`
+	Passed *bool                `json:"testPassed,omitempty"`
 }
 
 type kas struct{}
@@ -94,76 +93,72 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 		switch group.Curve {
 		case "P-224", "P-256", "P-384", "P-521":
-			break
 		default:
 			return nil, fmt.Errorf("unknown curve %q", group.Curve)
 		}
 
 		switch group.Role {
 		case "initiator", "responder":
-			break
 		default:
 			return nil, fmt.Errorf("unknown role %q", group.Role)
 		}
 
-		var useStaticNamedFields bool
+		var useEphemeralPeerKeys bool
+		var useEphemeralPrivateKey bool
 		switch group.Scheme {
 		case "ephemeralUnified":
-			break
+			useEphemeralPeerKeys = true
+			useEphemeralPrivateKey = true
 		case "staticUnified":
-			useStaticNamedFields = true
-			break
+			useEphemeralPeerKeys = false
+			useEphemeralPrivateKey = false
+		case "onePassDh":
+			if group.Role == "initiator" {
+				useEphemeralPeerKeys = false
+				useEphemeralPrivateKey = true
+			} else {
+				useEphemeralPeerKeys = true
+				useEphemeralPrivateKey = false
+			}
 		default:
 			return nil, fmt.Errorf("unknown scheme %q", group.Scheme)
 		}
+
+		generateEphemeralKeys := useEphemeralPrivateKey && group.Role != "staticUnified"
 
 		method := "ECDH/" + group.Curve
 
 		for _, test := range group.Tests {
 			test := test
 
-			var xHex, yHex, privateKeyHex string
-			if useStaticNamedFields {
-				xHex, yHex, privateKeyHex = test.StaticXHex, test.StaticYHex, test.StaticPrivateKeyHex
+			var peerX, peerY, privateKey hexEncodedByteString
+			if useEphemeralPeerKeys {
+				peerX, peerY = test.EphemeralXHex, test.EphemeralYHex
 			} else {
-				xHex, yHex, privateKeyHex = test.EphemeralXHex, test.EphemeralYHex, test.EphemeralPrivateKeyHex
+				peerX, peerY = test.StaticXHex, test.StaticYHex
 			}
 
-			if len(xHex) == 0 || len(yHex) == 0 {
+			if useEphemeralPrivateKey {
+				privateKey = test.EphemeralPrivateKeyHex
+			} else {
+				privateKey = test.StaticPrivateKeyHex
+			}
+
+			if len(peerX) == 0 || len(peerY) == 0 {
 				return nil, fmt.Errorf("%d/%d is missing peer's point", group.ID, test.ID)
 			}
 
-			peerX, err := hex.DecodeString(xHex)
-			if err != nil {
-				return nil, err
-			}
-
-			peerY, err := hex.DecodeString(yHex)
-			if err != nil {
-				return nil, err
-			}
-
-			if (len(privateKeyHex) != 0) != privateKeyGiven {
+			if (len(privateKey) != 0) != privateKeyGiven {
 				return nil, fmt.Errorf("%d/%d incorrect private key presence", group.ID, test.ID)
 			}
 
 			if privateKeyGiven {
-				privateKey, err := hex.DecodeString(privateKeyHex)
-				if err != nil {
-					return nil, err
-				}
-
-				expectedOutput, err := hex.DecodeString(test.ResultHex)
-				if err != nil {
-					return nil, err
-				}
-
 				result, err := m.Transact(method, 3, peerX, peerY, privateKey)
 				if err != nil {
 					return nil, err
 				}
 
-				ok := bytes.Equal(result[2], expectedOutput)
+				ok := bytes.Equal(result[2], test.Result)
 				response.Tests = append(response.Tests, kasTestResponse{
 					ID:     test.ID,
 					Passed: &ok,
@@ -175,16 +170,16 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				}
 
 				testResponse := kasTestResponse{
-					ID:        test.ID,
-					ResultHex: hex.EncodeToString(result[2]),
+					ID:     test.ID,
+					Result: result[2],
 				}
 
-				if useStaticNamedFields {
-					testResponse.StaticXHex = hex.EncodeToString(result[0])
-					testResponse.StaticYHex = hex.EncodeToString(result[1])
+				if generateEphemeralKeys {
+					testResponse.EphemeralXHex = result[0]
+					testResponse.EphemeralYHex = result[1]
 				} else {
-					testResponse.EphemeralXHex = hex.EncodeToString(result[0])
-					testResponse.EphemeralYHex = hex.EncodeToString(result[1])
+					testResponse.StaticXHex = result[0]
+					testResponse.StaticYHex = result[1]
 				}
 
 				response.Tests = append(response.Tests, testResponse)

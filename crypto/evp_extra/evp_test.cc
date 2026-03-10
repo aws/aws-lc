@@ -61,6 +61,7 @@
 #include <string.h>
 
 #include "../fipsmodule/evp/internal.h"
+#include "internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -1007,6 +1008,22 @@ static void RunWycheproofDecryptTest(
     // BoringSSL does not enforce policies on weak keys and leaves it to the
     // caller.
     bool is_valid = result.IsValid({"SmallModulus"});
+
+    // AWS-LC enforces FIPS 800-56B Rev. 2 §7.1.2.1 which requires 1 < c < (n-1).
+    // But Wycheproof mistakenly marks some vectors with c values outside this range as valid.
+    if (is_valid) {
+      const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+      const BIGNUM *n = RSA_get0_n(rsa);
+      bssl::UniquePtr<BIGNUM> c(BN_bin2bn(ct.data(), ct.size(), nullptr));
+      bssl::UniquePtr<BIGNUM> n_minus_one(BN_dup(n));
+      ASSERT_TRUE(c && n_minus_one);
+      ASSERT_TRUE(BN_sub_word(n_minus_one.get(), 1));
+      if (BN_is_zero(c.get()) || BN_is_one(c.get()) ||
+          BN_cmp(c.get(), n_minus_one.get()) >= 0) {
+        is_valid = false;
+      }
+    }
+
     EXPECT_EQ(ret, is_valid ? 1 : 0);
     if (is_valid) {
       out.resize(len);
@@ -1858,6 +1875,16 @@ TEST(EVPTest, ED25519PH) {
   // pure signature shouldn't match a pre-hash signature w/o context
   ASSERT_NE(Bytes(signature, signature_len),
             Bytes(working_signature, working_signature_len));
+}
+
+TEST(EVPTest, ASN1MethodCheckPemStrLengthInvariant) {
+  for (int i = 0; i < EVP_PKEY_asn1_get_count(); i++) {
+    SCOPED_TRACE(i);
+    const EVP_PKEY_ASN1_METHOD *method = EVP_PKEY_asn1_get0(i);
+    ASSERT_NE(method, nullptr);
+    ASSERT_NE(method->pem_str, nullptr);
+    EXPECT_LE(OPENSSL_strnlen(method->pem_str, strlen(method->pem_str)+1), MAX_PEM_STR_LEN);
+  }
 }
 
 TEST(EVPTest, Ed25519phTestVectors) {

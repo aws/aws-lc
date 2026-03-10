@@ -87,7 +87,8 @@
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_PNACL
-#elif defined(__wasm__) // Allowed but no macro defined
+#elif defined(__wasm__)
+#define OPENSSL_WASM
 #elif defined(__asmjs__) // Allowed but no macro defined
 #elif defined(__myriad2__) // Allowed but no macro defined
 #else
