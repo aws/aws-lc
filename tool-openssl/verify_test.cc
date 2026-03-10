@@ -47,28 +47,28 @@ class VerifyTest : public ::testing::Test {
 // -----------------------------
 
 // Test -CAfile with self-signed certificate
-TEST_F(VerifyTest, VerifyTestSelfSignedCertWithCAfileTest) {
+TEST_F(VerifyTest, SelfSignedCertWithCAfileTest) {
   args_list_t args = {"-CAfile", ca_path, in_path};
   bool result = VerifyTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test certificate without -CAfile
-TEST_F(VerifyTest, VerifyTestSelfSignedCertWithoutCAfile) {
+TEST_F(VerifyTest, SelfSignedCertWithoutCAfile) {
   args_list_t args = {in_path};
   bool result = VerifyTool(args);
   ASSERT_FALSE(result);
 }
 
 // Test certificate with -untrusted
-TEST_F(VerifyTest, VerifyTestSelfSignedCertWithUntrustedChain) {
+TEST_F(VerifyTest, SelfSignedCertWithUntrustedChain) {
   args_list_t args = {"-untrusted", chain_path, in_path};
   bool result = VerifyTool(args);
   ASSERT_FALSE(result);
 }
 
 // Test certificate with -untrusted and -CAfile
-TEST_F(VerifyTest, VerifyTestSelfSignedCertWithCAFileAndUntrustedChain) {
+TEST_F(VerifyTest, SelfSignedCertWithCAFileAndUntrustedChain) {
   args_list_t args = {"-CAfile", ca_path, "-untrusted", chain_path, in_path};
   bool result = VerifyTool(args);
   ASSERT_TRUE(result);
@@ -130,7 +130,7 @@ class VerifyComparisonTest : public ::testing::Test {
 
 // Test against OpenSSL with -CAfile & self-signed cert fed in as a file
 // "openssl verify -CAfile cert.pem cert.pem"
-TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedComparison) {
+TEST_F(VerifyComparisonTest, CAFileSelfSigned) {
   std::string tool_command = std::string(tool_executable_path) +
                              " verify -CAfile " + ca_path + " " + in_path +
                              " &> " + out_path_tool;
@@ -147,7 +147,7 @@ TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedComparison) {
 
 // Test against OpenSSL with -CAfile & 2 self-signed cert fed in as files
 // "openssl verify -CAfile cert.pem cert.pem cert.pem"
-TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileMultipleFilesComparison) {
+TEST_F(VerifyComparisonTest, CAFileMultipleFiles) {
   std::string tool_command = std::string(tool_executable_path) +
                              " verify -CAfile " + ca_path + " " + in_path +
                              " " + in_path + " &> " + out_path_tool;
@@ -164,7 +164,7 @@ TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileMultipleFilesComparison) {
 
 // Test against OpenSSL with -CAfile & self-signed cert fed through stdin
 // "cat cert.pem | openssl verify -CAfile cert.pem"
-TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedStdinComparison) {
+TEST_F(VerifyComparisonTest, CAFileSelfSignedStdin) {
   std::string tool_command = "cat " + std::string(ca_path) + " | " +
                              std::string(tool_executable_path) +
                              " verify -CAfile " + ca_path + " &> " +

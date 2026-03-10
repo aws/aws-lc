@@ -91,6 +91,13 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
   return true;
 }
 
+static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
+  BIGNUM *raw = NULL;
+  int ret = BN_hex2bn(&raw, in);
+  out->reset(raw);
+  return ret;
+}
+
 static int AdaptKeyIDExtension(X509 *cert, X509V3_CTX *ext_ctx,
                                const char *name, const char *value,
                                int add_if_missing) {
@@ -134,24 +141,22 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
     file.reset(fopen(serial_file_path.c_str(), "r"));  // Check if file exists
   }
 
-  BIGNUM *bn = NULL;
+  bssl::UniquePtr<BIGNUM> bn;
 
   // 1. If no CA provided or serial file not found, generate a random serial
   // number
   // 2. Otherwise, read serial number from serial file
   if (ca_file_path.empty() || !file) {
-    bn = BN_new();
+    bn.reset(BN_new());
 
-    /*
-     * Randomly generate a serial number
-     *
-     * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
-     * so that the first bit will never be one, so that the DER encoding
-     * rules won't force a leading octet.
-     */
+    // Randomly generate a serial number
+    //
+    // IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+    // so that the first bit will never be one, so that the DER encoding
+    // rules won't force a leading octet.
     constexpr int SERIAL_RAND_BITS = 159;
-    if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
-      BN_free(bn);
+    if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
+                 BN_RAND_BOTTOM_ANY)) {
       fprintf(stderr, "Error: Failed to generate random serial number\n");
       return false;
     }
@@ -167,30 +172,26 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
       len--;
     }
 
-#if defined(_WIN32)
+#if defined(OPENSSL_WINDOWS)
     if (len > 0 && buf[len - 1] == '\r') {
       buf[len - 1] = '\0';
       len--;
     }
 #endif
 
-    bn = BN_new();
-
-    if (!BN_hex2bn(&bn, buf)) {
-      BN_free(bn);
+    if (!HexToBIGNUM(&bn, buf)) {
       return false;
     }
   }
 
-  if (!BN_add_word(bn, 1)) {
-    BN_free(bn);
+  // Increment to get a new serial number
+  if (!BN_add_word(bn.get(), 1)) {
     fprintf(stderr, "Error: Failed to increment serial number\n");
     return false;
   }
 
   // Convert serial number to ASN1_INTEGER and assign it to cert
-  if (!BN_to_ASN1_INTEGER(bn, serial)) {
-    BN_free(bn);
+  if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
     fprintf(stderr, "Error: Failed to convert serial number to ASN1_INTEGER\n");
     return false;
   }
@@ -204,11 +205,10 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
       return false;
     }
 
-    bssl::UniquePtr<char> hex_str(BN_bn2hex(bn));
+    bssl::UniquePtr<char> hex_str(BN_bn2hex(bn.get()));
     fprintf(file.get(), "%s\n", hex_str.get());
   }
 
-  BN_free(bn);
   return true;
 }
 
