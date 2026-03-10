@@ -33,14 +33,14 @@ class EncTest : public ::testing::Test {
 // -------------------- Enc Basic Functionality Tests -------------------------
 
 // Test help option
-TEST_F(EncTest, EncToolHelpTest) {
+TEST_F(EncTest, Help) {
   args_list_t args = {"-help"};
   bool result = encTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test basic encryption with AES-128-CBC
-TEST_F(EncTest, EncToolBasicEncryptionTest) {
+TEST_F(EncTest, BasicEncryption) {
   args_list_t args = {"-e",   "-aes-128-cbc",
                       "-K",   "0123456789abcdef0123456789abcdef",
                       "-iv",  "0123456789abcdef0123456789abcdef",
@@ -56,7 +56,7 @@ TEST_F(EncTest, EncToolBasicEncryptionTest) {
 }
 
 // Test basic decryption with AES-128-CBC
-TEST_F(EncTest, EncToolBasicDecryptionTest) {
+TEST_F(EncTest, BasicDecryption) {
   // First encrypt
   args_list_t encrypt_args = {"-e",   "-aes-128-cbc",
                               "-K",   "0123456789abcdef0123456789abcdef",
@@ -88,7 +88,7 @@ TEST_F(EncTest, EncToolBasicDecryptionTest) {
 }
 
 // Test decryption with explicit -d flag
-TEST_F(EncTest, EncToolExplicitDecryptionTest) {
+TEST_F(EncTest, ExplicitDecryption) {
   // First encrypt
   args_list_t encrypt_args = {"-e",   "-aes-128-cbc",
                               "-K",   "0123456789abcdef0123456789abcdef",
@@ -115,7 +115,7 @@ TEST_F(EncTest, EncToolExplicitDecryptionTest) {
 }
 
 // Test decryption with default cipher
-TEST_F(EncTest, EncToolDecryptionDefaultCipherTest) {
+TEST_F(EncTest, DecryptionDefaultCipher) {
   // First encrypt with default cipher
   args_list_t encrypt_args = {"-e",
                               "-K",
@@ -150,7 +150,7 @@ TEST_F(EncTest, EncToolDecryptionDefaultCipherTest) {
 }
 
 // Test default cipher (should be aes-128-cbc)
-TEST_F(EncTest, EncToolDefaultCipherTest) {
+TEST_F(EncTest, DefaultCipher) {
   args_list_t args = {"-e",
                       "-K",
                       "0123456789abcdef0123456789abcdef",
@@ -165,7 +165,7 @@ TEST_F(EncTest, EncToolDefaultCipherTest) {
 }
 
 // Test encryption without -e flag (should default to encrypt)
-TEST_F(EncTest, EncToolDefaultEncryptTest) {
+TEST_F(EncTest, DefaultEncrypt) {
   args_list_t args = {"-aes-128-cbc",
                       "-K",
                       "0123456789abcdef0123456789abcdef",
@@ -194,7 +194,7 @@ class EncOptionUsageErrorsTest : public EncTest {
 };
 
 // Test missing required key
-TEST_F(EncOptionUsageErrorsTest, MissingKeyTest) {
+TEST_F(EncOptionUsageErrorsTest, MissingKey) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-aes-128-cbc", "-iv", "0123456789abcdef0123456789abcdef", "-in",
        in_path},
@@ -208,7 +208,7 @@ TEST_F(EncOptionUsageErrorsTest, MissingKeyTest) {
 }
 
 // Test mutually exclusive -e and -d options
-TEST_F(EncOptionUsageErrorsTest, MutuallyExclusiveOptionsTest) {
+TEST_F(EncOptionUsageErrorsTest, MutuallyExclusiveOptions) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-d", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef",
        "-iv", "0123456789abcdef0123456789abcdef", "-in", in_path}};
@@ -218,7 +218,7 @@ TEST_F(EncOptionUsageErrorsTest, MutuallyExclusiveOptionsTest) {
 }
 
 // Test invalid hex key
-TEST_F(EncOptionUsageErrorsTest, InvalidHexKeyTest) {
+TEST_F(EncOptionUsageErrorsTest, InvalidHexKey) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-aes-128-cbc", "-K", "invalidhexkey", "-iv",
        "0123456789abcdef0123456789abcdef", "-in", in_path},
@@ -230,7 +230,7 @@ TEST_F(EncOptionUsageErrorsTest, InvalidHexKeyTest) {
 }
 
 // Test invalid hex IV
-TEST_F(EncOptionUsageErrorsTest, InvalidHexIVTest) {
+TEST_F(EncOptionUsageErrorsTest, InvalidHexIV) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
        "invalidhexiv", "-in", in_path},
@@ -242,7 +242,7 @@ TEST_F(EncOptionUsageErrorsTest, InvalidHexIVTest) {
 }
 
 // Test hex string size mismatch for key and IV
-TEST_F(EncOptionUsageErrorsTest, HexStringSizeMismatchTest) {
+TEST_F(EncOptionUsageErrorsTest, HexStringSizeMismatch) {
   std::vector<std::vector<std::string>> testparams = {
       // Key too short (AES-128 needs 32 hex chars, providing 30)
       {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcd", "-iv",
@@ -262,7 +262,7 @@ TEST_F(EncOptionUsageErrorsTest, HexStringSizeMismatchTest) {
 }
 
 // Test missing IV for cipher that requires it
-TEST_F(EncOptionUsageErrorsTest, MissingIVTest) {
+TEST_F(EncOptionUsageErrorsTest, MissingIV) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-in",
        in_path}};
@@ -272,7 +272,7 @@ TEST_F(EncOptionUsageErrorsTest, MissingIVTest) {
 }
 
 // Test invalid input file
-TEST_F(EncOptionUsageErrorsTest, InvalidInputFileTest) {
+TEST_F(EncOptionUsageErrorsTest, InvalidInputFile) {
   std::vector<std::vector<std::string>> testparams = {
       {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
        "0123456789abcdef0123456789abcdef", "-in", "/nonexistent/file.txt"}};
@@ -325,7 +325,7 @@ class EncComparisonTest : public ::testing::Test {
 };
 
 // Test encryption comparison with OpenSSL
-TEST_F(EncComparisonTest, EncryptionComparisonTest) {
+TEST_F(EncComparisonTest, EncryptionComparison) {
   std::string key = "0123456789abcdef0123456789abcdef";
   std::string iv = "0123456789abcdef0123456789abcdef";
 
@@ -346,7 +346,7 @@ TEST_F(EncComparisonTest, EncryptionComparisonTest) {
 }
 
 // Test decryption comparison with OpenSSL
-TEST_F(EncComparisonTest, DecryptionComparisonTest) {
+TEST_F(EncComparisonTest, DecryptionComparison) {
   std::string key = "0123456789abcdef0123456789abcdef";
   std::string iv = "0123456789abcdef0123456789abcdef";
 
