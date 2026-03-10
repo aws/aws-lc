@@ -82,11 +82,16 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   dctx = dst->data;
   dctx->md = sctx->md;
   if(sctx->ktmp.key != NULL && !HMAC_KEY_copy(&dctx->ktmp, &sctx->ktmp)) {
+    HMAC_CTX_cleanup(&dctx->ctx);
     OPENSSL_free(dctx);
+    dst->data = NULL;
     return 0;
   }
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
+    HMAC_CTX_cleanup(&dctx->ctx);
+    OPENSSL_free(dctx->ktmp.key);
     OPENSSL_free(dctx);
+    dst->data = NULL;
     return 0;
   }
   return 1;
@@ -94,8 +99,13 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 
 static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx = ctx->data;
+  if (hctx == NULL) {
+    return;
+  }
+  HMAC_CTX_cleanup(&hctx->ctx);
   OPENSSL_free(hctx->ktmp.key);
   OPENSSL_free(hctx);
+  ctx->data = NULL;
 }
 
 static int hmac_ctrl(EVP_PKEY_CTX *ctx, int cmd, int p1, void *p2) {
