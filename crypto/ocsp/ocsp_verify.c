@@ -35,7 +35,7 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     cert = sk_X509_value(certs, i);
     if (X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
-      if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
+      if (OPENSSL_memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
         return cert;
       }
     }
@@ -232,11 +232,11 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
         return 0;
       }
     }
-    if (memcmp(md, cid->issuerNameHash->data, mdlen) != 0) {
+    if (OPENSSL_memcmp(md, cid->issuerNameHash->data, mdlen) != 0) {
       return 0;
     }
-    if (0 <= X509_pubkey_digest(cert, dgst, md, NULL)) {
-      if (memcmp(md, cid->issuerKeyHash->data, mdlen) != 0) {
+    if (1 != X509_pubkey_digest(cert, dgst, md, NULL)) {
+      if (OPENSSL_memcmp(md, cid->issuerKeyHash->data, mdlen) != 0) {
         return 0;
       }
     }
