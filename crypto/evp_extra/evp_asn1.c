@@ -527,7 +527,6 @@ EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out, const uint8_t **inp,
       EVP_PKEY_free(ret);
       ret = NULL;
       ERR_clear_error();
-      CBS_init(&cbs, *inp, (size_t)len);
       ret = EVP_parse_public_key(&cbs);
       if (ret == NULL) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);

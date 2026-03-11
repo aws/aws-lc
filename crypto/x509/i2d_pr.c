@@ -75,12 +75,14 @@ int i2d_PrivateKey(const EVP_PKEY *a, uint8_t **pp) {
       return i2d_DSAPrivateKey(EVP_PKEY_get0_DSA(a), pp);
     default: {
       // Fall back to PKCS#8 for key types without legacy formats (e.g.
-      // Ed25519).
+      // Ed25519). Initial capacity of 128 should hold most asymmetric keys.
       CBB cbb;
       if (!CBB_init(&cbb, 128) ||
           !EVP_marshal_private_key(&cbb, a)) {
         CBB_cleanup(&cbb);
-        OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+        // Although this file is in crypto/x509 for layering reasons, it emits
+        // an error code from ASN1 for OpenSSL compatibility.
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
         return -1;
       }
       return CBB_finish_i2d(&cbb, pp);
