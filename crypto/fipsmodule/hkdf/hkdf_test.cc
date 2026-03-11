@@ -397,23 +397,31 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/hkdf_sha1_test.txt`.
 TEST(HKDFTest, WycheproofSHA1) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha1_test.txt",
+  RunWycheproofTest("third_party/vectors/converted/wycheproof/testvectors_v1/hkdf_sha1_test.txt",
                     EVP_sha1());
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/hkdf_sha256_test.txt`.
 TEST(HKDFTest, WycheproofSHA256) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha256_test.txt",
+  RunWycheproofTest("third_party/vectors/converted/wycheproof/testvectors_v1/hkdf_sha256_test.txt",
                     EVP_sha256());
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/hkdf_sha384_test.txt`.
 TEST(HKDFTest, WycheproofSHA384) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha384_test.txt",
+  RunWycheproofTest("third_party/vectors/converted/wycheproof/testvectors_v1/hkdf_sha384_test.txt",
                     EVP_sha384());
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/hkdf_sha512_test.txt`.
 TEST(HKDFTest, WycheproofSHA512) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha512_test.txt",
+  RunWycheproofTest("third_party/vectors/converted/wycheproof/testvectors_v1/hkdf_sha512_test.txt",
                     EVP_sha512());
 }
 

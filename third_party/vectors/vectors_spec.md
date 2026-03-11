@@ -4,7 +4,14 @@
 
 ## wycheproof
 
+AWS-LC MUST test against `testvectors_v1/aes_cbc_pkcs5_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_ccm_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_cmac_test.txt`.
 AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_gcm_siv_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_kwp_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_wrap_test.txt`.
+AWS-LC MUST test against `testvectors_v1/chacha20_poly1305_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha224_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_256_sha256_test.txt`.
@@ -20,6 +27,21 @@ AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hkdf_sha1_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hkdf_sha256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hkdf_sha384_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hkdf_sha512_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha1_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha224_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha384_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha3_224_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha3_256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha3_384_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha3_512_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha512_224_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha512_256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/hmac_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
@@ -58,4 +80,5 @@ AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
+AWS-LC MUST test against `testvectors_v1/xchacha20_poly1305_test.txt`.
 

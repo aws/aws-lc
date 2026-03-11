@@ -85,6 +85,11 @@ def update_sources(
             if upstream_file.exists():
                 raise SyncError(f"file already exists in upstream: {upstream_file}")
 
+            # Copy the new file to upstream
+            upstream_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(local_file, upstream_file)
+            utils.info(f"added new file: {source_name}/{relative_path}")
+
     # Update existing files from all sources
     missing_files = []
     outdated_files = []

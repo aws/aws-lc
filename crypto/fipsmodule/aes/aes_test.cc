@@ -237,8 +237,10 @@ TEST(AESTest, TestVectors) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_wrap_test.txt`.
 TEST(AESTest, WycheproofKeyWrap) {
-  FileTestGTest("third_party/wycheproof_testvectors/kw_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_wrap_test.txt",
                 [](FileTest *t) {
     std::string key_size;
     ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
@@ -275,8 +277,10 @@ TEST(AESTest, WycheproofKeyWrap) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_wrap_test.txt`.
 TEST(AESTest, WycheproofEVPKeyWrap) {
-  FileTestGTest("third_party/wycheproof_testvectors/kw_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_wrap_test.txt",
                 [](FileTest *t) {
     std::string key_size;
     ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
@@ -342,8 +346,10 @@ TEST(AESTest, WycheproofEVPKeyWrap) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_kwp_test.txt`.
 TEST(AESTest, WycheproofKeyWrapWithPadding) {
-  FileTestGTest("third_party/wycheproof_testvectors/kwp_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_kwp_test.txt",
                 [](FileTest *t) {
     std::string key_size;
     ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));

@@ -65,8 +65,7 @@ jobs:
         run: |
           gh issue create \
           --title "Update third-party test vectors" \
-          --template "update-vectors" \
-          --body "Automated check detected that some third-party test vectors need to be updated."
+          --template "update-vectors"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
