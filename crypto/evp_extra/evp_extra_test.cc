@@ -1934,6 +1934,7 @@ TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
   uint8_t *der_buf = nullptr;
   int der_len = i2d_PrivateKey(pkey.get(), &der_buf);
   ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_buf_free(der_buf);
   EXPECT_EQ(Bytes(kPrivateKeyPKCS8), Bytes(der_buf, der_len));
 
   // d2i_PrivateKey should parse Ed25519 PKCS#8.
@@ -1999,6 +2000,7 @@ TEST(EVPExtraTest, Ed25519i2dPublicKey) {
   uint8_t *der_buf = nullptr;
   int der_len = i2d_PublicKey(pkey.get(), &der_buf);
   ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_buf_free(der_buf);
   EXPECT_EQ(Bytes(kPublicKeySPKI), Bytes(der_buf, der_len));
 
   // d2i_PublicKey should parse Ed25519 SPKI.
