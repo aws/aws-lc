@@ -2016,11 +2016,35 @@ TEST(EVPExtraTest, Ed25519i2dPublicKey) {
   EXPECT_EQ(Bytes(original_raw, original_len),
             Bytes(decoded_raw, decoded_len));
 
-  // d2i_PublicKey with the wrong type should fail.
+  // d2i_PublicKey with a mismatched non-legacy type should fail with
+  // EVP_R_DIFFERENT_KEY_TYPES. Use EVP_PKEY_EC (which hits the default/SPKI
+  // fallback) with Ed25519 SPKI data.
   inp = kPublicKeySPKI;
   bssl::UniquePtr<EVP_PKEY> wrong_type(
-      d2i_PublicKey(EVP_PKEY_RSA, nullptr, &inp, sizeof(kPublicKeySPKI)));
+      d2i_PublicKey(EVP_PKEY_EC, nullptr, &inp, sizeof(kPublicKeySPKI)));
   EXPECT_FALSE(wrong_type);
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_DIFFERENT_KEY_TYPES));
+  ERR_clear_error();
+
+  // d2i_PublicKey with invalid DER for a non-legacy type should fail with
+  // EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE.
+  static const uint8_t kGarbage[] = {0x00, 0x01, 0x02, 0x03};
+  inp = kGarbage;
+  bssl::UniquePtr<EVP_PKEY> bad_parse(
+      d2i_PublicKey(EVP_PKEY_ED25519, nullptr, &inp, sizeof(kGarbage)));
+  EXPECT_FALSE(bad_parse);
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE));
+  ERR_clear_error();
+
+  // i2d_PublicKey with a key that has no public encoding should fail with
+  // EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE.
+  bssl::UniquePtr<EVP_PKEY> empty_key(EVP_PKEY_new());
+  ASSERT_TRUE(empty_key);
+  EXPECT_EQ(-1, i2d_PublicKey(empty_key.get(), nullptr));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE));
   ERR_clear_error();
 }
 
