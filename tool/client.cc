@@ -321,6 +321,94 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
   print_verify_details(ssl);
 }
 
+static const char *MsgVersionStr(int version) {
+  switch (version) {
+    case TLS1_3_VERSION:
+      return "TLS 1.3";
+    case TLS1_2_VERSION:
+      return "TLS 1.2";
+    case TLS1_1_VERSION:
+      return "TLS 1.1";
+    case TLS1_VERSION:
+      return "TLS 1.0";
+    case SSL3_VERSION:
+      return "SSL 3.0";
+    default:
+      return "Unknown";
+  }
+}
+
+static const char *MsgContentTypeStr(int content_type) {
+  switch (content_type) {
+    case SSL3_RT_HEADER:
+      return "RecordHeader";
+    case SSL3_RT_HANDSHAKE:
+      return "Handshake";
+    case SSL3_RT_CHANGE_CIPHER_SPEC:
+      return "ChangeCipherSpec";
+    case SSL3_RT_ALERT:
+      return "Alert";
+    case SSL3_RT_APPLICATION_DATA:
+      return "ApplicationData";
+    default:
+      return "Unknown";
+  }
+}
+
+static const char *MsgHandshakeTypeStr(uint8_t type) {
+  switch (type) {
+    case SSL3_MT_CLIENT_HELLO:
+      return "ClientHello";
+    case SSL3_MT_SERVER_HELLO:
+      return "ServerHello";
+    case SSL3_MT_CERTIFICATE:
+      return "Certificate";
+    case SSL3_MT_CERTIFICATE_REQUEST:
+      return "CertificateRequest";
+    case SSL3_MT_CERTIFICATE_VERIFY:
+      return "CertificateVerify";
+    case SSL3_MT_FINISHED:
+      return "Finished";
+    case SSL3_MT_ENCRYPTED_EXTENSIONS:
+      return "EncryptedExtensions";
+    case SSL3_MT_NEW_SESSION_TICKET:
+      return "NewSessionTicket";
+    default:
+      return nullptr;
+  }
+}
+
+static const char *MsgAdditionalContextStr(int content_type, const void *buf,
+                                           size_t len) {
+  if (len == 0) {
+    return nullptr;
+  }
+  switch (content_type) {
+    case SSL3_RT_HANDSHAKE:
+      return MsgHandshakeTypeStr(reinterpret_cast<const uint8_t *>(buf)[0]);
+    default:
+      return nullptr;
+  }
+}
+
+static void MsgCallback(int is_write, int version, int content_type,
+                        const void *buf, size_t len, SSL *ssl, void *arg) {
+  const char *extra = MsgAdditionalContextStr(content_type, buf, len);
+  if (extra) {
+    fprintf(stderr, "%s %s, %s [length %04x], %s\n",
+            is_write ? ">>>" : "<<<",
+            MsgVersionStr(version ? version : TLS1_2_VERSION),
+            MsgContentTypeStr(content_type),
+            (unsigned)len, extra);
+  } else {
+    fprintf(stderr, "%s %s, %s [length %04x]\n",
+            is_write ? ">>>" : "<<<",
+            MsgVersionStr(version ? version : TLS1_2_VERSION),
+            MsgContentTypeStr(content_type),
+            (unsigned)len);
+  }
+}
+
 static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
                          bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
@@ -359,6 +447,10 @@ static bool DoConnection(SSL_CTX *ctx,
   // BIO takes ownership of |sock| from this point forward.
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
+
+  if (is_openssl_s_client && args_map.count("-msg") != 0) {
+    SSL_set_msg_callback(ssl.get(), MsgCallback);
+  }
 
   if (args_map.count("-server-name") != 0) {
     if (!SSL_set_tlsext_host_name(ssl.get(),
