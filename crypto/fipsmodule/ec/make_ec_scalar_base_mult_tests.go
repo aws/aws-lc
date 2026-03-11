@@ -1,16 +1,5 @@
 // Copyright (c) 2018, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// SPDX-License-Identifier: ISC
 
 //go:build ignore
 
@@ -20,9 +9,9 @@ import (
 	"crypto/elliptic"
 	"fmt"
 	"math/big"
-)
 
-import "github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
 
 const numPoints = 64
 
@@ -50,10 +39,10 @@ func printMultiples(name string, curve elliptic.Curve) {
 	}
 }
 
-
 // secp256k1 curve is not available in the elliptic/crypto module
 // so we use the implementation from:
-//   github.com/ethereum/go-ethereum/tree/master/crypto/secp256k1
+//
+//	github.com/ethereum/go-ethereum/tree/master/crypto/secp256k1
 func printMultiplesSECP256K1() {
 	curve := secp256k1.S256()
 	n := new(big.Int)
@@ -71,11 +60,11 @@ func printMultiplesSECP256K1() {
 		// returns (nil, nil) when the scalar is 0 so we have to handle
 		// that case separately.
 		if i == 0 && x == nil && y == nil {
-				printPadded("X", new(big.Int).SetInt64(0), curve.Params().P)
-				printPadded("Y", new(big.Int).SetInt64(0), curve.Params().P)
+			printPadded("X", new(big.Int).SetInt64(0), curve.Params().P)
+			printPadded("Y", new(big.Int).SetInt64(0), curve.Params().P)
 		} else {
-				printPadded("X", x, curve.Params().P)
-				printPadded("Y", y, curve.Params().P)
+			printPadded("X", x, curve.Params().P)
+			printPadded("Y", y, curve.Params().P)
 		}
 		fmt.Printf("\n")
 	}
