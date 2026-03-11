@@ -1385,12 +1385,6 @@ TEST(ECTest, EmptyKey) {
   EXPECT_FALSE(EC_KEY_get0_private_key(key.get()));
 }
 
-static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
-  BIGNUM *bn = nullptr;
-  BN_hex2bn(&bn, hex);
-  return bssl::UniquePtr<BIGNUM>(bn);
-}
-
 // Test that point arithmetic works with custom curves using an arbitrary |a|,
 // rather than -3, as is common (and more efficient).
 TEST(ECTest, BrainpoolP256r1) {

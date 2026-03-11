@@ -65,5 +65,6 @@ OPENSSL_EXPORT int HKDF_expand(uint8_t *out_key, size_t out_len,
 #endif
 
 #define HKDF_R_OUTPUT_TOO_LARGE 100
+#define HKDF_R_UNSUPPORTED_DIGEST 101
 
 #endif  // OPENSSL_HEADER_HKDF_H

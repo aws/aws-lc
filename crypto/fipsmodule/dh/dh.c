@@ -448,7 +448,7 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   *out_len = SIZE_MAX;
 
   const size_t digest_len = EVP_MD_size(digest);
-  if (digest_len == 0 || digest_len > max_out_len
+  if ((EVP_MD_flags(digest) & EVP_MD_FLAG_XOF) || digest_len > max_out_len
 #if SIZE_MAX > UINT_MAX
       || digest_len > UINT_MAX
 #endif

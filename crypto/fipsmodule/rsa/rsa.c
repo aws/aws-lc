@@ -90,6 +90,10 @@ static int bn_dup_into(BIGNUM **dst, const BIGNUM *src) {
     return 0;
   }
 
+  if (*dst == src) {
+    return 1;
+  }
+
   BN_free(*dst);
   *dst = BN_dup(src);
   return *dst != NULL;
@@ -1437,6 +1441,7 @@ static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
 
   EVP_PKEY *evp_pkey = NULL;
   EVP_MD_CTX md_ctx;
+  EVP_MD_CTX_init(&md_ctx);
   const EVP_MD *md = EVP_sha256();
 
   evp_pkey = EVP_PKEY_new();
@@ -1445,8 +1450,7 @@ static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
     goto end;
   }
 
-  // Initialize the context and grab the expected signature length.
-  EVP_MD_CTX_init(&md_ctx);
+  // Grab the expected signature length.
   if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, evp_pkey) ||
       !EVP_DigestSign(&md_ctx, NULL, &sig_len, msg, msg_len)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
@@ -1534,7 +1538,6 @@ int RSA_check_fips(RSA *key) {
   BN_init(&small_gcd);
 
   int ret = 0;
-  uint8_t *sig = NULL; // used later in the pair-wise consistency test.
 
   // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
   // Although this is not for primality testing, SP 800-89 cites an RSA
@@ -1588,7 +1591,6 @@ int RSA_check_fips(RSA *key) {
 end:
   BN_free(&small_gcd);
   BN_CTX_free(ctx);
-  OPENSSL_free(sig);
 
   return ret;
 }
