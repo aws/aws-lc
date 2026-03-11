@@ -1912,12 +1912,13 @@ TEST(EVPExtraTest, Ed25519Keygen) {
 }
 
 TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
-  // Known Ed25519 test vectors.
+  // Secret key from RFC 8032, Section 7.1, TEST 1.
   static const uint8_t kPrivateKeySeed[32] = {
       0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a,
       0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32,
       0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
   };
+  // PKCS#8 v1 encoding of the above seed, per RFC 8410, Section 7.
   static const uint8_t kPrivateKeyPKCS8[] = {
       0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
       0x04, 0x22, 0x04, 0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
@@ -1933,7 +1934,6 @@ TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
   uint8_t *der_buf = nullptr;
   int der_len = i2d_PrivateKey(pkey.get(), &der_buf);
   ASSERT_GT(der_len, 0);
-  bssl::UniquePtr<uint8_t> der_ptr(der_buf);
   EXPECT_EQ(Bytes(kPrivateKeyPKCS8), Bytes(der_buf, der_len));
 
   // d2i_PrivateKey should parse Ed25519 PKCS#8.
@@ -1941,12 +1941,14 @@ TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
   bssl::UniquePtr<EVP_PKEY> decoded(d2i_PrivateKey(
       EVP_PKEY_ED25519, nullptr, &inp, sizeof(kPrivateKeyPKCS8)));
   ASSERT_TRUE(decoded);
+  // |inp| advanced by size of PKCS8-encoded key
   EXPECT_EQ(inp, kPrivateKeyPKCS8 + sizeof(kPrivateKeyPKCS8));
   EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(decoded.get()));
 
   // The decoded key must match the original.
   uint8_t original_raw[32], decoded_raw[32];
-  size_t original_len = sizeof(original_raw), decoded_len = sizeof(decoded_raw);
+  size_t original_len = sizeof(original_raw);
+  size_t decoded_len = sizeof(decoded_raw);
   ASSERT_TRUE(
       EVP_PKEY_get_raw_private_key(pkey.get(), original_raw, &original_len));
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(decoded.get(), decoded_raw,
@@ -1975,11 +1977,13 @@ TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
 }
 
 TEST(EVPExtraTest, Ed25519i2dPublicKey) {
+  // Public key from RFC 8032, Section 7.1, TEST 1.
   static const uint8_t kPublicKey[32] = {
       0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe,
       0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6,
       0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
   };
+  // SubjectPublicKeyInfo encoding of the above key, per RFC 8410, Section 4.
   static const uint8_t kPublicKeySPKI[] = {
       0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21,
       0x00, 0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b,
@@ -1995,7 +1999,6 @@ TEST(EVPExtraTest, Ed25519i2dPublicKey) {
   uint8_t *der_buf = nullptr;
   int der_len = i2d_PublicKey(pkey.get(), &der_buf);
   ASSERT_GT(der_len, 0);
-  bssl::UniquePtr<uint8_t> der_ptr(der_buf);
   EXPECT_EQ(Bytes(kPublicKeySPKI), Bytes(der_buf, der_len));
 
   // d2i_PublicKey should parse Ed25519 SPKI.
@@ -2003,12 +2006,14 @@ TEST(EVPExtraTest, Ed25519i2dPublicKey) {
   bssl::UniquePtr<EVP_PKEY> decoded(d2i_PublicKey(
       EVP_PKEY_ED25519, nullptr, &inp, sizeof(kPublicKeySPKI)));
   ASSERT_TRUE(decoded);
+  // |inp| advanced by size of SPKI-encoded key
   EXPECT_EQ(inp, kPublicKeySPKI + sizeof(kPublicKeySPKI));
   EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(decoded.get()));
 
   // The decoded key must match the original.
   uint8_t original_raw[32], decoded_raw[32];
-  size_t original_len = sizeof(original_raw), decoded_len = sizeof(decoded_raw);
+  size_t original_len = sizeof(original_raw);
+  size_t decoded_len = sizeof(decoded_raw);
   ASSERT_TRUE(
       EVP_PKEY_get_raw_public_key(pkey.get(), original_raw, &original_len));
   ASSERT_TRUE(EVP_PKEY_get_raw_public_key(decoded.get(), decoded_raw,
