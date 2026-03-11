@@ -37,7 +37,7 @@ option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source
 option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
-option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim componenets are installed when ENABLE_DIST_PKG is enabled" OFF)
+option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -77,12 +77,12 @@ set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for g
 include(cmake/go.cmake)
 
 if(ENABLE_DIST_PKG_OPENSSL_SHIM AND NOT ENABLE_DIST_PKG)
-  message(WARNING "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
+  message(FATAL_ERROR "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
 endif()
 
 if(ENABLE_DIST_PKG)
   if(NOT UNIX OR APPLE)
-    message(WARNING "ENABLE_DIST_PKG is not supported on macOS or Windows and will be ignored.")
+    message(FATAL_ERROR "ENABLE_DIST_PKG is not supported on macOS or Windows and will be ignored.")
   else()
     set(SET_LIB_SONAME 1)
     set(COHABITANT_HEADERS 1)
