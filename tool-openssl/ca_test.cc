@@ -115,7 +115,7 @@ class CATest : public ::testing::Test {
 #else
     DIR *d = opendir(dir_path);
     if (d) {
-      struct dirent *entry;
+      struct dirent *entry = nullptr;
       while ((entry = readdir(d)) != nullptr) {
         if (strcmp(entry->d_name, ".") != 0 &&
             strcmp(entry->d_name, "..") != 0) {
