@@ -1,16 +1,5 @@
-/* Copyright (c) 2015, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2015, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
 #define OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
@@ -151,6 +140,10 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // ErrorEquals asserts that |err| is an error with library |lib| and reason
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
+
+// HexToBIGNUM decodes |hex| as a hexadecimal, big-endian, unsigned integer and
+// returns it as a |BIGNUM|, or nullptr on error.
+bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex);
 
 // ExpectParse does a d2i parse using the corresponding template and function
 // pointer.

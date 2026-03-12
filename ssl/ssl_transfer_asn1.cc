@@ -1,6 +1,5 @@
-/* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * SPDX-License-Identifier: Apache-2.0 OR ISC
- */
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/ssl.h>
 
@@ -746,7 +745,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     }
 
     OPENSSL_memcpy(out->exporter_secret, CBS_data(&exporter_secret),
-                   SSL_MAX_MD_SIZE);
+                   exporter_secret_len);
     out->exporter_secret_len = exporter_secret_len;
 
     out->hs_buf.reset(BUF_MEM_new());
@@ -853,9 +852,9 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(out->send_alert, CBS_data(&send_alert), SSL3_SEND_ALERT_SIZE);
   OPENSSL_memcpy(out->previous_client_finished,
-                 CBS_data(&previous_client_finished), PREV_FINISHED_MAX_SIZE);
+                 CBS_data(&previous_client_finished), previous_client_finished_len);
   OPENSSL_memcpy(out->previous_server_finished,
-                 CBS_data(&previous_server_finished), PREV_FINISHED_MAX_SIZE);
+                 CBS_data(&previous_server_finished), previous_server_finished_len);
   out->early_data_reason =
       static_cast<ssl_early_data_reason_t>(early_data_reason);
   out->rwstate = rwstate;
@@ -873,6 +872,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   out->total_renegotiations = total_renegotiations;
   out->send_connection_binding = !!send_connection_binding;
   out->established_session.get()->not_resumable = !!not_resumable;
+  out->key_update_pending = key_update_pending;
   return 1;
 }
 

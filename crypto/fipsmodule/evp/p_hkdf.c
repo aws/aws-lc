@@ -1,16 +1,5 @@
-/* Copyright (c) 2022, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2022, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/evp.h>
 
@@ -154,6 +143,10 @@ static int pkey_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
     case EVP_PKEY_CTRL_HKDF_MD:
       if (p2 == NULL || EVP_MD_size((const EVP_MD *)p2) <= 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+        return 0;
+      }
+      if (EVP_MD_flags((const EVP_MD *)p2) & EVP_MD_FLAG_XOF) {
+        OPENSSL_PUT_ERROR(EVP, HKDF_R_UNSUPPORTED_DIGEST);
         return 0;
       }
       hctx->md = (const EVP_MD *)p2;

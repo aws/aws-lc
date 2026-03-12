@@ -1,10 +1,6 @@
 #! /usr/bin/env perl
 # Copyright (C) 2023 Intel Corporation
-#
-# Licensed under the OpenSSL license (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
+# SPDX-License-Identifier: Apache-2.0
 
 # This implementation is based on the AES-XTS code (AVX512VAES + VPCLMULQDQ)
 # from Intel(R) Intelligent Storage Acceleration Library Crypto Version

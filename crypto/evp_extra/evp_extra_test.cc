@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <stdint.h>
 #include <stdio.h>
@@ -3508,4 +3497,84 @@ TEST(EVPExtraTest, SetNoneClearsKey) {
   EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
   // Calling operations on the |EVP_PKEY| should cleanly fail.
   EXPECT_EQ(EVP_PKEY_bits(pkey.get()), 0);
+}
+
+// Test that |EC_KEY|s using custom curves can be wrapped in |EVP_PKEY|. Callers
+// should not follow this code. This is maintained and tested only for
+// compatibility with one legacy application, and supported in only a limited
+// form. (E.g. such keys cannot be serialized.)
+TEST(EVPExtraTest, CustomCurve) {
+  // Coefficients for brainpoolp256r1, not supported by BoringSSL.
+  static const char kP[] =
+      "a9fb57dba1eea9bc3e660a909d838d726e3bf623d52620282013481d1f6e5377";
+  static const char kA[] =
+      "7d5a0975fc2c3057eef67530417affe7fb8055c126dc5c6ce94a4b44f330b5d9";
+  static const char kB[] =
+      "26dc5c6ce94a4b44f330b5d9bbd77cbf958416295cf7e1ce6bccdc18ff8c07b6";
+  static const char kX[] =
+      "8bd2aeb9cb7e57cb2c4b482ffc81b7afb9de27e1e3bd23c23a4453bd9ace3262";
+  static const char kY[] =
+      "547ef835c3dac4fd97f8461a14611dc9c27745132ded8e545c1d54c72f046997";
+  static const char kN[] =
+      "a9fb57dba1eea9bc3e660a909d838d718c397aa3b561a6f7901e0e82974856a7";
+  static const char kD[] =
+      "0da21d76fed40dd82ac3314cce91abb585b5c4246e902b238a839609ea1e7ce1";
+  static const char kQX[] =
+      "3a55e0341cab50452fe27b8a87e4775dec7a9daca94b0d84ad1e9f85b53ea513";
+  static const char kQY[] =
+      "40088146b33bbbe81b092b41146774b35dd478cf056437cfb35ef0df2d269339";
+
+  // Construct a custom group.
+  bssl::UniquePtr<BIGNUM> p = HexToBIGNUM(kP), a = HexToBIGNUM(kA),
+                          b = HexToBIGNUM(kB), x = HexToBIGNUM(kX),
+                          y = HexToBIGNUM(kY), n = HexToBIGNUM(kN),
+                          d = HexToBIGNUM(kD), qx = HexToBIGNUM(kQX),
+                          qy = HexToBIGNUM(kQY);
+  ASSERT_TRUE(p && a && b && x && y && n && d && qx && qy);
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), nullptr));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> g(EC_POINT_new(group.get()));
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), g.get(), x.get(),
+                                                  y.get(), nullptr));
+  ASSERT_TRUE(
+      EC_GROUP_set_generator(group.get(), g.get(), n.get(), BN_value_one()));
+
+  // Generate a key with it.
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new());
+  ASSERT_TRUE(ec_key);
+  ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+
+  // Wrap it in an |EVP_PKEY|.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ec_key.get()));
+
+  // Signing should work.
+  static const uint8_t msg[] = "hello";
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestSignInit(ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                 pkey.get()));
+  std::vector<uint8_t> sig(EVP_PKEY_size(pkey.get()));
+  size_t len = sig.size();
+  ASSERT_TRUE(
+      EVP_DigestSign(ctx.get(), sig.data(), &len, msg, sizeof(msg) - 1));
+  sig.resize(len);
+
+  // Verifying should work.
+  ctx.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                   pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg,
+                               sizeof(msg) - 1));
+
+  // We will not serialize arbitrary groups, so serialization should fail.
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  EXPECT_FALSE(EVP_marshal_public_key(cbb.get(), pkey.get()));
+  cbb.Reset();
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  EXPECT_FALSE(EVP_marshal_private_key(cbb.get(), pkey.get()));
 }

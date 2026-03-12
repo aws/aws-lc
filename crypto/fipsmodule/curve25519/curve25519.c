@@ -1,16 +1,5 @@
-/* Copyright (c) 2020, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2020, Google Inc.
+// SPDX-License-Identifier: ISC
 
 // Some of this code is taken from the ref10 version of Ed25519 in SUPERCOP
 // 20141124 (http://bench.cr.yp.to/supercop.html). That code is released as
@@ -110,6 +99,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
     ED25519_PUBLIC_KEY_LEN);
+
+  OPENSSL_cleanse(az, sizeof(az));
 }
 
 static int ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
@@ -275,6 +266,7 @@ int ed25519_sign_internal(
 
   if (!dom2(alg, dom2_buffer, &dom2_buffer_len, ctx, ctx_len)) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    OPENSSL_cleanse(az, sizeof(az));
     return 0;
   }
 
@@ -303,6 +295,9 @@ int ed25519_sign_internal(
 
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
+
+  OPENSSL_cleanse(az, sizeof(az));
+  OPENSSL_cleanse(r, sizeof(r));
 
   return 1;
 }
