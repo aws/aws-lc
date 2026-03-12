@@ -72,7 +72,7 @@
 #  if defined(OPENSSL_64_BIT)
 #    define OPENSSL_RISCV64
 #  endif
-#elif defined(__loongarch_lp64)
+#elif defined(__loongarch_lp64) || defined(__loongarch__)
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_PNACL
