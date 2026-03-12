@@ -12,8 +12,11 @@
 #if defined(OPENSSL_WINDOWS)
 #include <direct.h>
 #include <io.h>
+#include <windows.h>
 #else
+#include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 #include "../tool/internal.h"
 
@@ -73,19 +76,58 @@ class CATest : public ::testing::Test {
     RemoveFile(ed25519_key_path);
     RemoveFile(ed25519_cert_path);
     RemoveFile(ed25519_csr_path);
-    
-    // Remove database attribute file if it exists
+
+    // Remove database auxiliary files created by the CA tool
     std::string db_attr_path = std::string(db_path) + ".attr";
     RemoveFile(db_attr_path.c_str());
-    
-    // Clean up temp directory
-    if (new_certs_dir[0] != '\0') {
-#if defined(OPENSSL_WINDOWS)
-      _rmdir(new_certs_dir);
-#else
-      rmdir(new_certs_dir);
-#endif
+    std::string db_old_path = std::string(db_path) + ".old";
+    RemoveFile(db_old_path.c_str());
+    std::string db_attr_old_path = std::string(db_path) + ".attr.old";
+    RemoveFile(db_attr_old_path.c_str());
+    std::string serial_old_path = std::string(serial_path) + ".old";
+    RemoveFile(serial_old_path.c_str());
+
+    // Clean up temp directory and its contents
+    CleanupTempDir(new_certs_dir);
+  }
+
+  // Remove all files in a directory and then remove the directory itself
+  static void CleanupTempDir(const char *dir_path) {
+    if (dir_path[0] == '\0') {
+      return;
     }
+#if defined(OPENSSL_WINDOWS)
+    std::string pattern = std::string(dir_path) + "\\*";
+    WIN32_FIND_DATAA find_data;
+    HANDLE hFind = FindFirstFileA(pattern.c_str(), &find_data);
+    if (hFind != INVALID_HANDLE_VALUE) {
+      do {
+        if (strcmp(find_data.cFileName, ".") != 0 &&
+            strcmp(find_data.cFileName, "..") != 0) {
+          std::string file_path =
+              std::string(dir_path) + "\\" + find_data.cFileName;
+          DeleteFileA(file_path.c_str());
+        }
+      } while (FindNextFileA(hFind, &find_data));
+      FindClose(hFind);
+    }
+    RemoveDirectoryA(dir_path);
+#else
+    DIR *d = opendir(dir_path);
+    if (d) {
+      struct dirent *entry;
+      while ((entry = readdir(d)) != nullptr) {
+        if (strcmp(entry->d_name, ".") != 0 &&
+            strcmp(entry->d_name, "..") != 0) {
+          std::string file_path =
+              std::string(dir_path) + "/" + entry->d_name;
+          unlink(file_path.c_str());
+        }
+      }
+      closedir(d);
+    }
+    rmdir(dir_path);
+#endif
   }
 
   void CreateTestCAKeyAndCert() {
