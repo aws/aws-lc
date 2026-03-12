@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/hmac.h>
 
@@ -242,7 +189,7 @@ OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0, HMAC_STATE_UNINITIALIZED_is
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
-  
+
   if (out == NULL) {
     // Prevent further work from being done
     return NULL;
@@ -277,6 +224,11 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
                               size_t key_len, const uint8_t *data,
                               size_t data_len, uint8_t *out,
                               unsigned int *out_len) {
+  if (out == NULL) {
+    // Prevent further work from being done
+    return NULL;
+  }
+
   HMAC_CTX ctx;
   OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
   int result;
@@ -396,6 +348,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
         OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
       }
       // If nothing is changing then we can return without doing any further work.
+      ctx->state = HMAC_STATE_INIT_NO_DATA;
       return 1;
     }
   }
@@ -498,6 +451,8 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
   ctx->state = HMAC_STATE_READY_NEEDS_INIT; // Mark that we are ready for use but still need HMAC_Init_ex called.
 end:
+  // Cleanse sensitive intermediate inner hash from the stack.
+  OPENSSL_cleanse(tmp, sizeof(tmp));
   FIPS_service_indicator_unlock_state();
   if (result) {
     HMAC_verify_service_indicator(evp_md);
@@ -506,6 +461,8 @@ end:
     }
     return 1;
   } else {
+    // On error, return context to a known and well-defined zero state.
+    HMAC_CTX_cleanup(ctx);
     if (out_len) {
       *out_len = 0;
     }
@@ -584,19 +541,22 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   // is false". Note this should not be necessary because get_state cannot fail.
   uint64_t o_ctx_n = 0;
 
-  const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
-      ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);
-
-  // ok should always be true as in our setting: get_state should always be
-  // successful since i_ctx/o_ctx have processed exactly one block
-  assert(ok);
-  (void)ok; // avoid unused variable warning when asserts disabled
+  if (!ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) ||
+      !ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n)) {
+    // get_state should always succeed since i_ctx/o_ctx have processed exactly
+    // one block, but handle failure defensively.
+    assert(0); // Should never happen
+    OPENSSL_cleanse(out, actual_out_len);
+    return 0;
+  }
 
   // Sanity check: we must have processed a single block at this time
   size_t block_size = EVP_MD_block_size(ctx->md);
-  assert(8 * block_size == i_ctx_n);
-  assert(8 * block_size == o_ctx_n);
-  (void)block_size; // avoid unused variable warning when asserts disabled
+  if (8 * block_size != i_ctx_n || 8 * block_size != o_ctx_n) {
+    assert(0); // Should never happen
+    OPENSSL_cleanse(out, actual_out_len);
+    return 0;
+  }
 
   // The context is ready to be used to compute HMAC values at this point.
   ctx->state = HMAC_STATE_INIT_NO_DATA;
@@ -691,10 +651,13 @@ end:
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
+  if (key && key_len < 0) {
+    return 0;
+  }
   if (key && md) {
     HMAC_CTX_init(ctx);
   }
-  return HMAC_Init_ex(ctx, key, key_len, md, NULL);
+  return HMAC_Init_ex(ctx, key, (size_t)key_len, md, NULL);
 }
 
 int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {

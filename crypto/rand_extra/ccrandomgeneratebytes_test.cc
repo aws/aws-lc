@@ -1,3 +1,6 @@
+// Copyright (c) 2020, Google Inc.
+// SPDX-License-Identifier: ISC
+
 #if !defined(_DEFAULT_SOURCE)
 #define _DEFAULT_SOURCE  // Needed for getentropy on musl and glibc
 #endif
