@@ -1,12 +1,7 @@
 /* x86_64 BIGNUM accelerator version 0.1, December 2002.
- *
- * Implemented by Andy Polyakov <appro@fy.chalmers.se> for the OpenSSL
- * project.
- *
- * Rights for redistribution and usage in source and binary forms are
- * granted according to the OpenSSL license. Warranty of any kind is
- * disclaimed.
- *
+ * Implemented by Andy Polyakov <appro@fy.chalmers.se> for the OpenSSL project.
+ * SPDX-License-Identifier: Apache-2.0
+ * 
  * Q. Version 0.1? It doesn't sound like Andy, he used to assign real
  *    versions, like 1.0...
  * A. Well, that's because this code is basically a quick-n-dirty
