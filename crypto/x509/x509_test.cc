@@ -1,16 +1,5 @@
-/* Copyright (c) 2016, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2016, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <limits.h>
 
@@ -2287,6 +2276,17 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_PERMITTED_VIOLATION},
       {GEN_URI, "foo://example.com/whatever", ".xample.com",
        X509_V_ERR_PERMITTED_VIOLATION},
+
+      // RFC 5280 §4.2.1.10 specifies URI name constraints "MUST be specified
+      // as a fully qualified domain name". IPv6 literal URIs are not domain
+      // names and cannot be reliably matched by string comparison due to
+      // multiple equivalent textual representations. They are rejected as
+      // unsupported syntax (fail-closed).
+      {GEN_URI, "foo://[2001:db8::1]", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // An incomplete IPv6 literal is also rejected.
+      {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);
@@ -5883,6 +5883,9 @@ TEST(X509Test, Print) {
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
   std::string print(reinterpret_cast<const char*>(data), data_len);
+  // Some lines in the X509_print_ex output have trailing whitespace. The raw
+  // string is split and concatenated with " " at those points so that editors
+  // configured to strip trailing whitespace do not break this test.
   static const char expected_certificate_string[] = R"(Certificate:
     Data:
         Version: 3 (0x2)
@@ -5911,13 +5914,13 @@ TEST(X509Test, Print) {
         X509v3 extensions:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
-            X509v3 Extended Key Usage: 
+            X509v3 Extended Key Usage:)" " " R"(
                 TLS Web Server Authentication, TLS Web Client Authentication
             X509v3 Basic Constraints: critical
                 CA:FALSE
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:)" " " R"(
                 A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:)" " " R"(
                 keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
 
     Signature Algorithm: sha256WithRSAEncryption

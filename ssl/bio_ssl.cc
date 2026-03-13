@@ -1,11 +1,5 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/ssl.h>
 
@@ -142,14 +136,22 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       bio->shutdown = static_cast<int>(num);
       return 1;
 
-    case BIO_CTRL_WPENDING:
-      return BIO_ctrl(SSL_get_wbio(ssl), cmd, num, ptr);
+    case BIO_CTRL_WPENDING: {
+      BIO *wbio = SSL_get_wbio(ssl);
+      if (wbio == NULL) {
+        return 0;
+      }
+      return BIO_ctrl(wbio, cmd, num, ptr);
+    }
 
     case BIO_CTRL_PENDING:
       return SSL_pending(ssl);
 
     case BIO_CTRL_FLUSH: {
       BIO *wbio = SSL_get_wbio(ssl);
+      if (wbio == NULL) {
+        return 0;
+      }
       BIO_clear_retry_flags(bio);
       long ret = BIO_ctrl(wbio, cmd, num, ptr);
       BIO_set_flags(bio, BIO_get_retry_flags(wbio));
@@ -162,8 +164,13 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
     case BIO_CTRL_DUP:
       return -1;
 
-    default:
-      return BIO_ctrl(SSL_get_rbio(ssl), cmd, num, ptr);
+    default: {
+      BIO *rbio = SSL_get_rbio(ssl);
+      if (rbio == NULL) {
+        return 0;
+      }
+      return BIO_ctrl(rbio, cmd, num, ptr);
+    }
   }
 }
 
@@ -182,6 +189,7 @@ static int ssl_free(BIO *bio) {
   if (bio->shutdown) {
     SSL_free(ssl);
   }
+  bio->ptr = NULL;
 
   return 1;
 }
@@ -196,8 +204,13 @@ static long ssl_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
     case BIO_CTRL_SET_CALLBACK:
       return -1;
 
-    default:
-      return BIO_callback_ctrl(SSL_get_rbio(ssl), cmd, fp);
+    default: {
+      BIO *rbio = SSL_get_rbio(ssl);
+      if (rbio == NULL) {
+        return 0;
+      }
+      return BIO_callback_ctrl(rbio, cmd, fp);
+    }
   }
 }
 
@@ -234,21 +247,20 @@ BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
 
 BIO *BIO_new_ssl(SSL_CTX *ctx, int client) {
   bssl::UniquePtr<BIO> ret(BIO_new(BIO_f_ssl()));
-  SSL *ssl = SSL_new(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
 
   if (!ret || !ssl) {
     return nullptr;
   }
   if (client) {
-    SSL_set_connect_state(ssl);
+    SSL_set_connect_state(ssl.get());
   } else {
-    SSL_set_accept_state(ssl);
+    SSL_set_accept_state(ssl.get());
   }
 
-  if (BIO_set_ssl(ret.get(), ssl, BIO_CLOSE) <= 0) {
+  if (BIO_set_ssl(ret.get(), ssl.get(), BIO_CLOSE) <= 0) {
     return nullptr;
   }
+  ssl.release();  // Ownership transferred to BIO
   return ret.release();
 }
-
-
