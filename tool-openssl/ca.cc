@@ -1768,6 +1768,7 @@ bool caTool(const args_list_t &args) {
 
   (void)OPENSSL_strlcpy(new_cert, outdir.c_str(), sizeof(new_cert));
   (void)OPENSSL_strlcat(new_cert, "/", sizeof(new_cert));
+  outdirlen = strlen(new_cert);
 
   if (verbose) {
     fprintf(stderr, "writing new certificates\n");
