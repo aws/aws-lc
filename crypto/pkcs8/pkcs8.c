@@ -412,10 +412,10 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
     }
 
     salt_buf = OPENSSL_malloc(salt_len);
-    if (salt_buf == NULL ||
-        !RAND_bytes(salt_buf, salt_len)) {
+    if (salt_buf == NULL) {
       goto err;
     }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt_buf, salt_len));
 
     salt = salt_buf;
   }

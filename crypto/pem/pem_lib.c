@@ -276,9 +276,8 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
       pass = (const unsigned char *)buf;
     }
     assert(iv_len <= sizeof(iv));
-    if (!RAND_bytes(iv, iv_len)) {  // Generate a salt
-      goto err;
-    }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, iv_len));  // Generate a salt
+
     // The 'iv' is used as the iv and as a salt.  It is NOT taken from
     // the BytesToKey function
     if (!EVP_BytesToKey(enc, EVP_md5(), iv, pass, pass_len, 1, key, NULL)) {
