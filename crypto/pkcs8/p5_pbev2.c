@@ -122,9 +122,7 @@ int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
 
   // Generate a random IV.
   uint8_t iv[EVP_MAX_IV_LENGTH];
-  if (!RAND_bytes(iv, EVP_CIPHER_iv_length(cipher))) {
-    return 0;
-  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)));
 
   // See RFC 2898, appendix A.
   CBB algorithm, oid, param, kdf, kdf_oid, kdf_param, salt_cbb, cipher_cbb,

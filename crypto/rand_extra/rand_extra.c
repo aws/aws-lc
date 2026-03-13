@@ -4,13 +4,13 @@
 #include <openssl/rand.h>
 
 #include <limits.h>
-
+#include "../internal.h"
 
 void RAND_seed(const void *buf, int num) {
   // OpenSSH calls |RAND_seed| before jailing on the assumption that any needed
   // file descriptors etc will be opened.
   uint8_t unused;
-  RAND_bytes(&unused, sizeof(unused));
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(&unused, sizeof(unused)));
 }
 
 int RAND_load_file(const char *path, long num) {
