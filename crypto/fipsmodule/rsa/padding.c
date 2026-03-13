@@ -326,9 +326,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     if (!salt) {
       goto err;
     }
-    if (!RAND_bytes(salt, sLen)) {
-      goto err;
-    }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt, sLen));
   }
   maskedDBLen = emLen - hLen - 1;
   H = EM + maskedDBLen;

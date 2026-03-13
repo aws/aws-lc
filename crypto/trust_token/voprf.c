@@ -206,7 +206,7 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
       goto err;
     }
 
-    RAND_bytes(pretoken->salt, sizeof(pretoken->salt));
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(pretoken->salt, sizeof(pretoken->salt)));
     if (include_message) {
       assert(SHA512_DIGEST_LENGTH == TRUST_TOKEN_NONCE_SIZE);
       SHA512_Init(&hash_ctx);

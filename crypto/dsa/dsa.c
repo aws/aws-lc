@@ -251,9 +251,7 @@ int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
 
       int use_random_seed = (seed_in == NULL);
       if (use_random_seed) {
-        if (!RAND_bytes(seed, qsize)) {
-          goto err;
-        }
+        AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(seed, qsize));
         // DSA parameters are public.
         CONSTTIME_DECLASSIFY(seed, qsize);
       } else {
