@@ -429,9 +429,18 @@ int i2d_PublicKey(const EVP_PKEY *key, uint8_t **outp) {
       return i2d_DSAPublicKey(key->pkey.dsa, outp);
     case EVP_PKEY_EC:
       return i2o_ECPublicKey(key->pkey.ec, outp);
-    default:
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-      return -1;
+    default: {
+      // Fall back to SubjectPublicKeyInfo for key types without legacy
+      // formats (e.g. Ed25519).
+      CBB cbb;
+      if (!CBB_init(&cbb, 128) ||
+          !EVP_marshal_public_key(&cbb, key)) {
+        CBB_cleanup(&cbb);
+        OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+        return -1;
+      }
+      return CBB_finish_i2d(&cbb, outp);
+    }
   }
 }
 
@@ -459,9 +468,23 @@ EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out, const uint8_t **inp,
     // this function with |EVP_PKEY_EC| and setting |out| to NULL does not work.
     // It requires |*out| to include a partially-initialized |EVP_PKEY| to
     // extract the group.
-    default:
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-      goto err;
+    default: {
+      // Fall back to SubjectPublicKeyInfo for key types without legacy
+      // formats (e.g. Ed25519).
+      EVP_PKEY_free(ret);
+      ret = NULL;
+      ERR_clear_error();
+      ret = EVP_parse_public_key(&cbs);
+      if (ret == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+        goto err;
+      }
+      if (ret->type != type) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
+        goto err;
+      }
+      break;
+    }
   }
 
   *inp = CBS_data(&cbs);
