@@ -79,7 +79,7 @@ static MLK_INLINE void mlk_zeroize(void *ptr, size_t len) {
 #include "mlkem/sys.h"
 #include <openssl/rand.h>
 static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
-    RAND_bytes(ptr, len);
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(ptr, len));
 }
 #endif // !__ASSEMBLER__
 

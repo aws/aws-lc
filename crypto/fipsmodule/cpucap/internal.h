@@ -1,3 +1,6 @@
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #ifndef OPENSSL_HEADER_CPUCAP_INTERNAL_H
 #define OPENSSL_HEADER_CPUCAP_INTERNAL_H
 

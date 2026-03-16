@@ -112,6 +112,24 @@ jobs:
             source /opt/compiler-env/setup-clang-9.sh
             ./tests/ci/run_install_shared_and_static.sh
 
+  dist_pkg_tests:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:20.04
+          run: |
+            source /opt/compiler-env/setup-clang-9.sh
+            ./tests/ci/run_dist_pkg_tests.sh
+
   # Build and test aws-lc without Perl/Go.
   minimal_tests:
     name: minimal-${{ matrix.image }}-${{ matrix.compiler }}-x86_64
