@@ -102,9 +102,7 @@ void CRYPTO_pre_sandbox_init(void) {
   // tagged state, and VM UBE allocated state. All this is implemented lazily.
   // Invoke the top-level function that will kick off the lazy work pre-sandbox.
   uint8_t buf[10];
-  if (RAND_bytes(buf, 10) != 1) {
-    abort();
-  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(buf, 10));
 }
 
 const char *SSLeay_version(int which) { return OpenSSL_version(which); }
