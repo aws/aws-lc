@@ -1840,11 +1840,13 @@ int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
   if (ctx->custom_crit_oids == NULL) {
     ctx->custom_crit_oids = sk_ASN1_OBJECT_new_null();
     if (ctx->custom_crit_oids == NULL) {
+      ASN1_OBJECT_free(oid_dup);
       return 0;
     }
   }
 
   if (!sk_ASN1_OBJECT_push(ctx->custom_crit_oids, oid_dup)) {
+    ASN1_OBJECT_free(oid_dup);
     return 0;
   }
   return 1;
