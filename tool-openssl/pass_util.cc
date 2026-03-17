@@ -80,7 +80,7 @@ static bool ValidateSource(Password &passin, Password *passout = nullptr,
 
 static bool ExtractDirectPassword(Password &source) {
   // Check length before modification
-  if (source.get().length() - 5 >= PEM_BUFSIZE) {
+  if (source.get().length() >= 5 + PEM_BUFSIZE) {
     fprintf(stderr, "Password exceeds maximum allowed length (%d bytes)\n",
             PEM_BUFSIZE - 1);
     return false;
