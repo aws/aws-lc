@@ -1,16 +1,5 @@
-/* Copyright (c) 2016, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2016, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <limits.h>
 
@@ -2287,6 +2276,17 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_PERMITTED_VIOLATION},
       {GEN_URI, "foo://example.com/whatever", ".xample.com",
        X509_V_ERR_PERMITTED_VIOLATION},
+
+      // RFC 5280 §4.2.1.10 specifies URI name constraints "MUST be specified
+      // as a fully qualified domain name". IPv6 literal URIs are not domain
+      // names and cannot be reliably matched by string comparison due to
+      // multiple equivalent textual representations. They are rejected as
+      // unsupported syntax (fail-closed).
+      {GEN_URI, "foo://[2001:db8::1]", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // An incomplete IPv6 literal is also rejected.
+      {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);
@@ -5883,6 +5883,9 @@ TEST(X509Test, Print) {
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
   std::string print(reinterpret_cast<const char*>(data), data_len);
+  // Some lines in the X509_print_ex output have trailing whitespace. The raw
+  // string is split and concatenated with " " at those points so that editors
+  // configured to strip trailing whitespace do not break this test.
   static const char expected_certificate_string[] = R"(Certificate:
     Data:
         Version: 3 (0x2)
@@ -5911,13 +5914,13 @@ TEST(X509Test, Print) {
         X509v3 extensions:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
-            X509v3 Extended Key Usage: 
+            X509v3 Extended Key Usage:)" " " R"(
                 TLS Web Server Authentication, TLS Web Client Authentication
             X509v3 Basic Constraints: critical
                 CA:FALSE
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:)" " " R"(
                 A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:)" " " R"(
                 keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
 
     Signature Algorithm: sha256WithRSAEncryption
@@ -8357,6 +8360,31 @@ TEST(X509Test, X509MultipleCustomExtensions) {
                               /*flags=*/0, set_custom_exts_with_callback));
   // Check that |EXFLAG_CRITICAL| is preserved after validation.
   EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+}
+
+// Test that |X509_STORE_CTX_add_custom_crit_oid| does not leak memory. Under
+// ASAN/LSAN, this test will catch leaks on both the success path and the
+// cleanup path in |X509_STORE_CTX_cleanup|.
+TEST(X509Test, AddCustomCritOidNoLeak) {
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  // |X509_STORE_CTX_init| must be called before adding custom OIDs.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), nullptr, nullptr));
+
+  // Add several OIDs. Each call duplicates the object internally.
+  bssl::UniquePtr<ASN1_OBJECT> oid1(OBJ_txt2obj("1.2.3.4.5", 1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(OBJ_txt2obj("1.2.3.4.6", 1));
+  ASSERT_TRUE(oid2);
+
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid1.get()));
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid2.get()));
+
+  // |X509_STORE_CTX_cleanup| (called by the destructor) must free all
+  // duplicated OIDs and the stack itself without leaking.
 }
 
 TEST(X509Test, StoreVerifyCallback) {

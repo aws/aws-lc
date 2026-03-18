@@ -343,18 +343,6 @@ index 0dd2532..cf7b62f 100644
      def test_op_no_compression(self) -> None:
          """
          The value of `OpenSSL.SSL.OP_NO_COMPRESSION` is 0x20000, the
-@@ -4320,7 +4364,10 @@ class TestMemoryBIO:
-         assert client.get_client_ca_list() == []
-         assert server.get_client_ca_list() == expected
-         interact_in_memory(client, server)
--        assert client.get_client_ca_list() == expected
-+        # aws-lc does not currently propagate the server's CA list to the
-+        # client side after the handshake.
-+        if not conftest.is_awslc:
-+            assert client.get_client_ca_list() == expected
-         assert server.get_client_ca_list() == expected
- 
-     def test_set_client_ca_list_errors(self) -> None:
 @@ -5050,9 +5097,17 @@ class TestDTLS:
          c.set_ciphertext_mtu(500)
          assert 0 < c.get_cleartext_mtu() < 500

@@ -1,16 +1,5 @@
-/* Copyright (c) 2016, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2016, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/ssl.h>
 
@@ -385,7 +374,7 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   if (verify_data.size() > sizeof(ssl->s3->previous_client_finished) ||
       verify_data.size() > sizeof(ssl->s3->previous_server_finished)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
+    return false;
   }
 
   if (ssl->server) {
@@ -625,7 +614,7 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs) {
   if (verify_data_len > sizeof(ssl->s3->previous_client_finished) ||
       verify_data_len > sizeof(ssl->s3->previous_server_finished)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
+    return false;
   }
 
   if (ssl->server) {

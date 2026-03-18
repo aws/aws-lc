@@ -22,10 +22,8 @@ class GenPKeyTest : public ::testing::Test {
 
 // Test -out
 TEST_F(GenPKeyTest, RSA_out_option) {
-  args_list_t args = {"-algorithm", "RSA", "-pkeyopt",
-                      "rsa_keygen_bits:3072",
-                      "-out",
-                      out_path};
+  args_list_t args = {"-algorithm",           "RSA",  "-pkeyopt",
+                      "rsa_keygen_bits:3072", "-out", out_path};
   bool result = genpkeyTool(args);
   ASSERT_TRUE(result);
 
@@ -47,10 +45,9 @@ TEST_F(GenPKeyTest, RSA_stdout) {
 
 // Test ec p-256 keys
 TEST_F(GenPKeyTest, ECKeys) {
-  args_list_t args = {"-algorithm", "EC", "-pkeyopt",
-                      "ec_paramgen_curve:P-256",
-                      "-out",
-                      out_path};
+  args_list_t args = {"-algorithm", "EC",
+                      "-pkeyopt",   "ec_paramgen_curve:P-256",
+                      "-out",       out_path};
   bool result = genpkeyTool(args);
   ASSERT_TRUE(result);
 

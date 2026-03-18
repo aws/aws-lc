@@ -87,8 +87,8 @@ static MLD_INLINE void mld_zeroize(void *ptr, size_t len) {
 #include "mldsa/sys.h"
 #include <openssl/rand.h>
 static MLD_INLINE int mld_randombytes(uint8_t *ptr, size_t len) {
-    // RAND_bytes returns 1 on success, 0 or -1 on failure
-    return RAND_bytes(ptr, len) == 1 ? 0 : -1;
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(ptr, len));
+    return 0;
 }
 #endif // !__ASSEMBLER__
 

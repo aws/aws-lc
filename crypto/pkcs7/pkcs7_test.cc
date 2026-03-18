@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <gtest/gtest.h>
 
@@ -2434,4 +2423,184 @@ TEST(PKCS7Test, SerdeOtherField) {
   EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
                            sizeof(test_data)),
             0);
+}
+
+// Test for signature bypass when authenticated attributes contain a
+// malformed attribute that causes ASN.1 re-encoding to fail.
+TEST(PKCS7Test, SignatureBypassWithMalformedAuthAttr) {
+  const unsigned char original_data[] = "Original legitimate content";
+  const size_t original_len = sizeof(original_data) - 1;
+  const unsigned char malicious_data[] = "MALICIOUS MODIFIED CONTENT!";
+  const size_t malicious_len = sizeof(malicious_data) - 1;
+
+  // Generate RSA key pair
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  ASSERT_TRUE(pkey_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pkey_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_ctx.get(), 2048));
+  EVP_PKEY *pkey_raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pkey_ctx.get(), &pkey_raw));
+  pkey.reset(pkey_raw);
+
+  // Create self-signed certificate
+  bssl::UniquePtr<X509> cert(X509_new());
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(X509_set_version(cert.get(), 2));
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
+  X509_gmtime_adj(X509_get_notBefore(cert.get()), 0);
+  X509_gmtime_adj(X509_get_notAfter(cert.get()), 31536000L);
+  ASSERT_TRUE(X509_set_pubkey(cert.get(), pkey.get()));
+  X509_NAME *name = X509_get_subject_name(cert.get());
+  ASSERT_TRUE(X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                                          (const unsigned char *)"Test",
+                                          -1, -1, 0));
+  ASSERT_TRUE(X509_set_issuer_name(cert.get(), name));
+  ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha256()));
+
+  // Set up trust store
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), cert.get()));
+
+  // Compute SHA-256 digest of original data
+  unsigned char md[SHA256_DIGEST_LENGTH];
+  SHA256(original_data, original_len, md);
+
+  // Create the PKCS7 SignedData structure
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Set the content payload
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(p7->d.sign->contents->d.data,
+                                     original_data, (int)original_len));
+
+  // Add SHA-256 to the digest algorithms set
+  X509_ALGOR *alg = X509_ALGOR_new();
+  ASSERT_TRUE(alg);
+  ASSERT_TRUE(
+      X509_ALGOR_set0(alg, OBJ_nid2obj(NID_sha256), V_ASN1_NULL, nullptr));
+  ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+
+  // Create and configure SIGNER_INFO
+  PKCS7_SIGNER_INFO *sinfo = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(sinfo);
+  ASSERT_TRUE(
+      PKCS7_SIGNER_INFO_set(sinfo, cert.get(), pkey.get(), EVP_sha256()));
+
+  // Build authenticated attributes: contentType + messageDigest
+  sinfo->auth_attr = sk_X509_ATTRIBUTE_new_null();
+  ASSERT_TRUE(sinfo->auth_attr);
+
+  // Add contentType attribute (pkcs7-data)
+  ASN1_OBJECT *content_type_obj = OBJ_dup(OBJ_nid2obj(NID_pkcs7_data));
+  ASSERT_TRUE(content_type_obj);
+  X509_ATTRIBUTE *ct_attr = X509_ATTRIBUTE_create(
+      NID_pkcs9_contentType, V_ASN1_OBJECT, content_type_obj);
+  ASSERT_TRUE(ct_attr);
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo->auth_attr, ct_attr));
+
+  // Add messageDigest attribute
+  ASN1_OCTET_STRING *digest_os = ASN1_OCTET_STRING_new();
+  ASSERT_TRUE(digest_os);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(digest_os, md, SHA256_DIGEST_LENGTH));
+  X509_ATTRIBUTE *md_attr = X509_ATTRIBUTE_create(
+      NID_pkcs9_messageDigest, V_ASN1_OCTET_STRING, digest_os);
+  ASSERT_TRUE(md_attr);
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo->auth_attr, md_attr));
+
+  // DER-encode the authenticated attributes for signing
+  unsigned char *attr_der = nullptr;
+  int attr_der_len = ASN1_item_i2d((ASN1_VALUE *)sinfo->auth_attr, &attr_der,
+                                    ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
+  ASSERT_GT(attr_der_len, 0);
+  ASSERT_TRUE(attr_der);
+
+  // Sign the DER-encoded authenticated attributes
+  bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+  ASSERT_TRUE(md_ctx);
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                  pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), attr_der, attr_der_len));
+
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
+  unsigned char *sig =
+      (unsigned char *)OPENSSL_malloc(sig_len);
+  ASSERT_TRUE(sig);
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), sig, &sig_len));
+
+  // Set the signature on the signer info
+  ASSERT_TRUE(
+      ASN1_OCTET_STRING_set(sinfo->enc_digest, sig, (int)sig_len));
+  OPENSSL_free(sig);
+  OPENSSL_free(attr_der);
+
+  // Attach signer info and certificate to the PKCS7
+  ASSERT_TRUE(sk_PKCS7_SIGNER_INFO_push(p7->d.sign->signer_info, sinfo));
+  ASSERT_TRUE(PKCS7_add_certificate(p7.get(), cert.get()));
+
+  // Verify the original (unmodified) message succeeds
+  bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out_bio);
+  EXPECT_TRUE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                            out_bio.get(), /*flags*/ 0));
+
+  // Now tamper with the message to attempt bypass
+
+  // Get the signer info back for modification
+  STACK_OF(PKCS7_SIGNER_INFO) *sinfos = PKCS7_get_signer_info(p7.get());
+  ASSERT_TRUE(sinfos);
+  ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sinfos), (size_t)0);
+  PKCS7_SIGNER_INFO *sinfo_ptr = sk_PKCS7_SIGNER_INFO_value(sinfos, 0);
+  ASSERT_TRUE(sinfo_ptr);
+
+  // Modify the content to malicious data
+  ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
+  ASSERT_TRUE(p7->d.sign && p7->d.sign->contents);
+  ASSERT_EQ(OBJ_obj2nid(p7->d.sign->contents->type), NID_pkcs7_data);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(p7->d.sign->contents->d.data,
+                                     malicious_data, (int)malicious_len));
+
+  // Update the messageDigest attribute to match the malicious content
+  unsigned char new_md[SHA256_DIGEST_LENGTH];
+  SHA256(malicious_data, malicious_len, new_md);
+  ASN1_TYPE *md_type =
+      PKCS7_get_signed_attribute(sinfo_ptr, NID_pkcs9_messageDigest);
+  ASSERT_TRUE(md_type);
+  ASSERT_EQ(md_type->type, V_ASN1_OCTET_STRING);
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(md_type->value.octet_string, new_md,
+                                     SHA256_DIGEST_LENGTH));
+
+  // Add a malformed attribute whose ASN1_OBJECT has zero length.
+  // This causes ASN1_item_i2d() to fail with ASN1_R_ILLEGAL_OBJECT when
+  // pkcs7_signature_verify() tries to re-encode auth_attr for signature
+  // verification.
+  ASN1_OCTET_STRING *bad_os = ASN1_OCTET_STRING_new();
+  ASSERT_TRUE(bad_os);
+  ASSERT_TRUE(
+      ASN1_OCTET_STRING_set(bad_os, (const unsigned char *)"test", 4));
+  X509_ATTRIBUTE *bad_attr = X509_ATTRIBUTE_create(
+      NID_id_smime_aa_signingCertificate, V_ASN1_OCTET_STRING, bad_os);
+  ASSERT_TRUE(bad_attr);
+
+  // Create an ASN1_OBJECT with zero-length OID data. When ASN1_item_i2d
+  // tries to encode this, i2d_ASN1_OBJECT returns -1 because length <= 0,
+  // which makes the overall encoding fail safely.
+  bssl::UniquePtr<ASN1_OBJECT> empty_obj(
+      ASN1_OBJECT_create(NID_undef, nullptr, 0, nullptr, nullptr));
+  ASSERT_TRUE(empty_obj);
+  ASSERT_TRUE(X509_ATTRIBUTE_set1_object(bad_attr, empty_obj.get()));
+
+  ASSERT_TRUE(sk_X509_ATTRIBUTE_push(sinfo_ptr->auth_attr, bad_attr));
+
+  // Verify that the tampered message is correctly rejected
+  out_bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out_bio);
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                             out_bio.get(), /*flags*/ 0));
 }

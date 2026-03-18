@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/pkcs7.h>
 
@@ -784,10 +773,10 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     ASN1_OBJECT_free(xalg->algorithm);
     xalg->algorithm = OBJ_nid2obj(EVP_CIPHER_nid(evp_cipher));
     if (ivlen > 0) {
-      RAND_bytes(iv, ivlen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, ivlen));
     }
     if (keylen > 0) {
-      RAND_bytes(key, keylen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(key, keylen));
     }
 
     if (EVP_CipherInit_ex(ctx, evp_cipher, NULL, key, iv, /*enc*/ 1) <= 0) {
@@ -1369,7 +1358,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   if (dummy_key == NULL) {
     goto err;
   }
-  RAND_bytes(dummy_key, len);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(dummy_key, len));
   // At this point, null |cek| indicates that no content encryption key was
   // successfully decrypted. We don't want to return early due to MMA. So, swap
   // in the dummy key and proceed. Content decryption result will be gibberish.
@@ -1620,7 +1609,6 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
                              ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
     if (alen <= 0 || abuf == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
-      ret = -1;
       goto out;
     }
     if (!EVP_VerifyUpdate(mdc_tmp, abuf, alen)) {
@@ -1703,14 +1691,14 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
         goto out;
       }
       X509_STORE_CTX_set0_crls(cert_ctx, p7->d.sign->crl);
-    }
-    // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
-    if (X509_verify_cert(cert_ctx) <= 0) {
+      // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
+      if (X509_verify_cert(cert_ctx) <= 0) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-      // For fuzz testing, we do not want to bail out early.
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
-      goto out;
+        // For fuzz testing, we do not want to bail out early.
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
+        goto out;
 #endif
+      }
     }
   }
 
@@ -1725,7 +1713,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   for (size_t ii = 0; ii < sk_PKCS7_SIGNER_INFO_num(sinfos); ii++) {
     PKCS7_SIGNER_INFO *si = sk_PKCS7_SIGNER_INFO_value(sinfos, ii);
     X509 *signer = sk_X509_value(signers, ii);
-    if (!pkcs7_signature_verify(p7bio, p7, si, signer)) {
+    if (pkcs7_signature_verify(p7bio, p7, si, signer) != 1) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
       // For fuzz testing, we do not want to bail out early.
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);

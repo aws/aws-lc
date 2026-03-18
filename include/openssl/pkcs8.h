@@ -1,57 +1,6 @@
-/* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project 1999.
- */
-/* ====================================================================
- * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project 1999.
+// Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 
 #ifndef OPENSSL_HEADER_PKCS8_H
@@ -74,8 +23,11 @@ extern "C" {
 //
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
-// |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// |pass| is NULL, it is treated as an empty password and |pass_len| is ignored.
+// This will be encoded as the empty byte string rather than two zero bytes, the
+// PKCS #12 encoding of the empty string. If |pass| is non-NULL and |pass_len|
+// is negative, |strlen(pass)| is used. If |pass| is non-NULL and |pass_len| is
+// non-negative, |pass_len| bytes are used as the password.
 //
 // If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
 // |salt_len| is zero, a default salt length is used instead.
@@ -104,7 +56,8 @@ OPENSSL_EXPORT int PKCS8_marshal_encrypted_private_key(
 // |pass| is used as the password. If a PBES1 scheme from PKCS #12 is used, this
 // will be converted to a raw byte string as specified in B.1 of PKCS #12. If
 // |pass| is NULL, it will be encoded as the empty byte string rather than two
-// zero bytes, the PKCS #12 encoding of the empty string.
+// zero bytes, the PKCS #12 encoding of the empty string. If |pass_len| is
+// negative and |pass| is non-NULL, |strlen(pass)| is used.
 //
 // The resulting structure must be freed by the caller.
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
@@ -209,8 +162,10 @@ OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
 // and zero otherwise. Since |PKCS12_parse| doesn't take a length parameter,
 // it's not actually possible to use a non-NUL-terminated password to actually
 // get anything from a |PKCS12|. Thus |password| and |password_len| may be
-// |NULL| and zero, respectively, or else |password_len| may be -1, or else
-// |password[password_len]| must be zero and no other NUL bytes may appear in
+// |NULL| and zero, respectively, or else |password_len| may be -1 to indicate
+// that |password| is a NUL-terminated C string whose length is determined via
+// |strlen|, or else |password_len| must be non-negative,
+// |password[password_len]| must be zero, and no other NUL bytes may appear in
 // |password|. If the |password_len| checks fail, zero is returned
 // immediately.
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,

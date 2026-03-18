@@ -1,57 +1,6 @@
-/* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project 1999.
- */
-/* ====================================================================
- * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project 1999.
+// Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/pkcs8.h>
 
@@ -153,7 +102,7 @@ err:
 PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
                                    int pass_len_in) {
   size_t pass_len;
-  if (pass_len_in == -1 && pass != NULL) {
+  if (pass_len_in < 0 && pass != NULL) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
@@ -188,7 +137,9 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
                         int pass_len_in, const uint8_t *salt, size_t salt_len,
                         int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   size_t pass_len;
-  if (pass_len_in < 0 && pass != NULL) {
+  if (pass == NULL) {
+    pass_len = 0;
+  } else if (pass_len_in < 0) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
@@ -922,6 +873,8 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
     if (password_len != 0) {
       return 0;
     }
+  } else if (password_len < -1) {
+    return 0;
   } else if (password_len != -1 &&
              (password[password_len] != 0 ||
               OPENSSL_memchr(password, 0, password_len) != NULL)) {
@@ -1057,9 +1010,7 @@ static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
                               size_t password_len, uint32_t iterations,
                               const uint8_t *in, size_t in_len) {
   uint8_t salt[PKCS12_SALT_LEN];
-  if (!RAND_bytes(salt, sizeof(salt))) {
-    return 0;
-  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt, sizeof(salt)));
 
   int ret = 0;
   EVP_CIPHER_CTX ctx;
@@ -1091,16 +1042,20 @@ static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
     goto err;
   }
 
-  size_t max_out = in_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < in_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
+  // |EVP_CipherUpdate| takes |int| for the input length and may output up to
+  // |in_len + block_size| bytes. Ensure the total fits in |int| to avoid
+  // truncation and cannot overflow.
+  size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
+  if (in_len > INT_MAX - block_size) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
+  size_t max_out = in_len + block_size;
 
   uint8_t *ptr;
   int n1, n2;
   if (!CBB_reserve(&encrypted_content, &ptr, max_out) ||
-      !EVP_CipherUpdate(&ctx, ptr, &n1, in, in_len) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, in, (int)in_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&encrypted_content, n1 + n2) ||
       !CBB_flush(out)) {
@@ -1339,8 +1294,8 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   //                        OpenSSL 3.x.
   const EVP_MD *mac_md = EVP_sha1();
   uint8_t mac_salt[PKCS12_SALT_LEN];
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(mac_salt, sizeof(mac_salt)));
   if (!CBB_flush(&auth_safe_data) ||
-      !RAND_bytes(mac_salt, sizeof(mac_salt)) ||
       !pkcs12_gen_and_write_mac(
           &pfx, CBB_data(&auth_safe_data), CBB_len(&auth_safe_data), password,
           password_len, mac_salt, sizeof(mac_salt), mac_iterations, mac_md)) {
@@ -1377,9 +1332,23 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
                    const EVP_MD *md) {
   GUARD_PTR(p12);
   int ret = 0;
+  uint8_t *storage = NULL;
+
+  // Validate and normalize |password_len|. A value of -1 means the password is
+  // NUL-terminated and we should use strlen, matching |PKCS12_verify_mac|.
+  if (password == NULL) {
+    password_len = 0;
+  } else if (password_len == -1) {
+    password_len = (int)strlen(password);
+  } else if (password_len < 0) {
+    return 0;
+  }
 
   if (mac_iterations == 0) {
     mac_iterations = 1;
+  }
+  if (salt_len < 0) {
+    return 0;
   }
   if (salt_len == 0) {
     salt_len = PKCS12_SALT_LEN;
@@ -1390,9 +1359,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     goto out;
   }
   if (salt == NULL) {
-    if (!RAND_bytes(mac_salt, salt_len)) {
-      goto out;
-    }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(mac_salt, salt_len));
   } else {
     OPENSSL_memcpy(mac_salt, salt, salt_len);
   }
@@ -1402,7 +1369,6 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     md = EVP_sha1();
   }
 
-  uint8_t *storage = NULL;
   CBS ber_bytes, in, pfx, authsafe, content_type, wrapped_authsafes, authsafes;
   uint64_t version;
   // The input may be in BER format.
@@ -1411,9 +1377,6 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     goto out;
   }
-  // There's no use case for |storage| anymore, so we free early.
-  OPENSSL_free(storage);
-
   if (!CBS_get_asn1(&in, &pfx, CBS_ASN1_SEQUENCE) || CBS_len(&in) != 0 ||
       !CBS_get_asn1_uint64(&pfx, &version)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
@@ -1454,9 +1417,15 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     goto out;
   }
 
+  // Free the old buffer and null it out before |CBB_finish| so that |p12|
+  // remains in a safe (empty) state rather than holding a dangling pointer
+  // if |CBB_finish| fails.
+  OPENSSL_free(p12->ber_bytes);
+  p12->ber_bytes = NULL;
+  p12->ber_len = 0;
+
   // Verify that the new password is consistent with the original. This is
   // behavior specific to AWS-LC.
-  OPENSSL_free(p12->ber_bytes);
   if (!CBB_finish(&cbb, &p12->ber_bytes, &p12->ber_len) ||
       !PKCS12_verify_mac(p12, password, password_len)) {
     CBB_cleanup(&cbb);
@@ -1466,7 +1435,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
   ret = 1;
 
 out:
+  OPENSSL_free(storage);
   OPENSSL_free(mac_salt);
   return ret;
 }
-

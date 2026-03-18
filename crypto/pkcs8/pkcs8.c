@@ -1,57 +1,6 @@
-/* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project 1999.
- */
-/* ====================================================================
- * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project 1999.
+// Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/pkcs8.h>
 
@@ -174,11 +123,11 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
     }
   }
 
+  uint8_t A[EVP_MAX_MD_SIZE];
+  unsigned A_len = 0;
   while (out_len != 0) {
     // A. Set A_i=H^r(D||I). (i.e., the r-th hash of D||I,
     // H(H(H(... H(D||I))))
-    uint8_t A[EVP_MAX_MD_SIZE];
-    unsigned A_len;
     if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
         !EVP_DigestUpdate(&ctx, D, block_size) ||
         !EVP_DigestUpdate(&ctx, I, I_len) ||
@@ -225,6 +174,7 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
   ret = 1;
 
 err:
+  OPENSSL_cleanse(A, sizeof(A));
   OPENSSL_free(I);
   OPENSSL_free(pass_raw);
   EVP_MD_CTX_cleanup(&ctx);
@@ -241,15 +191,17 @@ static int pkcs12_pbe_cipher_init(const struct pbe_suite *suite,
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
+  int ret = 0;
   if (!pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_KEY_ID, iterations,
                       EVP_CIPHER_key_length(cipher), key, md) ||
       !pkcs12_key_gen(pass, pass_len, salt, salt_len, PKCS12_IV_ID, iterations,
                       EVP_CIPHER_iv_length(cipher), iv, md)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_KEY_GEN_ERROR);
-    return 0;
+    goto err;
   }
+  ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
 
-  int ret = EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, is_encrypt);
+err:
   OPENSSL_cleanse(key, EVP_MAX_KEY_LENGTH);
   OPENSSL_cleanse(iv, EVP_MAX_IV_LENGTH);
   return ret;
@@ -362,7 +314,7 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
                       const char *pass, size_t pass_len, const uint8_t *in,
                       size_t in_len) {
   int ret = 0;
-  uint8_t *buf = NULL;;
+  uint8_t *buf = NULL;
   EVP_CIPHER_CTX ctx;
   EVP_CIPHER_CTX_init(&ctx);
 
@@ -460,10 +412,10 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
     }
 
     salt_buf = OPENSSL_malloc(salt_len);
-    if (salt_buf == NULL ||
-        !RAND_bytes(salt_buf, salt_len)) {
+    if (salt_buf == NULL) {
       goto err;
     }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt_buf, salt_len));
 
     salt = salt_buf;
   }
@@ -502,18 +454,23 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
     goto err;
   }
 
-  size_t max_out = plaintext_len + EVP_CIPHER_CTX_block_size(&ctx);
-  if (max_out < plaintext_len) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_TOO_LONG);
+  // |EVP_CipherUpdate| takes |int| for the input length and may output up to
+  // |plaintext_len + block_size| bytes. Ensure the total fits in |int| to avoid
+  // truncation and cannot overflow.
+  size_t block_size = EVP_CIPHER_CTX_block_size(&ctx);
+  if (plaintext_len > INT_MAX - block_size) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
+
+  size_t max_out = plaintext_len + block_size;
 
   CBB ciphertext;
   uint8_t *ptr;
   int n1, n2;
   if (!CBB_add_asn1(&epki, &ciphertext, CBS_ASN1_OCTETSTRING) ||
       !CBB_reserve(&ciphertext, &ptr, max_out) ||
-      !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, plaintext_len) ||
+      !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, (int)plaintext_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
       !CBB_did_write(&ciphertext, n1 + n2) ||
       !CBB_flush(out)) {

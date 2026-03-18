@@ -1,6 +1,5 @@
 // Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-License-Identifier: BSD-3-Clause
 
 // Package tls partially implements TLS 1.2, as specified in RFC 5246.
 package runner
