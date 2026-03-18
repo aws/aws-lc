@@ -957,6 +957,12 @@ struct InvalidECPublicKey {
   size_t input_key_len;
   int nid;
 } kInvalidECPublicKeyInputs[] = {
+  /* Test 0: point at infinity. */
+  {
+    (const uint8_t *)"\x00",
+    1,
+    NID_X9_62_prime256v1
+  },
   /* Test 1: incorrect compresion representation. */
   {
     kP224PublicKey_wrong_compressed_byte,
