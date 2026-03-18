@@ -304,7 +304,7 @@ TEST_F(ImplDispatchTest, SHA3_512) {
 #endif // OPENSSL_AARCH64
 
 TEST_F(ImplDispatchTest, SHAKE256_Batched) {
-  #if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
   // Assembly dispatch logic for Keccak-x4 on x86:
   // - For platforms with AVX2 support, we use batched Keccak assembly from s2n-bignum
   //   (`sha3_keccak4_f1600_alt()`).
