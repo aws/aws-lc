@@ -310,8 +310,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
 
                 # Batched Keccak-x4 assembly from s2n-bignum
-                # Scalar version for Neoverse N1
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
+                # Note: Scalar version for Neoverse N1 defined in
+                # sha3_keccak4_f1600_alt.S is included in the common s2n-bignum block above
     )
 
     if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
