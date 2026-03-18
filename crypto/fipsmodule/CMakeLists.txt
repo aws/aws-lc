@@ -188,16 +188,16 @@ if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCH
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
 endif()
 
-# Set the source directory for s2n-bignum assembly files
-if(ARCH STREQUAL "x86_64" AND UNIX)
-  set(S2N_BIGNUM_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/x86_att")
-elseif(ARCH STREQUAL "aarch64" AND UNIX)
-  set(S2N_BIGNUM_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm")
-endif()
-
 # s2n-bignum files can be compiled on Unix platforms for x86_64 and arm64 only.
 if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
       ARCH STREQUAL "aarch64") AND UNIX)
+
+  # Set the source directory for s2n-bignum assembly files
+  if(ARCH STREQUAL "x86_64")
+    set(S2N_BIGNUM_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/x86_att")
+  else()
+    set(S2N_BIGNUM_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm")
+  endif()
 
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
@@ -250,6 +250,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase_alt.S
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble.S
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble_alt.S
+
+    ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
   )
 
   if(ARCH STREQUAL "x86_64")
@@ -385,7 +387,6 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/rej_uniform_asm.S
-    ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
   )
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_X86_64_ASM_SOURCES})

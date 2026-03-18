@@ -31,6 +31,7 @@ class ImplDispatchTest : public ::testing::Test {
     aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
+    is_avx2_ = CRYPTO_is_AVX2_capable();
     ifma_avx512 = CRYPTO_is_AVX512IFMA_capable();
     sha_ext_ =
     // sha_ext_ isn't enabled on 32-bit x86 architectures.
@@ -86,12 +87,12 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif
+#endif
     have_s2n_bignum_asm_ =
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
         true;
 #else
         false;
-#endif
 #endif
   }
 
@@ -122,10 +123,12 @@ class ImplDispatchTest : public ::testing::Test {
   bool aes_hw_ = false;
   bool aes_vpaes_ = false;
   bool sha_ext_ = false;
+  bool have_s2n_bignum_asm_ = false;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   bool vaes_vpclmulqdq_ = false;
   bool avx_movbe_ = false;
   bool is_x86_64_ = false;
+  bool is_avx2_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
   bool ifma_avx512 = false;
@@ -138,7 +141,6 @@ class ImplDispatchTest : public ::testing::Test {
   bool neoverse_v1_ = false;
   bool neoverse_v2_ = false;
   bool assembler_has_neon_sha3_extension_ = false;
-  bool have_s2n_bignum_asm_ = false;
 #endif
 
 };
@@ -156,6 +158,8 @@ constexpr size_t kFlag_sha256_hw = 6;
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
+constexpr size_t kFlag_sha3_keccak_f1600 = 9;
+constexpr size_t kFlag_sha3_keccak4_f1600_alt = 10;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
@@ -297,8 +301,24 @@ TEST_F(ImplDispatchTest, SHA3_512) {
         SHA3_512(in, 32, out);
       });
 }
+#endif // OPENSSL_AARCH64
 
 TEST_F(ImplDispatchTest, SHAKE256_Batched) {
+  #if defined(OPENSSL_X86_64)
+  // Assembly dispatch logic for Keccak-x4 on x86:
+  // - For platforms with AVX2 support, we use batched Keccak assembly from s2n-bignum
+  //   (`sha3_keccak4_f1600_alt()`).
+  // - Otherwise, fall back to scalar Keccak implementation from s2n-bignum,
+  //   (`sha3_keccak_f1600()`).
+  AssertFunctionsHit(
+      {
+          {kFlag_sha3_keccak4_f1600_alt,
+           have_s2n_bignum_asm_ &&
+           is_avx2_ },
+           {kFlag_sha3_keccak_f1600,
+           have_s2n_bignum_asm_ && is_x86_64_ && !is_avx2_ },
+      },
+#else // AARCH64
   // Assembly dispatch logic for Keccak-x4 on AArch64:
   // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
   //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
@@ -342,14 +362,13 @@ TEST_F(ImplDispatchTest, SHAKE256_Batched) {
 	       !(assembler_has_neon_sha3_extension_ && sha3_ext_)
 	   ) },
       },
+#endif
       [] {
         const uint8_t in[32] = {0};
         uint8_t out0[32], out1[32], out2[32], out3[32];
         SHAKE256_x4(in, in, in, in, 32, out0, out1, out2, out3, 32);
       });
 }
-#endif // OPENSSL_AARCH64
-
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr);
