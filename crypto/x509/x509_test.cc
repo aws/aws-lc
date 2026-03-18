@@ -368,35 +368,37 @@ Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
 -----END PRIVATE KEY-----
 )";
 
-// kCRLTestRoot is a test root certificate. It has private key:
-//
-//     -----BEGIN RSA PRIVATE KEY-----
-//     MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
-//     lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
-//     07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
-//     IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
-//     9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
-//     ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
-//     DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
-//     Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
-//     aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
-//     GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
-//     9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
-//     grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
-//     /zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
-//     5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
-//     DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
-//     BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
-//     lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
-//     TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
-//     RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
-//     ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
-//     s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
-//     EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
-//     qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
-//     Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
-//     vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
-//     -----END RSA PRIVATE KEY-----
+// kCRLTestRootKey is the private key for kCRLTestRoot.
+static const char kCRLTestRootKey[] = R"(
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
+lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
+07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
+IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
+9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
+ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
+DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
+Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
+aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
+GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
+9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
+grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
+/zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
+5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
+DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
+BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
+lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
+TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
+RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
+ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
+s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
+EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
+qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
+Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
+vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
+-----END RSA PRIVATE KEY-----
+)";
+
 static const char kCRLTestRoot[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIDbzCCAlegAwIBAgIJAODri7v0dDUFMA0GCSqGSIb3DQEBCwUAME4xCzAJBgNV
@@ -2204,6 +2206,236 @@ TEST(X509Test, TestCRL) {
   invalidCRL.type = X509_LU_X509;
   invalidCRL.data.x509 = leaf.get();
   ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
+}
+
+// Helper to create a GENERAL_NAME with a URI.
+static bssl::UniquePtr<GENERAL_NAME> MakeURIGeneralName(const char *uri) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  if (!name) {
+    return nullptr;
+  }
+  name->type = GEN_URI;
+  name->d.uniformResourceIdentifier = ASN1_IA5STRING_new();
+  if (!name->d.uniformResourceIdentifier ||
+      !ASN1_STRING_set(name->d.uniformResourceIdentifier, uri, strlen(uri))) {
+    return nullptr;
+  }
+  return name;
+}
+
+// Helper to create a DIST_POINT_NAME from a URI. Caller takes ownership.
+static DIST_POINT_NAME *MakeDistPointName(const char *uri) {
+  DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
+  if (!dpn) {
+    return nullptr;
+  }
+  dpn->type = 0;  // fullname
+  dpn->name.fullname = sk_GENERAL_NAME_new_null();
+  if (!dpn->name.fullname) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  auto gn = MakeURIGeneralName(uri);
+  if (!gn || !bssl::PushToStack(dpn->name.fullname, std::move(gn))) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  return dpn;
+}
+
+// Helper to create a leaf cert with a CRLDP extension and sign it.
+static bssl::UniquePtr<X509> MakeCRLDPLeaf(
+    X509 *issuer_cert, EVP_PKEY *issuer_key, int serial,
+    CRL_DIST_POINTS *crldp) {
+  bssl::UniquePtr<EVP_PKEY> leaf_key(EVP_PKEY_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (!leaf_key || !rsa || !e ||
+      !BN_set_word(e.get(), RSA_F4) ||
+      !RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr) ||
+      !EVP_PKEY_assign_RSA(leaf_key.get(), rsa.release())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509> leaf(X509_new());
+  if (!leaf ||
+      !X509_set_version(leaf.get(), X509_VERSION_3) ||
+      !X509_set_issuer_name(leaf.get(),
+                            X509_get_subject_name(issuer_cert)) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(leaf.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>("Leaf"), -1, -1, 0) ||
+      !X509_set_pubkey(leaf.get(), leaf_key.get()) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(leaf.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(leaf.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+  if (!sn || !ASN1_INTEGER_set(sn.get(), serial) ||
+      !X509_set_serialNumber(leaf.get(), sn.get())) {
+    return nullptr;
+  }
+  if (!X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points, crldp,
+                         /*crit=*/0, /*flags=*/0)) {
+    return nullptr;
+  }
+  if (!X509_sign(leaf.get(), issuer_key, EVP_sha256())) {
+    return nullptr;
+  }
+  return leaf;
+}
+
+// Helper to create a CRL, optionally with an IDP extension and revoked serials.
+static bssl::UniquePtr<X509_CRL> MakeTestCRL(
+    X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
+    const std::vector<int> &revoked_serials) {
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  if (!crl) {
+    return nullptr;
+  }
+  if (!X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2) ||
+      !X509_CRL_set_issuer_name(crl.get(),
+                                X509_get_subject_name(issuer_cert))) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
+  if (!last_update ||
+      !ASN1_TIME_set_posix(last_update.get(), kReferenceTime) ||
+      !X509_CRL_set1_lastUpdate(crl.get(), last_update.get())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_TIME> next_update(ASN1_TIME_new());
+  if (!next_update ||
+      !ASN1_TIME_adj(next_update.get(), kReferenceTime, 30, 0) ||
+      !X509_CRL_set1_nextUpdate(crl.get(), next_update.get())) {
+    return nullptr;
+  }
+  for (int serial : revoked_serials) {
+    bssl::UniquePtr<X509_REVOKED> rev(X509_REVOKED_new());
+    bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+    bssl::UniquePtr<ASN1_TIME> rev_time(ASN1_TIME_new());
+    if (!rev || !sn || !rev_time ||
+        !ASN1_INTEGER_set(sn.get(), serial) ||
+        !X509_REVOKED_set_serialNumber(rev.get(), sn.get()) ||
+        !ASN1_TIME_set_posix(rev_time.get(), kReferenceTime) ||
+        !X509_REVOKED_set_revocationDate(rev.get(), rev_time.get()) ||
+        !X509_CRL_add0_revoked(crl.get(), rev.get())) {
+      return nullptr;
+    }
+    rev.release();  // Ownership transferred to crl.
+  }
+  if (idp_uri) {
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp) {
+      return nullptr;
+    }
+    idp->distpoint = MakeDistPointName(idp_uri);
+    if (!idp->distpoint ||
+        !X509_CRL_add1_ext_i2d(crl.get(), NID_issuing_distribution_point,
+                                idp, /*crit=*/1, /*flags=*/0)) {
+      ISSUING_DIST_POINT_free(idp);
+      return nullptr;
+    }
+    ISSUING_DIST_POINT_free(idp);
+  }
+  if (!X509_CRL_sign(crl.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  // Re-encode and re-parse so that internal fields like crl->idp and
+  // crl->idp_flags are populated from the IDP extension. These are only
+  // set during parsing (ASN1_OP_D2I_POST), not programmatic construction.
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509_CRL(crl.get(), &der);
+  if (der_len <= 0) {
+    return nullptr;
+  }
+  const uint8_t *inp = der;
+  crl.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+  OPENSSL_free(der);
+  return crl;
+}
+
+// Test that CRL distribution point scope checking (crl_crldp_check) correctly
+// matches a cert's CRLDP against a CRL's Issuing Distribution Point (IDP).
+TEST(X509Test, CRLDistributionPointScope) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x1000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+  const char *kOtherURI = "http://other.example.com/crl.pem";
+
+  // Scenario 1: Leaf with a single clean CRLDP (distpoint URI only, no reasons,
+  // no CRLissuer). CRL has a matching IDP and revokes the leaf's serial.
+  // Verify that the CRL is considered in scope and the cert is revoked.
+  {
+    bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+    ASSERT_TRUE(crldp);
+    bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+    ASSERT_TRUE(dp);
+    dp->distpoint = MakeDistPointName(kCRLURI);
+    ASSERT_TRUE(dp->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+    auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+    ASSERT_TRUE(leaf);
+    auto crl = MakeTestCRL(root.get(), key.get(), kCRLURI, {kLeafSerial});
+    ASSERT_TRUE(crl);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {crl.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+
+  // Scenario 2: Leaf with two DPs:
+  //   DP1: distpoint=kOtherURI + reasons + CRLissuer (should be skipped)
+  //   DP2: distpoint=kCRLURI (clean, matches the revoking CRL)
+  // CRL-A (IDP=kCRLURI) revokes the leaf. CRL-B (IDP=kOtherURI) has no
+  // revocations. DP1 should be skipped and DP2 should match CRL-A.
+  {
+    bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+    ASSERT_TRUE(crldp);
+
+    // DP1: distpoint + reasons + CRLissuer
+    bssl::UniquePtr<DIST_POINT> dp1(DIST_POINT_new());
+    ASSERT_TRUE(dp1);
+    dp1->distpoint = MakeDistPointName(kOtherURI);
+    ASSERT_TRUE(dp1->distpoint);
+    dp1->reasons = ASN1_BIT_STRING_new();
+    ASSERT_TRUE(dp1->reasons);
+    ASN1_BIT_STRING_set_bit(dp1->reasons, 1, 1);  // keyCompromise
+    dp1->CRLissuer = sk_GENERAL_NAME_new_null();
+    ASSERT_TRUE(dp1->CRLissuer);
+    bssl::UniquePtr<GENERAL_NAME> issuer_name(GENERAL_NAME_new());
+    ASSERT_TRUE(issuer_name);
+    issuer_name->type = GEN_DIRNAME;
+    issuer_name->d.directoryName = X509_NAME_new();
+    ASSERT_TRUE(issuer_name->d.directoryName);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        issuer_name->d.directoryName, "O", MBSTRING_ASC,
+        reinterpret_cast<const uint8_t *>("Other Issuer"), -1, -1, 0));
+    ASSERT_TRUE(bssl::PushToStack(dp1->CRLissuer, std::move(issuer_name)));
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp1)));
+
+    // DP2: clean distpoint only
+    bssl::UniquePtr<DIST_POINT> dp2(DIST_POINT_new());
+    ASSERT_TRUE(dp2);
+    dp2->distpoint = MakeDistPointName(kCRLURI);
+    ASSERT_TRUE(dp2->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp2)));
+
+    auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+    ASSERT_TRUE(leaf);
+    auto crl_a = MakeTestCRL(root.get(), key.get(), kCRLURI, {kLeafSerial});
+    ASSERT_TRUE(crl_a);
+    auto crl_b = MakeTestCRL(root.get(), key.get(), kOtherURI, {});
+    ASSERT_TRUE(crl_b);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {crl_a.get(), crl_b.get()}, X509_V_FLAG_CRL_CHECK));
+  }
 }
 
 TEST(X509Test, TestX509GettersSetters) {
