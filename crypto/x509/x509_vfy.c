@@ -676,7 +676,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     }
     // Check pathlen if not self issued
     if (i > 1 && !(x->ex_flags & EXFLAG_SI) && x->ex_pathlen != -1 &&
-        plen > x->ex_pathlen + 1) {
+        plen - 1 > x->ex_pathlen) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
