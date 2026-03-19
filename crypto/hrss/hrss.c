@@ -1,16 +1,5 @@
-/* Copyright (c) 2018, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2018, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/hrss.h>
 
@@ -2001,7 +1990,7 @@ int HRSS_generate_key(
     // The private key output is randomised in case it's later passed to
     // |HRSS_encap|.
     memset(out_pub, 0, sizeof(struct HRSS_public_key));
-    RAND_bytes((uint8_t*) out_priv, sizeof(struct HRSS_private_key));
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes((uint8_t*) out_priv, sizeof(struct HRSS_private_key)));
     return 0;
   }
 
@@ -2064,7 +2053,7 @@ int HRSS_encap(uint8_t out_ciphertext[POLY_BYTES], uint8_t out_shared_key[32],
     // The private key output is randomised in case it's used to encrypt and
     // transmit something.
     memset(out_ciphertext, 0, POLY_BYTES);
-    RAND_bytes(out_shared_key, 32);
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out_shared_key, 32));
     return 0;
   }
 
@@ -2125,7 +2114,7 @@ int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
     // If the caller ignores the return value the output will still be safe.
     // The private key output is randomised in case it's used to encrypt and
     // transmit something.
-    RAND_bytes(out_shared_key, HRSS_KEY_BYTES);
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out_shared_key, HRSS_KEY_BYTES));
     return 0;
   }
 

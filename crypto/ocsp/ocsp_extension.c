@@ -1,14 +1,7 @@
-/*
- * Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
-
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+// Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 // Modifications Copyright Amazon.com, Inc. or its affiliates.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/mem.h>
 #include <openssl/rand.h>
@@ -87,8 +80,8 @@ static int ocsp_add_nonce(STACK_OF(X509_EXTENSION) **exts, unsigned char *val,
   ASN1_put_object(&tmpval, 0, len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
   if (val != NULL) {
     OPENSSL_memcpy(tmpval, val, len);
-  } else if (RAND_bytes(tmpval, len) <= 0) {
-    goto err;
+  } else {
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(tmpval, len));
   }
   if (X509V3_add1_i2d(exts, NID_id_pkix_OCSP_Nonce, &os, 0,
                       X509V3_ADD_REPLACE) <= 0) {

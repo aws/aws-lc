@@ -1,20 +1,15 @@
-/*
- * Copyright 2014-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2014, Intel Corporation. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- *
- * Originally written by Shay Gueron (1, 2), and Vlad Krasnov (1)
- * (1) Intel Corporation, Israel Development Center, Haifa, Israel
- * (2) University of Haifa, Israel
- *
- * Reference:
- * S.Gueron and V.Krasnov, "Fast Prime Field Elliptic Curve Cryptography with
- *                          256 Bit Primes"
- */
+// Copyright 2014-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2014, Intel Corporation. All Rights Reserved.
+//
+// Originally written by Shay Gueron (1, 2), and Vlad Krasnov (1)
+// (1) Intel Corporation, Israel Development Center, Haifa, Israel
+// (2) University of Haifa, Israel
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Reference:
+// S.Gueron and V.Krasnov, "Fast Prime Field Elliptic Curve Cryptography with
+//                          256 Bit Primes"
 
 #include <openssl/ec.h>
 

@@ -1,16 +1,5 @@
-/* Copyright (c) 2019, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2019, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <signal.h>
 #include <algorithm>
@@ -2981,16 +2970,20 @@ static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
   const Span<const uint8_t> e_bytes = args[2];
   const Span<const uint8_t> msg = args[3];
 
-  BIGNUM *d = BN_new();
-  BIGNUM *n = BN_new();
-  BIGNUM *e = BN_new();
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<RSA> key(RSA_new());
-  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
-      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
-      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
-      !RSA_set0_key(key.get(), n, e, d)) {
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !RSA_set0_key(key.get(), n.get(), e.get(), d.get())) {
     return false;
   }
+  // RSA_set0_key took ownership of n, e, d.
+  n.release();
+  e.release();
+  d.release();
 
   std::vector<uint8_t> sig(RSA_size(key.get()));
   size_t sig_len = 0;
@@ -3015,17 +3008,26 @@ static bool RSADecryptionPrimitive(const Span<const uint8_t> args[],
   const Span<const uint8_t> n_bytes = args[2];
   const Span<const uint8_t> e_bytes = args[3];
 
-  BIGNUM *d = BN_new();
-  BIGNUM *n = BN_new();
-  BIGNUM *e = BN_new();
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<RSA> key(RSA_new());
 
   uint8_t success_flag[1] = {0};
   RSA_set_flags(key.get(), RSA_FLAG_LARGE_PUBLIC_EXPONENT);
-  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
-      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
-      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
-      !RSA_set0_key(key.get(), n, e, d) || !RSA_check_key(key.get())) {
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !RSA_set0_key(key.get(), n.get(), e.get(), d.get())) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+  // RSA_set0_key took ownership of n, e, d.
+  n.release();
+  e.release();
+  d.release();
+
+  if (!RSA_check_key(key.get())) {
     return write_reply(
         {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
   }
@@ -3058,29 +3060,30 @@ static bool RSADecryptionPrimitiveCRT(const Span<const uint8_t> args[],
   const Span<const uint8_t> n_bytes = args[7];
   const Span<const uint8_t> e_bytes = args[8];
 
-  BIGNUM *d = BN_new();
-  BIGNUM *n = BN_new();
-  BIGNUM *e = BN_new();
-  BIGNUM *p = BN_new();
-  BIGNUM *q = BN_new();
-  BIGNUM *dmp1 = BN_new();
-  BIGNUM *dmq1 = BN_new();
-  BIGNUM *iqmp = BN_new();
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  bssl::UniquePtr<BIGNUM> dmp1(BN_new());
+  bssl::UniquePtr<BIGNUM> dmq1(BN_new());
+  bssl::UniquePtr<BIGNUM> iqmp(BN_new());
 
   uint8_t success_flag[1] = {0};
 
-  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
-      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
-      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
-      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
-      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
-      !BN_bin2bn(dmp1_bytes.data(), dmp1_bytes.size(), dmp1) ||
-      !BN_bin2bn(dmq1_bytes.data(), dmq1_bytes.size(), dmq1) ||
-      !BN_bin2bn(iqmp_bytes.data(), iqmp_bytes.size(), iqmp)) {
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p.get()) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q.get()) ||
+      !BN_bin2bn(dmp1_bytes.data(), dmp1_bytes.size(), dmp1.get()) ||
+      !BN_bin2bn(dmq1_bytes.data(), dmq1_bytes.size(), dmq1.get()) ||
+      !BN_bin2bn(iqmp_bytes.data(), iqmp_bytes.size(), iqmp.get())) {
     return false;
   }
-  bssl::UniquePtr<RSA> key(
-      RSA_new_private_key_large_e(n, e, d, p, q, dmp1, dmq1, iqmp));
+  bssl::UniquePtr<RSA> key(RSA_new_private_key_large_e(
+      n.get(), e.get(), d.get(), p.get(), q.get(), dmp1.get(), dmq1.get(),
+      iqmp.get()));
 
   if (key == NULL) {
     return write_reply(

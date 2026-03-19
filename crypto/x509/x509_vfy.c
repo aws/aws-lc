@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <ctype.h>
 #include <limits.h>
@@ -729,7 +676,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     }
     // Check pathlen if not self issued
     if (i > 1 && !(x->ex_flags & EXFLAG_SI) && x->ex_pathlen != -1 &&
-        plen > x->ex_pathlen + 1) {
+        plen - 1 > x->ex_pathlen) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -1220,7 +1167,8 @@ static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
   return 0;
 }
 
-// Check CRLDP and IDP
+// Check CRLDP and IDP. Return true when the CRL is a good
+// candidate CRL from which to check revocation of the certificate.
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
@@ -1243,18 +1191,28 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
     //
     // We also do not support indirect CRLs, and a CRL issuer can only match
     // indirect CRLs (RFC 5280, section 6.3.3, step b.1).
-    // support.
-    if (dp->reasons != NULL && dp->CRLissuer != NULL &&
-        (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint))) {
+    if (dp->reasons != NULL || dp->CRLissuer != NULL) {
+      continue;
+    }
+    // At this point we have already checked that the CRL issuer matches
+    // the certificate issuer (and set CRL_SCORE_ISSUER_NAME);
+
+    // RFC 5280 Section 6.3.3 step b.2
+    if (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint)){
       return 1;
     }
   }
 
   // If the CRL does not specify an issuing distribution point, allow it to
   // match anything.
-  //
-  // TODO(davidben): Does this match RFC 5280? It's hard to follow because RFC
-  // 5280 starts from distribution points, while this starts from CRLs.
+  // RFC5280 section 6.3.3 check (b).(2) does not prescribe what to do if the
+  // CRL does not include an IDP. This fallback returns true if the CRL did not
+  // include an IDP or an IDP without a DP. Such a CRL could still be a good
+  // candidate CRL to check against although we cannot check if it matches the
+  // DP in the certificate. In the event of multiple good candidate CRLs
+  // (crl_crldp_check() returns 1 and get_crl_score() scores them high), some
+  // without an IDP or with an IDP and without a DP and others matching the
+  // certificate's DP, get_crl_sk() will pick the freshest one.
   return !crl->idp || !crl->idp->distpoint;
 }
 
@@ -1893,11 +1851,13 @@ int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
   if (ctx->custom_crit_oids == NULL) {
     ctx->custom_crit_oids = sk_ASN1_OBJECT_new_null();
     if (ctx->custom_crit_oids == NULL) {
+      ASN1_OBJECT_free(oid_dup);
       return 0;
     }
   }
 
   if (!sk_ASN1_OBJECT_push(ctx->custom_crit_oids, oid_dup)) {
+    ASN1_OBJECT_free(oid_dup);
     return 0;
   }
   return 1;
