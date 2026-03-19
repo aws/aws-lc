@@ -352,8 +352,10 @@ static void ensure_getrandom_is_initialized(void) {
 
 static void ensure_dev_urandom_is_initialized(void) {
 
-  // On platforms where urandom doesn't block at startup, we ensure that the
-  // kernel has sufficient entropy before continuing.
+#if defined(OPENSSL_LINUX)
+  // On Linux, where urandom doesn't block at startup, we ensure that the
+  // kernel has sufficient entropy before continuing. RNDGETENTCNT and ioctl
+  // are Linux-specific (from <linux/random.h> and <sys/ioctl.h>).
   for (;;) {
     int entropy_bits = 0;
     if (ioctl(urandom_fd, RNDGETENTCNT, &entropy_bits)) {
@@ -376,6 +378,7 @@ static void ensure_dev_urandom_is_initialized(void) {
     struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
     nanosleep(&sleep_time, &sleep_time);
   }
+#endif  // OPENSSL_LINUX
 
   random_flavor_state = STATE_READY;
 }
