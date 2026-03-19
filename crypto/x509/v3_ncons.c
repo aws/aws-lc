@@ -28,9 +28,11 @@ static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
 static int print_nc_ipadd(BIO *bp, const ASN1_OCTET_STRING *ip);
 
 static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc);
-static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen);
+static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen,
+                           int excluding);
 static int nc_dn(X509_NAME *sub, X509_NAME *nm);
-static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns);
+static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns,
+                  int excluding);
 static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base);
 static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base);
@@ -295,15 +297,32 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   }
 
   int isdnsname = 0;
+  int has_non_dns_char = 0;
+
+  // Per RFC 6125 Section 6.4.3, a wildcard DNS-ID uses a leading "*." covering
+  // the first label. Skip past it for validation, but return the full value so
+  // |nc_dns| can match it against name constraints.
+  int check_start = 0;
+  if (utf8_length > 2 && utf8_value[0] == '*' && utf8_value[1] == '.') {
+    check_start = 2;
+  }
   
-  // XXX: Deviation from strict DNS name syntax, also check names with '_'
-  // Check DNS name syntax, any '-' or '.' must be internal,
-  // and on either side of each '.' we can't have a '-' or '.'.
+  // Check DNS name syntax. Any '-' or '.' must be internal, and on either side
+  // of each '.' we can't have a '-' or '.'. Names with '_' are also accepted
+  // as a deviation from strict DNS syntax.
   //
-  // If the name has just one label, we don't consider it a DNS name.  This
+  // If the name has just one label, we don't consider it a DNS name. This
   // means that "CN=sometld" cannot be precluded by DNS name constraints, but
-  // that is not a problem.
-  for (int i = 0; i < utf8_length; ++i) {
+  // that is not a problem. Single-label CNs may contain non-ASCII characters
+  // (e.g. "CN=Ünternehmen") and are silently skipped.
+  //
+  // Multi-label CNs that resemble DNS names must be ASCII-only. Per RFC 6125
+  // Section 6.4.2, internationalized domain names should appear in A-label
+  // (punycode) form. A multi-label CN containing non-ASCII bytes or control
+  // characters is rejected with |X509_V_ERR_UNSUPPORTED_NAME_SYNTAX| to
+  // prevent it from bypassing name constraints while still being accepted by
+  // hostname verification.
+  for (int i = check_start; i < utf8_length; ++i) {
     const unsigned char c = utf8_value[i];
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -311,8 +330,13 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
       continue;
     }
 
+    if (c >= 0x80 || c <= 0x20 || c == 0x7F) {
+      has_non_dns_char = 1;
+      continue;
+    }
+
     // Dot and hyphen cannot be first or last.
-    if (i > 0 && i < utf8_length - 1) {
+    if (i > check_start && i < utf8_length - 1) {
       if (c == '-') {
         continue;
       }
@@ -328,6 +352,13 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
     }
     isdnsname = 0;
     break;
+  }
+
+  if (isdnsname && has_non_dns_char) {
+    // Multi-label CN with non-ASCII bytes or control characters. This
+    // resembles a DNS name but contains characters not permitted in DNS.
+    OPENSSL_free(utf8_value);
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
   if (isdnsname) {
@@ -402,7 +433,7 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
     if (match == 0) {
       match = 1;
     }
-    r = nc_match_single(gen, sub->base);
+    r = nc_match_single(gen, sub->base, /*excluding=*/0);
     if (r == X509_V_OK) {
       match = 2;
     } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
@@ -425,7 +456,7 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
       return X509_V_ERR_SUBTREE_MINMAX;
     }
 
-    r = nc_match_single(gen, sub->base);
+    r = nc_match_single(gen, sub->base, /*excluding=*/1);
     if (r == X509_V_OK) {
       return X509_V_ERR_EXCLUDED_VIOLATION;
     } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
@@ -436,13 +467,14 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
-static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base) {
+static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
+                           int excluding) {
   switch (base->type) {
     case GEN_DIRNAME:
       return nc_dn(gen->d.directoryName, base->d.directoryName);
 
     case GEN_DNS:
-      return nc_dns(gen->d.dNSName, base->d.dNSName);
+      return nc_dns(gen->d.dNSName, base->d.dNSName, excluding);
 
     case GEN_EMAIL:
       return nc_email(gen->d.rfc822Name, base->d.rfc822Name);
@@ -484,6 +516,15 @@ static int starts_with(const CBS *cbs, uint8_t c) {
   return CBS_len(cbs) > 0 && CBS_data(cbs)[0] == c;
 }
 
+static int starts_with_str(const CBS *cbs, const char *str, size_t str_len) {
+  return CBS_len(cbs) >= str_len &&
+         !OPENSSL_memcmp(CBS_data(cbs), str, str_len);
+}
+
+static int ends_with_byte(const CBS *cbs, uint8_t c) {
+  return CBS_len(cbs) > 0 && CBS_data(cbs)[CBS_len(cbs) - 1] == c;
+}
+
 static int equal_case(const CBS *a, const CBS *b) {
   if (CBS_len(a) != CBS_len(b)) {
     return 0;
@@ -508,7 +549,8 @@ static int has_suffix_case(const CBS *a, const CBS *b) {
   return equal_case(&copy, b);
 }
 
-static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
+static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
+                  int excluding) {
   CBS dns_cbs, base_cbs;
   CBS_init(&dns_cbs, dns->data, dns->length);
   CBS_init(&base_cbs, base->data, base->length);
@@ -516,6 +558,34 @@ static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
   // Empty matches everything
   if (CBS_len(&base_cbs) == 0) {
     return X509_V_OK;
+  }
+
+  // Normalize absolute DNS names by removing the trailing dot, if any.
+  if (ends_with_byte(&dns_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&dns_cbs, &unused);
+  }
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&base_cbs, &unused);
+  }
+
+  // Wildcard partial-match handling ("*.bar.com" matching name constraint
+  // "foo.bar.com"). This only handles the case where the dnsname and the
+  // constraint match after removing the leftmost label, otherwise it is handled
+  // by falling through to the check of whether the dnsname is fully within or
+  // fully outside of the constraint.
+  if (excluding && starts_with_str(&dns_cbs, "*.", 2)) {
+    CBS unused;
+    CBS base_parent_cbs = base_cbs;
+    CBS dns_parent_cbs = dns_cbs;
+    CBS_skip(&dns_parent_cbs, 2);
+    if (CBS_get_until_first(&base_parent_cbs, &unused, '.') &&
+        CBS_skip(&base_parent_cbs, 1)) {
+      if (equal_case(&dns_parent_cbs, &base_parent_cbs)) {
+        return X509_V_OK;
+      }
+    }
   }
 
   // If |base_cbs| begins with a '.', do a simple suffix comparison. This is
