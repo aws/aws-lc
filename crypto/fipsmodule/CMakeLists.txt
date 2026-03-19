@@ -251,6 +251,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble.S
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble_alt.S
 
+    ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
     ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
   )
 
@@ -266,7 +267,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_alt.S
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
     )
   elseif(ARCH STREQUAL "aarch64")
     # byte-level interface for aarch64 s2n-bignum x25519 are in
@@ -305,14 +305,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     # (gcc supports it since gcc8, clang supports it since clang7)
     check_compiler("neon_sha3_check.c" MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION "-march=armv8.4-a+sha3")
 
-    list(APPEND BCM_ASM_SOURCES
-                # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
-
-                # Batched Keccak-x4 assembly from s2n-bignum
-                # Note: Scalar version for Neoverse N1 defined in
-                # sha3_keccak4_f1600_alt.S is included in the common s2n-bignum block above
-    )
+    # Note: Scalar Keccak-x1 and Batched Neoverse N1 Keccak-x4 assembly from s2n-bignum
+    # are included in the common s2n-bignum block above
 
     if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
         list(APPEND BCM_ASM_SOURCES
