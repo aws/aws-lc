@@ -13,6 +13,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/experimental/kem_deterministic_api.h>
@@ -1897,6 +1898,150 @@ TEST(EVPExtraTest, Ed25519Keygen) {
       EVP_DigestVerifyInit(ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(ctx.get(), sig, len,
                                reinterpret_cast<const uint8_t *>("hello"), 5));
+}
+
+TEST(EVPExtraTest, Ed25519i2dPrivateKey) {
+  // Secret key from RFC 8032, Section 7.1, TEST 1.
+  static const uint8_t kPrivateKeySeed[32] = {
+      0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a,
+      0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32,
+      0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+  };
+  // PKCS#8 v1 encoding of the above seed, per RFC 8410, Section 7.
+  static const uint8_t kPrivateKeyPKCS8[] = {
+      0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+      0x04, 0x22, 0x04, 0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
+      0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69,
+      0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+  };
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, nullptr, kPrivateKeySeed, sizeof(kPrivateKeySeed)));
+  ASSERT_TRUE(pkey);
+
+  // i2d_PrivateKey should produce PKCS#8 format for Ed25519.
+  uint8_t *der_buf = nullptr;
+  int der_len = i2d_PrivateKey(pkey.get(), &der_buf);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_buf_free(der_buf);
+  EXPECT_EQ(Bytes(kPrivateKeyPKCS8), Bytes(der_buf, der_len));
+
+  // d2i_PrivateKey should parse Ed25519 PKCS#8.
+  const uint8_t *inp = kPrivateKeyPKCS8;
+  bssl::UniquePtr<EVP_PKEY> decoded(d2i_PrivateKey(
+      EVP_PKEY_ED25519, nullptr, &inp, sizeof(kPrivateKeyPKCS8)));
+  ASSERT_TRUE(decoded);
+  // |inp| advanced by size of PKCS8-encoded key
+  EXPECT_EQ(inp, kPrivateKeyPKCS8 + sizeof(kPrivateKeyPKCS8));
+  EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(decoded.get()));
+
+  // The decoded key must match the original.
+  uint8_t original_raw[32], decoded_raw[32];
+  size_t original_len = sizeof(original_raw);
+  size_t decoded_len = sizeof(decoded_raw);
+  ASSERT_TRUE(
+      EVP_PKEY_get_raw_private_key(pkey.get(), original_raw, &original_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(decoded.get(), decoded_raw,
+                                            &decoded_len));
+  EXPECT_EQ(Bytes(original_raw, original_len),
+            Bytes(decoded_raw, decoded_len));
+
+  // d2i_PrivateKey with the wrong type should fail.
+  inp = kPrivateKeyPKCS8;
+  bssl::UniquePtr<EVP_PKEY> wrong_type(
+      d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &inp, sizeof(kPrivateKeyPKCS8)));
+  EXPECT_FALSE(wrong_type);
+  ERR_clear_error();
+
+  // d2i_AutoPrivateKey should also work with Ed25519 PKCS#8.
+  inp = kPrivateKeyPKCS8;
+  bssl::UniquePtr<EVP_PKEY> auto_decoded(
+      d2i_AutoPrivateKey(nullptr, &inp, sizeof(kPrivateKeyPKCS8)));
+  ASSERT_TRUE(auto_decoded);
+  EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(auto_decoded.get()));
+  decoded_len = sizeof(decoded_raw);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(auto_decoded.get(), decoded_raw,
+                                            &decoded_len));
+  EXPECT_EQ(Bytes(original_raw, original_len),
+            Bytes(decoded_raw, decoded_len));
+}
+
+TEST(EVPExtraTest, Ed25519i2dPublicKey) {
+  // Public key from RFC 8032, Section 7.1, TEST 1.
+  static const uint8_t kPublicKey[32] = {
+      0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe,
+      0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6,
+      0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
+  };
+  // SubjectPublicKeyInfo encoding of the above key, per RFC 8410, Section 4.
+  static const uint8_t kPublicKeySPKI[] = {
+      0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21,
+      0x00, 0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b,
+      0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda,
+      0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
+  };
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(
+      EVP_PKEY_ED25519, nullptr, kPublicKey, sizeof(kPublicKey)));
+  ASSERT_TRUE(pkey);
+
+  // i2d_PublicKey should produce SPKI format for Ed25519.
+  uint8_t *der_buf = nullptr;
+  int der_len = i2d_PublicKey(pkey.get(), &der_buf);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_buf_free(der_buf);
+  EXPECT_EQ(Bytes(kPublicKeySPKI), Bytes(der_buf, der_len));
+
+  // d2i_PublicKey should parse Ed25519 SPKI.
+  const uint8_t *inp = kPublicKeySPKI;
+  bssl::UniquePtr<EVP_PKEY> decoded(d2i_PublicKey(
+      EVP_PKEY_ED25519, nullptr, &inp, sizeof(kPublicKeySPKI)));
+  ASSERT_TRUE(decoded);
+  // |inp| advanced by size of SPKI-encoded key
+  EXPECT_EQ(inp, kPublicKeySPKI + sizeof(kPublicKeySPKI));
+  EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(decoded.get()));
+
+  // The decoded key must match the original.
+  uint8_t original_raw[32], decoded_raw[32];
+  size_t original_len = sizeof(original_raw);
+  size_t decoded_len = sizeof(decoded_raw);
+  ASSERT_TRUE(
+      EVP_PKEY_get_raw_public_key(pkey.get(), original_raw, &original_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(decoded.get(), decoded_raw,
+                                           &decoded_len));
+  EXPECT_EQ(Bytes(original_raw, original_len),
+            Bytes(decoded_raw, decoded_len));
+
+  // d2i_PublicKey with a mismatched non-legacy type should fail with
+  // EVP_R_DIFFERENT_KEY_TYPES. Use EVP_PKEY_EC (which hits the default/SPKI
+  // fallback) with Ed25519 SPKI data.
+  inp = kPublicKeySPKI;
+  bssl::UniquePtr<EVP_PKEY> wrong_type(
+      d2i_PublicKey(EVP_PKEY_EC, nullptr, &inp, sizeof(kPublicKeySPKI)));
+  EXPECT_FALSE(wrong_type);
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_DIFFERENT_KEY_TYPES));
+  ERR_clear_error();
+
+  // d2i_PublicKey with invalid DER for a non-legacy type should fail with
+  // EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE.
+  static const uint8_t kGarbage[] = {0x00, 0x01, 0x02, 0x03};
+  inp = kGarbage;
+  bssl::UniquePtr<EVP_PKEY> bad_parse(
+      d2i_PublicKey(EVP_PKEY_ED25519, nullptr, &inp, sizeof(kGarbage)));
+  EXPECT_FALSE(bad_parse);
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE));
+  ERR_clear_error();
+
+  // i2d_PublicKey with a key that has no public encoding should fail with
+  // EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE.
+  bssl::UniquePtr<EVP_PKEY> empty_key(EVP_PKEY_new());
+  ASSERT_TRUE(empty_key);
+  EXPECT_EQ(-1, i2d_PublicKey(empty_key.get(), nullptr));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE));
+  ERR_clear_error();
 }
 
 // Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| work with a

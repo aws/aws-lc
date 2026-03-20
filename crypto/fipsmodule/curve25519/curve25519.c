@@ -136,7 +136,7 @@ int ED25519_keypair_internal(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // Ed25519 key generation: rfc8032 5.1.5
   // Private key is 32 octets of random data.
   uint8_t seed[ED25519_SEED_LEN];
-  RAND_bytes(seed, ED25519_SEED_LEN);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(seed, ED25519_SEED_LEN));
 
   // Public key generation is handled in a separate function. See function
   // description why this is useful.
@@ -572,7 +572,7 @@ void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
   uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]) {
   SET_DIT_AUTO_RESET;
 
-  RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN));
 
   // All X25519 implementations should decode scalars correctly (see
   // https://tools.ietf.org/html/rfc7748#section-5). However, if an

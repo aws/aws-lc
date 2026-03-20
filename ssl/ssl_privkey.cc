@@ -50,8 +50,10 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
   }
 
   // Update certificate slot index once all checks have passed.
-  cert->cert_private_keys[idx].privatekey = UpRef(pkey);
-  cert->key_method = nullptr; // key_method should be cleared since we've set a private key
+  if (!cert->SetSlotPrivateKey(idx, pkey)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
   cert->cert_private_key_idx = idx;
   return true;
 }
@@ -565,12 +567,17 @@ void SSL_set_private_key_method(SSL *ssl,
   if (!ssl->config) {
     return;
   }
-  ssl->config->cert->key_method = key_method;
+  if (!ssl->config->cert->SetKeyMethod(
+          key_method, ssl->config->cert->cert_private_key_idx)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  }
 }
 
 void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
                                     const SSL_PRIVATE_KEY_METHOD *key_method) {
-  ctx->cert->key_method = key_method;
+  if (!ctx->cert->SetKeyMethod(key_method, ctx->cert->cert_private_key_idx)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  }
 }
 
 static constexpr size_t kMaxSignatureAlgorithmNameLen = 23;

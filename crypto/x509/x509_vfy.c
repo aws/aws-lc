@@ -676,7 +676,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     }
     // Check pathlen if not self issued
     if (i > 1 && !(x->ex_flags & EXFLAG_SI) && x->ex_pathlen != -1 &&
-        plen > x->ex_pathlen + 1) {
+        plen - 1 > x->ex_pathlen) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -1167,7 +1167,8 @@ static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
   return 0;
 }
 
-// Check CRLDP and IDP
+// Check CRLDP and IDP. Return true when the CRL is a good
+// candidate CRL from which to check revocation of the certificate.
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
@@ -1190,18 +1191,28 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
     //
     // We also do not support indirect CRLs, and a CRL issuer can only match
     // indirect CRLs (RFC 5280, section 6.3.3, step b.1).
-    // support.
-    if (dp->reasons != NULL && dp->CRLissuer != NULL &&
-        (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint))) {
+    if (dp->reasons != NULL || dp->CRLissuer != NULL) {
+      continue;
+    }
+    // At this point we have already checked that the CRL issuer matches
+    // the certificate issuer (and set CRL_SCORE_ISSUER_NAME);
+
+    // RFC 5280 Section 6.3.3 step b.2
+    if (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint)){
       return 1;
     }
   }
 
   // If the CRL does not specify an issuing distribution point, allow it to
   // match anything.
-  //
-  // TODO(davidben): Does this match RFC 5280? It's hard to follow because RFC
-  // 5280 starts from distribution points, while this starts from CRLs.
+  // RFC5280 section 6.3.3 check (b).(2) does not prescribe what to do if the
+  // CRL does not include an IDP. This fallback returns true if the CRL did not
+  // include an IDP or an IDP without a DP. Such a CRL could still be a good
+  // candidate CRL to check against although we cannot check if it matches the
+  // DP in the certificate. In the event of multiple good candidate CRLs
+  // (crl_crldp_check() returns 1 and get_crl_score() scores them high), some
+  // without an IDP or with an IDP and without a DP and others matching the
+  // certificate's DP, get_crl_sk() will pick the freshest one.
   return !crl->idp || !crl->idp->distpoint;
 }
 
@@ -1840,11 +1851,13 @@ int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
   if (ctx->custom_crit_oids == NULL) {
     ctx->custom_crit_oids = sk_ASN1_OBJECT_new_null();
     if (ctx->custom_crit_oids == NULL) {
+      ASN1_OBJECT_free(oid_dup);
       return 0;
     }
   }
 
   if (!sk_ASN1_OBJECT_push(ctx->custom_crit_oids, oid_dup)) {
+    ASN1_OBJECT_free(oid_dup);
     return 0;
   }
   return 1;

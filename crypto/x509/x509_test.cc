@@ -359,35 +359,37 @@ Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
 -----END PRIVATE KEY-----
 )";
 
-// kCRLTestRoot is a test root certificate. It has private key:
-//
-//     -----BEGIN RSA PRIVATE KEY-----
-//     MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
-//     lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
-//     07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
-//     IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
-//     9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
-//     ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
-//     DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
-//     Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
-//     aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
-//     GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
-//     9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
-//     grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
-//     /zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
-//     5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
-//     DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
-//     BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
-//     lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
-//     TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
-//     RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
-//     ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
-//     s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
-//     EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
-//     qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
-//     Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
-//     vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
-//     -----END RSA PRIVATE KEY-----
+// kCRLTestRootKey is the private key for kCRLTestRoot.
+static const char kCRLTestRootKey[] = R"(
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
+lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
+07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
+IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
+9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
+ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
+DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
+Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
+aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
+GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
+9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
+grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
+/zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
+5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
+DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
+BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
+lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
+TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
+RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
+ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
+s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
+EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
+qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
+Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
+vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
+-----END RSA PRIVATE KEY-----
+)";
+
 static const char kCRLTestRoot[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIDbzCCAlegAwIBAgIJAODri7v0dDUFMA0GCSqGSIb3DQEBCwUAME4xCzAJBgNV
@@ -2043,6 +2045,236 @@ TEST(X509Test, TestCRL) {
   ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
 }
 
+// Helper to create a GENERAL_NAME with a URI.
+static bssl::UniquePtr<GENERAL_NAME> MakeURIGeneralName(const char *uri) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  if (!name) {
+    return nullptr;
+  }
+  name->type = GEN_URI;
+  name->d.uniformResourceIdentifier = ASN1_IA5STRING_new();
+  if (!name->d.uniformResourceIdentifier ||
+      !ASN1_STRING_set(name->d.uniformResourceIdentifier, uri, strlen(uri))) {
+    return nullptr;
+  }
+  return name;
+}
+
+// Helper to create a DIST_POINT_NAME from a URI. Caller takes ownership.
+static DIST_POINT_NAME *MakeDistPointName(const char *uri) {
+  DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
+  if (!dpn) {
+    return nullptr;
+  }
+  dpn->type = 0;  // fullname
+  dpn->name.fullname = sk_GENERAL_NAME_new_null();
+  if (!dpn->name.fullname) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  auto gn = MakeURIGeneralName(uri);
+  if (!gn || !bssl::PushToStack(dpn->name.fullname, std::move(gn))) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  return dpn;
+}
+
+// Helper to create a leaf cert with a CRLDP extension and sign it.
+static bssl::UniquePtr<X509> MakeCRLDPLeaf(
+    X509 *issuer_cert, EVP_PKEY *issuer_key, int serial,
+    CRL_DIST_POINTS *crldp) {
+  bssl::UniquePtr<EVP_PKEY> leaf_key(EVP_PKEY_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (!leaf_key || !rsa || !e ||
+      !BN_set_word(e.get(), RSA_F4) ||
+      !RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr) ||
+      !EVP_PKEY_assign_RSA(leaf_key.get(), rsa.release())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509> leaf(X509_new());
+  if (!leaf ||
+      !X509_set_version(leaf.get(), X509_VERSION_3) ||
+      !X509_set_issuer_name(leaf.get(),
+                            X509_get_subject_name(issuer_cert)) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(leaf.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>("Leaf"), -1, -1, 0) ||
+      !X509_set_pubkey(leaf.get(), leaf_key.get()) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(leaf.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(leaf.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+  if (!sn || !ASN1_INTEGER_set(sn.get(), serial) ||
+      !X509_set_serialNumber(leaf.get(), sn.get())) {
+    return nullptr;
+  }
+  if (!X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points, crldp,
+                         /*crit=*/0, /*flags=*/0)) {
+    return nullptr;
+  }
+  if (!X509_sign(leaf.get(), issuer_key, EVP_sha256())) {
+    return nullptr;
+  }
+  return leaf;
+}
+
+// Helper to create a CRL, optionally with an IDP extension and revoked serials.
+static bssl::UniquePtr<X509_CRL> MakeTestCRL(
+    X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
+    const std::vector<int> &revoked_serials) {
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  if (!crl) {
+    return nullptr;
+  }
+  if (!X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2) ||
+      !X509_CRL_set_issuer_name(crl.get(),
+                                X509_get_subject_name(issuer_cert))) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
+  if (!last_update ||
+      !ASN1_TIME_set_posix(last_update.get(), kReferenceTime) ||
+      !X509_CRL_set1_lastUpdate(crl.get(), last_update.get())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_TIME> next_update(ASN1_TIME_new());
+  if (!next_update ||
+      !ASN1_TIME_adj(next_update.get(), kReferenceTime, 30, 0) ||
+      !X509_CRL_set1_nextUpdate(crl.get(), next_update.get())) {
+    return nullptr;
+  }
+  for (int serial : revoked_serials) {
+    bssl::UniquePtr<X509_REVOKED> rev(X509_REVOKED_new());
+    bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+    bssl::UniquePtr<ASN1_TIME> rev_time(ASN1_TIME_new());
+    if (!rev || !sn || !rev_time ||
+        !ASN1_INTEGER_set(sn.get(), serial) ||
+        !X509_REVOKED_set_serialNumber(rev.get(), sn.get()) ||
+        !ASN1_TIME_set_posix(rev_time.get(), kReferenceTime) ||
+        !X509_REVOKED_set_revocationDate(rev.get(), rev_time.get()) ||
+        !X509_CRL_add0_revoked(crl.get(), rev.get())) {
+      return nullptr;
+    }
+    rev.release();  // Ownership transferred to crl.
+  }
+  if (idp_uri) {
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp) {
+      return nullptr;
+    }
+    idp->distpoint = MakeDistPointName(idp_uri);
+    if (!idp->distpoint ||
+        !X509_CRL_add1_ext_i2d(crl.get(), NID_issuing_distribution_point,
+                                idp, /*crit=*/1, /*flags=*/0)) {
+      ISSUING_DIST_POINT_free(idp);
+      return nullptr;
+    }
+    ISSUING_DIST_POINT_free(idp);
+  }
+  if (!X509_CRL_sign(crl.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  // Re-encode and re-parse so that internal fields like crl->idp and
+  // crl->idp_flags are populated from the IDP extension. These are only
+  // set during parsing (ASN1_OP_D2I_POST), not programmatic construction.
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509_CRL(crl.get(), &der);
+  if (der_len <= 0) {
+    return nullptr;
+  }
+  const uint8_t *inp = der;
+  crl.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+  OPENSSL_free(der);
+  return crl;
+}
+
+// Test that CRL distribution point scope checking (crl_crldp_check) correctly
+// matches a cert's CRLDP against a CRL's Issuing Distribution Point (IDP).
+TEST(X509Test, CRLDistributionPointScope) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x1000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+  const char *kOtherURI = "http://other.example.com/crl.pem";
+
+  // Scenario 1: Leaf with a single clean CRLDP (distpoint URI only, no reasons,
+  // no CRLissuer). CRL has a matching IDP and revokes the leaf's serial.
+  // Verify that the CRL is considered in scope and the cert is revoked.
+  {
+    bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+    ASSERT_TRUE(crldp);
+    bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+    ASSERT_TRUE(dp);
+    dp->distpoint = MakeDistPointName(kCRLURI);
+    ASSERT_TRUE(dp->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+    auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+    ASSERT_TRUE(leaf);
+    auto crl = MakeTestCRL(root.get(), key.get(), kCRLURI, {kLeafSerial});
+    ASSERT_TRUE(crl);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {crl.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+
+  // Scenario 2: Leaf with two DPs:
+  //   DP1: distpoint=kOtherURI + reasons + CRLissuer (should be skipped)
+  //   DP2: distpoint=kCRLURI (clean, matches the revoking CRL)
+  // CRL-A (IDP=kCRLURI) revokes the leaf. CRL-B (IDP=kOtherURI) has no
+  // revocations. DP1 should be skipped and DP2 should match CRL-A.
+  {
+    bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+    ASSERT_TRUE(crldp);
+
+    // DP1: distpoint + reasons + CRLissuer
+    bssl::UniquePtr<DIST_POINT> dp1(DIST_POINT_new());
+    ASSERT_TRUE(dp1);
+    dp1->distpoint = MakeDistPointName(kOtherURI);
+    ASSERT_TRUE(dp1->distpoint);
+    dp1->reasons = ASN1_BIT_STRING_new();
+    ASSERT_TRUE(dp1->reasons);
+    ASN1_BIT_STRING_set_bit(dp1->reasons, 1, 1);  // keyCompromise
+    dp1->CRLissuer = sk_GENERAL_NAME_new_null();
+    ASSERT_TRUE(dp1->CRLissuer);
+    bssl::UniquePtr<GENERAL_NAME> issuer_name(GENERAL_NAME_new());
+    ASSERT_TRUE(issuer_name);
+    issuer_name->type = GEN_DIRNAME;
+    issuer_name->d.directoryName = X509_NAME_new();
+    ASSERT_TRUE(issuer_name->d.directoryName);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        issuer_name->d.directoryName, "O", MBSTRING_ASC,
+        reinterpret_cast<const uint8_t *>("Other Issuer"), -1, -1, 0));
+    ASSERT_TRUE(bssl::PushToStack(dp1->CRLissuer, std::move(issuer_name)));
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp1)));
+
+    // DP2: clean distpoint only
+    bssl::UniquePtr<DIST_POINT> dp2(DIST_POINT_new());
+    ASSERT_TRUE(dp2);
+    dp2->distpoint = MakeDistPointName(kCRLURI);
+    ASSERT_TRUE(dp2->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp2)));
+
+    auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+    ASSERT_TRUE(leaf);
+    auto crl_a = MakeTestCRL(root.get(), key.get(), kCRLURI, {kLeafSerial});
+    ASSERT_TRUE(crl_a);
+    auto crl_b = MakeTestCRL(root.get(), key.get(), kOtherURI, {});
+    ASSERT_TRUE(crl_b);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {crl_a.get(), crl_b.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+}
+
 TEST(X509Test, TestX509GettersSetters) {
   bssl::UniquePtr<X509_OBJECT> obj(X509_OBJECT_new());
   bssl::UniquePtr<X509> x509(CertFromPEM(kCRLTestRoot));
@@ -2162,6 +2394,34 @@ static bool AddKeyUsage(X509 *x509, const std::vector<KeyUsage> usages) {
                            /*flags=*/0);
 }
 
+// Creates a NAME_CONSTRAINTS with a single permitted or excluded subtree.
+static bssl::UniquePtr<NAME_CONSTRAINTS> MakeNameConstraint(
+    int type, const std::string &name, bool excluded) {
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc(NAME_CONSTRAINTS_new());
+  if (!nc) {
+    return nullptr;
+  }
+  STACK_OF(GENERAL_SUBTREE) **rule =
+      excluded ? &nc->excludedSubtrees : &nc->permittedSubtrees;
+  *rule = sk_GENERAL_SUBTREE_new_null();
+  if (!*rule) {
+    return nullptr;
+  }
+  bssl::UniquePtr<GENERAL_SUBTREE> subtree(GENERAL_SUBTREE_new());
+  if (!subtree) {
+    return nullptr;
+  }
+  GENERAL_NAME_free(subtree->base);
+  subtree->base = MakeGeneralName(type, name).release();
+  if (!subtree->base) {
+    return nullptr;
+  }
+  if (!bssl::PushToStack(*rule, std::move(subtree))) {
+    return nullptr;
+  }
+  return nc;
+}
+
 TEST(X509Test, NameConstraints) {
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
@@ -2170,152 +2430,339 @@ TEST(X509Test, NameConstraints) {
     int type;
     std::string name;
     std::string constraint;
-    int result;
+    int permit_result;
+    int exclude_result;
   } kTests[] = {
       // Empty string matches everything.
-      {GEN_DNS, "foo.example.com", "", X509_V_OK},
+      {GEN_DNS, "foo.example.com", "", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       // Name constraints match the entire subtree.
-      {GEN_DNS, "foo.example.com", "example.com", X509_V_OK},
-      {GEN_DNS, "foo.example.com", "EXAMPLE.COM", X509_V_OK},
+      {GEN_DNS, "foo.example.com", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "foo.example.com", "EXAMPLE.COM", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_DNS, "foo.example.com", "xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_DNS, "foo.example.com", "unrelated.much.longer.name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // A leading dot means at least one component must be added.
-      {GEN_DNS, "foo.example.com", ".example.com", X509_V_OK},
-      {GEN_DNS, "foo.example.com", "foo.example.com", X509_V_OK},
+      {GEN_DNS, "foo.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "foo.example.com", "foo.example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_DNS, "foo.example.com", ".foo.example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_DNS, "foo.example.com", ".xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_DNS, "foo.example.com", ".unrelated.much.longer.name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Trailing dot is ignored.
+      {GEN_DNS, "foo.example.com.", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "foo.example.com", "example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       // NUL bytes, if not rejected, should not confuse the matching logic.
       {GEN_DNS, std::string({'a', '\0', 'a'}), std::string({'a', '\0', 'b'}),
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+
+      // Wildcard DNS names against name constraints.
+      {GEN_DNS, "*.com", "foo.example.com", X509_V_ERR_PERMITTED_VIOLATION,
+       X509_V_OK},
+      {GEN_DNS, "*.example.com", "foo.example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "*.foo.example.com", "foo.example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "*.sub.foo.example.com", "foo.example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_DNS, "*.bar.example.com", "foo.example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      {GEN_DNS, "*.example.com", "net", X509_V_ERR_PERMITTED_VIOLATION,
+       X509_V_OK},
+      {GEN_DNS, "*.example.com", "com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
 
       // Names must be emails.
       {GEN_EMAIL, "not-an-email.example", "not-an-email.example",
-       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       // A leading dot matches all local names and all subdomains
-      {GEN_EMAIL, "foo@bar.example.com", ".example.com", X509_V_OK},
-      {GEN_EMAIL, "foo@bar.example.com", ".EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".EXAMPLE.COM", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@bar.example.com", ".bar.example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // Without a leading dot, the host must match exactly.
-      {GEN_EMAIL, "foo@example.com", "example.com", X509_V_OK},
-      {GEN_EMAIL, "foo@example.com", "EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "EXAMPLE.COM", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@bar.example.com", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // If the constraint specifies a mailbox, it specifies the whole thing.
       // The halves are compared insensitively.
-      {GEN_EMAIL, "foo@example.com", "foo@example.com", X509_V_OK},
-      {GEN_EMAIL, "foo@example.com", "foo@EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "foo@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "foo@EXAMPLE.COM", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@example.com", "FOO@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_EMAIL, "foo@example.com", "bar@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // OpenSSL ignores a stray leading @.
-      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK},
-      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@bar.example.com", "@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
 
       // Basic syntax check.
-      {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo:not-a-url", "not-a-url",
-       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo:/not-a-url", "not-a-url",
-       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo:///not-a-url", "not-a-url",
-       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo://:not-a-url", "not-a-url",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
-      {GEN_URI, "foo://", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       // Hosts are an exact match.
-      {GEN_URI, "foo://example.com", "example.com", X509_V_OK},
-      {GEN_URI, "foo://example.com:443", "example.com", X509_V_OK},
-      {GEN_URI, "foo://example.com/whatever", "example.com", X509_V_OK},
+      {GEN_URI, "foo://example.com", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://example.com:443", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://example.com/whatever", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_URI, "foo://bar.example.com", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://bar.example.com:443", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://bar.example.com/whatever", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://bar.example.com", "xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://bar.example.com:443", "xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://bar.example.com/whatever", "xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com", "some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com:443", "some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com/whatever", "some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // A leading dot allows components to be added.
       {GEN_URI, "foo://example.com", ".example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com:443", ".example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com/whatever", ".example.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
-      {GEN_URI, "foo://bar.example.com", ".example.com", X509_V_OK},
-      {GEN_URI, "foo://bar.example.com:443", ".example.com", X509_V_OK},
-      {GEN_URI, "foo://bar.example.com/whatever", ".example.com", X509_V_OK},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      {GEN_URI, "foo://bar.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com:443", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com/whatever", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_URI, "foo://example.com", ".some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com:443", ".some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com/whatever", ".some-other-name.example",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com", ".xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com:443", ".xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_URI, "foo://example.com/whatever", ".xample.com",
-       X509_V_ERR_PERMITTED_VIOLATION},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+
+      // RFC 5280 §4.2.1.10 specifies URI name constraints "MUST be specified
+      // as a fully qualified domain name". IPv6 literal URIs are not domain
+      // names and cannot be reliably matched by string comparison due to
+      // multiple equivalent textual representations. They are rejected as
+      // unsupported syntax (fail-closed).
+      {GEN_URI, "foo://[2001:db8::1]", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // An incomplete IPv6 literal is also rejected.
+      {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);
     SCOPED_TRACE(t.name);
     SCOPED_TRACE(t.constraint);
 
-    bssl::UniquePtr<GENERAL_NAME> name = MakeGeneralName(t.type, t.name);
-    ASSERT_TRUE(name);
-    bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
-    ASSERT_TRUE(names);
-    ASSERT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
+    for (bool exclude : {false, true}) {
+      SCOPED_TRACE(exclude);
 
-    bssl::UniquePtr<NAME_CONSTRAINTS> nc(NAME_CONSTRAINTS_new());
-    ASSERT_TRUE(nc);
-    nc->permittedSubtrees = sk_GENERAL_SUBTREE_new_null();
-    ASSERT_TRUE(nc->permittedSubtrees);
-    bssl::UniquePtr<GENERAL_SUBTREE> subtree(GENERAL_SUBTREE_new());
-    ASSERT_TRUE(subtree);
-    GENERAL_NAME_free(subtree->base);
-    subtree->base = MakeGeneralName(t.type, t.constraint).release();
-    ASSERT_TRUE(subtree->base);
-    ASSERT_TRUE(bssl::PushToStack(nc->permittedSubtrees, std::move(subtree)));
+      bssl::UniquePtr<GENERAL_NAME> name = MakeGeneralName(t.type, t.name);
+      ASSERT_TRUE(name);
+      bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+      ASSERT_TRUE(names);
+      ASSERT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
 
-    bssl::UniquePtr<X509> root =
-        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
-    ASSERT_TRUE(root);
-    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
-                                  /*crit=*/1, /*flags=*/0));
-    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+      bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+          MakeNameConstraint(t.type, t.constraint, /*excluded=*/exclude);
+      ASSERT_TRUE(nc);
 
-    bssl::UniquePtr<X509> leaf =
-        MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
-    ASSERT_TRUE(leaf);
-    ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_subject_alt_name, names.get(),
-                                  /*crit=*/0, /*flags=*/0));
-    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      bssl::UniquePtr<X509> root =
+          MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+      ASSERT_TRUE(root);
+      ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                    /*crit=*/1, /*flags=*/0));
+      ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
 
-    int ret = Verify(leaf.get(), {root.get()}, {}, {}, 0);
-    EXPECT_EQ(t.result, ret) << X509_verify_cert_error_string(ret);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_subject_alt_name,
+                                    names.get(),
+                                    /*crit=*/0, /*flags=*/0));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+      int got_result = Verify(leaf.get(), {root.get()}, {}, {}, 0);
+      int want_result = exclude ? t.exclude_result : t.permit_result;
+      EXPECT_EQ(want_result, got_result)
+          << "got \"" << X509_verify_cert_error_string(got_result)
+          << "\", want \"" << X509_verify_cert_error_string(want_result)
+          << "\"";
+    }
   }
+}
+
+// Test that wildcard CNs are checked against name constraints when no
+// dNSName SAN is present.
+TEST(X509Test, NameConstraintsWildcardCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  // Permitted subtree: only .example.com
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // Wildcard CN outside permitted subtree, no SAN. Should be rejected.
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "*.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf.get(), {root.get()}, {}, {}, 0));
+
+  // Wildcard CN inside permitted subtree, no SAN. Should be permitted.
+  bssl::UniquePtr<X509> leaf_ok =
+      MakeTestCert("Root", "*.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_ok);
+  ASSERT_TRUE(X509_sign(leaf_ok.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_ok.get(), {root.get()}, {}, {}, 0));
+
+  // Non-wildcard CN outside permitted subtree, no SAN. Sanity check.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert("Root", "foo.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {}, {}, 0));
+
+  // Excluded subtree: wildcard CN inside excluded namespace should be rejected.
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc_excl =
+      MakeNameConstraint(GEN_DNS, ".evil.com", /*excluded=*/true);
+  ASSERT_TRUE(nc_excl);
+
+  bssl::UniquePtr<X509> root_excl =
+      MakeTestCert("Root2", "Root2", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root_excl);
+  ASSERT_TRUE(X509_add1_ext_i2d(root_excl.get(), NID_name_constraints,
+                                nc_excl.get(), /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root_excl.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_excl =
+      MakeTestCert("Root2", "*.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_excl);
+  ASSERT_TRUE(X509_sign(leaf_excl.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_EXCLUDED_VIOLATION,
+            Verify(leaf_excl.get(), {root_excl.get()}, {}, {}, 0));
+
+  // Wildcard CN outside excluded namespace should not be rejected.
+  bssl::UniquePtr<X509> leaf_excl_ok =
+      MakeTestCert("Root2", "*.good.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_excl_ok);
+  ASSERT_TRUE(X509_sign(leaf_excl_ok.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_excl_ok.get(), {root_excl.get()}, {}, {}, 0));
+
+  // Excluded subtree "com": wildcard CN *.example.com is under "com".
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc_excl_com =
+      MakeNameConstraint(GEN_DNS, "com", /*excluded=*/true);
+  ASSERT_TRUE(nc_excl_com);
+
+  bssl::UniquePtr<X509> root_excl_com =
+      MakeTestCert("Root3", "Root3", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root_excl_com);
+  ASSERT_TRUE(X509_add1_ext_i2d(root_excl_com.get(), NID_name_constraints,
+                                nc_excl_com.get(), /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root_excl_com.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_excl_com =
+      MakeTestCert("Root3", "*.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_excl_com);
+  ASSERT_TRUE(X509_sign(leaf_excl_com.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_EXCLUDED_VIOLATION,
+            Verify(leaf_excl_com.get(), {root_excl_com.get()}, {}, {}, 0));
+
+  // Non-ASCII multi-label CN under a constrained CA should be rejected.
+  // Per RFC 6125, internationalized names should use punycode (A-label) form.
+  bssl::UniquePtr<X509> leaf_utf8 =
+      MakeTestCert("Root", "r\xc3\xa4ger.evil.com", key.get(),
+                   /*is_ca=*/false);
+  ASSERT_TRUE(leaf_utf8);
+  ASSERT_TRUE(X509_sign(leaf_utf8.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+            Verify(leaf_utf8.get(), {root.get()}, {}, {}, 0));
+
+  // Control character in multi-label CN should also be rejected.
+  bssl::UniquePtr<X509> leaf_ctrl =
+      MakeTestCert("Root", "foo\x01.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_ctrl);
+  ASSERT_TRUE(X509_sign(leaf_ctrl.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+            Verify(leaf_ctrl.get(), {root.get()}, {}, {}, 0));
+
+  // Space in multi-label CN should also be rejected.
+  bssl::UniquePtr<X509> leaf_space =
+      MakeTestCert("Root", "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+            Verify(leaf_space.get(), {root.get()}, {}, {}, 0));
+
+  // The punycode equivalent should be checked normally against constraints.
+  bssl::UniquePtr<X509> leaf_punycode =
+      MakeTestCert("Root", "xn--rger-koa.evil.com", key.get(),
+                   /*is_ca=*/false);
+  ASSERT_TRUE(leaf_punycode);
+  ASSERT_TRUE(X509_sign(leaf_punycode.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_punycode.get(), {root.get()}, {}, {}, 0));
+
+  // Punycode CN inside the permitted subtree should pass.
+  bssl::UniquePtr<X509> leaf_punycode_ok =
+      MakeTestCert("Root", "xn--rger-koa.example.com", key.get(),
+                   /*is_ca=*/false);
+  ASSERT_TRUE(leaf_punycode_ok);
+  ASSERT_TRUE(X509_sign(leaf_punycode_ok.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf_punycode_ok.get(), {root.get()}, {}, {}, 0));
 }
 
 TEST(X509Test, PrintGeneralName) {
@@ -5872,6 +6319,9 @@ TEST(X509Test, Print) {
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
   std::string print(reinterpret_cast<const char*>(data), data_len);
+  // Some lines in the X509_print_ex output have trailing whitespace. The raw
+  // string is split and concatenated with " " at those points so that editors
+  // configured to strip trailing whitespace do not break this test.
   static const char expected_certificate_string[] = R"(Certificate:
     Data:
         Version: 3 (0x2)
@@ -5900,13 +6350,13 @@ TEST(X509Test, Print) {
         X509v3 extensions:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
-            X509v3 Extended Key Usage: 
+            X509v3 Extended Key Usage:)" " " R"(
                 TLS Web Server Authentication, TLS Web Client Authentication
             X509v3 Basic Constraints: critical
                 CA:FALSE
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:)" " " R"(
                 A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:)" " " R"(
                 keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
 
     Signature Algorithm: sha256WithRSAEncryption
@@ -8346,6 +8796,31 @@ TEST(X509Test, X509MultipleCustomExtensions) {
                               /*flags=*/0, set_custom_exts_with_callback));
   // Check that |EXFLAG_CRITICAL| is preserved after validation.
   EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+}
+
+// Test that |X509_STORE_CTX_add_custom_crit_oid| does not leak memory. Under
+// ASAN/LSAN, this test will catch leaks on both the success path and the
+// cleanup path in |X509_STORE_CTX_cleanup|.
+TEST(X509Test, AddCustomCritOidNoLeak) {
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  // |X509_STORE_CTX_init| must be called before adding custom OIDs.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), nullptr, nullptr));
+
+  // Add several OIDs. Each call duplicates the object internally.
+  bssl::UniquePtr<ASN1_OBJECT> oid1(OBJ_txt2obj("1.2.3.4.5", 1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(OBJ_txt2obj("1.2.3.4.6", 1));
+  ASSERT_TRUE(oid2);
+
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid1.get()));
+  EXPECT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx.get(), oid2.get()));
+
+  // |X509_STORE_CTX_cleanup| (called by the destructor) must free all
+  // duplicated OIDs and the stack itself without leaking.
 }
 
 TEST(X509Test, StoreVerifyCallback) {

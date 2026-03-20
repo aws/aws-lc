@@ -2496,6 +2496,39 @@ TEST(X509CompatTest, CommonNameToDNS) {
       {"eXaMpLe", false, ""},
       {"cn with spaces", false, ""},
       {"1 and 2 and 3", false, ""},
+      // Wildcard CN test cases: wildcard CNs must be recognized as DNS-IDs
+      // so that name constraints are enforced on them.
+      {"*.example.com", true, "*.example.com"},
+      {"*.sub.example.com", true, "*.sub.example.com"},
+      {"*.exa_mple.com", true, "*.exa_mple.com"},
+      {"*.foo-bar.example.com", true, "*.foo-bar.example.com"},
+      // Wildcard with single remaining label is not a DNS name.
+      {"*.com", false, ""},
+      // Bare wildcard or incomplete wildcard prefix.
+      {"*", false, ""},
+      {"*.", false, ""},
+      {"*..", false, ""},
+      // Star without dot is not a valid wildcard prefix.
+      {"*example.com", false, ""},
+      // Double star is not valid.
+      {"**.example.com", false, ""},
+      // Invalid DNS syntax after wildcard prefix.
+      {"*.-example.com", false, ""},
+      {"*.example-.com", false, ""},
+      {"*.example..com", false, ""},
+      {"*.example.com.", false, ""},
+      {".*.example.com", false, ""},
+      // Single-label CNs with non-ASCII are accepted (not DNS names).
+      {"r\xc3\xa4ger", false, ""},
+      {"\xc3\x9cnternehmen", false, ""},
+      // Single-label CNs with control characters are accepted (not DNS names).
+      {"foo\x01" "bar", false, ""},
+      {std::string("\x7f") + "tld", false, ""},
+      // Single-label CN with space is accepted (not a DNS name).
+      {"foo bar", false, ""},
+      // Punycode equivalents are valid ASCII DNS names.
+      {"xn--rger-koa.evil.com", true, "xn--rger-koa.evil.com"},
+      {"xn--caf-dma.example.com", true, "xn--caf-dma.example.com"},
   };
 
   for (CommonNameToDNSTestParam &param : params) {
@@ -2520,6 +2553,38 @@ TEST(X509CompatTest, CommonNameToDNS) {
       ASSERT_EQ((size_t)0, idlen);
     }
   }
+
+  // Multi-label CNs with non-ASCII bytes should return
+  // X509_V_ERR_UNSUPPORTED_NAME_SYNTAX. Per RFC 6125 Section 6.4.2,
+  // internationalized domain names should use A-label (punycode) form.
+  const std::string non_ascii_dns[] = {
+      "r\xc3\xa4ger.evil.com",
+      "caf\xc3\xa9.example.com",
+      "*.r\xc3\xa4ger.evil.com",
+      // Control characters in multi-label CNs.
+      "foo\x01.evil.com",
+      std::string("bar\x7f") + ".evil.com",
+      "baz\x1f.example.com",
+      // Space in multi-label CN.
+      "foo .evil.com",
+  };
+  for (const std::string &name : non_ascii_dns) {
+    SCOPED_TRACE(name);
+    ASN1_STRING *asn1_str_ptr = NULL;
+    std::vector<uint8_t> cn(name.begin(), name.end());
+    ASSERT_GE(ASN1_mbstring_copy(&asn1_str_ptr, cn.data(), cn.size(),
+                                 MBSTRING_UTF8, V_ASN1_IA5STRING),
+              0);
+    bssl::UniquePtr<ASN1_STRING> asn1_cn(asn1_str_ptr);
+    ASSERT_TRUE(asn1_cn);
+    unsigned char *dnsid_ptr = NULL;
+    size_t idlen = 0;
+    ASSERT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+              cn2dnsid(asn1_cn.get(), &dnsid_ptr, &idlen));
+    ASSERT_FALSE(dnsid_ptr);
+    ASSERT_EQ((size_t)0, idlen);
+  }
+
 }
 
 
