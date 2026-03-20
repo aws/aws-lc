@@ -147,6 +147,32 @@ jobs:
           cargo test -p aws-lc-sys
           cargo test -p aws-lc-rs
 
+  # iOS cross-compilation build test (aarch64-apple-ios)
+  aws-lc-rs-ios-aarch64:
+    if: github.repository_owner == 'aws'
+    name: aws-lc-rs iOS aarch64 cross-compilation
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - run: brew install llvm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: aarch64-apple-ios
+      - name: Build for aarch64-apple-ios
+        working-directory: ./aws-lc-rs
+        run: cargo build -p aws-lc-rs --target aarch64-apple-ios --features bindgen
+
   # Full bindings pre-generation test on Windows (x86_64-pc-windows-msvc)
   aws-lc-rs-windows:
     if: github.repository_owner == 'aws'
