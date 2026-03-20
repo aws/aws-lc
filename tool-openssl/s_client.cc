@@ -35,7 +35,7 @@ static const argument_t kArguments[] = {
         { "-tls1_3", kBooleanArgument,
                 "Use TLS version 1.3 only." },
         { "-msg", kBooleanArgument,
-                "No-op, accepted for compatibility." },
+                "Show protocol messages" },
         { "-servername", kOptionalArgument,
                 "Server name for SNI extension." },
         { "", kOptionalArgument, "" },
