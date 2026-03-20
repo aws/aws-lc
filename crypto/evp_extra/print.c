@@ -311,7 +311,7 @@ typedef struct {
   int (*param_print)(BIO *out, const EVP_PKEY *pkey, int indent);
 } EVP_PKEY_PRINT_METHOD;
 
-static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
+static const EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
     {
         EVP_PKEY_RSA,
         rsa_pub_print,
@@ -340,7 +340,7 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
 
 static size_t kPrintMethodsLen = OPENSSL_ARRAY_SIZE(kPrintMethods);
 
-static EVP_PKEY_PRINT_METHOD *find_method(int type) {
+static const EVP_PKEY_PRINT_METHOD *find_method(int type) {
   for (size_t i = 0; i < kPrintMethodsLen; i++) {
     if (kPrintMethods[i].type == type) {
       return &kPrintMethods[i];
@@ -358,7 +358,7 @@ static int print_unsupported(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
                           ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
+  const EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->pub_print != NULL) {
     return method->pub_print(out, pkey, indent);
   }
@@ -367,7 +367,7 @@ int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
                            ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
+  const EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->priv_print != NULL) {
     return method->priv_print(out, pkey, indent);
   }
@@ -376,7 +376,7 @@ int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
                           ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
+  const EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->param_print != NULL) {
     return method->param_print(out, pkey, indent);
   }
