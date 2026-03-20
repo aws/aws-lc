@@ -206,6 +206,11 @@ int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub_key) {
     return 0;
   }
 
+  if (pub_key != NULL && EC_POINT_is_at_infinity(key->group, pub_key)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
+    return 0;
+  }
+
   if (pub_key != NULL && EC_GROUP_cmp(key->group, pub_key->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
