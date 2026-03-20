@@ -6,6 +6,7 @@
 #include "internal.h"
 
 static const argument_t kArguments[] = {
+    {"-help", kBooleanArgument, "Display option summary"},
     {"-a", kBooleanArgument, "Print all version information"},
     {"-p", kBooleanArgument, "Print platform"},
     {"", kOptionalArgument, ""}
@@ -22,10 +23,24 @@ bool VersionTool(const args_list_t &args) {
     return false;
   }
 
+  if (HasArgument(parsed_args, "-help")) {
+    PrintUsage(kArguments);
+    return true;
+  }
+
   bool all = false;
   bool platform = false;
   GetBoolArgument(&all, "-a", parsed_args);
   GetBoolArgument(&platform, "-p", parsed_args);
+
+  if (all) {
+    printf("%s\n", OPENSSL_VERSION_TEXT);
+    printf("%s\n", OpenSSL_version(OPENSSL_BUILT_ON));
+    printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
+    printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
+    printf("%s\n", OpenSSL_version(OPENSSL_DIR));
+    return true;
+  }
 
   if (platform) {
     printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
@@ -33,11 +48,5 @@ bool VersionTool(const args_list_t &args) {
   }
 
   printf("%s\n", OPENSSL_VERSION_TEXT);
-  if (all) {
-    printf("%s\n", OpenSSL_version(OPENSSL_BUILT_ON));
-    printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
-    printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
-    printf("%s\n", OpenSSL_version(OPENSSL_DIR));
-  }
   return true;
 }
