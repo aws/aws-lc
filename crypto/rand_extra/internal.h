@@ -15,7 +15,7 @@
     defined(OPENSSL_SOLARIS) || defined(OPENSSL_WASM) || \
     (defined(OPENSSL_LINUX) && !defined(HAVE_LINUX_RANDOM_H))
 #define OPENSSL_RAND_GETENTROPY
-#elif defined(OPENSSL_IOS)
+#elif defined(OPENSSL_APPLE)
 #define OPENSSL_RAND_CCRANDOMGENERATEBYTES
 #else
 #define OPENSSL_RAND_URANDOM
