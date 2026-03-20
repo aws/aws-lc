@@ -87,6 +87,14 @@
 #endif
 
 #if defined(__APPLE__)
+// TargetConditionals.h defines TARGET_OS_OSX, TARGET_OS_IPHONE, etc.
+// base.h includes it for C/C++, but target.h must be self-contained
+// because it can be included before base.h. In assembly contexts the
+// header is unavailable, but the TARGET_OS_* checks below will simply
+// evaluate to false, which is fine -- assembly never inspects them.
+#if !defined(__ASSEMBLER__)
+#include <TargetConditionals.h>
+#endif
 #define OPENSSL_APPLE
 // Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
 // targets macOS specifically.
