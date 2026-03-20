@@ -144,6 +144,11 @@ static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
     return 1;
   }
 
+  if (*siglen < (size_t)DSA_size(dsa)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
   DSA_SIG *result = NULL;
   uint8_t *sig_buffer = NULL;
   int retval = 0;
