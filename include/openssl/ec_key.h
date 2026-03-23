@@ -82,7 +82,7 @@ OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
 // EC_KEY_set_public_key sets the public key of |key| to |pub|, by copying it.
 // It returns one on success and zero otherwise. |key| must already have had a
 // group configured (see |EC_KEY_set_group| and |EC_KEY_new_by_curve_name|), and
-// |pub| must also belong to that group.
+// |pub| must also belong to that group, and must not be the point at infinity.
 OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 
 #define EC_PKEY_NO_PARAMETERS 0x001
@@ -273,8 +273,9 @@ OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);
 
 // o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into
 // |*out_key|. Note that this differs from the d2i format in that |*out_key|
-// must be non-NULL with a group set. On successful exit, |*inp| is advanced by
-// |len| bytes. It returns |*out_key| or NULL on error.
+// must be non-NULL with a group set. The point must not be the point at
+// infinity. On successful exit, |*inp| is advanced by |len| bytes. It returns
+// |*out_key| or NULL on error.
 //
 // Use |EC_POINT_oct2point| instead.
 OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,

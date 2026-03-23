@@ -957,6 +957,12 @@ struct InvalidECPublicKey {
   size_t input_key_len;
   int nid;
 } kInvalidECPublicKeyInputs[] = {
+  /* Test 0: point at infinity. */
+  {
+    (const uint8_t *)"\x00",
+    1,
+    NID_X9_62_prime256v1
+  },
   /* Test 1: incorrect compresion representation. */
   {
     kP224PublicKey_wrong_compressed_byte,
@@ -1352,6 +1358,19 @@ TEST(ECTest, SetNULLKey) {
   // order to match OpenSSL behaviour exactly.
   EXPECT_FALSE(EC_KEY_set_public_key(key.get(), nullptr));
   EXPECT_FALSE(EC_KEY_get0_public_key(key.get()));
+}
+
+TEST(ECTest, PointAtInfinity) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<EC_POINT> inf(
+      EC_POINT_new(EC_KEY_get0_group(key.get())));
+  ASSERT_TRUE(inf);
+  ASSERT_TRUE(
+      EC_POINT_set_to_infinity(EC_KEY_get0_group(key.get()), inf.get()));
+  // Configuring a public key with the point at infinity is invalid.
+  EXPECT_FALSE(EC_KEY_set_public_key(key.get(), inf.get()));
 }
 
 TEST(ECTest, GroupMismatch) {
