@@ -171,6 +171,9 @@ jobs:
           target: aarch64-apple-ios
       - name: Build for aarch64-apple-ios
         working-directory: ./aws-lc-rs
+        env:
+          CC: /opt/homebrew/opt/llvm/bin/clang
+          CXX: /opt/homebrew/opt/llvm/bin/clang++
         run: cargo build -p aws-lc-rs --target aarch64-apple-ios --features bindgen
 
   # Full bindings pre-generation test on Windows (x86_64-pc-windows-msvc)
