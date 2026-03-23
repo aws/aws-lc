@@ -128,6 +128,13 @@ else()
   set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
 endif()
 
+# Set the install bin prefix based on whether cohabitation is desired
+if(ENABLE_DIST_PKG)
+  set(AWSLC_BIN_PREFIX "aws-lc-")
+else()
+  set(AWSLC_BIN_PREFIX "")
+endif()
+
 function(target_add_awslc_include_paths)
   set(options EXCLUDE_PREFIX_HEADERS)
   set(oneValueArgs TARGET SCOPE)
