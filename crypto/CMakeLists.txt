@@ -650,7 +650,6 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
-    target_compile_definitions(generated_fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
     target_add_awslc_include_paths(TARGET generated_fipsmodule SCOPE PRIVATE)
 
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:generated_fipsmodule> SET_OUTPUT_NAME)
