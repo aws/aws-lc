@@ -95,6 +95,12 @@ static int WIN32_rename(const char *from, const char *to) {
   TCHAR *tfrom = nullptr, *tto = nullptr;
   DWORD err = 0;
   int ret = 0;
+  // On Windows, antivirus software, file indexing services, or other
+  // background processes can briefly lock files, causing transient
+  // ERROR_ACCESS_DENIED or ERROR_SHARING_VIOLATION failures. Retry with a
+  // short delay to handle these.
+  static const int kMaxRetries = 5;
+  static const DWORD kRetryDelayMs = 200;
 
   if (sizeof(TCHAR) == 1) {
     tfrom = (TCHAR *)from;
@@ -114,15 +120,23 @@ static int WIN32_rename(const char *from, const char *to) {
     }
   }
 
-  if (MoveFile(tfrom, tto)) {
-    goto ok;
-  }
-  err = GetLastError();
-  if (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS) {
-    if (DeleteFile(tto) && MoveFile(tfrom, tto)) {
+  for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
+    if (attempt > 0) {
+      Sleep(kRetryDelayMs);
+    }
+    if (MoveFile(tfrom, tto)) {
       goto ok;
     }
     err = GetLastError();
+    if (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS) {
+      if (DeleteFile(tto) && MoveFile(tfrom, tto)) {
+        goto ok;
+      }
+      err = GetLastError();
+    }
+    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION) {
+      break;
+    }
   }
   if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
     errno = ENOENT;
@@ -1484,7 +1498,7 @@ bool caTool(const args_list_t &args) {
     }
     ca_section = std::move(*value);
   }
-  
+
   // These features we are choosing not to support regarding CA options:
   // RANDFILE
   // oid_file
