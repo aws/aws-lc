@@ -11,7 +11,6 @@ from aws_cdk import (
 from constructs import Construct
 
 from util.metadata import (
-    GITHUB_TOKEN_SECRET_NAME,
     GITHUB_REPO_OWNER,
     GITHUB_REPO_NAME
 )
@@ -64,16 +63,6 @@ class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
             inline_policies=inline_policies,
         )
 
-        role.add_to_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                resources=["*"],
-                actions=[
-                    "secretsmanager:GetSecretValue",
-                ],
-            )
-        )
-
         # Define CodeBuild.
         project = codebuild.Project(
             scope=self,
@@ -87,10 +76,6 @@ class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
                 privileged=False,
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 environment_variables={
-                    "GITHUB_PAT": codebuild.BuildEnvironmentVariable(
-                        type=codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
-                        value=GITHUB_TOKEN_SECRET_NAME,
-                    ),
                     "GITHUB_REPO_OWNER": codebuild.BuildEnvironmentVariable(
                         type=codebuild.BuildEnvironmentVariableType.PLAINTEXT,
                         value=GITHUB_REPO_OWNER

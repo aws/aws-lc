@@ -11,16 +11,9 @@ phases:
     commands:
       - echo "Installing Claude..."
       - curl -fsSL https://claude.ai/install.sh | bash
-      - echo "Installing gh..."
-      - GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
-      - curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz
       - mkdir -p ~/.local/bin
-      - cp "gh_${GH_VERSION}_linux_amd64/bin/gh" ~/.local/bin/
       - mkdir -p /home/codebuild-user/.local/bin
-      - cp "gh_${GH_VERSION}_linux_amd64/bin/gh" /home/codebuild-user/.local/bin/
       - cp ~/.local/bin/claude /home/codebuild-user/.local/bin/
-      - rm -rf "gh_${GH_VERSION}_linux_amd64"
-      - rm -rf gh_*
       - |
         mkdir -p ~codebuild-user
         chown -R codebuild-user:codebuild-user ~codebuild-user .
