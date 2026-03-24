@@ -33,6 +33,18 @@ static const uint64_t iotas[] = {
     0x8000000080008008ULL
 };
 
+#if defined(OPENSSL_X86_64)
+static const uint64_t keccak_rho8[4] = {
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL,
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL
+};
+
+static const uint64_t keccak_rho56[4] = {
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL,
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL
+};
+#endif
+
 #if !defined(KECCAK1600_ASM)
 
 static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
@@ -315,7 +327,7 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
-#if defined(OPENSSL_AARCH64)
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86_64)
 static void keccak_log_dispatch(size_t id) {
 #if BORINGSSL_DISPATCH_TEST
     BORINGSSL_function_hit[id] = 1;
@@ -366,6 +378,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     KeccakF1600_hw((uint64_t *) A);
 
 #elif defined(OPENSSL_X86_64)
+    keccak_log_dispatch(9); // kFlag_sha3_keccak_f1600
     sha3_keccak_f1600((uint64_t *)A, iotas);
 #endif
 }
@@ -441,6 +454,14 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
         return;
     }
 #endif
+#endif
+
+#if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_X86_64)
+    if (CRYPTO_is_AVX2_capable()) {
+        keccak_log_dispatch(10); // kFlag_sha3_keccak4_f1600_alt
+        sha3_keccak4_f1600_alt((uint64_t *)A, iotas, keccak_rho8, keccak_rho56);
+        return;
+    }
 #endif
 
     // Fallback: 4x individual KeccakF1600 calls (each with their own dispatch)
