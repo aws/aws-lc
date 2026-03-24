@@ -123,24 +123,41 @@ Filter out any issues that were not validated.
 Output the review as direct text in your response (see OUTPUT RULES above) in this format:
 
 ```
-## Code Review: PR #{pr_number} - {PR title}
+╔════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║  Code Review:                                                                                      ║
+║  PR #{pr_number} - {PR title}[pad with spaces to width]                                            ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-### Summary
-{Brief description of what the PR does}
+┌─ Summary ──────────────────────────────────────────────────────────────────────────────────────────┐
+│  {Brief description of what the PR does, wrap text to width}                                       │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-### Findings
-
-{issue description with filename and line number}
-{suggested fix if applicable}
+┌─ Findings ─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                    │
+│ [1] {issue description with filename and line number,                                              │
+│     wrap to width with proper indentation}                                                         │
+│     {suggested fix if applicable}                                                                  │
+│                                                                                                    │
+│ [2] {issue description with filename and line number,                                              │
+│     wrap to width with proper indentation}                                                         │
+│     {suggested fix if applicable}                                                                  │
+│                                                                                                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 If no issues are found, output:
 ```
-## Code Review: PR #{pr_number} - {PR title}
+╔════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║  Code Review:                                                                                      ║
+║  PR #{pr_number} - {PR title}[pad with spaces to width]                                            ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-### Summary
-{Brief description of what the PR does}
+┌─ Summary ──────────────────────────────────────────────────────────────────────────────────────────┐
+│  {Brief description of what the PR does, wrap text to width}                                       │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-### Findings
-No issues found. Checked for bugs, security issues, and CLAUDE.md compliance.
+┌─ Findings ─────────────────────────────────────────────────────────────────────────────────────────┐
+│ ✓ No issues found. Checked for bugs, security issues, and                                          │
+│   CLAUDE.md compliance.                                                                            │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```

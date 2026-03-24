@@ -29,6 +29,7 @@ fi
 claude --version
 claude -p "Say hello!"
 
+# Run code review
 REPO="${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}"
 echo "Running code review for PR #${PR_NUMBER} in ${REPO}..."
 timeout 1200 claude -p "Read review-pr.md and then proceed to review PR #${PR_NUMBER}. The repository is cloned in ${CODEBUILD_SRC_DIR}" \
