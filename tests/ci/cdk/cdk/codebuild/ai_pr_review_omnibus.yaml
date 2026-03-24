@@ -5,7 +5,6 @@ version: 0.2
 
 phases:
   install:
-    run-as: root
     runtime-versions:
       nodejs: 18
     commands:
@@ -13,23 +12,6 @@ phases:
       - curl -fsSL https://claude.ai/install.sh | bash
       - mkdir -p ~/.local/bin
       - mkdir -p /home/codebuild-user/.local/bin
-      - cp ~/.local/bin/claude /home/codebuild-user/.local/bin/
-      - |
-        mkdir -p ~codebuild-user
-        chown -R codebuild-user:codebuild-user ~codebuild-user .
-        chmod +x ~codebuild-user
-        ls -ld ~codebuild-user
-      # Ensure that the unprivileged user has permissions to the socket.
-      - chmod 666 /var/run/docker.sock
-  pre_build:
-    run-as: codebuild-user
-    env:
-        variables:
-            HOME: /home/codebuild-user
-    commands:
-        # codebuild ignores the env.variables.HOME declaration above...?
-        - export HOME=/home/codebuild-user
   build:
-    run-as: codebuild-user
     commands:
       - ./tests/ci/run_ai_pr_review.sh
