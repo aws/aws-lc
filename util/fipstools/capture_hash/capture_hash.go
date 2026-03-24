@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-lc/util/fipstools/fipscommon"
@@ -49,7 +50,49 @@ func main() {
 		os.Exit(1)
 	}
 
+	// When -patch-dll is specified, check whether the DLL still contains the
+	// placeholder hash. If it has already been patched (e.g. by a previous
+	// build invocation in the same output directory), there is nothing to do.
+	// Running the executable against an already-patched DLL would cause the
+	// FIPS self-test to pass, and capture_hash would fail because it expects
+	// the self-test to report a mismatch.
+	if *patchDll != "" {
+		dllBytes, err := os.ReadFile(*patchDll)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "capture_hash: failed to read DLL: %v\n", err)
+			os.Exit(1)
+		}
+		if bytes.Index(dllBytes, fipscommon.UninitHashValue[:]) < 0 {
+			fmt.Fprintf(os.Stderr, "capture_hash: %s already patched (placeholder not found), skipping\n", *patchDll)
+			return
+		}
+	}
+
 	cmd := exec.Command(*executable)
+
+	// When -patch-dll is specified, the executable links against a DLL that
+	// may reside in a different directory. Under Wine binfmt (cross-compiling
+	// from Linux), Wine needs WINEPATH to locate the DLL. We replace any
+	// existing WINEPATH rather than appending, because a stale WINEPATH
+	// (e.g. from a previous build) could cause Wine to load an already-
+	// patched copy of the DLL instead of the one we need to patch.
+	if *patchDll != "" {
+		dllDir := filepath.Dir(*patchDll)
+		env := os.Environ()
+		found := false
+		for i, e := range env {
+			if strings.HasPrefix(e, "WINEPATH=") {
+				env[i] = "WINEPATH=" + dllDir
+				found = true
+				break
+			}
+		}
+		if !found {
+			env = append(env, "WINEPATH="+dllDir)
+		}
+		cmd.Env = env
+	}
+
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		fmt.Fprintf(os.Stderr, "%s", out)

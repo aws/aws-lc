@@ -629,14 +629,14 @@ if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
-    # On Windows we use a single-DLL capture-and-patch approach: build
-    # crypto.dll once with a placeholder hash, run fips_empty_main.exe (which
-    # triggers the integrity check, computes the real hash, and prints it),
-    # then binary-patch the placeholder in crypto.dll with the captured hash.
-    # This avoids building two separate DLLs (precrypto.dll vs crypto.dll)
-    # whose linker output may differ — e.g. mandatory ASLR on ARM64 causes
-    # different ADRP immediates, and lld-link (clang-cl) is not guaranteed to
-    # produce byte-identical output across two independent link operations.
+    # On Windows we use capture_hash.go: build crypto.dll with a placeholder
+    # hash, then run fips_empty_main.exe (which triggers the integrity check
+    # and prints the correct hash), then patch the placeholder in crypto.dll.
+    #
+    # The fips_integrity target (marked ALL) ensures the hash injection runs
+    # before 'install' copies crypto.dll. Without this, Cargo builds (which
+    # run 'cmake --build --target install') would skip the hash injection
+    # because fips_empty_main is not in crypto's dependency chain.
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
 
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
@@ -644,21 +644,19 @@ if(FIPS_SHARED)
     target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
 
     add_custom_command(
-      TARGET fips_empty_main POST_BUILD
+      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
       COMMAND ${GO_EXECUTABLE} run
         ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
         -in-executable $<TARGET_FILE:fips_empty_main>
         -patch-dll $<TARGET_FILE:crypto>
+      COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
+      DEPENDS fips_empty_main crypto
+        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
-
-    # Adding an install rule for fips_empty_main makes it a dependency of the
-    # 'install' target. This is needed because Cargo's cmake crate builds via
-    # 'cmake --build --target install', which only builds targets that have
-    # install() rules. Without this, fips_empty_main is never built during a
-    # Cargo build, so the POST_BUILD hash-patching step above never runs and
-    # crypto.dll is left with the placeholder integrity hash.
-    install(TARGETS fips_empty_main RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    add_custom_target(fips_integrity ALL
+      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
+    )
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
