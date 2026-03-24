@@ -15,8 +15,6 @@
 #ifndef MLK_SAMPLING_H
 #define MLK_SAMPLING_H
 
-#include <stdint.h>
-#include <stdlib.h>
 #include "cbmc.h"
 #include "common.h"
 #include "poly.h"
@@ -58,6 +56,7 @@ MLK_INTERNAL_API
 void mlk_poly_cbd3(mlk_poly *r, const uint8_t buf[3 * MLKEM_N / 4]);
 #endif /* MLK_CONFIG_MULTILEVEL_WITH_SHARED || MLKEM_ETA1 == 3 */
 
+#if !defined(MLK_CONFIG_SERIAL_FIPS202_ONLY)
 #define mlk_poly_rej_uniform_x4 MLK_NAMESPACE(poly_rej_uniform_x4)
 /*************************************************
  * Name:        mlk_poly_rej_uniform_x4
@@ -92,6 +91,7 @@ __contract__(
   ensures(array_bound(vec1->coeffs, 0, MLKEM_N, 0, MLKEM_Q))
   ensures(array_bound(vec2->coeffs, 0, MLKEM_N, 0, MLKEM_Q))
   ensures(array_bound(vec3->coeffs, 0, MLKEM_N, 0, MLKEM_Q)));
+#endif /* !MLK_CONFIG_SERIAL_FIPS202_ONLY */
 
 #define mlk_poly_rej_uniform MLK_NAMESPACE(poly_rej_uniform)
 /*************************************************
