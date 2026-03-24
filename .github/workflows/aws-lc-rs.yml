@@ -222,6 +222,73 @@ jobs:
           cargo test -p aws-lc-sys --target x86_64-pc-windows-msvc
           cargo test -p aws-lc-rs --target x86_64-pc-windows-msvc
 
+  # Cross-compile to Windows from Linux using cargo-xwin (clang-cl + lld-link)
+  aws-lc-rs-windows-cross:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-24.04
+    name: aws-lc-rs-windows-cross (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64
+            target: x86_64-pc-windows-msvc
+          - name: x86_64-fips
+            target: x86_64-pc-windows-msvc
+            fips: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directories
+        shell: bash
+        run: |
+          rm -rf ./aws-lc-rs/aws-lc-sys/aws-lc
+          rm -rf ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: Install dependencies
+        run: |
+          set -ex
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends \
+            cmake ninja-build nasm \
+            wget lsb-release software-properties-common gnupg
+          # Install Clang 19 from LLVM apt repository
+          # (xwin's MSVC STL headers require Clang 19+; Ubuntu 24.04 ships Clang 18)
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+          sudo ln -sf /usr/bin/clang-19 /usr/local/bin/clang-cl
+          sudo ln -sf /usr/bin/lld-19 /usr/local/bin/lld-link
+          sudo ln -sf /usr/bin/llvm-ar-19 /usr/local/bin/llvm-lib
+          cargo install cargo-xwin --locked
+      - name: Setup Wine binfmt
+        if: matrix.fips
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          # Wine binfmt allows the kernel to transparently run .exe files through
+          # Wine. This is needed for the FIPS build, which runs fips_empty_main.exe
+          # at build time to capture the integrity hash.
+          sudo apt-get install --assume-yes --no-install-recommends wine64 binfmt-support wine-binfmt
+          sudo update-binfmts --enable wine
+          wineboot --init
+      - name: Build
+        working-directory: ./aws-lc-rs
+        run: cargo xwin build -p aws-lc-rs --target ${{ matrix.target }} ${{ matrix.fips && '--features fips' || '' }}
+
   # CMake Rust bindings generation tests
   cmake-rust-bindings:
     if: github.repository_owner == 'aws'
