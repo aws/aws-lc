@@ -12,8 +12,6 @@ export AWS_REGION=us-west-2
 export ANTHROPIC_DEFAULT_OPUS_MODEL='us.anthropic.claude-opus-4-6-v1'
 export ANTHROPIC_DEFAULT_SONNET_MODEL='us.anthropic.claude-sonnet-4-6'
 export ANTHROPIC_DEFAULT_HAIKU_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:0'
-export CLAUDE_MAX_TOKENS=8192
-export CLAUDE_TIMEOUT=300
 
 if [ ! -d "$CODEBUILD_SRC_DIR" ]; then
   echo "Error: CODEBUILD_SRC_DIR ('$CODEBUILD_SRC_DIR') does not exist"
@@ -33,5 +31,5 @@ claude -p "Say hello!"
 
 REPO="${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}"
 echo "Running code review for PR #${PR_NUMBER} in ${REPO}..."
-claude -p "Read review-pr.md and then proceed to review PR #${PR_NUMBER}. The repository is cloned in ${CODEBUILD_SRC_DIR}" \
+timeout 1200 claude -p "Read review-pr.md and then proceed to review PR #${PR_NUMBER}. The repository is cloned in ${CODEBUILD_SRC_DIR}" \
   --allowedTools "WebFetch,Read,Glob,Grep,Agent,Bash(git *)"

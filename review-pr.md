@@ -1,5 +1,7 @@
 Provide a code review for the given PR. The repository name and PR number will be provided to you.
 
+**Allowed tools:** WebFetch, Read, Glob, Grep, Agent, Bash(git *)
+
 **Agent assumptions (applies to all agents and subagents):**
 - All tools are functional and will work without error. Do not test tools or make exploratory calls.
 - Only call a tool if it is required to complete the task. Every tool call should have a clear purpose.
