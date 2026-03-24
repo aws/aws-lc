@@ -64,3 +64,8 @@
 
 #define CFI_INC_RSP(offset) add     rsp, offset ; .cfi_adjust_cfa_offset -offset
 #define CFI_DEC_RSP(offset) sub     rsp, offset ; .cfi_adjust_cfa_offset offset
+
+#define CFI_STACKSAVE(reg,offset) mov [rsp+(offset)], reg ; .cfi_rel_offset reg, offset
+#define CFI_STACKLOAD(reg,offset) mov reg, [rsp+(offset)] ; .cfi_restore reg
+#define CFI_STACKSAVEU(reg,offset) movups [rsp+(offset)], reg ; .cfi_rel_offset reg, offset
+#define CFI_STACKLOADU(reg,offset) movups reg, [rsp+(offset)] ; .cfi_restore reg
