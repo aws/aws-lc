@@ -1,9 +1,4 @@
----
-allowed-tools: WebFetch, Read, Glob, Grep, Bash(git *), Agent
-description: Code review a pull request from $REPO using public GitHub API (no gh CLI required)
----
-
-Provide a code review for PR #$ARGUMENTS in the **$REPO** repository.
+Provide a code review for the given PR. The repository name and PR number will be provided to you.
 
 **Agent assumptions (applies to all agents and subagents):**
 - All tools are functional and will work without error. Do not test tools or make exploratory calls.
@@ -21,9 +16,9 @@ This command runs in `-p` (print) mode. In this mode, ONLY the main agent's dire
 ## Step 1: Fetch PR data
 
 Use WebFetch to fetch the following in parallel:
-- PR metadata: `https://api.github.com/repos/$REPO/pulls/$ARGUMENTS`
-- PR diff: `https://github.com/$REPO/pull/$ARGUMENTS.diff`
-- PR changed files: `https://api.github.com/repos/$REPO/pulls/$ARGUMENTS/files`
+- PR metadata: `https://api.github.com/repos/{repo}/pulls/{pr_number}`
+- PR diff: `https://github.com/{repo}/pull/{pr_number}.diff`
+- PR changed files: `https://api.github.com/repos/{repo}/pulls/{pr_number}/files`
 
 ## Step 2: Triage
 
@@ -52,7 +47,7 @@ Scan for obvious bugs. Focus only on the diff itself without reading extra conte
 **Agent 4: Opus bug-finding agent (parallel with agent 3)**
 Look for problems that exist in the introduced code. This could be security issues, incorrect logic, etc. Only look for issues that fall within the changed code.
 
-This agent should read full source files (not just the diff) to understand surrounding context. Use WebFetch to fetch raw file contents from the PR branch: `https://raw.githubusercontent.com/$REPO/{branch}/{filepath}` (get the branch name from the PR metadata head ref).
+This agent should read full source files (not just the diff) to understand surrounding context. Use WebFetch to fetch raw file contents from the PR branch: `https://raw.githubusercontent.com/{repo}/{branch}/{filepath}` (get the branch name from the PR metadata head ref).
 
 ### Language-Specific Checks (all review agents must apply)
 
@@ -126,7 +121,7 @@ Filter out any issues that were not validated.
 Output the review as direct text in your response (see OUTPUT RULES above) in this format:
 
 ```
-## Code Review: PR #$ARGUMENTS - {PR title}
+## Code Review: PR #{pr_number} - {PR title}
 
 ### Summary
 {Brief description of what the PR does}
@@ -139,7 +134,7 @@ Output the review as direct text in your response (see OUTPUT RULES above) in th
 
 If no issues are found, output:
 ```
-## Code Review: PR #$ARGUMENTS - {PR title}
+## Code Review: PR #{pr_number} - {PR title}
 
 ### Summary
 {Brief description of what the PR does}

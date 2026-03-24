@@ -15,6 +15,11 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:
 export CLAUDE_MAX_TOKENS=8192
 export CLAUDE_TIMEOUT=300
 
+if [ ! -d "$CODEBUILD_SRC_DIR" ]; then
+  echo "Error: CODEBUILD_SRC_DIR ('$CODEBUILD_SRC_DIR') does not exist"
+  exit 1
+fi
+
 # Extract PR number from CODEBUILD_WEBHOOK_TRIGGER (e.g., "pr/1373")
 PR_NUMBER="${CODEBUILD_WEBHOOK_TRIGGER#pr/}"
 if [ -z "$PR_NUMBER" ]; then
@@ -28,7 +33,5 @@ claude -p "Say hello!"
 
 REPO="${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}"
 echo "Running code review for PR #${PR_NUMBER} in ${REPO}..."
-REVIEW_PROMPT="$(sed -e "s/\$ARGUMENTS/${PR_NUMBER}/g" -e "s|\$REPO|${REPO}|g" review-pr.md)"
-claude -p "$REVIEW_PROMPT" \
-  --allowedTools "WebFetch,Read,Glob,Grep,Agent,Bash(git *)" \
-  --dangerously-skip-permissions
+claude -p "Read review-pr.md and then proceed to review PR #${PR_NUMBER}. The repository is cloned in ${CODEBUILD_SRC_DIR}" \
+  --allowedTools "WebFetch,Read,Glob,Grep,Agent,Bash(git *)"
