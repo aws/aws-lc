@@ -288,6 +288,26 @@ jobs:
       - name: Build
         working-directory: ./aws-lc-rs
         run: cargo xwin build -p aws-lc-rs --target ${{ matrix.target }} ${{ matrix.fips && '--features fips' || '' }}
+      - name: FIPS integrity sanity check
+        if: matrix.fips
+        working-directory: ./aws-lc-rs
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          # fips_empty_main.exe is built alongside crypto.dll during the FIPS
+          # build. It loads crypto.dll which triggers the FIPS power-on
+          # self-test. If the integrity hash was patched correctly the self-test
+          # passes and main() runs; if not the process aborts immediately.
+          CRYPTO_DIR=$(dirname "$(find target -name 'crypto.dll' -path '*/aws-lc-fips-sys*' | head -1)")
+          echo "CRYPTO_DIR=${CRYPTO_DIR}"
+          ls -la "${CRYPTO_DIR}/crypto.dll" "${CRYPTO_DIR}/fips_empty_main.exe"
+          export WINEPATH="$(winepath -w "${CRYPTO_DIR}")"
+          # fips_empty_main.exe always exits with code 1 (by design), so we
+          # capture its output without letting the non-zero exit fail the step.
+          OUTPUT=$(wine "${CRYPTO_DIR}/fips_empty_main.exe" 2>&1 || true)
+          echo "${OUTPUT}"
+          echo "${OUTPUT}" | grep -q "FIPS mode"
 
   # CMake Rust bindings generation tests
   cmake-rust-bindings:
