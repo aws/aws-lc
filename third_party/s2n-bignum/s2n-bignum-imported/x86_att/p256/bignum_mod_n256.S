@@ -184,8 +184,6 @@ Lbignum_mod_n256_writeback:
 #endif
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_n256)
-
 Lbignum_mod_n256_shortinput:
 
         xorq    m0, m0
@@ -203,6 +201,8 @@ Lbignum_mod_n256_shortinput:
         jz      Lbignum_mod_n256_writeback
         movq    16(%rdx), m2
         jmp     Lbignum_mod_n256_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n256)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

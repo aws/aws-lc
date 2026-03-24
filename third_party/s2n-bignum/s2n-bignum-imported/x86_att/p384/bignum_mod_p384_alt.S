@@ -201,8 +201,6 @@ Lbignum_mod_p384_alt_writeback:
 #endif
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_p384_alt)
-
 Lbignum_mod_p384_alt_shortinput:
 
         xorq    m0, m0
@@ -228,6 +226,8 @@ Lbignum_mod_p384_alt_shortinput:
         jz      Lbignum_mod_p384_alt_writeback
         movq    32(%rdx), m4
         jmp     Lbignum_mod_p384_alt_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_p384_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

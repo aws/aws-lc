@@ -52,6 +52,10 @@
 : lsl$
 : lsr$
 : madd$
+: mla$
+: mla.2s$
+: mla.4s$
+: mla.8h$
 : mls$
 : mls.2s$
 : mls.8h$
