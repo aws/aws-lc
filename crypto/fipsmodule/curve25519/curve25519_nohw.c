@@ -1934,6 +1934,20 @@ void x25519_scalar_mult_generic_nohw(
   fe_invert(&z2, &z2);
   fe_mul_ttt(&x2, &x2, &z2);
   fe_tobytes(out_shared_key, &x2);
+
+  OPENSSL_cleanse(e, sizeof(e));
+  OPENSSL_cleanse(&x1, sizeof(x1));
+  OPENSSL_cleanse(&x2, sizeof(x2));
+  OPENSSL_cleanse(&z2, sizeof(z2));
+  OPENSSL_cleanse(&x3, sizeof(x3));
+  OPENSSL_cleanse(&z3, sizeof(z3));
+  OPENSSL_cleanse(&tmp0, sizeof(tmp0));
+  OPENSSL_cleanse(&tmp1, sizeof(tmp1));
+  OPENSSL_cleanse(&x2l, sizeof(x2l));
+  OPENSSL_cleanse(&z2l, sizeof(z2l));
+  OPENSSL_cleanse(&x3l, sizeof(x3l));
+  OPENSSL_cleanse(&tmp0l, sizeof(tmp0l));
+  OPENSSL_cleanse(&tmp1l, sizeof(tmp1l));
 }
 
 void x25519_public_from_private_nohw(
@@ -1959,6 +1973,12 @@ void x25519_public_from_private_nohw(
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
   CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
+
+  OPENSSL_cleanse(e, sizeof(e));
+  OPENSSL_cleanse(&A, sizeof(A));
+  OPENSSL_cleanse(&zplusy, sizeof(zplusy));
+  OPENSSL_cleanse(&zminusy, sizeof(zminusy));
+  OPENSSL_cleanse(&zminusy_inv, sizeof(zminusy_inv));
 }
 
 void ed25519_public_key_from_hashed_seed_nohw(
@@ -1968,6 +1988,8 @@ void ed25519_public_key_from_hashed_seed_nohw(
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
+
+  OPENSSL_cleanse(&A, sizeof(A));
 }
 
 void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
@@ -1998,6 +2020,9 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   // Compute S = r + k * s modulo the order of the base-point B.
   // out_sig = R || S
   sc_muladd(out_sig + 32, k, s, r);
+
+  OPENSSL_cleanse(k, sizeof(k));
+  OPENSSL_cleanse(&R, sizeof(R));
 }
 
 int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
