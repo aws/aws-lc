@@ -4,8 +4,11 @@ import typing
 
 from aws_cdk import (
     Duration,
+    Tags,
     aws_codebuild as codebuild,
     aws_iam as iam,
+    aws_s3 as s3,
+    RemovalPolicy,
     Environment,
 )
 from constructs import Construct
@@ -22,7 +25,7 @@ from util.iam_policies import (
 )
 from util.build_spec_loader import BuildSpecLoader
 
-class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
+class AwsLcAiCodeReviewStack(AwsLcBaseCiStack):
     """Define a stack used to batch execute AWS-LC tests in GitHub."""
 
     def __init__(
@@ -34,6 +37,19 @@ class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
             **kwargs
     ) -> None:
         super().__init__(scope, id, env=env, timeout=180, **kwargs)
+        
+        # Create S3 bucket for AI code review files with versioning
+        bucket = s3.Bucket(
+            self,
+            "aws-lc-ai-code-review-files",
+            versioned=True,
+            removal_policy=RemovalPolicy.RETAIN,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+        )
+        
+        # Tag the bucket for easy discovery
+        Tags.of(bucket).add("aws-lc", "aws-lc-ai-code-review-files")
+        
         self.git_hub_source = codebuild.Source.git_hub(
             owner=self.github_repo_owner,
             repo=self.github_repo_name,
@@ -62,6 +78,9 @@ class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies=inline_policies,
         )
+        
+        # Grant CodeBuild read access to the S3 bucket
+        bucket.grant_read(role)
 
         # Define CodeBuild.
         project = codebuild.Project(
@@ -83,11 +102,16 @@ class AwsLcAiPrReviewStack(AwsLcBaseCiStack):
                     "GITHUB_REPO_NAME": codebuild.BuildEnvironmentVariable(
                         type=codebuild.BuildEnvironmentVariableType.PLAINTEXT,
                         value=GITHUB_REPO_NAME
+                    ),
+                    "AI_CODE_REVIEW_BUCKET": codebuild.BuildEnvironmentVariable(
+                        type=codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+                        value=bucket.bucket_name
                     )
                 }
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env=env),
         )
+        
         cfn_project = project.node.default_child
         cfn_project.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)
 

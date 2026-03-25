@@ -1,0 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      # Download all files from S3
+      - aws s3 sync "s3://${AI_CODE_REVIEW_BUCKET}/" ./tests/ci/cdk/cr/
+      - chmod +x ./tests/ci/cdk/cr/*.sh
+  build:
+    commands:
+      - ./tests/ci/cdk/cr/run_ai_code_review.sh
