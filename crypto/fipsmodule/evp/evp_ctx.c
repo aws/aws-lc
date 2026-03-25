@@ -206,6 +206,8 @@ int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
   }
+  GUARD_PTR(sig_len);
+  GUARD_PTR(ctx->pkey);
   return ctx->pmeth->sign(ctx, sig, sig_len, digest, digest_len);
 }
 

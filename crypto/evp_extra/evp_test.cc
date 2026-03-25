@@ -1886,3 +1886,62 @@ TEST(EVPTest, Ed25519phTestVectors) {
                                       signature_len));
   });
 }
+
+TEST(EVPTest, SignUndersizedBuffer) {
+  // EC: undersized buffer should be rejected.
+  {
+    bssl::UniquePtr<EC_KEY> ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+    ASSERT_TRUE(ec);
+    ASSERT_TRUE(EC_KEY_generate_key(ec.get()));
+    bssl::UniquePtr<EVP_PKEY> key(EVP_PKEY_new());
+    ASSERT_TRUE(key);
+    ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(key.get(), ec.get()));
+
+    uint8_t digest[32] = {0};
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+
+    size_t siglen = 0;
+    ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), NULL, &siglen, digest, 32));
+    ASSERT_GT(siglen, (size_t)0);
+
+    std::vector<uint8_t> sig(siglen);
+    size_t too_small = 1;
+    EXPECT_FALSE(EVP_PKEY_sign(ctx.get(), sig.data(), &too_small, digest, 32));
+    EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
+  }
+
+  // RSA: undersized buffer should be rejected.
+  {
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    ASSERT_TRUE(rsa);
+    bssl::UniquePtr<BIGNUM> e(BN_new());
+    ASSERT_TRUE(e);
+    ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+    ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
+    bssl::UniquePtr<EVP_PKEY> key(EVP_PKEY_new());
+    ASSERT_TRUE(key);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(key.get(), rsa.get()));
+
+    uint8_t digest[32] = {0};
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PADDING));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()));
+
+    size_t siglen = 0;
+    ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), NULL, &siglen, digest, 32));
+    ASSERT_GT(siglen, (size_t)0);
+
+    std::vector<uint8_t> sig(siglen);
+    size_t too_small = 1;
+    EXPECT_FALSE(EVP_PKEY_sign(ctx.get(), sig.data(), &too_small, digest, 32));
+    EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
+  }
+}

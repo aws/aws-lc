@@ -130,10 +130,8 @@ end:
 
 static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
                          const unsigned char *tbs, size_t tbslen) {
-  GUARD_PTR(ctx->pkey);
   GUARD_PTR(ctx->pkey->pkey.ptr);
   GUARD_PTR(ctx->data);
-  GUARD_PTR(siglen);
 
   DSA_PKEY_CTX *dctx = ctx->data;
   DSA *dsa = ctx->pkey->pkey.dsa;
