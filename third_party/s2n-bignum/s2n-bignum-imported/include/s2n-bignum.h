@@ -425,6 +425,10 @@ extern void bignum_madd_n25519 (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t 
 extern void bignum_madd_n25519_alt (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4], const uint64_t y[S2N_BIGNUM_STATIC 4], const uint64_t c[S2N_BIGNUM_STATIC 4]);
 
 // Reduce modulo group order, z := x mod m_25519
+// Input x[k]; output z[4]
+extern void bignum_mod_m25519 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, const uint64_t *x);
+
+// Reduce modulo group order, z := x mod m_25519
 // Input x[4]; output z[4]
 extern void bignum_mod_m25519_4 (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
 
@@ -858,7 +862,7 @@ extern void bignum_tolebytes_4 (uint8_t z[S2N_BIGNUM_STATIC 32], const uint64_t 
 extern void bignum_tolebytes_6 (uint8_t z[S2N_BIGNUM_STATIC 48], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
-// Input x[6]; output z[66] (bytes)
+// Input x[9]; output z[66] (bytes)
 extern void bignum_tolebytes_p521 (uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Convert to Montgomery form z := (2^256 * x) mod p_256
@@ -978,6 +982,18 @@ extern void edwards25519_scalarmulbase_alt(uint64_t res[S2N_BIGNUM_STATIC 8],con
 extern void edwards25519_scalarmuldouble(uint64_t res[S2N_BIGNUM_STATIC 8],const uint64_t scalar[S2N_BIGNUM_STATIC 4], const uint64_t point[S2N_BIGNUM_STATIC 8],const uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[S2N_BIGNUM_STATIC 8],const uint64_t scalar[S2N_BIGNUM_STATIC 4], const uint64_t point[S2N_BIGNUM_STATIC 8],const uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
 
+// Inverse number-theoretic transform for ML-DSA
+// Input a[256], zetas[624] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_intt(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t zetas[S2N_BIGNUM_STATIC 624]);
+
+// Forward number-theoretic transform for ML-DSA
+// Input a[256], zetas[624] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_ntt(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t zetas[S2N_BIGNUM_STATIC 624]);
+
+// Canonical reduction of polynomial coefficients for ML-DSA
+// Input a[256] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_reduce(int32_t a[S2N_BIGNUM_STATIC 256]);
+
 // Scalar product of 2-element polynomial vectors in NTT domain, with mulcache
 // Inputs a[512], b[512], bt[256] (signed 16-bit words); output r[256] (signed 16-bit words)
 extern void mlkem_basemul_k2(int16_t r[S2N_BIGNUM_STATIC 256],const int16_t a[S2N_BIGNUM_STATIC 512],const int16_t b[S2N_BIGNUM_STATIC 512],const int16_t bt[S2N_BIGNUM_STATIC 256]);
@@ -994,9 +1010,21 @@ extern void mlkem_basemul_k4(int16_t r[S2N_BIGNUM_STATIC 256],const int16_t a[S2
 // Input a[256] (signed 16-bit words), z_01234[80] (signed 16-bit words), z_56[384] (signed 16-bit words); output a[256] (signed 16-bit words)
 extern void mlkem_intt(int16_t a[S2N_BIGNUM_STATIC 256],const int16_t z_01234[S2N_BIGNUM_STATIC 80],const int16_t z_56[S2N_BIGNUM_STATIC 384]);
 
+// Inverse number-theoretic transform from ML-KEM
+// Input a[256] (signed 16-bit words), qdata[624]; output a[256] (signed 16-bit words)
+extern void mlkem_intt_x86(int16_t a[S2N_BIGNUM_STATIC 256],const int16_t qdata[S2N_BIGNUM_STATIC 624]);
+
 // Precompute the mulcache data for a polynomial in the NTT domain
 // Inputs a[256], z[128] and t[128] (signed 16-bit words); output x[128] (signed 16-bit words)
 extern void mlkem_mulcache_compute(int16_t x[S2N_BIGNUM_STATIC 128],const int16_t a[S2N_BIGNUM_STATIC 256],const int16_t z[S2N_BIGNUM_STATIC 128],const int16_t t[S2N_BIGNUM_STATIC 128]);
+
+// Precompute the mulcache data for a polynomial in the NTT domain
+// Inputs a[256], qdata[624] (signed 16-bit words); output x[128] (signed 16-bit words)
+extern void mlkem_mulcache_compute_x86(int16_t x[S2N_BIGNUM_STATIC 128],const int16_t a[S2N_BIGNUM_STATIC 256],const int16_t qdata[S2N_BIGNUM_STATIC 624]);
+
+// Forward number-theoretic transform from ML-KEM x86 implementation
+// Input a[256] (signed 16-bit words), qdata[624]; output a[256] (signed 16-bit words)
+extern void mlkem_ntt_x86(int16_t a[S2N_BIGNUM_STATIC 256],const int16_t qdata[S2N_BIGNUM_STATIC 624]);
 
 // Forward number-theoretic transform from ML-KEM
 // Input a[256] (signed 16-bit words), z_01234[80] (signed 16-bit words), z_56[384] (signed 16-bit words); output a[256] (signed 16-bit words)
@@ -1005,6 +1033,10 @@ extern void mlkem_ntt(int16_t a[S2N_BIGNUM_STATIC 256],const int16_t z_01234[S2N
 // Canonical modular reduction of polynomial coefficients for ML-KEM
 // Input a[256] (signed 16-bit words); output a[256] (signed 16-bit words)
 extern void mlkem_reduce(int16_t a[S2N_BIGNUM_STATIC 256]);
+
+// Unpack ML-KEM polynomial coefficients
+// Input a[384] (bytes); output r[256] (signed 16-bit words)
+extern void mlkem_frombytes(int16_t r[S2N_BIGNUM_STATIC 256],const uint8_t a[S2N_BIGNUM_STATIC 384]);
 
 // Pack ML-KEM polynomial coefficients as 12-bit numbers
 // Input a[256] (signed 16-bit words); output r[384] (bytes)
@@ -1017,6 +1049,10 @@ extern void mlkem_tomont(int16_t a[S2N_BIGNUM_STATIC 256]);
 // Uniform rejection sampling for ML-KEM
 // Inputs *buf (unsigned bytes), buflen, table (unsigned bytes); output r[256] (signed 16-bit words), return
 extern uint64_t mlkem_rej_uniform_VARIABLE_TIME(int16_t r[S2N_BIGNUM_STATIC 256],const uint8_t *buf,uint64_t buflen,const uint8_t *table);
+
+// Reorders ML-KEM polynomial coefficients for x86 implementation
+// Input a[256] (signed 16-bit words); output a[256] (signed 16-bit words)
+extern void mlkem_unpack(int16_t a[S2N_BIGNUM_STATIC 256]);
 
 // Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]
@@ -1107,6 +1143,7 @@ extern void secp256k1_jmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 12],const uint64
 // Inputs a[25], rc[24]; output a[25]
 extern void sha3_keccak_f1600(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 extern void sha3_keccak_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
+extern void sha3_keccak_f1600_alt2(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 
 // Batched 2-way Keccak-f1600 permutation for SHA3
 // Inputs a[50], rc[24]; output a[50]
@@ -1116,7 +1153,11 @@ extern void sha3_keccak2_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 50],const uint64
 // Batched 4-way Keccak-f1600 permutation for SHA3
 // Inputs a[100], rc[24]; output a[100]
 extern void sha3_keccak4_f1600(uint64_t a[S2N_BIGNUM_STATIC 100],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
+#ifdef __x86_64__
+extern void sha3_keccak4_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 100],const uint64_t rc[S2N_BIGNUM_STATIC 24],const uint64_t rho8[S2N_BIGNUM_STATIC 4],const uint64_t rho56[S2N_BIGNUM_STATIC 4]);
+#else
 extern void sha3_keccak4_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 100],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
+#endif
 extern void sha3_keccak4_f1600_alt2(uint64_t a[S2N_BIGNUM_STATIC 100],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 
 // Point addition on CC curve SM2 in Montgomery-Jacobian coordinates

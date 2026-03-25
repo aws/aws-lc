@@ -15,20 +15,30 @@
 #ifndef MLK_H
 #define MLK_H
 
-/******************************************************************************
- *
- * Public API for mlkem-native
+/*
+ * Public API for mlkem-native.
  *
  * This header defines the public API of a single build of mlkem-native.
  *
- * # Examples
+ * Make sure the configuration file is in the include path
+ * (this is "mlkem_native_config.h" by default, or MLK_CONFIG_FILE if defined).
  *
- * See [examples/basic], [examples/multilevel_build], and
- * [examples/multilevel_build_native] for examples of how to use this header.
+ * # Multi-level builds
  *
- * # Usage
+ * This header specifies a build of mlkem-native for a fixed security level.
+ * If you need multiple security levels, leave the security level unspecified
+ * in the configuration file and include this header multiple times, setting
+ * MLK_CONFIG_PARAMETER_SET accordingly for each, and #undef'ing the MLK_H
+ * guard to allow multiple inclusions.
  *
- * To use this header, configure the following options:
+ * # Legacy configuration (deprecated)
+ *
+ * Instead of providing the config file used for the build, you can
+ * alternatively set the following configuration options prior to
+ * including this header.
+ *
+ * This method of configuration is deprecated.
+ * It will be removed in mlkem-native-v2.
  *
  * - MLK_CONFIG_API_PARAMETER_SET [required]
  *
@@ -56,14 +66,9 @@
  *   MLK_CONFIG_API_PARAMETER_SET or MLK_CONFIG_API_NAMESPACE_PREFIX,
  *   nor include a configuration.
  *
- * # Multi-level builds
+ * - MLK_CONFIG_API_QUALIFIER [optional]
  *
- * This header specifies a build of mlkem-native for a fixed security level.
- * If you need multiple builds, e.g. to build a library offering multiple
- * security levels, you need multiple instances of this header.
- *
- * NOTE: In this case, you must rename or #undef the MLK_H header guard
- *       prior to subsequent inclusions of this file.
+ *   Qualifier to apply to external API.
  *
  ******************************************************************************/
 
@@ -104,21 +109,64 @@
 #define MLKEM_PUBLICKEYBYTES(LVL) MLKEM_PUBLICKEYBYTES_(LVL)
 #define MLKEM_CIPHERTEXTBYTES(LVL) MLKEM_CIPHERTEXTBYTES_(LVL)
 
+/****************************** Error codes ***********************************/
+
+/* Generic failure condition */
+#define MLK_ERR_FAIL -1
+/* An allocation failed. This can only happen if MLK_CONFIG_CUSTOM_ALLOC_FREE
+ * is defined and the provided MLK_CUSTOM_ALLOC can fail. */
+#define MLK_ERR_OUT_OF_MEMORY -2
+/* An rng failure occured. Might be due to insufficient entropy or
+ * system misconfiguration. */
+#define MLK_ERR_RNG_FAIL -3
+
 /****************************** Function API **********************************/
 
-#if !defined(MLK_CONFIG_API_CONSTANTS_ONLY)
-
-#if !defined(MLK_CONFIG_API_PARAMETER_SET)
-#error MLK_CONFIG_API_PARAMETER_SET not defined
-#endif
-#if !defined(MLK_CONFIG_API_NAMESPACE_PREFIX)
-#error MLK_CONFIG_API_NAMESPACE_PREFIX not defined
-#endif
-
-/* Derive namespacing macro */
 #define MLK_API_CONCAT_(x, y) x##y
 #define MLK_API_CONCAT(x, y) MLK_API_CONCAT_(x, y)
 #define MLK_API_CONCAT_UNDERSCORE(x, y) MLK_API_CONCAT(MLK_API_CONCAT(x, _), y)
+
+#if !defined(MLK_CONFIG_API_PARAMETER_SET)
+/* Recommended configuration via same config file as used for the build. */
+
+/* For now, we derive the legacy API configuration MLK_CONFIG_API_XXX from
+ * the config file. In mlkem-native-v2, this will be removed and we will
+ * exclusively work with MLK_CONFIG_XXX. */
+
+/* You need to make sure the config file is in the include path. */
+#if defined(MLK_CONFIG_FILE)
+#include MLK_CONFIG_FILE
+#else
+#include "mlkem_native_config.h"
+#endif
+
+#define MLK_CONFIG_API_PARAMETER_SET MLK_CONFIG_PARAMETER_SET
+
+#if defined(MLK_CONFIG_MULTILEVEL_BUILD)
+#define MLK_CONFIG_API_NAMESPACE_PREFIX \
+  MLK_API_CONCAT(MLK_CONFIG_NAMESPACE_PREFIX, MLK_CONFIG_PARAMETER_SET)
+#else
+#define MLK_CONFIG_API_NAMESPACE_PREFIX MLK_CONFIG_NAMESPACE_PREFIX
+#endif
+
+#if defined(MLK_CONFIG_NO_SUPERCOP)
+#define MLK_CONFIG_API_NO_SUPERCOP
+#endif
+
+#if defined(MLK_CONFIG_CONSTANTS_ONLY)
+#define MLK_CONFIG_API_CONSTANTS_ONLY
+#endif
+
+#if defined(MLK_CONFIG_EXTERNAL_API_QUALIFIER)
+#define MLK_CONFIG_API_QUALIFIER MLK_CONFIG_EXTERNAL_API_QUALIFIER
+#endif
+
+#else /* !MLK_CONFIG_API_PARAMETER_SET */
+
+#define MLK_API_LEGACY_CONFIG
+
+#endif /* MLK_CONFIG_API_PARAMETER_SET */
+
 #define MLK_API_NAMESPACE(sym) \
   MLK_API_CONCAT_UNDERSCORE(MLK_CONFIG_API_NAMESPACE_PREFIX, sym)
 
@@ -128,7 +176,20 @@
 #define MLK_API_MUST_CHECK_RETURN_VALUE
 #endif
 
+#if defined(MLK_CONFIG_API_QUALIFIER)
+#define MLK_API_QUALIFIER MLK_CONFIG_API_QUALIFIER
+#else
+#define MLK_API_QUALIFIER
+#endif
+
+#if !defined(MLK_CONFIG_API_CONSTANTS_ONLY)
+
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /*************************************************
  * Name:        crypto_kem_keypair_derand
@@ -144,17 +205,28 @@
  *                  2*MLKEM_SYMBYTES uniformly random bytes.
  *
  * Returns:     - 0: On success
- *              - -1: On PCT failure (if MLK_CONFIG_KEYGEN_PCT) is enabled.
+ *              - MLK_ERR_FAIL: If MLK_CONFIG_KEYGEN_PCT is enabled and the
+ *                  PCT failed.
+ *              - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *                  used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
  *
  * Specification: Implements @[FIPS203, Algorithm 16, ML-KEM.KeyGen_Internal]
  *
  **************************************************/
+MLK_API_QUALIFIER
 MLK_API_MUST_CHECK_RETURN_VALUE
 int MLK_API_NAMESPACE(keypair_derand)(
     uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)],
     uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)],
-    const uint8_t coins[2 * MLKEM_SYMBYTES]);
+    const uint8_t coins[2 * MLKEM_SYMBYTES]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
 
+
+#if !defined(MLK_CONFIG_NO_RANDOMIZED_API)
 /*************************************************
  * Name:        crypto_kem_keypair
  *
@@ -167,15 +239,26 @@ int MLK_API_NAMESPACE(keypair_derand)(
  *                 MLKEM{512,768,1024}_SECRETKEYBYTES bytes.
  *
  * Returns:     - 0: On success
- *              - -1: On PCT failure (if MLK_CONFIG_KEYGEN_PCT) is enabled.
+ *              - MLK_ERR_FAIL: If MLK_CONFIG_KEYGEN_PCT is enabled and the
+ *                  PCT failed.
+ *              - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *                  used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
+ *              - MLK_ERR_RNG_FAIL: Random number generation failed.
  *
  * Specification: Implements @[FIPS203, Algorithm 19, ML-KEM.KeyGen]
  *
  **************************************************/
+MLK_API_QUALIFIER
 MLK_API_MUST_CHECK_RETURN_VALUE
 int MLK_API_NAMESPACE(keypair)(
     uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)],
-    uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]);
+    uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
+#endif /* !MLK_CONFIG_NO_RANDOMIZED_API */
 
 /*************************************************
  * Name:        crypto_kem_enc_derand
@@ -193,19 +276,28 @@ int MLK_API_NAMESPACE(keypair)(
  *                 MLKEM_SYMBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'modulus check' @[FIPS203, Section 7.2]
- *            for the public key fails.
+ *          - MLK_ERR_FAIL: If the 'modulus check' @[FIPS203, Section 7.2]
+ *              for the public key fails.
+ *          - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *              used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
  *
  * Specification: Implements @[FIPS203, Algorithm 17, ML-KEM.Encaps_Internal]
  *
  **************************************************/
+MLK_API_QUALIFIER
 MLK_API_MUST_CHECK_RETURN_VALUE
 int MLK_API_NAMESPACE(enc_derand)(
     uint8_t ct[MLKEM_CIPHERTEXTBYTES(MLK_CONFIG_API_PARAMETER_SET)],
     uint8_t ss[MLKEM_BYTES],
     const uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)],
-    const uint8_t coins[MLKEM_SYMBYTES]);
+    const uint8_t coins[MLKEM_SYMBYTES]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
 
+#if !defined(MLK_CONFIG_NO_RANDOMIZED_API)
 /*************************************************
  * Name:        crypto_kem_enc
  *
@@ -220,17 +312,27 @@ int MLK_API_NAMESPACE(enc_derand)(
  *                 MLKEM{512,768,1024}_PUBLICKEYBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'modulus check' @[FIPS203, Section 7.2]
- *            for the public key fails.
+ *          - MLK_ERR_FAIL: If the 'modulus check' @[FIPS203, Section 7.2]
+ *              for the public key fails.
+ *          - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *              used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
+ *          - MLK_ERR_RNG_FAIL: Random number generation failed.
  *
  * Specification: Implements @[FIPS203, Algorithm 20, ML-KEM.Encaps]
  *
  **************************************************/
+MLK_API_QUALIFIER
 MLK_API_MUST_CHECK_RETURN_VALUE
 int MLK_API_NAMESPACE(enc)(
     uint8_t ct[MLKEM_CIPHERTEXTBYTES(MLK_CONFIG_API_PARAMETER_SET)],
     uint8_t ss[MLKEM_BYTES],
-    const uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]);
+    const uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
+#endif /* !MLK_CONFIG_NO_RANDOMIZED_API */
 
 /*************************************************
  * Name:        crypto_kem_dec
@@ -246,17 +348,85 @@ int MLK_API_NAMESPACE(enc)(
  *                 MLKEM{512,768,1024}_SECRETKEYBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'hash check' @[FIPS203, Section 7.3]
- *            for the secret key fails.
+ *          - MLK_ERR_FAIL: If the 'hash check' @[FIPS203, Section 7.3]
+ *              for the secret key fails.
+ *          - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *              used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
  *
  * Specification: Implements @[FIPS203, Algorithm 21, ML-KEM.Decaps]
  *
  **************************************************/
+MLK_API_QUALIFIER
 MLK_API_MUST_CHECK_RETURN_VALUE
 int MLK_API_NAMESPACE(dec)(
     uint8_t ss[MLKEM_BYTES],
     const uint8_t ct[MLKEM_CIPHERTEXTBYTES(MLK_CONFIG_API_PARAMETER_SET)],
-    const uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]);
+    const uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
+
+
+/*************************************************
+ * Name:        crypto_kem_check_pk
+ *
+ * Description: Implements modulus check mandated by FIPS 203,
+ *              i.e., ensures that coefficients are in [0,q-1].
+ *
+ * Arguments:   - const uint8_t *pk: pointer to input public key, an array of
+ *                 MLKEM{512,768,1024}_PUBLICKEYBYTES bytes.
+ *
+ * Returns: - 0 on success
+ *          - MLK_ERR_FAIL: If the modulus check failed.
+ *          - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *              used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
+ *
+ * Specification: Implements @[FIPS203, Section 7.2, 'modulus check']
+ *
+ **************************************************/
+MLK_API_QUALIFIER
+MLK_API_MUST_CHECK_RETURN_VALUE
+int MLK_API_NAMESPACE(check_pk)(
+    const uint8_t pk[MLKEM_PUBLICKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
+
+/*************************************************
+ * Name:        crypto_kem_check_sk
+ *
+ * Description: Implements public key hash check mandated by FIPS 203,
+ *              i.e., ensures that
+ *              sk[768𝑘+32 ∶ 768𝑘+64] = H(pk)= H(sk[384𝑘 : 768𝑘+32])
+ *
+ * Arguments:   - const uint8_t *sk: pointer to input private key, an array of
+ *                 MLKEM{512,768,1024}_SECRETKEYBYTES bytes.
+ *
+ * Returns: - 0 on success
+ *          - MLK_ERR_FAIL: If the public key hash check failed.
+ *          - MLK_ERR_OUT_OF_MEMORY: If MLK_CONFIG_CUSTOM_ALLOC_FREE is
+ *              used and an allocation via MLK_CUSTOM_ALLOC returned NULL.
+ *
+ * Specification: Implements @[FIPS203, Section 7.3, 'hash check']
+ *
+ **************************************************/
+MLK_API_QUALIFIER
+MLK_API_MUST_CHECK_RETURN_VALUE
+int MLK_API_NAMESPACE(check_sk)(
+    const uint8_t sk[MLKEM_SECRETKEYBYTES(MLK_CONFIG_API_PARAMETER_SET)]
+#ifdef MLK_CONFIG_CONTEXT_PARAMETER
+    ,
+    MLK_CONFIG_CONTEXT_PARAMETER_TYPE context
+#endif
+);
+
+#ifdef __cplusplus
+}
+#endif
 
 /****************************** SUPERCOP API *********************************/
 
@@ -274,18 +444,95 @@ int MLK_API_NAMESPACE(dec)(
 #define crypto_kem_enc_derand MLK_API_NAMESPACE(enc_derand)
 #define crypto_kem_enc MLK_API_NAMESPACE(enc)
 #define crypto_kem_dec MLK_API_NAMESPACE(dec)
+#define crypto_kem_check_pk MLK_API_NAMESPACE(check_pk)
+#define crypto_kem_check_sk MLK_API_NAMESPACE(check_sk)
 
 #else /* !MLK_CONFIG_API_NO_SUPERCOP */
 
 /* If the SUPERCOP API is not needed, we can undefine the various helper macros
  * above. Otherwise, they are needed for lazy evaluation of crypto_kem_xxx. */
+#if !defined(MLK_API_LEGACY_CONFIG)
+#undef MLK_CONFIG_API_PARAMETER_SET
+#undef MLK_CONFIG_API_NAMESPACE_PREFIX
+#undef MLK_CONFIG_API_NO_SUPERCOP
+#undef MLK_CONFIG_API_CONSTANTS_ONLY
+#undef MLK_CONFIG_API_QUALIFIER
+#endif /* !MLK_API_LEGACY_CONFIG */
+
 #undef MLK_API_CONCAT
 #undef MLK_API_CONCAT_
 #undef MLK_API_CONCAT_UNDERSCORE
 #undef MLK_API_NAMESPACE
 #undef MLK_API_MUST_CHECK_RETURN_VALUE
+#undef MLK_API_QUALIFIER
+#undef MLK_API_LEGACY_CONFIG
 
 #endif /* MLK_CONFIG_API_NO_SUPERCOP */
 #endif /* !MLK_CONFIG_API_CONSTANTS_ONLY */
+
+
+/***************************** Memory Usage **********************************/
+
+/*
+ * By default mlkem-native performs all memory allocations on the stack.
+ * Alternatively, mlkem-native supports custom allocation of large structures
+ * through the `MLK_CONFIG_CUSTOM_ALLOC_FREE` configuration option.
+ * See mlkem_native_config.h for details.
+ *
+ * `MLK_TOTAL_ALLOC_{512,768,1024}_{KEYPAIR,ENCAPS,DECAPS}` indicates the
+ * maximum (accumulative) allocation via MLK_ALLOC for each parameter set and
+ * operation. Note that some stack allocation remains even when using custom
+ * allocators, so these values are lower than total stack usage with the default
+ * stack-only allocation.
+ *
+ * These constants may be used to implement custom allocations using a
+ * fixed-sized buffer and a simple allocator (e.g., bump allocator).
+ */
+/* check-magic: off */
+#define MLK_TOTAL_ALLOC_512_KEYPAIR_NO_PCT 5824
+#define MLK_TOTAL_ALLOC_512_KEYPAIR_PCT 10048
+#define MLK_TOTAL_ALLOC_512_ENCAPS 8384
+#define MLK_TOTAL_ALLOC_512_DECAPS 9152
+#define MLK_TOTAL_ALLOC_768_KEYPAIR_NO_PCT 10176
+#define MLK_TOTAL_ALLOC_768_KEYPAIR_PCT 15552
+#define MLK_TOTAL_ALLOC_768_ENCAPS 13248
+#define MLK_TOTAL_ALLOC_768_DECAPS 14336
+#define MLK_TOTAL_ALLOC_1024_KEYPAIR_NO_PCT 15552
+#define MLK_TOTAL_ALLOC_1024_KEYPAIR_PCT 22400
+#define MLK_TOTAL_ALLOC_1024_ENCAPS 19136
+#define MLK_TOTAL_ALLOC_1024_DECAPS 20704
+/* check-magic: on */
+
+/*
+ * MLK_TOTAL_ALLOC_*_KEYPAIR adapts based on MLK_CONFIG_KEYGEN_PCT.
+ * For legacy config, we don't know which options are used, so assume
+ * the worst case (PCT enabled).
+ */
+#if defined(MLK_API_LEGACY_CONFIG) || defined(MLK_CONFIG_KEYGEN_PCT)
+#define MLK_TOTAL_ALLOC_512_KEYPAIR MLK_TOTAL_ALLOC_512_KEYPAIR_PCT
+#define MLK_TOTAL_ALLOC_768_KEYPAIR MLK_TOTAL_ALLOC_768_KEYPAIR_PCT
+#define MLK_TOTAL_ALLOC_1024_KEYPAIR MLK_TOTAL_ALLOC_1024_KEYPAIR_PCT
+#else
+#define MLK_TOTAL_ALLOC_512_KEYPAIR MLK_TOTAL_ALLOC_512_KEYPAIR_NO_PCT
+#define MLK_TOTAL_ALLOC_768_KEYPAIR MLK_TOTAL_ALLOC_768_KEYPAIR_NO_PCT
+#define MLK_TOTAL_ALLOC_1024_KEYPAIR MLK_TOTAL_ALLOC_1024_KEYPAIR_NO_PCT
+#endif
+
+#define MLK_MAX3_(a, b, c) \
+  ((a) > (b) ? ((a) > (c) ? (a) : (c)) : ((b) > (c) ? (b) : (c)))
+
+/*
+ * `MLK_TOTAL_ALLOC_{512,768,1024}` is the maximum across all operations for
+ * each parameter set.
+ */
+#define MLK_TOTAL_ALLOC_512                                          \
+  MLK_MAX3_(MLK_TOTAL_ALLOC_512_KEYPAIR, MLK_TOTAL_ALLOC_512_ENCAPS, \
+            MLK_TOTAL_ALLOC_512_DECAPS)
+#define MLK_TOTAL_ALLOC_768                                          \
+  MLK_MAX3_(MLK_TOTAL_ALLOC_768_KEYPAIR, MLK_TOTAL_ALLOC_768_ENCAPS, \
+            MLK_TOTAL_ALLOC_768_DECAPS)
+#define MLK_TOTAL_ALLOC_1024                                           \
+  MLK_MAX3_(MLK_TOTAL_ALLOC_1024_KEYPAIR, MLK_TOTAL_ALLOC_1024_ENCAPS, \
+            MLK_TOTAL_ALLOC_1024_DECAPS)
 
 #endif /* !MLK_H */

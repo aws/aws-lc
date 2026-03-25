@@ -13,6 +13,7 @@ To verify programs in x86, see `x86/tutorial`.
 5. `loop.ml`: Verifying a program that has a simple loop.
 6. `bignum.ml`: Writing a specification of a program dealing with big numbers & proving it.
 7. `rodata.ml`: Reading data from the read-only section.
+8. `safety.ml`: Verify the safety property (constant-time and and memory-safe)
 
 ### Relational reasoning
 
