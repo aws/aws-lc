@@ -29,9 +29,10 @@
  *              in that it adds the offset and always expects the base of the
  *              target buffer. This avoids shifting the buffer base in the
  *              caller, which appears tricky to reason about. */
-static unsigned mlk_rej_uniform_scalar(int16_t *r, unsigned target,
-                                       unsigned offset, const uint8_t *buf,
-                                       unsigned buflen)
+MLK_STATIC_TESTABLE unsigned mlk_rej_uniform_c(int16_t *r, unsigned target,
+                                               unsigned offset,
+                                               const uint8_t *buf,
+                                               unsigned buflen)
 __contract__(
   requires(offset <= target && target <= 4096 && buflen <= 4096 && buflen % 3 == 0)
   requires(memory_no_alias(r, sizeof(int16_t) * target))
@@ -39,11 +40,10 @@ __contract__(
   requires(array_bound(r, 0, offset, 0, MLKEM_Q))
   assigns(memory_slice(r, sizeof(int16_t) * target))
   ensures(offset <= return_value && return_value <= target)
-  ensures(array_bound(r, 0, return_value, 0, MLKEM_Q))
-)
+  ensures(array_bound(r, 0, return_value, 0, MLKEM_Q)))
 {
   unsigned ctr, pos;
-  uint16_t val0, val1;
+  int16_t val0, val1;
 
   mlk_assert_bound(r, offset, 0, MLKEM_Q);
 
@@ -55,8 +55,8 @@ __contract__(
     invariant(offset <= ctr && ctr <= target && pos <= buflen)
     invariant(array_bound(r, 0, ctr, 0, MLKEM_Q)))
   {
-    val0 = ((buf[pos + 0] >> 0) | ((uint16_t)buf[pos + 1] << 8)) & 0xFFF;
-    val1 = ((buf[pos + 1] >> 4) | ((uint16_t)buf[pos + 2] << 4)) & 0xFFF;
+    val0 = ((buf[pos + 0] >> 0) | (buf[pos + 1] << 8)) & 0xFFF;
+    val1 = ((buf[pos + 1] >> 4) | (buf[pos + 2] << 4)) & 0xFFF;
     pos += 3;
 
     if (val0 < MLKEM_Q)
@@ -93,7 +93,7 @@ __contract__(
  *                                     Must be a multiple of 3.
  *
  * Note: Strictly speaking, only a few values of buflen near UINT_MAX need
- * excluding. The limit of 128 is somewhat arbitrary but sufficient for all
+ * excluding. The limit of 4096 is somewhat arbitrary but sufficient for all
  * uses of this function. Similarly, the actual limit for target is UINT_MAX/2.
  *
  * Returns the new offset of sampled 16-bit integers, at most target,
@@ -135,14 +135,16 @@ __contract__(
   }
 #endif /* MLK_USE_NATIVE_REJ_UNIFORM */
 
-  return mlk_rej_uniform_scalar(r, target, offset, buf, buflen);
+  return mlk_rej_uniform_c(r, target, offset, buf, buflen);
 }
 
 #ifndef MLKEM_GEN_MATRIX_NBLOCKS
-#define MLKEM_GEN_MATRIX_NBLOCKS \
-  ((12 * MLKEM_N / 8 * (1 << 12) / MLKEM_Q + MLK_XOF_RATE) / MLK_XOF_RATE)
+#define MLKEM_GEN_MATRIX_NBLOCKS                                       \
+  ((12 * MLKEM_N / 8 * ((uint32_t)1 << 12) / MLKEM_Q + MLK_XOF_RATE) / \
+   MLK_XOF_RATE)
 #endif
 
+#if !defined(MLK_CONFIG_SERIAL_FIPS202_ONLY)
 /* Reference: Does not exist in the reference implementation @[REF].
  *            - x4-batched version of `rej_uniform()` from the
  *              reference implementation, leveraging x4-batched Keccak-f1600. */
@@ -187,10 +189,7 @@ void mlk_poly_rej_uniform_x4(mlk_poly *vec0, mlk_poly *vec1, mlk_poly *vec2,
             memory_slice(vec1, sizeof(mlk_poly)),
             memory_slice(vec2, sizeof(mlk_poly)),
             memory_slice(vec3, sizeof(mlk_poly)),
-            object_whole(buf[0]),
-            object_whole(buf[1]),
-            object_whole(buf[2]),
-            object_whole(buf[3]))
+            object_whole(buf))
     invariant(ctr[0] <= MLKEM_N && ctr[1] <= MLKEM_N)
     invariant(ctr[2] <= MLKEM_N && ctr[3] <= MLKEM_N)
     invariant(array_bound(vec0->coeffs, 0, ctr[0], 0, MLKEM_Q))
@@ -211,6 +210,7 @@ void mlk_poly_rej_uniform_x4(mlk_poly *vec0, mlk_poly *vec1, mlk_poly *vec2,
    * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
 }
+#endif /* !MLK_CONFIG_SERIAL_FIPS202_ONLY */
 
 MLK_INTERNAL_API
 void mlk_poly_rej_uniform(mlk_poly *entry, uint8_t seed[MLKEM_SYMBYTES + 2])
@@ -293,7 +293,7 @@ void mlk_poly_cbd2(mlk_poly *r, const uint8_t buf[2 * MLKEM_N / 4])
     {
       const int16_t a = (d >> (4 * j + 0)) & 0x3;
       const int16_t b = (d >> (4 * j + 2)) & 0x3;
-      r->coeffs[8 * i + j] = a - b;
+      r->coeffs[8 * i + j] = (int16_t)(a - b);
     }
   }
 }
@@ -345,7 +345,7 @@ void mlk_poly_cbd3(mlk_poly *r, const uint8_t buf[3 * MLKEM_N / 4])
     {
       const int16_t a = (d >> (6 * j + 0)) & 0x7;
       const int16_t b = (d >> (6 * j + 3)) & 0x7;
-      r->coeffs[4 * i + j] = a - b;
+      r->coeffs[4 * i + j] = (int16_t)(a - b);
     }
   }
 }
