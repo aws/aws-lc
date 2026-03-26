@@ -15,33 +15,25 @@ This command runs in `-p` (print) mode. In this mode, ONLY the main agent's dire
 - **If you have nothing to report**, still print the review template with "No issues found."
 - **Never end silently.** If you are about to finish without having printed any text, something went wrong — print a diagnostic message explaining what happened.
 
-## Step 1: Fetch PR data
+## Step 1: Load PR data
 
-Use WebFetch to fetch the following in parallel:
-- PR metadata: `https://api.github.com/repos/{repo}/pulls/{pr_number}`
-- PR diff: `https://github.com/{repo}/pull/{pr_number}.diff`
-- PR changed files: `https://api.github.com/repos/{repo}/pulls/{pr_number}/files`
+PR data has been pre-fetched by the CI script. Read the following files from the `.pr-data/` directory:
+- `pr-metadata.json` — PR metadata (title, description, branch, state, etc.)
+- `pr.diff` — the full diff
+- `pr-files.json` — list of changed files
 
-## Step 2: Triage
-
-Launch a haiku agent to check if any of the following are true:
-- The pull request is a draft
-- The pull request does not need code review (e.g., automated PR, trivial change that is obviously correct)
-
-If any condition is true, stop and explain why.
-
-## Step 3: Gather context
+## Step 2: Gather context
 
 Launch these in parallel:
-- A haiku agent to find all relevant CLAUDE.md files (root and in directories containing modified files)
+- A haiku agent to find all relevant AIAGENT.md files (root and in directories containing modified files)
 - A sonnet agent to summarize the PR changes from the diff and metadata
 
-## Step 4: Review with parallel agents
+## Step 3: Review with parallel agents
 
 Launch 4 agents in parallel. Each agent receives the PR title, description, diff, and list of changed files. Each returns a list of issues with descriptions and reasons.
 
-**Agent 1 + 2: CLAUDE.md compliance sonnet agents**
-Audit changes for CLAUDE.md compliance in parallel. Only consider CLAUDE.md files scoped to the modified files.
+**Agent 1 + 2: AIAGENT.md compliance sonnet agents**
+Audit changes for AIAGENT.md compliance in parallel. Only consider AIAGENT.md files scoped to the modified files.
 
 **Agent 3: Opus bug-finding agent (parallel with agent 4)**
 Scan for obvious bugs. Focus only on the diff itself without reading extra context. Flag only significant bugs; ignore nitpicks and likely false positives. Do not flag issues that you cannot validate without looking at context outside of the git diff.
@@ -92,7 +84,7 @@ This agent should read full source files (not just the diff) to understand surro
 Flag issues where:
 - The code will fail to compile or parse
 - The code will definitely produce wrong results regardless of inputs
-- Clear, unambiguous CLAUDE.md violations where you can quote the exact rule
+- Clear, unambiguous AIAGENT.md violations where you can quote the exact rule
 - Security vulnerabilities: memory corruption, cryptographic flaws, side-channels
 - Resource leaks on error paths that are reachable
 
@@ -108,17 +100,17 @@ Do NOT flag:
 - Linter-catchable issues
 - Pedantic nitpicks a senior engineer wouldn't flag
 
-## Step 5: Validate findings
+## Step 4: Validate findings
 
 For each issue found by agents 3 and 4, launch parallel subagents to validate:
 - Each subagent gets the PR title, description, and a description of the issue
 - The subagent reviews the issue to validate it with high confidence
-- Use Opus subagents for bugs/logic issues, sonnet for CLAUDE.md violations
+- Use Opus subagents for bugs/logic issues, sonnet for AIAGENT.md violations
 - The subagent should read the relevant source files to confirm the issue is real
 
 Filter out any issues that were not validated.
 
-## Step 6: Output review
+## Step 5: Output review
 
 Output the review as direct text in your response (see OUTPUT RULES above) in this format:
 
@@ -158,6 +150,6 @@ If no issues are found, output:
 
 ┌─ Findings ─────────────────────────────────────────────────────────────────────────────────────────┐
 │ ✓ No issues found. Checked for bugs, security issues, and                                          │
-│   CLAUDE.md compliance.                                                                            │
+│   AIAGENT.md compliance.                                                                            │
 └────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
