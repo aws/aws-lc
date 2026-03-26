@@ -76,6 +76,7 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   OPENSSL_memcpy(drbg->counter, seed_material + 32, 16);
   drbg->reseed_counter = 1;
 
+  OPENSSL_cleanse(seed_material, sizeof(seed_material));
   return 1;
 }
 
@@ -111,6 +112,7 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp, 32);
   OPENSSL_memcpy(drbg->counter, temp + 32, 16);
 
+  OPENSSL_cleanse(temp, sizeof(temp));
   return 1;
 }
 
@@ -142,11 +144,13 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
   }
 
   if (!ctr_drbg_update(drbg, entropy, CTR_DRBG_ENTROPY_LEN)) {
+    OPENSSL_cleanse(entropy_copy, sizeof(entropy_copy));
     return 0;
   }
 
   drbg->reseed_counter = 1;
 
+  OPENSSL_cleanse(entropy_copy, sizeof(entropy_copy));
   return 1;
 }
 
@@ -208,6 +212,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
     drbg->block(drbg->counter, block, &drbg->ks);
 
     OPENSSL_memcpy(out, block, out_len);
+    OPENSSL_cleanse(block, sizeof(block));
   }
 
   // Right-padding |additional_data| in step 2.2 is handled implicitly by
