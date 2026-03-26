@@ -1,0 +1,31 @@
+name: OCSP integration tests
+on:
+  schedule:
+    # Run daily at 8 AM UTC to detect external endpoint issues early.
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
+jobs:
+  ocsp-external:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake ninja-build golang
+      - name: Build integration_test
+        run: |
+          cmake -GNinja -Btest_build_dir
+          ninja -C test_build_dir ssl/integration_test
+      - name: Run OCSP integration tests
+        run: ./test_build_dir/ssl/integration_test
