@@ -163,8 +163,8 @@ ok:
 #endif
 
 static std::unique_ptr<std::string> GetSectionValue(bssl::UniquePtr<CONF> &conf,
-                                                    std::string section,
-                                                    std::string key) {
+                                                    const std::string &section,
+                                                    const std::string &key) {
   auto *value = NCONF_get_string(conf.get(), section.c_str(), key.c_str());
   if (value == NULL) {
     return std::unique_ptr<std::string>(nullptr);
@@ -173,7 +173,8 @@ static std::unique_ptr<std::string> GetSectionValue(bssl::UniquePtr<CONF> &conf,
 }
 
 static bool ParseBoolSectionValue(bssl::UniquePtr<CONF> &conf,
-                                  std::string section, std::string key,
+                                  const std::string &section,
+                                  const std::string &key,
                                   bool default_value) {
   auto value = GetSectionValue(conf, section, key);
   if (!value) {
@@ -183,7 +184,8 @@ static bool ParseBoolSectionValue(bssl::UniquePtr<CONF> &conf,
 }
 
 static long ParseNumberSectionValue(bssl::UniquePtr<CONF> &conf,
-                                    std::string section, std::string key,
+                                    const std::string &section,
+                                    const std::string &key,
                                     long default_value) {
   auto value = GetSectionValue(conf, section, key);
   if (!value) {
@@ -192,7 +194,7 @@ static long ParseNumberSectionValue(bssl::UniquePtr<CONF> &conf,
   return std::atol(value->c_str());
 }
 
-static EXT_COPY_TYPE ParseCopyExtensionValue(std::string value) {
+static EXT_COPY_TYPE ParseCopyExtensionValue(const std::string &value) {
   if (strcasecmp(value.c_str(), "none") == 0) {
     return EXT_COPY_NONE;
   } else if (strcasecmp(value.c_str(), "copy") == 0) {
@@ -219,7 +221,7 @@ static EXT_COPY_TYPE ParseCopyExtensionValue(std::string value) {
 #define DB_TYPE_VAL 'V'   // Valid; inserted with: ca ... -valid
 #define DB_TYPE_SUSP 'S'  // Suspended
 
-static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
+static bssl::UniquePtr<CA_DB> LoadIndex(const std::string &dbfile,
                                         DB_ATTR *db_attr) {
   bssl::UniquePtr<CONF> dbattr_conf(NCONF_new(nullptr));
   bssl::UniquePtr<CA_DB> retdb;
@@ -290,7 +292,7 @@ static const char *crl_reasons[] = {
 static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
                          bssl::UniquePtr<ASN1_OBJECT> &phold,
                          bssl::UniquePtr<ASN1_GENERALIZEDTIME> &pinvtm,
-                         std::string str) {
+                         const std::string &str) {
   ossl_char_ptr tmp = ossl_char_ptr(nullptr, OPENSSL_free);
   char *rtime_str = NULL, *reason_str = NULL, *arg_str = NULL, *p = NULL;
   int reason_code = -1;
@@ -397,7 +399,7 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
 // 0 error
 // 1 OK
 // 2 OK and some extensions added (i.e. V2 CRL)
-static int MakeRevoked(X509_REVOKED *rev, std::string str) {
+static int MakeRevoked(X509_REVOKED *rev, const std::string &str) {
   int reason_code = -1;
   int i = 0, ret = 0;
   bssl::UniquePtr<ASN1_OBJECT> hold;
@@ -500,7 +502,7 @@ static int IndexIndex(bssl::UniquePtr<CA_DB> &db) {
   return 1;
 }
 
-static int SaveIndex(std::string dbfile, std::string suffix,
+static int SaveIndex(const std::string &dbfile, const std::string &suffix,
                      bssl::UniquePtr<CA_DB> &db) {
   char buf[3][BSIZE];
   bssl::UniquePtr<BIO> out;
@@ -540,8 +542,8 @@ static int SaveIndex(std::string dbfile, std::string suffix,
   return 1;
 }
 
-static int RotateIndex(std::string dbfile, std::string new_suffix,
-                       std::string old_suffix) {
+static int RotateIndex(const std::string &dbfile, const std::string &new_suffix,
+                       const std::string &old_suffix) {
   char buf[5][BSIZE];
   int i = 0, j = 0;
 
@@ -573,22 +575,34 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
   if (rename(buf[0], dbfile.c_str()) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[0], dbfile.c_str());
     perror("reason");
-    rename(buf[1], dbfile.c_str());
+    if (rename(buf[1], dbfile.c_str()) < 0) {
+      perror("unable to restore original database file");
+    }
     return 0;
   }
   if (rename(buf[4], buf[3]) < 0 && errno != ENOENT && errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[4], buf[3]);
     perror("reason");
-    rename(dbfile.c_str(), buf[0]);
-    rename(buf[1], dbfile.c_str());
+    if (rename(dbfile.c_str(), buf[0]) < 0) {
+      perror("unable to restore new database file");
+    }
+    if (rename(buf[1], dbfile.c_str()) < 0) {
+      perror("unable to restore original database file");
+    }
     return 0;
   }
   if (rename(buf[2], buf[4]) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[2], buf[4]);
     perror("reason");
-    rename(buf[3], buf[4]);
-    rename(dbfile.c_str(), buf[0]);
-    rename(buf[1], dbfile.c_str());
+    if (rename(buf[3], buf[4]) < 0) {
+      perror("unable to restore attribute file");
+    }
+    if (rename(dbfile.c_str(), buf[0]) < 0) {
+      perror("unable to restore new database file");
+    }
+    if (rename(buf[1], dbfile.c_str()) < 0) {
+      perror("unable to restore original database file");
+    }
     return 0;
   }
   return 1;
@@ -663,8 +677,8 @@ static int RandSerial(bssl::UniquePtr<BIGNUM> &b, ASN1_INTEGER *ai) {
   return 1;
 }
 
-static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
-                                          int create) {
+static bssl::UniquePtr<BIGNUM> LoadSerial(const std::string &serialfile,
+                                          int *exists, int create) {
   bssl::UniquePtr<BIO> in;
   bssl::UniquePtr<BIGNUM> ret;
   bssl::UniquePtr<ASN1_INTEGER> ai;
@@ -708,8 +722,8 @@ static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
   return ret;
 }
 
-static int SetCertTimes(X509 *x, std::string startdate, std::string enddate,
-                        int days) {
+static int SetCertTimes(X509 *x, const std::string &startdate,
+                        const std::string &enddate, int days) {
   if (startdate.empty() || strcmp(startdate.c_str(), "today") == 0) {
     if (X509_gmtime_adj(X509_getm_notBefore(x), 0) == NULL) {
       return 0;
@@ -837,11 +851,11 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
                   bssl::UniquePtr<EVP_PKEY> &pkey, X509 *x509,
                   const EVP_MD *dgst, const STACK_OF(CONF_VALUE) *policy,
                   bssl::UniquePtr<CA_DB> &db, bssl::UniquePtr<BIGNUM> &serial,
-                  std::string subj, unsigned long chtype, std::string startdate,
-                  std::string enddate, long days, int verbose,
-                  bssl::UniquePtr<X509_REQ> &req, std::string ext_sect,
-                  bssl::UniquePtr<CONF> &lconf, EXT_COPY_TYPE ext_copy,
-                  int selfsign, int preserve) {
+                  const std::string &subj, unsigned long chtype,
+                  const std::string &startdate, const std::string &enddate,
+                  long days, int verbose, bssl::UniquePtr<X509_REQ> &req,
+                  const std::string &ext_sect, bssl::UniquePtr<CONF> &lconf,
+                  EXT_COPY_TYPE ext_copy, int selfsign, int preserve) {
   X509_NAME *name = nullptr;
   bssl::UniquePtr<X509_NAME> CAname, subject;
   const ASN1_TIME *tm = nullptr;
@@ -1264,7 +1278,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     goto end;
   }
 
-  irow.reset((OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING *) *
+  irow.reset((OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING) *
                                               (DB_NUMBER + 1)));
   if (!irow) {
     BIO_printf(bio_err.get(), "Memory allocation failure\n");
@@ -1297,15 +1311,15 @@ end:
   return ok;
 }
 
-static int Certify(X509 **ret, std::string infile,
+static int Certify(X509 **ret, const std::string &infile,
                    bssl::UniquePtr<EVP_PKEY> &pkey, X509 *x509,
                    const EVP_MD *dgst, const STACK_OF(CONF_VALUE) *policy,
                    bssl::UniquePtr<CA_DB> &db, bssl::UniquePtr<BIGNUM> &serial,
-                   std::string subj, unsigned long chtype,
-                   std::string startdate, std::string enddate, long days,
-                   std::string ext_sect, bssl::UniquePtr<CONF> &lconf,
-                   int verbose, EXT_COPY_TYPE ext_copy, int selfsign,
-                   int preserve) {
+                   const std::string &subj, unsigned long chtype,
+                   const std::string &startdate, const std::string &enddate,
+                   long days, const std::string &ext_sect,
+                   bssl::UniquePtr<CONF> &lconf, int verbose,
+                   EXT_COPY_TYPE ext_copy, int selfsign, int preserve) {
   bssl::UniquePtr<X509_REQ> req;
   bssl::UniquePtr<BIO> in;
   EVP_PKEY *pktmp = NULL;
@@ -1359,7 +1373,8 @@ static int Certify(X509 **ret, std::string infile,
                 ext_copy, selfsign, preserve);
 }
 
-static int SaveSerial(std::string serialfile, std::string suffix,
+static int SaveSerial(const std::string &serialfile,
+                      const std::string &suffix,
                       bssl::UniquePtr<BIGNUM> &serial) {
   char buf[1][BSIZE];
   bssl::UniquePtr<BIO> out;
@@ -1398,8 +1413,9 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   return 1;
 }
 
-static int RotateSerial(std::string serialfile, std::string new_suffix,
-                        std::string old_suffix) {
+static int RotateSerial(const std::string &serialfile,
+                        const std::string &new_suffix,
+                        const std::string &old_suffix) {
   char buf[2][BSIZE];
   int i = 0, j = 0;
 
@@ -1426,7 +1442,9 @@ static int RotateSerial(std::string serialfile, std::string new_suffix,
   if (rename(buf[0], serialfile.c_str()) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[0], serialfile.c_str());
     perror("reason");
-    rename(buf[1], serialfile.c_str());
+    if (rename(buf[1], serialfile.c_str()) < 0) {
+      perror("unable to restore original serial file");
+    }
     return 0;
   }
   return 1;

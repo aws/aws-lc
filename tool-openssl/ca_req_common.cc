@@ -134,7 +134,7 @@ bool LoadPrivateKey(const std::string &key_file_path,
 }
 
 // Parse the subject string provided by a user with the -subj option.
-bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string) {
+bssl::UniquePtr<X509_NAME> ParseSubjectName(const std::string &subject_string) {
   const char *subject_name_ptr = subject_string.c_str();
 
   if (*subject_name_ptr++ != '/') {

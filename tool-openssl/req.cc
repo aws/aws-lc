@@ -632,6 +632,11 @@ bool reqTool(const args_list_t &args) {
   }
 
   digest = EVP_get_digestbyname(digest_name.c_str());
+  if (digest == nullptr) {
+    fprintf(stderr, "Error: unsupported digest algorithm: %s\n",
+            digest_name.c_str());
+    return false;
+  }
 
   bool encrypt_key = true;
   const char *encrypt_key_str = NULL;
