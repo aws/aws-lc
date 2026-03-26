@@ -6,6 +6,11 @@ set -exo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# Install Claude
+curl -fsSL https://claude.ai/install.sh | bash
+mkdir -p ~/.local/bin
+mkdir -p /home/codebuild-user/.local/bin
+
 export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION=us-west-2
 

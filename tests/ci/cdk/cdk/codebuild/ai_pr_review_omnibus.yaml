@@ -7,11 +7,6 @@ phases:
   install:
     runtime-versions:
       nodejs: 18
-    commands:
-      - echo "Installing Claude..."
-      - curl -fsSL https://claude.ai/install.sh | bash
-      - mkdir -p ~/.local/bin
-      - mkdir -p /home/codebuild-user/.local/bin
   build:
     commands:
       - ./tests/ci/run_ai_pr_review.sh
