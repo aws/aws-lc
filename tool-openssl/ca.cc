@@ -97,9 +97,11 @@ static int WIN32_rename(const char *from, const char *to) {
   int ret = 0;
   // On Windows, antivirus software, file indexing services, or other
   // background processes can briefly lock files, causing transient
-  // ERROR_ACCESS_DENIED or ERROR_SHARING_VIOLATION failures. Retry with a
-  // short delay to handle these.
-  static const int kMaxRetries = 5;
+  // ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION, or ERROR_LOCK_VIOLATION
+  // failures. Retry with a short delay to handle these. Under heavy load
+  // (e.g. running under SDE with parallel tests), locks can persist for
+  // multiple seconds, so we use a generous retry budget.
+  static const int kMaxRetries = 10;
   static const DWORD kRetryDelayMs = 200;
 
   if (sizeof(TCHAR) == 1) {
@@ -134,7 +136,8 @@ static int WIN32_rename(const char *from, const char *to) {
       }
       err = GetLastError();
     }
-    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION) {
+    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
+        err != ERROR_LOCK_VIOLATION) {
       break;
     }
   }
@@ -142,8 +145,12 @@ static int WIN32_rename(const char *from, const char *to) {
     errno = ENOENT;
   } else if (err == ERROR_ACCESS_DENIED) {
     errno = EACCES;
+  } else if (err == ERROR_SHARING_VIOLATION || err == ERROR_LOCK_VIOLATION) {
+    errno = EACCES;
   } else {
-    errno = EINVAL; // we could map more codes...
+    errno = EINVAL;
+    fprintf(stderr, "WIN32_rename: MoveFile('%s', '%s') failed with Windows "
+            "error code %lu\n", from, to, (unsigned long)err);
   }
 err:
   ret = -1;
