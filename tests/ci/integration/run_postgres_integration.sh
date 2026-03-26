@@ -45,10 +45,21 @@ function postgres_run_tests() {
 # SSL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
 # TODO: Remove this when we make an upstream contribution.
 function postgres_patch() {
-  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "ssl\[a\-z0\-9\/\]\* alert certificate revoked" "tlsv1 alert unknown ca")
-  AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "BAD_DECRYPT" "SSLV3_ALERT_CERTIFICATE_REVOKED" "TLSV1_ALERT_UNKNOWN_CA")
+  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "ssl\[a\-z0\-9\/\]\* alert certificate revoked" "tlsv1 alert unknown ca" "unrecognized name" "handshake failure")
+  AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "BAD_DECRYPT" "SSLV3_ALERT_CERTIFICATE_REVOKED" "TLSV1_ALERT_UNKNOWN_CA" "TLSV1_ALERT_UNRECOGNIZED_NAME" "unknown error")
   for i in "${!POSTGRES_ERROR_STRING[@]}"; do
-    find ./ -type f -name "001_ssltests.pl" | xargs sed -i -e "s|${POSTGRES_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
+    find ./src/test/ssl/t/ -type f -name "*.pl" | xargs sed -i -e "s|${POSTGRES_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
+  done
+  # Some tests use shorter error string patterns (e.g. just "unknown ca" instead
+  # of "tlsv1 alert unknown ca"). Apply these after the longer replacements above
+  # so they only affect the remaining short-form occurrences. The replacements are
+  # restricted to expected_stderr lines to avoid clobbering log_like patterns that
+  # use the same lowercase strings from X509 verification (e.g.
+  # "Client certificate verification failed at depth 0: certificate revoked").
+  POSTGRES_SHORT_ERROR_STRING=("unknown ca" "certificate revoked")
+  AWS_LC_SHORT_EXPECTED_ERROR_STRING=("UNKNOWN_CA" "CERTIFICATE_REVOKED")
+  for i in "${!POSTGRES_SHORT_ERROR_STRING[@]}"; do
+    find ./src/test/ssl/t/ -type f -name "*.pl" | xargs sed -i -e "/expected_stderr/s|${POSTGRES_SHORT_ERROR_STRING[$i]}|${AWS_LC_SHORT_EXPECTED_ERROR_STRING[$i]}|g"
   done
   for patchfile in $(find -L "${POSTGRES_PATCH_FOLDER}" -type f -name '*.patch'); do
     echo "Apply patch $patchfile..."
@@ -66,4 +77,3 @@ cd ${POSTGRES_SRC_FOLDER}
 postgres_patch
 postgres_build
 postgres_run_tests
-
