@@ -126,11 +126,8 @@ Output the review as direct text in your response (see OUTPUT RULES above) in th
 
 ┌─ Findings ─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                                    │
-│ [1] {issue description with filename and line number,                                              │
-│     wrap to width with proper indentation}                                                         │
-│     {suggested fix if applicable}                                                                  │
-│                                                                                                    │
-│ [2] {issue description with filename and line number,                                              │
+│ {For each issue, output [N] where N is the sequential number starting from 1}                      │
+│ [N] {issue description with filename and line number,                                              │
 │     wrap to width with proper indentation}                                                         │
 │     {suggested fix if applicable}                                                                  │
 │                                                                                                    │
