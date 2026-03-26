@@ -1,8 +1,7 @@
 name: OCSP integration tests
 on:
-  schedule:
-    # Run daily at 8 AM UTC to detect external endpoint issues early.
-    - cron: "0 8 * * *"
+  pull_request:
+    branches: ["*"]
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
