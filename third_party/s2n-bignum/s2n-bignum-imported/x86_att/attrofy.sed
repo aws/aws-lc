@@ -17,7 +17,8 @@
 s/\.intel_syntax *noprefix//
 s/_internal_s2n_bignum_x86/_internal_s2n_bignum_x86_att/
 
-# Don't make any transforms on lines with the argument-taking macros
+# Don't make any transforms on lines with most argument-taking macros
+# We need to be more careful with those taking ymm register arguments
 
 / addrow .+,/b
 / mulpadd .+,/b
@@ -25,10 +26,19 @@ s/_internal_s2n_bignum_x86/_internal_s2n_bignum_x86_att/
 / mulpade .+,/b
 / mulrow .+,/b
 
-# Reverse the argument order for binary and ternary instructions
+# Don't transform macro definitions and calls except that the
+# butterfly macros get the ymm default replacement done
 
-s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,;]*)([/;].*)*$/\1\4, \3 \5/
-s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\5, \4, \3 \6/
+/^\.macro butterfly/ s/=ymm/=%ymm/g
+/^\.macro/b
+/^\.endm/b
+
+# Reverse the argument order for binary, ternary and quaternary instructions
+# Skip all other macros for this step even if we later do ymm replacement.
+
+/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,;]*)([/;].*)*$/\1\4, \3 \5/
+/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\5, \4, \3 \6/
+/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\6, \5, \4, \3 \7/
 
 # Fix up whitespace just in case
 
@@ -36,7 +46,7 @@ s/ +,/,/
 
 # Decorate literals with $
 
-s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)(([-~+*/()A-Z0-9]*(0x[a-zA-Z0-9]*)*)* *\,)/\1$\3/
+/butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)(([-~+*/()A-Z0-9]*(0x[a-zA-Z0-9]*)*)* *\,)/\1$\3/
 
 # Translate relative addresses with uppercase base variable
 # Turn defined offset fields into explicit indirections to match
@@ -47,6 +57,12 @@ s/^([^/][^[]+)[[]([A-Z][A-Z_0-9]*) *\+ *([^]]+)[]]/\1\3\+\2/
 s/^\#define *([a-z][a-z_0-9]*) *([a-z][a-z_0-9]*) *\+(.*)/\#define \1 \3\(\2\)/
 
 # Translate relative addresses
+
+# Handle [offset + register] and [offset - register] patterns
+s/^([^/][^[]+)[[]([A-Z0-9* ]+) *\+ *([a-z][a-z_0-9]*)[]]/\1\2\(\3\)/
+s/^([^/][^[]+)[[]([A-Z0-9* ]+) *\- *([a-z][a-z_0-9]*)[]]/\1-\2\(\3\)/
+s/^([^/][^[]+)[[]([0-9]+) *\+ *([a-z][a-z_0-9]*)[]]/\1\2\(\3\)/
+s/^([^/][^[]+)[[]([0-9]+) *\- *([a-z][a-z_0-9]*)[]]/\1-\2\(\3\)/
 
 s/^([^/][^[]+)[[]([a-z_0-9]+)[]]/\1\(\2\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *8\*([a-z][a-z_0-9]*) *\+ *([a-z_A-Z0-9]+)[]]/\1\4\(\2,\3,8\)/
@@ -73,11 +89,13 @@ s/([[(,.;: ])([re][abcd]x)/\1\%\2/g
 s/([[(,.;: ])([re]sp)/\1\%\2/g
 s/([[(,.;: ])([re]bp)/\1\%\2/g
 s/([[(,.;: ])([re]si)/\1\%\2/g
+s/([[(,.;: ])([re]si)/\1\%\2/g
 s/([[(,.;: ])([re]di)/\1\%\2/g
 s/([[(,.;: ])(r8d*)/\1\%\2/g
 s/([[(,.;: ])(r9d*)/\1\%\2/g
 s/([[(,.;: ])(r1[0-5]d*)/\1\%\2/g
 s/([[(,.;: ])([re]ip)/\1\%\2/g
+s/([[(,.;: ])([xyz]mm[0-9]*)/\1\%\2/g
 
 # Add explicit sizes to instructions
 
@@ -128,9 +146,9 @@ s/ xor  / xorq /g
 s/q(  .*zeroe)/l\1/
 s/q(  .*plus2e)/l\1/
 s/q(  .*short)/l\1/
-s/q(  .*%e)/l\1/
-s/q(  .*%r[0-9]+d)/l\1/
-s/q(  .*%ax)/w\1/
+s/q( .*%e)/l\1/
+s/q( .*%r[0-9]+d)/l\1/
+s/q( .*%ax)/w\1/
 
 # Eliminate any trailing spaces, just to be tidy
 

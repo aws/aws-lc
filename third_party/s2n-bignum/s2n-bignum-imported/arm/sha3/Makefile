@@ -23,6 +23,7 @@ endif
 
 OBJ = sha3_keccak_f1600.o \
       sha3_keccak_f1600_alt.o \
+      sha3_keccak_f1600_alt2.o \
       sha3_keccak2_f1600.o \
       sha3_keccak2_f1600_alt.o \
       sha3_keccak4_f1600.o \

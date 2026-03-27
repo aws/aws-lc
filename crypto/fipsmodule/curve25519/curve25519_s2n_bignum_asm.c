@@ -21,6 +21,8 @@ void x25519_scalar_mult_generic_s2n_bignum(
   curve25519_x25519_byte_selector(out_shared_key,
                                   private_key_internal_demask,
                                   peer_public_value);
+
+  OPENSSL_cleanse(private_key_internal_demask, sizeof(private_key_internal_demask));
 }
 
 void x25519_public_from_private_s2n_bignum(
@@ -34,6 +36,8 @@ void x25519_public_from_private_s2n_bignum(
   private_key_internal_demask[31] |= 64;
 
   curve25519_x25519base_byte_selector(out_public_value, private_key_internal_demask);
+
+  OPENSSL_cleanse(private_key_internal_demask, sizeof(private_key_internal_demask));
 }
 
 void ed25519_public_key_from_hashed_seed_s2n_bignum(
@@ -47,6 +51,8 @@ void ed25519_public_key_from_hashed_seed_s2n_bignum(
   edwards25519_scalarmulbase_selector(uint64_point, uint64_hashed_seed);
 
   edwards25519_encode(out_public_key, uint64_point);
+
+  OPENSSL_cleanse(uint64_hashed_seed, sizeof(uint64_hashed_seed));
 }
 
 void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
@@ -86,6 +92,11 @@ void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   // out_sig = R || S
   bignum_madd_n25519_selector(S, uint64_k, uint64_s, uint64_r);
   OPENSSL_memcpy(out_sig + 32, S, 32);
+
+  OPENSSL_cleanse(k, sizeof(k));
+  OPENSSL_cleanse(uint64_r, sizeof(uint64_r));
+  OPENSSL_cleanse(uint64_k, sizeof(uint64_k));
+  OPENSSL_cleanse(uint64_s, sizeof(uint64_s));
 }
 
 int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],

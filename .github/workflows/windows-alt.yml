@@ -166,6 +166,19 @@ jobs:
       - if: ${{ matrix.target  == 'x64' }}
         name: Run tests
         run: cmake --build ./build --target run_tests
+      - if: ${{ matrix.target  == 'x64' }}
+        name: Setup Go (for FIPS)
+        uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - if: ${{ matrix.target  == 'x64' }}
+        name: Build and test with FIPS
+        run: |
+          cmake -GNinja -B ./build-fips -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1
+          cmake --build ./build-fips
+          $buildFips = (Resolve-Path ./build-fips).Path
+          $env:PATH = "$buildFips;$buildFips\crypto;$buildFips\ssl;$env:PATH"
+          cmake --build ./build-fips --target run_tests
   cross-mingw:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-22.04

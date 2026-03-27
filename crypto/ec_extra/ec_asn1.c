@@ -562,6 +562,10 @@ EC_KEY *o2i_ECPublicKey(EC_KEY **keyp, const uint8_t **inp, long len) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     return NULL;
   }
+  if (EC_POINT_is_at_infinity(ret->group, ret->pub_key)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
+    return NULL;
+  }
   // save the point conversion form
   ret->conv_form = (point_conversion_form_t)(*inp[0] & ~0x01);
   *inp += len;
