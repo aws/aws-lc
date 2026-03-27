@@ -301,6 +301,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_44) {
   out->signature_len = MLDSA44_SIGNATURE_BYTES;
   out->keygen_seed_len = MLDSA44_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA44_SIGNATURE_SEED_BYTES;
+  out->digest_len = 64; // MLDSA_CRHBYTES, unavailable here due to bcm.c undef
   out->method = sig_ml_dsa_44_method();
 }
 
@@ -314,6 +315,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
   out->signature_len = MLDSA65_SIGNATURE_BYTES;
   out->keygen_seed_len = MLDSA65_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA65_SIGNATURE_SEED_BYTES;
+  out->digest_len = 64; // MLDSA_CRHBYTES, unavailable here due to bcm.c undef
   out->method = sig_ml_dsa_65_method();
 }
 
@@ -327,6 +329,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_87) {
   out->signature_len = MLDSA87_SIGNATURE_BYTES;
   out->keygen_seed_len = MLDSA87_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA87_SIGNATURE_SEED_BYTES;
+  out->digest_len = 64; // MLDSA_CRHBYTES, unavailable here due to bcm.c undef
   out->method = sig_ml_dsa_87_method();
 }
 
