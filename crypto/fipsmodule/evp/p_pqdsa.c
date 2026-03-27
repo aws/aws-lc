@@ -78,7 +78,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 1;
   }
 
-  if (*sig_len != pqdsa->signature_len) {
+  if (*sig_len < pqdsa->signature_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -115,6 +115,10 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
   // DIGEST sign mode
   else {
+    if (message_len != pqdsa->digest_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
     if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
@@ -190,6 +194,10 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   }
   // DIGEST verify mode
   else {
+    if (message_len != pqdsa->digest_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
     if (sig_len != pqdsa->signature_len ||
     !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);

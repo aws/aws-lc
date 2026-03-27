@@ -63,6 +63,7 @@ typedef struct {
   size_t signature_len;
   size_t keygen_seed_len;
   size_t sign_seed_len;
+  size_t digest_len;
   const PQDSA_METHOD *method;
 } PQDSA;
 
