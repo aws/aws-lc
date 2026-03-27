@@ -163,22 +163,20 @@ The Shared Windows FIPS integrity test differs in two key ways:
 2. How the correct integrity hash is calculated
 
 Microsoft Visual C compiler (MSVC) does not support linker scripts that add symbols to mark the start and end of the text and rodata sections, as is done on Linux. Instead, `fips_shared_library_marker.c` is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (e.g. `.fipstx$a`). This particular name format uses [Portable Executable Grouped Sections](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#grouped-sections-object-only) to control what section the code is placed in and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built, all the code is in the `.fipstx` section, all data is in `.fipsda`, all constants are in `.fipsco`, all uninitialized items in `.fipsbs`, and everything is in the correct order.
-The process to generate the expected integrity fingerprint is also different from Linux:
+The process to generate the expected integrity fingerprint is also different from Linux. We use a single-DLL capture-and-patch approach: build `crypto.dll` once with a placeholder hash, run it to compute the real hash, then binary-patch the placeholder directly in the DLL. This avoids building two separate DLLs whose linker output may differ (e.g. mandatory ASLR on ARM64 causes different ADRP immediates, and `lld-link` used by clang-cl is not guaranteed to produce byte-identical output across two independent link operations).
 
-1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files 
+1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files
     1. `bcm.obj` places the power-on self tests in the `.CRT$XCU` section which is run automatically by the Windows Common Runtime library (CRT) startup code
-2. Use MSVC's `lib.exe` to combine the start/end object files with `bcm.obj` to create the static library `bcm.lib`. 
+2. Use MSVC's `lib.exe` (or `llvm-lib` for clang-cl) to combine the start/end object files with `bcm.obj` to create the static library `bcm.lib`.
     1. MSVC does not support combining multiple object files into another object file like the Apple build.
 3. Build `fipsmodule` which contains the placeholder integrity hash
-4. Build `precrypto.dll` with `bcm.obj` and `fipsmodule`
-5. Build the small application `fips_empty_main.exe` and link it with `precrypto.dll`
-6. `capture-hash.go` runs `fips_empty_main.exe`
+4. Build `crypto.dll` with `bcm.lib` and `fipsmodule`
+5. Build the small application `fips_empty_main.exe` and link it with `crypto.dll`
+6. `capture_hash.go` runs `fips_empty_main.exe`
     1. The CRT runs all functions in the `.CRT$XC*` sections in order starting with `.CRT$XCA`
     2. The BCM power-on tests are in `.CRT$XCU` and are run after all other Windows initialization is complete
     3. BCM calculates the correct integrity value which will not match the placeholder value. Before aborting the process the correct value is printed
-    4. `capture-hash.go` reads the correct integrity value and writes it to `generated_fips_shared_support.c`
-7. `generated_fipsmodule` is built with `generated_fips_shared_support.c`
-8. `crypto.dll` is built with the same original `bcm.lib` and `generated_fipsmodule`
+    4. `capture_hash.go` reads the correct integrity value and binary-patches the 32-byte placeholder directly in `crypto.dll`
 
 ### Linux Static build
 
