@@ -129,8 +129,6 @@ Lbignum_mod_sm2_writeback:
         stp     m2, m3, [z, #16]
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_sm2)
-
 // Short case: just copy the input with zero-padding
 
 Lbignum_mod_sm2_short:
@@ -148,6 +146,8 @@ Lbignum_mod_sm2_short:
         beq     Lbignum_mod_sm2_writeback
         ldr     m2, [x, #16]
         b       Lbignum_mod_sm2_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_sm2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

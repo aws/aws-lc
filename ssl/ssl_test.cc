@@ -1246,6 +1246,49 @@ TEST(SSLTest, SetLeafChainAndKey) {
   ERR_clear_error();
 }
 
+TEST(SSLTest, SSLUseCertAndKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  ASSERT_TRUE(chain);
+  ASSERT_TRUE(PushToStack(chain.get(), std::move(intermediate)));
+
+  bssl::UniquePtr<SSL> server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server);
+
+  // Setting cert and key on the SSL object should succeed.
+  ASSERT_TRUE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                   chain.get(), 1));
+
+  // Without override, setting again should fail.
+  ASSERT_FALSE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                    chain.get(), 0));
+  ERR_clear_error();
+
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client;
+  // Reset server SSL for the connection test using CreateClientAndServer.
+  server.reset();
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+  ASSERT_TRUE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                   chain.get(), 1));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+}
+
 TEST(SSLTest, BuffersFailWithoutCustomVerify) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
   ASSERT_TRUE(client_ctx);

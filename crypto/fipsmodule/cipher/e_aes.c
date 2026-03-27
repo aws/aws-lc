@@ -565,7 +565,7 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     //
     // key_len is two AES keys
 
-    if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
+    if (CRYPTO_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DUPLICATED_KEYS);
       return 0;
     }

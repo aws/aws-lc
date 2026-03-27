@@ -115,7 +115,7 @@ static enum random_state_t random_flavor_state = STATE_NOT_READY;
 
 // urandom_fd is a file descriptor to /dev/urandom. It's protected by
 // |initialize_random_flavor_once|.
-static int urandom_fd = 0;
+static int urandom_fd = -1;
 
 static CRYPTO_once_t initialize_random_flavor_once = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t ensure_random_state_is_initialized_once = CRYPTO_ONCE_INIT;
