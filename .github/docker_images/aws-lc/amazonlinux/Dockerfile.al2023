@@ -88,7 +88,7 @@ RUN <<EOF
 set -ex
 mkdir -p ${DEPENDENCIES_DIR}
 cd ${DEPENDENCIES_DIR}
-git clone https://github.com/llvm/llvm-project.git --branch llvmorg-15.0.6 --depth 1
+git clone https://github.com/llvm/llvm-project.git --branch llvmorg-19.1.7 --depth 1
 cd llvm-project
 rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)")
 EOF

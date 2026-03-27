@@ -205,6 +205,42 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
+  sanitizer-tests:
+    name: sanitizer - ${{ matrix.arch.name }} - ${{ matrix.config.name }}
+    needs: [sanity-test-run]
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.arch.runner }}
+    env:
+      GOFLAGS: "-buildvcs=false"
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - name: x86-64
+            runner: ubuntu-latest
+          - name: aarch64
+            runner: ubuntu-24.04-arm
+        config:
+          - name: asan-noasm
+            sanitizer: asan
+            extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+          - name: msan-noasm
+            sanitizer: msan
+            extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Build and Test
+        run: |
+          ./util/build_and_test.sh --sanitizer ${{ matrix.config.sanitizer }} \
+            -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra_cmake_args }}
+
   musl-tests:
     name: musl - ${{ matrix.config.arch }}
     needs: [sanity-test-run]
