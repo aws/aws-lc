@@ -194,7 +194,9 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
                                 size_t  *ciphertext_len,
                                 uint8_t *shared_secret,
                                 size_t  *shared_secret_len) {
+  GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
+  GUARD_PTR(dctx);
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
     if (ctx->pkey == NULL) {
@@ -202,6 +204,12 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
       return 0;
     }
     kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+  }
+
+  // Check that length pointers can be written to.
+  if (ciphertext_len == NULL || shared_secret_len == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
   // Caller is getting parameter values.
@@ -257,7 +265,9 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
                                 size_t  *shared_secret_len,
                                 const uint8_t *ciphertext,
                                 size_t ciphertext_len) {
+  GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
+  GUARD_PTR(dctx);
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
     if (ctx->pkey == NULL) {
@@ -267,10 +277,22 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
     kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
   }
 
+  // Check that the length pointer can be written to.
+  if (shared_secret_len == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   // Caller is getting parameter values.
   if (shared_secret == NULL) {
     *shared_secret_len = kem->shared_secret_len;
     return 1;
+  }
+
+  // The ciphertext buffer must be non-NULL for actual decapsulation.
+  if (ciphertext == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
   // The input and output buffers need to be large enough.
