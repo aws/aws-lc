@@ -15,6 +15,8 @@
 
 typedef struct {
   const PQDSA *pqdsa;
+  uint8_t context[255];
+  size_t context_len;
 } PQDSA_PKEY_CTX;
 
 static int pkey_pqdsa_init(EVP_PKEY_CTX *ctx) {
@@ -31,6 +33,58 @@ static int pkey_pqdsa_init(EVP_PKEY_CTX *ctx) {
 
 static void pkey_pqdsa_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(ctx->data);
+}
+
+static int pkey_pqdsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
+  if (!pkey_pqdsa_init(dst)) {
+    return 0;
+  }
+
+  PQDSA_PKEY_CTX *dctx = dst->data;
+  PQDSA_PKEY_CTX *sctx = src->data;
+  GUARD_PTR(dctx);
+  GUARD_PTR(sctx);
+
+  dctx->pqdsa = sctx->pqdsa;
+  OPENSSL_memcpy(dctx->context, sctx->context, sizeof(sctx->context));
+  dctx->context_len = sctx->context_len;
+
+  return 1;
+}
+
+static int pkey_pqdsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
+  GUARD_PTR(ctx);
+  PQDSA_PKEY_CTX *dctx = (PQDSA_PKEY_CTX *)ctx->data;
+  switch (type) {
+    case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
+      EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
+      if (!params || !dctx || params->context_len > sizeof(dctx->context)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+        return 0;
+      }
+      OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      dctx->context_len = params->context_len;
+      break;
+    }
+    case EVP_PKEY_CTRL_GET_SIGNING_CONTEXT: {
+      EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
+      if (!params || !dctx) {
+        return 0;
+      }
+      if (dctx->context_len == 0) {
+        params->context = NULL;
+        params->context_len = 0;
+      } else {
+        params->context = dctx->context;
+        params->context_len = dctx->context_len;
+      }
+      return 1;
+    }
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
+      return 0;
+  }
+  return 1;
 }
 
 static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
@@ -108,7 +162,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // RAW sign mode
   if (!sign_digest) {
-    if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+    if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, dctx->context_len > 0 ? dctx->context : NULL, dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
     }
@@ -187,7 +241,7 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   // RAW verify mode
   if(!verify_digest) {
     if (sig_len != pqdsa->signature_len ||
-    !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
+    !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, dctx->context_len > 0 ? dctx->context : NULL, dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
       return 0;
     }
@@ -355,7 +409,7 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
   out->pkey_id = EVP_PKEY_PQDSA;
   out->init = pkey_pqdsa_init;
-  out->copy = NULL;
+  out->copy = pkey_pqdsa_copy;
   out->cleanup = pkey_pqdsa_cleanup;
   out->keygen = pkey_pqdsa_keygen;
   out->sign_init = NULL;
@@ -369,7 +423,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
   out->decrypt = NULL;
   out->derive = NULL;
   out->paramgen = NULL;
-  out->ctrl = NULL;
+  out->ctrl = pkey_pqdsa_ctrl;
   out->ctrl_str = NULL;
   out->keygen_deterministic = NULL;
   out->encapsulate_deterministic = NULL;
