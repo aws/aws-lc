@@ -1325,7 +1325,7 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // Experimental safety macros inspired by s2n-tls.
 
 // If |cond| is false |action| is invoked, otherwise nothing happens.
-#define __AWS_LC_ENSURE(cond, action) \
+#define AWS_LC_ENSURE(cond, action) \
     do {                           \
         if (!(cond)) {             \
             action;                \
@@ -1340,20 +1340,20 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 //
 // NOTE: this macro should only be used with functions that return 0 (for error)
 // and 1 (for success).
-#define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
-                                       return AWS_LC_ERROR)
+#define GUARD_PTR(ptr) AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
+                                      return AWS_LC_ERROR)
 
 // GUARD_PTR_ABORT checks |ptr|: if it is NULL it calls abort() and does nothing
 // otherwise.
-#define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
+#define GUARD_PTR_ABORT(ptr) AWS_LC_ENSURE((ptr) != NULL, abort())
 
 #if defined(NDEBUG)
 #define AWSLC_ASSERT(x) (void) (x)
 #else
-#define AWSLC_ASSERT(x) __AWS_LC_ENSURE(x, abort())
+#define AWSLC_ASSERT(x) AWS_LC_ENSURE(x, abort())
 #endif
 
-#define AWSLC_ABORT_IF_NOT_ONE(x) __AWS_LC_ENSURE(1 == (x), abort())
+#define AWSLC_ABORT_IF_NOT_ONE(x) AWS_LC_ENSURE(1 == (x), abort())
 
 // Windows doesn't really support weak symbols as of May 2019, and Clang on
 // Windows will emit strong symbols instead. See
