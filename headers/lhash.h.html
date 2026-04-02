@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - lhash.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>lhash.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    
+
+    <ol class="toc">
+      
+        
+          
+          
+            
+          
+            
+          
+        
+      
+        
+          
+          
+            <li><a href="#LHASH_OF"><tt>LHASH_OF</tt></a></li>
+          
+            <li><a href="#DECLARE_LHASH_OF"><tt>DECLARE_LHASH_OF</tt></a></li>
+          
+            <li><a href="#lh_doall_arg"><tt>lh_doall_arg</tt></a></li>
+          
+            <li><a href="#IMPLEMENT_LHASH_DOALL_ARG_FN"><tt>IMPLEMENT_LHASH_DOALL_ARG_FN</tt></a></li>
+          
+            <li><a href="#LHASH_DOALL_ARG_FN"><tt>LHASH_DOALL_ARG_FN</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+            
+            <pre class="code">typedef struct lhash_st _LHASH;</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">lhash</span> is an internal library and not exported for use outside BoringSSL. This header is provided for compatibility with code that expects OpenSSL.</p></div>
+            
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="LHASH_OF">
+            <div class="comment"><p>These two macros are exported for compatibility with existing callers of <tt><a href="x509.h.html#X509V3_EXT_conf_nid">X509V3_EXT_conf_nid</a></tt>. Do not use these symbols outside BoringSSL.</p></div>
+            <pre class="code">#define LHASH_OF(type) struct lhash_st_##type</pre>
+          </div>
+        
+          <div class="decl" id="DECLARE_LHASH_OF">
+            
+            <pre class="code">#define DECLARE_LHASH_OF(type) LHASH_OF(type);</pre>
+          </div>
+        
+          <div class="decl" id="lh_doall_arg">
+            
+            <pre class="code">OPENSSL_EXPORT void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *),
+                                 void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="IMPLEMENT_LHASH_DOALL_ARG_FN">
+            <div class="comment"><p>These two macros are the bare minimum of <tt>LHASH</tt> macros downstream consumers use.</p></div>
+            <pre class="code">#define IMPLEMENT_LHASH_DOALL_ARG_FN(name, o_type, a_type) \
+	void name##_LHASH_DOALL_ARG(void *arg1, void *arg2) { \
+		o_type *a = arg1; \
+		a_type *b = arg2; \
+		name##_doall_arg(a, b); }</pre>
+          </div>
+        
+          <div class="decl" id="LHASH_DOALL_ARG_FN">
+            
+            <pre class="code">#define LHASH_DOALL_ARG_FN(name) name##_LHASH_DOALL_ARG</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

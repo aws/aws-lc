@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - posix_time.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>posix_time.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">Time</span> functions.</p></div>
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#OPENSSL_posix_to_tm"><tt>OPENSSL_posix_to_tm</tt></a></li>
+          
+            <li><a href="#OPENSSL_tm_to_posix"><tt>OPENSSL_tm_to_posix</tt></a></li>
+          
+            <li><a href="#OPENSSL_timegm"><tt>OPENSSL_timegm</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="OPENSSL_posix_to_tm">
+            <div class="comment"><p><span class="first-word">OPENSSL_posix_to_tm</span> converts a int64_t POSIX time value in <tt>time</tt>, which must be in the range of year 0000 to 9999, to a broken out time value in <tt>tm</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_tm_to_posix">
+            <div class="comment"><p><span class="first-word">OPENSSL_tm_to_posix</span> converts a time value between the years 0 and 9999 in <tt>tm</tt> to a POSIX time value in <tt>out</tt>. One is returned on success, zero is returned on failure. It is a failure if <tt>tm</tt> contains out of range values.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_timegm">
+            <div class="comment"><p><span class="first-word">OPENSSL_timegm</span> converts a time value between the years 0 and 9999 in <tt>tm</tt> to a time_t value in <tt>out</tt>. One is returned on success, zero is returned on failure. It is a failure if the converted time can not be represented in a time_t, or if the tm contains out of range values.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

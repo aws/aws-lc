@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - pkcs8.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>pkcs8.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#PKCS8_encrypt"><tt>PKCS8_encrypt</tt></a></li>
+          
+            <li><a href="#PKCS8_marshal_encrypted_private_key"><tt>PKCS8_marshal_encrypted_private_key</tt></a></li>
+          
+            <li><a href="#PKCS8_decrypt"><tt>PKCS8_decrypt</tt></a></li>
+          
+            <li><a href="#PKCS8_parse_encrypted_private_key"><tt>PKCS8_parse_encrypted_private_key</tt></a></li>
+          
+            <li><a href="#PKCS12_get_key_and_certs"><tt>PKCS12_get_key_and_certs</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#PKCS12_PBE_add"><tt>PKCS12_PBE_add</tt></a></li>
+          
+            <li><a href="#d2i_PKCS12"><tt>d2i_PKCS12</tt></a></li>
+          
+            <li><a href="#d2i_PKCS12_bio"><tt>d2i_PKCS12_bio</tt></a></li>
+          
+            <li><a href="#d2i_PKCS12_fp"><tt>d2i_PKCS12_fp</tt></a></li>
+          
+            <li><a href="#i2d_PKCS12"><tt>i2d_PKCS12</tt></a></li>
+          
+            <li><a href="#i2d_PKCS12_bio"><tt>i2d_PKCS12_bio</tt></a></li>
+          
+            <li><a href="#i2d_PKCS12_fp"><tt>i2d_PKCS12_fp</tt></a></li>
+          
+            <li><a href="#PKCS12_parse"><tt>PKCS12_parse</tt></a></li>
+          
+            <li><a href="#PKCS12_set_mac"><tt>PKCS12_set_mac</tt></a></li>
+          
+            <li><a href="#PKCS12_verify_mac"><tt>PKCS12_verify_mac</tt></a></li>
+          
+            <li><a href="#PKCS12_DEFAULT_ITER"><tt>PKCS12_DEFAULT_ITER</tt></a></li>
+          
+            <li><a href="#PKCS12_create"><tt>PKCS12_create</tt></a></li>
+          
+            <li><a href="#PKCS12_new"><tt>PKCS12_new</tt></a></li>
+          
+            <li><a href="#PKCS12_free"><tt>PKCS12_free</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="PKCS8_encrypt">
+            <div class="comment"><p><span class="first-word">PKCS8_encrypt</span> serializes and encrypts a PKCS8_PRIV_KEY_INFO with PBES1 or PBES2 as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4, pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, defined in PKCS #12, and PBES2, are supported.  PBES2 is selected by setting <tt>cipher</tt> and passing -1 for <tt>pbe_nid</tt>.  Otherwise, PBES1 is used and <tt>cipher</tt> is ignored.</p><p><tt>pass</tt> is used as the password. If a PBES1 scheme from PKCS #12 is used, this will be converted to a raw byte string as specified in B.1 of PKCS #12. If <tt>pass</tt> is NULL, it is treated as an empty password and <tt>pass_len</tt> is ignored. This will be encoded as the empty byte string rather than two zero bytes, the PKCS #12 encoding of the empty string. If <tt>pass</tt> is non-NULL and <tt>pass_len</tt> is negative, <tt>strlen(pass)</tt> is used. If <tt>pass</tt> is non-NULL and <tt>pass_len</tt> is non-negative, <tt>pass_len</tt> bytes are used as the password.</p><p><span class="first-word">If</span> <tt>salt</tt> is NULL, a random salt of <tt>salt_len</tt> bytes is generated. If <tt>salt_len</tt> is zero, a default salt length is used instead.</p><p>The resulting structure is stored in an <tt>X509_SIG</tt> which must be freed by the caller.</p></div>
+            <pre class="code">OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
+                                       const char *pass, int pass_len,
+                                       const uint8_t *salt, size_t salt_len,
+                                       int iterations,
+                                       PKCS8_PRIV_KEY_INFO *p8inf);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS8_marshal_encrypted_private_key">
+            <div class="comment"><p><span class="first-word">PKCS8_marshal_encrypted_private_key</span> behaves like <tt><a href="pkcs8.h.html#PKCS8_encrypt">PKCS8_encrypt</a></tt> but encrypts an <tt>EVP_PKEY</tt> and writes the serialized EncryptedPrivateKeyInfo to <tt>out</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS8_marshal_encrypted_private_key(
+    CBB *out, int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+    size_t pass_len, const uint8_t *salt, size_t salt_len, int iterations,
+    const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS8_decrypt">
+            <div class="comment"><p><span class="first-word">PKCS8_decrypt</span> decrypts and decodes a PKCS8_PRIV_KEY_INFO with PBES1 or PBES2 as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4, pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, and PBES2, defined in PKCS #12, are supported.</p><p><tt>pass</tt> is used as the password. If a PBES1 scheme from PKCS #12 is used, this will be converted to a raw byte string as specified in B.1 of PKCS #12. If <tt>pass</tt> is NULL, it will be encoded as the empty byte string rather than two zero bytes, the PKCS #12 encoding of the empty string. If <tt>pass_len</tt> is negative and <tt>pass</tt> is non-NULL, <tt>strlen(pass)</tt> is used.</p><p>The resulting structure must be freed by the caller.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
+                                                  const char *pass,
+                                                  int pass_len);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS8_parse_encrypted_private_key">
+            <div class="comment"><p><span class="first-word">PKCS8_parse_encrypted_private_key</span> behaves like <tt><a href="pkcs8.h.html#PKCS8_decrypt">PKCS8_decrypt</a></tt> but it parses the EncryptedPrivateKeyInfo structure from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>EVP_PKEY</tt> on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs,
+                                                           const char *pass,
+                                                           size_t pass_len);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_get_key_and_certs">
+            <div class="comment"><p><span class="first-word">PKCS12_get_key_and_certs</span> parses a PKCS#12 structure from <tt>in</tt>, authenticates and decrypts it using <tt>password</tt>, sets <tt>*out_key</tt> to the included private key and appends the included certificates to <tt>out_certs</tt>. It returns one on success and zero on error. The caller takes ownership of the outputs. Any friendlyName attributes (<a href="https://www.rfc-editor.org/rfc/rfc2985.html">RFC 2985</a>) in the PKCS#12 structure will be returned on the <tt>X509</tt> objects as aliases. See also <tt><a href="x509.h.html#X509_alias_get0">X509_alias_get0</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
+                                            STACK_OF(X509) *out_certs, CBS *in,
+                                            const char *password);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p></div>
+
+        
+          <div class="decl" id="PKCS12_PBE_add">
+            <div class="comment"><p><span class="first-word">PKCS12_PBE_add</span> does nothing. It exists for compatibility with OpenSSL.</p></div>
+            <pre class="code">OPENSSL_EXPORT void PKCS12_PBE_add(void);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PKCS12">
+            <div class="comment"><p><span class="first-word">d2i_PKCS12</span> is a dummy function that copies <tt>*ber_bytes</tt> into a <tt>PKCS12</tt> structure. The <tt>out_p12</tt> argument should be NULL(✝). On exit, <tt>*ber_bytes</tt> will be advanced by <tt>ber_len</tt>. It returns a fresh <tt>PKCS12</tt> structure or NULL on error.</p><p><span class="first-word">Note:</span> unlike other d2i functions, <tt><a href="pkcs8.h.html#d2i_PKCS12">d2i_PKCS12</a></tt> will always consume <tt>ber_len</tt> bytes.</p><p><span class="first-word">(✝)</span> If <tt>out_p12</tt> is not NULL and the function is successful, <tt>*out_p12</tt> will be freed if not NULL itself and the result will be written to <tt>*out_p12</tt>. New code should not depend on this.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS12 *d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes,
+                                  size_t ber_len);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PKCS12_bio">
+            <div class="comment"><p><span class="first-word">d2i_PKCS12_bio</span> acts like <tt><a href="pkcs8.h.html#d2i_PKCS12">d2i_PKCS12</a></tt> but reads from a <tt>BIO</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS12 *d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PKCS12_fp">
+            <div class="comment"><p><span class="first-word">d2i_PKCS12_fp</span> acts like <tt><a href="pkcs8.h.html#d2i_PKCS12">d2i_PKCS12</a></tt> but reads from a <tt>FILE</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS12 *d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_PKCS12">
+            <div class="comment"><p><span class="first-word">i2d_PKCS12</span> is a dummy function which copies the contents of <tt>p12</tt>. If <tt>out</tt> is not NULL then the result is written to <tt>*out</tt> and <tt>*out</tt> is advanced just past the output. It returns the number of bytes in the result, whether written or not, or a negative value on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PKCS12(const PKCS12 *p12, uint8_t **out);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_PKCS12_bio">
+            <div class="comment"><p><span class="first-word">i2d_PKCS12_bio</span> writes the contents of <tt>p12</tt> to <tt>bio</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PKCS12_bio(BIO *bio, const PKCS12 *p12);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_PKCS12_fp">
+            <div class="comment"><p><span class="first-word">i2d_PKCS12_fp</span> writes the contents of <tt>p12</tt> to <tt>fp</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_parse">
+            <div class="comment"><p><span class="first-word">PKCS12_parse</span> calls <tt><a href="pkcs8.h.html#PKCS12_get_key_and_certs">PKCS12_get_key_and_certs</a></tt> on the ASN.1 data stored in <tt>p12</tt>. The <tt>out_pkey</tt> and <tt>out_cert</tt> arguments must not be NULL and, on successful exit, the private key and matching certificate will be stored in them. The <tt>out_ca_certs</tt> argument may be NULL but, if not, then any extra certificates will be appended to <tt>*out_ca_certs</tt>. If <tt>*out_ca_certs</tt> is NULL then it will be set to a freshly allocated stack containing the extra certs.</p><p><span class="first-word">Note</span> if <tt>p12</tt> does not contain a private key, both <tt>*out_pkey</tt> and <tt>*out_cert</tt> will be set to NULL and all certificates will be returned via <tt>*out_ca_certs</tt>. Also note this function differs from OpenSSL in that extra certificates are returned in the order they appear in the file. OpenSSL 1.1.1 returns them in reverse order, but this will be fixed in OpenSSL 3.0.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p><p><span class="first-word">Use</span> <tt><a href="pkcs8.h.html#PKCS12_get_key_and_certs">PKCS12_get_key_and_certs</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
+                                EVP_PKEY **out_pkey, X509 **out_cert,
+                                STACK_OF(X509) **out_ca_certs);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_set_mac">
+            <div class="comment"><p><span class="first-word">PKCS12_set_mac</span> generates the MAC for <tt>p12</tt> with the designated <tt>password</tt>, <tt>salt</tt>, <tt>mac_iterations</tt>, and <tt>md</tt> specified. <tt>password</tt> MUST be the same password originally used to encrypt <tt>p12</tt>. Although OpenSSL will allow an invalid state with a different <tt>password</tt>, AWS-LC will throw an error and return 0.</p><p><span class="first-word">If</span> <tt>salt</tt> is NULL, a random salt of <tt>salt_len</tt> bytes is generated. If <tt>salt_len</tt> is zero, a default salt length is used instead. If <tt>md</tt> is NULL, the default is use SHA1 to align with OpenSSL.</p><p><span class="first-word">TODO</span> (CryptoAlg-2897): Update the default <tt>md</tt> to SHA-256 to align with OpenSSL 3.x.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
+                                  int password_len, unsigned char *salt,
+                                  int salt_len, int mac_iterations,
+                                  const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_verify_mac">
+            <div class="comment"><p><span class="first-word">PKCS12_verify_mac</span> returns one if <tt>password</tt> is a valid password for <tt>p12</tt> and zero otherwise. Since <tt><a href="pkcs8.h.html#PKCS12_parse">PKCS12_parse</a></tt> doesn&#39;t take a length parameter, it&#39;s not actually possible to use a non-NUL-terminated password to actually get anything from a <tt>PKCS12</tt>. Thus <tt>password</tt> and <tt>password_len</tt> may be <tt>NULL</tt> and zero, respectively, or else <tt>password_len</tt> may be -1 to indicate that <tt>password</tt> is a NUL-terminated C string whose length is determined via <tt>strlen</tt>, or else <tt>password_len</tt> must be non-negative, <tt>password[password_len]</tt> must be zero, and no other NUL bytes may appear in <tt>password</tt>. If the <tt>password_len</tt> checks fail, zero is returned immediately.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
+                                     int password_len);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_DEFAULT_ITER">
+            <div class="comment"><p><span class="first-word">PKCS12_DEFAULT_ITER</span> is the default number of KDF iterations used when creating a <tt>PKCS12</tt> object.</p></div>
+            <pre class="code">#define PKCS12_DEFAULT_ITER 2048</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_create">
+            <div class="comment"><p><span class="first-word">PKCS12_create</span> returns a newly-allocated <tt>PKCS12</tt> object containing <tt>pkey</tt>, <tt>cert</tt>, and <tt>chain</tt>, encrypted with the specified password. <tt>name</tt>, if not NULL, specifies a user-friendly name to encode with the key and certificate. The key and certificates are encrypted with <tt>key_nid</tt> and <tt>cert_nid</tt>, respectively, using <tt>iterations</tt> iterations in the KDF. <tt>mac_iterations</tt> is the number of iterations when deriving the MAC key. <tt>key_type</tt> must be zero. <tt>pkey</tt> and <tt>cert</tt> may be NULL to omit them.</p><p><span class="first-word">Each</span> of <tt>key_nid</tt>, <tt>cert_nid</tt>, <tt>iterations</tt>, and <tt>mac_iterations</tt> may be zero to use defaults, which are <tt>NID_pbe_WithSHA1And3_Key_TripleDES_CBC</tt>, <tt>NID_pbe_WithSHA1And40BitRC2_CBC</tt>, <tt><a href="pkcs8.h.html#PKCS12_DEFAULT_ITER">PKCS12_DEFAULT_ITER</a></tt>, and one, respectively.</p><p><tt>key_nid</tt> or <tt>cert_nid</tt> may also be -1 to disable encryption of the key or certificate, respectively. This option is not recommended and is only implemented for compatibility with external packages. Note the output still requires a password for the MAC. Unencrypted keys in PKCS#12 are also not widely supported and may not open in other implementations.</p><p><span class="first-word">If</span> <tt>cert</tt> or <tt>chain</tt> have associated aliases (see <tt><a href="x509.h.html#X509_alias_set1">X509_alias_set1</a></tt>), they will be included in the output as friendlyName attributes (<a href="https://www.rfc-editor.org/rfc/rfc2985.html">RFC 2985</a>). It is an error to specify both an alias on <tt>cert</tt> and a non-NULL <tt>name</tt> parameter.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS12 *PKCS12_create(const char *password, const char *name,
+                                     const EVP_PKEY *pkey, X509 *cert,
+                                     const STACK_OF(X509) *chain, int key_nid,
+                                     int cert_nid, int iterations,
+                                     int mac_iterations, int key_type);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_new">
+            <div class="comment"><p><span class="first-word">PKCS12_new</span> returns a newly-allocated <tt>PKCS12</tt> object.</p></div>
+            <pre class="code">OPENSSL_EXPORT PKCS12 *PKCS12_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS12_free">
+            <div class="comment"><p><span class="first-word">PKCS12_free</span> frees <tt>p12</tt> and its contents.</p></div>
+            <pre class="code">OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

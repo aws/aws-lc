@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - ec_key.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>ec_key.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">ec_key.h</span> contains functions that handle elliptic-curve points that are public/private keys.</p></div>
+
+    <ol class="toc">
+      
+        
+          <li class="header"><a href="#EC-key-objects">EC key objects</a></li>
+          
+            <li><a href="#EC_KEY_new"><tt>EC_KEY_new</tt></a></li>
+          
+            <li><a href="#EC_KEY_new_method"><tt>EC_KEY_new_method</tt></a></li>
+          
+            <li><a href="#EC_KEY_new_by_curve_name"><tt>EC_KEY_new_by_curve_name</tt></a></li>
+          
+            <li><a href="#EC_KEY_free"><tt>EC_KEY_free</tt></a></li>
+          
+            <li><a href="#EC_KEY_dup"><tt>EC_KEY_dup</tt></a></li>
+          
+            <li><a href="#EC_KEY_up_ref"><tt>EC_KEY_up_ref</tt></a></li>
+          
+            <li><a href="#EC_KEY_is_opaque"><tt>EC_KEY_is_opaque</tt></a></li>
+          
+            <li><a href="#EC_KEY_get0_group"><tt>EC_KEY_get0_group</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_group"><tt>EC_KEY_set_group</tt></a></li>
+          
+            <li><a href="#EC_KEY_get0_private_key"><tt>EC_KEY_get0_private_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_private_key"><tt>EC_KEY_set_private_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_get0_public_key"><tt>EC_KEY_get0_public_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_public_key"><tt>EC_KEY_set_public_key</tt></a></li>
+          
+            <li><a href="#EC_PKEY_NO_PARAMETERS"><tt>EC_PKEY_NO_PARAMETERS</tt></a></li>
+          
+            <li><a href="#EC_PKEY_NO_PUBKEY"><tt>EC_PKEY_NO_PUBKEY</tt></a></li>
+          
+            <li><a href="#EC_KEY_get_enc_flags"><tt>EC_KEY_get_enc_flags</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_enc_flags"><tt>EC_KEY_set_enc_flags</tt></a></li>
+          
+            <li><a href="#EC_KEY_get_conv_form"><tt>EC_KEY_get_conv_form</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_conv_form"><tt>EC_KEY_set_conv_form</tt></a></li>
+          
+            <li><a href="#EC_KEY_check_key"><tt>EC_KEY_check_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_check_fips"><tt>EC_KEY_check_fips</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_public_key_affine_coordinates"><tt>EC_KEY_set_public_key_affine_coordinates</tt></a></li>
+          
+            <li><a href="#EC_KEY_key2buf"><tt>EC_KEY_key2buf</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Key-generation">Key generation</a></li>
+          
+            <li><a href="#EC_KEY_generate_key"><tt>EC_KEY_generate_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_generate_key_fips"><tt>EC_KEY_generate_key_fips</tt></a></li>
+          
+            <li><a href="#EC_KEY_derive_from_secret"><tt>EC_KEY_derive_from_secret</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Serialisation">Serialisation</a></li>
+          
+            <li><a href="#EC_KEY_parse_private_key"><tt>EC_KEY_parse_private_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_marshal_private_key"><tt>EC_KEY_marshal_private_key</tt></a></li>
+          
+            <li><a href="#EC_KEY_parse_curve_name"><tt>EC_KEY_parse_curve_name</tt></a></li>
+          
+            <li><a href="#EC_KEY_marshal_curve_name"><tt>EC_KEY_marshal_curve_name</tt></a></li>
+          
+            <li><a href="#EC_KEY_parse_parameters"><tt>EC_KEY_parse_parameters</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ex_data-functions">ex_data functions</a></li>
+          
+            <li><a href="#EC_KEY_get_ex_new_index"><tt>EC_KEY_get_ex_new_index</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_ex_data"><tt>EC_KEY_set_ex_data</tt></a></li>
+          
+            <li><a href="#EC_KEY_get_ex_data"><tt>EC_KEY_get_ex_data</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#d2i_ECPrivateKey"><tt>d2i_ECPrivateKey</tt></a></li>
+          
+            <li><a href="#i2d_ECPrivateKey"><tt>i2d_ECPrivateKey</tt></a></li>
+          
+            <li><a href="#d2i_ECParameters"><tt>d2i_ECParameters</tt></a></li>
+          
+            <li><a href="#i2d_ECParameters"><tt>i2d_ECParameters</tt></a></li>
+          
+            <li><a href="#d2i_ECPKParameters_bio"><tt>d2i_ECPKParameters_bio</tt></a></li>
+          
+            <li><a href="#i2d_ECPKParameters_bio"><tt>i2d_ECPKParameters_bio</tt></a></li>
+          
+            <li><a href="#o2i_ECPublicKey"><tt>o2i_ECPublicKey</tt></a></li>
+          
+            <li><a href="#i2o_ECPublicKey"><tt>i2o_ECPublicKey</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EC_KEY_METHOD-This-struct-replaces-the-old-%7cECDSA_METHOD%7c-struct">EC_KEY_METHOD This struct replaces the old <tt>ECDSA_METHOD</tt> struct</a></li>
+          
+            <li><a href="#ECDSA_FLAG_OPAQUE"><tt>ECDSA_FLAG_OPAQUE</tt></a></li>
+          
+            <li><a href="#EC_KEY_get_default_method"><tt>EC_KEY_get_default_method</tt></a></li>
+          
+            <li><a href="#EC_KEY_OpenSSL"><tt>EC_KEY_OpenSSL</tt></a></li>
+          
+            <li><a href="#EC_KEY_METHOD_new"><tt>EC_KEY_METHOD_new</tt></a></li>
+          
+            <li><a href="#EC_KEY_METHOD_free"><tt>EC_KEY_METHOD_free</tt></a></li>
+          
+            <li><a href="#EC_KEY_set_method"><tt>EC_KEY_set_method</tt></a></li>
+          
+            <li><a href="#EC_KEY_get_method"><tt>EC_KEY_get_method</tt></a></li>
+          
+            <li><a href="#EC_KEY_METHOD_set_sign_awslc"><tt>EC_KEY_METHOD_set_sign_awslc</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#EC_KEY_METHOD_set_sign"><tt>EC_KEY_METHOD_set_sign</tt></a></li>
+          
+            <li><a href="#EC_KEY_METHOD_set_init_awslc"><tt>EC_KEY_METHOD_set_init_awslc</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#EC_KEY_METHOD_set_init"><tt>EC_KEY_METHOD_set_init</tt></a></li>
+          
+            <li><a href="#EC_KEY_METHOD_set_flags"><tt>EC_KEY_METHOD_set_flags</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#EC_KEY_set_asn1_flag"><tt>EC_KEY_set_asn1_flag</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="EC-key-objects">
+        <div class="sectionpreamble comment"><p><span class="first-word">EC</span> key objects.</p><p>An <tt>EC_KEY</tt> object represents a public or private EC key. A given object may be used concurrently on multiple threads by non-mutating functions, provided no other thread is concurrently calling a mutating function. Unless otherwise documented, functions which take a <tt>const</tt> pointer are non-mutating and functions which take a non-<tt>const</tt> pointer are mutating.</p></div>
+
+        
+          <div class="decl" id="EC_KEY_new">
+            <div class="comment"><p><span class="first-word">EC_KEY_new</span> returns a fresh <tt>EC_KEY</tt> object or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_new_method">
+            <div class="comment"><p><span class="first-word">EC_KEY_new_method</span> acts the same as <tt><a href="ec_key.h.html#EC_KEY_new">EC_KEY_new</a></tt>, but takes an explicit <tt>ENGINE</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_new_method(const ENGINE *engine);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_new_by_curve_name">
+            <div class="comment"><p><span class="first-word">EC_KEY_new_by_curve_name</span> returns a fresh EC_KEY for group specified by <tt>nid</tt> or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_new_by_curve_name(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_free">
+            <div class="comment"><p><span class="first-word">EC_KEY_free</span> frees all the data owned by <tt>key</tt> and <tt>key</tt> itself.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_dup">
+            <div class="comment"><p><span class="first-word">EC_KEY_dup</span> returns a fresh copy of <tt>src</tt> or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_dup(const EC_KEY *src);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_up_ref">
+            <div class="comment"><p><span class="first-word">EC_KEY_up_ref</span> increases the reference count of <tt>key</tt> and returns one. It does not mutate <tt>key</tt> for thread-safety purposes and may be used concurrently.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_up_ref(EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_is_opaque">
+            <div class="comment"><p><span class="first-word">EC_KEY_is_opaque</span> returns one if <tt>key</tt> is opaque and doesn&#39;t expose its key material. Otherwise it return zero.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_is_opaque(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get0_group">
+            <div class="comment"><p><span class="first-word">EC_KEY_get0_group</span> returns a pointer to the <tt>EC_GROUP</tt> object inside <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_group">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_group</span> sets the <tt>EC_GROUP</tt> object that <tt>key</tt> will use to <tt>group</tt>. It returns one on success and zero if <tt>key</tt> is already configured with a different group.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get0_private_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_get0_private_key</span> returns a pointer to the private key inside <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_private_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_private_key</span> sets the private key of <tt>key</tt> to <tt>priv</tt>. It returns one on success and zero otherwise. <tt>key</tt> must already have had a group configured (see <tt><a href="ec_key.h.html#EC_KEY_set_group">EC_KEY_set_group</a></tt> and <tt><a href="ec_key.h.html#EC_KEY_new_by_curve_name">EC_KEY_new_by_curve_name</a></tt>).</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get0_public_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_get0_public_key</span> returns a pointer to the public key point inside <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_public_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_public_key</span> sets the public key of <tt>key</tt> to <tt>pub</tt>, by copying it. It returns one on success and zero otherwise. <tt>key</tt> must already have had a group configured (see <tt><a href="ec_key.h.html#EC_KEY_set_group">EC_KEY_set_group</a></tt> and <tt><a href="ec_key.h.html#EC_KEY_new_by_curve_name">EC_KEY_new_by_curve_name</a></tt>), and <tt>pub</tt> must also belong to that group, and must not be the point at infinity.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);</pre>
+          </div>
+        
+          <div class="decl" id="EC_PKEY_NO_PARAMETERS">
+            
+            <pre class="code">#define EC_PKEY_NO_PARAMETERS 0x001</pre>
+          </div>
+        
+          <div class="decl" id="EC_PKEY_NO_PUBKEY">
+            
+            <pre class="code">#define EC_PKEY_NO_PUBKEY 0x002</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get_enc_flags">
+            <div class="comment"><p><span class="first-word">EC_KEY_get_enc_flags</span> returns the encoding flags for <tt>key</tt>, which is a bitwise-OR of <tt>EC_PKEY_*</tt> values.</p></div>
+            <pre class="code">OPENSSL_EXPORT unsigned EC_KEY_get_enc_flags(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_enc_flags">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_enc_flags</span> sets the encoding flags for <tt>key</tt>, which is a bitwise-OR of <tt>EC_PKEY_*</tt> values.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_set_enc_flags(EC_KEY *key, unsigned flags);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get_conv_form">
+            <div class="comment"><p><span class="first-word">EC_KEY_get_conv_form</span> returns the conversation form that will be used by <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_conv_form">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_conv_form</span> sets the conversion form to be used by <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_set_conv_form(EC_KEY *key,
+                                         point_conversion_form_t cform);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_check_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_check_key</span> performs several checks on <tt>key</tt> including, if the private is present, an expensive check that the public key corresponds to it. It returns one if all checks pass and zero otherwise. If it returns zero then detail about the problem can be found on the error stack.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_check_key(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_check_fips">
+            <div class="comment"><p><span class="first-word">EC_KEY_check_fips</span> performs a signing pairwise consistency test (FIPS 140-2 4.9.2) and the consistency test from SP 800-56Ar3 section 5.6.2.1.4. If the public key contains an affine point, it also checks that its coordinates are in the range [0, p-1]. That is in addition to the checks performed by EC_KEY_check_key. It returns one if it passes and zero otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_check_fips(const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_public_key_affine_coordinates">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_public_key_affine_coordinates</span> sets the public key in <tt>key</tt> to (<tt>x</tt>, <tt>y</tt>). It returns one on success and zero on error. It&#39;s considered an error if <tt>x</tt> and <tt>y</tt> do not represent a point on <tt>key</tt>&#39;s curve.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
+                                                            const BIGNUM *x,
+                                                            const BIGNUM *y);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_key2buf">
+            <div class="comment"><p><span class="first-word">EC_KEY_key2buf</span> encodes the public key in <tt>key</tt> to an allocated octet string and sets <tt>*out_buf</tt> to point to it. It returns the length of the encoded octet string or zero if an error occurred.</p></div>
+            <pre class="code">OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
+                                     point_conversion_form_t form,
+                                     unsigned char **out_buf, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Key-generation">
+        <div class="sectionpreamble comment"><p><span class="first-word">Key</span> generation.</p></div>
+
+        
+          <div class="decl" id="EC_KEY_generate_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_generate_key</span> generates a random, private key, calculates the corresponding public key and stores both in <tt>key</tt>. It returns one on success or zero otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_generate_key_fips">
+            <div class="comment"><p><span class="first-word">EC_KEY_generate_key_fips</span> behaves like <tt><a href="ec_key.h.html#EC_KEY_generate_key">EC_KEY_generate_key</a></tt> but performs additional checks for FIPS compliance. This function is applicable when generating keys for either signing/verification or key agreement because both types of consistency check (PCT) are performed.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_generate_key_fips(EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_derive_from_secret">
+            <div class="comment"><p><span class="first-word">EC_KEY_derive_from_secret</span> deterministically derives a private key for <tt>group</tt> from an input secret using HKDF-SHA256. It returns a newly-allocated <tt>EC_KEY</tt> on success or NULL on error. <tt>secret</tt> must not be used in any other algorithm. If using a base secret for multiple operations, derive separate values with a KDF such as HKDF first.</p><p><span class="first-word">Note</span> this function implements an arbitrary derivation scheme, rather than any particular standard one. New protocols are recommended to use X25519 and Ed25519, which have standard byte import functions. See <tt><a href="curve25519.h.html#X25519_public_from_private">X25519_public_from_private</a></tt> and <tt><a href="curve25519.h.html#ED25519_keypair_from_seed">ED25519_keypair_from_seed</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_derive_from_secret(const EC_GROUP *group,
+                                                 const uint8_t *secret,
+                                                 size_t secret_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Serialisation">
+        <div class="sectionpreamble comment"><p>Serialisation.</p></div>
+
+        
+          <div class="decl" id="EC_KEY_parse_private_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_parse_private_key</span> parses a DER-encoded ECPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc5915.html">RFC 5915</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>EC_KEY</tt> or NULL on error. If <tt>group</tt> is non-null, the parameters field of the ECPrivateKey may be omitted (but must match <tt>group</tt> if present). Otherwise, the parameters field is required.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EC_KEY_parse_private_key(CBS *cbs,
+                                                const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_marshal_private_key">
+            <div class="comment"><p><span class="first-word">EC_KEY_marshal_private_key</span> marshals <tt>key</tt> as a DER-encoded ECPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc5915.html">RFC 5915</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on failure. <tt>enc_flags</tt> is a combination of <tt>EC_PKEY_*</tt> values and controls whether corresponding fields are omitted.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_marshal_private_key(CBB *cbb, const EC_KEY *key,
+                                              unsigned enc_flags);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_parse_curve_name">
+            <div class="comment"><p><span class="first-word">EC_KEY_parse_curve_name</span> parses a DER-encoded OBJECT IDENTIFIER as a curve name from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns the decoded <tt>EC_GROUP</tt> or NULL on error.</p><p><span class="first-word">This</span> function returns a non-const pointer which may be passed to <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt>. However, the resulting object is actually static and calling <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt> is optional.</p><p><span class="first-word">TODO(davidben):</span> Make this return a const pointer, if it does not break too many callers.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_marshal_curve_name">
+            <div class="comment"><p><span class="first-word">EC_KEY_marshal_curve_name</span> marshals <tt>group</tt> as a DER-encoded OBJECT IDENTIFIER and appends the result to <tt>cbb</tt>. It returns one on success and zero on failure.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_marshal_curve_name(CBB *cbb, const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_parse_parameters">
+            <div class="comment"><p><span class="first-word">EC_KEY_parse_parameters</span> parses a DER-encoded ECParameters structure (<a href="https://www.rfc-editor.org/rfc/rfc5480.html">RFC 5480</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns the resulting <tt>EC_GROUP</tt> or NULL on error. It supports the namedCurve and specifiedCurve options, but use of specifiedCurve is deprecated. Use <tt><a href="ec_key.h.html#EC_KEY_parse_curve_name">EC_KEY_parse_curve_name</a></tt> instead.</p><p><span class="first-word">This</span> function returns a non-const pointer which may be passed to <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt>. However, the resulting object is actually static and calling <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt> is optional.</p><p><span class="first-word">TODO(davidben):</span> Make this return a const pointer, if it does not break too many callers.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_parameters(CBS *cbs);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ex_data-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">ex_data</span> functions.</p><p>These functions are wrappers. See <tt>ex_data.h</tt> for details.</p></div>
+
+        
+          <div class="decl" id="EC_KEY_get_ex_new_index">
+            
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_get_ex_new_index(long argl, void *argp,
+                                           CRYPTO_EX_unused *unused,
+                                           CRYPTO_EX_dup *dup_unused,
+                                           CRYPTO_EX_free *free_func);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_ex_data">
+            
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_ex_data(EC_KEY *r, int idx, void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get_ex_data">
+            
+            <pre class="code">OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p></div>
+
+        
+          <div class="decl" id="d2i_ECPrivateKey">
+            <div class="comment"><p><span class="first-word">d2i_ECPrivateKey</span> parses a DER-encoded ECPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc5915.html">RFC 5915</a>) from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>. On input, if <tt>*out_key</tt> is non-NULL and has a group configured, the parameters field may be omitted but must match that group if present.</p><p><span class="first-word">Use</span> <tt><a href="ec_key.h.html#EC_KEY_parse_private_key">EC_KEY_parse_private_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey(EC_KEY **out_key, const uint8_t **inp,
+                                        long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_ECPrivateKey">
+            <div class="comment"><p><span class="first-word">i2d_ECPrivateKey</span> marshals <tt>key</tt> as a DER-encoded ECPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc5915.html">RFC 5915</a>), as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="ec_key.h.html#EC_KEY_marshal_private_key">EC_KEY_marshal_private_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_ECParameters">
+            <div class="comment"><p><span class="first-word">d2i_ECParameters</span> parses a DER-encoded ECParameters structure (<a href="https://www.rfc-editor.org/rfc/rfc5480.html">RFC 5480</a>) from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="ec_key.h.html#EC_KEY_parse_parameters">EC_KEY_parse_parameters</a></tt> or <tt><a href="ec_key.h.html#EC_KEY_parse_curve_name">EC_KEY_parse_curve_name</a></tt> instead. Only deserialization of namedCurves or explicitly-encoded versions of named curves are supported.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
+                                        long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_ECParameters">
+            <div class="comment"><p><span class="first-word">i2d_ECParameters</span> marshals <tt>key</tt>&#39;s parameters as a DER-encoded OBJECT IDENTIFIER, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="ec_key.h.html#EC_KEY_marshal_curve_name">EC_KEY_marshal_curve_name</a></tt> instead. Only serialization of namedCurves are supported.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_ECPKParameters_bio">
+            <div class="comment"><p><span class="first-word">d2i_ECPKParameters_bio</span> deserializes the <tt>ECPKParameters</tt> specified in <a href="https://www.rfc-editor.org/rfc/rfc3279.html">RFC 3279</a> from <tt>bio</tt> and returns the corresponding <tt>EC_GROUP</tt>. If <tt>*out_group</tt> is non-null, the original <tt>*out_group</tt> is freed and the returned <tt>EC_GROUP</tt> is also written to <tt>*out_group</tt>. The user continues to maintain the memory assigned to <tt>*out_group</tt> if non-null.</p><p><span class="first-word">Only</span> deserialization of namedCurves or explicitly-encoded versions of namedCurves are supported.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_ECPKParameters_bio">
+            <div class="comment"><p><span class="first-word">i2d_ECPKParameters_bio</span> serializes an <tt>EC_GROUP</tt> to <tt>bio</tt> according to the <tt>ECPKParameters</tt> specified in <a href="https://www.rfc-editor.org/rfc/rfc3279.html">RFC 3279</a>. It returns 1 on success and 0 on failure. Only serialization of namedCurves are supported.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="o2i_ECPublicKey">
+            <div class="comment"><p><span class="first-word">o2i_ECPublicKey</span> parses an EC point from <tt>len</tt> bytes at <tt>*inp</tt> into <tt>*out_key</tt>. Note that this differs from the d2i format in that <tt>*out_key</tt> must be non-NULL with a group set. The point must not be the point at infinity. On successful exit, <tt>*inp</tt> is advanced by <tt>len</tt> bytes. It returns <tt>*out_key</tt> or NULL on error.</p><p><span class="first-word">Use</span> <tt><a href="ec.h.html#EC_POINT_oct2point">EC_POINT_oct2point</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
+                                       long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2o_ECPublicKey">
+            <div class="comment"><p><span class="first-word">i2o_ECPublicKey</span> marshals an EC point from <tt>key</tt>, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>, except it returns zero on error instead of a negative value.</p><p><span class="first-word">Use</span> <tt><a href="ec.h.html#EC_POINT_point2cbb">EC_POINT_point2cbb</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EC_KEY_METHOD-This-struct-replaces-the-old-|ECDSA_METHOD|-struct">
+        <div class="sectionpreamble comment"><p><span class="first-word">EC_KEY_METHOD</span> This struct replaces the old <tt>ECDSA_METHOD</tt> struct.</p></div>
+
+        
+          <div class="decl" id="ECDSA_FLAG_OPAQUE">
+            <div class="comment"><p><span class="first-word">ECDSA_FLAG_OPAQUE</span> specifies that this EC_KEY_METHOD does not expose its key material. This may be set if, for instance, it is wrapping some other crypto API, like a platform key store. Use <tt>EC_KEY_METHOD_set_flag</tt> to set this flag on an <tt>EC_KEY_METHOD</tt>. It is not set by default. This was supported in ECDSA_METHOD previously.</p></div>
+            <pre class="code">#define ECDSA_FLAG_OPAQUE 1</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get_default_method">
+            <div class="comment"><p><span class="first-word">EC_KEY_get_default_method</span> returns a reference to the default <tt>EC_KEY</tt> implementation. All <tt>EC_KEY</tt> objects are initialized with the returned struct. This function currently calls <tt><a href="ec_key.h.html#EC_KEY_OpenSSL">EC_KEY_OpenSSL</a></tt> since AWS-LC does not support changing/setting the default method.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_default_method(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_OpenSSL">
+            <div class="comment"><p><span class="first-word">EC_KEY_OpenSSL</span> returns a reference to the default <tt>EC_KEY</tt> implementation. The returned <tt>EC_KEY_METHOD</tt> object is statically allocated. The application should not free this struct.</p><p><span class="first-word">This</span> struct is also zero-initialized. This is different from OpenSSL which returns function pointers to the default implementations within the <tt>EC_KEY_METHOD</tt> struct. We do not do this to make it easier for the compiler/linker to drop unused functions. The wrapper functions for a given operation (e.g. <tt><a href="ecdsa.h.html#ECDSA_sign">ECDSA_sign</a></tt> corresponds to the <tt>sign</tt> field in <tt>EC_KEY_METHOD</tt>) will select the appropriate default implementation.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_METHOD_new">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_new</span> returns a newly allocated <tt>EC_KEY_METHOD</tt> object. If the input parameter <tt>eckey_meth</tt> is non-NULL, the function pointers within the returned <tt>EC_KEY_METHOD</tt> object will be initialized to the values from <tt>eckey_meth</tt>. If <tt>eckey_meth</tt> is NULL, the returned object will be initialized using the value returned from <tt><a href="ec_key.h.html#EC_KEY_get_default_method">EC_KEY_get_default_method</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(
+    const EC_KEY_METHOD *eckey_meth);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_METHOD_free">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_free</span> frees the memory associated with <tt>eckey_meth</tt></p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_set_method">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_method</span> sets <tt>meth</tt> on <tt>ec</tt>. We do not support setting the <tt>copy</tt>, <tt>set_group</tt>, <tt>set_private</tt>, <tt>set_public</tt>, and <tt>sign_setup</tt> fields in <tt>ec</tt> and these pointers should be set to NULL. We do not support the <tt>verify</tt>, <tt>verify_sig</tt>, or <tt>keygen</tt> fields yet.</p><p><span class="first-word">Returns</span> zero on failure and one on success.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_get_method">
+            <div class="comment"><p><span class="first-word">EC_KEY_get_method</span> returns the <tt>EC_KEY_METHOD</tt> object associated with <tt>ec</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_METHOD_set_sign_awslc">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_set_sign_awslc</span> sets the <tt>sign</tt> and <tt>sign_sig</tt> pointers on <tt>meth</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(
+    EC_KEY_METHOD *meth,
+    int (*sign)(int type, const uint8_t *digest, int digest_len, uint8_t *sig,
+                unsigned int *siglen, const BIGNUM *k_inv, const BIGNUM *r,
+                EC_KEY *eckey),
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey));</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EC_KEY_METHOD_set_sign">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_set_sign</span> sets function pointers on <tt>meth</tt>. AWS-LC currently supports setting <tt>sign</tt> and <tt>sign_sig</tt>. <tt>sign_setup</tt> must be set to NULL in order to compile with AWS-LC.</p></div>
+            <pre class="code">#define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)      \
+  OPENSSL_STATIC_ASSERT((sign_setup) == NULL,                         \
+                        EC_KEY_METHOD_sign_setup_field_must_be_NULL); \
+  EC_KEY_METHOD_set_sign_awslc(meth, sign, sign_sig);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_METHOD_set_init_awslc">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_set_init_awslc</span> sets the <tt>init</tt> and <tt>finish</tt> pointers on <tt>meth</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth,
+                                                 int (*init)(EC_KEY *key),
+                                                 void (*finish)(EC_KEY *key));</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EC_KEY_METHOD_set_init">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_set_init</span> sets function pointers on <tt>meth</tt>. AWS-LC currently only supports setting the <tt>init</tt> and <tt>finish</tt> fields. <tt>copy</tt>, <tt>set_group</tt>, <tt>set_private</tt>, and <tt>set_public</tt> cannot be set yet and must be NULL.</p></div>
+            <pre class="code">#define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,                 \
+                               set_private, set_public)                             \
+  OPENSSL_STATIC_ASSERT(                                                            \
+      (copy) == NULL &amp;&amp; (set_group) == NULL &amp;&amp; (set_private) == NULL &amp;&amp;             \
+          (set_public) == NULL,                                                     \
+      EC_KEY_METHOD_copy_set_group_set_private_and_set_public_fields_must_be_NULL); \
+  EC_KEY_METHOD_set_init_awslc(meth, init, finish);</pre>
+          </div>
+        
+          <div class="decl" id="EC_KEY_METHOD_set_flags">
+            <div class="comment"><p><span class="first-word">EC_KEY_METHOD_set_flags</span> sets <tt>flags</tt> on <tt>meth</tt>. Currently, the only supported flag is <tt><a href="ec_key.h.html#ECDSA_FLAG_OPAQUE">ECDSA_FLAG_OPAQUE</a></tt>. Returns zero on failure and one on success.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        <div class="sectionpreamble comment"><p><span class="first-word">General</span> No-op Functions [Deprecated].</p></div>
+
+        
+          <div class="decl" id="EC_KEY_set_asn1_flag">
+            <div class="comment"><p><span class="first-word">EC_KEY_set_asn1_flag</span> does nothing. AWS-LC only supports <tt><a href="ec.h.html#OPENSSL_EC_NAMED_CURVE">OPENSSL_EC_NAMED_CURVE</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_KEY_set_asn1_flag(EC_KEY *key,
+                                                            int flag);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

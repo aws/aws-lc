@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - conf.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>conf.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">Config</span> files.</p><p><span class="first-word">This</span> library handles OpenSSL&#39;s config files, which look like:</p><pre># Comment
+
+# This key is in the default section.
+key=value
+
+[section_name]
+key2=value2
+</pre><p><span class="first-word">Config</span> files are represented by a <tt>CONF</tt>. Use of this module is strongly discouraged. It is a remnant of the OpenSSL command-line tool. Parsing an untrusted input as a config file risks string injection and denial of service vulnerabilities.</p></div>
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#conf_value_st"><tt>conf_value_st</tt></a></li>
+          
+            <li><a href="#conf_st"><tt>conf_st</tt></a></li>
+          
+            <li><a href="#NCONF_new"><tt>NCONF_new</tt></a></li>
+          
+            <li><a href="#NCONF_free"><tt>NCONF_free</tt></a></li>
+          
+            <li><a href="#NCONF_load"><tt>NCONF_load</tt></a></li>
+          
+            <li><a href="#NCONF_load_bio"><tt>NCONF_load_bio</tt></a></li>
+          
+            <li><a href="#NCONF_get_section"><tt>NCONF_get_section</tt></a></li>
+          
+            <li><a href="#NCONF_get_string"><tt>NCONF_get_string</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#CONF_MFLAGS_DEFAULT_SECTION"><tt>CONF_MFLAGS_DEFAULT_SECTION</tt></a></li>
+          
+            <li><a href="#CONF_MFLAGS_IGNORE_MISSING_FILE"><tt>CONF_MFLAGS_IGNORE_MISSING_FILE</tt></a></li>
+          
+            <li><a href="#CONF_modules_load_file"><tt>CONF_modules_load_file</tt></a></li>
+          
+            <li><a href="#CONF_get1_default_config_file"><tt>CONF_get1_default_config_file</tt></a></li>
+          
+            <li><a href="#CONF_modules_free"><tt>CONF_modules_free</tt></a></li>
+          
+            <li><a href="#CONF_modules_unload"><tt>CONF_modules_unload</tt></a></li>
+          
+            <li><a href="#CONF_modules_finish"><tt>CONF_modules_finish</tt></a></li>
+          
+            <li><a href="#OPENSSL_config"><tt>OPENSSL_config</tt></a></li>
+          
+            <li><a href="#OPENSSL_no_config"><tt>OPENSSL_no_config</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="conf_value_st">
+            
+            <pre class="code">struct conf_value_st {
+  char *section;
+  char *name;
+  char *value;
+};
+DEFINE_STACK_OF(CONF_VALUE)
+DECLARE_LHASH_OF(CONF_VALUE)</pre>
+          </div>
+        
+          <div class="decl" id="conf_st">
+            
+            <pre class="code">struct conf_st {
+  LHASH_OF(CONF_VALUE) *data;
+};</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_new">
+            <div class="comment"><p><span class="first-word">NCONF_new</span> returns a fresh, empty <tt>CONF</tt>, or NULL on error. The <tt>method</tt> argument must be NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT CONF *NCONF_new(void *method);</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_free">
+            <div class="comment"><p><span class="first-word">NCONF_free</span> frees all the data owned by <tt>conf</tt> and then <tt>conf</tt> itself.</p></div>
+            <pre class="code">OPENSSL_EXPORT void NCONF_free(CONF *conf);</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_load">
+            <div class="comment"><p><span class="first-word">NCONF_load</span> parses the file named <tt>filename</tt> and adds the values found to <tt>conf</tt>. It returns one on success and zero on error. In the event of an error, if <tt>out_error_line</tt> is not NULL, <tt>*out_error_line</tt> is set to the number of the line that contained the error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int NCONF_load(CONF *conf, const char *filename,
+                              long *out_error_line);</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_load_bio">
+            <div class="comment"><p><span class="first-word">NCONF_load_bio</span> acts like <tt><a href="conf.h.html#NCONF_load">NCONF_load</a></tt> but reads from <tt>bio</tt> rather than from a named file.</p></div>
+            <pre class="code">OPENSSL_EXPORT int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line);</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_get_section">
+            <div class="comment"><p><span class="first-word">NCONF_get_section</span> returns a stack of values for a given section in <tt>conf</tt>. If <tt>section</tt> is NULL, the default section is returned. It returns NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT const STACK_OF(CONF_VALUE) *NCONF_get_section(
+    const CONF *conf, const char *section);</pre>
+          </div>
+        
+          <div class="decl" id="NCONF_get_string">
+            <div class="comment"><p><span class="first-word">NCONF_get_string</span> returns the value of the key <tt>name</tt>, in section <tt>section</tt>. The <tt>section</tt> argument may be NULL to indicate the default section. It returns the value or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
+                                            const char *section,
+                                            const char *name);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        <div class="sectionpreamble comment"><p><span class="first-word">General</span> No-op Functions [Deprecated].</p><p><span class="first-word">AWS-LC</span> has no support for loading config files to configure AWS-LC, so the following functions have been deprecated as no-ops.</p></div>
+
+        
+          <div class="decl" id="CONF_MFLAGS_DEFAULT_SECTION">
+            <div class="comment"><p>These defines do nothing but are provided to make old code easier to compile.</p></div>
+            <pre class="code">#define CONF_MFLAGS_DEFAULT_SECTION 0</pre>
+          </div>
+        
+          <div class="decl" id="CONF_MFLAGS_IGNORE_MISSING_FILE">
+            
+            <pre class="code">#define CONF_MFLAGS_IGNORE_MISSING_FILE 0</pre>
+          </div>
+        
+          <div class="decl" id="CONF_modules_load_file">
+            <div class="comment"><p><span class="first-word">CONF_modules_load_file</span> returns one. AWS-LC is defined to have no config file options, thus loading from <tt>filename</tt> always succeeds by doing nothing.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int CONF_modules_load_file(
+    const char *filename, const char *appname, unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="CONF_get1_default_config_file">
+            <div class="comment"><p><span class="first-word">CONF_get1_default_config_file</span> returns a fixed dummy string. AWS-LC is defined to have no config file options.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED char *CONF_get1_default_config_file(void);</pre>
+          </div>
+        
+          <div class="decl" id="CONF_modules_free">
+            <div class="comment"><p><span class="first-word">CONF_modules_free</span> does nothing.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_free(void);</pre>
+          </div>
+        
+          <div class="decl" id="CONF_modules_unload">
+            <div class="comment"><p><span class="first-word">CONF_modules_unload</span> does nothing.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_unload(int all);</pre>
+          </div>
+        
+          <div class="decl" id="CONF_modules_finish">
+            <div class="comment"><p><span class="first-word">CONF_modules_finish</span> does nothing.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_finish(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_config">
+            <div class="comment"><p><span class="first-word">OPENSSL_config</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p><p><span class="first-word">TODO</span> (CryptoAlg-2398): Add <tt>OPENSSL_DEPRECATED</tt>. nginx defines -Werror and depends on this.</p></div>
+            <pre class="code">OPENSSL_EXPORT void OPENSSL_config(const char *config_name);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_no_config">
+            <div class="comment"><p><span class="first-word">OPENSSL_no_config</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_no_config(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

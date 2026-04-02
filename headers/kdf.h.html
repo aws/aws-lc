@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - kdf.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>kdf.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#CRYPTO_tls1_prf"><tt>CRYPTO_tls1_prf</tt></a></li>
+          
+            <li><a href="#SSKDF_digest"><tt>SSKDF_digest</tt></a></li>
+          
+            <li><a href="#SSKDF_hmac"><tt>SSKDF_hmac</tt></a></li>
+          
+            <li><a href="#KBKDF_ctr_hmac"><tt>KBKDF_ctr_hmac</tt></a></li>
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#HKDF-specific-functions">HKDF-specific functions</a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND"><tt>EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY"><tt>EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY"><tt>EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_hkdf_mode"><tt>EVP_PKEY_CTX_hkdf_mode</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_hkdf_md"><tt>EVP_PKEY_CTX_set_hkdf_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set1_hkdf_key"><tt>EVP_PKEY_CTX_set1_hkdf_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set1_hkdf_salt"><tt>EVP_PKEY_CTX_set1_hkdf_salt</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_add1_hkdf_info"><tt>EVP_PKEY_CTX_add1_hkdf_info</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CRYPTO_tls1_prf">
+            <div class="comment"><p><span class="first-word">CRYPTO_tls1_prf</span> calculates <tt>out_len</tt> bytes of the TLS PRF, using <tt>digest</tt>, and writes them to <tt>out</tt>. It returns one on success and zero on error. TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5 TLS 1.{0,1}: https://datatracker.ietf.org/doc/html/rfc4346#section-5</p></div>
+            <pre class="code">OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
+                                   uint8_t *out, size_t out_len,
+                                   const uint8_t *secret, size_t secret_len,
+                                   const char *label, size_t label_len,
+                                   const uint8_t *seed1, size_t seed1_len,
+                                   const uint8_t *seed2, size_t seed2_len);</pre>
+          </div>
+        
+          <div class="decl" id="SSKDF_digest">
+            <div class="comment"><p><span class="first-word">SSKDF_digest</span> computes the One-step key derivation using the provided digest algorithm as the backing PRF. This algorithm may be referred to as &#34;Single-Step KDF&#34; or &#34;NIST Concatenation KDF&#34; by other implementors. <tt>info_len</tt> may be zero length.</p><p><span class="first-word">Returns</span> a 1 on success, otherwise returns 0.</p><p><span class="first-word">This</span> implementation adheres to the algorithm specified in Section 4 of the NIST Special Publication 800-56C Revision 2 published on August 2020. The parameters relevant to the specification are as follows:</p><ul><li><span class="first-word">Auxillary</span> Function H is Option 1</li><li><tt>out_len</tt>, <tt>secret_len</tt>, and <tt>info_len</tt> are specified in bytes</li><li><tt>out_len</tt>, <tt>secret_len</tt>, <tt>info_len</tt> each must be &lt;= 2^30</li><li><tt>out_len</tt> and <tt>secret_len</tt> &gt; 0</li><li><tt>out_len</tt>, <tt>secret_len</tt> are analogous to <tt>L</tt> and <tt>Z</tt> respectively in the specification.</li><li><tt>info</tt> and <tt>info_len</tt> refer to <tt>FixedInfo</tt> in the specification.</li></ul><p><span class="first-word">Specification</span> is available at https://doi.org/10.6028/NIST.SP.800-56Cr2</p></div>
+            <pre class="code">OPENSSL_EXPORT int SSKDF_digest(uint8_t *out_key, size_t out_len,
+                                const EVP_MD *digest,
+                                const uint8_t *secret, size_t secret_len,
+                                const uint8_t *info, size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" id="SSKDF_hmac">
+            <div class="comment"><p><span class="first-word">SSKDF_hmac</span> computes the One-step key derivation using the provided digest algorithm with HMAC as the backing PRF. This algorithm may be referred to as &#34;Single-Step KDF&#34; or &#34;NIST Concatenation KDF&#34; by other implementors. <tt>salt</tt> is optional and may be <tt>NULL</tt> or zero-length. In addition <tt>info_len</tt> may be zero length.</p><p><span class="first-word">Returns</span> a 1 on success, otherwise returns 0.</p><p><span class="first-word">This</span> implementation adheres to the algorithm specified in Section 4 of the NIST Special Publication 800-56C Revision 2 published on August 2020. The parameters relevant to the specification are as follows:</p><ul><li><span class="first-word">Auxillary</span> Function H is Option 2</li><li><tt>out_len</tt>, <tt>secret_len</tt>, <tt>info_len</tt>, and <tt>salt_len</tt> are specified in bytes</li><li><tt>out_len</tt>, <tt>secret_len</tt>, <tt>info_len</tt> each must be &lt;= 2^30</li><li><tt>out_len</tt> and <tt>secret_len</tt> &gt; 0</li><li><tt>out_len</tt>, <tt>secret_len</tt> are analogous to <tt>L</tt> and <tt>Z</tt> respectively in the specification.</li><li><tt>info</tt> and <tt>info_len</tt> refer to <tt>FixedInfo</tt> in the specification.</li><li><tt>salt</tt> and <tt>salt_len</tt> refer to <tt>salt</tt> in the specification.</li><li><tt>salt</tt> or <tt>salt_len</tt> being <tt>NULL</tt> or <tt>0</tt> respectively will result in a default salt being used which will be an all-zero byte string whose length is equal to the length of the specified <tt>digest</tt> input block length in bytes.</li></ul></div>
+            <pre class="code">OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
+                              const EVP_MD *digest,
+                              const uint8_t *secret, size_t secret_len,
+                              const uint8_t *info, size_t info_len,
+                              const uint8_t *salt, size_t salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="KBKDF_ctr_hmac">
+            <div class="comment"><p><span class="first-word">KBKDF_ctr_hmac</span> derives keying material using the KDF counter mode algorithm, using the provided key derivation key <tt>secret</tt> and fixed info <tt>info</tt>. <tt>info</tt> or <tt>info_len</tt> may be zero-length. This algorithm may be referred to as a &#34;Key-Based Key Derivation Function in Counter Mode&#34;.</p><p><span class="first-word">This</span> implementation adheres to the algorithm specified in Section 4.1 of the NIST Special Publication 800-108 Revision 1 Update 1 published on August 2022. The parameters relevant to the specification are as follows:</p><ul><li><tt>out_len</tt>, <tt>secret_len</tt>, and <tt>info_len</tt> are specified in bytes</li><li><tt>out_len</tt> is analogous to <tt>L</tt> in the specification.</li><li><tt>r</tt> is the length of the binary representation of the counter <tt>i</tt> referred to by the specification. <tt>r</tt> is 32 bits in this implementation.</li><li>The 32-bit counter is big-endian in this implementation.</li><li>The 32-bit counter location is placed before <tt>info</tt>.</li><li><tt>K_IN</tt> is analogous to <tt>secret</tt> and <tt>secret_len</tt>.</li><li><tt>PRF</tt> refers to HMAC in this implementation.</li></ul><p><span class="first-word">Specification</span> is available at https://doi.org/10.6028/NIST.SP.800-108r1-upd1</p></div>
+            <pre class="code">OPENSSL_EXPORT int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len,
+                                  const EVP_MD *digest, const uint8_t *secret,
+                                  size_t secret_len, const uint8_t *info,
+                                  size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">KDF</span> support for EVP.</p></div>
+            
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="HKDF-specific-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">HKDF-specific</span> functions.</p><p>The following functions are provided for OpenSSL compatibility. Prefer the HKDF functions in &lt;openssl/hkdf.h&gt;. In each, <tt>ctx</tt> must be created with <tt><a href="evp.h.html#EVP_PKEY_CTX_new_id">EVP_PKEY_CTX_new_id</a></tt> with <tt><a href="evp.h.html#EVP_PKEY_HKDF">EVP_PKEY_HKDF</a></tt> and then initialized with <tt><a href="evp.h.html#EVP_PKEY_derive_init">EVP_PKEY_derive_init</a></tt>.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_HKDEF_MODE_*</span> define &#34;modes&#34; for use with <tt><a href="kdf.h.html#EVP_PKEY_CTX_hkdf_mode">EVP_PKEY_CTX_hkdf_mode</a></tt>. The mispelling of &#34;HKDF&#34; as &#34;HKDEF&#34; is intentional for OpenSSL compatibility.</p></div>
+            <pre class="code">#define EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND 0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY">
+            
+            <pre class="code">#define EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY 1</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">
+            
+            <pre class="code">#define EVP_PKEY_HKDEF_MODE_EXPAND_ONLY 2</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_hkdf_mode">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_hkdf_mode</span> configures which HKDF operation to run. It returns one on success and zero on error. <tt>mode</tt> must be one of <tt>EVP_PKEY_HKDEF_MODE_*</tt>. By default, the mode is <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt>.</p><p><span class="first-word">If</span> <tt>mode</tt> is <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt> or <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</a></tt>, the output is variable-length. <tt><a href="evp.h.html#EVP_PKEY_derive">EVP_PKEY_derive</a></tt> uses the size of the output buffer as the output length for HKDF-Expand.</p><p class="warning"><span class="first-word">WARNING:</span> Although this API calls it a &#34;mode&#34;, HKDF-Extract and HKDF-Expand are distinct operations with distinct inputs and distinct kinds of keys. Callers should not pass input secrets for one operation into the other.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_hkdf_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_hkdf_md</span> sets <tt>md</tt> as the digest to use with HKDF. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_hkdf_md(EVP_PKEY_CTX *ctx,
+                                            const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set1_hkdf_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set1_hkdf_key</span> configures HKDF to use <tt>key_len</tt> bytes from <tt>key</tt> as the &#34;key&#34;, described below. It returns one on success and zero on error.</p><p><span class="first-word">Which</span> input is the key depends on the &#34;mode&#34; (see <tt><a href="kdf.h.html#EVP_PKEY_CTX_hkdf_mode">EVP_PKEY_CTX_hkdf_mode</a></tt>). If <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt> or <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY">EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY</a></tt>, this function specifies the input keying material (IKM) for HKDF-Extract. If <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</a></tt>, it instead specifies the pseudorandom key (PRK) for HKDF-Expand.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set1_hkdf_key(EVP_PKEY_CTX *ctx,
+                                              const uint8_t *key,
+                                              size_t key_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set1_hkdf_salt">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set1_hkdf_salt</span> configures HKDF to use <tt>salt_len</tt> bytes from <tt>salt</tt> as the salt parameter to HKDF-Extract. It returns one on success and zero on error. If performing HKDF-Expand only, this parameter is ignored.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set1_hkdf_salt(EVP_PKEY_CTX *ctx,
+                                               const uint8_t *salt,
+                                               size_t salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_add1_hkdf_info">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_add1_hkdf_info</span> appends <tt>info_len</tt> bytes from <tt>info</tt> to the info parameter used with HKDF-Expand. It returns one on success and zero on error. If performing HKDF-Extract only, this parameter is ignored.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_add1_hkdf_info(EVP_PKEY_CTX *ctx,
+                                               const uint8_t *info,
+                                               size_t info_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>
