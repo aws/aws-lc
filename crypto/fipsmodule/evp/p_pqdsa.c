@@ -45,6 +45,8 @@ static int pkey_pqdsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   GUARD_PTR(dctx);
   GUARD_PTR(sctx);
 
+  // Shallow copy is safe here because |pqdsa| points to a static-storage
+  // object returned by |PQDSA_find_dsa_by_nid|.
   dctx->pqdsa = sctx->pqdsa;
   OPENSSL_memcpy(dctx->context, sctx->context, sizeof(sctx->context));
   dctx->context_len = sctx->context_len;
