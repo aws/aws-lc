@@ -41,7 +41,7 @@ else()
   endif()
 endif()
 
-if(ENABLE_DIST_PKG)
+if(COHABITANT_BINARIES)
   set_target_properties(bssl PROPERTIES OUTPUT_NAME "${AWSLC_BIN_PREFIX}bssl")
 endif()
 

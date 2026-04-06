@@ -58,7 +58,7 @@ endif()
 
 target_add_awslc_include_paths(TARGET openssl SCOPE PRIVATE)
 
-if(ENABLE_DIST_PKG)
+if(COHABITANT_BINARIES)
   set_target_properties(openssl PROPERTIES OUTPUT_NAME "${AWSLC_BIN_PREFIX}openssl")
 endif()
 
@@ -82,7 +82,7 @@ file(INSTALL
 
 set(C_REHASH_INSTALL_NAME "c_rehash")
 
-if(ENABLE_DIST_PKG)
+if(COHABITANT_BINARIES)
   set(C_REHASH_INSTALL_NAME "${AWSLC_BIN_PREFIX}c_rehash")
 endif()
 
@@ -177,11 +177,10 @@ if(BUILD_TESTING)
 endif()
 
 # Create binary symlinks for OpenSSL compatibility
-if(INSTALL_OPENSSL_SHIM AND ENABLE_DIST_PKG)
+if(INSTALL_OPENSSL_SHIM AND COHABITANT_BINARIES)
   install(CODE "
     execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
       \"${AWSLC_BIN_PREFIX}openssl\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/openssl\")
-    
     execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
       \"${AWSLC_BIN_PREFIX}c_rehash\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/c_rehash\")
   ")
