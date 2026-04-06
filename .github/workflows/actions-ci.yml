@@ -206,7 +206,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   sanitizer-tests:
-    name: sanitizer - ${{ matrix.arch.name }} - ${{ matrix.config.name }}
+    name: sanitizer - ${{ matrix.arch.name }} - ${{ matrix.config.name }} [${{ matrix.shard_index }}/${{ matrix.config.total_shards }}]
     needs: [sanity-test-run]
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.arch.runner }}
@@ -224,9 +224,34 @@ jobs:
           - name: asan-noasm
             sanitizer: asan
             extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+            total_shards: 1
           - name: msan-noasm
             sanitizer: msan
             extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+            total_shards: 4
+        shard_index: [0, 1, 2, 3]
+        exclude:
+          - config:
+              name: asan-noasm
+        include:
+          - arch:
+              name: x86-64
+              runner: ubuntu-latest
+            config:
+              name: asan-noasm
+              sanitizer: asan
+              extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+              total_shards: 1
+            shard_index: 0
+          - arch:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+            config:
+              name: asan-noasm
+              sanitizer: asan
+              extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+              total_shards: 1
+            shard_index: 0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
@@ -236,10 +261,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build
-      - name: Build and Test
+      - name: Build and Test crypto_test
+        env:
+          GTEST_TOTAL_SHARDS: ${{ matrix.config.total_shards }}
+          GTEST_SHARD_INDEX: ${{ matrix.shard_index }}
         run: |
           ./util/build_and_test.sh --sanitizer ${{ matrix.config.sanitizer }} \
+            --test crypto_test --build-target all_tests \
             -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra_cmake_args }}
+      - name: Run ssl_test
+        if: matrix.shard_index == 0
+        run: ./build/ssl/ssl_test
 
   musl-tests:
     name: musl - ${{ matrix.config.arch }}
