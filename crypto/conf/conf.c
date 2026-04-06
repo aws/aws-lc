@@ -331,6 +331,9 @@ static int add_string(const CONF *conf, CONF_VALUE *section,
   }
 
   if (!lh_CONF_VALUE_insert(conf->data, &old_value, value)) {
+    (void)sk_CONF_VALUE_delete_ptr(section_stack, value);
+    OPENSSL_free(value->section);
+    value->section = NULL;
     return 0;
   }
   if (old_value != NULL) {
