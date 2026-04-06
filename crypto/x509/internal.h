@@ -533,6 +533,8 @@ OPENSSL_EXPORT int validate_cidr_mask(CBS *cidr_mask);
 
 OPENSSL_EXPORT int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen);
 
+int x509_digest_nid_ok(const int digest_nid);
+
 // Match reference identifiers starting with "." to any sub-domain.
 // This is a non-public flag, turned on implicitly when the subject
 // reference identity is a DNS name.
