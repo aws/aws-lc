@@ -41,6 +41,7 @@ var (
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+	noUnwindTests   = flag.Bool("no-unwind-tests", false, "If true, pass --no_unwind_tests to test binaries to disable unwind testing")
 )
 
 type test struct {
@@ -194,6 +195,9 @@ var (
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
+	if *noUnwindTests {
+		args = append(args, "--no_unwind_tests")
+	}
 
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc

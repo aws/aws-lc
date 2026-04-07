@@ -95,4 +95,20 @@ jobs:
       - name: Build Project
         shell: bash
         run: |
-          cmake --build ./build --target run_tests --verbose
+          cmake --build ./build --target all_tests run_ssl_runner_tests --verbose
+      - name: Run Tests
+        shell: bash
+        run: |
+          # Workaround: Zig's LLD linker produces .pdata/.xdata (SEH unwind
+          # data) that is incompatible with the RtlVirtualUnwind-based unwind
+          # tester, causing STATUS_ACCESS_VIOLATION in ABITest.SanityCheck.
+          # Disable unwind tests on Windows until this is resolved upstream.
+          NO_UNWIND_TESTS=""
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            NO_UNWIND_TESTS="-no-unwind-tests"
+          fi
+          cmake -E echo "Running Go tests"
+          go test ./ssl/test/runner/hpke ./util/ar
+          cmake -E echo
+          cmake -E echo "Running unit tests"
+          go run util/all_tests.go -build-dir ./build ${NO_UNWIND_TESTS}
