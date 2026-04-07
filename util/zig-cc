@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Zig C compiler wrapper
+#
+# Translates GCC/Clang-specific flags that Zig doesn't understand into
+# compatible equivalents. Currently handles:
+#
+#   -march=armv8.4-a+sha3  →  -mcpu=generic+v8.4a+sha3
+#       Zig doesn't accept GCC-style -march for AArch64 targets.
+#       This is the only -march variant used in the AWS-LC build today
+#       (see crypto/fipsmodule/CMakeLists.txt). If additional -march flags
+#       are added in the future, corresponding translations may be needed here.
+#
+#   -Wp,<arg>  →  <arg>
+#       Zig doesn't support the -Wp, preprocessor passthrough syntax.
+#       The underlying flags (-D, -U, etc.) are passed directly instead.
+#       Used by third_party/jitterentropy for -Wp,-U_FORTIFY_SOURCE.
+
+set -euo pipefail
+
+if ! command -v zig &> /dev/null; then
+    echo "Error: zig compiler not found in PATH" >&2
+    echo "Please install zig from https://ziglang.org/download/" >&2
+    exit 1
+fi
+
+filtered_args=()
+for arg in "$@"; do
+    case "$arg" in
+        -march=armv8.4-a+sha3)
+            filtered_args+=("-mcpu=generic+v8.4a+sha3")
+            ;;
+        -Wp,*)
+            filtered_args+=("${arg#-Wp,}")
+            ;;
+        *)
+            filtered_args+=("$arg")
+            ;;
+    esac
+done
+
+exec zig cc -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}"
