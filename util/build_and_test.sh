@@ -123,7 +123,7 @@ cmake --build "${AWS_LC_BUILD}" -j --target ${BUILD_TARGET}
 if [[ -n "${TEST_BINARY}" ]]; then
   # --test was specified: find and run the test binary directly instead of
   # going through the heavyweight run_tests CMake target.
-  TEST_PATH=$(find "${AWS_LC_BUILD}" -name "${TEST_BINARY}" -type f | head -1)
+  TEST_PATH=$(find "${AWS_LC_BUILD}" -name "${TEST_BINARY}" -type f -executable | head -1)
   if [[ -z "${TEST_PATH}" ]]; then
     echo "Error: Could not find test binary '${TEST_BINARY}' in ${AWS_LC_BUILD}"
     exit 1
