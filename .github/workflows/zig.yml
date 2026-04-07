@@ -67,11 +67,31 @@ jobs:
           set(CMAKE_VERBOSE_MAKEFILE ON)
           set(CMAKE_MESSAGE_LOG_LEVEL DEBUG)
           EOF
+          # Workaround: zig's self-hosted MachO linker segfaults on macOS.
+          # Override CMake's link rules to use the system compiler for linking.
+          # Zig is still used for all compilation steps.
+          # Tracked upstream:
+          #   https://github.com/ziglang/zig/issues/25451
+          #   https://github.com/ziglang/zig/issues/23704
+          if [[ "${{ matrix.config.target_system }}" == "Darwin" ]]; then
+            cat <<EOF >> ./toolchain.cmake
+          set(CMAKE_C_LINK_EXECUTABLE "/usr/bin/cc <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+          set(CMAKE_CXX_LINK_EXECUTABLE "/usr/bin/c++ <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+          EOF
+          fi
       - name: Setup CMake
         shell: bash
         run: |
           cat ./toolchain.cmake
-          cmake '.' -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+          # Workaround: Peek-*-Server SSL runner tests hang on Windows when
+          # bssl_shim is built with zig (SSL_peek appears to block indefinitely).
+          # We use a shim config file with DisabledTests because Go 1.20+ has a
+          # built-in -skip flag that shadows the runner's custom -skip flag.
+          EXTRA_ARGS=""
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            EXTRA_ARGS="-DSSL_RUNNER_SHIM_CONFIG=ssl/test/runner/zig_windows_config.json"
+          fi
+          cmake '.' -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./toolchain.cmake -DCMAKE_BUILD_TYPE=Release ${EXTRA_ARGS}
       - name: Build Project
         shell: bash
         run: |

@@ -879,6 +879,10 @@ if(FUZZ)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
 endif()
 
+if(SSL_RUNNER_SHIM_CONFIG)
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-shim-config" "${AWSLC_SOURCE_DIR}/${SSL_RUNNER_SHIM_CONFIG}")
+endif()
+
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   # Enable position-independent code globally. This is needed because
