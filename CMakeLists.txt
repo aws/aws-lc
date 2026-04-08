@@ -1332,6 +1332,13 @@ else()
   set(GO_TEST_TIMEOUT "10m")
 endif()
 
+# Allow overriding the SSL test runner's idle timeout (default in runner.go is 15s).
+# Useful for resource-constrained environments (e.g. FreeBSD VMs) where the shim
+# may be slow to respond.
+if(DEFINED ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT})
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-idle-timeout" "$ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT}")
+endif()
+
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   # USES_TERMINAL is only available in CMake 3.2 or later.
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
