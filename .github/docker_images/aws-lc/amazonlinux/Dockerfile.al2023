@@ -41,6 +41,7 @@ dnf install -y \
     unzip \
     wget \
     which \
+    xz \
     valgrind \
     valgrind-devel
 # valgrind is just the application and core resources.
@@ -54,12 +55,33 @@ EOF
 
 FROM base AS tools
 
-# Create compiler environment setup scripts
+# Install LLVM/Clang 19 from pre-built release
+RUN <<EOF
+set -ex
+LLVM_VERSION=19.1.7
+arch="$(uname -m)"
+if [[ "${arch}" == "x86_64" ]]; then
+    LLVM_ARCHIVE="LLVM-${LLVM_VERSION}-Linux-X64.tar.xz"
+elif [[ "${arch}" == "aarch64" ]]; then
+    LLVM_ARCHIVE="clang+llvm-${LLVM_VERSION}-aarch64-linux-gnu.tar.xz"
+else
+    echo "Unsupported architecture: ${arch}"
+    exit 1
+fi
+cd /tmp
+wget "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_ARCHIVE}"
+mkdir -p /opt/clang-19
+tar -xf "${LLVM_ARCHIVE}" --strip-components=1 -C /opt/clang-19/
+ln -sf /opt/clang-19/bin/clang /usr/bin/clang-19
+ln -sf /opt/clang-19/bin/clang++ /usr/bin/clang++-19
+rm -f "${LLVM_ARCHIVE}"
+EOF
+
+# Create compiler environment setup scripts (after all compilers are installed)
 COPY --from=scripts create-compiler-env.sh /tmp
 RUN <<EOF
 set -ex
-setup_script="/tmp/create-compiler-env.sh"
-${setup_script}
+/tmp/create-compiler-env.sh
 EOF
 
 # Install SSM Agent Config
@@ -88,7 +110,7 @@ RUN <<EOF
 set -ex
 mkdir -p ${DEPENDENCIES_DIR}
 cd ${DEPENDENCIES_DIR}
-git clone https://github.com/llvm/llvm-project.git --branch llvmorg-15.0.6 --depth 1
+git clone https://github.com/llvm/llvm-project.git --branch llvmorg-19.1.7 --depth 1
 cd llvm-project
 rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)")
 EOF

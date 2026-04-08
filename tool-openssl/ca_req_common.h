@@ -61,6 +61,6 @@ bool LoadPrivateKey(const std::string &key_file_path,
                     Password &passin,
                     bssl::UniquePtr<EVP_PKEY> &pkey);
 
-bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
+bssl::UniquePtr<X509_NAME> ParseSubjectName(const std::string &subject_string);
 
 #endif

@@ -218,7 +218,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_mult = gcm_gmult_avx512;
     *out_hash = gcm_ghash_avx512;
     *out_is_avx = 1;
-    return;
+    goto out;
   }
 #endif
   if (crypto_gcm_clmul_enabled()) {
@@ -227,58 +227,63 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
       *out_is_avx = 1;
-      return;
+      goto out;
     }
     gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
-    return;
+    goto out;
   }
   if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
-    return;
+    goto out;
   }
 #elif defined(GHASH_ASM_X86)
   if (crypto_gcm_clmul_enabled()) {
     gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
-    return;
+    goto out;
   }
   if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
-    return;
+    goto out;
   }
 #elif defined(GHASH_ASM_ARM)
   if (gcm_pmull_capable()) {
     gcm_init_v8(out_table, H);
     *out_mult = gcm_gmult_v8_wrapper;
     *out_hash = gcm_ghash_v8_wrapper;
-    return;
+    goto out;
   }
 
   if (gcm_neon_capable()) {
     gcm_init_neon(out_table, H);
     *out_mult = gcm_gmult_neon_wrapper;
     *out_hash = gcm_ghash_neon_wrapper;
-    return;
+    goto out;
   }
 #elif defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
     gcm_init_p8(out_table, H);
     *out_mult = gcm_gmult_p8;
     *out_hash = gcm_ghash_p8;
-    return;
+    goto out;
   }
 #endif
 
   gcm_init_nohw(out_table, H);
   *out_mult = gcm_gmult_nohw;
   *out_hash = gcm_ghash_nohw;
+
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86) || defined(GHASH_ASM_ARM) || defined(GHASH_ASM_PPC64LE)
+out:
+#endif
+  OPENSSL_cleanse(H, sizeof(H));
 }
 
 void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
@@ -293,6 +298,7 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   int is_avx;
   CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, gcm_key->Htable, &is_avx,
                     ghash_key);
+  OPENSSL_cleanse(ghash_key, sizeof(ghash_key));
 
 #if defined(OPENSSL_AARCH64) && defined(GHASH_ASM_ARM)
   gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 : 0;

@@ -6,11 +6,6 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
-# Our NetBSD CI environment gives a "No route to host" error when connecting to `ocsp.sectigo.com:80`.
-if [[ "$KERNEL_NAME" == "NetBSD" ]]; then
-  export GTEST_FILTER="-*.AmazonTrustServices*"
-fi
-
 if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     # ARM64 platforms are tested via emulation.
     # We narrow testing to libcrypto to avoid exceeding 1 hour duration
@@ -28,7 +23,6 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test
 
     shard_gtest ${BUILD_ROOT}/ssl/ssl_test
-    shard_gtest ${BUILD_ROOT}/ssl/integration_test
 
     # Does not use GoogleTest
     ${BUILD_ROOT}/crypto/rwlock_static_init

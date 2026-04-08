@@ -611,14 +611,20 @@ elseif(FIPS_SHARED)
     # contain pragmas that instruct the compiler to put the code in specific FIPS sections. These sections have a
     # specific suffix $a through $c that controls the order of the FIPS sections when it is linked together into a
     # Grouped Section.
+    #
+    # These custom commands invoke the compiler directly (outside CMake's normal
+    # target compilation), so we must forward CMAKE_C_FLAGS manually. This is
+    # necessary for cross-compilation where the flags contain --target and
+    # system include paths (e.g. clang-cl + xwin on Linux).
+    separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
     add_custom_command(
       OUTPUT fips_msvc_start.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_msvc_end.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
@@ -631,11 +637,9 @@ elseif(FIPS_SHARED)
 
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
-      # The archiver does not handle the CMake list which uses semicolons between items, this generator expression
-      # converts it to a list of quoted strings, it also needs to be itself string escaped
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
-      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj $<TARGET_OBJECTS:bcm_library> fips_msvc_end.obj /OUT:${BCM_NAME}
+      COMMAND_EXPAND_LISTS
+      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()

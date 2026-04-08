@@ -163,6 +163,9 @@ int TXT_DB_create_index(bssl::UniquePtr<TXT_DB> &db, int field, int (*qual)(OPEN
   n = sk_OPENSSL_PSTRING_num(db->data);
   for (i = 0; i < n; i++) {
     r = sk_OPENSSL_PSTRING_value(db->data, i);
+    if (r == nullptr) {
+      continue;
+    }
     if ((qual != NULL) && (qual(r) == 0)) {
       continue;
     }
@@ -195,6 +198,9 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
   nn = db->num_fields;
   for (long i = 0; i < n; i++) {
     pp = sk_OPENSSL_PSTRING_value(db->data, i);
+    if (pp == nullptr) {
+      continue;
+    }
 
     long j = 0;
     l = 0;
@@ -303,6 +309,9 @@ void TXT_DB_free(TXT_DB *db) {
       // check if any 'fields' have been allocated from outside of the
       // initial block
       p = sk_OPENSSL_PSTRING_value(db->data, i);
+      if (p == nullptr) {
+        continue;
+      }
       max = p[db->num_fields]; // last address
       if (max == NULL) {       // new row
         for (n = 0; n < db->num_fields; n++) {

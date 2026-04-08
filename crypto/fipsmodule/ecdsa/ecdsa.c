@@ -202,6 +202,7 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   ec_scalar_inv0_montgomery(group, &tmp, k);     // tmp = k^-1 R^2
   ec_scalar_from_montgomery(group, &tmp, &tmp);  // tmp = k^-1 R
   ec_scalar_mul_montgomery(group, &s, &s, &tmp);
+  OPENSSL_cleanse(&tmp, sizeof(tmp));
   if (constant_time_declassify_int(ec_scalar_is_zero(group, &s))) {
     *out_retry = 1;
     return NULL;
