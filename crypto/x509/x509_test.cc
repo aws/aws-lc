@@ -5898,6 +5898,7 @@ TEST(X509Test, Names) {
   }
 }
 
+#if defined(OPENSSL_THREADS)
 TEST(X509Test, AddDuplicates) {
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
   bssl::UniquePtr<X509> a(CertFromPEM(kCrossSigningRootPEM));
@@ -5941,6 +5942,7 @@ TEST(X509Test, AddDuplicates) {
 
   EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
 }
+#endif  // OPENSSL_THREADS
 
 TEST(X509Test, BytesToHex) {
   struct {
