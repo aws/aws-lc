@@ -41,6 +41,7 @@ dnf install -y \
     unzip \
     wget \
     which \
+    xz \
     valgrind \
     valgrind-devel
 # valgrind is just the application and core resources.
