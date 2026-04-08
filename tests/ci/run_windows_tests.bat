@@ -40,10 +40,10 @@ call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 @rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
-call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+call :fips_build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 if /i not "%ARCH_OPTION%" == "arm64" (
     @rem For FIPS on Windows/x86-64 we also have a RelWithDebInfo build to generate debug symbols.
-    call :build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+    call :fips_build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 )
 
 @rem On Windows, CMake defaults to dynamically linking to the Windows C-runtime.
@@ -52,6 +52,35 @@ call :build_and_test Release "-DBUILD_SHARED_LIBS=0 -DCMAKE_MSVC_RUNTIME_LIBRARY
 @rem For shared libraries, static CRT should not be used to avoid passing CRT objects across DLL boundaries:
 @rem https://learn.microsoft.com/en-us/cpp/c-runtime-library/potential-errors-passing-crt-objects-across-dll-boundaries?view=msvc-170
 
+exit /b 0
+
+@rem %1 is the build type (e.g. Release/Debug)
+@rem %2 is the additional full CMake args containing -DFIPS=1
+:fips_build_and_test
+@echo on
+call :build_and_test %1 %2 || goto error
+@echo  LOG: %date%-%time% %1 %2 running FIPS validation
+
+@rem Positive test: run test_fips.exe to verify the integrity check passes and KATs succeed.
+@rem test_fips.exe links crypto.dll, so the CRT .CRT$XCU initializer triggers the
+@rem integrity check before main. If the hash is wrong, the process aborts.
+%BUILD_DIR%\util\fipstools\test_fips.exe || goto error
+
+@rem Negative test: corrupt the FIPS module in crypto.dll and verify the integrity
+@rem check detects it. This proves the check actually runs on DLL load.
+copy /y %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto.dll.bak || goto error
+go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
+copy /y %BUILD_DIR%\crypto\crypto_corrupted.dll %BUILD_DIR%\crypto\crypto.dll || goto error
+%BUILD_DIR%\util\fipstools\test_fips.exe 2>nul
+if not errorlevel 1 (
+    echo FIPS integrity negative test failed: test_fips should have failed with corrupted crypto.dll
+    goto error
+)
+copy /y %BUILD_DIR%\crypto\crypto.dll.bak %BUILD_DIR%\crypto\crypto.dll || goto error
+del %BUILD_DIR%\crypto\crypto.dll.bak
+del %BUILD_DIR%\crypto\crypto_corrupted.dll
+
+@echo  LOG: %date%-%time% %1 %2 FIPS validation complete
 exit /b 0
 
 :run_sde_tests
