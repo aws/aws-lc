@@ -106,8 +106,8 @@ TEST(FIPSCallback, PowerOnSelfTests) {
   uint8_t private_key[ED25519_PRIVATE_KEY_LEN];
   ED25519_keypair(public_key, private_key);
 
-  uint8_t message[2];
-  uint8_t context[2];
+  uint8_t message[2] = {0};
+  uint8_t context[2] = {0};
   uint8_t signature[ED25519_SIGNATURE_LEN];
   EXPECT_TRUE(ED25519ph_sign(signature, message, sizeof(message), private_key, context, sizeof(context)));
 
