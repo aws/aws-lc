@@ -12,14 +12,12 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
-	"debug/pe"
 	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/aws/aws-lc/util/ar"
@@ -299,81 +297,23 @@ func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func parseMapFile(mapPath string) (map[string]uint64, error) {
-	data, err := os.ReadFile(mapPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read map file: %s", err.Error())
-	}
-
-	symbols := make(map[string]uint64)
-	// Symbol lines have format: SSSS:OOOOOOOO  name  RRRRRRRRRRRRRRRR  Lib:Object
-	for _, line := range strings.Split(string(data), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) < 3 || !strings.Contains(fields[0], ":") {
-			continue
-		}
-		name := fields[1]
-		if !strings.HasPrefix(name, "BORINGSSL_bcm_") {
-			continue
-		}
-		rvaBase, err := strconv.ParseUint(fields[2], 16, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse Rva+Base for symbol %q: %s", name, err.Error())
-		}
-		if _, exists := symbols[name]; exists {
-			return nil, fmt.Errorf("duplicate symbol %q in map file", name)
-		}
-		symbols[name] = rvaBase
-	}
-
-	return symbols, nil
-}
-
 func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
-	symbolAddrs, err := parseMapFile(mapPath)
+	symbolAddrs, err := fipscommon.ParseMapFile(mapPath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	peFile, err := pe.NewFile(bytes.NewReader(objectBytes))
+	peInfo, err := fipscommon.ParsePE(objectBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse PE: %s", err.Error())
-	}
-
-	var imageBase uint64
-	switch oh := peFile.OptionalHeader.(type) {
-	case *pe.OptionalHeader64:
-		imageBase = oh.ImageBase
-	case *pe.OptionalHeader32:
-		imageBase = uint64(oh.ImageBase)
-	default:
-		return nil, nil, errors.New("unsupported PE optional header type")
-	}
-
-	resolveOffset := func(name string) (uint64, error) {
-		addr, ok := symbolAddrs[name]
-		if !ok {
-			return 0, fmt.Errorf("symbol %q not found in map file", name)
-		}
-		if addr < imageBase {
-			return 0, fmt.Errorf("symbol %q address 0x%x is below image base 0x%x", name, addr, imageBase)
-		}
-		rva := addr - imageBase
-		for _, s := range peFile.Sections {
-			start := uint64(s.VirtualAddress)
-			if rva >= start && rva < start+uint64(s.VirtualSize) {
-				return rva - start + uint64(s.Offset), nil
-			}
-		}
-		return 0, fmt.Errorf("RVA 0x%x for %q not found in any PE section", rva, name)
+		return nil, nil, err
 	}
 
 	extractRegion := func(startSym, endSym string) ([]byte, error) {
-		startOff, err := resolveOffset(startSym)
+		startOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, startSym)
 		if err != nil {
 			return nil, err
 		}
-		endOff, err := resolveOffset(endSym)
+		endOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, endSym)
 		if err != nil {
 			return nil, err
 		}

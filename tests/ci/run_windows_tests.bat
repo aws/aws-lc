@@ -77,8 +77,8 @@ if not errorlevel 1 (
     goto error
 )
 copy /y %BUILD_DIR%\crypto\crypto.dll.bak %BUILD_DIR%\crypto\crypto.dll || goto error
-del %BUILD_DIR%\crypto\crypto.dll.bak
-del %BUILD_DIR%\crypto\crypto_corrupted.dll
+del /q %BUILD_DIR%\crypto\crypto.dll.bak
+del /q %BUILD_DIR%\crypto\crypto_corrupted.dll
 
 @echo  LOG: %date%-%time% %1 %2 FIPS validation complete
 exit /b 0
