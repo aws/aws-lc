@@ -251,6 +251,111 @@ jobs:
           cargo test -p aws-lc-sys --target x86_64-pc-windows-msvc
           cargo test -p aws-lc-rs --target x86_64-pc-windows-msvc
 
+  # Cross-compile to Windows from Linux using cargo-xwin (clang-cl + lld-link)
+  aws-lc-rs-windows-cross:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-24.04
+    name: aws-lc-rs-windows-cross (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64
+            target: x86_64-pc-windows-msvc
+          - name: x86_64-fips
+            target: x86_64-pc-windows-msvc
+            fips: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directories
+        shell: bash
+        run: |
+          rm -rf ./aws-lc-rs/aws-lc-sys/aws-lc
+          rm -rf ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: Install dependencies
+        run: |
+          set -ex
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends \
+            cmake ninja-build nasm \
+            wget lsb-release software-properties-common gnupg
+          # Install Clang 19 from LLVM apt repository
+          # (xwin's MSVC STL headers require Clang 19+; Ubuntu 24.04 ships Clang 18)
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+          sudo ln -sf /usr/bin/clang-19 /usr/local/bin/clang-cl
+          sudo ln -sf /usr/bin/lld-19 /usr/local/bin/lld-link
+          sudo ln -sf /usr/bin/llvm-ar-19 /usr/local/bin/llvm-lib
+          cargo install cargo-xwin --locked
+      - name: Setup Wine binfmt
+        if: matrix.fips
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          set -ex
+          # Wine binfmt allows the kernel to transparently run .exe files through
+          # Wine. This is needed for the FIPS build, which runs fips_empty_main.exe
+          # at build time to capture the integrity hash.
+          #
+          # Ubuntu 24.04's wine64 (9.0) does not properly execute .CRT$XCU
+          # initializers in cross-compiled DLLs, which prevents the FIPS
+          # power-on self-test from running. WineHQ stable (11.0+) handles
+          # this correctly.
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --install-recommends winehq-stable binfmt-support
+          # Register Wine as the interpreter for Windows PE executables
+          if [ ! -f /proc/sys/fs/binfmt_misc/wine ]; then
+            echo ':wine:M::MZ::/usr/bin/wine:' | sudo tee /proc/sys/fs/binfmt_misc/register
+          fi
+          wineboot --init
+      - name: Build
+        working-directory: ./aws-lc-rs
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: cargo xwin build -p aws-lc-rs --target ${{ matrix.target }} ${{ matrix.fips && '--features fips' || '' }}
+      - name: FIPS sanity test (via Wine)
+        if: matrix.fips
+        working-directory: ./aws-lc-rs
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          # The FIPS crypto DLL has a version prefix (e.g.,
+          # aws_lc_fips_0_13_13_crypto.dll) and lives in the cargo build
+          # artifacts directory — not next to the test binary. Set WINEPATH
+          # so Wine can find it at runtime.
+          CRYPTO_DLL=$(find target -name '*crypto.dll' -path '*/aws-lc-fips-sys*' | head -1)
+          if [ -z "${CRYPTO_DLL}" ]; then
+            echo "ERROR: Could not find FIPS crypto DLL"
+            exit 1
+          fi
+          echo "Found FIPS DLL: ${CRYPTO_DLL}"
+          export WINEPATH="$(winepath -w "$(dirname "${CRYPTO_DLL}")")"
+          # Any test that loads the FIPS crypto library triggers the power-on
+          # self-test; if the integrity hash is wrong the process aborts.
+          cargo xwin test -p aws-lc-rs --target ${{ matrix.target }} --features fips
+
   # CMake Rust bindings generation tests
   cmake-rust-bindings:
     if: github.repository_owner == 'aws'
