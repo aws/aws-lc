@@ -18,7 +18,7 @@
 #include "../test/wycheproof_util.h"
 
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // All example keys are from Appendix C in the above standard
 // Example ML-KEM-512 public key
 const char *mlkem_512_pub_pem_str =
@@ -43,7 +43,7 @@ const char *mlkem_512_pub_pem_str =
     "WhttY7Js\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // Example ML-KEM-768 public key
 const char *mlkem_768_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
@@ -75,7 +75,7 @@ const char *mlkem_768_pub_pem_str =
     "QvpN6gV4\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // Example ML-KEM-1024 public key
 const char *mlkem_1024_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
@@ -115,7 +115,7 @@ const char *mlkem_1024_pub_pem_str =
     "uYOILhF1\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // C.1.1.1. ML-KEM-512 Private Key Examples: Seed Format
 const char *mlkem_512_seed_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
@@ -484,17 +484,17 @@ struct KEMTestVector {
 
 static const KEMTestVector kemParameters[] = {
     {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str,
-     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_seed_pem_str, 800, 1632},
     {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str,
-     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_seed_pem_str, 1184, 2400},
     {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
-     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
+     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_seed_pem_str, 1568, 3168},
     {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
      bouncy_castle_mlkem_512_priv_expanded_pem_str, bouncy_castle_ml_kem_512_seed_pem_str,
-     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+     mlkem_512_pub_pem_str, mlkem_512_seed_pem_str, 800, 1632},
     {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
      bouncy_castle_mlkem_768_priv_expanded_str, bouncy_castle_ml_kem_768_seed_pem_str,
-     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_pub_pem_str, mlkem_768_seed_pem_str, 1184, 2400},
 };
 
 
@@ -554,29 +554,31 @@ TEST_P(KEMTest, MarshalParse) {
             Bytes(pkey->pkey.kem_key->secret_key, GetParam().secret_key_len));
 }
 
-// Test that the private key is encoded in expandedKey format
-TEST_P(KEMTest, PrivateKeyExpandedFormat) {
+// Test that the private key is encoded in seed format
+TEST_P(KEMTest, PrivateKeySeedFormat) {
   const KEMTestVector &test = GetParam();
 
   // Generate a key pair
   bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
   ASSERT_TRUE(pkey);
 
+  // Verify the seed is present
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
   // Encode the private key
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
 
-  uint8_t *der;
-  size_t der_len;
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   bssl::UniquePtr<uint8_t> free_der(der);
 
   // Parse the PKCS#8 structure to verify the privateKey field contains
-  // the expandedKey format - AWS-LC currently only supports expandedKey
-  // encoding
+  // the seed format ([0] IMPLICIT OCTET STRING)
   CBS pkcs8, algorithm, private_key;
-  uint64_t version;
+  uint64_t version = 0;
   CBS_init(&pkcs8, der, der_len);
 
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
@@ -585,14 +587,14 @@ TEST_P(KEMTest, PrivateKeyExpandedFormat) {
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
 
-  // The privateKey field should contain the expandedKey as an OCTET STRING
-  CBS expanded_key;
-  ASSERT_TRUE(CBS_get_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING));
-  ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
+  // The privateKey field should contain the seed as [0] context-specific tag
+  CBS seed;
+  ASSERT_TRUE(CBS_get_asn1(&private_key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0));
+  ASSERT_EQ(CBS_len(&seed), 64u);
 
-  // Verify it matches the original secret key
-  EXPECT_EQ(Bytes(CBS_data(&expanded_key), CBS_len(&expanded_key)),
-            Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len));
+  // Verify it matches the seed stored in the key
+  EXPECT_EQ(Bytes(CBS_data(&seed), CBS_len(&seed)),
+            Bytes(pkey->pkey.kem_key->seed, 64));
 }
 
 TEST_P(KEMTest, ParsePublicKey) {
@@ -690,7 +692,7 @@ TEST(KEMTest, ParsePrivateKeyInvalidLength) {
 // Verifies that deterministic ML-KEM key generation with the fixed seed from the IETF standard produces keys that exactly
 // match the expected PEM strings from the standard. 
 // The expected PEM strings from the given seed are fields at the top (mlkem_XXX_pub/priv_pem_str)
-// See Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/ for the seed value
+// See Appendix C.1 in https://datatracker.ietf.org/doc/rfc9935/ for the seed value
 TEST_P(KEMTest, DeterministicKeyMarshaling) {
   const KEMTestVector& test = GetParam();
   
@@ -701,7 +703,7 @@ TEST_P(KEMTest, DeterministicKeyMarshaling) {
   ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), test.nid));
 
   // ---- 2. Create deterministic seed: 00 01 02 ... 3f (64 consecutive bytes) ----
-  // Seed is specified in Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // Seed is specified in Appendix C.1 in https://datatracker.ietf.org/doc/rfc9935/
   std::vector<uint8_t> keygen_seed(64);
   for (size_t i = 0; i < 64; i++) {
     keygen_seed[i] = static_cast<uint8_t>(i);  // seed is a sequence - 00, 01, 02, ... 3f (from above standard)
@@ -761,8 +763,8 @@ TEST_P(KEMTest, DeterministicKeyMarshaling) {
             Bytes(expected_priv_der, expected_priv_der_len))
       << "Private key DER content mismatch";
 
-  // ---- 10. Verify private key DER is larger than public key DER ----
-  EXPECT_GT(generated_priv_der_len, generated_pub_der_len);
+  // ---- 10. Verify seed-format private key DER is smaller than public key DER ----
+  EXPECT_LT(generated_priv_der_len, generated_pub_der_len);
 }
 
 // Test KEM public key round-trip serialization using i2d_PUBKEY and d2i_PUBKEY functions.
@@ -929,6 +931,131 @@ TEST(KEMTest, InvalidSeedLength) {
   EXPECT_EQ(ERR_GET_REASON(err), EVP_R_INVALID_BUFFER_SIZE);
   
   OPENSSL_free(der_priv);
+}
+
+// Test that parsing a seed-format PKCS#8 and re-serializing produces seed
+// format (round-trip preservation).
+TEST_P(KEMTest, SeedFormatRoundTrip) {
+  const KEMTestVector &test = GetParam();
+
+  // Parse seed-format private key
+  uint8_t *der = nullptr;
+  long der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.private_pem_seed_str, &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
+  // Re-serialize — should produce seed format
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+
+  uint8_t *der2 = nullptr;
+  size_t der2_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der2, &der2_len));
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+
+  // Round-trip: output should match input
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
+
+  // Parse again and verify key material matches
+  CBS cbs2;
+  CBS_init(&cbs2, der2, der2_len);
+  bssl::UniquePtr<EVP_PKEY> pkey2(EVP_parse_private_key(&cbs2));
+  ASSERT_TRUE(pkey2);
+  EXPECT_EQ(Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(pkey2->pkey.kem_key->secret_key, test.secret_key_len));
+}
+
+// Test that keys created via raw import (no seed) encode in expanded format.
+TEST_P(KEMTest, RawImportExpandedFormat) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate a key to get valid raw key material
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // Extract raw secret key
+  size_t sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  std::vector<uint8_t> sk(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+
+  // Create a new key from raw secret key — no seed available
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(test.nid, sk.data(), sk_len));
+  ASSERT_TRUE(raw_pkey);
+  ASSERT_TRUE(raw_pkey->pkey.kem_key->seed == nullptr);
+
+  // Encode — should produce expanded format
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), raw_pkey.get()));
+
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // Verify expanded format: parse PKCS#8 and check for OCTET STRING tag
+  CBS pkcs8, algorithm, private_key, expanded_key;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der, der_len);
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1_uint64(&pkcs8, &version));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_TRUE(CBS_get_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
+}
+
+// Test that a generated key (seed format) can perform encaps/decaps correctly
+// after a serialize → parse round-trip.
+TEST_P(KEMTest, SeedFormatEncapsDecapsRoundTrip) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate a key pair
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // Serialize (seed format) and parse back
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed_pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed_pkey);
+
+  // Encapsulate with the original key's public key
+  bssl::UniquePtr<EVP_PKEY_CTX> enc_ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(enc_ctx);
+  size_t ct_len = 0, ss_len = 0;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(enc_ctx.get(), nullptr, &ct_len,
+                                   nullptr, &ss_len));
+  std::vector<uint8_t> ct(ct_len), ss_enc(ss_len);
+  ASSERT_TRUE(EVP_PKEY_encapsulate(enc_ctx.get(), ct.data(), &ct_len,
+                                   ss_enc.data(), &ss_len));
+
+  // Decapsulate with the parsed key
+  bssl::UniquePtr<EVP_PKEY_CTX> dec_ctx(
+      EVP_PKEY_CTX_new(parsed_pkey.get(), nullptr));
+  ASSERT_TRUE(dec_ctx);
+  std::vector<uint8_t> ss_dec(ss_len);
+  ASSERT_TRUE(EVP_PKEY_decapsulate(dec_ctx.get(), ss_dec.data(), &ss_len,
+                                   ct.data(), ct_len));
+
+  EXPECT_EQ(Bytes(ss_enc), Bytes(ss_dec));
 }
 
 
