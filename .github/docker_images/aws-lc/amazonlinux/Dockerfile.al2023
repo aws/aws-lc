@@ -60,7 +60,7 @@ set -ex
 LLVM_VERSION=19.1.7
 arch="$(uname -m)"
 if [[ "${arch}" == "x86_64" ]]; then
-    LLVM_ARCHIVE="clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-ubuntu-22.04.tar.xz"
+    LLVM_ARCHIVE="LLVM-${LLVM_VERSION}-Linux-X64.tar.xz"
 elif [[ "${arch}" == "aarch64" ]]; then
     LLVM_ARCHIVE="clang+llvm-${LLVM_VERSION}-aarch64-linux-gnu.tar.xz"
 else
