@@ -619,14 +619,24 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
   CBS_init(&eml_cbs, eml->data, eml->length);
   CBS_init(&base_cbs, base->data, base->length);
 
-  // TODO(davidben): In OpenSSL 1.1.1, this switched from the first '@' to the
-  // last one. Match them here, or perhaps do an actual parse. Looks like
-  // multiple '@'s may be allowed in quoted strings.
   CBS eml_local, base_local;
   if (!CBS_get_until_first(&eml_cbs, &eml_local, '@')) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
   int base_has_at = CBS_get_until_first(&base_cbs, &base_local, '@');
+  if (base_has_at && CBS_len(&base_local) == 0) {
+    // "@example.com" is not a valid constraint per RFC 5280.
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+  if (base_has_at) {
+    // Reject constraints with multiple '@' signs.
+    CBS base_rest = base_cbs;
+    CBS_skip(&base_rest, 1);  // skip past the first '@'
+    CBS unused;
+    if (CBS_get_until_first(&base_rest, &unused, '@')) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+  }
 
   // Special case: initial '.' is RHS match
   if (!base_has_at && starts_with(&base_cbs, '.')) {
@@ -638,8 +648,6 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
 
   // If we have anything before '@' match local part
   if (base_has_at) {
-    // TODO(davidben): This interprets a constraint of "@example.com" as
-    // "example.com", which is not part of RFC5280.
     if (CBS_len(&base_local) > 0) {
       // Case sensitive match of local part
       if (!CBS_mem_equal(&base_local, CBS_data(&eml_local),
