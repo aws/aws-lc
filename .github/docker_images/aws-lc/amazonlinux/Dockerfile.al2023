@@ -75,6 +75,10 @@ tar -xf "${LLVM_ARCHIVE}" --strip-components=1 -C /opt/clang-19/
 ln -sf /opt/clang-19/bin/clang /usr/bin/clang-19
 ln -sf /opt/clang-19/bin/clang++ /usr/bin/clang++-19
 rm -f "${LLVM_ARCHIVE}"
+# The pre-built Clang 19 searches for GCC runtime files (crtbeginS.o, libgcc, etc.)
+# using standard triples like aarch64-linux-gnu or x86_64-linux-gnu, but Amazon Linux
+# uses its own triple (e.g. aarch64-amazon-linux). Create a symlink so Clang can find them.
+ln -sf /usr/lib/gcc/${arch}-amazon-linux /usr/lib/gcc/${arch}-linux-gnu
 EOF
 
 # Create compiler environment setup scripts (after all compilers are installed)
