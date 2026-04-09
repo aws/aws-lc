@@ -89,6 +89,10 @@ COPY --from=scripts create-compiler-env.sh /tmp
 RUN <<EOF
 set -ex
 /tmp/create-compiler-env.sh
+# Ensure setup-clang-19.sh also prepends /opt/clang-19/bin to PATH so that
+# matching versions of llvm-ar, llvm-ranlib, llvm-symbolizer, etc. are used
+# instead of the system LLVM 15 versions.
+echo 'export PATH=/opt/clang-19/bin:$PATH' >> /opt/compiler-env/setup-clang-19.sh
 EOF
 
 # Install SSM Agent Config
