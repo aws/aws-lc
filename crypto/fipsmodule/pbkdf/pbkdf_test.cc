@@ -136,15 +136,16 @@ TEST(PBKDFTest, ZeroIterations) {
   ASSERT_TRUE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
                                 1 /* iterations */, digest, key_len, key));
 
-  // Flip the first key byte (so can later test if it got set).
-  const uint8_t expected_first_byte = key[0];
-  key[0] = ~key[0];
+  // Fill the buffer with a sentinel pattern before calling with iterations=0.
+  uint8_t sentinel[sizeof(key)];
+  OPENSSL_memset(sentinel, 0xAB, sizeof(sentinel));
+  OPENSSL_memcpy(key, sentinel, key_len);
 
-  // However calling it with iterations=0 fails.
+  // Calling with iterations=0 must fail.
   ASSERT_FALSE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
                                  0 /* iterations */, digest, key_len, key));
 
-  // For backwards compatibility, the iterations == 0 case still fills in
-  // the out key.
-  EXPECT_EQ(expected_first_byte, key[0]);
+  // The output buffer must not be modified when iterations is 0, since the
+  // error is detected before any HMAC output is written.
+  EXPECT_EQ(0, OPENSSL_memcmp(key, sentinel, key_len));
 }

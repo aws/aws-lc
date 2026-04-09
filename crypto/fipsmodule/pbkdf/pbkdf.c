@@ -26,6 +26,13 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
+  // RFC 8018 describes iterations (c) as being a "positive integer", so a
+  // value of 0 is an error. Validate before writing any output to avoid
+  // leaving insufficiently-derived key material in the caller's buffer.
+  if (iterations == 0) {
+    goto err;
+  }
+
   if (!HMAC_Init_ex(&hctx, password, password_len, digest, NULL)) {
     goto err;
   }
@@ -67,21 +74,6 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
     key_len -= todo;
     out_key += todo;
     i++;
-  }
-
-  // RFC 8018 describes iterations (c) as being a "positive integer", so a
-  // value of 0 is an error.
-  //
-  // Unfortunately not all consumers of PKCS5_PBKDF2_HMAC() check their return
-  // value, expecting it to succeed and unconditionally using |out_key|.  As a
-  // precaution for such callsites in external code, the old behavior of
-  // iterations < 1 being treated as iterations == 1 is preserved, but
-  // additionally an error result is returned.
-  //
-  // TODO(eroman): Figure out how to remove this compatibility hack, or change
-  // the default to something more sensible like 2048.
-  if (iterations == 0) {
-    goto err;
   }
 
   ret = 1;
