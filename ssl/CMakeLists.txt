@@ -80,6 +80,7 @@ if(BUILD_TESTING)
 
     span_test.cc
     ssl_test.cc
+    ssl_client_hello_test.cc
     ssl_c_test.c
   )
 
