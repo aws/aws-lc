@@ -36,6 +36,7 @@
  *              In particular, if |a| < 2^31 * MLDSA_Q, the absolute value
  *              of the return value is < MLDSA_Q.
  **************************************************/
+MLD_MUST_CHECK_RETURN_VALUE
 static MLD_INLINE int32_t mld_montgomery_reduce(int64_t a)
 __contract__(
   /* We don't attempt to express an input-dependent output bound
@@ -97,6 +98,7 @@ __contract__(
  *
  * Returns r.
  **************************************************/
+MLD_MUST_CHECK_RETURN_VALUE
 static MLD_INLINE int32_t mld_reduce32(int32_t a)
 __contract__(
   requires(a <= MLD_REDUCE32_DOMAIN_MAX)
@@ -121,6 +123,7 @@ __contract__(
  *
  * Returns r.
  **************************************************/
+MLD_MUST_CHECK_RETURN_VALUE
 static MLD_INLINE int32_t mld_caddq(int32_t a)
 __contract__(
   requires(a > -MLDSA_Q)
