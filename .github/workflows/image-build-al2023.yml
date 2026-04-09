@@ -82,10 +82,14 @@ jobs:
             source /opt/compiler-env/setup-clang.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
-            # Check Clang 11 Compilers
+            # Check Clang 15 Compilers
             source /opt/compiler-env/setup-clang-15.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 19 Compilers
+            source /opt/compiler-env/setup-clang-19.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
       - uses: docker/build-push-action@v6
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
@@ -161,6 +165,10 @@ jobs:
             source /opt/compiler-env/setup-clang-15.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 19 Compilers
+            source /opt/compiler-env/setup-clang-19.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
 
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
