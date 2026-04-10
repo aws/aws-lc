@@ -178,11 +178,21 @@ int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp, unsigned long flags) {
   rid = rd->responderId;
   switch (rid->type) {
     case V_OCSP_RESPID_NAME:
-      X509_NAME_print_ex(bp, rid->value.byName, 0, XN_FLAG_ONELINE);
+      if (rid->value.byName == NULL) {
+        goto err;
+      }
+      if (X509_NAME_print_ex(bp, rid->value.byName, 0, XN_FLAG_ONELINE) < 0) {
+        goto err;
+      }
       break;
     case V_OCSP_RESPID_KEY:
+      if (rid->value.byKey == NULL) {
+        goto err;
+      }
       i2a_ASN1_STRING(bp, rid->value.byKey, 0);
       break;
+    default:
+      goto err;
   }
 
   if (BIO_printf(bp, "\n    Produced At: ") <= 0) {

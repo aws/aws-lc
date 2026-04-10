@@ -418,7 +418,13 @@ static char *strip_spaces(char *name) {
 
 char *x509v3_bytes_to_hex(const uint8_t *in, size_t len) {
   CBB cbb;
-  if (!CBB_init(&cbb, len * 3 + 1)) {
+  // Each byte expands to "XX:" (3 chars), plus a NUL terminator. Guard against
+  // size_t overflow in the initial capacity hint on 32-bit platforms.
+  size_t initial_capacity = 0;
+  if (len <= (SIZE_MAX - 1) / 3) {
+    initial_capacity = len * 3 + 1;
+  }
+  if (!CBB_init(&cbb, initial_capacity)) {
     goto err;
   }
   for (size_t i = 0; i < len; i++) {
