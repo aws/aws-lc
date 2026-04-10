@@ -15762,10 +15762,10 @@ func addPeekTests() {
 //     Here, the peek_rounds is just a magic number used to test SSL_peek with more rounds.
 //     100 was used but it caused tcp i/o timeouts on macOS and OpenBSD, so it was reduced to 50.
 //     50 still caused timeouts on FreeBSD, Windows, NetBSD, and OpenBSD (see github.com/aws/aws-lc/issues/3141),
-//     so the default was lowered to 10. The env var override remains for stress testing.
+//     so the default was lowered to 10, then further to 5. The env var override remains for stress testing.
 //     CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306.
 func addServerPeekTests() {
-	const DEFAULT_PEEK_ROUNDS int = 10
+	const DEFAULT_PEEK_ROUNDS int = 5
 
 	peek_rounds := DEFAULT_PEEK_ROUNDS
 	if v := os.Getenv("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS"); len(v) != 0 {
