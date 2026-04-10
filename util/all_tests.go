@@ -43,16 +43,20 @@ var (
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 )
 
-// Job-level sharding support. When AWS_LC_VALGRIND_TOTAL_SHARDS > 1 and
+// CI job-level sharding support. When AWS_LC_VALGRIND_TOTAL_SHARDS > 1 and
 // AWS_LC_VALGRIND_SHARD_INDEX is set, the expanded test list is partitioned
 // across multiple CI jobs so that each job completes in a fraction of the
 // original wall-clock time. For GTest-sharded tests (shard: true in
 // all_tests.json), the total number of GTest shards is multiplied by
-// jobTotalShards, and each job runs a contiguous block of numWorkers shards.
+// ciJobCount, and each job runs a contiguous block of numWorkers shards.
 // Non-sharded tests are distributed round-robin across jobs.
+//
+// This is distinct from numWorkers, which controls per-machine parallelism
+// (goroutines within a single job). ciJobCount controls how many separate
+// CI machines share the overall test workload.
 var (
-	jobShardIndex  int
-	jobTotalShards int
+	ciJobIndex int
+	ciJobCount int
 )
 
 func getEnvInt(name string, defaultVal int) int {
@@ -68,16 +72,16 @@ func getEnvInt(name string, defaultVal int) int {
 }
 
 func initJobSharding() {
-	jobShardIndex = getEnvInt("AWS_LC_VALGRIND_SHARD_INDEX", 0)
-	jobTotalShards = getEnvInt("AWS_LC_VALGRIND_TOTAL_SHARDS", 0)
+	ciJobIndex = getEnvInt("AWS_LC_VALGRIND_SHARD_INDEX", 0)
+	ciJobCount = getEnvInt("AWS_LC_VALGRIND_TOTAL_SHARDS", 0)
 
-	if jobTotalShards > 1 {
-		if jobShardIndex < 0 || jobShardIndex >= jobTotalShards {
+	if ciJobCount > 1 {
+		if ciJobIndex < 0 || ciJobIndex >= ciJobCount {
 			fmt.Printf("Invalid job shard config: AWS_LC_VALGRIND_SHARD_INDEX=%d, AWS_LC_VALGRIND_TOTAL_SHARDS=%d\n",
-				jobShardIndex, jobTotalShards)
+				ciJobIndex, ciJobCount)
 			os.Exit(1)
 		}
-		fmt.Printf("Job-level sharding enabled: shard %d of %d\n", jobShardIndex, jobTotalShards)
+		fmt.Printf("Job-level sharding enabled: job %d of %d\n", ciJobIndex, ciJobCount)
 	}
 }
 
@@ -421,8 +425,8 @@ func (t test) getGTestShards() ([]test, error) {
 	}
 
 	totalShards := *numWorkers
-	if jobTotalShards > 1 {
-		totalShards = *numWorkers * jobTotalShards
+	if ciJobCount > 1 {
+		totalShards = *numWorkers * ciJobCount
 	}
 
 	shards := make([]test, totalShards)
@@ -436,21 +440,21 @@ func (t test) getGTestShards() ([]test, error) {
 }
 
 // shouldRunInThisJob determines whether a test should be executed by the
-// current job shard. For GTest-sharded tests, each job gets a contiguous block
+// current CI job. For GTest-sharded tests, each job gets a contiguous block
 // of numWorkers shards. For non-sharded tests, they are distributed
 // round-robin across jobs.
 func shouldRunInThisJob(t test, nonShardedIdx *int) bool {
-	if jobTotalShards <= 1 {
+	if ciJobCount <= 1 {
 		return true
 	}
 	if t.numShards > 0 {
-		// Sharded test: each job gets shards [jobShardIndex*numWorkers, (jobShardIndex+1)*numWorkers)
-		return t.shard / *numWorkers == jobShardIndex
+		// Sharded test: each job gets shards [ciJobIndex*numWorkers, (ciJobIndex+1)*numWorkers)
+		return t.shard / *numWorkers == ciJobIndex
 	}
 	// Non-sharded test: distribute round-robin across jobs
 	idx := *nonShardedIdx
 	*nonShardedIdx++
-	return idx%jobTotalShards == jobShardIndex
+	return idx%ciJobCount == ciJobIndex
 }
 
 func main() {

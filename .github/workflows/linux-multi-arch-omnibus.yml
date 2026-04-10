@@ -404,6 +404,8 @@ jobs:
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_VALGRIND_SHARD_INDEX: ${{ matrix.shard }}
+      # NOTE: TOTAL_SHARDS must equal the number of values in matrix.shard below.
+      # If they drift, some tests will silently never run.
       AWS_LC_VALGRIND_TOTAL_SHARDS: 6
     strategy:
       fail-fast: false
