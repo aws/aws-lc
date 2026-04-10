@@ -14,11 +14,11 @@ permissions:
   contents: read
 
 jobs:
-  go-version-1_17_13:
+  go-version-1_20:
     if: github.repository_owner == 'aws'
     env:
       GOROOT: "/usr/local/go"
-      GO_ARCHIVE: "go1.17.13.linux-amd64.tar.gz"
+      GO_ARCHIVE: "go1.20.linux-amd64.tar.gz"
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
