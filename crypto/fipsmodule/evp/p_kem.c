@@ -108,6 +108,7 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   // Generate random seed, use deterministic keygen, and save the seed.
   // All ML-KEM variants use 64-byte seeds (d || z).
   uint8_t seed[64];
+  BSSL_CHECK(kem->keygen_seed_len == 64);
   RAND_bytes(seed, kem->keygen_seed_len);
 
   if (key == NULL ||
