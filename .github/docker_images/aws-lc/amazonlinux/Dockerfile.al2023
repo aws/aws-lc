@@ -75,6 +75,13 @@ tar -xf "${LLVM_ARCHIVE}" --strip-components=1 -C /opt/clang-19/
 ln -sf /opt/clang-19/bin/clang /usr/bin/clang-19
 ln -sf /opt/clang-19/bin/clang++ /usr/bin/clang++-19
 rm -f "${LLVM_ARCHIVE}"
+# The pre-built Clang 19 searches for GCC runtime files (crtbeginS.o, libgcc, etc.)
+# and C++ platform headers using standard triples like aarch64-linux-gnu or
+# x86_64-linux-gnu, but Amazon Linux uses its own triple (e.g. aarch64-amazon-linux).
+# Create symlinks so Clang can find them.
+ln -sf /usr/lib/gcc/${arch}-amazon-linux /usr/lib/gcc/${arch}-linux-gnu
+gcc_version=$(ls /usr/lib/gcc/${arch}-amazon-linux/)
+ln -sf /usr/include/c++/${gcc_version}/${arch}-amazon-linux /usr/include/c++/${gcc_version}/${arch}-linux-gnu
 EOF
 
 # Create compiler environment setup scripts (after all compilers are installed)
@@ -82,6 +89,10 @@ COPY --from=scripts create-compiler-env.sh /tmp
 RUN <<EOF
 set -ex
 /tmp/create-compiler-env.sh
+# Ensure setup-clang-19.sh also prepends /opt/clang-19/bin to PATH so that
+# matching versions of llvm-ar, llvm-ranlib, llvm-symbolizer, etc. are used
+# instead of the system LLVM 15 versions.
+echo 'export PATH=/opt/clang-19/bin:$PATH' >> /opt/compiler-env/setup-clang-19.sh
 EOF
 
 # Install SSM Agent Config
