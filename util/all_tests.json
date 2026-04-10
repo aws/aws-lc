@@ -2,6 +2,7 @@
   {
     "cmd": ["crypto/crypto_test"],
     "valgrind_supp": ["valgrind_suppressions_crypto_test.supp"],
+    "valgrind_filter": "-DigestTest.InitAndGetState*Large",
     "shard": true
   },
   {

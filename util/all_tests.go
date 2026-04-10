@@ -92,9 +92,10 @@ type test struct {
 }
 
 type result struct {
-	Test   test
-	Passed bool
-	Error  error
+	Test     test
+	Passed   bool
+	Error    error
+	Duration time.Duration
 }
 
 // Default list of CPU codes that are compatible with MSVC
@@ -233,6 +234,10 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 
+	if *useValgrind && test.ValgrindFilter != "" {
+		args = append(args, "--gtest_filter="+test.ValgrindFilter)
+	}
+
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
 
@@ -365,8 +370,9 @@ func setWorkingDirectory() {
 func worker(tests <-chan test, results chan<- result, done *sync.WaitGroup) {
 	defer done.Done()
 	for test := range tests {
+		start := time.Now()
 		passed, err := runTest(test)
-		results <- result{test, passed, err}
+		results <- result{test, passed, err, time.Since(start)}
 	}
 }
 
@@ -530,34 +536,35 @@ func main() {
 		test := testResult.Test
 		args := test.Cmd
 
+		dur := testResult.Duration.Round(time.Second)
 		if testResult.Error == errTestSkipped {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
 			testOutput.AddSkip(test.longName())
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
-				fmt.Printf("%s\n", test.longName())
+				fmt.Printf("[%v] %s\n", dur, test.longName())
 				fmt.Printf("%s did not finish. Try increasing timeout.\n", args[0])
 				failed = append(failed, test)
 				testOutput.AddResult(test.longName(), "FAIL")
 			} else {
-				fmt.Printf("%s\n", test.shortName())
+				fmt.Printf("[%v] %s\n", dur, test.shortName())
 				fmt.Printf("%s was left hanging, but actually passed\n", args[0])
 				testOutput.AddResult(test.longName(), "PASS")
 			}
 		} else if testResult.Error != nil {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
 			testOutput.AddResult(test.longName(), "CRASH")
 		} else if !testResult.Passed {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
 			testOutput.AddResult(test.longName(), "FAIL")
 		} else {
-			fmt.Printf("%s\n", test.shortName())
+			fmt.Printf("[%v] %s\n", dur, test.shortName())
 			testOutput.AddResult(test.longName(), "PASS")
 		}
 	}
