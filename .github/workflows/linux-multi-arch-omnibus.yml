@@ -512,7 +512,7 @@ jobs:
           env: |
             AWS_LC_GO_TEST_TIMEOUT
           run: |
-            source /opt/compiler-env/setup-clang.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_posix_sanitizers.sh
 
   benchmark:
@@ -535,7 +535,7 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_benchmark_build_tests.sh
 
   fips_callback:

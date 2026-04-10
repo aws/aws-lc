@@ -41,6 +41,7 @@ dnf install -y \
     unzip \
     wget \
     which \
+    xz \
     valgrind \
     valgrind-devel
 # valgrind is just the application and core resources.
@@ -54,12 +55,44 @@ EOF
 
 FROM base AS tools
 
-# Create compiler environment setup scripts
+# Install LLVM/Clang 19 from pre-built release
+RUN <<EOF
+set -ex
+LLVM_VERSION=19.1.7
+arch="$(uname -m)"
+if [[ "${arch}" == "x86_64" ]]; then
+    LLVM_ARCHIVE="LLVM-${LLVM_VERSION}-Linux-X64.tar.xz"
+elif [[ "${arch}" == "aarch64" ]]; then
+    LLVM_ARCHIVE="clang+llvm-${LLVM_VERSION}-aarch64-linux-gnu.tar.xz"
+else
+    echo "Unsupported architecture: ${arch}"
+    exit 1
+fi
+cd /tmp
+wget "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_ARCHIVE}"
+mkdir -p /opt/clang-19
+tar -xf "${LLVM_ARCHIVE}" --strip-components=1 -C /opt/clang-19/
+ln -sf /opt/clang-19/bin/clang /usr/bin/clang-19
+ln -sf /opt/clang-19/bin/clang++ /usr/bin/clang++-19
+rm -f "${LLVM_ARCHIVE}"
+# The pre-built Clang 19 searches for GCC runtime files (crtbeginS.o, libgcc, etc.)
+# and C++ platform headers using standard triples like aarch64-linux-gnu or
+# x86_64-linux-gnu, but Amazon Linux uses its own triple (e.g. aarch64-amazon-linux).
+# Create symlinks so Clang can find them.
+ln -sf /usr/lib/gcc/${arch}-amazon-linux /usr/lib/gcc/${arch}-linux-gnu
+gcc_version=$(ls /usr/lib/gcc/${arch}-amazon-linux/)
+ln -sf /usr/include/c++/${gcc_version}/${arch}-amazon-linux /usr/include/c++/${gcc_version}/${arch}-linux-gnu
+EOF
+
+# Create compiler environment setup scripts (after all compilers are installed)
 COPY --from=scripts create-compiler-env.sh /tmp
 RUN <<EOF
 set -ex
-setup_script="/tmp/create-compiler-env.sh"
-${setup_script}
+/tmp/create-compiler-env.sh
+# Ensure setup-clang-19.sh also prepends /opt/clang-19/bin to PATH so that
+# matching versions of llvm-ar, llvm-ranlib, llvm-symbolizer, etc. are used
+# instead of the system LLVM 15 versions.
+echo 'export PATH=/opt/clang-19/bin:$PATH' >> /opt/compiler-env/setup-clang-19.sh
 EOF
 
 # Install SSM Agent Config
