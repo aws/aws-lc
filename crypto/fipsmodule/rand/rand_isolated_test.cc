@@ -16,6 +16,7 @@
 
 #include <array>
 
+// Use `#if GTEST_HAS_DEATH_TEST` (not `defined()`); some toolchains define it to 0.
 #if GTEST_HAS_DEATH_TEST
 
 static const size_t request_len = 64;

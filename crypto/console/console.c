@@ -6,8 +6,15 @@
 #include "internal.h"
 #include "../internal.h"
 
-// Some platforms do not support terminal operations (no termios, no /dev/tty).
-// Provide stub implementations that indicate no console is available.
+// Some platforms (e.g. nanolibc, baremetal) do not support terminal operations
+// (no termios, no /dev/tty). Provide stub implementations that indicate no
+// console is available. Higher-level APIs that depend on console I/O, such as
+// EVP_read_pw_string and EVP_read_pw_string_min, will fail on these platforms.
+//
+// OpenSSL uses OPENSSL_NO_UI_CONSOLE to gate out the entire UI_OpenSSL()
+// method. Our approach differs: we stub at the lower openssl_console_* layer
+// so that the rest of the code compiles unconditionally and fails gracefully
+// at runtime.
 #if defined(OPENSSL_NO_TTY)
 
 void openssl_console_acquire_mutex(void) {}

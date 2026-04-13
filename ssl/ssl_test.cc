@@ -444,9 +444,7 @@ static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
     EXPECT_EQ(SSL_get_rbio(ssl), SSL_get_wbio(ssl));
   }
 }
-#endif  // !OPENSSL_NO_SOCK
 
-#if !defined(OPENSSL_NO_SOCK)
 TEST(SSLTest, SetFD) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
