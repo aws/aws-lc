@@ -60,7 +60,7 @@ static int pkey_pqdsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   switch (type) {
     case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
       EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
-      if (!params || !dctx || params->context_len > sizeof(dctx->context)) {
+      if (!params || !dctx || !params->context || params->context_len > sizeof(dctx->context)) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
         return 0;
       }
