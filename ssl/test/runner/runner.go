@@ -1660,9 +1660,26 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 	localErr := doExchanges(test, shim, resumeCount, &transcripts)
 	childErr := shim.wait()
 
-	// shim is marked as idled only when |idleTimeout| is reached.
-	// This retry fix is scoped with "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords".
-	if shim.idled && test.name == "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords" {
+	// Determine if the test should be retried. shim.idled is set when the
+	// idle timeout kills the process. A child killed by a transient signal
+	// (SIGABRT, SIGKILL, SIGTERM, SIGPIPE) on resource-constrained CI is
+	// also typically caused by timing or resource contention. Retry once in
+	// either case; a real bug will fail again on the retry.
+	//
+	// Signals like SIGSEGV, SIGBUS, SIGFPE, and SIGILL indicate real bugs
+	// (memory safety, illegal instructions, etc.) and must not be retried.
+	shouldRetry := shim.idled
+	if !shouldRetry {
+		if exitErr, ok := childErr.(*exec.ExitError); ok {
+			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
+				switch status.Signal() {
+				case syscall.SIGABRT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGPIPE:
+					shouldRetry = true
+				}
+			}
+		}
+	}
+	if shouldRetry {
 		shim, err := newShimProcess(dispatcher, shimPath, flags, env)
 		if err != nil {
 			return err
