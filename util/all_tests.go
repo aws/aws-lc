@@ -37,7 +37,7 @@ var (
 	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
-	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "Runs the given number of workers when testing.")
+	numWorkers      = flag.Int("num-workers", defaultNumWorkers(), "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
@@ -58,6 +58,13 @@ var (
 	ciJobIndex int
 	ciJobCount int
 )
+
+func defaultNumWorkers() int {
+	if n := getEnvInt("AWS_LC_NUM_TEST_WORKERS", 0); n > 0 {
+		return n
+	}
+	return runtime.NumCPU()
+}
 
 func getEnvInt(name string, defaultVal int) int {
 	s := os.Getenv(name)
@@ -590,6 +597,27 @@ func main() {
 		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(testCases))
 		for _, test := range failed {
 			fmt.Printf("\t%s\n", test.shortName())
+		}
+		fmt.Printf("\nTo reproduce this failure locally, run with:\n")
+		fmt.Printf("  AWS_LC_NUM_TEST_WORKERS=%d", *numWorkers)
+		if ciJobCount > 1 {
+			fmt.Printf(" AWS_LC_VALGRIND_SHARD_INDEX=%d AWS_LC_VALGRIND_TOTAL_SHARDS=%d", ciJobIndex, ciJobCount)
+		}
+		fmt.Printf(" go run util/all_tests.go -build-dir <build-dir>")
+		if *useValgrind {
+			fmt.Printf(" -valgrind")
+		}
+		fmt.Printf("\n")
+		for _, test := range failed {
+			if test.numShards > 0 {
+				fmt.Printf("\nTo run the failing shard directly:\n")
+				fmt.Printf("  GTEST_TOTAL_SHARDS=%d GTEST_SHARD_INDEX=%d", test.numShards, test.shard)
+				if *useValgrind {
+					fmt.Printf(" valgrind")
+				}
+				fmt.Printf(" ./<build-dir>/%s\n", test.Cmd[0])
+				break
+			}
 		}
 		os.Exit(1)
 	}
