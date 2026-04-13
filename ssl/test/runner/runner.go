@@ -61,7 +61,7 @@ var (
 	handshakerPath     = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
 	fuzzer             = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir      = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
-	idleTimeout        = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
+	idleTimeout        = flag.Duration("idle-timeout", 30*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
 	deterministic      = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
 	allowUnimplemented = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
 	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
@@ -15760,10 +15760,12 @@ func addPeekTests() {
 //  3. Let Golang TLS client sends messages(len: |maxPlaintext * peek_rounds + 1|) to repeatedly test |SSL_peek|
 //     and |SSL_read|.
 //     Here, the peek_rounds is just a magic number used to test SSL_peek with more rounds.
-//     100 was used but it caused some tcp io timeout on macOS and OpenBSD. See below reference
+//     100 was used but it caused tcp i/o timeouts on macOS and OpenBSD, so it was reduced to 50.
+//     50 still caused timeouts on FreeBSD, Windows, NetBSD, and OpenBSD (see github.com/aws/aws-lc/issues/3141),
+//     so the default was lowered to 10, then further to 5. The env var override remains for stress testing.
 //     CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306.
 func addServerPeekTests() {
-	const DEFAULT_PEEK_ROUNDS int = 50
+	const DEFAULT_PEEK_ROUNDS int = 5
 
 	peek_rounds := DEFAULT_PEEK_ROUNDS
 	if v := os.Getenv("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS"); len(v) != 0 {

@@ -179,6 +179,7 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
 #define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
+#define OPENSSL_INIT_ATFORK 0
 
 // OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
