@@ -2074,8 +2074,17 @@ TEST_P(PQDSAParameterTest, ContextString) {
   EVP_PKEY_CTX *pkey_ctx = nullptr;
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
                                  pkey.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(pkey_ctx, ctx_bytes,
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
                                                   sizeof(ctx_bytes)));
+
+  // Verify the context can be read back correctly.
+  const uint8_t *read_ctx = nullptr;
+  size_t read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_NE(read_ctx, ctx_bytes);  // Must be an internal copy.
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
 
   size_t sig_len = 0;
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
@@ -2088,7 +2097,7 @@ TEST_P(PQDSAParameterTest, ContextString) {
   EVP_PKEY_CTX *verify_pkey_ctx = nullptr;
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
                                    nullptr, nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(verify_pkey_ctx, ctx_bytes,
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx, ctx_bytes,
                                                   sizeof(ctx_bytes)));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
                                msg.data(), msg.size()));
@@ -2099,7 +2108,7 @@ TEST_P(PQDSAParameterTest, ContextString) {
   uint8_t wrong_ctx[] = {0x57, 0x72, 0x6f, 0x6e, 0x67};  // "Wrong"
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
                                    nullptr, nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(verify_pkey_ctx, wrong_ctx,
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx, wrong_ctx,
                                                   sizeof(wrong_ctx)));
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
                                 msg.data(), msg.size()));
@@ -2113,8 +2122,17 @@ TEST_P(PQDSAParameterTest, ContextString) {
 
   // ---- 5. Default (empty context) remains unchanged ----
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr,
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
                                  pkey.get()));
+
+  // Verify default context is empty (NULL with length 0).
+  read_ctx = nullptr;
+  read_ctx_len = 1;  // Non-zero to confirm it gets set to 0.
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_EQ(read_ctx, nullptr);
+  ASSERT_EQ(read_ctx_len, (size_t)0);
   std::vector<uint8_t> sig_no_ctx(sig_len);
   size_t sig_no_ctx_len = sig_len;
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_no_ctx.data(), &sig_no_ctx_len,
@@ -2133,7 +2151,7 @@ TEST_P(PQDSAParameterTest, ContextString) {
                                  pkey.get()));
   uint8_t long_ctx[256];
   OPENSSL_memset(long_ctx, 0x41, sizeof(long_ctx));
-  ASSERT_FALSE(EVP_PKEY_CTX_set_signature_context(pkey_ctx, long_ctx,
+  ASSERT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, long_ctx,
                                                    sizeof(long_ctx)));
 
   // ---- 7. Max length context (255 bytes) is accepted ----
@@ -2143,7 +2161,7 @@ TEST_P(PQDSAParameterTest, ContextString) {
                                  pkey.get()));
   uint8_t max_ctx[255];
   OPENSSL_memset(max_ctx, 0x42, sizeof(max_ctx));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(pkey_ctx, max_ctx,
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, max_ctx,
                                                   sizeof(max_ctx)));
 }
 
@@ -2639,7 +2657,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // VerifyMLDSAWithContext verifies that |sig| is a valid signature for |msg|
 // with context |msg_ctx| using the EVP_DigestVerify path with
-// EVP_PKEY_CTX_set_signature_context.
+// EVP_PKEY_CTX_set1_signature_context_string.
 //
 // It returns one on success and zero on error.
 static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
@@ -2653,7 +2671,7 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
     return 0;
   }
   if (!msg_ctx.empty() &&
-      !EVP_PKEY_CTX_set_signature_context(pkey_ctx, msg_ctx.data(),
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
                                           msg_ctx.size())) {
     return 0;
   }
@@ -2663,7 +2681,7 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
 
 // SignMLDSAWithContext produces a signature |sig| for message |msg| with
 // context |msg_ctx| using the EVP_DigestSign path with
-// EVP_PKEY_CTX_set_signature_context.
+// EVP_PKEY_CTX_set1_signature_context_string.
 //
 // It returns one on success and zero on error.
 static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
@@ -2676,7 +2694,7 @@ static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
     return 0;
   }
   if (!msg_ctx.empty() &&
-      !EVP_PKEY_CTX_set_signature_context(pkey_ctx, msg_ctx.data(),
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
                                           msg_ctx.size())) {
     return 0;
   }
