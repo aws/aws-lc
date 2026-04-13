@@ -1339,7 +1339,7 @@ else()
   set(GO_TEST_TIMEOUT "10m")
 endif()
 
-# Allow overriding the SSL test runner's idle timeout (default in runner.go is 15s).
+# Allow overriding the SSL test runner's idle timeout (default in runner.go is 30s).
 # Useful for resource-constrained environments (e.g. FreeBSD VMs) where the shim
 # may be slow to respond.
 if(DEFINED ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT})
