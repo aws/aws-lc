@@ -69,6 +69,7 @@ call :build_and_test %1 %2 || goto error
 @rem Negative test: corrupt the FIPS module in crypto.dll and verify the integrity
 @rem check detects it. This proves the check actually runs on DLL load.
 copy /y %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto.dll.bak || goto error
+cd /d %SRC_ROOT%
 go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
 copy /y %BUILD_DIR%\crypto\crypto_corrupted.dll %BUILD_DIR%\crypto\crypto.dll || goto error
 %BUILD_DIR%\util\fipstools\test_fips.exe 2>nul

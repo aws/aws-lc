@@ -639,7 +639,7 @@ elseif(FIPS_SHARED)
     endif()
 
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/bcm_objects.rsp"
-         CONTENT "$<JOIN:$<TARGET_OBJECTS:bcm_library>,\n>")
+         CONTENT "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\"\n\">\"")
     add_custom_command(
       OUTPUT ${BCM_NAME}
       COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp fips_msvc_end.obj /OUT:${BCM_NAME}
