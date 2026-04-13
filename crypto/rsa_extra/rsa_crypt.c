@@ -338,12 +338,12 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // expect an |out_len| parameter. To remain compatible with this new
     // paradigm and OpenSSL, we initialize |out_len| based on the return value
     // here.
-    if (max_out > INT_MAX) {
+    if (in_len > INT_MAX) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
       *out_len = 0;
       return 0;
     }
-    int ret = rsa->meth->encrypt((int)max_out, in, out, rsa, padding);
+    int ret = rsa->meth->encrypt((int)in_len, in, out, rsa, padding);
     if(ret < 0) {
       *out_len = 0;
       return 0;
@@ -515,12 +515,12 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // functions like |RSA_decrypt| diverge from this paradigm and expect
     // an |out_len| parameter. To remain compatible with this new paradigm and
     // OpenSSL, we initialize |out_len| based on the return value here.
-    if (max_out > INT_MAX) {
+    if (in_len > INT_MAX) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
       *out_len = 0;
       return 0;
     }
-    int ret = rsa->meth->decrypt((int)max_out, in, out, rsa, padding);
+    int ret = rsa->meth->decrypt((int)in_len, in, out, rsa, padding);
     if(ret < 0) {
       *out_len = 0;
       return 0;
