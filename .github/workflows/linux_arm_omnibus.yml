@@ -41,7 +41,7 @@ jobs:
           env: |
             AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ${{ matrix.run }}
 
   graviton4:
@@ -72,7 +72,7 @@ jobs:
           env: |
             AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ${{ matrix.run }}
 
 
@@ -101,7 +101,7 @@ jobs:
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part2:
@@ -127,7 +127,7 @@ jobs:
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part3:
@@ -153,7 +153,7 @@ jobs:
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part4:
@@ -177,7 +177,7 @@ jobs:
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   # Build and test aws-lc without Perl/Go.

@@ -549,12 +549,12 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // and expect an |out_len| parameter. To remain compatible with this new
     // paradigm and OpenSSL, we initialize |out_len| based on the return value
     // here.
-    if (max_out > INT_MAX) {
+    if (in_len > INT_MAX) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
       *out_len = 0;
       return 0;
     }
-    int ret = rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
+    int ret = rsa->meth->sign_raw((int)in_len, in, out, rsa, padding);
     if(ret < 0) {
       *out_len = 0;
       return 0;

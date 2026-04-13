@@ -1933,6 +1933,51 @@ TEST(OCSPTest, OCSPResponsePrint) {
   }
 }
 
+// Verify that malformed OCSP responder IDs cannot be encoded into an
+// |OCSP_RESPONSE|.
+TEST(OCSPTest, OCSPResponsePrintMalformedResponderId) {
+  // A default-initialized |OCSP_RESPID| (ASN1_CHOICE) has type -1, indicating
+  // no alternative has been selected.
+  bssl::UniquePtr<OCSP_BASICRESP> br(OCSP_BASICRESP_new());
+  ASSERT_TRUE(br);
+  OCSP_RESPID *rid = br->tbsResponseData->responderId;
+  EXPECT_EQ(rid->type, -1);
+  EXPECT_EQ(rid->value.byName, nullptr);
+
+  // The ASN.1 encoder rejects an |OCSP_BASICRESP| with an uninitialized
+  // responderId choice.
+  EXPECT_FALSE(
+      OCSP_response_create(OCSP_RESPONSE_STATUS_SUCCESSFUL, br.get()));
+
+  // Set type to |V_OCSP_RESPID_KEY| without providing a key. The encoder
+  // rejects this.
+  br.reset(OCSP_BASICRESP_new());
+  ASSERT_TRUE(br);
+  rid = br->tbsResponseData->responderId;
+  rid->type = V_OCSP_RESPID_KEY;
+  EXPECT_EQ(rid->value.byKey, nullptr);
+  EXPECT_FALSE(
+      OCSP_response_create(OCSP_RESPONSE_STATUS_SUCCESSFUL, br.get()));
+
+  // Set type to |V_OCSP_RESPID_NAME| without providing a name. The encoder
+  // rejects this.
+  br.reset(OCSP_BASICRESP_new());
+  ASSERT_TRUE(br);
+  rid = br->tbsResponseData->responderId;
+  rid->type = V_OCSP_RESPID_NAME;
+  EXPECT_EQ(rid->value.byName, nullptr);
+  EXPECT_FALSE(
+      OCSP_response_create(OCSP_RESPONSE_STATUS_SUCCESSFUL, br.get()));
+
+  // Set an unrecognized type. The encoder rejects this.
+  br.reset(OCSP_BASICRESP_new());
+  ASSERT_TRUE(br);
+  rid = br->tbsResponseData->responderId;
+  rid->type = 42;
+  EXPECT_FALSE(
+      OCSP_response_create(OCSP_RESPONSE_STATUS_SUCCESSFUL, br.get()));
+}
+
 TEST(OCSPTest, OCSPRequestPrint) {
   static const std::array<std::string, 11> kExpected{
       {"OCSP Request Data:", "    Version: 1 (0x0)", "    Requestor List:",

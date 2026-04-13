@@ -104,7 +104,7 @@ static int kem_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 
 static int kem_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // See https://datatracker.ietf.org/doc/rfc9935/
   // section 4. There should be no parameters
   if (CBS_len(params) > 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -132,7 +132,7 @@ static int kem_pub_encode(CBB *out, const EVP_PKEY *pkey) {
     return 0;
   }
 
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // See https://datatracker.ietf.org/doc/rfc9935/
   // section 4.
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) || // SubjectPublicKeyInfo SEQUENCE
@@ -165,7 +165,7 @@ static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
                            CBS *pubkey) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // See https://datatracker.ietf.org/doc/rfc9935/
   // section 6. There should be no parameters.
   if (CBS_len(params) > 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -179,7 +179,7 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
   }
 
   // Support multiple ML-KEM private key formats from
-  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // https://datatracker.ietf.org/doc/rfc9935/
   // Case 1: seed [0] OCTET STRING
   // Case 2: expandedKey OCTET STRING
   // Case 3: TODO: both SEQUENCE {seed, expandedKey}
@@ -226,20 +226,37 @@ static int kem_priv_encode(CBB *out, const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // See https://datatracker.ietf.org/doc/rfc9935/
   // section 6.
-  CBB pkcs8, algorithm, oid, private_key, expanded_key;
+  CBB pkcs8, algorithm, oid, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) || // OneAsymmetricKey SEQUENCE
       !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) || // privateKeyAlgorithm: SEQUENCE
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) || // algorithm: OBJECT IDENTIFIER
       !CBB_add_bytes(&oid, kem->oid, kem->oid_len) || // OID bytes for id-alg-ml-kem-512/768/1024
-      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) || // // privateKey: OCTET STRING (outer container)
-      !CBB_add_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING) || // expandedKey CHOICE variant, AWS-LC uses expandedKey for the moment
-      !CBB_add_bytes(&expanded_key, key->secret_key, kem->secret_key_len) || // raw private key 
-      !CBB_flush(out)) {
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING)) { // privateKey: OCTET STRING (outer container)
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
+  }
+
+  if (key->seed != NULL) {
+    // Seed format: [0] IMPLICIT OCTET STRING
+    CBB seed_choice;
+    if (!CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+        !CBB_add_bytes(&seed_choice, key->seed, kem->keygen_seed_len) ||
+        !CBB_flush(out)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+      return 0;
+    }
+  } else {
+    // Expanded format: OCTET STRING (for keys without seed, e.g. raw import)
+    CBB expanded_key;
+    if (!CBB_add_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&expanded_key, key->secret_key, kem->secret_key_len) ||
+        !CBB_flush(out)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+      return 0;
+    }
   }
 
   return 1;

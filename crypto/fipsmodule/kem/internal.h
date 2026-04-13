@@ -19,11 +19,6 @@ typedef struct {
                               size_t *pkey_len,
                               const uint8_t *seed);
 
-  int (*keygen)(uint8_t *public_key,
-                size_t *public_key_len,
-                uint8_t *secret_key,
-                size_t *secret_key_len);
-
   int (*encaps_deterministic)(uint8_t *ciphertext,
                               size_t *ciphertext_len,
                               uint8_t *shared_secret,
@@ -63,6 +58,7 @@ struct kem_key_st {
   const KEM *kem;
   uint8_t *public_key;
   uint8_t *secret_key;
+  uint8_t *seed;
 };
 
 const KEM *KEM_find_kem_by_nid(int nid);

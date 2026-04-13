@@ -1245,4 +1245,23 @@ INSTANTIATE_TEST_SUITE_P(TrustTokenAllBadKeyTest, TrustTokenBadKeyTest,
                                           testing::Values(0, 1, 2, 3, 4, 5)));
 
 }  // namespace
+
+TEST(TrustTokenTest, ShortMetadataKeyRejected) {
+  bssl::UniquePtr<TRUST_TOKEN_ISSUER> issuer(
+      TRUST_TOKEN_ISSUER_new(TRUST_TOKEN_experiment_v1(), 10));
+  ASSERT_TRUE(issuer);
+
+  // A 31-byte key must be rejected.
+  uint8_t short_key[31];
+  RAND_bytes(short_key, sizeof(short_key));
+  ASSERT_FALSE(TRUST_TOKEN_ISSUER_set_metadata_key(issuer.get(), short_key,
+                                                    sizeof(short_key)));
+
+  // A 32-byte key must be accepted.
+  uint8_t good_key[32];
+  RAND_bytes(good_key, sizeof(good_key));
+  ASSERT_TRUE(TRUST_TOKEN_ISSUER_set_metadata_key(issuer.get(), good_key,
+                                                   sizeof(good_key)));
+}
+
 BSSL_NAMESPACE_END

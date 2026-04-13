@@ -115,10 +115,16 @@ enable_language(C)
 
 if (NOT WIN32 AND NOT APPLE)
   include(GNUInstallDirs)
-elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
-  set(CMAKE_INSTALL_LIBDIR "lib")
-  set(CMAKE_INSTALL_INCLUDEDIR "include")
-  set(CMAKE_INSTALL_BINDIR "bin")
+else()
+  if(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+    set(CMAKE_INSTALL_LIBDIR "lib")
+  endif()
+  if(NOT DEFINED CMAKE_INSTALL_INCLUDEDIR)
+    set(CMAKE_INSTALL_INCLUDEDIR "include")
+  endif()
+  if(NOT DEFINED CMAKE_INSTALL_BINDIR)
+    set(CMAKE_INSTALL_BINDIR "bin")
+  endif()
 endif()
 
 # Set the install include directory based on whether a prefix subdirectory is desired
@@ -1174,8 +1180,9 @@ if(USE_CUSTOM_LIBCXX)
   set_target_properties(
     libcxx libcxxabi PROPERTIES
     COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough"
-    # libc++ and libc++abi must be built in C++20 mode.
-    CXX_STANDARD 20
+    # libc++ and libc++abi must be built in C++23 mode.
+    # LLVM 19+ added expected.cpp which requires C++23.
+    CXX_STANDARD 23
     CXX_STANDARD_REQUIRED TRUE
   )
   # libc++abi depends on libc++ internal headers.
@@ -1330,6 +1337,13 @@ if(DEFINED ENV{AWS_LC_GO_TEST_TIMEOUT})
   set(GO_TEST_TIMEOUT "$ENV{AWS_LC_GO_TEST_TIMEOUT}")
 else()
   set(GO_TEST_TIMEOUT "10m")
+endif()
+
+# Allow overriding the SSL test runner's idle timeout (default in runner.go is 30s).
+# Useful for resource-constrained environments (e.g. FreeBSD VMs) where the shim
+# may be slow to respond.
+if(DEFINED ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT})
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-idle-timeout" "$ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT}")
 endif()
 
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")

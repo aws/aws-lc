@@ -279,8 +279,14 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
         WCHAR wresult[BUFSIZ];
         OPENSSL_cleanse(wresult, sizeof(wresult));
 
+        // Cap the read count to the wresult buffer size to prevent overflow.
+        DWORD read_count = (DWORD)maxsize;
+        if (read_count >= (sizeof(wresult) / sizeof(wresult[0]))) {
+          read_count = (sizeof(wresult) / sizeof(wresult[0])) - 1;
+        }
+
         if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
-                     wresult, maxsize, &numread, NULL)) {
+                     wresult, read_count, &numread, NULL)) {
             if (numread >= 2 && wresult[numread-2] == L'\r' &&
                 wresult[numread-1] == L'\n') {
                 wresult[numread-2] = L'\n';

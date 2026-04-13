@@ -23,6 +23,8 @@ jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
   sanity-test-run:
     runs-on: ubuntu-latest
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -92,8 +94,6 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
-    env:
-      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
     strategy:
       fail-fast: false
       matrix:
@@ -204,6 +204,74 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+
+  sanitizer-tests:
+    name: sanitizer - ${{ matrix.arch.name }} - ${{ matrix.config.name }} [${{ matrix.shard_index }}/${{ matrix.config.total_shards }}]
+    needs: [sanity-test-run]
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.arch.runner }}
+    env:
+      GOFLAGS: "-buildvcs=false"
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - name: x86-64
+            runner: ubuntu-latest
+          - name: aarch64
+            runner: ubuntu-24.04-arm
+        config:
+          - name: asan-noasm
+            sanitizer: asan
+            extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+            total_shards: 1
+          - name: msan-noasm
+            sanitizer: msan
+            extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+            total_shards: 4
+        shard_index: [0, 1, 2, 3]
+        exclude:
+          - config:
+              name: asan-noasm
+        include:
+          - arch:
+              name: x86-64
+              runner: ubuntu-latest
+            config:
+              name: asan-noasm
+              sanitizer: asan
+              extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+              total_shards: 1
+            shard_index: 0
+          - arch:
+              name: aarch64
+              runner: ubuntu-24.04-arm
+            config:
+              name: asan-noasm
+              sanitizer: asan
+              extra_cmake_args: "-DOPENSSL_NO_ASM=1"
+              total_shards: 1
+            shard_index: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Build and Test crypto_test
+        env:
+          GTEST_TOTAL_SHARDS: ${{ matrix.config.total_shards }}
+          GTEST_SHARD_INDEX: ${{ matrix.shard_index }}
+        run: |
+          ./util/build_and_test.sh --sanitizer ${{ matrix.config.sanitizer }} \
+            --test crypto_test --build-target all_tests \
+            -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra_cmake_args }}
+      - name: Run ssl_test
+        if: matrix.shard_index == 0
+        run: ./build/ssl/ssl_test
 
   musl-tests:
     name: musl - ${{ matrix.config.arch }}
@@ -508,10 +576,9 @@ jobs:
       - name: OpenBSD
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
-          environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
+          environment_variables: AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
           cpu_count: 3
           memory: 12G
@@ -544,7 +611,6 @@ jobs:
             sudo usermod -L unlimited runner
             sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
             set -x
-            export AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS=${AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS}
             export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
@@ -644,11 +710,10 @@ jobs:
       - name: Prepare VM
         uses: cross-platform-actions/action@v0.32.0
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
           GOFLAGS: "-buildvcs=false"
         with:
-          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
           operating_system: freebsd
           architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}
@@ -678,11 +743,10 @@ jobs:
       - name: Prepare VM
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
           GOFLAGS: "-buildvcs=false"
         with:
-          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
           operating_system: netbsd
           architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}
