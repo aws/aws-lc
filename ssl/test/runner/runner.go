@@ -1668,18 +1668,19 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 	//
 	// Signals like SIGSEGV, SIGBUS, SIGFPE, and SIGILL indicate real bugs
 	// (memory safety, illegal instructions, etc.) and must not be retried.
-	shouldRetry := shim.idled
-	if !shouldRetry {
-		if exitErr, ok := childErr.(*exec.ExitError); ok {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-				switch status.Signal() {
-				case syscall.SIGABRT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGPIPE:
-					shouldRetry = true
-				}
+	var retryReason string
+	if shim.idled {
+		retryReason = "idle timeout"
+	} else if exitErr, ok := childErr.(*exec.ExitError); ok {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
+			switch status.Signal() {
+			case syscall.SIGABRT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGPIPE:
+				retryReason = fmt.Sprintf("signal: %s", status.Signal())
 			}
 		}
 	}
-	if shouldRetry {
+	if retryReason != "" {
+		fmt.Fprintf(os.Stderr, "Retrying %s (%s)\n", test.name, retryReason)
 		shim, err := newShimProcess(dispatcher, shimPath, flags, env)
 		if err != nil {
 			return err
