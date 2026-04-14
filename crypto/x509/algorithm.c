@@ -14,7 +14,7 @@
 #include "internal.h"
 
 // Restrict the digests that are allowed in X509 certificates
-static int x509_digest_nid_ok(const int digest_nid) {
+int x509_digest_nid_ok(const int digest_nid) {
   switch (digest_nid) {
     case NID_md4:
     case NID_md5:

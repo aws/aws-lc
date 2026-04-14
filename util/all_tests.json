@@ -148,8 +148,10 @@
     ]
   },
   {
+    "comment": "tool_openssl_test generates 100+ RSA keys across its test suite (ca_test, req_test, genrsa_test, etc.). Sharding is required to keep Valgrind runtime manageable.",
     "cmd": [
       "tool-openssl/tool_openssl_test"
-    ]
+    ],
+    "shard": true
   }
 ]
