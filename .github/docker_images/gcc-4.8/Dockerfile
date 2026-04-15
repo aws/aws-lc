@@ -27,10 +27,10 @@ COPY entry.sh /
 
 WORKDIR /
 
-RUN curl -LOk "https://go.dev/dl/go1.18.10.linux-amd64.tar.gz"
-RUN sha256sum go1.18.10.linux-amd64.tar.gz | grep -q "5e05400e4c79ef5394424c0eff5b9141cb782da25f64f79d54c98af0a37f8d49"
-RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.10.linux-amd64.tar.gz
-RUN rm go1.18.10.linux-amd64.tar.gz
+RUN curl -LOk "https://go.dev/dl/go1.22.12.linux-amd64.tar.gz"
+RUN sha256sum go1.22.12.linux-amd64.tar.gz | grep -q "4fa4f869b0f7fc6bb1eb2660e74657fbf04cdd290b5aef905585c86051b34d43"
+RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.12.linux-amd64.tar.gz
+RUN rm go1.22.12.linux-amd64.tar.gz
 
 ENV PATH="${PATH}:/usr/local/go/bin"
 
