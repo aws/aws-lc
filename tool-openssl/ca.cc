@@ -126,16 +126,15 @@ static int WIN32_rename(const char *from, const char *to) {
     if (attempt > 0) {
       Sleep(kRetryDelayMs);
     }
-    if (MoveFile(tfrom, tto)) {
+    // Use MoveFileEx with MOVEFILE_REPLACE_EXISTING to match POSIX rename()
+    // semantics: atomically replace the target if it already exists. Plain
+    // MoveFile fails with ERROR_ALREADY_EXISTS when the target exists, and the
+    // previous DeleteFile+MoveFile workaround was racy because NTFS defers
+    // file removal until all handles are closed ("pending delete" state).
+    if (MoveFileEx(tfrom, tto, MOVEFILE_REPLACE_EXISTING)) {
       goto ok;
     }
     err = GetLastError();
-    if (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS) {
-      if (DeleteFile(tto) && MoveFile(tfrom, tto)) {
-        goto ok;
-      }
-      err = GetLastError();
-    }
     if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
         err != ERROR_LOCK_VIOLATION) {
       break;
@@ -149,7 +148,7 @@ static int WIN32_rename(const char *from, const char *to) {
     errno = EACCES;
   } else {
     errno = EINVAL;
-    fprintf(stderr, "WIN32_rename: MoveFile('%s', '%s') failed with Windows "
+    fprintf(stderr, "WIN32_rename: MoveFileEx('%s', '%s') failed with Windows "
             "error code %lu\n", from, to, (unsigned long)err);
   }
 err:

@@ -84,8 +84,14 @@ class CATest : public ::testing::Test {
     RemoveFile(db_old_path.c_str());
     std::string db_attr_old_path = std::string(db_path) + ".attr.old";
     RemoveFile(db_attr_old_path.c_str());
+    std::string db_new_path = std::string(db_path) + ".new";
+    RemoveFile(db_new_path.c_str());
+    std::string db_attr_new_path = std::string(db_path) + ".attr.new";
+    RemoveFile(db_attr_new_path.c_str());
     std::string serial_old_path = std::string(serial_path) + ".old";
     RemoveFile(serial_old_path.c_str());
+    std::string serial_new_path = std::string(serial_path) + ".new";
+    RemoveFile(serial_new_path.c_str());
 
     // Clean up temp directory and its contents
     CleanupTempDir(new_certs_dir);
