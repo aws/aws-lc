@@ -106,7 +106,7 @@ TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
 }
 #endif // defined(BORINGSSL_FIPS)
 
-#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
 TEST(Crypto, OnDemandIntegrityTest) {
   BORINGSSL_integrity_test();
 }

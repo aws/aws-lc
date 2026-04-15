@@ -12,7 +12,7 @@
 
 
 int FIPS_mode(void) {
-#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
   return 1;
 #else
   return 0;
