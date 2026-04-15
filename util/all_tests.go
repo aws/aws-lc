@@ -37,11 +37,60 @@ var (
 	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
-	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "Runs the given number of workers when testing.")
+	numWorkers      = flag.Int("num-workers", defaultNumWorkers(), "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 )
+
+// CI job-level sharding support. When AWS_LC_VALGRIND_TOTAL_SHARDS > 1 and
+// AWS_LC_VALGRIND_SHARD_INDEX is set, the expanded test list is partitioned
+// across multiple CI jobs so that each job completes in a fraction of the
+// original wall-clock time. For GTest-sharded tests (shard: true in
+// all_tests.json), the total number of GTest shards is multiplied by
+// ciJobCount, and each job runs a contiguous block of numWorkers shards.
+// Non-sharded tests are distributed round-robin across jobs.
+//
+// This is distinct from numWorkers, which controls per-machine parallelism
+// (goroutines within a single job). ciJobCount controls how many separate
+// CI machines share the overall test workload.
+var (
+	ciJobIndex int
+	ciJobCount int
+)
+
+func defaultNumWorkers() int {
+	if n := getEnvInt("AWS_LC_NUM_TEST_WORKERS", 0); n > 0 {
+		return n
+	}
+	return runtime.NumCPU()
+}
+
+func getEnvInt(name string, defaultVal int) int {
+	s := os.Getenv(name)
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+	return v
+}
+
+func initJobSharding() {
+	ciJobIndex = getEnvInt("AWS_LC_VALGRIND_SHARD_INDEX", 0)
+	ciJobCount = getEnvInt("AWS_LC_VALGRIND_TOTAL_SHARDS", 0)
+
+	if ciJobCount > 1 {
+		if ciJobIndex < 0 || ciJobIndex >= ciJobCount {
+			fmt.Printf("Invalid job shard config: AWS_LC_VALGRIND_SHARD_INDEX=%d, AWS_LC_VALGRIND_TOTAL_SHARDS=%d\n",
+				ciJobIndex, ciJobCount)
+			os.Exit(1)
+		}
+		fmt.Printf("Job-level sharding enabled: job %d of %d\n", ciJobIndex, ciJobCount)
+	}
+}
 
 type test struct {
 	testconfig.Test
@@ -54,9 +103,10 @@ type test struct {
 }
 
 type result struct {
-	Test   test
-	Passed bool
-	Error  error
+	Test     test
+	Passed   bool
+	Error    error
+	Duration time.Duration
 }
 
 // Default list of CPU codes that are compatible with MSVC
@@ -195,6 +245,10 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 
+	if *useValgrind && test.ValgrindFilter != "" {
+		args = append(args, "--gtest_filter="+test.ValgrindFilter)
+	}
+
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
 
@@ -327,8 +381,9 @@ func setWorkingDirectory() {
 func worker(tests <-chan test, results chan<- result, done *sync.WaitGroup) {
 	defer done.Done()
 	for test := range tests {
+		start := time.Now()
 		passed, err := runTest(test)
-		results <- result{test, passed, err}
+		results <- result{test, passed, err, time.Since(start)}
 	}
 }
 
@@ -376,14 +431,37 @@ func (t test) getGTestShards() ([]test, error) {
 		return []test{t}, nil
 	}
 
-	shards := make([]test, *numWorkers)
+	totalShards := *numWorkers
+	if ciJobCount > 1 {
+		totalShards = *numWorkers * ciJobCount
+	}
+
+	shards := make([]test, totalShards)
 	for i := range shards {
 		shards[i] = t
 		shards[i].shard = i
-		shards[i].numShards = *numWorkers
+		shards[i].numShards = totalShards
 	}
 
 	return shards, nil
+}
+
+// shouldRunInThisJob determines whether a test should be executed by the
+// current CI job. For GTest-sharded tests, each job gets a contiguous block
+// of numWorkers shards. For non-sharded tests, they are distributed
+// round-robin across jobs.
+func shouldRunInThisJob(t test, nonShardedIdx *int) bool {
+	if ciJobCount <= 1 {
+		return true
+	}
+	if t.numShards > 0 {
+		// Sharded test: each job gets shards [ciJobIndex*numWorkers, (ciJobIndex+1)*numWorkers)
+		return t.shard / *numWorkers == ciJobIndex
+	}
+	// Non-sharded test: distribute round-robin across jobs
+	idx := *nonShardedIdx
+	*nonShardedIdx++
+	return idx%ciJobCount == ciJobIndex
 }
 
 func main() {
@@ -392,6 +470,9 @@ func main() {
 
 	// Initialize sdeCPUs now that flags are parsed
 	initSDECPUs()
+
+	// Initialize job-level sharding from environment variables
+	initJobSharding()
 
 	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
 	if err != nil {
@@ -409,6 +490,7 @@ func main() {
 	}
 
 	go func() {
+		nonShardedTestIdx := 0
 		for _, baseTest := range testCases {
 			test := test{Test: baseTest}
 
@@ -446,6 +528,9 @@ func main() {
 					os.Exit(1)
 				}
 				for _, shard := range shards {
+					if !shouldRunInThisJob(shard, &nonShardedTestIdx) {
+						continue
+					}
 					tests <- shard
 				}
 			}
@@ -462,34 +547,35 @@ func main() {
 		test := testResult.Test
 		args := test.Cmd
 
+		dur := testResult.Duration.Round(time.Second)
 		if testResult.Error == errTestSkipped {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
 			testOutput.AddSkip(test.longName())
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
-				fmt.Printf("%s\n", test.longName())
+				fmt.Printf("[%v] %s\n", dur, test.longName())
 				fmt.Printf("%s did not finish. Try increasing timeout.\n", args[0])
 				failed = append(failed, test)
 				testOutput.AddResult(test.longName(), "FAIL")
 			} else {
-				fmt.Printf("%s\n", test.shortName())
+				fmt.Printf("[%v] %s\n", dur, test.shortName())
 				fmt.Printf("%s was left hanging, but actually passed\n", args[0])
 				testOutput.AddResult(test.longName(), "PASS")
 			}
 		} else if testResult.Error != nil {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
 			testOutput.AddResult(test.longName(), "CRASH")
 		} else if !testResult.Passed {
-			fmt.Printf("%s\n", test.longName())
+			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
 			testOutput.AddResult(test.longName(), "FAIL")
 		} else {
-			fmt.Printf("%s\n", test.shortName())
+			fmt.Printf("[%v] %s\n", dur, test.shortName())
 			testOutput.AddResult(test.longName(), "PASS")
 		}
 	}
@@ -511,6 +597,27 @@ func main() {
 		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(testCases))
 		for _, test := range failed {
 			fmt.Printf("\t%s\n", test.shortName())
+		}
+		fmt.Printf("\nTo reproduce this failure locally, run with:\n")
+		fmt.Printf("  AWS_LC_NUM_TEST_WORKERS=%d", *numWorkers)
+		if ciJobCount > 1 {
+			fmt.Printf(" AWS_LC_VALGRIND_SHARD_INDEX=%d AWS_LC_VALGRIND_TOTAL_SHARDS=%d", ciJobIndex, ciJobCount)
+		}
+		fmt.Printf(" go run util/all_tests.go -build-dir <build-dir>")
+		if *useValgrind {
+			fmt.Printf(" -valgrind")
+		}
+		fmt.Printf("\n")
+		for _, test := range failed {
+			if test.numShards > 0 {
+				fmt.Printf("\nTo run the failing shard directly:\n")
+				fmt.Printf("  GTEST_TOTAL_SHARDS=%d GTEST_SHARD_INDEX=%d", test.numShards, test.shard)
+				if *useValgrind {
+					fmt.Printf(" valgrind")
+				}
+				fmt.Printf(" ./<build-dir>/%s\n", test.Cmd[0])
+				break
+			}
 		}
 		os.Exit(1)
 	}

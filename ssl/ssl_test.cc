@@ -1210,6 +1210,111 @@ TEST(SSLTest, SetChainAndKey) {
                                      server_ctx.get()));
 }
 
+// Verify that SSL_CTX_set_chain_and_key invalidates the X509 leaf and chain
+// caches so that SSL_CTX_get0_certificate and SSL_CTX_get0_chain_certs reflect
+// the newly-configured certificate chain rather than stale cached values.
+TEST(SSLTest, SetChainAndKeyCacheInvalidation) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Configure an RSA leaf + intermediate and warm up both the x509_leaf and
+  // x509_chain caches.
+  bssl::UniquePtr<EVP_PKEY> key1 = GetChainTestKey();
+  ASSERT_TRUE(key1);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf1 = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf1);
+  bssl::UniquePtr<CRYPTO_BUFFER> intermediate1 = GetChainTestIntermediateBuffer();
+  ASSERT_TRUE(intermediate1);
+  {
+    std::vector<CRYPTO_BUFFER *> chain = {leaf1.get(), intermediate1.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), chain.data(),
+                                          chain.size(), key1.get(), nullptr));
+  }
+
+  bssl::UniquePtr<X509> cert1 = GetChainTestCertificate();
+  ASSERT_TRUE(cert1);
+  bssl::UniquePtr<X509> intermediate_x509_1 = GetChainTestIntermediate();
+  ASSERT_TRUE(intermediate_x509_1);
+
+  // Calling SSL_CTX_get0_certificate populates the internal X509 leaf cache.
+  ASSERT_EQ(0, X509_cmp(SSL_CTX_get0_certificate(ctx.get()), cert1.get()));
+
+  // Calling SSL_CTX_get0_chain_certs populates the internal X509 chain cache.
+  STACK_OF(X509) *chain_out = nullptr;
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain_out));
+  ASSERT_EQ(1u, sk_X509_num(chain_out));
+  ASSERT_EQ(0, X509_cmp(sk_X509_value(chain_out, 0), intermediate_x509_1.get()));
+
+  // Replace with a different RSA certificate and key pair. The new chain has no
+  // intermediate, so the x509_chain cache (if not invalidated) would still hold
+  // the old intermediate.
+  bssl::UniquePtr<X509> cert2 = GetTestCertificate();
+  ASSERT_TRUE(cert2);
+  uint8_t *der = nullptr;
+  size_t der_len = i2d_X509(cert2.get(), &der);
+  ASSERT_GT(der_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf2(
+      CRYPTO_BUFFER_new(der, der_len, nullptr));
+  ASSERT_TRUE(leaf2);
+  bssl::UniquePtr<EVP_PKEY> key2 = GetTestKey();
+  ASSERT_TRUE(key2);
+  {
+    std::vector<CRYPTO_BUFFER *> chain = {leaf2.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), chain.data(),
+                                          chain.size(), key2.get(), nullptr));
+  }
+
+  // The x509_leaf cache must reflect the new leaf certificate.
+  X509 *got = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(got);
+  EXPECT_EQ(0, X509_cmp(got, cert2.get()));
+  EXPECT_NE(0, X509_cmp(got, cert1.get()));
+
+  // The x509_chain cache must be invalidated. The new chain has no
+  // intermediates, so SSL_CTX_get0_chain_certs must return null rather than
+  // the previously-cached intermediate.
+  chain_out = nullptr;
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain_out));
+  EXPECT_EQ(nullptr, chain_out);
+}
+
+// Verify that SSL_CTX_use_certificate_ASN1 (which routes through ssl_set_cert)
+// invalidates the X509 leaf cache so that SSL_CTX_get0_certificate reflects the
+// newly-configured certificate rather than a stale cached value.
+TEST(SSLTest, UseCertificateASN1CacheInvalidation) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Configure an initial RSA certificate and warm up the X509 leaf cache.
+  bssl::UniquePtr<X509> cert1 = GetTestCertificate();
+  ASSERT_TRUE(cert1);
+  uint8_t *der1 = nullptr;
+  size_t der1_len = i2d_X509(cert1.get(), &der1);
+  ASSERT_GT(der1_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der1(der1);
+  ASSERT_TRUE(SSL_CTX_use_certificate_ASN1(ctx.get(), der1_len, der1));
+
+  // Calling SSL_CTX_get0_certificate populates the internal X509 leaf cache.
+  ASSERT_EQ(0, X509_cmp(SSL_CTX_get0_certificate(ctx.get()), cert1.get()));
+
+  // Replace with a different RSA certificate via the same API path.
+  bssl::UniquePtr<X509> cert2 = GetChainTestCertificate();
+  ASSERT_TRUE(cert2);
+  uint8_t *der2 = nullptr;
+  size_t der2_len = i2d_X509(cert2.get(), &der2);
+  ASSERT_GT(der2_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+  ASSERT_TRUE(SSL_CTX_use_certificate_ASN1(ctx.get(), der2_len, der2));
+
+  // The stale cache must have been invalidated. SSL_CTX_get0_certificate must
+  // return the newly-configured certificate, not the previously-cached one.
+  X509 *got = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(got);
+  EXPECT_EQ(0, X509_cmp(got, cert2.get()));
+  EXPECT_NE(0, X509_cmp(got, cert1.get()));
+}
+
 TEST(SSLTest, SetLeafChainAndKey) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
