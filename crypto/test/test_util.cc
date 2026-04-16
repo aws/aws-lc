@@ -261,6 +261,55 @@ FILE* createRawTempFILE() {
   return fopen(filename, "w+b");
 }
 
+#elif defined(OPENSSL_WASM_WASI)
+// WASI doesn't have mkstemp, mkdtemp, or tmpfile. Use counter-based naming
+// with random suffix for uniqueness.
+#include <cstdlib>
+#include <unistd.h>
+#include <openssl/rand.h>
+
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  static int temp_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_%d_%08x.tmp",
+                         temp_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // Create the file
+  FILE *f = fopen(buffer, "w");
+  if (f == NULL) {
+    return 0;
+  }
+  fclose(f);
+  return strnlen(buffer, PATH_MAX);
+}
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  static int dir_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_dir_%d_%08x",
+                         dir_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // WASI supports mkdir
+  if (mkdir(buffer, 0700) != 0) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
+FILE* createRawTempFILE() {
+  char buffer[PATH_MAX];
+  if (createTempFILEpath(buffer) == 0) {
+    return nullptr;
+  }
+  return fopen(buffer, "w+b");
+}
+
 #else
 #include <cstdlib>
 #include <unistd.h>
