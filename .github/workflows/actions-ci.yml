@@ -27,7 +27,7 @@ jobs:
       AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Sanity Test Run
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
@@ -45,7 +45,7 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v4
         with:
           go-version: ">=1.18"
@@ -63,7 +63,7 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v4
         with:
           go-version: ">=1.18"
@@ -82,7 +82,7 @@ jobs:
           - "macos-14"
           - "macos-15"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v4
         with:
           go-version: ">=1.18"
@@ -131,7 +131,7 @@ jobs:
           - 20
           - 0 # default
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v4
         with:
           go-version: ">=1.18"
@@ -494,7 +494,7 @@ jobs:
           - "1"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v4
         with:
           go-version: ">=1.18"
@@ -564,17 +564,22 @@ jobs:
 
   OpenBSD:
     needs: [sanity-test-run]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner}}
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
       fail-fast: false
       matrix:
         arch: ["x86-64", "arm64"]
         version: ["7.5", "7.6"]
+        include:
+          - arch: x86-64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: OpenBSD
-        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
+        uses: cross-platform-actions/action@v1.0.0
         env:
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
@@ -667,7 +672,7 @@ jobs:
   #    runs-on: aws-lc_windows-2019_64-core
   #    steps:
   #      - name: Git clone the repository
-  #        uses: actions/checkout@v3
+  #        uses: actions/checkout@v6
   #
   #      - name: Build Windows Dependencies
   #        run: |
