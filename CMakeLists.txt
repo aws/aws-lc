@@ -1346,6 +1346,13 @@ if(DEFINED ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT})
   set(RUNNER_ARGS ${RUNNER_ARGS} "-idle-timeout" "$ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT}")
 endif()
 
+# Allow enabling retry on runner-side TCP timeouts.
+# Useful for resource-constrained environments (e.g. emulated FreeBSD VMs) where
+# transient timeouts do not indicate real bugs.
+if(DEFINED ENV{AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT})
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-retry-on-timeout")
+endif()
+
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   # USES_TERMINAL is only available in CMake 3.2 or later.
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
