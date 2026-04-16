@@ -11,7 +11,7 @@
 #include <openssl/err.h>
 
 #include <thread>
-#if !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_NO_FORK)
  #include <sys/wait.h>
 #endif
 
@@ -370,9 +370,8 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func) {
 
-#if defined(OPENSSL_WINDOWS)
-  // fork() is not supported on Windows. We could potentially add support for
-  // the CreateProcess API at some point.
+#if defined(OPENSSL_NO_FORK)
+  // fork() is not supported on this platform.
   return false;
 #else
   pid_t pid = fork();

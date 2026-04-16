@@ -103,6 +103,13 @@
 #define OPENSSL_WINDOWS
 #endif
 
+// OPENSSL_NO_FORK is set on platforms that do not support fork(). This is used
+// to guard code that depends on fork(), such as fork-safety tests and GTest
+// death tests.
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_NO_FORK
+#endif
+
 // Android baremetal aren't Linux but currently define __linux__.
 // As a workaround, we exclude them here.
 // We also exclude nanolibc/CrOS EC/Zephyr. nanolibc/CrOS EC/Zephyr
@@ -127,6 +134,7 @@
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_TTY
+#define OPENSSL_NO_FORK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -138,6 +146,7 @@
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_TTY
+#define OPENSSL_NO_FORK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -151,6 +160,7 @@
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_TTY
+#define OPENSSL_NO_FORK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -164,6 +174,7 @@
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_TTY
+#define OPENSSL_NO_FORK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
