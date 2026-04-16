@@ -14,10 +14,18 @@
 // implement such checks, making this approach necessary for compatibility.
 //
 // See commit aws-lc@9db959e for more details.
+//
+// On WASI, iovec is defined via basic libc headers (included transitively
+// through standard headers like <stdio.h>), so it's already defined before
+// this file is compiled. Consumer code on WASI will have the same situation,
+// so the protection goal is still achieved - there's no risk of a surprise
+// redefinition conflict.
+#if !defined(OPENSSL_WASM_WASI)
 struct iovec {
   void* iov_base;
   size_t iov_len;
 };
+#endif
 
 static SSL *get_ssl(BIO *bio) {
   return reinterpret_cast<SSL *>(bio->ptr);
