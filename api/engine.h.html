@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - engine.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>engine.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">Engines</span> are collections of methods. Methods are tables of function pointers, defined for certain algorithms, that allow operations on those algorithms to be overridden via a callback. This can be used, for example, to implement an RSA* that forwards operations to a hardware module.</p><p><span class="first-word">Default</span> Methods are zero initialized. You should set the function pointers that you wish before setting it on an <tt>ENGINE</tt>. Any functions pointers that are NULL indicate that the default behaviour should be used.</p></div>
+
+    <ol class="toc">
+      
+        
+          <li class="header"><a href="#Allocation-and-destruction">Allocation and destruction</a></li>
+          
+            <li><a href="#ENGINE_new"><tt>ENGINE_new</tt></a></li>
+          
+            <li><a href="#ENGINE_free"><tt>ENGINE_free</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Method-accessors">Method accessors</a></li>
+          
+            <li><a href="#ENGINE_set_RSA"><tt>ENGINE_set_RSA</tt></a></li>
+          
+            <li><a href="#ENGINE_get_RSA"><tt>ENGINE_get_RSA</tt></a></li>
+          
+            <li><a href="#ENGINE_set_EC"><tt>ENGINE_set_EC</tt></a></li>
+          
+            <li><a href="#ENGINE_get_EC"><tt>ENGINE_get_EC</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#ENGINE_cleanup"><tt>ENGINE_cleanup</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Allocation-and-destruction">
+        <div class="sectionpreamble comment"><p><span class="first-word">Allocation</span> and destruction.</p></div>
+
+        
+          <div class="decl" id="ENGINE_new">
+            <div class="comment"><p><span class="first-word">ENGINE_new</span> returns an empty ENGINE that uses the default method for all algorithms.</p></div>
+            <pre class="code">OPENSSL_EXPORT ENGINE *ENGINE_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_free">
+            <div class="comment"><p><span class="first-word">ENGINE_free</span> decrements the reference counts for all methods linked from <tt>engine</tt> and frees <tt>engine</tt> itself. It returns one.</p></div>
+            <pre class="code">OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Method-accessors">
+        <div class="sectionpreamble comment"><p><span class="first-word">Method</span> accessors.</p><p>The setter functions do not take ownership of the <tt>method</tt> pointer. The consumer must free the <tt>method</tt> pointer after all objects referencing it are freed.</p></div>
+
+        
+          <div class="decl" id="ENGINE_set_RSA">
+            <div class="comment"><p><span class="first-word">ENGINE_set_RSA</span> takes a <tt>method</tt> pointer and sets it on the <tt>ENGINE</tt> object. Returns one on success and zero for failure when <tt>engine</tt> is NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_get_RSA">
+            <div class="comment"><p><span class="first-word">ENGINE_get_RSA</span> returns the meth field of <tt>engine</tt>. If <tt>engine</tt> is NULL, function returns NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_set_EC">
+            <div class="comment"><p><span class="first-word">ENGINE_set_EC</span> takes a <tt>method</tt> pointer and sets it on the <tt>ENGINE</tt> object. Returns one on success and zero for failure when <tt>engine</tt> is NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_get_EC">
+            <div class="comment"><p><span class="first-word">ENGINE_get_EC</span> returns the meth field of <tt>engine</tt>. If <tt>engine</tt> is NULL, function returns NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p></div>
+
+        
+          <div class="decl" id="ENGINE_cleanup">
+            <div class="comment"><p><span class="first-word">ENGINE_cleanup</span> does nothing. This has been deprecated since OpenSSL 1.1.0 and applications should not rely on it.</p></div>
+            <pre class="code">OPENSSL_EXPORT void ENGINE_cleanup(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

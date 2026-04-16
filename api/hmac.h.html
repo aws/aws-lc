@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - hmac.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>hmac.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">HMAC</span> contains functions for constructing PRFs from Merkle–Damgård hash functions using HMAC.</p></div>
+
+    <ol class="toc">
+      
+        
+          <li class="header"><a href="#One-shot-operation">One-shot operation</a></li>
+          
+            <li><a href="#HMAC"><tt>HMAC</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Incremental-operation">Incremental operation</a></li>
+          
+            <li><a href="#HMAC_CTX_init"><tt>HMAC_CTX_init</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_new"><tt>HMAC_CTX_new</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_cleanup"><tt>HMAC_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_cleanse"><tt>HMAC_CTX_cleanse</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_free"><tt>HMAC_CTX_free</tt></a></li>
+          
+            <li><a href="#HMAC_Init_ex"><tt>HMAC_Init_ex</tt></a></li>
+          
+            <li><a href="#HMAC_Update"><tt>HMAC_Update</tt></a></li>
+          
+            <li><a href="#HMAC_Final"><tt>HMAC_Final</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#HMAC_size"><tt>HMAC_size</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_get_md"><tt>HMAC_CTX_get_md</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_copy_ex"><tt>HMAC_CTX_copy_ex</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_reset"><tt>HMAC_CTX_reset</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Precomputed-key-functions">Precomputed key functions</a></li>
+          
+            <li><a href="#HMAC_MD5_PRECOMPUTED_KEY_SIZE"><tt>HMAC_MD5_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA1_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA1_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA224_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA224_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA256_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA256_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA384_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA384_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA512_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA512_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE"><tt>HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_MAX_PRECOMPUTED_KEY_SIZE"><tt>HMAC_MAX_PRECOMPUTED_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#HMAC_set_precomputed_key_export"><tt>HMAC_set_precomputed_key_export</tt></a></li>
+          
+            <li><a href="#HMAC_get_precomputed_key"><tt>HMAC_get_precomputed_key</tt></a></li>
+          
+            <li><a href="#HMAC_Init_from_precomputed_key"><tt>HMAC_Init_from_precomputed_key</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#HMAC_Init"><tt>HMAC_Init</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_copy"><tt>HMAC_CTX_copy</tt></a></li>
+          
+        
+      
+        
+          
+          
+            
+          
+            
+          
+            <li><a href="#hmac_ctx_st"><tt>hmac_ctx_st</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="One-shot-operation">
+        <div class="sectionpreamble comment"><p><span class="first-word">One-shot</span> operation.</p></div>
+
+        
+          <div class="decl" id="HMAC">
+            <div class="comment"><p><span class="first-word">HMAC</span> calculates the HMAC of <tt>data_len</tt> bytes of <tt>data</tt>, using the given key and hash function, and writes the result to <tt>out</tt>. On entry, <tt>out</tt> must contain at least <tt><a href="digest.h.html#EVP_MD_size">EVP_MD_size</a></tt> bytes of space. The actual length of the result is written to <tt>*out_len</tt>. An output size of <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt> will always be large enough. It returns <tt>out</tt> or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT uint8_t *HMAC(const EVP_MD *evp_md, const void *key,
+                             size_t key_len, const uint8_t *data,
+                             size_t data_len, uint8_t *out,
+                             unsigned int *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Incremental-operation">
+        <div class="sectionpreamble comment"><p><span class="first-word">Incremental</span> operation.</p></div>
+
+        
+          <div class="decl" id="HMAC_CTX_init">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_init</span> initialises <tt>ctx</tt> for use in an HMAC operation. It&#39;s assumed that HMAC_CTX objects will be allocated on the stack thus no allocation function is provided.</p></div>
+            <pre class="code">OPENSSL_EXPORT void HMAC_CTX_init(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_new">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_new</span> allocates and initialises a new <tt>HMAC_CTX</tt> and returns it, or NULL on allocation failure. The caller must use <tt><a href="hmac.h.html#HMAC_CTX_free">HMAC_CTX_free</a></tt> to release the resulting object.</p></div>
+            <pre class="code">OPENSSL_EXPORT HMAC_CTX *HMAC_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_cleanup">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_cleanup</span> zeroises <tt>ctx</tt> since it&#39;s allocated on the stack. This brings the context to its initial state.</p></div>
+            <pre class="code">OPENSSL_EXPORT void HMAC_CTX_cleanup(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_cleanse">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_cleanse</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_free">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_free</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt> and then frees <tt>ctx</tt> itself.</p></div>
+            <pre class="code">OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Init_ex">
+            <div class="comment"><p><span class="first-word">HMAC_Init_ex</span> sets up an initialised <tt>HMAC_CTX</tt> to use <tt>md</tt> as the hash function and <tt>key</tt> as the key. This function resets <tt>HMAC_CTX</tt> to a fresh state, even if <tt><a href="hmac.h.html#HMAC_Update">HMAC_Update</a></tt> or <tt><a href="hmac.h.html#HMAC_Final">HMAC_Final</a></tt> have been called previously. For a non-initial call, <tt>md</tt> may be NULL, in which case the previous hash function will be used. If the hash function has not changed and <tt>key</tt> is NULL, <tt>ctx</tt> reuses the previous key and resets to a clean state ready for new data. It returns one on success or zero on allocation failure.</p><p class="warning"><span class="first-word">WARNING:</span> NULL and empty keys are ambiguous on non-initial calls. Passing NULL <tt>key</tt> but repeating the previous <tt>md</tt> reuses the previous key rather than the empty key.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
+                                const EVP_MD *md, ENGINE *impl);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Update">
+            <div class="comment"><p><span class="first-word">HMAC_Update</span> hashes <tt>data_len</tt> bytes from <tt>data</tt> into the current HMAC operation in <tt>ctx</tt>. It returns one.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data,
+                               size_t data_len);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Final">
+            <div class="comment"><p><span class="first-word">HMAC_Final</span> completes the HMAC operation in <tt>ctx</tt> and writes the result to <tt>out</tt> and then sets <tt>*out_len</tt> to the length of the result. On entry, <tt>out</tt> must contain at least <tt><a href="hmac.h.html#HMAC_size">HMAC_size</a></tt> bytes of space. An output size of <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt> will always be large enough. It returns one on success or zero on allocation failure.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
+                              unsigned int *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Utility</span> functions.</p></div>
+
+        
+          <div class="decl" id="HMAC_size">
+            <div class="comment"><p><span class="first-word">HMAC_size</span> returns the size, in bytes, of the HMAC that will be produced by <tt>ctx</tt>. On entry, <tt>ctx</tt> must have been setup with <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_get_md">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_get_md</span> returns <tt>ctx</tt>&#39;s hash function.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EVP_MD *HMAC_CTX_get_md(const HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_copy_ex">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_copy_ex</span> sets <tt>dest</tt> equal to <tt>src</tt>. On entry, <tt>dest</tt> must have been initialised by calling <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_reset">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_reset</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt> followed by <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Precomputed-key-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Precomputed</span> key functions</p></div>
+
+        
+          <div class="decl" id="HMAC_MD5_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_MD5_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for MD5, in bytes</p></div>
+            <pre class="code">#define HMAC_MD5_PRECOMPUTED_KEY_SIZE 32</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA1_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA1_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA1, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA1_PRECOMPUTED_KEY_SIZE 40</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA224_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA224_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA224, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA224_PRECOMPUTED_KEY_SIZE 64</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA256_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA256_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA256, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA256_PRECOMPUTED_KEY_SIZE 64</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA384_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA384_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA384, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA384_PRECOMPUTED_KEY_SIZE 128</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA512_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA512_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA512, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA512_PRECOMPUTED_KEY_SIZE 128</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA512_224, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE 128</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE</span> is the precomputed key size for SHA512_256, in bytes</p></div>
+            <pre class="code">#define HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE 128</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_MAX_PRECOMPUTED_KEY_SIZE">
+            <div class="comment"><p><span class="first-word">HMAC_MAX_PRECOMPUTED_KEY_SIZE</span> is the largest precomputed key size, in bytes.</p></div>
+            <pre class="code">#define HMAC_MAX_PRECOMPUTED_KEY_SIZE (2 * (EVP_MAX_MD_CHAINING_LENGTH))</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_set_precomputed_key_export">
+            <div class="comment"><p><span class="first-word">HMAC_set_precomputed_key_export</span> sets the context <tt>ctx</tt> to allow export of the precomputed key using HMAC_get_precomputed_key. On entry, HMAC_CTX must have been initialized via HMAC_Init_*, and neither HMAC_Update nor HMAC_Final must have been called after the last HMAC_Init_ex. It returns one on success and zero on error. After a successful call to HMAC_set_precomputed_key_export, HMAC_Update and HMAC_Final will fail.</p><p><span class="first-word">Note:</span> The main reason for this function is to satisfy FIPS assertion AS09.16, since HMAC_get_precomputed_key returns key material (i.e., a CSP in NIST terminology).</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_set_precomputed_key_export(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_get_precomputed_key">
+            <div class="comment"><p><span class="first-word">HMAC_get_precomputed_key</span> exports the precomputed key. If <tt>out</tt> is NULL, <tt>out_len</tt> is set to the size of the precomputed key. After such a call, <tt><a href="hmac.h.html#HMAC_get_precomputed_key">HMAC_get_precomputed_key</a></tt> can directly be called again with a non-null <tt>out</tt>. But <tt><a href="hmac.h.html#HMAC_Update">HMAC_Update</a></tt> and <tt><a href="hmac.h.html#HMAC_Final">HMAC_Final</a></tt> will still fail.</p><p><span class="first-word">If</span> <tt>out</tt> is not NULL, <tt>*out_len</tt> must contain the number of bytes of space available at <tt>out</tt>. If sufficient, the precomputed key will be written in <tt>out</tt> and <tt>out_len</tt> will be updated with the true length (which is <tt>HMAC_xxx_PRECOMPUTED_KEY_SIZE</tt> for hash function xxx). An output size of <tt><a href="hmac.h.html#HMAC_MAX_PRECOMPUTED_KEY_SIZE">HMAC_MAX_PRECOMPUTED_KEY_SIZE</a></tt> will always be large enough. After a successful call to <tt><a href="hmac.h.html#HMAC_get_precomputed_key">HMAC_get_precomputed_key</a></tt> with a non-NULL <tt>out</tt>, the context can be directly used for computing an HMAC using <tt><a href="hmac.h.html#HMAC_Update">HMAC_Update</a></tt> and <tt><a href="hmac.h.html#HMAC_Final">HMAC_Final</a></tt>.</p><p>The function returns one on success and zero on error.</p><p>The precomputed key is the concatenation: precomputed_key = key_ipad || key_opad where: key_ipad = Hash_Compression_Function(key&#39; xor ipad) key_opad = Hash_Compression_Function(key&#39; xor opad) key&#39; = padding of key with 0 on the right to be of the block length if length of key is at most the block length or Hash(key) otherwise</p><p><span class="first-word">Knowledge</span> of precomputed_key is sufficient to compute HMAC. Use of the precomputed key instead of the key reduces by 2 the number of hash compression function calls (or more if key is larger than the block length)</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out,
+                                           size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Init_from_precomputed_key">
+            <div class="comment"><p><span class="first-word">HMAC_Init_from_precomputed_key</span> sets up an initialised <tt>HMAC_CTX</tt> to use <tt>md</tt> as the hash function and <tt>precomputed_key</tt> as the precomputed key (see <tt><a href="hmac.h.html#HMAC_get_precomputed_key">HMAC_get_precomputed_key</a></tt>). For a non-initial call, <tt>md</tt> may be NULL, in which case the previous hash function is used. If the hash function has not changed and <tt>precomputed_key</tt> is NULL, the previous key is used. This non-initial call is interchangeable with calling <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt> with the same parameters. It returns one on success or zero on failure.</p><p><span class="first-word">Note:</span> Contrary to input keys to <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt>, which can be the empty key, an input precomputed key cannot be empty in an initial call to <tt><a href="hmac.h.html#HMAC_Init_from_precomputed_key">HMAC_Init_from_precomputed_key</a></tt>. Otherwise, the call fails and returns zero.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
+                                                 const uint8_t *precomputed_key,
+                                                 size_t precompute_key_len,
+                                                 const EVP_MD *md);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p></div>
+
+        
+          <div class="decl" id="HMAC_Init">
+            
+            <pre class="code">OPENSSL_EXPORT int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
+                             const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_copy">
+            <div class="comment"><p><span class="first-word">HMAC_CTX_copy</span> calls <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt> on <tt>dest</tt> and then sets it equal to <tt>src</tt>. On entry, <tt>dest</tt> must /not/ be initialised for an operation with <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">Private</span> functions</p></div>
+            <pre class="code">typedef struct hmac_methods_st HmacMethods;</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">We</span> use a union to ensure that enough space is allocated and never actually bother with the named members. We do not externalize SHA3 ctx definition, so hard-code ctx size below and use a compile-time assertion where that ctx is defined to ensure it does not exceed size bounded by <tt>md_ctx_union</tt>. This is OK because union members are never referenced, they&#39;re only used for sizing.</p></div>
+            <pre class="code">union md_ctx_union {
+  MD5_CTX md5;
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  SHA512_CTX sha512;
+  uint8_t sha3[400];
+};</pre>
+          </div>
+        
+          <div class="decl" id="hmac_ctx_st">
+            
+            <pre class="code">struct hmac_ctx_st {
+  const EVP_MD *md;
+  const HmacMethods *methods;
+  union md_ctx_union md_ctx;
+  union md_ctx_union i_ctx;
+  union md_ctx_union o_ctx;
+  int8_t state;
+} /* HMAC_CTX */;</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

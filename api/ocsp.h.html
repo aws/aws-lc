@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - ocsp.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>ocsp.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">Various</span> OCSP flags and values</p></div>
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#OCSP_REVOKED_STATUS_NOSTATUS"><tt>OCSP_REVOKED_STATUS_NOSTATUS</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_UNSPECIFIED"><tt>OCSP_REVOKED_STATUS_UNSPECIFIED</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_KEYCOMPROMISE"><tt>OCSP_REVOKED_STATUS_KEYCOMPROMISE</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_CACOMPROMISE"><tt>OCSP_REVOKED_STATUS_CACOMPROMISE</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_AFFILIATIONCHANGED"><tt>OCSP_REVOKED_STATUS_AFFILIATIONCHANGED</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_SUPERSEDED"><tt>OCSP_REVOKED_STATUS_SUPERSEDED</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_CESSATIONOFOPERATION"><tt>OCSP_REVOKED_STATUS_CESSATIONOFOPERATION</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_CERTIFICATEHOLD"><tt>OCSP_REVOKED_STATUS_CERTIFICATEHOLD</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_REMOVEFROMCRL"><tt>OCSP_REVOKED_STATUS_REMOVEFROMCRL</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN"><tt>OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN</tt></a></li>
+          
+            <li><a href="#OCSP_REVOKED_STATUS_AACOMPROMISE"><tt>OCSP_REVOKED_STATUS_AACOMPROMISE</tt></a></li>
+          
+            <li><a href="#OCSP_NOCERTS"><tt>OCSP_NOCERTS</tt></a></li>
+          
+            <li><a href="#OCSP_NOINTERN"><tt>OCSP_NOINTERN</tt></a></li>
+          
+            <li><a href="#OCSP_NOCHAIN"><tt>OCSP_NOCHAIN</tt></a></li>
+          
+            <li><a href="#OCSP_NOVERIFY"><tt>OCSP_NOVERIFY</tt></a></li>
+          
+            <li><a href="#OCSP_NOEXPLICIT"><tt>OCSP_NOEXPLICIT</tt></a></li>
+          
+            <li><a href="#OCSP_TRUSTOTHER"><tt>OCSP_TRUSTOTHER</tt></a></li>
+          
+            <li><a href="#OCSP_RESPID_KEY"><tt>OCSP_RESPID_KEY</tt></a></li>
+          
+            <li><a href="#OCSP_NOTIME"><tt>OCSP_NOTIME</tt></a></li>
+          
+        
+      
+        
+          
+          
+            
+          
+            <li><a href="#d2i_OCSP_REQUEST_bio"><tt>d2i_OCSP_REQUEST_bio</tt></a></li>
+          
+            <li><a href="#d2i_OCSP_RESPONSE_bio"><tt>d2i_OCSP_RESPONSE_bio</tt></a></li>
+          
+            <li><a href="#i2d_OCSP_RESPONSE_bio"><tt>i2d_OCSP_RESPONSE_bio</tt></a></li>
+          
+            <li><a href="#i2d_OCSP_REQUEST_bio"><tt>i2d_OCSP_REQUEST_bio</tt></a></li>
+          
+            <li><a href="#OCSP_CERTID_dup"><tt>OCSP_CERTID_dup</tt></a></li>
+          
+            <li><a href="#OCSP_sendreq_bio"><tt>OCSP_sendreq_bio</tt></a></li>
+          
+            <li><a href="#OCSP_sendreq_new"><tt>OCSP_sendreq_new</tt></a></li>
+          
+            <li><a href="#OCSP_sendreq_nbio"><tt>OCSP_sendreq_nbio</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_new"><tt>OCSP_REQ_CTX_new</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_free"><tt>OCSP_REQ_CTX_free</tt></a></li>
+          
+            <li><a href="#OCSP_set_max_response_length"><tt>OCSP_set_max_response_length</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_http"><tt>OCSP_REQ_CTX_http</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_set1_req"><tt>OCSP_REQ_CTX_set1_req</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_add1_header"><tt>OCSP_REQ_CTX_add1_header</tt></a></li>
+          
+            <li><a href="#OCSP_REQ_CTX_i2d"><tt>OCSP_REQ_CTX_i2d</tt></a></li>
+          
+            <li><a href="#OCSP_request_add0_id"><tt>OCSP_request_add0_id</tt></a></li>
+          
+            <li><a href="#OCSP_onereq_get0_id"><tt>OCSP_onereq_get0_id</tt></a></li>
+          
+            <li><a href="#OCSP_request_add1_nonce"><tt>OCSP_request_add1_nonce</tt></a></li>
+          
+            <li><a href="#OCSP_basic_add1_nonce"><tt>OCSP_basic_add1_nonce</tt></a></li>
+          
+            <li><a href="#OCSP_check_nonce"><tt>OCSP_check_nonce</tt></a></li>
+          
+            <li><a href="#OCSP_copy_nonce"><tt>OCSP_copy_nonce</tt></a></li>
+          
+            <li><a href="#OCSP_request_set1_name"><tt>OCSP_request_set1_name</tt></a></li>
+          
+            <li><a href="#OCSP_request_add1_cert"><tt>OCSP_request_add1_cert</tt></a></li>
+          
+            <li><a href="#OCSP_request_is_signed"><tt>OCSP_request_is_signed</tt></a></li>
+          
+            <li><a href="#OCSP_request_onereq_count"><tt>OCSP_request_onereq_count</tt></a></li>
+          
+            <li><a href="#OCSP_request_onereq_get0"><tt>OCSP_request_onereq_get0</tt></a></li>
+          
+            <li><a href="#OCSP_request_sign"><tt>OCSP_request_sign</tt></a></li>
+          
+            <li><a href="#OCSP_response_status"><tt>OCSP_response_status</tt></a></li>
+          
+            <li><a href="#OCSP_response_get1_basic"><tt>OCSP_response_get1_basic</tt></a></li>
+          
+            <li><a href="#OCSP_resp_count"><tt>OCSP_resp_count</tt></a></li>
+          
+            <li><a href="#OCSP_resp_get0"><tt>OCSP_resp_get0</tt></a></li>
+          
+            <li><a href="#OCSP_single_get0_status"><tt>OCSP_single_get0_status</tt></a></li>
+          
+            <li><a href="#OCSP_resp_find"><tt>OCSP_resp_find</tt></a></li>
+          
+            <li><a href="#OCSP_resp_find_status"><tt>OCSP_resp_find_status</tt></a></li>
+          
+            <li><a href="#OCSP_check_validity"><tt>OCSP_check_validity</tt></a></li>
+          
+            <li><a href="#OCSP_basic_verify"><tt>OCSP_basic_verify</tt></a></li>
+          
+            <li><a href="#OCSP_request_verify"><tt>OCSP_request_verify</tt></a></li>
+          
+            <li><a href="#OCSP_cert_id_new"><tt>OCSP_cert_id_new</tt></a></li>
+          
+            <li><a href="#OCSP_cert_to_id"><tt>OCSP_cert_to_id</tt></a></li>
+          
+            <li><a href="#OCSP_parse_url"><tt>OCSP_parse_url</tt></a></li>
+          
+            <li><a href="#OCSP_id_issuer_cmp"><tt>OCSP_id_issuer_cmp</tt></a></li>
+          
+            <li><a href="#OCSP_id_cmp"><tt>OCSP_id_cmp</tt></a></li>
+          
+            <li><a href="#OCSP_id_get0_info"><tt>OCSP_id_get0_info</tt></a></li>
+          
+            <li><a href="#OCSP_basic_add1_cert"><tt>OCSP_basic_add1_cert</tt></a></li>
+          
+            <li><a href="#OCSP_basic_add1_status"><tt>OCSP_basic_add1_status</tt></a></li>
+          
+            <li><a href="#OCSP_basic_sign"><tt>OCSP_basic_sign</tt></a></li>
+          
+            <li><a href="#OCSP_response_create"><tt>OCSP_response_create</tt></a></li>
+          
+            <li><a href="#OCSP_SINGLERESP_get0_id"><tt>OCSP_SINGLERESP_get0_id</tt></a></li>
+          
+            <li><a href="#OCSP_response_status_str"><tt>OCSP_response_status_str</tt></a></li>
+          
+            <li><a href="#OCSP_cert_status_str"><tt>OCSP_cert_status_str</tt></a></li>
+          
+            <li><a href="#OCSP_crl_reason_str"><tt>OCSP_crl_reason_str</tt></a></li>
+          
+            <li><a href="#OCSP_REQUEST_print"><tt>OCSP_REQUEST_print</tt></a></li>
+          
+            <li><a href="#OCSP_RESPONSE_print"><tt>OCSP_RESPONSE_print</tt></a></li>
+          
+            <li><a href="#OCSP_BASICRESP_get_ext_by_NID"><tt>OCSP_BASICRESP_get_ext_by_NID</tt></a></li>
+          
+            <li><a href="#OCSP_BASICRESP_get_ext"><tt>OCSP_BASICRESP_get_ext</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#OCSP-%7cX509_EXTENSION%7c-Functions">OCSP <tt>X509_EXTENSION</tt> Functions</a></li>
+          
+            <li><a href="#OCSP_BASICRESP_delete_ext"><tt>OCSP_BASICRESP_delete_ext</tt></a></li>
+          
+            <li><a href="#OCSP_SINGLERESP_add_ext"><tt>OCSP_SINGLERESP_add_ext</tt></a></li>
+          
+            <li><a href="#OCSP_SINGLERESP_get_ext_count"><tt>OCSP_SINGLERESP_get_ext_count</tt></a></li>
+          
+            <li><a href="#OCSP_SINGLERESP_get_ext"><tt>OCSP_SINGLERESP_get_ext</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#OCSP-no-op-flags-%5bDeprecated%5d">OCSP no-op flags [Deprecated]</a></li>
+          
+            <li><a href="#OCSP_NOSIGS"><tt>OCSP_NOSIGS</tt></a></li>
+          
+            <li><a href="#OCSP_NOCASIGN"><tt>OCSP_NOCASIGN</tt></a></li>
+          
+            <li><a href="#OCSP_NODELEGATED"><tt>OCSP_NODELEGATED</tt></a></li>
+          
+            <li><a href="#OCSP_NOCHECKS"><tt>OCSP_NOCHECKS</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_NOSTATUS">
+            <div class="comment"><p>The following constants are OCSP reason codes identify the reason for the certificate revocation.</p><p><span class="first-word">CRLReason</span> ::= ENUMERATED { unspecified             (0), keyCompromise           (1), cACompromise            (2), affiliationChanged      (3), superseded              (4), cessationOfOperation    (5), -- value 7 is not used certificateHold         (6), removeFromCRL           (8), privilegeWithdrawn      (9), aACompromise            (10) }</p><p><span class="first-word">Reason</span> Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1</p><p><span class="first-word">Note:</span> OCSP_REVOKED_STATUS_NOSTATUS is defined by OpenSSL and is not defined within the RFC.</p></div>
+            <pre class="code">#define OCSP_REVOKED_STATUS_NOSTATUS -1</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_UNSPECIFIED">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_UNSPECIFIED 0</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_KEYCOMPROMISE">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_CACOMPROMISE">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_CACOMPROMISE 2</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_AFFILIATIONCHANGED">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_SUPERSEDED">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_SUPERSEDED 4</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_CESSATIONOFOPERATION">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_CERTIFICATEHOLD">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_REMOVEFROMCRL">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REVOKED_STATUS_AACOMPROMISE">
+            
+            <pre class="code">#define OCSP_REVOKED_STATUS_AACOMPROMISE 10</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOCERTS">
+            <div class="comment"><p><span class="first-word">OCSP_NOCERTS</span> is for <tt><a href="ocsp.h.html#OCSP_request_sign">OCSP_request_sign</a></tt> and <tt><a href="ocsp.h.html#OCSP_basic_sign">OCSP_basic_sign</a></tt>. Setting this excludes certificates request/response and ignores the <tt>certs</tt> parameter. Certificates are optional.</p></div>
+            <pre class="code">#define OCSP_NOCERTS 0x1</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOINTERN">
+            <div class="comment"><p><span class="first-word">OCSP_NOINTERN</span> is for <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt> and <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>. Certificates included within <tt>bs</tt> or <tt>req</tt> will be included in the search for the signing certificate by default, unless <tt><a href="ocsp.h.html#OCSP_NOINTERN">OCSP_NOINTERN</a></tt> is set.</p></div>
+            <pre class="code">#define OCSP_NOINTERN 0x2</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOCHAIN">
+            <div class="comment"><p><span class="first-word">OCSP_NOCHAIN</span> is for <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt> and <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>. For <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt>, certificates in both <tt>certs</tt> and in <tt>bs</tt> are considered as certificates for the construction of the validation path for the signer certificate by default, unless <tt><a href="ocsp.h.html#OCSP_NOCHAIN">OCSP_NOCHAIN</a></tt> is set. For <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>, certificates in <tt>req</tt> are considered as certificates for the construction of the validation path for the signer certificate by default, unless <tt><a href="ocsp.h.html#OCSP_NOCHAIN">OCSP_NOCHAIN</a></tt> is set.</p></div>
+            <pre class="code">#define OCSP_NOCHAIN 0x8</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOVERIFY">
+            <div class="comment"><p><span class="first-word">OCSP_NOVERIFY</span> is for <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt> and <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>. When setting this flag, the signature on the OCSP response/request will still be verified, but additionally verification of the signer certificate will be skipped.</p></div>
+            <pre class="code">#define OCSP_NOVERIFY 0x10</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOEXPLICIT">
+            <div class="comment"><p><span class="first-word">OCSP_NOEXPLICIT</span> is for <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt>. We will check for explicit trust for OCSP signing in the root CA certificate, unless the flags contain <tt><a href="ocsp.h.html#OCSP_NOEXPLICIT">OCSP_NOEXPLICIT</a></tt>.</p></div>
+            <pre class="code">#define OCSP_NOEXPLICIT 0x20</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_TRUSTOTHER">
+            <div class="comment"><p><span class="first-word">OCSP_TRUSTOTHER</span> is for <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt> and <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>. When set, all certificates within <tt>certs</tt> are implicitly trusted.</p></div>
+            <pre class="code">#define OCSP_TRUSTOTHER 0x200</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_RESPID_KEY">
+            <div class="comment"><p><span class="first-word">OCSP_RESPID_KEY</span> is for <tt><a href="ocsp.h.html#OCSP_basic_sign">OCSP_basic_sign</a></tt>. By default, the OCSP responder is identified by name and included in the response. Setting this changes the default identifier to be the hash of the issuer&#39;s public key instead.</p></div>
+            <pre class="code">#define OCSP_RESPID_KEY 0x400</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOTIME">
+            <div class="comment"><p><span class="first-word">OCSP_NOTIME</span> is for <tt><a href="ocsp.h.html#OCSP_basic_sign">OCSP_basic_sign</a></tt>. Setting this excludes the default behavior of setting the <tt>producedAt</tt> time field in <tt>resp</tt> against the current time and leaves it empty.</p></div>
+            <pre class="code">#define OCSP_NOTIME 0x800</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+            
+            <pre class="code">typedef struct ocsp_cert_id_st OCSP_CERTID;
+typedef struct ocsp_one_request_st OCSP_ONEREQ;
+typedef struct ocsp_req_info_st OCSP_REQINFO;
+typedef struct ocsp_signature_st OCSP_SIGNATURE;
+typedef struct ocsp_request_st OCSP_REQUEST;
+typedef struct ocsp_resp_bytes_st OCSP_RESPBYTES;
+typedef struct ocsp_revoked_info_st OCSP_REVOKEDINFO;
+typedef struct ocsp_cert_status_st OCSP_CERTSTATUS;
+typedef struct ocsp_single_response_st OCSP_SINGLERESP;
+typedef struct ocsp_response_data_st OCSP_RESPDATA;
+typedef struct ocsp_response_st OCSP_RESPONSE;
+typedef struct ocsp_responder_id_st OCSP_RESPID;
+typedef struct ocsp_basic_response_st OCSP_BASICRESP;
+DEFINE_STACK_OF(OCSP_CERTID)
+DEFINE_STACK_OF(OCSP_ONEREQ)
+DEFINE_STACK_OF(OCSP_RESPID)
+DEFINE_STACK_OF(OCSP_SINGLERESP)
+DECLARE_ASN1_FUNCTIONS(OCSP_BASICRESP)
+DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
+DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
+DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
+DECLARE_ASN1_FUNCTIONS(OCSP_SINGLERESP)
+DECLARE_ASN1_FUNCTIONS(OCSP_ONEREQ)</pre>
+          </div>
+        
+          <div class="decl" id="d2i_OCSP_REQUEST_bio">
+            <div class="comment"><p><span class="first-word">d2i_OCSP_REQUEST_bio</span> parses a DER-encoded OCSP request from <tt>bp</tt>, converts it into an <tt>OCSP_REQUEST</tt>, and writes the result in <tt>preq</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_REQUEST *d2i_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST **preq);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_OCSP_RESPONSE_bio">
+            <div class="comment"><p><span class="first-word">d2i_OCSP_RESPONSE_bio</span> parses a DER-encoded OCSP response from <tt>bp</tt>, converts it into an <tt>OCSP_RESPONSE</tt>, and writes the result in <tt>presp</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
+                                                    OCSP_RESPONSE **presp);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_OCSP_RESPONSE_bio">
+            <div class="comment"><p><span class="first-word">i2d_OCSP_RESPONSE_bio</span> marshals <tt>presp</tt> as a DER-encoded OCSP response and writes the result to <tt>bp</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_OCSP_REQUEST_bio">
+            <div class="comment"><p><span class="first-word">i2d_OCSP_REQUEST_bio</span> marshals <tt>preq</tt> as a DER-encoded OCSP request and writes the result to <tt>bp</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST *preq);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_CERTID_dup">
+            <div class="comment"><p><span class="first-word">OCSP_CERTID_dup</span> allocates a new <tt>OCSP_CERTID</tt> and sets it equal to the state of <tt>id</tt>. It returns the new <tt>OCSP_CERTID</tt> or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_CERTID *OCSP_CERTID_dup(OCSP_CERTID *id);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_sendreq_bio">
+            <div class="comment"><p><span class="first-word">OCSP_sendreq_bio</span> is a blocking OCSP request handler which is a special case of non-blocking I/O. <tt><a href="ocsp.h.html#OCSP_sendreq_bio">OCSP_sendreq_bio</a></tt> combines <tt><a href="ocsp.h.html#OCSP_sendreq_new">OCSP_sendreq_new</a></tt> with as many calls of <tt><a href="ocsp.h.html#OCSP_sendreq_nbio">OCSP_sendreq_nbio</a></tt> as needed and then <tt><a href="ocsp.h.html#OCSP_REQ_CTX_free">OCSP_REQ_CTX_free</a></tt>, with a response header maximum line length of 4k. It waits indefinitely on a response, if <tt><a href="bio.h.html#BIO_should_retry">BIO_should_retry</a></tt> is true and the <tt>BIO</tt> persists.</p><p class="warning"><span class="first-word">WARNING:</span> This is retained only for compatibility. This does not support setting a timeout or adding your own HTTP headers. Use <tt><a href="ocsp.h.html#OCSP_sendreq_nbio">OCSP_sendreq_nbio</a></tt> and handle the timeout accordingly to the <tt>BIO</tt> type. You can also use <tt><a href="ocsp.h.html#OCSP_REQ_CTX_add1_header">OCSP_REQ_CTX_add1_header</a></tt> to add your own HTTP headers.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_RESPONSE *OCSP_sendreq_bio(BIO *b, const char *path,
+                                               OCSP_REQUEST *req);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_sendreq_new">
+            <div class="comment"><p><span class="first-word">OCSP_sendreq_new</span> returns an <tt>OCSP_REQ_CTX</tt> structure using the responder io, the URL path, the <tt>OCSP_REQUEST</tt> req to be sent, and with a response header maximum line length of maxline. If maxline is zero or less, a default value of 4k is used. The <tt>OCSP_REQUEST</tt> req may be set to NULL and provided later if required.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path,
+                                              OCSP_REQUEST *req, int maxline);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_sendreq_nbio">
+            <div class="comment"><p><span class="first-word">OCSP_sendreq_nbio</span> attempts to send the request prepared in <tt>rctx</tt> and to gather the response via HTTP, using the <tt>BIO</tt> io and path that were given when calling <tt><a href="ocsp.h.html#OCSP_sendreq_new">OCSP_sendreq_new</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_sendreq_nbio(OCSP_RESPONSE **presp, OCSP_REQ_CTX *rctx);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_new">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_new</span> creates a new <tt>OCSP_REQ_CTX</tt>. <tt>OCSP_REQ_CTX</tt> is used to contain the information to send the OCSP request and gather the response over HTTP.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_free">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_free</span> frees the memory allocated by <tt>OCSP_REQ_CTX</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_set_max_response_length">
+            <div class="comment"><p><span class="first-word">OCSP_set_max_response_length</span> sets the maximum response length for an OCSP request over HTTP to <tt>len</tt>. If a custom max response length is needed, this should be set before <tt>OCSP_REQ_CTX</tt> is sent out to retrieve the OCSP response.</p></div>
+            <pre class="code">OPENSSL_EXPORT void OCSP_set_max_response_length(OCSP_REQ_CTX *rctx,
+                                                 unsigned long len);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_http">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_http</span> adds the HTTP request line to the context.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
+                                     const char *path);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_set1_req">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_set1_req</span> finalizes the HTTP request context. It is needed if an ASN.1-encoded request should be sent.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_add1_header">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_add1_header</span> adds header name with value <tt>value</tt> to the context <tt>rctx</tt>. It can be called  more than once to add multiple header lines.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
+                                            const char *name,
+                                            const char *value);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQ_CTX_i2d">
+            <div class="comment"><p><span class="first-word">OCSP_REQ_CTX_i2d</span> parses the ASN.1 contents of <tt>rctx</tt> into the der format.</p></div>
+            <pre class="code">int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_add0_id">
+            <div class="comment"><p><span class="first-word">OCSP_request_add0_id</span> adds <tt>cid</tt> to <tt>req</tt>. Returns the new <tt>OCSP_ONEREQ</tt> pointer allocated on the stack within <tt>req</tt>. This is useful if we want to add extensions. WARNING: This allocates a new <tt>OCSP_ONEREQ</tt> and assigns the  pointer to <tt>cid</tt> to it. It then adds the newly allocated <tt>OCSP_ONEREQ</tt> to the stack within <tt>req</tt>. <tt>req</tt> now takes ownership of <tt>cid</tt>, and also maintains ownership of the pointer to <tt>OCSP_ONEREQ</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
+                                                 OCSP_CERTID *cid);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_onereq_get0_id">
+            <div class="comment"><p><span class="first-word">OCSP_onereq_get0_id</span> returns the certificate identifier associated with an OCSP request</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_add1_nonce">
+            <div class="comment"><p><span class="first-word">OCSP_request_add1_nonce</span> adds a nonce of value <tt>val</tt> and length <tt>len</tt> to <tt>req</tt>. If <tt>val</tt> is NULL, a random nonce is generated and used. If <tt>len</tt> is zero or negative, a default length of 16 bytes will be used. If <tt>val</tt> is non-NULL, <tt>len</tt> must equal the length of <tt>val</tt>. This is different from OpenSSL, which allows a default length for <tt>len</tt> to be used. Mis-usage of the default length could result in a read overflow, so we disallow it.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
+                                           unsigned char *val, int len);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_basic_add1_nonce">
+            <div class="comment"><p><span class="first-word">OCSP_basic_add1_nonce</span> is identical to <tt><a href="ocsp.h.html#OCSP_request_add1_nonce">OCSP_request_add1_nonce</a></tt>, but adds the nonce to <tt>resp</tt> instead (the response).</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_basic_add1_nonce(OCSP_BASICRESP *resp,
+                                         unsigned char *val, int len);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_check_nonce">
+            <div class="comment"><p><span class="first-word">OCSP_check_nonce</span> checks nonce existence and equality in <tt>req</tt> and <tt>bs</tt>. If there is parsing issue with <tt>req</tt> or <tt>bs</tt>, it will be determined that a nonce does not exist within <tt>req</tt> or <tt>bs</tt>.</p><p><span class="first-word">Return</span> value reflects result: OCSP_NONCE_EQUAL (1: nonces present and equal.) OCSP_NONCE_BOTH_ABSENT (2: nonces both absent.) OCSP_NONCE_RESPONSE_ONLY (3: nonce present in <tt>bs</tt> only.) OCSP_NONCE_NOT_EQUAL (0: parameters are NULL or nonces are both present but not equal.) OCSP_NONCE_REQUEST_ONLY (-1: nonce in <tt>req</tt> only.)</p><p><span class="first-word">For</span> most responders, clients can check &#34;return &gt; 0&#34;. If an OCSP responder doesn&#39;t handle nonces, &#34;return != 0&#34; may be necessary. &#34;return == 0&#34; will always be an error. The error can mean that NULL parameter was passed into the function, or that the nonces are both present, but aren&#39;t equal.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_copy_nonce">
+            <div class="comment"><p><span class="first-word">OCSP_copy_nonce</span> copies the nonce value (if any) from <tt>req</tt> to <tt>resp</tt>. Returns 1 on success and 0 on failure. If the optional nonce value does not exist in <tt>req</tt>, we return 2 instead.</p><p><span class="first-word">Note:</span> <tt><a href="ocsp.h.html#OCSP_copy_nonce">OCSP_copy_nonce</a></tt> allows for multiple OCSP nonces to exist and appends the new nonce to the end of the extension list. This causes issues with <tt><a href="ocsp.h.html#OCSP_check_nonce">OCSP_check_nonce</a></tt>, since it looks for the first one in the list. The old nonce extension should be deleted prior to calling <tt><a href="ocsp.h.html#OCSP_copy_nonce">OCSP_copy_nonce</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_set1_name">
+            <div class="comment"><p><span class="first-word">OCSP_request_set1_name</span> sets <tt>requestorName</tt> from an <tt>X509_NAME</tt> structure.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_add1_cert">
+            <div class="comment"><p><span class="first-word">OCSP_request_add1_cert</span> adds a certificate to an <tt>OCSP_REQUEST</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_is_signed">
+            <div class="comment"><p><span class="first-word">OCSP_request_is_signed</span> checks if the optional signature exists for <tt>req</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_is_signed(OCSP_REQUEST *req);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_onereq_count">
+            <div class="comment"><p><span class="first-word">OCSP_request_onereq_count</span> returns the number of <tt>OCSP_ONEREQ</tt>s in <tt>req</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_onereq_count(OCSP_REQUEST *req);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_onereq_get0">
+            <div class="comment"><p><span class="first-word">OCSP_request_onereq_get0</span> returns the <tt>OCSP_ONEREQ</tt> in <tt>req</tt> at index <tt>i</tt> or NULL if <tt>i</tt> is out of bounds.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_sign">
+            <div class="comment"><p><span class="first-word">OCSP_request_sign</span> signs the OCSP request <tt>req</tt> using <tt>key</tt> and <tt>dgst</tt>. <tt>key</tt> MUST be the private key of <tt>signer</tt>. One or more optional certificates can be added to <tt>resp</tt> with <tt>certs</tt>. This function will fail if a signature in <tt>req</tt> already exists.</p><p><span class="first-word">Note:</span> 1. The OCSP requester is identified by the subject name from <tt>signer</tt> and included in <tt>req</tt>. 2. All certificates in <tt>certs</tt> are added to <tt>req</tt> by default. Setting <tt><a href="ocsp.h.html#OCSP_NOCERTS">OCSP_NOCERTS</a></tt> excludes certificates from being added in <tt>req</tt> and ignores the <tt>certs</tt> parameter.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer,
+                                     EVP_PKEY *key, const EVP_MD *dgst,
+                                     STACK_OF(X509) *certs,
+                                     unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_response_status">
+            <div class="comment"><p><span class="first-word">OCSP_response_status</span> returns response status from <tt>OCSP_RESPONSE</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_response_get1_basic">
+            <div class="comment"><p><span class="first-word">OCSP_response_get1_basic</span> returns <tt>OCSP_BASICRESP</tt> from <tt>OCSP_RESPONSE</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_resp_count">
+            <div class="comment"><p><span class="first-word">OCSP_resp_count</span> returns the number of <tt>OCSP_SINGLERESP</tt> responses present in <tt>bs</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_resp_count(OCSP_BASICRESP *bs);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_resp_get0">
+            <div class="comment"><p><span class="first-word">OCSP_resp_get0</span> returns the <tt>OCSP_SINGLERESP</tt> at the <tt>idx</tt> within <tt>bs</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_single_get0_status">
+            <div class="comment"><p><span class="first-word">OCSP_single_get0_status</span> returns the status of <tt>single</tt>.</p><p><span class="first-word">Note:</span> 1. <tt>reason</tt> value is allowed to be null. 2. Time values passed into function are allowed to be NULL if certificate fields are empty. 3. <tt>revtime</tt> and <tt>reason</tt> values only set if the certificate status is revoked.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
+                                           ASN1_GENERALIZEDTIME **revtime,
+                                           ASN1_GENERALIZEDTIME **thisupd,
+                                           ASN1_GENERALIZEDTIME **nextupd);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_resp_find">
+            <div class="comment"><p><span class="first-word">OCSP_resp_find</span> returns the index of the <tt>OCSP_SINGLERESP</tt> in <tt>bs</tt> which matches <tt>id</tt> if found, or -1 if not found.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id,
+                                  int last);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_resp_find_status">
+            <div class="comment"><p><span class="first-word">OCSP_resp_find_status</span> looks up a cert id and extract the update time and revocation status of  certificate sent back from OCSP responder if found. Returns 1 on success.</p><p><span class="first-word">Note:</span> 1. Revocation status code is passed into <tt>*status</tt> parameter. Status code will not be passed if <tt>*status</tt> is NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id,
+                                         int *status, int *reason,
+                                         ASN1_GENERALIZEDTIME **revtime,
+                                         ASN1_GENERALIZEDTIME **thisupd,
+                                         ASN1_GENERALIZEDTIME **nextupd);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_check_validity">
+            <div class="comment"><p><span class="first-word">OCSP_check_validity</span> checks the validity of <tt>thisUpdate</tt> and <tt>nextUpdate</tt> fields from an <tt>OCSP_SINGLERESP</tt>.</p><p><span class="first-word">Note:</span> 1. It is possible that the request will take a few seconds to process and/or the local system time isn&#39;t exactly the same as the OCSP responder&#39;s time. Therefore, to avoid rejecting otherwise valid time we allow the times to be within <tt>drift_num_seconds</tt> of the current time. 2.  Also, to avoid accepting very old responses without a <tt>nextUpdate</tt> field, an optional <tt>max_age_seconds</tt> parameter specifies the maximum age the <tt>thisUpdate</tt> field can be. <tt>max_age_seconds</tt> should be the number of seconds relative to <tt>thisUpdate</tt>. You can also set <tt>max_age_seconds</tt> to &#34;-1&#34;, if the maximum age should not be checked. 3.  <tt>thisUpdate</tt> should be within the range of: (current time - max_age_seconds) &lt; <tt>thisUpdate</tt> &lt; (current time + drift_num_seconds). <tt>nextUpdate</tt> should be in the future: (current time + drift_num_seconds) &lt; <tt>nextUpdate</tt>. 4.  <tt>thisUpdate</tt> and <tt>nextUpdate</tt> are defined in the RFC: https://datatracker.ietf.org/doc/html/rfc6960#section-2.4</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
+                                       ASN1_GENERALIZEDTIME *nextUpdate,
+                                       long drift_num_seconds,
+                                       long max_age_seconds);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_basic_verify">
+            <div class="comment"><p><span class="first-word">OCSP_basic_verify</span> verifies a basic response message. It checks that <tt>bs</tt> is correctly signed and that the signer certificate can be validated. Returns 1 if the response is valid, 0 if the signature cannot be verified, or -1 on fatal errors such as malloc failure.</p><p><span class="first-word">Note:</span> 1. Checks that OCSP response CAN be verified, but does not imply anything about the corresponding certificate&#39;s revocation status. 2. <tt><a href="ocsp.h.html#OCSP_resp_find_status">OCSP_resp_find_status</a></tt> should be used to check if the OCSP response&#39;s cert status is <tt>V_OCSP_CERTSTATUS_GOOD</tt>. <tt><a href="ocsp.h.html#OCSP_check_validity">OCSP_check_validity</a></tt> should also be used to validate that the OCSP response&#39;s timestamps are correct.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
+                                     X509_STORE *st, unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_request_verify">
+            <div class="comment"><p><span class="first-word">OCSP_request_verify</span> verifies the OCSP request message, <tt>req</tt>, with <tt>st</tt>. OCSP request signatures are optional according to RFC6960, but one can check that <tt>req</tt> is correctly signed and that the signer certificate can be validated if a signature exists. This returns 1 if <tt>req</tt> is valid or returns 0 if <tt>req</tt>&#39;s signature is non-existent or cannot be verified.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
+                                       X509_STORE *st, unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_cert_id_new">
+            <div class="comment"><p><span class="first-word">OCSP_cert_id_new</span> creates and returns a new <tt>OCSP_CERTID</tt> using <tt>dgst</tt>, <tt>issuerName</tt>, <tt>issuerKey</tt>, and <tt>serialNumber</tt> as its contents.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
+                                             const X509_NAME *issuerName,
+                                             const ASN1_BIT_STRING *issuerKey,
+                                             const ASN1_INTEGER *serialNumber);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_cert_to_id">
+            <div class="comment"><p><span class="first-word">OCSP_cert_to_id</span> returns a <tt>OCSP_CERTID</tt> converted from a certificate and its issuer.</p><p><span class="first-word">Note:</span> 1. If <tt>subject</tt> is NULL, we get the subject name from the issuer and set the serial number to NULL. 2. OpenSSL&#39;s legacy OCSP code decided to make SHA-1 as default hash algorithm when the <tt>dgst</tt> is set as NULL. We keep this to maintain backwards compatibility, but strongly advise to set a digest when using this function. Even though this is not used cryptographically, there is the possibility of a response being returned with a forced issuer name when using SHA-1 (assuming a preimage attack, which is beyond the scope of how SHA-1 is currently vulnerable).</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
+                                            const X509 *subject,
+                                            const X509 *issuer);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_parse_url">
+            <div class="comment"><p><span class="first-word">OCSP_parse_url</span> parses an OCSP responder URL and returns its component parts. <tt>url</tt> argument must be a null-terminated string containing the URL to be parsed. The other arguments are pointers to variables that will be set to the parsed components of the URL. When <tt><a href="ocsp.h.html#OCSP_parse_url">OCSP_parse_url</a></tt> returns 1, these arguments will allocate new memory with a copy of value. It is the caller&#39;s responsibility to free these.</p><p><tt>phost</tt>: A pointer to a char pointer that will be set to the host component of the URL. If the URL does not contain a host component, this will be set to an empty string. <tt>pport</tt>: A pointer to an int that will be set to the port number specified in the URL, or to the default port (80 for HTTP, 443 for HTTPS) if no port number is specified. <tt>ppath</tt>: A pointer to a char pointer that will be set to the path component of the URL. If the URL does not contain a path component, this will be set to &#34;/&#34;. <tt>pssl</tt>:  A pointer to an int that will be set to 1 if the URL specifies the HTTPS protocol, or 0 if HTTP.</p><p><span class="first-word">Note:</span> <tt><a href="ocsp.h.html#OCSP_parse_url">OCSP_parse_url</a></tt> does not perform any validation of the URL or its components beyond basic parsing. It is the responsibility of the caller to ensure that the URL is well-formed and valid.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
+                                  char **ppath, int *pssl);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_id_issuer_cmp">
+            <div class="comment"><p><span class="first-word">OCSP_id_issuer_cmp</span> compares the issuers&#39; name and key hash of <tt>a</tt> and <tt>b</tt>. It returns 0 on equal.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a,
+                                      const OCSP_CERTID *b);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_id_cmp">
+            <div class="comment"><p><span class="first-word">OCSP_id_cmp</span> calls <tt><a href="ocsp.h.html#OCSP_id_issuer_cmp">OCSP_id_issuer_cmp</a></tt> and additionally compares the <tt>serialNumber</tt> of <tt>a</tt> and <tt>b</tt>. It returns 0 on equal.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_id_get0_info">
+            <div class="comment"><p><span class="first-word">OCSP_id_get0_info</span> returns the issuer name hash, hash OID, issuer key hash, and the serial number contained in <tt>cid</tt>. If any of the values are not required, the corresponding parameter can be set to NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
+                                     ASN1_OBJECT **algor,
+                                     ASN1_OCTET_STRING **keyHash,
+                                     ASN1_INTEGER **serial, OCSP_CERTID *cid);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_basic_add1_cert">
+            <div class="comment"><p><span class="first-word">OCSP_basic_add1_cert</span> adds <tt>cert</tt> to the <tt>resp</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_basic_add1_status">
+            <div class="comment"><p><span class="first-word">OCSP_basic_add1_status</span> creates and returns an <tt>OCSP_SINGLERESP</tt> with <tt>cid</tt>, <tt>status</tt>, <tt>this_update</tt> and <tt>next_update</tt>. The newly created <tt>OCSP_SINGLERESP</tt> is pushed onto the internal <tt>OCSP_SINGLERESP</tt> stack in <tt>resp</tt>. <tt>status</tt> should be a value defined by <tt>V_OCSP_CERTSTATUS_*</tt>.</p><ol><li><span class="first-word">If</span> <tt>status</tt> has the value <tt>V_OCSP_CERTSTATUS_REVOKED</tt>, <tt>revoked_reason</tt> should be a valid <tt>OCSP_REVOKED_STATUS_*</tt> value and <tt>revoked_time</tt> cannot be empty.</li><li><span class="first-word">If</span> <tt>status</tt> has the value of either <tt>V_OCSP_CERTSTATUS_GOOD</tt> or <tt>V_OCSP_CERTSTATUS_UNKNOWN</tt>, <tt>revoked_reason</tt> and <tt>revoked_time</tt> are ignored.</li></ol></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_basic_add1_status(
+    OCSP_BASICRESP *resp, OCSP_CERTID *cid, int status, int revoked_reason,
+    ASN1_TIME *revoked_time, ASN1_TIME *this_update, ASN1_TIME *next_update);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_basic_sign">
+            <div class="comment"><p><span class="first-word">OCSP_basic_sign</span> signs the OCSP response <tt>resp</tt> using <tt>key</tt> and <tt>dgst</tt>. <tt>key</tt> MUST be the private key of <tt>signer</tt>. One or more optional certificates can be added to <tt>resp</tt> with <tt>certs</tt>.</p><p><span class="first-word">Note:</span> 1. By default, the OCSP responder is identified by the subject name from <tt>signer</tt> and included in <tt>resp</tt>. Users can set <tt><a href="ocsp.h.html#OCSP_RESPID_KEY">OCSP_RESPID_KEY</a></tt> with <tt>flags</tt>, if they wish for the responder to be identified by the hash of <tt>signer</tt>&#39;s public key instead. 2. All certificates in <tt>certs</tt> are added to <tt>resp</tt> by default. Setting <tt><a href="ocsp.h.html#OCSP_NOCERTS">OCSP_NOCERTS</a></tt> excludes certificates from being added in <tt>resp</tt> and ignores the <tt>certs</tt> parameter. 3. The <tt>producedAt</tt> time field is set to the current time by default. Setting <tt><a href="ocsp.h.html#OCSP_NOTIME">OCSP_NOTIME</a></tt> excludes setting the <tt>producedAt</tt> time field in <tt>resp</tt> and leaves it empty.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer,
+                                   EVP_PKEY *key, const EVP_MD *dgst,
+                                   STACK_OF(X509) *certs, unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_response_create">
+            <div class="comment"><p><span class="first-word">OCSP_response_create</span> creates an <tt>OCSP_RESPONSE</tt> and encodes an optional <tt>bs</tt> within it.</p></div>
+            <pre class="code">OPENSSL_EXPORT OCSP_RESPONSE *OCSP_response_create(int status,
+                                                   OCSP_BASICRESP *bs);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_SINGLERESP_get0_id">
+            <div class="comment"><p><span class="first-word">OCSP_SINGLERESP_get0_id</span> returns the <tt>OCSP_CERTID</tt> within <tt>x</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
+    const OCSP_SINGLERESP *x);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_response_status_str">
+            <div class="comment"><p><span class="first-word">OCSP_response_status_str</span> returns the OCSP response status of <tt>status_code</tt> as a string.</p></div>
+            <pre class="code">OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_cert_status_str">
+            <div class="comment"><p><span class="first-word">OCSP_cert_status_str</span> returns the OCSP cert status of <tt>status_code</tt> as a string.</p></div>
+            <pre class="code">OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_crl_reason_str">
+            <div class="comment"><p><span class="first-word">OCSP_crl_reason_str</span> returns the OCSP CRL reason of <tt>status_code</tt> as a string. <tt><a href="ocsp.h.html#OCSP_resp_find_status">OCSP_resp_find_status</a></tt> can be used to retrieve the reason status code if an OCSP response is revoked.</p></div>
+            <pre class="code">OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_REQUEST_print">
+            <div class="comment"><p><span class="first-word">OCSP_REQUEST_print</span> prints the contents of an OCSP request to <tt>bp</tt>. <tt>flags</tt> is used to configure printing of the <tt>req</tt>&#39;s extensions (See <tt><a href="x509.h.html#X509V3_extensions_print">X509V3_extensions_print</a></tt> for more information). This is typically used for debugging or diagnostic purposes.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST *req,
+                                      unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_RESPONSE_print">
+            <div class="comment"><p><span class="first-word">OCSP_RESPONSE_print</span> prints the contents of an OCSP response to <tt>bp</tt>. <tt>flags</tt> is used to configure printing of the <tt>resp</tt>&#39;s extensions (See <tt><a href="x509.h.html#X509V3_extensions_print">X509V3_extensions_print</a></tt> for more information). This is typically used for debugging or diagnostic purposes.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp,
+                                       unsigned long flags);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_BASICRESP_get_ext_by_NID">
+            <div class="comment"><p><span class="first-word">OCSP_BASICRESP_get_ext_by_NID</span> returns the index of an extension <tt>bs</tt> by its NID. Returns -1 if not found.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid,
+                                                 int lastpos);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_BASICRESP_get_ext">
+            <div class="comment"><p><span class="first-word">OCSP_BASICRESP_get_ext</span> returns the <tt>X509_EXTENSION</tt> in <tt>bs</tt> at index <tt>loc</tt>, or NULL if <tt>loc</tt> is out of bounds.</p></div>
+            <pre class="code">OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs,
+                                                      int loc);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="OCSP-|X509_EXTENSION|-Functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">OCSP</span> <tt>X509_EXTENSION</tt> Functions</p></div>
+
+        
+          <div class="decl" id="OCSP_BASICRESP_delete_ext">
+            <div class="comment"><p><span class="first-word">OCSP_BASICRESP_delete_ext</span> removes the extension in <tt>x</tt> at index <tt>loc</tt> and returns the removed extension, or NULL if <tt>loc</tt> was out of bounds. If an extension was returned, the caller must release it with <tt><a href="x509.h.html#X509_EXTENSION_free">X509_EXTENSION_free</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_delete_ext(OCSP_BASICRESP *x,
+                                                         int loc);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_SINGLERESP_add_ext">
+            <div class="comment"><p><span class="first-word">OCSP_SINGLERESP_add_ext</span> adds a copy of <tt>ex</tt> to the extension list in <tt>*sresp</tt>. It returns 1 on success and 0 on error. The new extension is inserted at index <tt>loc</tt>, shifting extensions to the right. If <tt>loc</tt> is -1 or out of bounds, the new extension is appended to the list.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp,
+                                           X509_EXTENSION *ex, int loc);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_SINGLERESP_get_ext_count">
+            <div class="comment"><p><span class="first-word">OCSP_SINGLERESP_get_ext_count</span> returns the number of <tt>X509_EXTENSION</tt>s in <tt>sresp</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp);</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_SINGLERESP_get_ext">
+            <div class="comment"><p><span class="first-word">OCSP_SINGLERESP_get_ext</span> returns the <tt>X509_EXTENSION</tt> in <tt>sresp</tt> at index <tt>loc</tt>, or NULL if <tt>loc</tt> is out of bounds.</p></div>
+            <pre class="code">OPENSSL_EXPORT X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp,
+                                                       int loc);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="OCSP-no-op-flags-[Deprecated]">
+        <div class="sectionpreamble comment"><p><span class="first-word">OCSP</span> no-op flags [Deprecated].</p></div>
+
+        
+          <div class="decl" id="OCSP_NOSIGS">
+            <div class="comment"><p><span class="first-word">OCSP_NOSIGS</span> does nothing. In OpenSSL, this skips signature verification in <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt> and <tt><a href="ocsp.h.html#OCSP_request_verify">OCSP_request_verify</a></tt>.</p></div>
+            <pre class="code">#define OCSP_NOSIGS 0</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOCASIGN">
+            <div class="comment"><p><span class="first-word">OCSP_NOCASIGN</span> does nothing. It&#39;s a legacy OCSP flag deprecated since OpenSSL 1.0.1g.</p></div>
+            <pre class="code">#define OCSP_NOCASIGN 0</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NODELEGATED">
+            <div class="comment"><p><span class="first-word">OCSP_NODELEGATED</span> does nothing. It&#39;s a legacy OCSP flag deprecated since OpenSSL 1.0.1g.</p></div>
+            <pre class="code">#define OCSP_NODELEGATED 0</pre>
+          </div>
+        
+          <div class="decl" id="OCSP_NOCHECKS">
+            <div class="comment"><p><span class="first-word">OCSP_NOCHECKS</span> does nothing. In OpenSSL, this disables verifying that the signer certificate has met the OCSP issuer criteria or any potential delegation in <tt><a href="ocsp.h.html#OCSP_basic_verify">OCSP_basic_verify</a></tt>.</p></div>
+            <pre class="code">#define OCSP_NOCHECKS 0</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

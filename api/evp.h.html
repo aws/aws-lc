@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - evp.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>evp.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">EVP</span> abstracts over public/private key algorithms.</p></div>
+
+    <ol class="toc">
+      
+        
+          <li class="header"><a href="#Public%2fprivate-key-objects">Public/private key objects</a></li>
+          
+            <li><a href="#EVP_PKEY_new"><tt>EVP_PKEY_new</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_free"><tt>EVP_PKEY_free</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_up_ref"><tt>EVP_PKEY_up_ref</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_is_opaque"><tt>EVP_PKEY_is_opaque</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_cmp"><tt>EVP_PKEY_cmp</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_copy_parameters"><tt>EVP_PKEY_copy_parameters</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_missing_parameters"><tt>EVP_PKEY_missing_parameters</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_size"><tt>EVP_PKEY_size</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_bits"><tt>EVP_PKEY_bits</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_id"><tt>EVP_PKEY_id</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_pqdsa_get_type"><tt>EVP_PKEY_pqdsa_get_type</tt></a></li>
+          
+            <li><a href="#EVP_MD_get0_name"><tt>EVP_MD_get0_name</tt></a></li>
+          
+            <li><a href="#EVP_MD_name"><tt>EVP_MD_name</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_get_pw_prompt"><tt>EVP_get_pw_prompt</tt></a></li>
+          
+            <li><a href="#EVP_read_pw_string"><tt>EVP_read_pw_string</tt></a></li>
+          
+            <li><a href="#EVP_read_pw_string_min"><tt>EVP_read_pw_string_min</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Getting-and-setting-concrete-key-types">Getting and setting concrete key types</a></li>
+          
+            <li><a href="#EVP_PKEY_set1_RSA"><tt>EVP_PKEY_set1_RSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_assign_RSA"><tt>EVP_PKEY_assign_RSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get0_RSA"><tt>EVP_PKEY_get0_RSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get1_RSA"><tt>EVP_PKEY_get1_RSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set1_DSA"><tt>EVP_PKEY_set1_DSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_assign_DSA"><tt>EVP_PKEY_assign_DSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get0_DSA"><tt>EVP_PKEY_get0_DSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get1_DSA"><tt>EVP_PKEY_get1_DSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set1_EC_KEY"><tt>EVP_PKEY_set1_EC_KEY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_assign_EC_KEY"><tt>EVP_PKEY_assign_EC_KEY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get0_EC_KEY"><tt>EVP_PKEY_get0_EC_KEY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get1_EC_KEY"><tt>EVP_PKEY_get1_EC_KEY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set1_DH"><tt>EVP_PKEY_set1_DH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_assign_DH"><tt>EVP_PKEY_assign_DH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get0_DH"><tt>EVP_PKEY_get0_DH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get1_DH"><tt>EVP_PKEY_get1_DH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_dh_paramgen_prime_len"><tt>EVP_PKEY_CTX_set_dh_paramgen_prime_len</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_dh_paramgen_generator"><tt>EVP_PKEY_CTX_set_dh_paramgen_generator</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_NONE"><tt>EVP_PKEY_NONE</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_RSA"><tt>EVP_PKEY_RSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_RSA_PSS"><tt>EVP_PKEY_RSA_PSS</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_EC"><tt>EVP_PKEY_EC</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_ED25519"><tt>EVP_PKEY_ED25519</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_ED25519PH"><tt>EVP_PKEY_ED25519PH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_X25519"><tt>EVP_PKEY_X25519</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HKDF"><tt>EVP_PKEY_HKDF</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HMAC"><tt>EVP_PKEY_HMAC</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_DH"><tt>EVP_PKEY_DH</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_PQDSA"><tt>EVP_PKEY_PQDSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_KEM"><tt>EVP_PKEY_KEM</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set_type"><tt>EVP_PKEY_set_type</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set_type_str"><tt>EVP_PKEY_set_type_str</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_cmp_parameters"><tt>EVP_PKEY_cmp_parameters</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#EVP_parse_public_key"><tt>EVP_parse_public_key</tt></a></li>
+          
+            <li><a href="#EVP_marshal_public_key"><tt>EVP_marshal_public_key</tt></a></li>
+          
+            <li><a href="#EVP_parse_private_key"><tt>EVP_parse_private_key</tt></a></li>
+          
+            <li><a href="#EVP_marshal_private_key"><tt>EVP_marshal_private_key</tt></a></li>
+          
+            <li><a href="#EVP_marshal_private_key_v2"><tt>EVP_marshal_private_key_v2</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_new_raw_private_key"><tt>EVP_PKEY_new_raw_private_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_new_raw_public_key"><tt>EVP_PKEY_new_raw_public_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get_raw_private_key"><tt>EVP_PKEY_get_raw_private_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get_raw_public_key"><tt>EVP_PKEY_get_raw_public_key</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Signing">Signing</a></li>
+          
+            <li><a href="#EVP_DigestSignInit"><tt>EVP_DigestSignInit</tt></a></li>
+          
+            <li><a href="#EVP_DigestSignUpdate"><tt>EVP_DigestSignUpdate</tt></a></li>
+          
+            <li><a href="#EVP_DigestSignFinal"><tt>EVP_DigestSignFinal</tt></a></li>
+          
+            <li><a href="#EVP_DigestSign"><tt>EVP_DigestSign</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Verifying">Verifying</a></li>
+          
+            <li><a href="#EVP_DigestVerifyInit"><tt>EVP_DigestVerifyInit</tt></a></li>
+          
+            <li><a href="#EVP_DigestVerifyUpdate"><tt>EVP_DigestVerifyUpdate</tt></a></li>
+          
+            <li><a href="#EVP_DigestVerifyFinal"><tt>EVP_DigestVerifyFinal</tt></a></li>
+          
+            <li><a href="#EVP_DigestVerify"><tt>EVP_DigestVerify</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Signing-%28old-functions%29">Signing (old functions)</a></li>
+          
+            <li><a href="#EVP_SignInit_ex"><tt>EVP_SignInit_ex</tt></a></li>
+          
+            <li><a href="#EVP_SignInit"><tt>EVP_SignInit</tt></a></li>
+          
+            <li><a href="#EVP_SignUpdate"><tt>EVP_SignUpdate</tt></a></li>
+          
+            <li><a href="#EVP_SignFinal"><tt>EVP_SignFinal</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Verifying-%28old-functions%29">Verifying (old functions)</a></li>
+          
+            <li><a href="#EVP_VerifyInit_ex"><tt>EVP_VerifyInit_ex</tt></a></li>
+          
+            <li><a href="#EVP_VerifyInit"><tt>EVP_VerifyInit</tt></a></li>
+          
+            <li><a href="#EVP_VerifyUpdate"><tt>EVP_VerifyUpdate</tt></a></li>
+          
+            <li><a href="#EVP_VerifyFinal"><tt>EVP_VerifyFinal</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Printing">Printing</a></li>
+          
+            <li><a href="#EVP_PKEY_print_public"><tt>EVP_PKEY_print_public</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_print_private"><tt>EVP_PKEY_print_private</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_print_params"><tt>EVP_PKEY_print_params</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Password-stretching">Password stretching</a></li>
+          
+            <li><a href="#PKCS5_SALT_LEN"><tt>PKCS5_SALT_LEN</tt></a></li>
+          
+            <li><a href="#PKCS5_PBKDF2_HMAC"><tt>PKCS5_PBKDF2_HMAC</tt></a></li>
+          
+            <li><a href="#PKCS5_PBKDF2_HMAC_SHA1"><tt>PKCS5_PBKDF2_HMAC_SHA1</tt></a></li>
+          
+            <li><a href="#EVP_PBE_scrypt"><tt>EVP_PBE_scrypt</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Public-key-contexts">Public key contexts</a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_new"><tt>EVP_PKEY_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_new_id"><tt>EVP_PKEY_CTX_new_id</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_free"><tt>EVP_PKEY_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_dup"><tt>EVP_PKEY_CTX_dup</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get0_pkey"><tt>EVP_PKEY_CTX_get0_pkey</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_sign_init"><tt>EVP_PKEY_sign_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_sign"><tt>EVP_PKEY_sign</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_verify_init"><tt>EVP_PKEY_verify_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_verify"><tt>EVP_PKEY_verify</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_encrypt_init"><tt>EVP_PKEY_encrypt_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_encrypt"><tt>EVP_PKEY_encrypt</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_decrypt_init"><tt>EVP_PKEY_decrypt_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_decrypt"><tt>EVP_PKEY_decrypt</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_verify_recover_init"><tt>EVP_PKEY_verify_recover_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_verify_recover"><tt>EVP_PKEY_verify_recover</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_derive_init"><tt>EVP_PKEY_derive_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_derive_set_peer"><tt>EVP_PKEY_derive_set_peer</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_derive"><tt>EVP_PKEY_derive</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_check"><tt>EVP_PKEY_check</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_public_check"><tt>EVP_PKEY_public_check</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_param_check"><tt>EVP_PKEY_param_check</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_keygen_init"><tt>EVP_PKEY_keygen_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_keygen"><tt>EVP_PKEY_keygen</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_encapsulate"><tt>EVP_PKEY_encapsulate</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_decapsulate"><tt>EVP_PKEY_decapsulate</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_paramgen_init"><tt>EVP_PKEY_paramgen_init</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_paramgen"><tt>EVP_PKEY_paramgen</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Generic-control-functions">Generic control functions</a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_signature_md"><tt>EVP_PKEY_CTX_set_signature_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_signature_md"><tt>EVP_PKEY_CTX_get_signature_md</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#EVP_PKEY_CTX_set_signature_context"><tt>EVP_PKEY_CTX_set_signature_context</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get0_signature_context"><tt>EVP_PKEY_CTX_get0_signature_context</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_padding"><tt>EVP_PKEY_CTX_set_rsa_padding</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_rsa_padding"><tt>EVP_PKEY_CTX_get_rsa_padding</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_pss_saltlen"><tt>EVP_PKEY_CTX_set_rsa_pss_saltlen</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_rsa_pss_saltlen"><tt>EVP_PKEY_CTX_get_rsa_pss_saltlen</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_keygen_bits"><tt>EVP_PKEY_CTX_set_rsa_keygen_bits</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_keygen_pubexp"><tt>EVP_PKEY_CTX_set_rsa_keygen_pubexp</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_oaep_md"><tt>EVP_PKEY_CTX_set_rsa_oaep_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_rsa_oaep_md"><tt>EVP_PKEY_CTX_get_rsa_oaep_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_mgf1_md"><tt>EVP_PKEY_CTX_set_rsa_mgf1_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_rsa_mgf1_md"><tt>EVP_PKEY_CTX_get_rsa_mgf1_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set0_rsa_oaep_label"><tt>EVP_PKEY_CTX_set0_rsa_oaep_label</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get0_rsa_oaep_label"><tt>EVP_PKEY_CTX_get0_rsa_oaep_label</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EC-specific-control-functions">EC specific control functions</a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_ec_paramgen_curve_nid"><tt>EVP_PKEY_CTX_set_ec_paramgen_curve_nid</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_CTX_kem_set_params"><tt>EVP_PKEY_CTX_kem_set_params</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_kem_new_raw_public_key"><tt>EVP_PKEY_kem_new_raw_public_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_kem_new_raw_secret_key"><tt>EVP_PKEY_kem_new_raw_secret_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_kem_new_raw_key"><tt>EVP_PKEY_kem_new_raw_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_kem_check_key"><tt>EVP_PKEY_kem_check_key</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_CTX_pqdsa_set_params"><tt>EVP_PKEY_CTX_pqdsa_set_params</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_pqdsa_new_raw_public_key"><tt>EVP_PKEY_pqdsa_new_raw_public_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_pqdsa_new_raw_private_key"><tt>EVP_PKEY_pqdsa_new_raw_private_key</tt></a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_CTX_set_dh_pad"><tt>EVP_PKEY_CTX_set_dh_pad</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN1-functions">ASN1 functions</a></li>
+          
+            <li><a href="#EVP_PKEY_asn1_get_count"><tt>EVP_PKEY_asn1_get_count</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_asn1_get0"><tt>EVP_PKEY_asn1_get0</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_asn1_find"><tt>EVP_PKEY_asn1_find</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_asn1_find_str"><tt>EVP_PKEY_asn1_find_str</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_asn1_get0_info"><tt>EVP_PKEY_asn1_get0_info</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EVP_PKEY_CTX-keygen%2fparamgen-functions">EVP_PKEY_CTX keygen/paramgen functions</a></li>
+          
+            
+          
+            <li><a href="#EVP_PKEY_CTX_set_cb"><tt>EVP_PKEY_CTX_set_cb</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_keygen_info"><tt>EVP_PKEY_CTX_get_keygen_info</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_app_data"><tt>EVP_PKEY_CTX_set_app_data</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_get_app_data"><tt>EVP_PKEY_CTX_get_app_data</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#EVP_PKEY_RSA2"><tt>EVP_PKEY_RSA2</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_X448"><tt>EVP_PKEY_X448</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_ED448"><tt>EVP_PKEY_ED448</tt></a></li>
+          
+            <li><a href="#EVP_MD_get_pkey_type"><tt>EVP_MD_get_pkey_type</tt></a></li>
+          
+            <li><a href="#EVP_MD_pkey_type"><tt>EVP_MD_pkey_type</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_do_all_sorted"><tt>EVP_CIPHER_do_all_sorted</tt></a></li>
+          
+            <li><a href="#EVP_MD_do_all_sorted"><tt>EVP_MD_do_all_sorted</tt></a></li>
+          
+            <li><a href="#EVP_MD_do_all"><tt>EVP_MD_do_all</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#i2d_PrivateKey"><tt>i2d_PrivateKey</tt></a></li>
+          
+            <li><a href="#i2d_PublicKey"><tt>i2d_PublicKey</tt></a></li>
+          
+            <li><a href="#d2i_PrivateKey"><tt>d2i_PrivateKey</tt></a></li>
+          
+            <li><a href="#d2i_AutoPrivateKey"><tt>d2i_AutoPrivateKey</tt></a></li>
+          
+            <li><a href="#d2i_PublicKey"><tt>d2i_PublicKey</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_ec_param_enc"><tt>EVP_PKEY_CTX_set_ec_param_enc</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_set1_tls_encodedpoint"><tt>EVP_PKEY_set1_tls_encodedpoint</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get1_tls_encodedpoint"><tt>EVP_PKEY_get1_tls_encodedpoint</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_base_id"><tt>EVP_PKEY_base_id</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_pss_keygen_md"><tt>EVP_PKEY_CTX_set_rsa_pss_keygen_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen"><tt>EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md"><tt>EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md</tt></a></li>
+          
+            <li><a href="#i2d_PUBKEY"><tt>i2d_PUBKEY</tt></a></li>
+          
+            <li><a href="#d2i_PUBKEY"><tt>d2i_PUBKEY</tt></a></li>
+          
+            <li><a href="#i2d_RSA_PUBKEY"><tt>i2d_RSA_PUBKEY</tt></a></li>
+          
+            <li><a href="#d2i_RSA_PUBKEY"><tt>d2i_RSA_PUBKEY</tt></a></li>
+          
+            <li><a href="#i2d_DSA_PUBKEY"><tt>i2d_DSA_PUBKEY</tt></a></li>
+          
+            <li><a href="#d2i_DSA_PUBKEY"><tt>d2i_DSA_PUBKEY</tt></a></li>
+          
+            <li><a href="#i2d_EC_PUBKEY"><tt>i2d_EC_PUBKEY</tt></a></li>
+          
+            <li><a href="#d2i_EC_PUBKEY"><tt>d2i_EC_PUBKEY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_assign"><tt>EVP_PKEY_assign</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_type"><tt>EVP_PKEY_type</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_new_mac_key"><tt>EVP_PKEY_new_mac_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get0"><tt>EVP_PKEY_get0</tt></a></li>
+          
+            
+          
+            <li><a href="#OpenSSL_add_all_algorithms"><tt>OpenSSL_add_all_algorithms</tt></a></li>
+          
+            <li><a href="#OPENSSL_add_all_algorithms_conf"><tt>OPENSSL_add_all_algorithms_conf</tt></a></li>
+          
+            <li><a href="#OpenSSL_add_all_ciphers"><tt>OpenSSL_add_all_ciphers</tt></a></li>
+          
+            <li><a href="#OpenSSL_add_all_digests"><tt>OpenSSL_add_all_digests</tt></a></li>
+          
+            <li><a href="#EVP_cleanup"><tt>EVP_cleanup</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EVP_PKEY_DSA">EVP_PKEY_DSA</a></li>
+          
+            <li><a href="#EVP_PKEY_DSA"><tt>EVP_PKEY_DSA</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_dsa_paramgen_bits"><tt>EVP_PKEY_CTX_set_dsa_paramgen_bits</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_dsa_paramgen_md"><tt>EVP_PKEY_CTX_set_dsa_paramgen_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_dsa_paramgen_q_bits"><tt>EVP_PKEY_CTX_set_dsa_paramgen_q_bits</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EVP_PKEY_CTX_ctrl_str">EVP_PKEY_CTX_ctrl_str</a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_ctrl_str"><tt>EVP_PKEY_CTX_ctrl_str</tt></a></li>
+          
+        
+      
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Public/private-key-objects">
+        <div class="sectionpreamble comment"><p><span class="first-word">Public/private</span> key objects.</p><p>An <tt>EVP_PKEY</tt> object represents a public or private key. A given object may be used concurrently on multiple threads by non-mutating functions, provided no other thread is concurrently calling a mutating function. Unless otherwise documented, functions which take a <tt>const</tt> pointer are non-mutating and functions which take a non-<tt>const</tt> pointer are mutating.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_new">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_new</span> creates a new, empty public-key object and returns it or NULL on allocation failure.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_free">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_free</span> frees all data referenced by <tt>pkey</tt> and then frees <tt>pkey</tt> itself.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_PKEY_free(EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_up_ref">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_up_ref</span> increments the reference count of <tt>pkey</tt> and returns one. It does not mutate <tt>pkey</tt> for thread-safety purposes and may be used concurrently.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_up_ref(EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_is_opaque">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_is_opaque</span> returns one if <tt>pkey</tt> is opaque. Opaque keys are backed by custom implementations which do not expose key material and parameters. It is an error to attempt to duplicate, export, or compare an opaque key.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_is_opaque(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_cmp">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_cmp</span> compares <tt>a</tt> and <tt>b</tt> and returns one if they are equal, zero if not and a negative number on error.</p><p class="warning"><span class="first-word">WARNING:</span> this differs from the traditional return value of a &#34;cmp&#34; function.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_copy_parameters">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_copy_parameters</span> sets the parameters of <tt>to</tt> to equal the parameters of <tt>from</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_missing_parameters">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_missing_parameters</span> returns one if <tt>pkey</tt> is missing needed parameters or zero if not, or if the algorithm doesn&#39;t take parameters.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_size">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_size</span> returns the maximum size, in bytes, of a signature signed by <tt>pkey</tt>. For an RSA key, this returns the number of bytes needed to represent the modulus. For an EC key, this returns the maximum size of a DER-encoded ECDSA signature. For an ML-DSA key, this returns the signature byte size.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_bits">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_bits</span> returns the &#34;size&#34;, in bits, of <tt>pkey</tt>. For an RSA key, this returns the bit length of the modulus. For an EC key, this returns the bit length of the group order. For an ML-DSA key, this returns the bit length of the public key.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_id">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_id</span> returns the type of <tt>pkey</tt>, which is one of the <tt>EVP_PKEY_*</tt> values.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_pqdsa_get_type">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_pqdsa_get_type</span> returns the <tt>nid</tt> of the configured PQDSA key. <tt>pkey</tt> must not be NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_get0_name">
+            <div class="comment"><p><span class="first-word">EVP_MD_get0_name</span> returns the short name of <tt>md</tt></p></div>
+            <pre class="code">OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_name">
+            <div class="comment"><p><span class="first-word">EVP_MD_name</span> calls <tt><a href="evp.h.html#EVP_MD_get0_name">EVP_MD_get0_name</a></tt></p></div>
+            <pre class="code">OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">EVP</span> Password Utility Functions</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_get_pw_prompt">
+            <div class="comment"><p><span class="first-word">EVP_get_pw_prompt</span> returns an internal pointer to static memory containing the default prompt. In AWS-LC, this default is hardcoded. In OpenSSL, the default prompt must be configured by a user and is otherwise NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT char *EVP_get_pw_prompt(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_read_pw_string">
+            <div class="comment"><p><span class="first-word">EVP_read_pw_string</span> writes the prompt to /dev/tty, or, if that could not be opened, to standard output, turns echo off, and reads an input string from /dev/tty, or, if that could not be opened, from standard input. If <tt>prompt</tt> is NULL, the default prompt is used. The user input is returned in <tt>buf</tt>, which must have space for at least length bytes. If verify is set, the user is asked for the password twice and unless the two copies match, an error is returned. Returns 0 on success, -1 on error, or -2 on out-of-band events (Interrupt, Cancel, ...).</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_read_pw_string_min">
+            <div class="comment"><p><span class="first-word">EVP_read_pw_string_min</span> implements the functionality for <tt><a href="evp.h.html#EVP_read_pw_string">EVP_read_pw_string</a></tt>. It additionally checks that the password is at least <tt>min_length</tt> bytes long. Returns 0 on success, -1 on error, or -2 on out-of-band events (Interrupt, Cancel, ...).</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                                          const char *prompt, int verify);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Getting-and-setting-concrete-key-types">
+        <div class="sectionpreamble comment"><p><span class="first-word">Getting</span> and setting concrete key types.</p><p>The following functions get and set the underlying key representation in an <tt>EVP_PKEY</tt> object. The <tt>set1</tt> functions take an additional reference to the underlying key and return one on success or zero if <tt>key</tt> is NULL. The <tt>assign</tt> functions adopt the caller&#39;s reference and return one on success or zero if <tt>key</tt> is NULL. The <tt>get1</tt> functions return a fresh reference to the underlying object or NULL if <tt>pkey</tt> is not of the correct type. The <tt>get0</tt> functions behave the same but return a non-owning pointer.</p><p>The <tt>get0</tt> and <tt>get1</tt> functions take <tt>const</tt> pointers and are thus non-mutating for thread-safety purposes, but mutating functions on the returned lower-level objects are considered to also mutate the <tt>EVP_PKEY</tt> and may not be called concurrently with other operations on the <tt>EVP_PKEY</tt>.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_set1_RSA">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_assign_RSA">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get0_RSA">
+            
+            <pre class="code">OPENSSL_EXPORT RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get1_RSA">
+            
+            <pre class="code">OPENSSL_EXPORT RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set1_DSA">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_assign_DSA">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get0_DSA">
+            
+            <pre class="code">OPENSSL_EXPORT DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get1_DSA">
+            
+            <pre class="code">OPENSSL_EXPORT DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set1_EC_KEY">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_assign_EC_KEY">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get0_EC_KEY">
+            
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get1_EC_KEY">
+            
+            <pre class="code">OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set1_DH">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_assign_DH">
+            
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get0_DH">
+            
+            <pre class="code">OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get1_DH">
+            
+            <pre class="code">OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dh_paramgen_prime_len">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dh_paramgen_prime_len</span> sets the length of the DH prime parameter p for DH parameter generation. If this function is not called, the default length of 2048 is used. <tt>pbits</tt> must be greater than or equal to 256. Returns 1 on success, otherwise returns a non-positive value.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dh_paramgen_generator">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dh_paramgen_generator</span> sets the DH generator for DH parameter generation. If this function is not called, the default value of 2 is used. <tt>gen</tt> must be greater than 1. Returns 1 on success, otherwise returns a non-positive value.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_NONE">
+            
+            <pre class="code">#define EVP_PKEY_NONE NID_undef</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_RSA">
+            
+            <pre class="code">#define EVP_PKEY_RSA NID_rsaEncryption</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_RSA_PSS">
+            
+            <pre class="code">#define EVP_PKEY_RSA_PSS NID_rsassaPss</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_EC">
+            
+            <pre class="code">#define EVP_PKEY_EC NID_X9_62_id_ecPublicKey</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_ED25519">
+            
+            <pre class="code">#define EVP_PKEY_ED25519 NID_ED25519</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_ED25519PH">
+            
+            <pre class="code">#define EVP_PKEY_ED25519PH NID_ED25519ph</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_X25519">
+            
+            <pre class="code">#define EVP_PKEY_X25519 NID_X25519</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HKDF">
+            
+            <pre class="code">#define EVP_PKEY_HKDF NID_hkdf</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HMAC">
+            
+            <pre class="code">#define EVP_PKEY_HMAC NID_hmac</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_DH">
+            
+            <pre class="code">#define EVP_PKEY_DH NID_dhKeyAgreement</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_PQDSA">
+            
+            <pre class="code">#define EVP_PKEY_PQDSA NID_PQDSA</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_KEM">
+            
+            <pre class="code">#define EVP_PKEY_KEM NID_kem</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set_type">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_set_type</span> sets the type of <tt>pkey</tt> to <tt>type</tt>. It returns one if successful or zero if the <tt>type</tt> argument is not one of the <tt>EVP_PKEY_*</tt> values. If <tt>pkey</tt> is NULL, it simply reports whether the type is known.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set_type(EVP_PKEY *pkey, int type);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set_type_str">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_set_type_str</span> sets the type of <tt>pkey</tt> to the PEM type string given by the first <tt>len</tt> bytes of <tt>str</tt>. It returns one if successful or zero if it cannot find the PEM type among the <tt>EVP_PKEY_*</tt> values. If <tt>pkey</tt> is NULL, it simply reports whether the type is known.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set_type_str(EVP_PKEY *pkey,
+                                         const char *str,
+                                         int len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_cmp_parameters">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_cmp_parameters</span> compares the parameters of <tt>a</tt> and <tt>b</tt>. It returns one if they match, zero if not, or a negative number of on error.</p><p class="warning"><span class="first-word">WARNING:</span> the return value differs from the usual return value convention.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
+                                           const EVP_PKEY *b);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">ASN.1</span> functions</p></div>
+
+        
+          <div class="decl" id="EVP_parse_public_key">
+            <div class="comment"><p><span class="first-word">EVP_parse_public_key</span> decodes a DER-encoded SubjectPublicKeyInfo structure (<a href="https://www.rfc-editor.org/rfc/rfc5280.html">RFC 5280</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>EVP_PKEY</tt> or NULL on error. If the key is an EC key, the curve is guaranteed to be set.</p><p>The caller must check the type of the parsed public key to ensure it is suitable and validate other desired key properties such as RSA modulus size or EC curve.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_parse_public_key(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_marshal_public_key">
+            <div class="comment"><p><span class="first-word">EVP_marshal_public_key</span> marshals <tt>key</tt> as a DER-encoded SubjectPublicKeyInfo structure (<a href="https://www.rfc-editor.org/rfc/rfc5280.html">RFC 5280</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_parse_private_key">
+            <div class="comment"><p><span class="first-word">EVP_parse_private_key</span> decodes a DER-encoded PrivateKeyInfo structure (<a href="https://www.rfc-editor.org/rfc/rfc5208.html">RFC 5208</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>EVP_PKEY</tt> or NULL on error.</p><p>The caller must check the type of the parsed private key to ensure it is suitable and validate other desired key properties such as RSA modulus size or EC curve. In particular, RSA private key operations scale cubicly, so applications accepting RSA private keys from external sources may need to bound key sizes (use <tt><a href="evp.h.html#EVP_PKEY_bits">EVP_PKEY_bits</a></tt> or <tt><a href="rsa.h.html#RSA_bits">RSA_bits</a></tt>) to avoid a DoS vector.</p><p>A <span class="first-word">PrivateKeyInfo</span> ends with an optional set of attributes. These are not processed and so this function will silently ignore any trailing data in the structure.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_marshal_private_key">
+            <div class="comment"><p><span class="first-word">EVP_marshal_private_key</span> marshals <tt>key</tt> as a DER-encoded PrivateKeyInfo structure (<a href="https://www.rfc-editor.org/rfc/rfc5208.html">RFC 5208</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on error. For ML-DSA, the private seed is encoded.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_marshal_private_key_v2">
+            <div class="comment"><p><span class="first-word">EVP_marshal_private_key_v2</span> marshals <tt>key</tt> as a DER-encoded OneAsymmetricKey (<a href="https://www.rfc-editor.org/rfc/rfc5958.html">RFC 5958</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on error.</p><p><span class="first-word">Ed25519</span> and x25119 are the only private key that supports marshaling as a v2 PKCS8 structure. All other private key types will return UNSUPPORTED_ALGORITHM error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">Raw</span> keys</p><p><span class="first-word">Some</span> keys types support a &#34;raw&#34; serialization. Currently the only supported raw formats are X25519 and Ed25519, where the formats are those specified in <a href="https://www.rfc-editor.org/rfc/rfc7748.html">RFC 7748</a> and <a href="https://www.rfc-editor.org/rfc/rfc8032.html">RFC 8032</a>, respectively. Note the <a href="https://www.rfc-editor.org/rfc/rfc8032.html">RFC 8032</a> private key format is the 32-byte prefix of <tt><a href="curve25519.h.html#ED25519_sign">ED25519_sign</a></tt>&#39;s 64-byte private key. For ML-DSA use EVP_PKEY_pqdsa_new_raw_private_key.</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_new_raw_private_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_new_raw_private_key</span> returns a newly allocated <tt>EVP_PKEY</tt> wrapping a private key of the specified type. It returns NULL on error. For ML-DSA use EVP_PKEY_pqdsa_new_raw_public_key.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
+                                                      const uint8_t *in,
+                                                      size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_new_raw_public_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_new_raw_public_key</span> returns a newly allocated <tt>EVP_PKEY</tt> wrapping a public key of the specified type. It returns NULL on error. For ML-DSA use EVP_PKEY_pqdsa_new_raw_private_key.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
+                                                     const uint8_t *in,
+                                                     size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get_raw_private_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_get_raw_private_key</span> outputs the private key for <tt>pkey</tt> in raw form. If <tt>out</tt> is NULL, it sets <tt>*out_len</tt> to the size of the raw private key. Otherwise, it writes at most <tt>*out_len</tt> bytes to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written.</p><p><span class="first-word">It</span> returns one on success and zero if <tt>pkey</tt> has no private key, the key type does not support a raw format, or the buffer is too small.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey,
+                                                uint8_t *out, size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get_raw_public_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_get_raw_public_key</span> outputs the public key for <tt>pkey</tt> in raw form. If <tt>out</tt> is NULL, it sets <tt>*out_len</tt> to the size of the raw public key. Otherwise, it writes at most <tt>*out_len</tt> bytes to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written.</p><p><span class="first-word">It</span> returns one on success and zero if <tt>pkey</tt> has no public key, the key type does not support a raw format, or the buffer is too small.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey,
+                                               uint8_t *out, size_t *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Signing">
+        <div class="sectionpreamble comment"><p>Signing</p></div>
+
+        
+          <div class="decl" id="EVP_DigestSignInit">
+            <div class="comment"><p><span class="first-word">EVP_DigestSignInit</span> sets up <tt>ctx</tt> for a signing operation with <tt>type</tt> and <tt>pkey</tt>. The <tt>ctx</tt> argument must have been initialised with <tt><a href="digest.h.html#EVP_MD_CTX_init">EVP_MD_CTX_init</a></tt>. If <tt>pctx</tt> is not NULL, the <tt>EVP_PKEY_CTX</tt> of the signing operation will be written to <tt>*pctx</tt>; this can be used to set alternative signing options.</p><p><span class="first-word">For</span> single-shot signing algorithms which do not use a pre-hash, such as Ed25519, or when using ML-DSA in non pre-hash mode, <tt>type</tt> should be NULL. The <tt>EVP_MD_CTX</tt> itself is unused but is present so the API is uniform. See <tt><a href="evp.h.html#EVP_DigestSign">EVP_DigestSign</a></tt>.</p><p><span class="first-word">This</span> function does not mutate <tt>pkey</tt> for thread-safety purposes and may be used concurrently with other non-mutating functions on <tt>pkey</tt>.</p><p><span class="first-word">It</span> returns one on success, or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+                                      const EVP_MD *type, ENGINE *e,
+                                      EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestSignUpdate">
+            <div class="comment"><p><span class="first-word">EVP_DigestSignUpdate</span> appends <tt>len</tt> bytes from <tt>data</tt> to the data which will be signed in <tt><a href="evp.h.html#EVP_DigestSignFinal">EVP_DigestSignFinal</a></tt>. It returns one.</p><p><span class="first-word">This</span> function performs a streaming signing operation and will fail for signature algorithms which do not support this. Use <tt><a href="evp.h.html#EVP_DigestSign">EVP_DigestSign</a></tt> for a single-shot operation.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
+                                        size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestSignFinal">
+            <div class="comment"><p><span class="first-word">EVP_DigestSignFinal</span> signs the data that has been included by one or more calls to <tt><a href="evp.h.html#EVP_DigestSignUpdate">EVP_DigestSignUpdate</a></tt>. If <tt>out_sig</tt> is NULL then <tt>*out_sig_len</tt> is set to the maximum number of output bytes. Otherwise, on entry, <tt>*out_sig_len</tt> must contain the length of the <tt>out_sig</tt> buffer. If the call is successful, the signature is written to <tt>out_sig</tt> and <tt>*out_sig_len</tt> is set to its length.</p><p><span class="first-word">This</span> function performs a streaming signing operation and will fail for signature algorithms which do not support this. Use <tt><a href="evp.h.html#EVP_DigestSign">EVP_DigestSign</a></tt> for a single-shot operation.</p><p><span class="first-word">It</span> returns one on success, or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                                       size_t *out_sig_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestSign">
+            <div class="comment"><p><span class="first-word">EVP_DigestSign</span> signs <tt>data_len</tt> bytes from <tt>data</tt> using <tt>ctx</tt>. If <tt>out_sig</tt> is NULL then <tt>*out_sig_len</tt> is set to the maximum number of output bytes. Otherwise, on entry, <tt>*out_sig_len</tt> must contain the length of the <tt>out_sig</tt> buffer. If the call is successful, the signature is written to <tt>out_sig</tt> and <tt>*out_sig_len</tt> is set to its length.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                                  size_t *out_sig_len, const uint8_t *data,
+                                  size_t data_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Verifying">
+        <div class="sectionpreamble comment"><p>Verifying</p></div>
+
+        
+          <div class="decl" id="EVP_DigestVerifyInit">
+            <div class="comment"><p><span class="first-word">EVP_DigestVerifyInit</span> sets up <tt>ctx</tt> for a signature verification operation with <tt>type</tt> and <tt>pkey</tt>. The <tt>ctx</tt> argument must have been initialised with <tt><a href="digest.h.html#EVP_MD_CTX_init">EVP_MD_CTX_init</a></tt>. If <tt>pctx</tt> is not NULL, the <tt>EVP_PKEY_CTX</tt> of the signing operation will be written to <tt>*pctx</tt>; this can be used to set alternative signing options.</p><p><span class="first-word">For</span> single-shot signing algorithms which do not use a pre-hash, such as Ed25519, or when using ML-DSA in non pre-hash mode, <tt>type</tt> should be NULL. The <tt>EVP_MD_CTX</tt> itself is unused but is present so the API is uniform. See <tt><a href="evp.h.html#EVP_DigestVerify">EVP_DigestVerify</a></tt>.</p><p><span class="first-word">This</span> function does not mutate <tt>pkey</tt> for thread-safety purposes and may be used concurrently with other non-mutating functions on <tt>pkey</tt>.</p><p><span class="first-word">It</span> returns one on success, or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+                                        const EVP_MD *type, ENGINE *e,
+                                        EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestVerifyUpdate">
+            <div class="comment"><p><span class="first-word">EVP_DigestVerifyUpdate</span> appends <tt>len</tt> bytes from <tt>data</tt> to the data which will be verified by <tt><a href="evp.h.html#EVP_DigestVerifyFinal">EVP_DigestVerifyFinal</a></tt>. It returns one.</p><p><span class="first-word">This</span> function performs streaming signature verification and will fail for signature algorithms which do not support this. Use <tt>EVP_PKEY_verify_message</tt> for a single-shot verification.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
+                                          size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestVerifyFinal">
+            <div class="comment"><p><span class="first-word">EVP_DigestVerifyFinal</span> verifies that <tt>sig_len</tt> bytes of <tt>sig</tt> are a valid signature for the data that has been included by one or more calls to <tt><a href="evp.h.html#EVP_DigestVerifyUpdate">EVP_DigestVerifyUpdate</a></tt>. It returns one on success and zero otherwise.</p><p><span class="first-word">This</span> function performs streaming signature verification and will fail for signature algorithms which do not support this. Use <tt>EVP_PKEY_verify_message</tt> for a single-shot verification.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                         size_t sig_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestVerify">
+            <div class="comment"><p><span class="first-word">EVP_DigestVerify</span> verifies that <tt>sig_len</tt> bytes from <tt>sig</tt> are a valid signature for <tt>data</tt>. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                    size_t sig_len, const uint8_t *data,
+                                    size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Signing-(old-functions)">
+        <div class="sectionpreamble comment"><p><span class="first-word">Signing</span> (old functions)</p></div>
+
+        
+          <div class="decl" id="EVP_SignInit_ex">
+            <div class="comment"><p><span class="first-word">EVP_SignInit_ex</span> configures <tt>ctx</tt>, which must already have been initialised, for a fresh signing operation using the hash function <tt>type</tt>. It returns one on success and zero otherwise.</p><p><span class="first-word">(In</span> order to initialise <tt>ctx</tt>, either obtain it initialised with <tt><a href="digest.h.html#EVP_MD_CTX_create">EVP_MD_CTX_create</a></tt>, or use <tt><a href="digest.h.html#EVP_MD_CTX_init">EVP_MD_CTX_init</a></tt>.)</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_SignInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                   ENGINE *impl);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_SignInit">
+            <div class="comment"><p><span class="first-word">EVP_SignInit</span> is a deprecated version of <tt><a href="evp.h.html#EVP_SignInit_ex">EVP_SignInit_ex</a></tt>.</p><p><span class="first-word">TODO(fork):</span> remove.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_SignInit(EVP_MD_CTX *ctx, const EVP_MD *type);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_SignUpdate">
+            <div class="comment"><p><span class="first-word">EVP_SignUpdate</span> appends <tt>len</tt> bytes from <tt>data</tt> to the data which will be signed in <tt><a href="evp.h.html#EVP_SignFinal">EVP_SignFinal</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_SignUpdate(EVP_MD_CTX *ctx, const void *data,
+                                  size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_SignFinal">
+            <div class="comment"><p><span class="first-word">EVP_SignFinal</span> signs the data that has been included by one or more calls to <tt><a href="evp.h.html#EVP_SignUpdate">EVP_SignUpdate</a></tt>, using the key <tt>pkey</tt>, and writes it to <tt>sig</tt>. On entry, <tt>sig</tt> must point to at least <tt>EVP_PKEY_size(pkey)</tt> bytes of space. The actual size of the signature is written to <tt>*out_sig_len</tt>.</p><p><span class="first-word">It</span> returns one on success and zero otherwise.</p><p><span class="first-word">It</span> does not modify <tt>ctx</tt>, thus it&#39;s possible to continue to use <tt>ctx</tt> in order to sign a longer message. It also does not mutate <tt>pkey</tt> for thread-safety purposes and may be used concurrently with other non-mutating functions on <tt>pkey</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig,
+                                 unsigned int *out_sig_len, EVP_PKEY *pkey);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Verifying-(old-functions)">
+        <div class="sectionpreamble comment"><p><span class="first-word">Verifying</span> (old functions)</p></div>
+
+        
+          <div class="decl" id="EVP_VerifyInit_ex">
+            <div class="comment"><p><span class="first-word">EVP_VerifyInit_ex</span> configures <tt>ctx</tt>, which must already have been initialised, for a fresh signature verification operation using the hash function <tt>type</tt>. It returns one on success and zero otherwise.</p><p><span class="first-word">(In</span> order to initialise <tt>ctx</tt>, either obtain it initialised with <tt><a href="digest.h.html#EVP_MD_CTX_create">EVP_MD_CTX_create</a></tt>, or use <tt><a href="digest.h.html#EVP_MD_CTX_init">EVP_MD_CTX_init</a></tt>.)</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_VerifyInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                     ENGINE *impl);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_VerifyInit">
+            <div class="comment"><p><span class="first-word">EVP_VerifyInit</span> is a deprecated version of <tt><a href="evp.h.html#EVP_VerifyInit_ex">EVP_VerifyInit_ex</a></tt>.</p><p><span class="first-word">TODO(fork):</span> remove.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_VerifyInit(EVP_MD_CTX *ctx, const EVP_MD *type);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_VerifyUpdate">
+            <div class="comment"><p><span class="first-word">EVP_VerifyUpdate</span> appends <tt>len</tt> bytes from <tt>data</tt> to the data which will be signed in <tt><a href="evp.h.html#EVP_VerifyFinal">EVP_VerifyFinal</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_VerifyUpdate(EVP_MD_CTX *ctx, const void *data,
+                                    size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_VerifyFinal">
+            <div class="comment"><p><span class="first-word">EVP_VerifyFinal</span> verifies that <tt>sig_len</tt> bytes of <tt>sig</tt> are a valid signature, by <tt>pkey</tt>, for the data that has been included by one or more calls to <tt><a href="evp.h.html#EVP_VerifyUpdate">EVP_VerifyUpdate</a></tt>.</p><p><span class="first-word">It</span> returns one on success and zero otherwise.</p><p><span class="first-word">It</span> does not modify <tt>ctx</tt>, thus it&#39;s possible to continue to use <tt>ctx</tt> in order to verify a longer message. It also does not mutate <tt>pkey</tt> for thread-safety purposes and may be used concurrently with other non-mutating functions on <tt>pkey</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                   size_t sig_len, EVP_PKEY *pkey);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Printing">
+        <div class="sectionpreamble comment"><p>Printing</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_print_public">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_print_public</span> prints a textual representation of the public key in <tt>pkey</tt> to <tt>out</tt>. Returns one on success or zero otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey,
+                                         int indent, ASN1_PCTX *pctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_print_private">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_print_private</span> prints a textual representation of the private key in <tt>pkey</tt> to <tt>out</tt>. Returns one on success or zero otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey,
+                                          int indent, ASN1_PCTX *pctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_print_params">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_print_params</span> prints a textual representation of the parameters in <tt>pkey</tt> to <tt>out</tt>. Returns one on success or zero otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
+                                         int indent, ASN1_PCTX *pctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Password-stretching">
+        <div class="sectionpreamble comment"><p><span class="first-word">Password</span> stretching.</p><p><span class="first-word">Password</span> stretching functions take a low-entropy password and apply a slow function that results in a key suitable for use in symmetric cryptography.</p></div>
+
+        
+          <div class="decl" id="PKCS5_SALT_LEN">
+            <div class="comment"><p><span class="first-word">PKCS5_SALT_LEN</span> is a deprecated constant as used by deprecated EVP_BytesToKey() which cannot change.</p></div>
+            <pre class="code">#define PKCS5_SALT_LEN 8</pre>
+          </div>
+        
+          <div class="decl" id="PKCS5_PBKDF2_HMAC">
+            <div class="comment"><p><span class="first-word">PKCS5_PBKDF2_HMAC</span> computes <tt>iterations</tt> iterations of PBKDF2 of <tt>password</tt> and <tt>salt</tt>, using <tt>digest</tt>, and outputs <tt>key_len</tt> bytes to <tt>out_key</tt>. It returns one on success and zero on allocation failure or if <tt>iterations</tt> is 0. It&#39;s recommended that <tt>iterations</tt> be set to a much higher number (at least hundreds of thousands).</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
+                                     const uint8_t *salt, size_t salt_len,
+                                     uint32_t iterations, const EVP_MD *digest,
+                                     size_t key_len, uint8_t *out_key);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS5_PBKDF2_HMAC_SHA1">
+            <div class="comment"><p><span class="first-word">PKCS5_PBKDF2_HMAC_SHA1</span> is the same as PKCS5_PBKDF2_HMAC, but with <tt>digest</tt> fixed to <tt><a href="digest.h.html#EVP_sha1">EVP_sha1</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
+                                          size_t password_len,
+                                          const uint8_t *salt, size_t salt_len,
+                                          uint32_t iterations, size_t key_len,
+                                          uint8_t *out_key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PBE_scrypt">
+            <div class="comment"><p><span class="first-word">EVP_PBE_scrypt</span> expands <tt>password</tt> into a secret key of length <tt>key_len</tt> using scrypt, as described in <a href="https://www.rfc-editor.org/rfc/rfc7914.html">RFC 7914</a>, and writes the result to <tt>out_key</tt>. It returns one on success and zero on allocation failure, if the memory required for the operation exceeds <tt>max_mem</tt>, or if any of the parameters are invalid as described below.</p><p><tt>N</tt>, <tt>r</tt>, and <tt>p</tt> are as described in <a href="https://www.rfc-editor.org/rfc/rfc7914.html">RFC 7914</a> section 6. They determine the cost of the operation. If <tt>max_mem</tt> is zero, a defult limit of 32MiB will be used.</p><p>The parameters are considered invalid under any of the following conditions:</p><ul><li><tt>r</tt> or <tt>p</tt> are zero</li><li><tt>p</tt> &gt; (2^30 - 1) / <tt>r</tt></li><li><tt>N</tt> is not a power of two</li><li><tt>N</tt> &gt; 2^32</li><li><tt>N</tt> &gt; 2^(128 * <tt>r</tt> / 8)</li></ul></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PBE_scrypt(const char *password, size_t password_len,
+                                  const uint8_t *salt, size_t salt_len,
+                                  uint64_t N, uint64_t r, uint64_t p,
+                                  size_t max_mem, uint8_t *out_key,
+                                  size_t key_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Public-key-contexts">
+        <div class="sectionpreamble comment"><p><span class="first-word">Public</span> key contexts.</p><p><tt>EVP_PKEY_CTX</tt> objects hold the context of an operation (e.g. signing or encrypting) that uses a public key.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_CTX_new">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_new</span> allocates a fresh <tt>EVP_PKEY_CTX</tt> for use with <tt>pkey</tt>. It returns the context or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_new_id">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_new_id</span> allocates a fresh <tt>EVP_PKEY_CTX</tt> for a key of type <tt>id</tt> (e.g. <tt><a href="evp.h.html#EVP_PKEY_HMAC">EVP_PKEY_HMAC</a></tt>). This can be used for key generation where <tt><a href="evp.h.html#EVP_PKEY_CTX_new">EVP_PKEY_CTX_new</a></tt> can&#39;t be used because there isn&#39;t an <tt>EVP_PKEY</tt> to pass it. It returns the context or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_free">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_free</span> frees <tt>ctx</tt> and the data it owns.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_dup">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_dup</span> allocates a fresh <tt>EVP_PKEY_CTX</tt> and sets it equal to the state of <tt>ctx</tt>. It returns the fresh <tt>EVP_PKEY_CTX</tt> or NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get0_pkey">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get0_pkey</span> returns the <tt>EVP_PKEY</tt> associated with <tt>ctx</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_sign_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_sign_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a signing operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_sign">EVP_PKEY_sign</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_sign">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_sign</span> signs <tt>digest_len</tt> bytes from <tt>digest</tt> using <tt>ctx</tt>. If <tt>sig</tt> is NULL, the maximum size of the signature is written to <tt>out_sig_len</tt>. Otherwise, <tt>*sig_len</tt> must contain the number of bytes of space available at <tt>sig</tt>. If sufficient, the signature will be written to <tt>sig</tt> and <tt>*sig_len</tt> updated with the true length. This function will fail for signature Ed25519 as it does not support signing pre-hashed inputs. For ML-DSA this function expects the format of <tt>digest</tt> to conform with &#34;ExternalMu&#34;, i.e., the digest mu is the SHAKE256 hash of the associated public key concatenated with a zero byte to indicate pure-mode, the context string length, the contents of the context string, and the input message in this order e.g. mu = SHAKE256(SHAKE256(pk) || 0 || <tt>ctx</tt> || ctx || M).</p><p class="warning"><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be signed. Passing unhashed inputs will not result in a secure signature scheme. Use <tt><a href="evp.h.html#EVP_DigestSignInit">EVP_DigestSignInit</a></tt> to sign an unhashed input.</p><p class="warning"><span class="first-word">WARNING:</span> Setting <tt>sig</tt> to NULL only gives the maximum size of the signature. The actual signature may be smaller.</p><p><span class="first-word">It</span> returns one on success or zero on error. (Note: this differs from OpenSSL, which can also return negative values to indicate an error. )</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                 size_t *sig_len, const uint8_t *digest,
+                                 size_t digest_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_verify_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_verify_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a signature verification operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_verify">EVP_PKEY_verify</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_verify">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_verify</span> verifies that <tt>sig_len</tt> bytes from <tt>sig</tt> are a valid signature for <tt>digest</tt>. This function will fail for signature Ed25519 as it does not support signing pre-hashed inputs. For ML-DSA this function expects the format of <tt>digest</tt> to conform with &#34;ExternalMu&#34;, i.e., the digest mu is the SHAKE256 hash of the associated public key concatenated with a zero byte to indicate pure-mode, the context string length, the contents of the context string, and the input message in this order e.g. mu = SHAKE256(SHAKE256(pk) || 0 || <tt>ctx</tt> || ctx || M).</p><p class="warning"><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be verified. Passing unhashed inputs will not result in a secure signature scheme. Use <tt><a href="evp.h.html#EVP_DigestVerifyInit">EVP_DigestVerifyInit</a></tt> to verify a signature given the unhashed input.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                                   size_t sig_len, const uint8_t *digest,
+                                   size_t digest_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_encrypt_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_encrypt_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for an encryption operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_encrypt">EVP_PKEY_encrypt</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_encrypt">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_encrypt</span> encrypts <tt>in_len</tt> bytes from <tt>in</tt>. If <tt>out</tt> is NULL, the maximum size of the ciphertext is written to <tt>out_len</tt>. Otherwise, <tt>*out_len</tt> must contain the number of bytes of space available at <tt>out</tt>. If sufficient, the ciphertext will be written to <tt>out</tt> and <tt>*out_len</tt> updated with the true length.</p><p class="warning"><span class="first-word">WARNING:</span> Setting <tt>out</tt> to NULL only gives the maximum size of the ciphertext. The actual ciphertext may be smaller.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                    size_t *out_len, const uint8_t *in,
+                                    size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_decrypt_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_decrypt_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a decryption operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_decrypt">EVP_PKEY_decrypt</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_decrypt">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_decrypt</span> decrypts <tt>in_len</tt> bytes from <tt>in</tt>. If <tt>out</tt> is NULL, the maximum size of the plaintext is written to <tt>out_len</tt>. Otherwise, <tt>*out_len</tt> must contain the number of bytes of space available at <tt>out</tt>. If sufficient, the ciphertext will be written to <tt>out</tt> and <tt>*out_len</tt> updated with the true length.</p><p class="warning"><span class="first-word">WARNING:</span> Setting <tt>out</tt> to NULL only gives the maximum size of the plaintext. The actual plaintext may be smaller.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                    size_t *out_len, const uint8_t *in,
+                                    size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_verify_recover_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_verify_recover_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a public-key decryption operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_verify_recover">EVP_PKEY_verify_recover</a></tt>.</p><p><span class="first-word">Public-key</span> decryption is a very obscure operation that is only implemented by RSA keys. It is effectively a signature verification operation that returns the signed message directly. It is almost certainly not what you want.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_verify_recover">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_verify_recover</span> decrypts <tt>sig_len</tt> bytes from <tt>sig</tt>. If <tt>out</tt> is NULL, the maximum size of the plaintext is written to <tt>out_len</tt>. Otherwise, <tt>*out_len</tt> must contain the number of bytes of space available at <tt>out</tt>. If sufficient, the ciphertext will be written to <tt>out</tt> and <tt>*out_len</tt> updated with the true length.</p><p class="warning"><span class="first-word">WARNING:</span> Setting <tt>out</tt> to NULL only gives the maximum size of the plaintext. The actual plaintext may be smaller.</p><p><span class="first-word">See</span> the warning about this operation in <tt><a href="evp.h.html#EVP_PKEY_verify_recover_init">EVP_PKEY_verify_recover_init</a></tt>. It is probably not what you want.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                           size_t *out_len, const uint8_t *sig,
+                                           size_t siglen);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_derive_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_derive_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a key derivation operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_derive_set_peer">EVP_PKEY_derive_set_peer</a></tt> and <tt><a href="evp.h.html#EVP_PKEY_derive">EVP_PKEY_derive</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_derive_set_peer">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_derive_set_peer</span> sets the peer&#39;s key to be used for key derivation by <tt>ctx</tt> to <tt>peer</tt>. It should be called after <tt><a href="evp.h.html#EVP_PKEY_derive_init">EVP_PKEY_derive_init</a></tt>. (For example, this is used to set the peer&#39;s key in (EC)DH.) It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_derive">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_derive</span> derives a shared key from <tt>ctx</tt>. If <tt>key</tt> is non-NULL then, on entry, <tt>out_key_len</tt> must contain the amount of space at <tt>key</tt>. If sufficient then the shared key will be written to <tt>key</tt> and <tt>*out_key_len</tt> will be set to the length. If <tt>key</tt> is NULL then <tt>out_key_len</tt> will be set to the maximum length.</p><p class="warning"><span class="first-word">WARNING:</span> Setting <tt>out</tt> to NULL only gives the maximum size of the key. The actual key may be smaller.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
+                                   size_t *out_key_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_check">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_check</span> supports EC and RSA keys and validates both the public and private components of a key pair. For EC keys, it verifies that the private key component exists and calls EC_KEY_check_key. For RSA keys, it calls RSA_check_key which validates both public and private key relationships.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_public_check">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_public_check</span> validates at least the public component of a key. For EC keys, this calls <tt><a href="ec_key.h.html#EC_KEY_check_key">EC_KEY_check_key</a></tt> which validates the public component, and if available, the private key as well. For RSA keys, this calls <tt><a href="rsa.h.html#RSA_check_key">RSA_check_key</a></tt> which requires the public and private components of the key pair. This is different from OpenSSL which does not support RSA keys via this API.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_param_check">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_param_check</span> validates the parameters component of the key given by <tt>ctx</tt>. OpenSSL only supports by DH and EC keys via this API. For DH keys, this calls <tt><a href="dh.h.html#DH_check">DH_check</a></tt> to validate the parameters. EC key parameter validations are not supported as of now. TODO: Support EC group validations.</p><p><span class="first-word">It</span> returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_param_check(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_keygen_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_keygen_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a key generation operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_keygen">EVP_PKEY_keygen</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_keygen">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_keygen</span> performs a key generation operation using the values from <tt>ctx</tt>. If <tt>*out_pkey</tt> is non-NULL, it overwrites <tt>*out_pkey</tt> with the resulting key. Otherwise, it sets <tt>*out_pkey</tt> to a newly-allocated <tt>EVP_PKEY</tt> containing the result. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_encapsulate">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_encapsulate</span> is an operation defined for a KEM (Key Encapsulation Mechanism). For the KEM specified in <tt>ctx</tt>, the function:</p><ol><li><span class="first-word">generates</span> a random value and writes it to <tt>shared_secret</tt>,</li><li><span class="first-word">encapsulates</span> the shared secret, producing the ciphertext, by using the public key in <tt>ctx</tt>, and writes the ciphertext to <tt>ciphertext</tt>,</li><li><span class="first-word">writes</span> the length of <tt>ciphertext</tt> and <tt>shared_secret</tt> to <tt>ciphertext_len</tt> and <tt>shared_secret_len</tt>.</li></ol><p>The function requires that output buffers, <tt>ciphertext</tt> and <tt>shared_secret</tt>, be either both NULL or both non-NULL. Otherwise, a failure is returned.</p><p><span class="first-word">If</span> both <tt>ciphertext</tt> and <tt>shared_secret</tt> are NULL it is assumed that the caller is doing a size check: the function will write the size of the ciphertext and the shared secret in <tt>ciphertext_len</tt> and <tt>shared_secret_len</tt> and return successfully.</p><p><span class="first-word">If</span> both <tt>ciphertext</tt> and <tt>shared_secret</tt> are not NULL it is assumed that the caller is performing the actual operation. The function will check additionally if the lengths of the output buffers, <tt>ciphertext_len</tt> and <tt>shared_secret_len</tt>, are large enough for the KEM.</p><p><span class="first-word">NOTE:</span> no allocation is done in the function, the caller is expected to provide large enough <tt>ciphertext</tt> and <tt>shared_secret</tt> buffers.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
+                                        uint8_t *ciphertext        /* OUT */,
+                                        size_t  *ciphertext_len    /* OUT */,
+                                        uint8_t *shared_secret     /* OUT */,
+                                        size_t  *shared_secret_len /* OUT */);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_decapsulate">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_decapsulate</span> is an operation defined for a KEM (Key Encapsulation Mechanism). For the KEM specified in <tt>ctx</tt>, the function:</p><ol><li><span class="first-word">decapsulates</span> the shared secret from the given <tt>ciphertext</tt> using the secret key configured in <tt>ctx</tt> and writes it to <tt>shared_secret</tt>,</li><li><span class="first-word">writes</span> the length of <tt>shared_secret</tt> to <tt>shared_secret_len</tt>.</li></ol><p><span class="first-word">If</span> the given <tt>shared_secret</tt> is NULL it is assumed that the caller is doing a size check: the function will write the size of the shared secret in <tt>shared_secret_len</tt> and return successfully.</p><p><span class="first-word">If</span> <tt>shared_secret</tt> is non-NULL it is assumed that the caller is performing the actual operation. The functions will check additionally if the length of the output buffer <tt>shared_secret_len</tt> is large enough for the KEM.</p><p><span class="first-word">NOTE:</span> no allocation is done in the function, the caller is expected to provide large enough <tt>shared_secret</tt> buffer.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
+                                        uint8_t *shared_secret     /* OUT */,
+                                        size_t  *shared_secret_len /* OUT */,
+                                        const uint8_t *ciphertext  /* IN  */,
+                                        size_t   ciphertext_len    /* IN  */);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_paramgen_init">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_paramgen_init</span> initialises an <tt>EVP_PKEY_CTX</tt> for a parameter generation operation. It should be called before <tt><a href="evp.h.html#EVP_PKEY_paramgen">EVP_PKEY_paramgen</a></tt>.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_paramgen">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_paramgen</span> performs a parameter generation using the values from <tt>ctx</tt>. If <tt>*out_pkey</tt> is non-NULL, it overwrites <tt>*out_pkey</tt> with the resulting parameters, but no key. Otherwise, it sets <tt>*out_pkey</tt> to a newly-allocated <tt>EVP_PKEY</tt> containing the result. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Generic-control-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Generic</span> control functions.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_signature_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_signature_md</span> sets <tt>md</tt> as the digest to be used in a signature operation. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx,
+                                                 const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_signature_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_signature_md</span> sets <tt>*out_md</tt> to the digest to be used in a signature operation. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
+                                                 const EVP_MD **out_md);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_signature_context">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_signature_context</span> sets <tt>context</tt> of length <tt>context_len</tt> to be used as the context octet string for the signing operation. <tt>context</tt> will be copied to an internal buffer allowing for the caller to free it afterwards.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> is the only key type that currently supports setting a a signature context that is used in computing the HashEdDSA signature.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get0_signature_context">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get0_signature_context</span> sets <tt>*context</tt> to point to the internal buffer containing the signing context octet string (which may be NULL) and writes the length to <tt>*context_len</tt>.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> is the only key type that currently supports retrieving a a signature context that is used in computing the HashEdDSA signature.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
+                                                       const uint8_t **context,
+                                                       size_t *context_len);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">RSA</span> specific control functions.</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_padding">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_padding</span> sets the padding type to use. It should be one of the <tt>RSA_*_PADDING</tt> values. Returns one on success or zero on error. By default, the padding is <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_rsa_padding">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_rsa_padding</span> sets <tt>*out_padding</tt> to the current padding value, which is one of the <tt>RSA_*_PADDING</tt> values. Returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx,
+                                                int *out_padding);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_pss_saltlen">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_pss_saltlen</span> sets the length of the salt in a PSS-padded signature. A value of -1 cause the salt to be the same length as the digest in the signature. A value of -2 causes the salt to be the maximum length that will fit when signing and recovered from the signature when verifying. Otherwise the value gives the size of the salt in bytes.</p><p><span class="first-word">If</span> unsure, use -1.</p><p><span class="first-word">Returns</span> one on success or zero on error.</p><p><span class="first-word">TODO(davidben):</span> The default is currently -2. Switch it to -1.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
+                                                    int salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_rsa_pss_saltlen">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_rsa_pss_saltlen</span> sets <tt>*out_salt_len</tt> to the salt length of a PSS-padded signature. See the documentation for <tt><a href="evp.h.html#EVP_PKEY_CTX_set_rsa_pss_saltlen">EVP_PKEY_CTX_set_rsa_pss_saltlen</a></tt> for details of the special values that it can take.</p><p><span class="first-word">Returns</span> one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
+                                                    int *out_salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_keygen_bits">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_keygen_bits</span> sets the size of the desired RSA modulus, in bits, for key generation. Returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx,
+                                                    int bits);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_keygen_pubexp">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_keygen_pubexp</span> sets <tt>e</tt> as the public exponent for key generation. Returns one on success or zero on error. On success, <tt>ctx</tt> takes ownership of <tt>e</tt>. The library will then call <tt><a href="bn.h.html#BN_free">BN_free</a></tt> on <tt>e</tt> when <tt>ctx</tt> is destroyed.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx,
+                                                      BIGNUM *e);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_oaep_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_oaep_md</span> sets <tt>md</tt> as the digest used in OAEP padding. Returns one on success or zero on error. If unset, the default is SHA-1. Callers are recommended to overwrite this default.</p><p><span class="first-word">TODO(davidben):</span> Remove the default and require callers specify this.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_rsa_oaep_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_rsa_oaep_md</span> sets <tt>*out_md</tt> to the digest function used in OAEP padding. Returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD **out_md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_mgf1_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_mgf1_md</span> sets <tt>md</tt> as the digest used in MGF1. Returns one on success or zero on error.</p><p><span class="first-word">If</span> unset, the default is the signing hash for <tt><a href="rsa.h.html#RSA_PKCS1_PSS_PADDING">RSA_PKCS1_PSS_PADDING</a></tt> and the OAEP hash for <tt><a href="rsa.h.html#RSA_PKCS1_OAEP_PADDING">RSA_PKCS1_OAEP_PADDING</a></tt>. Callers are recommended to use this default and not call this function.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_rsa_mgf1_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_rsa_mgf1_md</span> sets <tt>*out_md</tt> to the digest function used in MGF1. Returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD **out_md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set0_rsa_oaep_label">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set0_rsa_oaep_label</span> sets <tt>label_len</tt> bytes from <tt>label</tt> as the label used in OAEP. DANGER: On success, this call takes ownership of <tt>label</tt> and will call <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> on it when <tt>ctx</tt> is destroyed.</p><p><span class="first-word">Returns</span> one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
+                                                    uint8_t *label,
+                                                    size_t label_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get0_rsa_oaep_label">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get0_rsa_oaep_label</span> sets <tt>*out_label</tt> to point to the internal buffer containing the OAEP label (which may be NULL) and returns the length of the label or a negative value on error.</p><p class="warning"><span class="first-word">WARNING:</span> the return value differs from the usual return value convention.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
+                                                    const uint8_t **out_label);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EC-specific-control-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">EC</span> specific control functions.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_ec_paramgen_curve_nid">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_ec_paramgen_curve_nid</span> sets the curve used for <tt><a href="evp.h.html#EVP_PKEY_keygen">EVP_PKEY_keygen</a></tt> or <tt><a href="evp.h.html#EVP_PKEY_paramgen">EVP_PKEY_paramgen</a></tt> operations to <tt>nid</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
+                                                          int nid);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">KEM</span> specific functions.</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_kem_set_params">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_kem_set_params</span> sets in <tt>ctx</tt> the parameters associated with the KEM defined by the given <tt>nid</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_kem_new_raw_public_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_kem_new_raw_public_key</span> generates a new EVP_PKEY object of type EVP_PKEY_KEM, initializes the KEM key based on <tt>nid</tt> and populates the public key part of the KEM key with the contents of <tt>in</tt>. It returns the pointer to the allocated PKEY on sucess and NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
+                                    int nid, const uint8_t *in, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_kem_new_raw_secret_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_kem_new_raw_secret_key</span> generates a new EVP_PKEY object of type EVP_PKEY_KEM, initializes the KEM key based on <tt>nid</tt> and populates the secret key part of the KEM key with the contents of <tt>in</tt>. It returns the pointer to the allocated PKEY on sucess and NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
+                                    int nid, const uint8_t *in, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_kem_new_raw_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_kem_new_raw_key</span> generates a new EVP_PKEY object of type EVP_PKEY_KEM, initializes the KEM key based on <tt>nid</tt> and populates the public and secret key parts of the KEM key with the contents of <tt>in_public</tt> and <tt>in_secret</tt>. It returns the pointer to the allocated PKEY on sucess and NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
+                                                  const uint8_t *in_public,
+                                                  size_t len_public,
+                                                  const uint8_t *in_secret,
+                                                  size_t len_secret);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_kem_check_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_kem_check_key</span> validates that the public key in <tt>key</tt> corresponds to the secret key in <tt>key</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">PQDSA</span> specific functions.</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_pqdsa_set_params">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_pqdsa_set_params</span> sets in <tt>ctx</tt> the parameters associated with the signature scheme defined by the given <tt>nid</tt>. It returns one on success and zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_pqdsa_new_raw_public_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_pqdsa_new_raw_public_key</span> generates a new EVP_PKEY object of type EVP_PKEY_PQDSA, initializes the PQDSA key based on <tt>nid</tt> and populates the public key part of the PQDSA key with the contents of <tt>in</tt>. It returns the pointer to the allocated PKEY on sucess and NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_pqdsa_new_raw_private_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_pqdsa_new_raw_private_key</span> generates a new EVP_PKEY object of type EVP_PKEY_PQDSA, initializes the PQDSA key based on <tt>nid</tt> and populates the secret key part of the PQDSA key with the contents of <tt>in</tt>. If the contents of <tt>in</tt> is the private key seed, then this function will generate the corresponding key pair and populate both public and private parts of the PKEY. It returns the pointer to the allocated PKEY on sucess and NULL on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">Diffie-Hellman-specific</span> control functions.</p></div>
+            
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dh_pad">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dh_pad</span> configures configures whether <tt>ctx</tt>, which must be an <tt><a href="evp.h.html#EVP_PKEY_derive">EVP_PKEY_derive</a></tt> operation, configures the handling of leading zeros in the Diffie-Hellman shared secret. If <tt>pad</tt> is zero, leading zeros are removed from the secret. If <tt>pad</tt> is non-zero, the fixed-width shared secret is used unmodified, as in PKCS #3. If this function is not called, the default is to remove leading zeros.</p><p class="warning"><span class="first-word">WARNING:</span> The behavior when <tt>pad</tt> is zero leaks information about the shared secret. This may result in side channel attacks such as https://raccoon-attack.com/, particularly when the same private key is used for multiple operations.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN1-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">ASN1</span> functions</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_asn1_get_count">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_asn1_get_count</span> returns the number of available <tt>EVP_PKEY_ASN1_METHOD</tt> structures.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_asn1_get_count(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_asn1_get0">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_asn1_get0</span> returns a pointer to an EVP_PKEY_ASN1_METHOD structure. <tt>idx</tt> is the index value, which must be a non-negative value smaller than the return value of <tt><a href="evp.h.html#EVP_PKEY_asn1_get_count">EVP_PKEY_asn1_get_count</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_asn1_find">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_asn1_find</span> finds an <tt>EVP_PKEY_ASN1_METHOD</tt> structure for the given key <tt>type</tt>, e.g. <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> or <tt><a href="evp.h.html#EVP_PKEY_RSA">EVP_PKEY_RSA</a></tt>. <tt>pe</tt> is ignored.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **_pe,
+                                                              int type);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_asn1_find_str">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_asn1_find_str</span> finds an <tt>EVP_PKEY_ASN1_METHOD</tt> structure by name. <tt>pe</tt> is ignored. <tt>name</tt> is the name of the key type to find, e.g, &#34;RSA&#34; or &#34;EC&#34;. <tt>len</tt> is the length of the name.</p></div>
+            <pre class="code">OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
+    ENGINE **_pe, const char *name, int len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_asn1_get0_info">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_asn1_get0_info</span> retrieves information about an <tt>EVP_PKEY_ASN1_METHOD</tt> structure. <tt>ppkey_id</tt> is a pointer to get the key type identifier. <tt>pkey_base_id</tt> is a pointer to get the base key type. Value will be the same as <tt>ppkey_id</tt>. <tt>ppkey_flags</tt> is not supported.  Value is set to 0 if pointer is not <tt>NULL</tt>. <tt>pinfo</tt> is a pointer to get a text description. <tt>ppem_str</tt> is a pointer to get the PEM string name. <tt>ameth</tt> is a pointer to the EVP_PKEY_ASN1_METHOD structure.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
+                                           int *ppkey_flags, const char **pinfo,
+                                           const char **ppem_str,
+                                           const EVP_PKEY_ASN1_METHOD *ameth);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EVP_PKEY_CTX-keygen/paramgen-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">EVP_PKEY_CTX</span> keygen/paramgen functions.</p></div>
+
+        
+          <div class="decl" >
+            
+            <pre class="code">typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_cb">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_cb</span> sets <tt>cb</tt> as the key or parameter generation callback function for <tt>ctx</tt>. The callback function is then translated and used as the underlying <tt>BN_GENCB</tt> for <tt>ctx</tt>. Once <tt>cb</tt> is set for <tt>ctx</tt>, any information regarding key or parameter generation can be retrieved via <tt><a href="evp.h.html#EVP_PKEY_CTX_get_keygen_info">EVP_PKEY_CTX_get_keygen_info</a></tt>. This behavior only applies to <tt>EVP_PKEY</tt>s that have calls to <tt>BN_GENCB</tt> available, which is only <tt><a href="evp.h.html#EVP_PKEY_RSA">EVP_PKEY_RSA</a></tt>.</p><p><span class="first-word">TODO:</span> Add support for <tt><a href="evp.h.html#EVP_PKEY_DH">EVP_PKEY_DH</a></tt> once we have param_gen support.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_keygen_info">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_keygen_info</span> returns the values associated with the <tt>EVP_PKEY_gen_cb</tt>/<tt>BN_GENCB</tt> assigned to <tt>ctx</tt>. This should only be used if <tt><a href="evp.h.html#EVP_PKEY_CTX_set_cb">EVP_PKEY_CTX_set_cb</a></tt> has been called. If <tt>idx</tt> is -1, the total number of available parameters is returned. Any non-negative value less than the total number of available parameters, returns the indexed value in the parameter array. We return 0 for any invalid <tt>idx</tt> or key type.</p><p>The <tt>idx</tt>s in <tt>ctx-&gt;keygen_info</tt> correspond to the following values for <tt>BN_GENCB</tt>:</p><ol><li><tt>ctx-&gt;keygen_info[0]</tt> -&gt; <tt>event</tt></li><li><tt>ctx-&gt;keygen_info[1]</tt> -&gt; <tt>n</tt> See documentation for <tt>BN_GENCB</tt> for more details regarding the definition of each parameter.</li></ol><p><span class="first-word">TODO:</span> Add support for <tt><a href="evp.h.html#EVP_PKEY_DH">EVP_PKEY_DH</a></tt> once we have param_gen support.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_app_data">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_app_data</span> sets <tt>app_data</tt> for <tt>ctx</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_get_app_data">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get_app_data</span> returns <tt>ctx</tt>&#39;s <tt>app_data</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_RSA2">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_RSA2</span> was historically an alternate form for RSA public keys (OID 2.5.8.1.1), but is no longer accepted.</p></div>
+            <pre class="code">#define EVP_PKEY_RSA2 NID_rsa</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_X448">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_X448</span> is defined for OpenSSL compatibility, but we do not support X448 and attempts to create keys will fail.</p></div>
+            <pre class="code">#define EVP_PKEY_X448 NID_X448</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_ED448">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_ED448</span> is defined for OpenSSL compatibility, but we do not support Ed448 and attempts to create keys will fail.</p></div>
+            <pre class="code">#define EVP_PKEY_ED448 NID_ED448</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_get_pkey_type">
+            <div class="comment"><p><span class="first-word">EVP_MD_get_pkey_type</span> returns the NID of the public key signing algorithm associated with <tt>md</tt> and RSA. This does not return all potential signing algorithms that could work with <tt>md</tt> and should not be used.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_pkey_type">
+            <div class="comment"><p><span class="first-word">EVP_MD_pkey_type</span> calls <tt><a href="evp.h.html#EVP_MD_get_pkey_type">EVP_MD_get_pkey_type</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_do_all_sorted">
+            
+            <pre class="code">OPENSSL_EXPORT void EVP_CIPHER_do_all_sorted(
+    void (*callback)(const EVP_CIPHER *cipher, const char *name,
+                     const char *unused, void *arg),
+    void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_do_all_sorted">
+            
+            <pre class="code">OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
+                                                          const char *name,
+                                                          const char *unused,
+                                                          void *arg),
+                                         void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_do_all">
+            <div class="comment"><p><span class="first-word">EVP_MD_do_all</span> is the same as <tt><a href="evp.h.html#EVP_MD_do_all_sorted">EVP_MD_do_all_sorted</a></tt>. We include both for compatibility reasons.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
+                                                   const char *name,
+                                                   const char *unused,
+                                                   void *arg),
+                                         void *arg);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="i2d_PrivateKey">
+            <div class="comment"><p><span class="first-word">i2d_PrivateKey</span> marshals a private key from <tt>key</tt> to type-specific format, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">RSA</span> keys are serialized as a DER-encoded RSAPublicKey (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) structure. EC keys are serialized as a DER-encoded ECPrivateKey (<a href="https://www.rfc-editor.org/rfc/rfc5915.html">RFC 5915</a>) structure.</p><p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_marshal_private_key">RSA_marshal_private_key</a></tt> or <tt><a href="ec_key.h.html#EC_KEY_marshal_private_key">EC_KEY_marshal_private_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_PublicKey">
+            <div class="comment"><p><span class="first-word">i2d_PublicKey</span> marshals a public key from <tt>key</tt> to a type-specific format, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">RSA</span> keys are serialized as a DER-encoded RSAPublicKey (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) structure. EC keys are serialized as an EC point per SEC 1.</p><p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_marshal_public_key">RSA_marshal_public_key</a></tt> or <tt><a href="ec.h.html#EC_POINT_point2cbb">EC_POINT_point2cbb</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PublicKey(const EVP_PKEY *key, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PrivateKey">
+            <div class="comment"><p><span class="first-word">d2i_PrivateKey</span> parses a DER-encoded private key from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>. The private key must have type <tt>type</tt>, otherwise it will be rejected.</p><p><span class="first-word">This</span> function tries to detect one of several formats. Instead, use <tt><a href="evp.h.html#EVP_parse_private_key">EVP_parse_private_key</a></tt> for a PrivateKeyInfo, <tt><a href="rsa.h.html#RSA_parse_private_key">RSA_parse_private_key</a></tt> for an RSAPrivateKey, and <tt>EC_parse_private_key</tt> for an ECPrivateKey.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
+                                        const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_AutoPrivateKey">
+            <div class="comment"><p><span class="first-word">d2i_AutoPrivateKey</span> acts the same as <tt><a href="evp.h.html#d2i_PrivateKey">d2i_PrivateKey</a></tt>, but detects the type of the private key.</p><p><span class="first-word">This</span> function tries to detect one of several formats. Instead, use <tt><a href="evp.h.html#EVP_parse_private_key">EVP_parse_private_key</a></tt> for a PrivateKeyInfo, <tt><a href="rsa.h.html#RSA_parse_private_key">RSA_parse_private_key</a></tt> for an RSAPrivateKey, and <tt>EC_parse_private_key</tt> for an ECPrivateKey.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
+                                            long len);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PublicKey">
+            <div class="comment"><p><span class="first-word">d2i_PublicKey</span> parses a public key from <tt>len</tt> bytes at <tt>*inp</tt> in a type- specific format specified by <tt>type</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p><p>The only supported value for <tt>type</tt> is <tt><a href="evp.h.html#EVP_PKEY_RSA">EVP_PKEY_RSA</a></tt>, which parses a DER-encoded RSAPublicKey (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) structure. Parsing EC keys is not supported by this function.</p><p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_parse_public_key">RSA_parse_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out,
+                                       const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_ec_param_enc">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_ec_param_enc</span> returns one if <tt>encoding</tt> is <tt><a href="ec.h.html#OPENSSL_EC_NAMED_CURVE">OPENSSL_EC_NAMED_CURVE</a></tt> or zero with an error otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
+                                                 int encoding);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_set1_tls_encodedpoint">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_set1_tls_encodedpoint</span> replaces <tt>pkey</tt> with a public key encoded by <tt>in</tt>. It returns one on success and zero on error. <tt>len</tt> is the size of <tt>in</tt>. Any value of <tt>len</tt> below 1 is interpreted as an invalid input and will result in an error.</p><p><span class="first-word">This</span> function only works on X25519 <tt><a href="evp.h.html#EVP_PKEY_X25519">EVP_PKEY_X25519</a></tt> and EC <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> key types. The supported curve for <tt><a href="evp.h.html#EVP_PKEY_X25519">EVP_PKEY_X25519</a></tt> is Curve25519. The supported curves for <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> are: NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1</p><p><span class="first-word">For</span> the EC key type, the EC point representation must be in uncompressed form.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
+                                                  const uint8_t *in,
+                                                  size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get1_tls_encodedpoint">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_get1_tls_encodedpoint</span> sets <tt>*out_ptr</tt> to a newly-allocated buffer containing the raw encoded public key for <tt>pkey</tt>. The caller must call <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> to release this buffer on success. The function returns the length of the buffer on success and zero on error.</p><p><span class="first-word">This</span> function only works on X25519 <tt><a href="evp.h.html#EVP_PKEY_X25519">EVP_PKEY_X25519</a></tt> and EC <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> key types. The supported curve for <tt><a href="evp.h.html#EVP_PKEY_X25519">EVP_PKEY_X25519</a></tt> is Curve25519. The supported curves for <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> are: NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1</p><p><span class="first-word">For</span> the EC key type, the EC point representation must be in uncompressed form.</p></div>
+            <pre class="code">OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
+                                                     uint8_t **out_ptr);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_base_id">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_base_id</span> calls <tt><a href="evp.h.html#EVP_PKEY_id">EVP_PKEY_id</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_base_id(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_pss_keygen_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_pss_keygen_md</span> returns 0.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_md(EVP_PKEY_CTX *ctx,
+                                                      const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen</span> returns 0.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(EVP_PKEY_CTX *ctx,
+                                                           int salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md</span> returns 0.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                           const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_PUBKEY">
+            <div class="comment"><p><span class="first-word">i2d_PUBKEY</span> marshals <tt>pkey</tt> as a DER-encoded SubjectPublicKeyInfo, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_marshal_public_key">EVP_marshal_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_PUBKEY(const EVP_PKEY *pkey, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_PUBKEY">
+            <div class="comment"><p><span class="first-word">d2i_PUBKEY</span> parses a DER-encoded SubjectPublicKeyInfo from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_parse_public_key">EVP_parse_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY(EVP_PKEY **out, const uint8_t **inp,
+                                    long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_RSA_PUBKEY">
+            <div class="comment"><p><span class="first-word">i2d_RSA_PUBKEY</span> marshals <tt>rsa</tt> as a DER-encoded SubjectPublicKeyInfo structure, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_marshal_public_key">EVP_marshal_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_RSA_PUBKEY(const RSA *rsa, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_RSA_PUBKEY">
+            <div class="comment"><p><span class="first-word">d2i_RSA_PUBKEY</span> parses an RSA public key as a DER-encoded SubjectPublicKeyInfo from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>. SubjectPublicKeyInfo structures containing other key types are rejected.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_parse_public_key">EVP_parse_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY(RSA **out, const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_DSA_PUBKEY">
+            <div class="comment"><p><span class="first-word">i2d_DSA_PUBKEY</span> marshals <tt>dsa</tt> as a DER-encoded SubjectPublicKeyInfo, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_marshal_public_key">EVP_marshal_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_DSA_PUBKEY(const DSA *dsa, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_DSA_PUBKEY">
+            <div class="comment"><p><span class="first-word">d2i_DSA_PUBKEY</span> parses a DSA public key as a DER-encoded SubjectPublicKeyInfo from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>. SubjectPublicKeyInfo structures containing other key types are rejected.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_parse_public_key">EVP_parse_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY(DSA **out, const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_EC_PUBKEY">
+            <div class="comment"><p><span class="first-word">i2d_EC_PUBKEY</span> marshals <tt>ec_key</tt> as a DER-encoded SubjectPublicKeyInfo, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_marshal_public_key">EVP_marshal_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_EC_PUBKEY">
+            <div class="comment"><p><span class="first-word">d2i_EC_PUBKEY</span> parses an EC public key as a DER-encoded SubjectPublicKeyInfo from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>. SubjectPublicKeyInfo structures containing other key types are rejected.</p><p><span class="first-word">Use</span> <tt><a href="evp.h.html#EVP_parse_public_key">EVP_parse_public_key</a></tt> instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,
+                                     long len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_assign">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_assign</span> sets the underlying key of <tt>pkey</tt> to <tt>key</tt>, which must be of the given type. If successful, it returns one. If the <tt>type</tt> argument is one of <tt><a href="evp.h.html#EVP_PKEY_RSA">EVP_PKEY_RSA</a></tt>, <tt><a href="evp.h.html#EVP_PKEY_DSA">EVP_PKEY_DSA</a></tt>, or <tt><a href="evp.h.html#EVP_PKEY_EC">EVP_PKEY_EC</a></tt> values it calls the corresponding <tt>EVP_PKEY_assign_*</tt> functions (which should be used instead). Otherwise, if <tt>type</tt> cannot be set via <tt><a href="evp.h.html#EVP_PKEY_set_type">EVP_PKEY_set_type</a></tt> or if the key is NULL, it returns zero.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_type">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_type</span> returns <tt>nid</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_type(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_new_mac_key">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_new_mac_key</span> is deprecated. It allocates a fresh <tt>EVP_PKEY</tt> of <tt>type</tt>. Only <tt><a href="evp.h.html#EVP_PKEY_HMAC">EVP_PKEY_HMAC</a></tt> is supported. <tt>mac_key</tt> is used as the HMAC key, NULL <tt>mac_key</tt> will result in a complete zero-key being used, but in that case, the length must be zero. This returns the fresh <tt>EVP_PKEY</tt>, or NULL on error.</p><p><span class="first-word">NOTE:</span> Use <tt>HMAC_CTX</tt> directly instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
+                                              const uint8_t *mac_key,
+                                              size_t mac_key_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get0">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_get0</span> returns the consumed key. The type of value returned will be one of the following, depending on the type of the <tt>EVP_PKEY</tt>: <tt>DH</tt>, <tt>DSA</tt>, <tt>EC_KEY</tt>, or <tt>RSA</tt>.</p><p><span class="first-word">This</span> function is provided only for compatibility with OpenSSL. Prefer the use the typed <tt>EVP_PKEY_get0_*</tt> functions instead.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">General</span> No-op Functions [Deprecated].</p></div>
+            
+          </div>
+        
+          <div class="decl" id="OpenSSL_add_all_algorithms">
+            <div class="comment"><p><span class="first-word">OpenSSL_add_all_algorithms</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p><p><span class="first-word">TODO</span> (CryptoAlg-2398): Add <tt>OPENSSL_DEPRECATED</tt>. nginx defines -Werror and depends on this.</p></div>
+            <pre class="code">OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_add_all_algorithms_conf">
+            <div class="comment"><p><span class="first-word">OPENSSL_add_all_algorithms_conf</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_add_all_algorithms_conf(void);</pre>
+          </div>
+        
+          <div class="decl" id="OpenSSL_add_all_ciphers">
+            <div class="comment"><p><span class="first-word">OpenSSL_add_all_ciphers</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_ciphers(void);</pre>
+          </div>
+        
+          <div class="decl" id="OpenSSL_add_all_digests">
+            <div class="comment"><p><span class="first-word">OpenSSL_add_all_digests</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p><p><span class="first-word">TODO</span> (CryptoAlg-2398): Add <tt>OPENSSL_DEPRECATED</tt>. tpm2-tss defines -Werror and depends on this.</p></div>
+            <pre class="code">OPENSSL_EXPORT void OpenSSL_add_all_digests(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_cleanup">
+            <div class="comment"><p><span class="first-word">EVP_cleanup</span> does nothing. This has been deprecated since OpenSSL 1.1.0.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EVP_PKEY_DSA">
+        <div class="sectionpreamble comment"><p>EVP_PKEY_DSA</p><p><tt><a href="evp.h.html#EVP_PKEY_DSA">EVP_PKEY_DSA</a></tt> is deprecated, but signing or verifying are still supported, as is parsing DER into a DSA <tt>EVP_PKEY</tt>.</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_DSA">
+            
+            <pre class="code">#define EVP_PKEY_DSA NID_dsa</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dsa_paramgen_bits">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dsa_paramgen_bits</span> sets the number of bits for DSA paramgen. <tt>nbits</tt> must be at least 512. Returns 1 on success, 0 otherwise.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
+    EVP_PKEY_CTX *ctx, int nbits);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dsa_paramgen_md">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dsa_paramgen_md</span> sets the digest function used for DSA parameter generation. If not specified, one of SHA-1 (160), SHA-224 (224), or SHA-256 (256) is selected based on the number of bits in <tt>q</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_md(EVP_PKEY_CTX *ctx, const EVP_MD* md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_dsa_paramgen_q_bits">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_dsa_paramgen_q_bits</span> sets the number of bits in q to use for DSA parameter generation. If not specified, the default is 256. If a digest function is specified with <tt><a href="evp.h.html#EVP_PKEY_CTX_set_dsa_paramgen_md">EVP_PKEY_CTX_set_dsa_paramgen_md</a></tt> then this parameter is ignored and the number of bits in q matches the size of the digest. This function only accepts the values 160, 224 or 256 for <tt>qbits</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
+    EVP_PKEY_CTX *ctx, int qbits);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EVP_PKEY_CTX_ctrl_str">
+        <div class="sectionpreamble comment"><p>EVP_PKEY_CTX_ctrl_str</p></div>
+
+        
+          <div class="decl" id="EVP_PKEY_CTX_ctrl_str">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_ctrl_str</span> sets a parameter on <tt>ctx</tt> of type <tt>type</tt> to <tt>value</tt>. This function is deprecated and should not be used in new code.</p><p class="warning"><span class="first-word">WARNING:</span> This function is difficult to use correctly. New code should use the EVP_PKEY_CTX_set1_* or EVP_PKEY_CTX_set_* functions instead.</p><p><tt>ctx</tt> is the context to operate on. <tt>type</tt> is the parameter type as a string. <tt>value</tt> is the value to set.</p><p><span class="first-word">It</span> returns 1 for success and 0 or a negative value for failure.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                              const char *value);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

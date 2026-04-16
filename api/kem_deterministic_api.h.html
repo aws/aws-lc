@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - kem_deterministic_api.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>kem_deterministic_api.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <div class="comment"><p><span class="first-word">Deterministic</span> Key Encapsulation Mechanism functions</p></div>
+
+    <ol class="toc">
+      
+        
+          
+          
+            <li><a href="#EVP_PKEY_keygen_deterministic"><tt>EVP_PKEY_keygen_deterministic</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_encapsulate_deterministic"><tt>EVP_PKEY_encapsulate_deterministic</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EVP_PKEY_keygen_deterministic">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_keygen_deterministic</span> is an operation defined for a KEM (Key Encapsulation Mechanism). For the KEM specified in <tt>ctx</tt>, the function performs deterministic keygen based on the value specified in <tt>seed</tt> of length <tt>seed_len</tt> bytes.</p><p><span class="first-word">If</span> <tt>out_pkey</tt> and <tt>seed</tt> are set to NULL it is assumed that the caller is doing a size check and the function will write the size of the required seed in <tt>seed_len</tt> and return successfully.</p><p><span class="first-word">EVP_PKEY_keygen_deterministic</span> performs a deterministic key generation operation using the values from <tt>ctx</tt>, and the given <tt>seed</tt>. If <tt>*out_pkey</tt> is non-NULL, it overwrites <tt>*out_pkey</tt> with the resulting key. Otherwise, it sets <tt>*out_pkey</tt> to a newly-allocated <tt>EVP_PKEY</tt> containing the result. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx   /* IN  */,
+                                                 EVP_PKEY **out_pkey /* OUT */,
+                                                 const uint8_t *seed /* IN  */,
+                                                 size_t *seed_len    /* IN  */);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_encapsulate_deterministic">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_encapsulate_deterministic</span> is an operation defined for a KEM (Key Encapsulation Mechanism). The function performs the same encapsulation operations as EVP_PKEY_encapsulate, however, rather than generating a random for the <tt>shared_secret</tt>, the value is derived from the provided <tt>seed</tt> of <tt>seed_len</tt>.</p><p><span class="first-word">If</span> <tt>ciphertext</tt>, <tt>shared_secret</tt>, and <tt>seed</tt> are NULL it is assumed that the caller is doing a size check: the function will write the size of the ciphertext, shared secret, and required seed in <tt>ciphertext_len</tt>, <tt>shared_secret_len</tt>, <tt>seed_len</tt> and return successfully.</p><p><span class="first-word">If</span> <tt>ciphertext</tt>, <tt>shared_secret</tt>, and <tt>seed</tt> are not NULL it is assumed that the caller is performing the actual operation. The function will check additionally if the lengths of the output buffers, <tt>ciphertext_len</tt>, <tt>shared_secret_len</tt>, and <tt>seed</tt> are large enough for the KEM.</p><p><span class="first-word">Note</span> that decapsulation is performed using the regular API, as a seed is not required.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx          /* IN  */,
+                                                      uint8_t *ciphertext        /* OUT */,
+                                                      size_t  *ciphertext_len    /* OUT */,
+                                                      uint8_t *shared_secret     /* OUT */,
+                                                      size_t  *shared_secret_len /* OUT */,
+                                                      const uint8_t *seed        /* IN  */,
+                                                      size_t *seed_len           /* IN  */);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>
