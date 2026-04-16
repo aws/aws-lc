@@ -79,6 +79,9 @@
 #define OPENSSL_PNACL
 #elif defined(__wasm__)
 #define OPENSSL_WASM
+#  if defined(__wasi__)
+#    define OPENSSL_WASM_WASI
+#  endif
 #elif defined(__asmjs__) // Allowed but no macro defined
 #elif defined(__myriad2__) // Allowed but no macro defined
 #else
@@ -172,6 +175,20 @@
 #if defined(CROS_ZEPHYR)
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
+#define OPENSSL_NO_FORK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// OPENSSL_WASM_WASI is set when building for WASI (WebAssembly System Interface).
+// WASI provides a standardized system interface for WebAssembly modules.
+// WASI Preview 2 does not support pthreads, BSD sockets, or terminal I/O,
+// so we disable threading, socket, and TTY support. WASI does provide
+// filesystem access and getentropy() for randomness.
+//
+// https://wasi.dev/
+#if defined(OPENSSL_WASM_WASI)
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_TTY
 #define OPENSSL_NO_FORK
