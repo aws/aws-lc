@@ -27,6 +27,7 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aesni-gcm-avx2.${ASM_EXT}
     aesni-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-xts-avx512.${ASM_EXT}
@@ -119,6 +120,7 @@ endif()
 
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
+  perlasm(aesni-gcm-avx2.${ASM_EXT} modes/asm/aesni-gcm-avx2.pl)
   perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
   perlasm(aesni-xts-avx512.${ASM_EXT} aes/asm/aesni-xts-avx512.pl)
   perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)

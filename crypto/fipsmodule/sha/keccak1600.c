@@ -378,7 +378,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     KeccakF1600_hw((uint64_t *) A);
 
 #elif defined(OPENSSL_X86_64)
-    keccak_log_dispatch(9); // kFlag_sha3_keccak_f1600
+    keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
     sha3_keccak_f1600((uint64_t *)A, iotas);
 #endif
 }
@@ -458,7 +458,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 
 #if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_X86_64)
     if (CRYPTO_is_AVX2_capable()) {
-        keccak_log_dispatch(10); // kFlag_sha3_keccak4_f1600_alt
+        keccak_log_dispatch(11); // kFlag_sha3_keccak4_f1600_alt
         sha3_keccak4_f1600_alt((uint64_t *)A, iotas, keccak_rho8, keccak_rho56);
         return;
     }
