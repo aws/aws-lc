@@ -253,6 +253,14 @@ static int cert_set_chain_and_key(
     cert_pkey->chain.reset();
   }
   cert_pkey->chain = std::move(certs);
+
+  // Invalidate the parsed X509 leaf and chain caches since the backing
+  // CRYPTO_BUFFER chain was just replaced. Dispatch through |x509_method| to
+  // respect the abstraction boundary and to correctly handle the noop case
+  // (e.g. TLS_with_buffers_method) where these are no-ops.
+  cert->x509_method->cert_flush_cached_chain(cert);
+  cert->x509_method->cert_flush_leaf(cert);
+
   cert->cert_private_key_idx = slot_idx;
 
   return 1;
@@ -295,6 +303,10 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   if (cert_pkey.chain != nullptr) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert_pkey.chain.get(), 0));
     sk_CRYPTO_BUFFER_set(cert_pkey.chain.get(), 0, buffer.release());
+
+    // The backing CRYPTO_BUFFER leaf was just replaced; invalidate the cached
+    // X509 leaf to prevent stale data from being returned to callers.
+    cert->x509_method->cert_flush_leaf(cert);
 
     // Update certificate slot index if all checks have passed.
     cert->cert_private_key_idx = slot_index;
