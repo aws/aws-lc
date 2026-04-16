@@ -13,6 +13,9 @@ extern "C" {
 #endif
 
 
+// OpenSSL compatibility configuration flags.
+
+
 #define OPENSSL_NO_ASYNC
 #define OPENSSL_NO_BLAKE2
 #define OPENSSL_NO_BUF_FREELISTS

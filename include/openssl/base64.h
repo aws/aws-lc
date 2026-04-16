@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+
+// Base64 encoding and decoding.
+
+
 /**
  * @file
  * @brief base64 encoding and decoding functions.
