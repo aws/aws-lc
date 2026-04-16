@@ -229,6 +229,7 @@ long BIO_get_ssl(BIO *bio, SSL **ssl) {
   return BIO_ctrl(bio, BIO_C_GET_SSL, 0, ssl);
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
   bssl::UniquePtr<BIO> con(BIO_new(BIO_s_connect()));
   bssl::UniquePtr<BIO> ssl(BIO_new_ssl(ctx, 1));
@@ -244,6 +245,7 @@ BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
   ssl.release();
   return ret.release();
 }
+#endif  // !OPENSSL_NO_SOCK
 
 BIO *BIO_new_ssl(SSL_CTX *ctx, int client) {
   bssl::UniquePtr<BIO> ret(BIO_new(BIO_f_ssl()));

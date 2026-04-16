@@ -432,6 +432,7 @@ TEST(SSLTest, SessionDuplication) {
   EXPECT_EQ(Bytes(s0_bytes, s0_len), Bytes(s1_bytes, s1_len));
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
   EXPECT_EQ(rfd, SSL_get_fd(ssl));
   EXPECT_EQ(rfd, SSL_get_rfd(ssl));
@@ -506,6 +507,7 @@ TEST(SSLTest, SetFD) {
   // ASan builds will implicitly test that the internal |BIO| reference-counting
   // is correct.
 }
+#endif  // !OPENSSL_NO_SOCK
 
 TEST(SSLTest, SetBIO) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -2168,6 +2170,7 @@ TEST(SSLTest, BIO) {
   }
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 TEST(SSLTest, BIO_2) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(
@@ -2201,6 +2204,7 @@ TEST(SSLTest, BIO_2) {
   SSL_set_bio(server_ssl_ptr, bio2, bio2);
   ASSERT_TRUE(CompleteHandshakes(client_ssl_ptr, server_ssl_ptr));
 }
+#endif  // !OPENSSL_NO_SOCK
 
 TEST(SSLTest, ALPNConfig) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
