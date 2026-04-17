@@ -113,6 +113,15 @@ FILE* createRawTempFILE();
 TempFILE createTempFILE();
 size_t createTempDirPath(char buffer[PATH_MAX]);
 
+#if defined(OPENSSL_WINDOWS)
+// On Windows, antivirus software (e.g. Windows Defender), file indexing
+// services, or other background processes can briefly lock files after they are
+// created or modified. This causes transient ERROR_SHARING_VIOLATION failures
+// when a test immediately tries to reopen the file. This helper retries
+// fopen(path, "rb") in a loop to wait out the lock.
+testing::AssertionResult WaitForFileAccessible(const char *path);
+#endif
+
 // Returns true if operating system is Amazon Linux and false otherwise.
 // Determined at run-time and requires read-permissions to /etc.
 bool osIsAmazonLinux(void);
