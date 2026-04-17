@@ -35,8 +35,14 @@ void WriteTestFile(const char *path, const char *content,
           << "Failed to write to file: " << path;
     }
   }
-  // If content is NULL or empty, we just create an empty file (no assertion
-  // needed)
+  // Close the file before calling WaitForFileAccessible.
+  file.reset();
+#if defined(OPENSSL_WINDOWS)
+  // On Windows, antivirus or indexing services can briefly lock a file after it
+  // is written. Wait for the lock to be released before returning so that
+  // callers can immediately reopen the file.
+  ASSERT_TRUE(WaitForFileAccessible(path));
+#endif
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
