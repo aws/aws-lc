@@ -279,7 +279,8 @@ testing::AssertionResult WaitForFileAccessible(const char *path) {
       return testing::AssertionSuccess();
     }
     DWORD err = GetLastError();
-    if (err != ERROR_SHARING_VIOLATION && err != ERROR_LOCK_VIOLATION) {
+    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
+        err != ERROR_LOCK_VIOLATION) {
       break;
     }
   }
