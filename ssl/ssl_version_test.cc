@@ -1829,6 +1829,7 @@ TEST_P(SSLVersionTest, FakeIDsForTickets) {
 }
 
 
+#if defined(OPENSSL_THREADS)
 // Functions which access properties on the negotiated session are thread-safe
 // where needed. Prior to TLS 1.3, clients resuming sessions and servers
 // performing stateful resumption will share an underlying SSL_SESSION object,
@@ -1894,6 +1895,7 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
   EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
+#endif  // OPENSSL_THREADS
 
 
 TEST_P(SSLVersionTest, SimpleVerifiedChain) {

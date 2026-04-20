@@ -289,8 +289,6 @@ int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid) {
     return 0;
   }
 
-  evp_pkey_set_method(pkey, &pqdsa_asn1_meth);
-
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL) {
     // PQDSA_KEY_new sets the appropriate error.
@@ -298,7 +296,7 @@ int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid) {
   }
 
   key->pqdsa = pqdsa;
-  pkey->pkey.pqdsa_key = key;
+  evp_pkey_set0(pkey, &pqdsa_asn1_meth, key);
 
   return 1;
 }
