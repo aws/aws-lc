@@ -1,6 +1,50 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
+
+#include "internal.h"
+#include "../internal.h"
+
+// Some platforms (e.g. nanolibc, baremetal) do not support terminal operations
+// (no termios, no /dev/tty). Provide stub implementations that indicate no
+// console is available. Higher-level APIs that depend on console I/O, such as
+// EVP_read_pw_string and EVP_read_pw_string_min, will fail on these platforms.
+//
+// OpenSSL uses OPENSSL_NO_UI_CONSOLE to gate out the entire UI_OpenSSL()
+// method. Our approach differs: we stub at the lower openssl_console_* layer
+// so that the rest of the code compiles unconditionally and fails gracefully
+// at runtime.
+#if defined(OPENSSL_NO_TTY)
+
+void openssl_console_acquire_mutex(void) {}
+
+void openssl_console_release_mutex(void) {}
+
+int openssl_console_open(void) {
+  // No console available
+  return 0;
+}
+
+int openssl_console_close(void) {
+  return 1;
+}
+
+int openssl_console_write(const char *str) {
+  (void)str;
+  return 0;
+}
+
+int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
+  (void)buf;
+  (void)minsize;
+  (void)maxsize;
+  (void)echo;
+  return -1;  // Error: no console available
+}
+
+#else  // !OPENSSL_NO_TTY
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -13,9 +57,6 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
-
-#include "internal.h"
-#include "../internal.h"
 
 
 // We support two types of terminal interface:
@@ -279,8 +320,14 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
         WCHAR wresult[BUFSIZ];
         OPENSSL_cleanse(wresult, sizeof(wresult));
 
+        // Cap the read count to the wresult buffer size to prevent overflow.
+        DWORD read_count = (DWORD)maxsize;
+        if (read_count >= (sizeof(wresult) / sizeof(wresult[0]))) {
+          read_count = (sizeof(wresult) / sizeof(wresult[0])) - 1;
+        }
+
         if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
-                     wresult, maxsize, &numread, NULL)) {
+                     wresult, read_count, &numread, NULL)) {
             if (numread >= 2 && wresult[numread-2] == L'\r' &&
                 wresult[numread-1] == L'\n') {
                 wresult[numread-2] = L'\n';
@@ -342,3 +389,5 @@ error:
 
     return ok;
 }
+
+#endif  // !OPENSSL_NO_TTY

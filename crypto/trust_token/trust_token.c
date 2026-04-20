@@ -486,6 +486,7 @@ int TRUST_TOKEN_ISSUER_set_metadata_key(TRUST_TOKEN_ISSUER *ctx,
                                         const uint8_t *key, size_t len) {
   if (len < 32) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_METADATA_KEY);
+    return 0;
   }
   OPENSSL_free(ctx->metadata_key);
   ctx->metadata_key_len = 0;

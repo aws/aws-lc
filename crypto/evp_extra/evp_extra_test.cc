@@ -3670,6 +3670,24 @@ TEST(EVPExtraTest, SetNoneClearsKey) {
   EXPECT_EQ(EVP_PKEY_bits(pkey.get()), 0);
 }
 
+// EVP_PKEY_assign_FOO with NULL should fail without changing the key type.
+TEST(EVPExtraTest, NoHalfEmptyKeys) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+
+  EXPECT_FALSE(EVP_PKEY_set1_RSA(pkey.get(), nullptr));
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
+
+  EXPECT_FALSE(EVP_PKEY_set1_EC_KEY(pkey.get(), nullptr));
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
+
+  EXPECT_FALSE(EVP_PKEY_set1_DH(pkey.get(), nullptr));
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
+
+  EXPECT_FALSE(EVP_PKEY_set1_DSA(pkey.get(), nullptr));
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
+}
+
 // Test that |EC_KEY|s using custom curves can be wrapped in |EVP_PKEY|. Callers
 // should not follow this code. This is maintained and tested only for
 // compatibility with one legacy application, and supported in only a limited

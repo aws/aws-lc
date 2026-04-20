@@ -368,17 +368,20 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
     return 0;
   }
 
+  // Take a reference to the new peer before freeing the old one, in case
+  // peer == ctx->peerkey and the caller holds the sole reference.
+  EVP_PKEY_up_ref(peer);
   EVP_PKEY_free(ctx->peerkey);
   ctx->peerkey = peer;
 
   ret = ctx->pmeth->ctrl(ctx, EVP_PKEY_CTRL_PEER_KEY, 1, peer);
 
   if (ret <= 0) {
+    EVP_PKEY_free(ctx->peerkey);
     ctx->peerkey = NULL;
     return 0;
   }
 
-  EVP_PKEY_up_ref(peer);
   return 1;
 }
 

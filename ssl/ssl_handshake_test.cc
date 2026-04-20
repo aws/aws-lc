@@ -414,6 +414,7 @@ TEST(SSLTest, SSLGetKeyUpdate) {
   // Key update operation should have been performed by now.
   EXPECT_EQ(SSL_get_key_update_type(client.get()), SSL_KEY_UPDATE_NONE);
 }
+#if defined(OPENSSL_THREADS)
 // SSL_CTX_get0_certificate needs to lock internally. Test this works.
 TEST(SSLTest, GetCertificateThreads) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -436,6 +437,7 @@ TEST(SSLTest, GetCertificateThreads) {
   EXPECT_EQ(cert2, cert2_thread);
   EXPECT_EQ(0, X509_cmp(cert.get(), cert2));
 }
+#endif  // OPENSSL_THREADS
 
 #ifdef OPENSSL_THREADS
 

@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.71.0")
+set(SOFTWARE_VERSION "1.72.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -885,6 +885,10 @@ if(FUZZ)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
 endif()
 
+if(SSL_RUNNER_SHIM_CONFIG)
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-shim-config" "${AWSLC_SOURCE_DIR}/${SSL_RUNNER_SHIM_CONFIG}")
+endif()
+
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   # Enable position-independent code globally. This is needed because
@@ -1339,11 +1343,18 @@ else()
   set(GO_TEST_TIMEOUT "10m")
 endif()
 
-# Allow overriding the SSL test runner's idle timeout (default in runner.go is 15s).
+# Allow overriding the SSL test runner's idle timeout (default in runner.go is 30s).
 # Useful for resource-constrained environments (e.g. FreeBSD VMs) where the shim
 # may be slow to respond.
 if(DEFINED ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT})
   set(RUNNER_ARGS ${RUNNER_ARGS} "-idle-timeout" "$ENV{AWS_LC_SSL_RUNNER_IDLE_TIMEOUT}")
+endif()
+
+# Allow enabling retry on runner-side TCP timeouts.
+# Useful for resource-constrained environments (e.g. emulated FreeBSD VMs) where
+# transient timeouts do not indicate real bugs.
+if(DEFINED ENV{AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT})
+  set(RUNNER_ARGS ${RUNNER_ARGS} "-retry-on-timeout")
 endif()
 
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")

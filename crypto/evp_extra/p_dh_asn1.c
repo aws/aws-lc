@@ -180,9 +180,9 @@ int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
 
 int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key) {
   SET_DIT_AUTO_RESET
-  evp_pkey_set_method(pkey, &dh_asn1_meth);
-  pkey->pkey.dh = key;
-  return key != NULL;
+  GUARD_PTR(key);
+  evp_pkey_set0(pkey, &dh_asn1_meth, key);
+  return 1;
 }
 
 DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {

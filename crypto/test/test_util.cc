@@ -182,11 +182,42 @@ bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len) {
 }
 
 #if defined(OPENSSL_WINDOWS)
+// GetTempPathA falls back to the Windows directory (e.g. C:\Windows\) when the
+// TMP, TEMP, and USERPROFILE environment variables are all unset. This commonly
+// happens when running as SYSTEM in Docker containers or CI agents. The Windows
+// directory has special protections that cause file rename operations to fail
+// intermittently. Detect this case and redirect to C:\Windows\Temp\ instead.
+static DWORD GetSafeTempPathA(DWORD nBufferLength, LPSTR lpBuffer) {
+  DWORD ret = GetTempPathA(nBufferLength, lpBuffer);
+  if (ret == 0 || ret >= nBufferLength) {
+    return ret;
+  }
+  char win_dir[PATH_MAX];
+  UINT win_len = GetWindowsDirectoryA(win_dir, sizeof(win_dir));
+  if (win_len == 0 || win_len >= sizeof(win_dir)) {
+    return ret;
+  }
+  // Append trailing backslash to match GetTempPathA's format for comparison.
+  if (win_len + 1 >= sizeof(win_dir)) {
+    return ret;
+  }
+  win_dir[win_len] = '\\';
+  win_dir[win_len + 1] = '\0';
+  if (_stricmp(lpBuffer, win_dir) == 0) {
+    int written = snprintf(lpBuffer, nBufferLength, "%sTemp\\", win_dir);
+    if (written < 0 || (DWORD)written >= nBufferLength) {
+      return 0;
+    }
+    ret = (DWORD)written;
+  }
+  return ret;
+}
+
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   // On Windows, tmpfile() may attempt to create temp files in the root directory
   // of the drive, which requires Admin privileges, resulting in test failure.
   char pathname[PATH_MAX];
-  if(0 == GetTempPathA(PATH_MAX, pathname)) {
+  if(0 == GetSafeTempPathA(PATH_MAX, pathname)) {
     return 0;
   }
   return GetTempFileNameA(pathname, "awslctest", 0, buffer);
@@ -200,7 +231,7 @@ size_t createTempDirPath(char buffer[PATH_MAX]) {
   } random_bytes;
 
   // Get the temporary path
-  if (0 == GetTempPathA(PATH_MAX, temp_path)) {
+  if (0 == GetSafeTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 

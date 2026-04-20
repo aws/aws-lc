@@ -23,6 +23,8 @@ jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
   sanity-test-run:
     runs-on: ubuntu-latest
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -92,8 +94,6 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
-    env:
-      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
     strategy:
       fail-fast: false
       matrix:
@@ -576,10 +576,9 @@ jobs:
       - name: OpenBSD
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
-          environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
+          environment_variables: AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
           cpu_count: 3
           memory: 12G
@@ -612,7 +611,6 @@ jobs:
             sudo usermod -L unlimited runner
             sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
             set -x
-            export AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS=${AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS}
             export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
@@ -712,12 +710,12 @@ jobs:
       - name: Prepare VM
         uses: cross-platform-actions/action@v0.32.0
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
-          AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 60s
+          AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
+          AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
           GOFLAGS: "-buildvcs=false"
         with:
-          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT GOFLAGS"
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT GOFLAGS"
           operating_system: freebsd
           architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}
@@ -747,11 +745,10 @@ jobs:
       - name: Prepare VM
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
-          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
           GOFLAGS: "-buildvcs=false"
         with:
-          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
           operating_system: netbsd
           architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}

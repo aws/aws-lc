@@ -990,6 +990,7 @@ TEST_P(BIOPairTest, TestCallbacks) {
 }
 
 namespace {
+#if !defined(OPENSSL_NO_SOCK)
 static int callback_invoked = 0;
 
 static long callback(BIO *b, int state, int res) {
@@ -1017,6 +1018,7 @@ TEST(BIOTest, InvokeConnectCallback) {
 
   ASSERT_TRUE(BIO_free(bio));
 }
+#endif  // !OPENSSL_NO_SOCK
 }  // namespace
 
 
