@@ -620,9 +620,9 @@ TEST_P(KEMTest, ParsePublicKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 }
@@ -650,14 +650,38 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 
   // ---- 4. Verify private key is present ----
   ASSERT_TRUE(kem_key->secret_key);
+}
+
+TEST_P(KEMTest, GetType) {
+  int nid = GetParam().nid;
+
+  // ---- 1. Generate a key pair and verify the NID ----
+  bssl::UniquePtr<EVP_PKEY> pkey = generate_kem_key_pair(nid);
+  ASSERT_TRUE(pkey);
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), nid);
+}
+
+TEST(KEMTest, GetTypeNonKEMKey) {
+  // EVP_PKEY_kem_get_type must return 0 for a non-KEM key.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
+                                                      NID_X9_62_prime256v1));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw);
+
+  ASSERT_EQ(EVP_PKEY_kem_get_type(ec_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
 }
 
 // Invalid length test vectors - truncated DER structures

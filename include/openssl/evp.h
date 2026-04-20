@@ -990,6 +990,10 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+// EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key. |pkey|
+// must not be NULL.
+OPENSSL_EXPORT int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey);
+
 // PQDSA specific functions.
 
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
