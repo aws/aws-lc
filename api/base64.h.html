@@ -13,34 +13,53 @@
       <a href="headers.html">All headers</a>
     </div>
 
-    <div class="comment"><p><span class="first-word">Base64</span> encoding and decoding.</p></div>
+    <div class="comment"><p><span class="first-word">base64</span> functions.</p><p><span class="first-word">For</span> historical reasons, these functions have the EVP_ prefix but just do base64 encoding and decoding. Note that BoringSSL is a cryptography library, so these functions are implemented with side channel protections, at a performance cost. For other base64 uses, use a general-purpose base64 implementation.</p></div>
 
     <ol class="toc">
       
         
-          
-          
-            
-          
-        
-      
-        
-          
-          
-            
+          <li class="header"><a href="#Encoding">Encoding</a></li>
           
             <li><a href="#EVP_EncodeBlock"><tt>EVP_EncodeBlock</tt></a></li>
           
+            <li><a href="#EVP_EncodedLength"><tt>EVP_EncodedLength</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Decoding">Decoding</a></li>
+          
+            <li><a href="#EVP_DecodedLength"><tt>EVP_DecodedLength</tt></a></li>
+          
+            <li><a href="#EVP_DecodeBase64"><tt>EVP_DecodeBase64</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#EVP_ENCODE_CTX_new"><tt>EVP_ENCODE_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_ENCODE_CTX_free"><tt>EVP_ENCODE_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_EncodeInit"><tt>EVP_EncodeInit</tt></a></li>
+          
+            <li><a href="#EVP_EncodeUpdate"><tt>EVP_EncodeUpdate</tt></a></li>
+          
+            <li><a href="#EVP_EncodeFinal"><tt>EVP_EncodeFinal</tt></a></li>
+          
+            <li><a href="#EVP_DecodeInit"><tt>EVP_DecodeInit</tt></a></li>
+          
+            <li><a href="#EVP_DecodeUpdate"><tt>EVP_DecodeUpdate</tt></a></li>
+          
+            <li><a href="#EVP_DecodeFinal"><tt>EVP_DecodeFinal</tt></a></li>
+          
+            <li><a href="#EVP_DecodeBlock"><tt>EVP_DecodeBlock</tt></a></li>
+          
         
       
         
           
-          
-            
-          
-            <li><a href="#EVP_DecodedLength"><tt>EVP_DecodedLength</tt></a></li>
-          
-            <li><a href="#EVP_ENCODE_CTX_new"><tt>EVP_ENCODE_CTX_new</tt></a></li>
           
             <li><a href="#evp_encode_ctx_st"><tt>evp_encode_ctx_st</tt></a></li>
           
@@ -50,78 +69,99 @@
 
     
       
-        <div class="section" >
-        
+        <div class="section" id="Encoding">
+        <div class="sectionpreamble comment"><p>Encoding</p></div>
 
-        
-          <div class="decl" >
-            
-            <pre class="code">/**
- * @file
- * @brief base64 encoding and decoding functions.
- *
- * @details
- * For historical reasons, these functions have the `EVP_` prefix but just do
- * base64 encoding and decoding. Note that BoringSSL is a cryptography library,
- * so these functions are implemented with side channel protections, at a
- * performance cost. For other base64 uses, use a general-purpose base64
- * implementation.
- */</pre>
-          </div>
-        
-        </div>
-      
-    
-      
-        <div class="section" >
-        
-
-        
-          <div class="decl" >
-            
-            <pre class="code">/**
- * @name Encoding Functions
- *</pre>
-          </div>
         
           <div class="decl" id="EVP_EncodeBlock">
-            
-            <pre class="code"> * @{
- */
+            <div class="comment"><p><span class="first-word">EVP_EncodeBlock</span> encodes <tt>src_len</tt> bytes from <tt>src</tt> and writes the result to <tt>dst</tt> with a trailing NUL. It returns the number of bytes written, not including this trailing NUL.</p></div>
+            <pre class="code">OPENSSL_EXPORT size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src,
+                                      size_t src_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncodedLength">
+            <div class="comment"><p><span class="first-word">EVP_EncodedLength</span> sets <tt>*out_len</tt> to the number of bytes that will be needed to call <tt><a href="base64.h.html#EVP_EncodeBlock">EVP_EncodeBlock</a></tt> on an input of length <tt>len</tt>. This includes the final NUL that <tt><a href="base64.h.html#EVP_EncodeBlock">EVP_EncodeBlock</a></tt> writes. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Decoding">
+        <div class="sectionpreamble comment"><p>Decoding</p></div>
 
-/**
- * @brief Base64 encodes bytes from `src` into `dst`.
- *
- * @details
- * Base64 encodes `src_len` bytes from `src` and writes the
- * result to `dst` with a trailing `NULL`.
- *
- * @param [out] dst    Base64 encoded value
- * @param [in] src     Bytes to encode
- * @param [in] src_len Number of bytes to encode
- *
- * @return The number of bytes written, not including the trailing `NULL`
- */
-OPENSSL_EXPORT size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src,
-                                      size_t src_len);
+        
+          <div class="decl" id="EVP_DecodedLength">
+            <div class="comment"><p><span class="first-word">EVP_DecodedLength</span> sets <tt>*out_len</tt> to the maximum number of bytes that will be needed to call <tt><a href="base64.h.html#EVP_DecodeBase64">EVP_DecodeBase64</a></tt> on an input of length <tt>len</tt>. It returns one on success or zero if <tt>len</tt> is not a valid length for a base64-encoded string.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DecodedLength(size_t *out_len, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecodeBase64">
+            <div class="comment"><p><span class="first-word">EVP_DecodeBase64</span> decodes <tt>in_len</tt> bytes from base64 and writes <tt>*out_len</tt> bytes to <tt>out</tt>. <tt>max_out</tt> is the size of the output buffer. If it is not enough for the maximum output size, the operation fails. It returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DecodeBase64(uint8_t *out, size_t *out_len,
+                                    size_t max_out, const uint8_t *in,
+                                    size_t in_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        <div class="sectionpreamble comment"><p><span class="first-word">Deprecated</span> functions.</p><p><span class="first-word">OpenSSL</span> provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.</p></div>
 
-/**
- * @brief Calculates the number of bytes needed to encode an input using Base64.
- *
- * @details
- * Sets `*out_len` to the number of bytes that will be needed to call
- * #EVP_EncodeBlock on an input of length `len`. `*out_len` includes the final
- * `NULL` that #EVP_EncodeBlock writes.
- *
- * @param [out] out_len Number of bytes needed to Base64 encode a source
- * @param [in] len      Source length
- *
- * @retval 1 Success
- * @retval 0 Error
- */
-OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);
-
-/** @} Encoding Functions */</pre>
+        
+          <div class="decl" id="EVP_ENCODE_CTX_new">
+            <div class="comment"><p><span class="first-word">EVP_ENCODE_CTX_new</span> returns a newly-allocated <tt>EVP_ENCODE_CTX</tt> or NULL on error. The caller must release the result with <tt><a href="base64.h.html#EVP_ENCODE_CTX_free">EVP_ENCODE_CTX_free</a></tt>  when done.</p></div>
+            <pre class="code">OPENSSL_EXPORT EVP_ENCODE_CTX *EVP_ENCODE_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_ENCODE_CTX_free">
+            <div class="comment"><p><span class="first-word">EVP_ENCODE_CTX_free</span> releases memory associated with <tt>ctx</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_ENCODE_CTX_free(EVP_ENCODE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncodeInit">
+            <div class="comment"><p><span class="first-word">EVP_EncodeInit</span> initialises <tt>*ctx</tt>, which is typically stack allocated, for an encoding operation.</p><p><span class="first-word">NOTE:</span> The encoding operation breaks its output with newlines every 64 characters of output (48 characters of input). Use EVP_EncodeBlock to encode raw base64.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncodeUpdate">
+            <div class="comment"><p><span class="first-word">EVP_EncodeUpdate</span> encodes <tt>in_len</tt> bytes from <tt>in</tt> and writes an encoded version of them to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. Some state may be contained in <tt>ctx</tt> so <tt><a href="base64.h.html#EVP_EncodeFinal">EVP_EncodeFinal</a></tt> must be used to flush it before using the encoded data.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len, const uint8_t *in,
+                                    size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncodeFinal">
+            <div class="comment"><p><span class="first-word">EVP_EncodeFinal</span> flushes any remaining output bytes from <tt>ctx</tt> to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecodeInit">
+            <div class="comment"><p><span class="first-word">EVP_DecodeInit</span> initialises <tt>*ctx</tt>, which is typically stack allocated, for a decoding operation.</p><p><span class="first-word">TODO(davidben):</span> This isn&#39;t a straight-up base64 decode either. Document and/or fix exactly what&#39;s going on here; maximum line length and such.</p></div>
+            <pre class="code">OPENSSL_EXPORT void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecodeUpdate">
+            <div class="comment"><p><span class="first-word">EVP_DecodeUpdate</span> decodes <tt>in_len</tt> bytes from <tt>in</tt> and writes the decoded data to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. Some state may be contained in <tt>ctx</tt> so <tt><a href="base64.h.html#EVP_DecodeFinal">EVP_DecodeFinal</a></tt> must be used to flush it before using the encoded data.</p><p><span class="first-word">It</span> returns -1 on error, one if a full line of input was processed and zero if the line was short (i.e. it was the last line).</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len, const uint8_t *in,
+                                    size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecodeFinal">
+            <div class="comment"><p><span class="first-word">EVP_DecodeFinal</span> flushes any remaining output bytes from <tt>ctx</tt> to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. It returns one on success and minus one on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                   int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecodeBlock">
+            <div class="comment"><p><span class="first-word">EVP_DecodeBlock</span> encodes <tt>src_len</tt> bytes from <tt>src</tt> and writes the result to <tt>dst</tt>. It returns the number of bytes written or -1 on error.</p><p class="warning"><span class="first-word">WARNING:</span> EVP_DecodeBlock&#39;s return value does not take padding into account. It also strips leading whitespace and trailing whitespace and minuses.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src,
+                                   size_t src_len);</pre>
           </div>
         
         </div>
@@ -131,242 +171,22 @@ OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);
         <div class="section" >
         
 
-        
-          <div class="decl" >
-            
-            <pre class="code">/**
- * @name Decoding Functions
- *</pre>
-          </div>
-        
-          <div class="decl" id="EVP_DecodedLength">
-            
-            <pre class="code"> * @{
- */
-
-/**
- * @brief Sets the maximum number of bytes need to store a decoded Base64 input.
- *
- * @param [out] out_len Maximum number of bytes to store decoded input
- * @param [in] len      Base64 formatted input length
- *
- * @retval 1 Success
- * @retval 0 `len` is not a valid length for a base64-encoded string
- */
-OPENSSL_EXPORT int EVP_DecodedLength(size_t *out_len, size_t len);
-
-/**
- * @brief Decodes specified number of Base64 formatted bytes to output buffer.
- *
- * @details
- * Decodes `in_len` bytes from base64 and writes `*out_len` bytes to `out`. If
- * `*out_len` doesn&#39;t have enough bytes for the maximum output size, the
- * operation fails.
- *
- * @param [out] out     Decoded output
- * @param [out] out_len Number of bytes written to `out`
- * @param [in] max_out  Length of `out`
- * @param [in] in       Base64 input buffer
- * @param [in] in_len   Number of bytes to decode from `in`
- *
- * @retval 1 Success
- * @retval 0 Error
- */
-OPENSSL_EXPORT int EVP_DecodeBase64(uint8_t *out, size_t *out_len,
-                                    size_t max_out, const uint8_t *in,
-                                    size_t in_len);
-
-/** @} Decoding Functions */
-/**
- * @name Deprecated Functions
- *
- * OpenSSL provides a streaming base64 implementation, however its behavior is
- * very specific to PEM. It is also very lenient of invalid input. Use of any of
- * these functions is thus deprecated.
- *</pre>
-          </div>
-        
-          <div class="decl" id="EVP_ENCODE_CTX_new">
-            
-            <pre class="code"> * @{
- */
-
-/**
- * @brief Returns a newly-allocated EVP_ENCODE_CTX.
- *
- * @details
- * The caller must release the result with #EVP_ENCODE_CTX_free when
- * done.
- *
- * @returns Pointer to newly allocated EVP_ENCODE_CTX or `NULL` on error
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT EVP_ENCODE_CTX *EVP_ENCODE_CTX_new(void);
-
-/**
- * @brief Releases memory associated with `ctx`.
- *
- * @param [in] ctx Pointer to deallocate
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT void EVP_ENCODE_CTX_free(EVP_ENCODE_CTX *ctx);
-
-/**
- * @brief Initialises `*ctx`.
- *
- * @details
- * This is typically stack allocated, for an encoding operation.
- *
- * @param [in,out] ctx Context to initialize
- *
- * @warning The encoding operation breaks its output with newlines every 64 characters of output (48 characters of input). Use #EVP_EncodeBlock to encode raw base64.
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);
-
-/**
- * @brief Encodes bytes from `in` to Base64 and writes the value to `out`.
- *
- * @details
- * Some state may be contained in `ctx` so #EVP_EncodeFinal must be used to
- * flush it before using the encoded data.
- *
- * @param [in,out] ctx     Encoding context
- * @param [out]    out     Base64 encoded value
- * @param [out]    out_len Number of bytes written
- * @param [in]     in      Input buffer
- * @param [in]     in_len  Number of bytes to encode
- *
- * @retval 1 Success
- * @retval 0 Failure or `in_len` was 0
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT int EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
-                                    int *out_len, const uint8_t *in,
-                                    size_t in_len);
-
-/**
- * @brief Flushes any remaining output bytes from `ctx` to `out`.
- *
- * @param [in,out] ctx     Encoding context
- * @param [out]    out     Output buffer
- * @param [out]    out_len Number of bytes written to buffer
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
-                                    int *out_len);
-
-/**
- * @brief Initialises `*ctx` for a decoding operation.
- *
- * @details
- * This is typically stack allocated.
- *
- * @param [in,out] ctx Context to initialize
- *
- * @todo davidben: This isn&#39;t a straight-up base64 decode either. Document and/or fix exactly what&#39;s going on here; maximum line length and such.
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);
-
-/**
- * @brief Decodes bytes from `in` and writes the decoded data to `out`.
- *
- * @details
- * Some state may be contained in `ctx` so #EVP_DecodeFinal must be used to
- * flush it before using the decoded data.
- *
- * @param [in,out] ctx     Decoding context
- * @param [out]    out     Decoded bytes
- * @param [out]    out_len Number of bytes written
- * @param [in]     in      Input buffer
- * @param [in]     in_len  Number of bytes to decode
- *
- * @retval -1 Error
- * @retval 0 The line was short (i.e., it was the last line)
- * @retval 1 A full line of input was processed
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
-                                    int *out_len, const uint8_t *in,
-                                    size_t in_len);
-
-/**
- * @brief Flushes any remaining output bytes from `ctx` to `out`.
- *
- * @param [in,out] ctx Decoding context
- * @param [out]    out Output buffer
- * @param [out]    out_len Number of bytes written to buffer
- *
- * @retval 1 Success
- * @retval -1 Error
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
-                                   int *out_len);
-
-/**
- * @brief Decodes Base64 bytes from `src` and writes value to `dst`.
- *
- * @param [out] dst Decoded bytes
- * @param [in] src  Base64 encoded bytes
- * @param [in] src_len Number of bytes to decode
- *
- * @returns Number of bytes written or -1 on error
- *
- * @warning `EVP_DecodeBlock`&#39;s return value does not take padding into account. It also strips leading whitespace and trailing whitespace and minuses.
- *
- * @deprecated OpenSSL provides a streaming base64 implementation, however its behavior is very specific to PEM. It is also very lenient of invalid input. Use of any of these functions is thus deprecated.
- */
-OPENSSL_EXPORT int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src,
-                                   size_t src_len);
-
-/** @} Deprecated Functions */
-/**
- * @struct evp_encode_ctx_st
- * Encoding Context
- */</pre>
-          </div>
         
           <div class="decl" id="evp_encode_ctx_st">
             
             <pre class="code">struct evp_encode_ctx_st {
-  /**
-   * @brief Number of valid bytes
-   *
-   * @details
-   * When encoding, `data` will be filled and encoded as a lump. When decoding,
-   * only the first four bytes of `data` will be used.
-   */
+  // data_used indicates the number of bytes of |data| that are valid. When
+  // encoding, |data| will be filled and encoded as a lump. When decoding, only
+  // the first four bytes of |data| will be used.
   unsigned data_used;
-
-  /**
-   * @brief Encoded or decoded data.
-   */
   uint8_t data[48];
 
-  /**
-   * @brief Indicates that the end of the base64 data has been seen.
-   *
-   * @details
-   * Only used when decoding. Only whitespace can follow.
-   */
+  // eof_seen indicates that the end of the base64 data has been seen when
+  // decoding. Only whitespace can follow.
   char eof_seen;
 
-  /**
-   * @brief indicates that invalid base64 data was found.
-   *
-   * @details
-   * This will gitcause all future calls to fail.
-   */
+  // error_encountered indicates that invalid base64 data was found. This will
+  // cause all future calls to fail.
   char error_encountered;
 };</pre>
           </div>

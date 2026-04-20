@@ -1653,7 +1653,7 @@ typedef union bio_addr_st BIO_ADDR;</pre>
 
         
           <div class="decl" id="BIO_f_base64">
-            <div class="comment"><p><span class="first-word">BIO_f_base64</span> returns a filter <tt>BIO</tt> that base64-encodes data written into it, and decodes data read from it. <tt><a href="bio.h.html#BIO_gets">BIO_gets</a></tt> is not supported. Call <tt><a href="bio.h.html#BIO_flush">BIO_flush</a></tt> when done writing, to signal that no more data are to be encoded. The flag <tt><a href="bio.h.html#BIO_FLAGS_BASE64_NO_NL">BIO_FLAGS_BASE64_NO_NL</a></tt> may be set to encode all the data on one line.</p><p><span class="first-word">Use</span> <tt><a href="base64.h.html#EVP_EncodeBlock">EVP_EncodeBlock</a></tt> and <tt>EVP_DecodeBase64</tt> instead.</p></div>
+            <div class="comment"><p><span class="first-word">BIO_f_base64</span> returns a filter <tt>BIO</tt> that base64-encodes data written into it, and decodes data read from it. <tt><a href="bio.h.html#BIO_gets">BIO_gets</a></tt> is not supported. Call <tt><a href="bio.h.html#BIO_flush">BIO_flush</a></tt> when done writing, to signal that no more data are to be encoded. The flag <tt><a href="bio.h.html#BIO_FLAGS_BASE64_NO_NL">BIO_FLAGS_BASE64_NO_NL</a></tt> may be set to encode all the data on one line.</p><p><span class="first-word">Use</span> <tt><a href="base64.h.html#EVP_EncodeBlock">EVP_EncodeBlock</a></tt> and <tt><a href="base64.h.html#EVP_DecodeBase64">EVP_DecodeBase64</a></tt> instead.</p></div>
             <pre class="code">OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);</pre>
           </div>
         
