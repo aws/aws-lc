@@ -77,31 +77,25 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   CBS oid;
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm, &oid);
-  if (method == NULL) {
+  if (method == NULL || method->pub_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
-  if (// Every key type defined encodes the key as a byte string with the same
-      // conversion to BIT STRING.
-      !CBS_get_u8(&key, &padding) ||
+  // Every key type defined encodes the key as a byte string with the same
+  // conversion to BIT STRING, so perform that common conversion ahead of time.
+  if (!CBS_get_u8(&key, &padding) ||
       padding != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
 
-  // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  // Call into the type-specific SPKI decoding function.
-  if (ret->ameth->pub_decode == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    goto err;
-  }
-  if (!ret->ameth->pub_decode(ret, &oid, &algorithm, &key)) {
+  if (!method->pub_decode(ret, &oid, &algorithm, &key)) {
     goto err;
   }
 
@@ -145,7 +139,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   CBS oid;
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm, &oid);
-  if (method == NULL) {
+  if (method == NULL || method->priv_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
@@ -177,16 +171,10 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  // Call into the type-specific PrivateKeyInfo decoding function.
-  if (ret->ameth->priv_decode == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    goto err;
-  }
-
-  if (!ret->ameth->priv_decode(ret, &oid, &algorithm, &key,
-                               has_pub ? &public_key : NULL)) {
+  if (!method->priv_decode(ret, &oid, &algorithm, &key,
+                           has_pub ? &public_key : NULL)) {
     goto err;
   }
 
