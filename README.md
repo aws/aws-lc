@@ -88,7 +88,8 @@ A more complete description of our test setup can be found in the
 | OS      | CPU                                   |
 |---------|---------------------------------------|
 | Android | aarch64                               |
-| Linux   | aarch64, ppc, ppc64, ppc64le, x86-64 |
+| iOS     | aarch64                               |
+| Linux   | aarch64, ppc, ppc64, ppc64le, x86-64  |
 | macOS   | aarch64, x86-64                       |
 | Windows | x86-64                                |
 
@@ -103,7 +104,6 @@ that improve the experience for consumers on these platforms.
 | Android    | arm32                            |
 | Emscripten | wasm32                           |
 | FreeBSD    | arm64, x86-64                    |
-| iOS        | aarch64                          |
 | Linux      | arm32, loongarch64, risc-v64, s390x, x86 |
 | NetBSD     | arm64, x86-64                    |
 | OpenBSD    | arm64, x86-64                    |
