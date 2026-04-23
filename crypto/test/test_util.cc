@@ -261,6 +261,33 @@ FILE* createRawTempFILE() {
   return fopen(filename, "w+b");
 }
 
+testing::AssertionResult WaitForFileAccessible(const char *path) {
+  // On Windows, antivirus software, file indexing services, or other background
+  // processes can briefly lock files after creation or modification, causing
+  // transient ERROR_SHARING_VIOLATION failures. Retry with a short delay to
+  // wait out the lock. These values mirror the retry strategy used by
+  // WIN32_rename in tool-openssl/ca.cc.
+  static const int kMaxRetries = 10;
+  static const DWORD kRetryDelayMs = 200;
+  for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
+    if (attempt > 0) {
+      Sleep(kRetryDelayMs);
+    }
+    FILE *f = fopen(path, "rb");
+    if (f != nullptr) {
+      fclose(f);
+      return testing::AssertionSuccess();
+    }
+    DWORD err = GetLastError();
+    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
+        err != ERROR_LOCK_VIOLATION) {
+      break;
+    }
+  }
+  return testing::AssertionFailure()
+         << "File not accessible after retries: " << path;
+}
+
 #else
 #include <cstdlib>
 #include <unistd.h>
