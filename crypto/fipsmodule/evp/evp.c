@@ -659,7 +659,7 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
-int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                        const uint8_t *context,
                                        size_t context_len) {
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
