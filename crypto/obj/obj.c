@@ -115,7 +115,7 @@ int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   } else if (a->length > b->length) {
     return 1;
   }
-  return OPENSSL_memcmp(a->data, b->data, a->length);
+  return OPENSSL_memcmp_ordered(a->data, b->data, a->length);
 }
 
 const uint8_t *OBJ_get0_data(const ASN1_OBJECT *obj) {

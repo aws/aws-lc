@@ -846,6 +846,19 @@ static inline int OPENSSL_memcmp(const void *s1, const void *s2, size_t n) {
   return CRYPTO_memcmp(s1, s2, n);
 }
 
+// OPENSSL_memcmp_ordered wraps memcmp with NULL-safe behavior for n == 0.
+// Unlike |OPENSSL_memcmp|, it preserves ordering semantics (negative, zero,
+// positive return values) and is NOT constant-time. Use this only for
+// comparisons of non-secret data that require ordering.
+static inline int OPENSSL_memcmp_ordered(const void *s1, const void *s2,
+                                         size_t n) {
+  if (n == 0) {
+    return 0;
+  }
+
+  return memcmp(s1, s2, n);
+}
+
 static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
   if (n == 0) {
     return dst;
