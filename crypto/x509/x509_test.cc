@@ -2558,13 +2558,20 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       {GEN_EMAIL, "foo@example.com", "bar@example.com",
        X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
-      // OpenSSL ignores a stray leading @.
-      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
-      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
+      // OpenSSL ignores a stray leading @. AWS-LC and BoringSSL do not.
+      {GEN_EMAIL, "foo@example.com", "@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_EMAIL, "foo@bar.example.com", "@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Multiple '@' in a constraint is invalid.
+      {GEN_EMAIL, "foo@example.com", "a@b@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
