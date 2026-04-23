@@ -3,6 +3,7 @@ import typing
 from aws_cdk import Environment
 from constructs import Construct
 
+from cdk.aws_lc_ai_code_review_stack import AwsLcAiCodeReviewStack
 from cdk.aws_lc_analytics_stack import AwsLcGitHubAnalyticsStack
 from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
@@ -105,4 +106,13 @@ def add_ci_stacks(
         ignore_failure=True,
         stack_name="aws-lc-ci-x509",
     )
-   
+
+    ai_pr_review_spec_file = "cdk/codebuild/ai_code_review_omnibus.yaml"
+    AwsLcAiCodeReviewStack(
+        scope,
+        "aws-lc-ai-code-review",
+        ai_pr_review_spec_file,
+        env=env,
+        ignore_failure=False,
+        stack_name="aws-lc-ai-code-review"
+    )

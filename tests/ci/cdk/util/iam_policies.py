@@ -243,3 +243,26 @@ def device_farm_access_policy_in_json(env):
             }
         ],
     }
+
+def bedrock_policy_in_json():
+    """
+    Define an IAM policy statement for accessing Bedrock.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                "Resource": [
+                    "arn:aws:bedrock:*:*:foundation-model/*",
+                    "arn:aws:bedrock:*:*:inference-profile/*",
+                    "arn:aws:bedrock:*:*:application-inference-profile/*"
+                ]
+            }
+        ],
+    }
