@@ -803,7 +803,8 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
 // These wrapper functions behave the same as the corresponding C standard
 // functions, but behave as expected when passed NULL if the length is zero.
 //
-// Note |OPENSSL_memcmp| is a different function from |CRYPTO_memcmp|.
+// |OPENSSL_memcmp| delegates to |CRYPTO_memcmp| to provide constant-time
+// comparison, preventing timing side-channel attacks.
 
 // C++ defines |memchr| as a const-correct overload.
 #if defined(__cplusplus)
@@ -842,11 +843,7 @@ static inline void *OPENSSL_memchr(const void *s, int c, size_t n) {
 #endif  // __cplusplus
 
 static inline int OPENSSL_memcmp(const void *s1, const void *s2, size_t n) {
-  if (n == 0) {
-    return 0;
-  }
-
-  return memcmp(s1, s2, n);
+  return CRYPTO_memcmp(s1, s2, n);
 }
 
 static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
