@@ -1,0 +1,44 @@
+name: API Documentation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'include/openssl/**'
+      - 'util/doc.go'
+      - 'util/doc.config'
+      - 'util/doc.css'
+      - '.github/workflows/api-docs.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish-api-docs:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.22"
+      - name: Generate API documentation
+        run: |
+          mkdir -p api-output
+          cd util
+          go run doc.go --config doc.config --out ../pages-output
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages-output
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
