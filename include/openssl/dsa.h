@@ -15,6 +15,10 @@
 extern "C" {
 #endif
 
+
+// Digital Signature Algorithm (deprecated).
+
+
 #define OPENSSL_DSA_MAX_MODULUS_BITS 10000
 
 
