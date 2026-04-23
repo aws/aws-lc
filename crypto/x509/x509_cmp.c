@@ -83,7 +83,7 @@ int X509_cmp(const X509 *a, const X509 *b) {
   x509v3_cache_extensions((X509 *)a);
   x509v3_cache_extensions((X509 *)b);
 
-  return OPENSSL_memcmp(a->cert_hash, b->cert_hash, SHA256_DIGEST_LENGTH);
+  return OPENSSL_memcmp_ordered(a->cert_hash, b->cert_hash, SHA256_DIGEST_LENGTH);
 }
 
 int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
@@ -111,7 +111,7 @@ int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
     return ret;
   }
 
-  return OPENSSL_memcmp(a->canon_enc, b->canon_enc, a->canon_enclen);
+  return OPENSSL_memcmp_ordered(a->canon_enc, b->canon_enc, a->canon_enclen);
 }
 
 uint32_t X509_NAME_hash(X509_NAME *x) {

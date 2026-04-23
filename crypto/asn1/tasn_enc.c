@@ -370,7 +370,7 @@ static int der_cmp(const void *a, const void *b) {
   const DER_ENC *d1 = a, *d2 = b;
   int cmplen, i;
   cmplen = (d1->length < d2->length) ? d1->length : d2->length;
-  i = OPENSSL_memcmp(d1->data, d2->data, cmplen);
+  i = OPENSSL_memcmp_ordered(d1->data, d2->data, cmplen);
   if (i) {
     return i;
   }
