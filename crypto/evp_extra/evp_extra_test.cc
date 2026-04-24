@@ -3468,6 +3468,32 @@ TEST(EVPExtraTest, DSASignDigestVerify) {
 
 }
 
+TEST(EVPExtraTest, SignUndersizedBuffer) {
+  // DSA: undersized buffer should be rejected.
+  bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
+  ASSERT_TRUE(params);
+  bssl::UniquePtr<EVP_PKEY> key = dsa_keygen(params, false);
+  ASSERT_TRUE(key);
+
+  uint8_t digest[32] = {0};
+  ASSERT_TRUE(SHA1(digest, sizeof(digest), digest));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+
+  size_t siglen = 0;
+  ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), NULL, &siglen, digest, 32));
+  ASSERT_GT(siglen, (size_t)0);
+
+  std::vector<uint8_t> sig(siglen);
+  size_t too_small = 1;
+  EXPECT_FALSE(EVP_PKEY_sign(ctx.get(), sig.data(), &too_small, digest, 32));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL,
+            ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+}
+
 TEST(EVPExtraTest, DSADigestSignFinalVerify) {
   bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
   ASSERT_TRUE(params);
