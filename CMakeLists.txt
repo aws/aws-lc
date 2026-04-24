@@ -1211,6 +1211,15 @@ if(BUILD_TESTING)
     PRIVATE third_party/googletest
   )
 
+  # WASI does not support fork() or process exit code detection required by
+  # GTest death tests, nor dup()/dup2()/mkstemp() required for stream
+  # redirection. Define these before gtest headers are included to prevent
+  # gtest-port.h from auto-detecting based on the host OS.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Generic" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32")
+    add_compile_definitions(GTEST_HAS_DEATH_TEST=0)
+    add_compile_definitions(GTEST_HAS_STREAM_REDIRECTION=0)
+  endif()
+
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
   add_custom_target(all_tests)
