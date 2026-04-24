@@ -145,6 +145,9 @@ testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
 // returns it as a |BIGNUM|, or nullptr on error.
 bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex);
 
+// BIGNUMToHex returns |bn| as a hexadecimal, big-endian, unsigned integer.
+std::string BIGNUMToHex(const BIGNUM *bn);
+
 // ExpectParse does a d2i parse using the corresponding template and function
 // pointer.
 template <typename T>
