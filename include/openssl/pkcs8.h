@@ -15,6 +15,9 @@ extern "C" {
 #endif
 
 
+// PKCS#8 private key encryption and decryption.
+
+
 // PKCS8_encrypt serializes and encrypts a PKCS8_PRIV_KEY_INFO with PBES1 or
 // PBES2 as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
 // pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, defined in PKCS

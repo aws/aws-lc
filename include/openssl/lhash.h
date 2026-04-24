@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+
+// Hash table implementation for internal use.
+
+
 typedef struct lhash_st _LHASH;
 
 // lhash is an internal library and not exported for use outside BoringSSL. This

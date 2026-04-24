@@ -1,0 +1,5 @@
+{
+  "DisabledTests": {
+    "Peek-*-Server": "SSL_peek tests hang when bssl_shim is compiled with zig on Windows (i/o timeout)"
+  }
+}

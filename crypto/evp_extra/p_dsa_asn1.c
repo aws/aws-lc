@@ -16,21 +16,12 @@
 
 
 static int dsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
-  // See RFC 3279, section 2.3.2.
-
-  // Parameters may or may not be present.
-  DSA *dsa;
-  if (CBS_len(params) == 0) {
-    dsa = DSA_new();
-    if (dsa == NULL) {
-      return 0;
-    }
-  } else {
-    dsa = DSA_parse_parameters(params);
-    if (dsa == NULL || CBS_len(params) != 0) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-      goto err;
-    }
+  // See RFC 3279, section 2.3.2. Although RFC 3279 allows DSA parameters to be
+  // omitted, we require them to be present.
+  DSA *dsa = DSA_parse_parameters(params);
+  if (dsa == NULL || CBS_len(params) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
   }
 
   dsa->pub_key = BN_new();

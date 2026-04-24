@@ -183,7 +183,11 @@ err:
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   SET_DIT_AUTO_RESET;
   if (to->type == EVP_PKEY_NONE) {
-    evp_pkey_set_method(to, from->ameth);
+    // TODO(crbug.com/42290409): This shouldn't leave |to| in a half-empty state
+    // on error. The complexity here largely comes from parameterless DSA keys,
+    // which we no longer support, so this function can probably be trimmed
+    // down.
+    evp_pkey_set0(to, from->ameth, NULL);
   } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
@@ -293,10 +297,12 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   return NULL;
 }
 
-void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
+void evp_pkey_set0(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method,
+                   void *pkey_data) {
   free_it(pkey);
   pkey->ameth = method;
-  pkey->type = pkey->ameth->pkey_id;
+  pkey->type = method ? method->pkey_id : EVP_PKEY_NONE;
+  pkey->pkey.ptr = pkey_data;
 }
 
 static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
@@ -304,7 +310,7 @@ static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
     // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
     // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
     // behavior.
-    free_it(pkey);
+    evp_pkey_set0(pkey, NULL, NULL);
   }
 
   const EVP_PKEY_ASN1_METHOD *ameth = NULL;
@@ -322,7 +328,7 @@ static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
   }
 
   if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
+    evp_pkey_set0(pkey, ameth, NULL);
   }
 
   return 1;
@@ -393,8 +399,7 @@ int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
   }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
+  evp_pkey_set0(pkey, meth, key);
   return 1;
 }
 
@@ -432,8 +437,7 @@ int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
   }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
+  evp_pkey_set0(pkey, meth, key);
   return 1;
 }
 
@@ -471,8 +475,7 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
   }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
+  evp_pkey_set0(pkey, meth, key);
   return 1;
 }
 
@@ -555,9 +558,9 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
+  if (!method->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
   }
 
@@ -592,9 +595,9 @@ EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  if (!ret->ameth->set_pub_raw(ret, in, len)) {
+  if (!method->set_pub_raw(ret, in, len)) {
     goto err;
   }
 

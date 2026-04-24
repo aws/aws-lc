@@ -8,6 +8,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../../evp_extra/internal.h"
 #include "../curve25519/internal.h"
 
 
@@ -20,14 +21,13 @@ static int pkey_ed25519_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  evp_pkey_set_method(pkey, &ed25519_asn1_meth);
-
   uint8_t pubkey_unused[32];
   int result = ED25519_keypair_internal(pubkey_unused, key->key);
   if (result) {
     key->has_private = 1;
-    OPENSSL_free(pkey->pkey.ptr);
-    pkey->pkey.ptr = key;
+    evp_pkey_set0(pkey, &ed25519_asn1_meth, key);
+  } else {
+    OPENSSL_free(key);
   }
 
   return result;

@@ -208,12 +208,11 @@ Input = 308201b73082012c06072a8648ce3804013082011f02818100b3429b8b128c9079f9b72e
 ExpectNoRawPrivate
 ExpectNoRawPublic
 
-# The same key as above, but without the parameters.
+# The same key as above, but without the parameters. Although allowed by
+# RFC 3279, we do not support this.
 PublicKey = DSA-1024-SPKI-No-Params
-Type = DSA
 Input = 308192300906072a8648ce38040103818400028180258c30ebbb7f34fdc873ce679f6cea373c7886d75d4421b90920db034daedd292c64d8edd8cdbdd7f3ad23d74cfa2135247d0cef6ecf2e14f99e19d22a8c1266bd8fb8719c0e5667c716c45c7adbdabe548085bdad2dfee636f8d52fd6adb2193df6c4f0520fbd171b91882e0e4f321f8250ffecf4dbea00e114427d3ef96c1a
-ExpectNoRawPrivate
-ExpectNoRawPublic
+Error = DECODE_ERROR
 
 # DSA 1024 PKCS#8 v2 decoding with public key not supported
 PrivateKey = DSA-1024-WithPublicKey
