@@ -623,6 +623,19 @@ function(build_libcrypto)
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
   endif()
+
+  # Apply symbol versioning for shared libraries.
+  if(ENABLE_SYMBOL_VERSIONING)
+    set(VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libcrypto.map")
+    if(EXISTS "${VERSION_SCRIPT}")
+      apply_version_script(
+        TARGET ${arg_NAME}
+        VERSION_SCRIPT "${VERSION_SCRIPT}"
+      )
+    else()
+      message(WARNING "Symbol version script not found: ${VERSION_SCRIPT}")
+    endif()
+  endif()
 endfunction()
 
 if(FIPS_SHARED)

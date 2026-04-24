@@ -367,6 +367,70 @@ jobs:
             fi
             ./tests/ci/run_fips_tests.sh
 
+  dist_pkg_run_tests:
+    name: dist-pkg-run-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 24.04
+          - image: ubuntu:24.04
+            arch: x86_64
+            compiler: gcc-14
+          - image: ubuntu:24.04
+            arch: x86_64
+            compiler: clang-19
+          - image: ubuntu:24.04
+            arch: aarch64
+            compiler: gcc-14
+          - image: ubuntu:24.04
+            arch: aarch64
+            compiler: clang-19
+
+          # AmazonLinux 2
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: gcc-7
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: clang-11
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: gcc-7
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: clang-11
+
+          # AmazonLinux 2023
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: gcc-11
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: gcc-11
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: clang-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_dist_pkg_run_tests.sh
+
   prefix_tests:
     name: prefix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
