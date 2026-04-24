@@ -847,7 +847,17 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       return false;
     }
     fprintf(stdout, "verify depth is %d\n", (int)depth);
+    SSL_CTX_set_verify_depth(ctx.get(), (int)depth);
     verify = SSL_VERIFY_PEER;
+    // If no explicit CA source was provided, fall back to the platform default
+    // CA store. This mirrors the behaviour of OpenSSL's s_client -verify, which
+    // enables peer verification against whatever trust store the system provides
+    // when no -CAfile / -CApath is given.
+    if (args_map.count("-CAfile") == 0 && args_map.count("-CApath") == 0 &&
+        args_map.count("-root-certs") == 0 &&
+        args_map.count("-root-cert-dir") == 0) {
+      SSL_CTX_set_default_verify_paths(ctx.get());
+    }
   }
 
   if (is_openssl_s_client) { // openssl tool
