@@ -619,26 +619,30 @@ elseif(FIPS_SHARED)
     separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
     add_custom_command(
       OUTPUT fips_msvc_start.obj
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_START /Fofips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_msvc_end.obj
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_END /Fofips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
-    if(CMAKE_AR)
-      set(MSVC_LIB "${CMAKE_AR}")
-    else()
-      get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
-      set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+    find_program(MSVC_LIB NAMES lib lib.exe llvm-lib llvm-lib.exe
+                 HINTS ${MSVC_BIN} NO_DEFAULT_PATH)
+    if(NOT MSVC_LIB)
+      find_program(MSVC_LIB NAMES lib lib.exe llvm-lib llvm-lib.exe)
+    endif()
+    if(NOT MSVC_LIB)
+      message(FATAL_ERROR "Could not find lib.exe or llvm-lib for creating bcm.lib")
     endif()
 
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/bcm_objects.rsp"
+         CONTENT "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\"\n\">\"")
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj $<TARGET_OBJECTS:bcm_library> fips_msvc_end.obj /OUT:${BCM_NAME}
-      COMMAND_EXPAND_LISTS
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp fips_msvc_end.obj /OUT:${BCM_NAME}
       DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )

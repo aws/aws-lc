@@ -297,10 +297,63 @@ func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func do(outPath, oInput string, arInput string, appleOS bool) error {
+func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
+	symbolAddrs, err := fipscommon.ParseMapFile(mapPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	peInfo, err := fipscommon.ParsePE(objectBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	extractRegion := func(startSym, endSym string) ([]byte, error) {
+		startOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, startSym)
+		if err != nil {
+			return nil, err
+		}
+		endOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, endSym)
+		if err != nil {
+			return nil, err
+		}
+		if startOff >= endOff || endOff > uint64(len(objectBytes)) {
+			return nil, fmt.Errorf("invalid boundaries: start=0x%x end=0x%x filesize=%d", startOff, endOff, len(objectBytes))
+		}
+		buf := make([]byte, endOff-startOff)
+		copy(buf, objectBytes[startOff:endOff])
+		return buf, nil
+	}
+
+	moduleText, err := extractRegion("BORINGSSL_bcm_text_start", "BORINGSSL_bcm_text_end")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var moduleROData []byte
+	_, hasRodataStart := symbolAddrs["BORINGSSL_bcm_rodata_start"]
+	_, hasRodataEnd := symbolAddrs["BORINGSSL_bcm_rodata_end"]
+	if hasRodataStart != hasRodataEnd {
+		return nil, nil, errors.New("rodata marker presence inconsistent")
+	}
+	if hasRodataStart {
+		moduleROData, err = extractRegion("BORINGSSL_bcm_rodata_start", "BORINGSSL_bcm_rodata_end")
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return moduleText, moduleROData, nil
+}
+
+func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string) error {
 	var objectBytes []byte
 	var isStatic bool
 	var perm os.FileMode
+
+	if windowsOS && len(mapFile) == 0 {
+		return fmt.Errorf("-map is required when -windows is set")
+	}
 
 	if len(arInput) > 0 {
 		isStatic = true
@@ -311,6 +364,10 @@ func do(outPath, oInput string, arInput string, appleOS bool) error {
 
 		if appleOS {
 			return fmt.Errorf("only shared libraries can be handled on macOS/iOS")
+		}
+
+		if windowsOS {
+			return fmt.Errorf("only shared libraries can be handled on Windows")
 		}
 
 		fi, err := os.Stat(arInput)
@@ -354,7 +411,9 @@ func do(outPath, oInput string, arInput string, appleOS bool) error {
 
 	var moduleText, moduleROData []byte
 	var err error
-	if appleOS == true {
+	if windowsOS {
+		moduleText, moduleROData, err = doWindows(objectBytes, mapFile)
+	} else if appleOS {
 		moduleText, moduleROData, err = doAppleOS(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
@@ -403,10 +462,12 @@ func main() {
 	oInput := flag.String("in-object", "", "Path to a .o file")
 	outPath := flag.String("o", "", "Path to output object")
 	appleOS := flag.Bool("apple", false, "Whether the FIPS module is built for macOS/iOS or not.")
+	windowsOS := flag.Bool("windows", false, "Whether the FIPS module is built for Windows or not.")
+	mapFile := flag.String("map", "", "Path to linker .map file (required for Windows)")
 
 	flag.Parse()
 
-	if err := do(*outPath, *oInput, *arInput, *appleOS); err != nil {
+	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
