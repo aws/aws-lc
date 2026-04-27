@@ -55,6 +55,45 @@ jobs:
             echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
             echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
           fi
+      - name: Self-test compiler wrapper
+        shell: bash
+        run: |
+          # Progressively probe zig + our wrapper so any regression surfaces
+          # here rather than being nested inside CMake's TryCompile harness:
+          #   1) zig runs at all on this host?          (`zig version`)
+          #   2) zig can report its environment?        (`zig env`)
+          #   3) zig can compile without linking?       (`-c hello.c`)
+          #   4) zig can compile+link trivially?        (`hello.c -o hello`)
+          #   5) zig can handle CMake's Windows link line? (full TryCompile args)
+          # Each step runs unconditionally (no `set -e`) so we see results from
+          # every stage even when an earlier one fails. The wrapper reports
+          # zig's real exit status (including 139 for SIGSEGV) on failure.
+          set -x
+          probe() {
+            echo "=== probe: $* ==="
+            "$@"
+            echo "=== probe exit: $? ==="
+          }
+
+          probe zig version
+          probe zig env
+
+          echo 'int main(void){return 0;}' > hello.c
+
+          probe "${ZIGCC}" -v -c hello.c -o hello.o
+
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            probe "${ZIGCC}" -v hello.c -o hello_trivial.exe
+            probe "${ZIGCC}" -v hello.c -o hello.exe \
+              -Wl,--out-implib,hello.dll.a \
+              -Wl,--major-image-version,0,--minor-image-version,0 \
+              -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 \
+              -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+            [[ -x ./hello.exe ]] && probe ./hello.exe
+          else
+            probe "${ZIGCC}" -v hello.c -o hello
+            [[ -x ./hello ]] && probe ./hello
+          fi
       - name: Create toolchain
         shell: bash
         run: |
