@@ -1,0 +1,136 @@
+# Dependabot configuration for aws-lc.
+#
+# Notes for maintainers:
+# - The root go.mod and tests/ci/x509/limbo-report/go.mod are intentionally
+#   pinned to Go 1.20 for platform compatibility (see BUILDING.md and
+#   cmake/go.cmake). To keep Dependabot noise down for those modules we:
+#     * ignore major version bumps (where Go-version floors are most often
+#       raised),
+#     * use monthly scheduling,
+#     * apply a cooldown so newly-released versions have time to settle,
+#     * group updates into a single PR per module.
+# - util/vecgen is on Go 1.24 and can track modern versions freely.
+# - When a Dependabot PR is incompatible with our Go floor, close it with
+#   `@dependabot ignore this major version` (or `ignore this dependency`)
+#   so it is not re-proposed.
+version: 2
+updates:
+  # ---------------------------------------------------------------------------
+  # GitHub Actions used by workflows under .github/workflows and the composite
+  # actions under .github/actions.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # ---------------------------------------------------------------------------
+  # Root Go module — pinned to Go 1.20 for platform compatibility.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    ignore:
+      # Suppress major bumps: new majors are the most common place for
+      # dependencies to raise their minimum Go version.
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      gomod-root:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "go"
+
+  # ---------------------------------------------------------------------------
+  # util/vecgen — Go 1.24, can track modern versions.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/util/vecgen"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      gomod-vecgen:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "go"
+
+  # ---------------------------------------------------------------------------
+  # tests/ci/x509/limbo-report — pinned to Go 1.20 for consistency with root.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/tests/ci/x509/limbo-report"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      gomod-limbo-report:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "go"
+
+  # ---------------------------------------------------------------------------
+  # CI Lambda helper (Rust).
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "cargo"
+    directory: "/tests/ci/lambda"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      cargo-ci-lambda:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "rust"
+
+  # ---------------------------------------------------------------------------
+  # CI Python requirements.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/tests/ci"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      pip-ci:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "python"
