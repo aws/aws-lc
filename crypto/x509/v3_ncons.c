@@ -686,6 +686,21 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // RFC 3986 §3.2 defines authority = [userinfo "@"] host [":" port].
+  // Certificate subject URIs have no legitimate use for userinfo. If present,
+  // the '@' delimiter would cause the host extraction below to parse the
+  // userinfo as the host, matching against attacker-chosen bytes instead of
+  // the URI's actual host.
+  for (size_t i = 0; i < CBS_len(&uri_cbs); i++) {
+    uint8_t c = CBS_data(&uri_cbs)[i];
+    if (c == '/' || c == '?' || c == '#') {
+      break;
+    }
+    if (c == '@') {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+  }
+
   // Look for a port indicator as end of hostname first. Otherwise look for
   // trailing slash, or the end of the string.
   CBS host;

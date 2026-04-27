@@ -2640,6 +2640,35 @@ TEST(X509Test, NameConstraints) {
       // An incomplete IPv6 literal is also rejected.
       {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // RFC 3986 §3.2 defines authority = [userinfo "@"] host [":" port].
+      // URIs with userinfo are rejected to prevent host confusion: without
+      // this, "spiffe://x.team-a.corp:x@team-b.corp/admin" would be matched
+      // against "x.team-a.corp" instead of the actual host "team-b.corp",
+      // bypassing permittedSubtrees or evading excludedSubtrees.
+      //
+      // Basic userinfo before host.
+      {GEN_URI, "foo://user@example.com", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Userinfo with colon (user:password style) — the colon in userinfo
+      // would previously be mistaken for a port delimiter, extracting the
+      // userinfo prefix as the host.
+      {GEN_URI, "spiffe://x.team-a.corp:x@team-b.corp/admin", "team-a.corp",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "spiffe://x.team-a.corp:x@team-b.corp/admin", "team-b.corp",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Userinfo with path, query, and fragment components.
+      {GEN_URI, "foo://user@example.com/path", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://user@example.com?query", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://user@example.com#fragment", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // '@' in path (after '/') is not userinfo and should not be rejected.
+      {GEN_URI, "foo://example.com/@user", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://example.com/path@thing", ".example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);
