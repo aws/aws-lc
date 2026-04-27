@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -28,7 +29,10 @@ type Config struct {
 	// BaseDirectory is a path to which other paths in the file are
 	// relative.
 	BaseDirectory string
-	Sections      []ConfigSection
+	// OutputDirectory is the path where generated files will be written.
+	// Resolved relative to the config file's location.
+	OutputDirectory string
+	Sections        []ConfigSection
 }
 
 type ConfigSection struct {
@@ -908,23 +912,27 @@ func copyFile(outPath string, inFilePath string) error {
 	return os.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
 }
 
+// sourceDir returns the directory containing this source file.
+func sourceDir() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		fmt.Println("Failed to determine source directory")
+		os.Exit(1)
+	}
+	return filepath.Dir(file)
+}
+
 func main() {
 	var (
-		configFlag *string = flag.String("config", "doc.config", "Location of config file")
-		outputDir  *string = flag.String("out", ".", "Path to the directory where the output will be written")
+		configFlag *string = flag.String("config", "", "Location of config file (default: doc.config next to doc.go)")
+		outputDir  *string = flag.String("out", "", "Path to the output directory (overrides config)")
 		config     Config
 	)
 
 	flag.Parse()
 
 	if len(*configFlag) == 0 {
-		fmt.Printf("No config file given by --config\n")
-		os.Exit(1)
-	}
-
-	if len(*outputDir) == 0 {
-		fmt.Printf("No output directory given by --out\n")
-		os.Exit(1)
+		*configFlag = filepath.Join(sourceDir(), "doc.config")
 	}
 
 	configBytes, err := os.ReadFile(*configFlag)
@@ -935,6 +943,31 @@ func main() {
 
 	if err := json.Unmarshal(configBytes, &config); err != nil {
 		fmt.Printf("Failed to parse config file: %s\n", err)
+		os.Exit(1)
+	}
+
+	// Resolve BaseDirectory relative to the config file's location,
+	// so the tool can be run from any working directory.
+	configDir := filepath.Dir(*configFlag)
+	if !filepath.IsAbs(config.BaseDirectory) {
+		config.BaseDirectory = filepath.Join(configDir, config.BaseDirectory)
+	}
+
+	// Use --out if provided, otherwise fall back to config, resolved
+	// relative to the config file's location.
+	if len(*outputDir) == 0 {
+		*outputDir = config.OutputDirectory
+		if !filepath.IsAbs(*outputDir) {
+			*outputDir = filepath.Join(configDir, *outputDir)
+		}
+	}
+	if len(*outputDir) == 0 {
+		fmt.Printf("No output directory given by --out or OutputDirectory in config\n")
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(*outputDir, 0777); err != nil {
+		fmt.Printf("Failed to create output directory: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -949,7 +982,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := copyFile(*outputDir, "doc.css"); err != nil {
+	if err := copyFile(*outputDir, filepath.Join(filepath.Dir(*configFlag), "doc.css")); err != nil {
 		fmt.Printf("Failed to copy static file: %s\n", err)
 		os.Exit(1)
 	}
