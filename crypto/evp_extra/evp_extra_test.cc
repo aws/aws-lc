@@ -1683,6 +1683,49 @@ TEST(EVPExtraTest, Ed25519) {
   ERR_clear_error();
 }
 
+// EVP_PKEY_get_private_seed returns an error for key types that don't
+// provide a get_priv_seed method. It must also reject NULL |key| regardless of
+// key type.
+TEST(EVPExtraTest, GetPrivateSeedUnsupportedKeyTypes) {
+  // NULL key is rejected.
+  size_t seed_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+
+  // RSA
+  bssl::UniquePtr<EVP_PKEY> rsa_key(ParsePrivateKey(
+      EVP_PKEY_RSA, kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER)));
+  ASSERT_TRUE(rsa_key);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(rsa_key.get(), nullptr, &seed_len));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE));
+
+  // EC
+  bssl::UniquePtr<EVP_PKEY> ec_key(ParsePrivateKey(
+      EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
+  ASSERT_TRUE(ec_key);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(ec_key.get(), nullptr, &seed_len));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE));
+
+  // Ed25519: has a raw 32-byte private "seed" but does NOT wire up
+  // get_priv_seed. EVP_PKEY_get_raw_private_key is the correct accessor.
+  static const uint8_t kEd25519Seed[32] = {
+      0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a,
+      0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32,
+      0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+  };
+  bssl::UniquePtr<EVP_PKEY> ed_key(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, nullptr, kEd25519Seed, sizeof(kEd25519Seed)));
+  ASSERT_TRUE(ed_key);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(ed_key.get(), nullptr, &seed_len));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE));
+}
+
 static void ExpectECGroupOnly(const EVP_PKEY *pkey, int nid) {
   EC_KEY *ec = EVP_PKEY_get0_EC_KEY(pkey);
   ASSERT_TRUE(ec);

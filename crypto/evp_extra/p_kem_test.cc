@@ -1014,6 +1014,99 @@ TEST_P(KEMTest, RawImportExpandedFormat) {
   ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
 }
 
+// Test EVP_PKEY_get_private_seed for ML-KEM keys.
+TEST_P(KEMTest, GetPrivateSeed) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.kem_key->seed, seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = seed.size() + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = pkey->pkey.kem_key->kem->keygen_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(
+      PEM_to_DER(test.private_pem_seed_str, &priv_der, &priv_der_len));
+  bssl::UniquePtr<uint8_t> free_priv_der(priv_der);
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.kem_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.kem_key->seed, seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  size_t sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  std::vector<uint8_t> sk(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(test.nid, sk.data(), sk_len));
+  ASSERT_TRUE(raw_pkey);
+  ASSERT_EQ(raw_pkey->pkey.kem_key->seed, nullptr);
+
+  seed_len = 64;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(raw_pkey.get(), unused.data(), &seed_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err),
+            EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+}
+
+// EVP_PKEY_get_private_seed should reject NULL |key| and NULL |out_len|.
+TEST(KEMTest, GetPrivateSeedNullArguments) {
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(NID_MLKEM512));
+  ASSERT_TRUE(pkey);
+
+  size_t seed_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
+}
+
 // Test that a generated key (seed format) can perform encaps/decaps correctly
 // after a serialize → parse round-trip.
 TEST_P(KEMTest, SeedFormatEncapsDecapsRoundTrip) {

@@ -254,7 +254,7 @@ static int pqdsa_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  if (key->seed == NULL || key->private_key) {
+  if (key->seed == NULL || key->private_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
