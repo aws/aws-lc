@@ -277,7 +277,7 @@ static int kem_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
   GUARD_PTR(pkey);
   GUARD_PTR(out_len);
 
-  KEM_KEY *key = pkey->pkey.kem_key;
+  const KEM_KEY *key = pkey->pkey.kem_key;
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
