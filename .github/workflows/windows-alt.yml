@@ -226,6 +226,11 @@ jobs:
           sudo ln -sf /usr/bin/clang-19 /usr/local/bin/clang-cl
           sudo ln -sf /usr/bin/lld-19 /usr/local/bin/lld-link
           sudo ln -sf /usr/bin/llvm-ar-19 /usr/local/bin/llvm-lib
+          # CMake's vs_link_exe helper invokes `rc` (resource compiler) and
+          # `mt` (manifest tool) when linking on a Windows target. Provide the
+          # LLVM equivalents so manifest generation succeeds.
+          sudo ln -sf /usr/bin/llvm-rc-19 /usr/local/bin/llvm-rc
+          sudo ln -sf /usr/bin/llvm-mt-19 /usr/local/bin/llvm-mt
       - name: Fetch MSVC SDK via xwin
         run: |
           set -ex
@@ -248,6 +253,8 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang-cl \
             -DCMAKE_C_COMPILER_TARGET=x86_64-pc-windows-msvc \
             -DCMAKE_CXX_COMPILER_TARGET=x86_64-pc-windows-msvc \
+            -DCMAKE_RC_COMPILER=llvm-rc \
+            -DCMAKE_MT=llvm-mt \
             -DCMAKE_C_FLAGS="${INCLUDES}" \
             -DCMAKE_CXX_FLAGS="${INCLUDES}" \
             -DCMAKE_EXE_LINKER_FLAGS="${LIBPATHS}" \
