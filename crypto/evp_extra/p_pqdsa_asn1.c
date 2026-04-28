@@ -23,19 +23,18 @@ static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
   GUARD_PTR(pkey);
   GUARD_PTR(out_len);
 
-  if (pkey->pkey.pqdsa_key == NULL) {
+  const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
-
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
-  const PQDSA *pqdsa = key->pqdsa;
 
   if (key->private_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
 
+  const PQDSA *pqdsa = key->pqdsa;
   if (pqdsa == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
@@ -58,14 +57,16 @@ static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
 
 static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
                                   size_t *out_len) {
-  if (pkey->pkey.pqdsa_key == NULL) {
+  GUARD_PTR(pkey);
+  GUARD_PTR(out_len);
+
+  const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   const PQDSA *pqdsa = key->pqdsa;
-
   if (pqdsa == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
@@ -107,7 +108,13 @@ static int pqdsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
 }
 
 static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+
+  const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
   const PQDSA *pqdsa = key->pqdsa;
   if (key->public_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -206,12 +213,18 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
 }
 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
   const PQDSA *pqdsa = key->pqdsa;
   if (key->seed == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
+
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
   CBB pkcs8, algorithm, oid, private_key, seed_choice;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
@@ -227,6 +240,39 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
     return 0;
       }
 
+  return 1;
+}
+
+static int pqdsa_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
+  size_t *out_len) {
+  GUARD_PTR(pkey);
+  GUARD_PTR(out_len);
+
+  const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
+  if (key->seed == NULL || key->private_key) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  size_t pqdsa_seed_len = key->pqdsa->keygen_seed_len;
+
+  if (out == NULL) {
+    *out_len = pqdsa_seed_len;
+    return 1;
+  }
+
+  if (*out_len < pqdsa_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  OPENSSL_memcpy(out, key->seed, pqdsa_seed_len);
+  *out_len = pqdsa_seed_len;
   return 1;
 }
 
@@ -266,6 +312,7 @@ const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
   NULL /*pqdsa_set_pub_raw */ ,
   pqdsa_get_priv_raw,
   pqdsa_get_pub_raw,
+  pqdsa_get_priv_seed,
   NULL /* pkey_opaque */,
   pqdsa_size,
   pqdsa_bits,

@@ -718,3 +718,16 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
   }
   return 1;
 }
+
+int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len) {
+  GUARD_PTR(key);
+  GUARD_PTR(out_len);
+
+  if (key->ameth == NULL || key->ameth->get_priv_seed == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return key->ameth->get_priv_seed(key, out, out_len);
+}
