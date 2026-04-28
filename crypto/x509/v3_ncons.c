@@ -687,7 +687,7 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
   }
 
   // RFC 3986 §3.2 defines authority = [userinfo "@"] host [":" port].
-  // Certificate subject URIs have no legitimate use for userinfo. If present,
+  // Certificate SAN URIs have no standards-defined use for userinfo. If present,
   // the '@' delimiter would cause the host extraction below to parse the
   // userinfo as the host, matching against attacker-chosen bytes instead of
   // the URI's actual host.
