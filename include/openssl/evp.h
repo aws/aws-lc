@@ -846,6 +846,13 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                                       const uint8_t *context,
                                                       size_t context_len);
 
+// EVP_PKEY_CTX_set_signature_context is the previous name for
+// |EVP_PKEY_CTX_set1_signature_context_string|. It is retained for backward
+// compatibility.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);
+
 // EVP_PKEY_CTX_get0_signature_context sets |*context| to point to the internal
 // buffer containing the signing context octet string (which may be NULL) and
 // writes the length to |*context_len|.

@@ -2154,7 +2154,7 @@ TEST_P(PQDSAParameterTest, ContextString) {
   ASSERT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, long_ctx,
                                                    sizeof(long_ctx)));
 
-  // ---- 7. Max length context (255 bytes) is accepted ----
+  // ---- 7. Max length context (255 bytes) round-trip sign + verify ----
   md_ctx.Reset();
   pkey_ctx = nullptr;
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
@@ -2163,6 +2163,38 @@ TEST_P(PQDSAParameterTest, ContextString) {
   OPENSSL_memset(max_ctx, 0x42, sizeof(max_ctx));
   ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, max_ctx,
                                                   sizeof(max_ctx)));
+  sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
+                             msg.size()));
+  std::vector<uint8_t> sig_max_ctx(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_max_ctx.data(), &sig_len,
+                             msg.data(), msg.size()));
+
+  md_ctx_verify.Reset();
+  verify_pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx,
+                                                  max_ctx, sizeof(max_ctx)));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig_max_ctx.data(),
+                               sig_len, msg.data(), msg.size()));
+
+  // ---- 8. EVP_PKEY_CTX_dup preserves the context ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+  bssl::UniquePtr<EVP_PKEY_CTX> dup_ctx(EVP_PKEY_CTX_dup(pkey_ctx));
+  ASSERT_TRUE(dup_ctx);
+
+  read_ctx = nullptr;
+  read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(dup_ctx.get(), &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
 }
 
 TEST_P(PQDSAParameterTest, ParsePublicKey) {

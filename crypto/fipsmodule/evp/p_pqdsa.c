@@ -60,11 +60,16 @@ static int pkey_pqdsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   switch (type) {
     case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
       EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
-      if (!params || !dctx || !params->context || params->context_len > sizeof(dctx->context)) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      if (!params || !dctx ||
+          params->context_len > sizeof(dctx->context) ||
+          (params->context_len > 0 && !params->context)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
         return 0;
       }
-      OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      OPENSSL_cleanse(dctx->context, sizeof(dctx->context));
+      if (params->context_len > 0) {
+        OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      }
       dctx->context_len = params->context_len;
       break;
     }
@@ -164,7 +169,10 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // RAW sign mode
   if (!sign_digest) {
-    if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, dctx->context_len > 0 ? dctx->context : NULL, dctx->context_len)) {
+    if (!pqdsa->method->pqdsa_sign_message(
+            key->private_key, sig, sig_len, message, message_len,
+            dctx->context_len > 0 ? dctx->context : NULL,
+            dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
     }
@@ -243,7 +251,10 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   // RAW verify mode
   if(!verify_digest) {
     if (sig_len != pqdsa->signature_len ||
-    !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, dctx->context_len > 0 ? dctx->context : NULL, dctx->context_len)) {
+        !pqdsa->method->pqdsa_verify_message(
+            key->public_key, sig, sig_len, message, message_len,
+            dctx->context_len > 0 ? dctx->context : NULL,
+            dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
       return 0;
     }

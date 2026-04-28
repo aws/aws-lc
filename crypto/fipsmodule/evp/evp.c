@@ -667,6 +667,12 @@ int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                            EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
 }
 
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  return EVP_PKEY_CTX_set1_signature_context_string(ctx, context, context_len);
+}
+
 int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
                                         const uint8_t **context,
                                         size_t *context_len) {
