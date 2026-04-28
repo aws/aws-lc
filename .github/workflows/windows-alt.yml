@@ -233,7 +233,7 @@ jobs:
           wget -q https://github.com/Jake-Shadle/xwin/releases/download/${XWIN_VERSION}/xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz
           tar xzf xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz
           sudo mv xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl/xwin /usr/local/bin/
-          xwin --accept-license splat --output /tmp/xwin --arch x86_64
+          xwin --accept-license --arch x86_64 splat --output /tmp/xwin
       - name: Configure
         run: |
           set -ex
