@@ -350,7 +350,7 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
     return 1;
   }
 
-  int ret = OPENSSL_memcmp(a->data, b->data, a_length);
+  int ret = OPENSSL_memcmp_ordered(a->data, b->data, a_length);
   if (ret != 0) {
     return ret;
   }

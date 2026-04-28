@@ -27,7 +27,7 @@ static int CRYPTO_BUFFER_cmp(const CRYPTO_BUFFER *a, const CRYPTO_BUFFER *b) {
   if (a->len != b->len) {
     return 1;
   }
-  return OPENSSL_memcmp(a->data, b->data, a->len);
+  return OPENSSL_memcmp_ordered(a->data, b->data, a->len);
 }
 
 CRYPTO_BUFFER_POOL* CRYPTO_BUFFER_POOL_new(void) {

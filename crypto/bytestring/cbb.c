@@ -650,7 +650,7 @@ static int compare_set_of_element(const void *a_ptr, const void *b_ptr) {
   const CBS *a = a_ptr, *b = b_ptr;
   size_t a_len = CBS_len(a), b_len = CBS_len(b);
   size_t min_len = a_len < b_len ? a_len : b_len;
-  int ret = OPENSSL_memcmp(CBS_data(a), CBS_data(b), min_len);
+  int ret = OPENSSL_memcmp_ordered(CBS_data(a), CBS_data(b), min_len);
   if (ret != 0) {
     return ret;
   }
