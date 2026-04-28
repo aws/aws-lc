@@ -10,6 +10,8 @@ NIST has awarded the FIPS module of AWS-LC its validation certificate as a Feder
 * AWS-LC-FIPS v2.0 (dynamic library): certificate [#4759](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4759) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4759.pdf)
 * AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf)
 
+The validated versions above are also published in machine-readable form at [`FIPS_VERSIONS.json`](./FIPS_VERSIONS.json) for downstream packagers.
+
 NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
@@ -141,7 +143,7 @@ to determine which APIs, algorithms, and parameters are approved.
 
 FIPS-140 mandates that a module calculate an HMAC of its own code in a constructor function and compare the result to a known-good value. Typical code produced by a C compiler includes large numbers of relocations: places in the machine code where the linker needs to resolve and inject the final value of a symbolic expression. These relocations mean that the bytes that make up any specific bit of code generally aren't known until the final link has completed. Additionally, because of shared libraries and [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization), some relocations can only be resolved at run-time, and thus targets of those relocations vary even after the final link.
 
-AWS-LC is linked (often statically) into a large number of binaries. It would be a significant cost if each of these binaries had to be post-processed in order to calculate the known-good HMAC value. We would much prefer if the value could be calculated, once, when AWS-LC itself is compiled. In order for the value to be calculated before the final link, there can be no relocations in the hashed code and data. 
+AWS-LC is linked (often statically) into a large number of binaries. It would be a significant cost if each of these binaries had to be post-processed in order to calculate the known-good HMAC value. We would much prefer if the value could be calculated, once, when AWS-LC itself is compiled. In order for the value to be calculated before the final link, there can be no relocations in the hashed code and data.
 
 We describe below how we build C and assembly code in order to produce a binary file containing the code and data for the FIPS module without that code having any relocations. There are two build configurations supported: **static** and **shared**. The shared build produces `libcrypto.so`, which includes the FIPS module and is significantly more straightforward and so is described first.
 
