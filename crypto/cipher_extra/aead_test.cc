@@ -1305,12 +1305,14 @@ TEST(AEADTest, TestGCMSIV128Change16Alignment) {
   // The destination pointer is offset into the allocation so that it aliases
   // the |state| subobject; GCC / fortify-headers infer the subobject size and
   // report a `stringop-overflow` false positive (see aws-lc#3083).
-#if defined(__GNUC__) && !defined(__clang__)
+  // -Wstringop-overflow was introduced in GCC 7; older GCC versions reject
+  // the pragma with -Werror=pragmas.
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 7)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
   memmove(moved_encrypt_ctx_128, encrypt_ctx_128, sizeof(EVP_AEAD_CTX));
-#if defined(__GNUC__) && !defined(__clang__)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 7)
 #pragma GCC diagnostic pop
 #endif
   GTEST_LOG_(INFO) << "Moved Ctx.State Location: "
@@ -1354,12 +1356,12 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
   EVP_AEAD_CTX *moved_encrypt_ctx_256 =
       (EVP_AEAD_CTX *)(((uint8_t *)encrypt_ctx_256) + 8);
   // See TestGCMSIV128Change16Alignment for why this pragma is needed.
-#if defined(__GNUC__) && !defined(__clang__)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 7)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
   memmove(moved_encrypt_ctx_256, encrypt_ctx_256, sizeof(EVP_AEAD_CTX));
-#if defined(__GNUC__) && !defined(__clang__)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 7)
 #pragma GCC diagnostic pop
 #endif
   GTEST_LOG_(INFO) << "Moved Ctx.State Location: "
