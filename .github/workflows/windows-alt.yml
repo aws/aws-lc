@@ -206,64 +206,38 @@ jobs:
   cross-clang-cl-ninja:
     # Cross-compile from Linux to x86_64-pc-windows-msvc with Ninja + clang-cl,
     # mirroring the default aws-lc-rs setup. This catches command-line quoting
-    # regressions that the Windows-native clang-cl-ninja job misses because
-    # cmd.exe and /bin/sh tokenize arguments differently (see aws/aws-lc-rs#981).
+    # regressions the Windows-native clang-cl-ninja job misses because cmd.exe
+    # and /bin/sh tokenize arguments differently (see aws/aws-lc-rs#981).
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install dependencies
+      - uses: actions/checkout@v4
+      - name: Setup toolchain
         run: |
           set -ex
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get install --assume-yes --no-install-recommends \
             cmake ninja-build nasm \
             wget lsb-release software-properties-common gnupg
-          # Install Clang 19 from LLVM apt repository
-          # (xwin's MSVC STL headers require Clang 19+; Ubuntu 24.04 ships Clang 18)
+          # Clang 19 (xwin's MSVC STL headers require Clang >= 19; 24.04 ships 18).
           wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
-          sudo ln -sf /usr/bin/clang-19 /usr/local/bin/clang-cl
-          sudo ln -sf /usr/bin/lld-19 /usr/local/bin/lld-link
-          sudo ln -sf /usr/bin/llvm-ar-19 /usr/local/bin/llvm-lib
-          # CMake's vs_link_exe helper invokes `rc` (resource compiler) and
-          # `mt` (manifest tool) when linking on a Windows target. Provide the
-          # LLVM equivalents so manifest generation succeeds.
-          sudo ln -sf /usr/bin/llvm-rc-19 /usr/local/bin/llvm-rc
-          sudo ln -sf /usr/bin/llvm-mt-19 /usr/local/bin/llvm-mt
-      - name: Fetch MSVC SDK via xwin
-        run: |
-          set -ex
+          sudo ln -sf /usr/bin/clang-19    /usr/local/bin/clang-cl
+          sudo ln -sf /usr/bin/lld-19      /usr/local/bin/lld-link
+          sudo ln -sf /usr/bin/llvm-ar-19  /usr/local/bin/llvm-lib
+          sudo ln -sf /usr/bin/llvm-rc-19  /usr/local/bin/llvm-rc
+          sudo ln -sf /usr/bin/llvm-mt-19  /usr/local/bin/llvm-mt
+          # xwin provides the MSVC SDK headers/libs for cross-compiling.
           XWIN_VERSION=0.6.5
-          wget -q https://github.com/Jake-Shadle/xwin/releases/download/${XWIN_VERSION}/xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz
-          tar xzf xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz
+          wget -qO- https://github.com/Jake-Shadle/xwin/releases/download/${XWIN_VERSION}/xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl/xwin /usr/local/bin/
           xwin --accept-license --arch x86_64 splat --output /tmp/xwin
-          echo '--- /tmp/xwin/crt/lib/x86_64 ---'
-          ls /tmp/xwin/crt/lib/x86_64 | head -40 || true
-      - name: Configure
+      - name: Build
         run: |
           set -ex
-          XWIN=/tmp/xwin
-          INCLUDES="/imsvc ${XWIN}/crt/include /imsvc ${XWIN}/sdk/include/ucrt /imsvc ${XWIN}/sdk/include/um /imsvc ${XWIN}/sdk/include/shared"
-          LIBPATHS="/LIBPATH:${XWIN}/crt/lib/x86_64 /LIBPATH:${XWIN}/sdk/lib/um/x86_64 /LIBPATH:${XWIN}/sdk/lib/ucrt/x86_64"
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
-            -DCMAKE_C_COMPILER=clang-cl \
-            -DCMAKE_CXX_COMPILER=clang-cl \
-            -DCMAKE_C_COMPILER_TARGET=x86_64-pc-windows-msvc \
-            -DCMAKE_CXX_COMPILER_TARGET=x86_64-pc-windows-msvc \
-            -DCMAKE_RC_COMPILER=llvm-rc \
-            -DCMAKE_MT=llvm-mt \
-            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL \
-            -DCMAKE_C_FLAGS="${INCLUDES}" \
-            -DCMAKE_CXX_FLAGS="${INCLUDES}" \
-            -DCMAKE_EXE_LINKER_FLAGS="${LIBPATHS}" \
-            -DCMAKE_SHARED_LINKER_FLAGS="${LIBPATHS}"
-      - name: Build
-        run: cmake --build build --target all
+            -DCMAKE_TOOLCHAIN_FILE=util/x86_64-windows-clang-cl-toolchain.cmake
+          cmake --build build --target all
   msys2:
     name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
     if: github.repository_owner == 'aws'
