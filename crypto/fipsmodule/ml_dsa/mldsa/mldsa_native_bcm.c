@@ -69,26 +69,8 @@
 
 
 #if defined(MLD_CONFIG_USE_NATIVE_BACKEND_ARITH)
-#if defined(MLD_SYS_AARCH64)
-#include "native/aarch64/src/aarch64_zetas.c"
-#include "native/aarch64/src/polyz_unpack_table.c"
-#include "native/aarch64/src/rej_uniform_eta_table.c"
-#include "native/aarch64/src/rej_uniform_table.c"
-#endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 #include "native/x86_64/src/consts.c"
-#include "native/x86_64/src/poly_caddq_avx2.c"
-#include "native/x86_64/src/poly_chknorm_avx2.c"
-#include "native/x86_64/src/poly_decompose_32_avx2.c"
-#include "native/x86_64/src/poly_decompose_88_avx2.c"
-#include "native/x86_64/src/poly_use_hint_32_avx2.c"
-#include "native/x86_64/src/poly_use_hint_88_avx2.c"
-#include "native/x86_64/src/polyz_unpack_17_avx2.c"
-#include "native/x86_64/src/polyz_unpack_19_avx2.c"
-#include "native/x86_64/src/rej_uniform_avx2.c"
-#include "native/x86_64/src/rej_uniform_eta2_avx2.c"
-#include "native/x86_64/src/rej_uniform_eta4_avx2.c"
-#include "native/x86_64/src/rej_uniform_table.c"
 #endif /* MLD_SYS_X86_64 */
 #endif /* MLD_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
@@ -469,60 +451,6 @@
 #undef REDUCE32_RANGE_MAX
 /* mldsa/src/native/meta.h */
 #undef MLD_NATIVE_META_H
-#if defined(MLD_SYS_AARCH64)
-/*
- * Undefine macros from native code (Arith, AArch64)
- */
-/* mldsa/src/native/aarch64/meta.h */
-#undef MLD_ARITH_BACKEND_AARCH64
-#undef MLD_NATIVE_AARCH64_META_H
-#undef MLD_USE_NATIVE_INTT
-#undef MLD_USE_NATIVE_NTT
-#undef MLD_USE_NATIVE_POINTWISE_MONTGOMERY
-#undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L4
-#undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L5
-#undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L7
-#undef MLD_USE_NATIVE_POLYZ_UNPACK_17
-#undef MLD_USE_NATIVE_POLYZ_UNPACK_19
-#undef MLD_USE_NATIVE_POLY_CADDQ
-#undef MLD_USE_NATIVE_POLY_CHKNORM
-#undef MLD_USE_NATIVE_POLY_DECOMPOSE_32
-#undef MLD_USE_NATIVE_POLY_DECOMPOSE_88
-#undef MLD_USE_NATIVE_POLY_USE_HINT_32
-#undef MLD_USE_NATIVE_POLY_USE_HINT_88
-#undef MLD_USE_NATIVE_REJ_UNIFORM
-#undef MLD_USE_NATIVE_REJ_UNIFORM_ETA2
-#undef MLD_USE_NATIVE_REJ_UNIFORM_ETA4
-/* mldsa/src/native/aarch64/src/arith_native_aarch64.h */
-#undef MLD_AARCH64_REJ_UNIFORM_ETA2_BUFLEN
-#undef MLD_AARCH64_REJ_UNIFORM_ETA4_BUFLEN
-#undef MLD_NATIVE_AARCH64_SRC_ARITH_NATIVE_AARCH64_H
-#undef mld_aarch64_intt_zetas_layer123456
-#undef mld_aarch64_intt_zetas_layer78
-#undef mld_aarch64_ntt_zetas_layer123456
-#undef mld_aarch64_ntt_zetas_layer78
-#undef mld_intt_asm
-#undef mld_ntt_asm
-#undef mld_poly_caddq_asm
-#undef mld_poly_chknorm_asm
-#undef mld_poly_decompose_32_asm
-#undef mld_poly_decompose_88_asm
-#undef mld_poly_pointwise_montgomery_asm
-#undef mld_poly_use_hint_32_asm
-#undef mld_poly_use_hint_88_asm
-#undef mld_polyvecl_pointwise_acc_montgomery_l4_asm
-#undef mld_polyvecl_pointwise_acc_montgomery_l5_asm
-#undef mld_polyvecl_pointwise_acc_montgomery_l7_asm
-#undef mld_polyz_unpack_17_asm
-#undef mld_polyz_unpack_17_indices
-#undef mld_polyz_unpack_19_asm
-#undef mld_polyz_unpack_19_indices
-#undef mld_rej_uniform_asm
-#undef mld_rej_uniform_eta2_asm
-#undef mld_rej_uniform_eta4_asm
-#undef mld_rej_uniform_eta_table
-#undef mld_rej_uniform_table
-#endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 /*
  * Undefine macros from native code (Arith, X86_64)
@@ -537,21 +465,7 @@
 #undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L4
 #undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L5
 #undef MLD_USE_NATIVE_POLYVECL_POINTWISE_ACC_MONTGOMERY_L7
-#undef MLD_USE_NATIVE_POLYZ_UNPACK_17
-#undef MLD_USE_NATIVE_POLYZ_UNPACK_19
-#undef MLD_USE_NATIVE_POLY_CADDQ
-#undef MLD_USE_NATIVE_POLY_CHKNORM
-#undef MLD_USE_NATIVE_POLY_DECOMPOSE_32
-#undef MLD_USE_NATIVE_POLY_DECOMPOSE_88
-#undef MLD_USE_NATIVE_POLY_USE_HINT_32
-#undef MLD_USE_NATIVE_POLY_USE_HINT_88
-#undef MLD_USE_NATIVE_REJ_UNIFORM
-#undef MLD_USE_NATIVE_REJ_UNIFORM_ETA2
-#undef MLD_USE_NATIVE_REJ_UNIFORM_ETA4
 /* mldsa/src/native/x86_64/src/arith_native_x86_64.h */
-#undef MLD_AVX2_REJ_UNIFORM_BUFLEN
-#undef MLD_AVX2_REJ_UNIFORM_ETA2_BUFLEN
-#undef MLD_AVX2_REJ_UNIFORM_ETA4_BUFLEN
 #undef MLD_NATIVE_X86_64_SRC_ARITH_NATIVE_X86_64_H
 #undef mld_invntt_avx2
 #undef mld_ntt_avx2
@@ -560,18 +474,6 @@
 #undef mld_pointwise_acc_l5_avx2
 #undef mld_pointwise_acc_l7_avx2
 #undef mld_pointwise_avx2
-#undef mld_poly_caddq_avx2
-#undef mld_poly_chknorm_avx2
-#undef mld_poly_decompose_32_avx2
-#undef mld_poly_decompose_88_avx2
-#undef mld_poly_use_hint_32_avx2
-#undef mld_poly_use_hint_88_avx2
-#undef mld_polyz_unpack_17_avx2
-#undef mld_polyz_unpack_19_avx2
-#undef mld_rej_uniform_avx2
-#undef mld_rej_uniform_eta2_avx2
-#undef mld_rej_uniform_eta4_avx2
-#undef mld_rej_uniform_table
 /* mldsa/src/native/x86_64/src/consts.h */
 #undef MLD_AVX2_BACKEND_DATA_OFFSET_8XDIV
 #undef MLD_AVX2_BACKEND_DATA_OFFSET_8XDIV_QINV
