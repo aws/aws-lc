@@ -310,23 +310,27 @@ testing::AssertionResult WaitForFileAccessible(const char *path) {
   // On Windows, antivirus software, file indexing services, or other
   // background processes can briefly lock files after they are written,
   // causing transient ERROR_SHARING_VIOLATION failures when callers
-  // immediately try to reopen the file for reading. Retry fopen() with a short
-  // delay to wait out the lock. These values mirror the retry strategy used
-  // by WIN32_rename in tool-openssl/ca.cc.
+  // immediately try to reopen the file for reading. Retry opening the file
+  // with a short delay to wait out the lock. These values mirror the retry
+  // strategy used by WIN32_rename in tool-openssl/ca.cc.
   //
-  // We deliberately probe with "rb" rather than "wb": a write-mode probe
-  // would truncate the file the caller just populated, and every failing call
-  // site we are hardening opens the file for reading, so a successful "rb"
-  // probe is exactly the signal the caller needs.
+  // We use CreateFileA with GENERIC_READ rather than fopen(): GetLastError()
+  // is only contractually reliable after a direct Win32 API call, and the
+  // MSVC CRT may clobber it during fopen()'s internal cleanup path. The
+  // FILE_SHARE flags ensure the probe does not itself introduce a lock that
+  // would interfere with the caller's subsequent open.
   static const int kMaxRetries = 10;
   static const DWORD kRetryDelayMs = 200;
   for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
     if (attempt > 0) {
       Sleep(kRetryDelayMs);
     }
-    FILE *f = fopen(path, "rb");
-    if (f != nullptr) {
-      fclose(f);
+    HANDLE h = CreateFileA(path, GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE |
+                               FILE_SHARE_DELETE,
+                           NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h != INVALID_HANDLE_VALUE) {
+      CloseHandle(h);
       return testing::AssertionSuccess();
     }
     DWORD err = GetLastError();
