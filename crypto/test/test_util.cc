@@ -330,6 +330,11 @@ testing::AssertionResult WaitForFileAccessible(const char *path) {
       return testing::AssertionSuccess();
     }
     DWORD err = GetLastError();
+    // ERROR_ACCESS_DENIED is deliberately retried alongside the obvious
+    // sharing/lock violations: on Windows it can manifest transiently from
+    // pending-deletion state, AV scans, or the Search Indexer briefly holding
+    // the file. If the permission failure is genuine, the retries will all
+    // fail identically and the test fails correctly after the retry budget.
     if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
         err != ERROR_LOCK_VIOLATION) {
       break;
