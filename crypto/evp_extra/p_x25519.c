@@ -20,13 +20,10 @@ static int pkey_x25519_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  evp_pkey_set_method(pkey, &x25519_asn1_meth);
-
   X25519_keypair(key->pub, key->priv);
   key->has_private = 1;
 
-  OPENSSL_free(pkey->pkey.ptr);
-  pkey->pkey.ptr = key;
+  evp_pkey_set0(pkey, &x25519_asn1_meth, key);
   return 1;
 }
 
