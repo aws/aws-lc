@@ -669,19 +669,56 @@ TEST_P(KEMTest, GetType) {
   ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), nid);
 }
 
-TEST(KEMTest, GetTypeNonKEMKey) {
-  // EVP_PKEY_kem_get_type must return 0 for a non-KEM key.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
-                                                      NID_X9_62_prime256v1));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw);
+TEST(KEMTest, GetTypeWrongKeyType) {
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_EXPECTING_A_KEM_KEY
+  // when called on an EVP_PKEY whose type is not EVP_PKEY_KEM. Check both a
+  // classical (EC) key and a post-quantum (PQDSA) key, to ensure that
+  // adjacent post-quantum types do not slip past the type check.
 
+  // ---- EC key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ec_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ec_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(
+      ec_ctx.get(), NID_X9_62_prime256v1));
+  EVP_PKEY *raw_ec = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ec_ctx.get(), &raw_ec));
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw_ec);
+
+  ERR_clear_error();
   ASSERT_EQ(EVP_PKEY_kem_get_type(ec_pkey.get()), 0);
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+
+  // ---- PQDSA key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> pqdsa_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+  ASSERT_TRUE(pqdsa_ctx);
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(pqdsa_ctx.get(), NID_MLDSA44));
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pqdsa_ctx.get()));
+  EVP_PKEY *raw_pqdsa = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pqdsa_ctx.get(), &raw_pqdsa));
+  bssl::UniquePtr<EVP_PKEY> pqdsa_pkey(raw_pqdsa);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pqdsa_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+}
+
+TEST(KEMTest, GetTypeUninitializedKey) {
+  // EVP_PKEY_kem_get_type must return 0 when called on an EVP_PKEY whose
+  // type is EVP_PKEY_KEM but which has no underlying KEM_KEY attached. The
+  // type check passes, so no error is queued; the second guard in the
+  // implementation is what returns 0.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_KEM));
+  ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_KEM);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), 0);
+  // No error should be queued: the type check passed, we just had no key.
+  ASSERT_EQ(ERR_peek_error(), 0u);
 }
 
 // Invalid length test vectors - truncated DER structures
