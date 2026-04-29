@@ -239,6 +239,8 @@ jobs:
           tar xzf xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz
           sudo mv xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl/xwin /usr/local/bin/
           xwin --accept-license --arch x86_64 splat --output /tmp/xwin
+          echo '--- /tmp/xwin/crt/lib/x86_64 ---'
+          ls /tmp/xwin/crt/lib/x86_64 | head -40 || true
       - name: Configure
         run: |
           set -ex
@@ -255,6 +257,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_TARGET=x86_64-pc-windows-msvc \
             -DCMAKE_RC_COMPILER=llvm-rc \
             -DCMAKE_MT=llvm-mt \
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL \
             -DCMAKE_C_FLAGS="${INCLUDES}" \
             -DCMAKE_CXX_FLAGS="${INCLUDES}" \
             -DCMAKE_EXE_LINKER_FLAGS="${LIBPATHS}" \
