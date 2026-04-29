@@ -307,11 +307,17 @@ FILE* createRawTempFILE() {
 }
 
 testing::AssertionResult WaitForFileAccessible(const char *path) {
-  // On Windows, antivirus software, file indexing services, or other background
-  // processes can briefly lock files after creation or modification, causing
-  // transient ERROR_SHARING_VIOLATION failures. Retry with a short delay to
-  // wait out the lock. These values mirror the retry strategy used by
-  // WIN32_rename in tool-openssl/ca.cc.
+  // On Windows, antivirus software, file indexing services, or other
+  // background processes can briefly lock files after they are written,
+  // causing transient ERROR_SHARING_VIOLATION failures when callers
+  // immediately try to reopen the file for reading. Retry fopen() with a short
+  // delay to wait out the lock. These values mirror the retry strategy used
+  // by WIN32_rename in tool-openssl/ca.cc.
+  //
+  // We deliberately probe with "rb" rather than "wb": a write-mode probe
+  // would truncate the file the caller just populated, and every failing call
+  // site we are hardening opens the file for reading, so a successful "rb"
+  // probe is exactly the signal the caller needs.
   static const int kMaxRetries = 10;
   static const DWORD kRetryDelayMs = 200;
   for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
