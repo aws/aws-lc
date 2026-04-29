@@ -265,6 +265,7 @@ int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey) {
     return 0;
   }
   if (!pkey->pkey.kem_key || !pkey->pkey.kem_key->kem) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
   return pkey->pkey.kem_key->kem->nid;

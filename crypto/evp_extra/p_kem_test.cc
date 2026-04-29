@@ -706,10 +706,9 @@ TEST(KEMTest, GetTypeWrongKeyType) {
 }
 
 TEST(KEMTest, GetTypeUninitializedKey) {
-  // EVP_PKEY_kem_get_type must return 0 when called on an EVP_PKEY whose
-  // type is EVP_PKEY_KEM but which has no underlying KEM_KEY attached. The
-  // type check passes, so no error is queued; the second guard in the
-  // implementation is what returns 0.
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_NO_PARAMETERS_SET when
+  // called on an EVP_PKEY whose type is EVP_PKEY_KEM but which has no
+  // underlying KEM_KEY attached.
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   ASSERT_TRUE(pkey);
   ASSERT_TRUE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_KEM));
@@ -717,8 +716,7 @@ TEST(KEMTest, GetTypeUninitializedKey) {
 
   ERR_clear_error();
   ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), 0);
-  // No error should be queued: the type check passed, we just had no key.
-  ASSERT_EQ(ERR_peek_error(), 0u);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_NO_PARAMETERS_SET);
 }
 
 // Invalid length test vectors - truncated DER structures

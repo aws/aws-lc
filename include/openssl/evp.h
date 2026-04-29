@@ -993,8 +993,9 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 // EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key in |pkey|.
 // If |pkey| is not of type |EVP_PKEY_KEM|, it returns 0 and pushes
 // |EVP_R_EXPECTING_A_KEM_KEY| onto the error queue. If |pkey| is of type
-// |EVP_PKEY_KEM| but has no underlying KEM key attached, it returns 0 without
-// pushing an error onto the queue. |pkey| must not be NULL.
+// |EVP_PKEY_KEM| but has no underlying KEM key attached, it returns 0 and
+// pushes |EVP_R_NO_PARAMETERS_SET| onto the error queue. |pkey| must not be
+// NULL.
 OPENSSL_EXPORT int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey);
 
 // PQDSA specific functions.
