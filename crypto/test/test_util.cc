@@ -214,13 +214,58 @@ static DWORD GetSafeTempPathA(DWORD nBufferLength, LPSTR lpBuffer) {
 }
 
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-  // On Windows, tmpfile() may attempt to create temp files in the root directory
-  // of the drive, which requires Admin privileges, resulting in test failure.
-  char pathname[PATH_MAX];
-  if(0 == GetSafeTempPathA(PATH_MAX, pathname)) {
+  // On Windows, tmpfile() may attempt to create temp files in the root
+  // directory of the drive, which requires Admin privileges, resulting in test
+  // failure.
+  //
+  // We deliberately avoid GetTempFileNameA for unique-name generation: it
+  // silently truncates the name prefix to 3 characters and, when uUnique is 0,
+  // combines that prefix with a 16-bit time-derived value. That gives only
+  // 65,536 possible filenames, and the empty stub file it creates on disk
+  // persists. In long CI runs (e.g. the Windows SDE job, which executes the
+  // full gtest binary multiple times) many tests accumulate "aws????.tmp"
+  // files in the shared temp directory. Once the namespace is crowded, the
+  // internal collision-retry loop inside GetTempFileNameA can fail to find a
+  // free name and return 0, producing intermittent test failures.
+  //
+  // Instead, mirror createTempDirPath: generate a 64-bit random suffix with
+  // RAND_bytes and create the file atomically with CREATE_NEW so that any
+  // collision with a concurrent caller is detected and retried.
+  char temp_path[PATH_MAX];
+  if (0 == GetSafeTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
-  return GetTempFileNameA(pathname, "awslctest", 0, buffer);
+
+  static const int kMaxAttempts = 10;
+  for (int attempt = 0; attempt < kMaxAttempts; attempt++) {
+    union {
+      uint8_t bytes[8];
+      uint64_t value;
+    } random_bytes;
+    if (!RAND_bytes(random_bytes.bytes, sizeof(random_bytes.bytes))) {
+      return 0;
+    }
+
+    int written = snprintf(buffer, PATH_MAX, "%sawslctest_%" PRIX64 ".tmp",
+                           temp_path, random_bytes.value);
+    // Check for truncation of the path.
+    if (written < 0 || written >= PATH_MAX) {
+      return 0;
+    }
+
+    // CREATE_NEW atomically fails with ERROR_FILE_EXISTS if the file already
+    // exists, so we never race with another caller that picked the same name.
+    HANDLE h = CreateFileA(buffer, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h != INVALID_HANDLE_VALUE) {
+      CloseHandle(h);
+      return (size_t)written;
+    }
+    if (GetLastError() != ERROR_FILE_EXISTS) {
+      return 0;
+    }
+  }
+  return 0;
 }
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
