@@ -187,22 +187,22 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
           {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
-            (!is_x86_64_ || is_assembler_too_old || is_assembler_too_old_avx512 ||
-             !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
-           {kFlag_aesni_gcm_encrypt,
-            is_x86_64_ && aes_hw_ && avx_movbe_ &&
-            !is_assembler_too_old &&
-            (is_assembler_too_old_avx512 ||
-             !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
-           {kFlag_aes_gcm_enc_update_vaes_avx2,
-            is_x86_64_ && aes_hw_ &&
-            !is_assembler_too_old_avx512 &&
-            vaes_vpclmulqdq_avx2_ && !vaes_vpclmulqdq_avx512_},
-           {kFlag_aes_gcm_encrypt_avx512,
-            is_x86_64_ && aes_hw_ &&
-            !is_assembler_too_old_avx512 &&
-            vaes_vpclmulqdq_avx512_},
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
+           (!is_x86_64_ || is_assembler_too_old || is_assembler_too_old_avx512 ||
+            !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
+          {kFlag_aesni_gcm_encrypt,
+           is_x86_64_ && aes_hw_ && avx_movbe_ &&
+           !is_assembler_too_old &&
+           (is_assembler_too_old_avx512 ||
+            !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
+          {kFlag_aes_gcm_enc_update_vaes_avx2,
+           is_x86_64_ && aes_hw_ &&
+           !is_assembler_too_old_avx512 &&
+           vaes_vpclmulqdq_avx2_ && !vaes_vpclmulqdq_avx512_},
+          {kFlag_aes_gcm_encrypt_avx512,
+           is_x86_64_ && aes_hw_ &&
+           !is_assembler_too_old_avx512 &&
+           vaes_vpclmulqdq_avx512_},
 #else // AARCH64
           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            !aes_gcm_pmull_ && !aes_gcm_8x_},

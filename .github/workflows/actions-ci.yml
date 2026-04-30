@@ -711,9 +711,11 @@ jobs:
         uses: cross-platform-actions/action@v0.32.0
         env:
           AWS_LC_GO_TEST_TIMEOUT: 90m
+          AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
+          AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
           GOFLAGS: "-buildvcs=false"
         with:
-          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT GOFLAGS"
           operating_system: freebsd
           architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}

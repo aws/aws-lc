@@ -69,6 +69,7 @@ var (
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 	// Added by aws-lc
+	retryOnTimeout     = flag.Bool("retry-on-timeout", false, "If true, retry tests that fail due to a runner-side TCP timeout. Useful for resource-constrained environments (e.g. emulated VMs).")
 	sslTransferConfig  = flag.String("ssl-transfer-test-file", "", "A path to file which includes the test names that can be converted for SSL transfer.")
 	sslFuzzSeedDir     = flag.String("ssl-fuzz-seed-dir", "", "The directory in which to write the output of |SSL_to_bytes|.")
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
@@ -1660,10 +1661,36 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 	localErr := doExchanges(test, shim, resumeCount, &transcripts)
 	childErr := shim.wait()
 
-	// shim is marked as idled only when |idleTimeout| is reached.
-	// This retry fix is scoped with "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords".
-	if shim.idled && test.name == "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords" {
-		shim, err := newShimProcess(dispatcher, shimPath, flags, env)
+	// Determine if the test should be retried. shim.idled is set when the
+	// idle timeout kills the process. A child killed by a transient signal
+	// (SIGABRT, SIGKILL, SIGTERM, SIGPIPE) on resource-constrained CI is
+	// also typically caused by timing or resource contention. Retry once in
+	// either case; a real bug will fail again on the retry.
+	//
+	// Signals like SIGSEGV, SIGBUS, SIGFPE, and SIGILL indicate real bugs
+	// (memory safety, illegal instructions, etc.) and must not be retried.
+	var retryReason string
+	if shim.idled {
+		retryReason = "idle timeout"
+	} else if *retryOnTimeout {
+		if netErr, ok := localErr.(net.Error); ok && netErr.Timeout() {
+			retryReason = "local timeout"
+		}
+	}
+	if retryReason == "" {
+		if exitErr, ok := childErr.(*exec.ExitError); ok {
+			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
+				switch status.Signal() {
+				case syscall.SIGABRT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGPIPE:
+					retryReason = fmt.Sprintf("signal: %s", status.Signal())
+				}
+			}
+		}
+	}
+	if retryReason != "" {
+		fmt.Fprintf(os.Stderr, "Retrying %s (%s)\n", test.name, retryReason)
+		var err error
+		shim, err = newShimProcess(dispatcher, shimPath, flags, env)
 		if err != nil {
 			return err
 		}

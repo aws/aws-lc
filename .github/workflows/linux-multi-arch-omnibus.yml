@@ -396,17 +396,22 @@ jobs:
             ./tests/ci/run_prefix_tests.sh
 
   valgrind:
-    name: valgrind-${{ matrix.arch }}
+    name: valgrind-${{ matrix.arch }}-${{ matrix.shard }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
         instance-size:large
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_VALGRIND_SHARD_INDEX: ${{ matrix.shard }}
+      # NOTE: TOTAL_SHARDS must equal the number of values in matrix.shard below.
+      # If they drift, some tests will silently never run.
+      AWS_LC_VALGRIND_TOTAL_SHARDS: 6
     strategy:
       fail-fast: false
       matrix:
         arch: [x86_64, aarch64]
+        shard: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
@@ -418,6 +423,8 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           env: |
             AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_VALGRIND_SHARD_INDEX
+            AWS_LC_VALGRIND_TOTAL_SHARDS
           run: |
             source /opt/compiler-env/setup-gcc-11.sh
             ./tests/ci/run_valgrind_tests.sh

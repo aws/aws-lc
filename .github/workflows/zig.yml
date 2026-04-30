@@ -1,0 +1,114 @@
+name: Zig compiler
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  zig:
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.config.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - host: windows-11-arm
+            target_arch: aarch64
+            target_system: Windows
+          - host: ubuntu-24.04-arm
+            target_arch: aarch64
+            target_system: Linux
+          - host: windows-latest
+            target_arch: x86_64
+            target_system: Windows
+          - host: ubuntu-latest
+            target_arch: x86_64
+            target_system: Linux
+          - host: macos-latest
+            target_arch: aarch64
+            target_system: Darwin
+    steps:
+      - name: Install NASM
+        if: matrix.config.target_arch == 'x86_64'
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ninja-build tool
+        uses: seanmiddleditch/gha-setup-ninja@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>= 1.18'
+      - name: Install zigcc
+        uses: jiacai2050/my-works@8707121a859749b56c1a553e16cec59d1dddb24e # zigcc v1.1.0
+        with:
+          zig-version: 0.15.2
+      - name: Set compiler wrappers
+        shell: bash
+        run: |
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            echo "ZIGCC=$(cygpath -m "${PWD}/util/zig-cc.cmd")" >> $GITHUB_ENV
+            echo "ZIGCXX=$(cygpath -m "${PWD}/util/zig-c++.cmd")" >> $GITHUB_ENV
+          else
+            echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
+            echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
+          fi
+      - name: Create toolchain
+        shell: bash
+        run: |
+          cat <<EOF > ./toolchain.cmake
+          set(CMAKE_C_COMPILER ${ZIGCC})
+          set(CMAKE_SYSTEM_NAME  ${{ matrix.config.target_system }})
+          set(CMAKE_SYSTEM_PROCESSOR  ${{ matrix.config.target_arch }})
+          set(CMAKE_CXX_COMPILER ${ZIGCXX})
+          set(CMAKE_ASM_COMPILER ${ZIGCC})
+          set(CMAKE_VERBOSE_MAKEFILE ON)
+          set(CMAKE_MESSAGE_LOG_LEVEL DEBUG)
+          EOF
+          # Workaround: zig's self-hosted MachO linker segfaults on macOS.
+          # Override CMake's link rules to use the system compiler for linking.
+          # Zig is still used for all compilation steps.
+          # Tracked upstream:
+          #   https://github.com/ziglang/zig/issues/25451
+          #   https://github.com/ziglang/zig/issues/23704
+          if [[ "${{ matrix.config.target_system }}" == "Darwin" ]]; then
+            cat <<EOF >> ./toolchain.cmake
+          set(CMAKE_C_LINK_EXECUTABLE "/usr/bin/cc <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+          set(CMAKE_CXX_LINK_EXECUTABLE "/usr/bin/c++ <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+          EOF
+          fi
+      - name: Setup CMake
+        shell: bash
+        run: |
+          cat ./toolchain.cmake
+          # Workaround: Peek-*-Server SSL runner tests hang on Windows when
+          # bssl_shim is built with zig (SSL_peek appears to block indefinitely).
+          # We use a shim config file with DisabledTests because Go 1.20+ has a
+          # built-in -skip flag that shadows the runner's custom -skip flag.
+          EXTRA_ARGS=""
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            EXTRA_ARGS="-DSSL_RUNNER_SHIM_CONFIG=ssl/test/runner/zig_windows_config.json"
+          fi
+          cmake '.' -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./toolchain.cmake -DCMAKE_BUILD_TYPE=Release ${EXTRA_ARGS}
+      - name: Build Project
+        shell: bash
+        run: |
+          cmake --build ./build --target all_tests run_ssl_runner_tests --verbose
+      - name: Run Tests
+        shell: bash
+        run: |
+          # Workaround: Zig's LLD linker produces .pdata/.xdata (SEH unwind
+          # data) that is incompatible with the RtlVirtualUnwind-based unwind
+          # tester, causing STATUS_ACCESS_VIOLATION in ABITest.SanityCheck.
+          # Disable unwind tests on Windows until this is resolved upstream.
+          NO_UNWIND_TESTS=""
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            NO_UNWIND_TESTS="-no-unwind-tests"
+          fi
+          cmake -E echo "Running Go tests"
+          go test ./ssl/test/runner/hpke ./util/ar
+          cmake -E echo
+          cmake -E echo "Running unit tests"
+          go run util/all_tests.go -build-dir ./build ${NO_UNWIND_TESTS}

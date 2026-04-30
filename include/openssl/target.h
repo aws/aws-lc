@@ -72,7 +72,8 @@
 #  if defined(OPENSSL_64_BIT)
 #    define OPENSSL_RISCV64
 #  endif
-#elif defined(__loongarch_lp64)
+#elif defined(__loongarch_lp64) || \
+      (defined(__loongarch__) && defined(OPENSSL_64_BIT))
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_PNACL
@@ -125,6 +126,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -135,6 +137,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -147,6 +150,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -159,6 +163,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 

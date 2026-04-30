@@ -333,6 +333,56 @@ lC9+9hPHIoc9UMmAQNo1vGIW3NWVoeGbaJ8=
 -----END CERTIFICATE-----
 )";
 
+// kPSSWithMD5CertPEM is a self-signed RSA-PSS certificate where both the
+// signature hash and MGF1 hash are MD5. Verification should be rejected because
+// MD5 is not an allowed digest for X509.
+static const char kPSSWithMD5CertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDCzCCAcGgAwIBAgIBATA/BgkqhkiG9w0BAQowMqAOMAwGCCqGSIb3DQIFBQCh
+GzAZBgkqhkiG9w0BAQgwDAYIKoZIhvcNAgUFAKIDAgEUMBcxFTATBgNVBAMMDFRl
+c3QgUFNTIE1ENTAeFw0yNDAxMDEwMDAwMDBaFw0yNTEyMzEwMDAwMDBaMBcxFTAT
+BgNVBAMMDFRlc3QgUFNTIE1ENTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC
+ggEBAKaM2+beVXSa6Zo2hxtzZGAszBtfK8oKFys82u1ozs4n8XeJDMuD89HCKdSk
+AboB0rTDEPEU9zKH/TmMykDlRramVKOiMnMYRBHa50YaKEUSLFrBmRJ9yq3P/7Un
+TyMcbjuu1/MPLeVkePmOW2aKdyWzl8HYkKqNo3a9qOj/BiV3JxNiL/G6tBXCt7hW
+qWYe+xskSS2Nne1iVEDXjpSFwqDE+gOcNCc/b/mQ3v54Cg1l76H0I3trKLpUqBWT
+NBXYXynUu2LhHGKY37dzkF93nWrN5X9qZksV8U2Wayg6mIL1ZU3ABv/uwhUrLOo5
+s2YLRtGzIOyRiDwZhufOYHA/Q3cCAwEAATA/BgkqhkiG9w0BAQowMqAOMAwGCCqG
+SIb3DQIFBQChGzAZBgkqhkiG9w0BAQgwDAYIKoZIhvcNAgUFAKIDAgEUA4IBAQAM
+1KSnQ7aV8fsGyw4NaOUvgRvuCaE6dkuB0L1oT52oAvTpUpMfqNb6bneeWylQq3NO
+/z8Z8xGqZboC6+qgF9rNkfnhW8UTUUstkMpdZ4yqNChoRTwmMe3XzcX0U1g2iQ20
+KHM4NoKRhnvl4aBJwdmeEo3LOM+2yKL75u6aZpgmOHtgVVAYvaLIRQqELTu+m2zi
+QApYwFBknrF3AkMEXRPjxqv43gNZwBFZaVGMtU9XTaJovyMi2EkkGivU4CPWmvp/
+g+qv2Ixx8/Hhoj5LDoUykRD4K6nFb+XR8XnqRMBmgWlEGvikeNiW9WWH18TSO6I1
+QZEvmEIIefTImQHkOYd+
+-----END CERTIFICATE-----
+)";
+
+// kPSSWithMD5MGF1CertPEM is a self-signed RSA-PSS certificate where the
+// signature hash is SHA-256 but the MGF1 hash is MD5. Verification should be
+// rejected because MD5 is not an allowed digest for X509.
+static const char kPSSWithMD5MGF1CertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDFzCCAcygAwIBAgIBATBABgkqhkiG9w0BAQowM6APMA0GCWCGSAFlAwQCAQUA
+oRswGQYJKoZIhvcNAQEIMAwGCCqGSIb3DQIFBQCiAwIBFDAcMRowGAYDVQQDDBFU
+ZXN0IFBTUyBNR0YxIE1ENTAeFw0yNDAxMDEwMDAwMDBaFw0yNTEyMzEwMDAwMDBa
+MBwxGjAYBgNVBAMMEVRlc3QgUFNTIE1HRjEgTUQ1MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEAwwZBPVm8slRMuKriAosz1Ic7fmo54JwOD3ObYZva09Ns
+M4idmQKxwZt3H/XbQOIGhfEIjbcuJ55VXnq/gp9Zkf7mnVuAWYlhIDz0DBs+Px/w
+zRHXd9acwjGozA98/2iJLQ+SPgeMb28hKpspNGJtAGY6fOMUlIu5fd6bBlVv5pTm
+/k10Eo/dhsTvXQsbpmRRihH19jGNU+mpNGCZoceJ5wKwTNSm5cJcZc5FawAVMtUN
++VGEznmGiw8/9P2PO+O9wcF6OfIbjYuWrigqMwg8YLC9rTegg6XNy3T0vTPkUzmn
+nbdoEc4NbWL88BiJHpYFEzzBmzmeoSokaeMu0MK8sQIDAQABMEAGCSqGSIb3DQEB
+CjAzoA8wDQYJYIZIAWUDBAIBBQChGzAZBgkqhkiG9w0BAQgwDAYIKoZIhvcNAgUF
+AKIDAgEUA4IBAQC2+FvViIlmoNaPPAIUPICD7m25BVjCRKrtoogUt/uEGhybjqna
+LaSmMJ6CJzQBsyH48H6ul1q8axtRzhWmUdjN1e1FxEeZCrcxANMXzf+W8oukyNaA
+7Lu8Fg68Un2/gx7aheSvBMkyO56bVVcNO4Q4LMcgJ6Gdh1U9Kf1FKagAoRPSaeOv
+TvadDSwLhcsF58UlK/KVwdfo/rkMd/yJHcLEj99gRiQ075CIaTsf6i70f2jqIAlX
+RwSCqCMOzNx/ZbZXpAE6IZPNBtfZHWMTzIkyRrrtBgsguTP4rBk7TAk+AUj/6O6D
+hbhL/QKQNSyw/Z71mUUOvgmUqtsGWWJPL8Js
+-----END CERTIFICATE-----
+)";
+
 static const char kRSAKey[] = R"(
 -----BEGIN RSA PRIVATE KEY-----
 MIICXgIBAAKBgQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92
@@ -2806,6 +2856,34 @@ TEST(X509Test, TestPSSBadParameters) {
   ASSERT_TRUE(pkey);
 
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  ERR_clear_error();
+}
+
+TEST(X509Test, TestPSSMD5Digest) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kPSSWithMD5CertPEM));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  uint32_t err = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED, ERR_GET_REASON(err));
+  ERR_clear_error();
+}
+
+TEST(X509Test, TestPSSMD5MGF1Digest) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kPSSWithMD5MGF1CertPEM));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  uint32_t err = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED, ERR_GET_REASON(err));
   ERR_clear_error();
 }
 
@@ -5898,6 +5976,7 @@ TEST(X509Test, Names) {
   }
 }
 
+#if defined(OPENSSL_THREADS)
 TEST(X509Test, AddDuplicates) {
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
   bssl::UniquePtr<X509> a(CertFromPEM(kCrossSigningRootPEM));
@@ -5941,6 +6020,7 @@ TEST(X509Test, AddDuplicates) {
 
   EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
 }
+#endif  // OPENSSL_THREADS
 
 TEST(X509Test, BytesToHex) {
   struct {
@@ -6277,6 +6357,42 @@ TEST(X509Test, ITUT_X509_nid_rsa) {
   ASSERT_TRUE(cert);
 
   EXPECT_TRUE(X509_get_X509_PUBKEY(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
+  EXPECT_TRUE(evp_pkey);
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(evp_pkey.get()));
+  EXPECT_TRUE(rsa);
+}
+
+// kRsaesOaepCertPEM is a TPM 1.2 EK certificate with |NID_rsaesOaep| SPKI.
+static const char kRsaesOaepCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDhDCCAmygAwIBAgIUBchBXcXPAWxNMJEsLXEXHv/eVZswDQYJKoZIhvcNAQEL
+BQAwVTELMAkGA1UEBhMCQ0gxHjAcBgNVBAoTFVNUTWljcm9lbGVjdHJvbmljcyBO
+VjEmMCQGA1UEAxMdU1RNIFRQTSBFSyBJbnRlcm1lZGlhdGUgQ0EgMDIwHhcNMjEw
+OTA0MDAwMDAwWhcNMzEwOTA0MDAwMDAwWjAAMIIBNzAiBgkqhkiG9w0BAQcwFaIT
+MBEGCSqGSIb3DQEBCQQEVENQQQOCAQ8AMIIBCgKCAQEAxpd3DnecpD87acEsYp4J
+stM2q5Ss3CkjAP2Ei8yGjbO6DG/6WBIZjTdI5RfIcInoqN4QMso94vm8VqijdRI+
+Zo5hLTCPLKXYwa6UG5yIPZ3ENQdhgZWeEPWe+pp9VUwz8wi78Ifk+CCV6Xp/5kQi
+DCsR+RYbOVb9QgR6kjq+cx1z8YFp5u+k3Pl9tMq9xgIp5E6hT2MaS12KnoN8+hYI
+mfCYVnpzBeQaHDp1KUoyDK6xGt86VxB0QyRbniHI38qgQL6qhO7z96aQ0pNGoQde
+QUxFf/sETurQ5zSf+3btnS8afjxdVBKzj3isv5BaQrt0mdB7+3XWD+ASda33SY12
+6wIDAQABo4GLMIGIMB8GA1UdIwQYMBaAFFcfgGtHzOeb+jWUfO2IuNEAWuCeMEIG
+A1UdIAQ7MDkwNwYEVR0gADAvMC0GCCsGAQUFBwIBFiFodHRwOi8vd3d3LnN0LmNv
+bS9UUE0vcmVwb3NpdG9yeS8wDAYDVR0TAQH/BAIwADATBgNVHSUBAf8ECTAHBgVn
+gQUIATANBgkqhkiG9w0BAQsFAAOCAQEAMOhFPNcebyCRFOBztlWhmDb2DHTCD0nC
+DVobH4WZJXGf4bkYNO3mOLyWtHEVzb36kiq7enh3f/eGhDPwKB8axlozpR5KAvER
+szKNO8iLGOjuYzI2A4DazkttczFfzSB9QDgJrwTNEfIJtwRm2HQSiL0zzuEQOnaS
+UWyt/iKn4/34BjEeaw4/Ld7+f06LXqSr18SUr0LTB2kk+Zzf0Och1C+G1CNLgJMM
+MNQikAv0xdaOMX3HzA+phFlLbw/x8sboMlzmrbr92a/4Fp5WvmOSHH3ciwTtbAQn
+A2TfExNOaKD2BG5FnB7c66puw2/yVxhveocQYgmT9XtMrNX00vEZJQ==
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, RsaesOaepSPKI) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kRsaesOaepCertPEM));
+  ASSERT_TRUE(cert);
+
   bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
   EXPECT_TRUE(evp_pkey);
 

@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+
+// Key derivation functions.
+
+
 // CRYPTO_tls1_prf calculates |out_len| bytes of the TLS PRF, using |digest|,
 // and writes them to |out|. It returns one on success and zero on error.
 // TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5

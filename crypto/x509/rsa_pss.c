@@ -230,6 +230,12 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
     goto err;
   }
 
+  // Check that both signature algorithms are not weak
+  if(!x509_digest_nid_ok(EVP_MD_type(md)) || !x509_digest_nid_ok(EVP_MD_type(mgf1md))) {
+    OPENSSL_PUT_ERROR(X509, ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
+    goto err;
+  }
+
   int saltlen = 20;
   if (pss->saltLength != NULL) {
     saltlen = ASN1_INTEGER_get(pss->saltLength);
