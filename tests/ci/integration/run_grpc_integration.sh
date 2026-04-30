@@ -45,8 +45,12 @@ time cmake -GNinja -DgRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release  -DgRPC_SSL_
       -DBUILD_SHARED_LIBS=ON -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" \
       -DCMAKE_C_FLAGS="-DOPENSSL_IS_BORINGSSL=1" -DCMAKE_CXX_FLAGS="-DOPENSSL_IS_BORINGSSL=1" ../..
 grpc_tests=$(grep add_executable ../../CMakeLists.txt | grep _test | grep -E '(tls|ssl|cert)' | cut -d '(' -f2)
-echo Building $grpc_tests
-time ninja $grpc_tests
+# bad_ssl_*_test binaries spawn bad_ssl_*_server at runtime. This dependency is
+# declared via "data" in Bazel (test/core/bad_ssl/generate_tests.bzl) but is not
+# carried over to the generated CMakeLists.txt, so we must build them explicitly.
+grpc_test_deps=$(grep add_executable ../../CMakeLists.txt | grep bad_ssl_ | grep -v _test | cut -d '(' -f2)
+echo Building $grpc_tests $grpc_test_deps
+time ninja $grpc_tests $grpc_test_deps
 
 # grpc tests expect to use relative paths to certificates and test files
 cd "${GRPC_SRC_FOLDER}"
