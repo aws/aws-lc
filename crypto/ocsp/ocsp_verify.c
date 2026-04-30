@@ -142,6 +142,18 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
     goto end;
   }
+  // RFC 6960 section 4.2.2.2.1: if the responder certificate has the
+  // id-pkix-ocsp-nocheck extension, the CA has indicated that the client
+  // should trust the responder for its lifetime without revocation checking.
+  // Locally disable CRL-based revocation checking in this case.
+  if (X509_get_ext_by_NID(signer, NID_id_pkix_OCSP_noCheck, -1) >= 0) {
+    X509_VERIFY_PARAM *vp = X509_STORE_CTX_get0_param(ctx);
+    if (vp == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
+      goto end;
+    }
+    X509_VERIFY_PARAM_clear_flags(vp, X509_V_FLAG_CRL_CHECK);
+  }
   if (!X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
     goto end;
