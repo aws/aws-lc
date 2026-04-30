@@ -1065,7 +1065,7 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
 
 // EVP_PKEY_get_private_seed returns the seed representation of the private key
-// for the key type configured in |key|. if |out| is NULL, it sets |*out_len| to
+// for the key type configured in |key|. If |out| is NULL, it sets |*out_len| to
 // the size of the seed. Otherwise, it writes at most |*out_len| bytes to |out|
 // and sets |*out_len| to the number of bytes written.
 //

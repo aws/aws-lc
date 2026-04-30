@@ -283,9 +283,14 @@ static int kem_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  if (key->seed == NULL || key->secret_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+  if (key->secret_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
+      return 0;
+  }
+
+  if (key->seed == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return 0;
   }
 
   size_t kem_seed_len = key->kem->keygen_seed_len;

@@ -1085,7 +1085,7 @@ TEST_P(KEMTest, GetPrivateSeed) {
   ASSERT_TRUE(raw_pkey);
   ASSERT_EQ(raw_pkey->pkey.kem_key->seed, nullptr);
 
-  seed_len = 64;
+  seed_len = raw_pkey->pkey.kem_key->kem->keygen_seed_len;
   std::vector<uint8_t> unused(seed_len);
   ERR_clear_error();
   EXPECT_FALSE(

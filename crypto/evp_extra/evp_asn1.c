@@ -19,6 +19,7 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../fipsmodule/kem/internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
@@ -721,6 +722,7 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
 
 int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
   size_t *out_len) {
+  SET_DIT_AUTO_RESET;
   GUARD_PTR(key);
   GUARD_PTR(out_len);
 

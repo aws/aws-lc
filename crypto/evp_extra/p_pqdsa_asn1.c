@@ -108,7 +108,6 @@ static int pqdsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
 }
 
 static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
-
   const PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -254,9 +253,14 @@ static int pqdsa_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  if (key->seed == NULL || key->private_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+  if (key->private_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
+      return 0;
+  }
+
+  if (key->seed == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return 0;
   }
 
   size_t pqdsa_seed_len = key->pqdsa->keygen_seed_len;
