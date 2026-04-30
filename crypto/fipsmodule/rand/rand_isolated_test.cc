@@ -16,7 +16,8 @@
 
 #include <array>
 
-#if defined(GTEST_HAS_DEATH_TEST)
+// Use `#if GTEST_HAS_DEATH_TEST` (not `defined()`); some toolchains define it to 0.
+#if GTEST_HAS_DEATH_TEST
 
 static const size_t request_len = 64;
 static const size_t number_of_threads = 8;

@@ -326,11 +326,20 @@ static int add_string(const CONF *conf, CONF_VALUE *section,
   CONF_VALUE *old_value;
 
   value->section = OPENSSL_strdup(section->section);
+  if (value->section == NULL) {
+    return 0;
+  }
+
   if (!sk_CONF_VALUE_push(section_stack, value)) {
+    OPENSSL_free(value->section);
+    value->section = NULL;
     return 0;
   }
 
   if (!lh_CONF_VALUE_insert(conf->data, &old_value, value)) {
+    (void)sk_CONF_VALUE_delete_ptr(section_stack, value);
+    OPENSSL_free(value->section);
+    value->section = NULL;
     return 0;
   }
   if (old_value != NULL) {

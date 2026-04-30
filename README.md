@@ -85,18 +85,13 @@ successfully builds and tests pass for these platform.
 A more complete description of our test setup can be found in the
 [CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 
-| OS      | CPU     |
-|---------|---------|
-| Linux   | x86     |
-| Linux   | x86-64  |
-| Linux   | aarch64 |
-| Windows | x86-64  |
-| macOS   | x86-64  |
-| macOS   | aarch64 |
-| Android | aarch64 |
-| Linux   | ppc     |
-| Linux   | ppc64   |
-| Linux   | ppc64le |
+| OS      | CPU                                   |
+|---------|---------------------------------------|
+| Android | aarch64                               |
+| iOS     | aarch64                               |
+| Linux   | aarch64, ppc, ppc64, ppc64le, x86-64  |
+| macOS   | aarch64, x86-64                       |
+| Windows | x86-64                                |
 
 ### Other platforms
 
@@ -104,18 +99,15 @@ The platforms listed below are of interest to us or to our community. However, p
 against them might not be prioritized for immediate action by our team. We welcome contributions
 that improve the experience for consumers on these platforms.
 
-| OS         | CPU         |
-|------------|-------------|
-| Android    | arm32       |
-| Emscripten | wasm32      |
-| iOS        | aarch64     |
-| Linux      | arm32       |
-| Linux      | loongarch64 |
-| Linux      | risc-v64    |
-| Linux      | s390x       |
-| Windows    | aarch64     |
-| OpenBSD    | x86-64      |
-| FreeBSD    | x86-64      |
+| OS         | CPU                              |
+|------------|----------------------------------|
+| Android    | arm32                            |
+| Emscripten | wasm32                           |
+| FreeBSD    | arm64, x86-64                    |
+| Linux      | arm32, loongarch64, risc-v64, s390x, x86 |
+| NetBSD     | arm64, x86-64                    |
+| OpenBSD    | arm64, x86-64                    |
+| Windows    | aarch64                          |
 
 ### WebAssembly (WASM) Support
 
