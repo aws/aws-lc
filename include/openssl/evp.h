@@ -837,9 +837,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
 // support setting a signature context. For Ed25519ph, the context is used in
 // computing the HashEdDSA signature. For ML-DSA (PQDSA), the context string is
 // used per FIPS 204 sections 5.2-5.3. The maximum context length is 255 bytes.
-// Note: the context string is only used with |EVP_DigestSign|/|EVP_DigestVerify|
-// (message signing). It is ignored when using |EVP_PKEY_sign|/|EVP_PKEY_verify|
-// (digest signing).
+// Note: for ML-DSA, the context string is only used with
+// |EVP_DigestSign|/|EVP_DigestVerify| (message signing). It is ignored when
+// using |EVP_PKEY_sign|/|EVP_PKEY_verify| (digest signing), because the pre-
+// hashed |mu| input already encodes the context per FIPS 204 section 5.3.
 //
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,

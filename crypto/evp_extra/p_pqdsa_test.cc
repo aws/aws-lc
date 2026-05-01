@@ -2097,7 +2097,9 @@ TEST_P(PQDSAParameterTest, ContextString) {
   EVP_PKEY_CTX *verify_pkey_ctx = nullptr;
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
                                    nullptr, nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx, ctx_bytes,
+  // Exercise the backward-compatible |EVP_PKEY_CTX_set_signature_context|
+  // wrapper on the verify side to ensure both setter names stay functional.
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(verify_pkey_ctx, ctx_bytes,
                                                   sizeof(ctx_bytes)));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
                                msg.data(), msg.size()));
@@ -2693,7 +2695,6 @@ INSTANTIATE_TEST_SUITE_P(
 //
 // It returns one on success and zero on error.
 static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
-                                  const std::vector<uint8_t> &pk,
                                   const std::vector<uint8_t> &sig,
                                   const std::vector<uint8_t> &msg,
                                   const std::vector<uint8_t> &msg_ctx) {
@@ -2717,7 +2718,6 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
 //
 // It returns one on success and zero on error.
 static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
-                                const std::vector<uint8_t> &pk,
                                 const std::vector<uint8_t> &msg,
                                 const std::vector<uint8_t> &msg_ctx) {
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -2782,7 +2782,7 @@ TEST_P(WycheproofMLDSATest, Verify) {
     ASSERT_TRUE(EVP_PKEY_cmp(pub_pkey_from_raw.get(), pub_pkey_from_der.get()));
 
     int verify_result =
-        VerifyMLDSAWithContext(pub_pkey_from_der.get(), pk, sig, msg, msg_ctx);
+        VerifyMLDSAWithContext(pub_pkey_from_der.get(), sig, msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(verify_result)
           << "Signature verification failed for valid test case";
@@ -2847,7 +2847,7 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     std::vector<uint8_t> sig(expected_sig.size());
     EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
     int sign_result =
-        SignMLDSAWithContext(signing_key, sig, pk, msg, msg_ctx);
+        SignMLDSAWithContext(signing_key, sig, msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
@@ -2894,7 +2894,7 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
 
     std::vector<uint8_t> sig(expected_sig.size());
     int sign_result = SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig,
-                                           pk, msg, msg_ctx);
+                                           msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {

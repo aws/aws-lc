@@ -179,6 +179,15 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
   // DIGEST sign mode
   else {
+    // For ML-DSA, the digest-sign path (|EVP_PKEY_sign|) takes a pre-hashed
+    // |mu| input which already encodes the context string per FIPS 204
+    // section 5.3. Applying a separately-configured context here would be
+    // silently ignored and produce a signature inconsistent with the
+    // caller's intent, so reject the combination explicitly.
+    if (dctx->context_len > 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
     if (message_len != pqdsa->digest_len) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
       return 0;
@@ -261,6 +270,15 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   }
   // DIGEST verify mode
   else {
+    // For ML-DSA, the digest-verify path (|EVP_PKEY_verify|) takes a
+    // pre-hashed |mu| input which already encodes the context string per
+    // FIPS 204 section 5.3. Applying a separately-configured context here
+    // would be silently ignored and produce a verification inconsistent
+    // with the caller's intent, so reject the combination explicitly.
+    if (dctx->context_len > 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
     if (message_len != pqdsa->digest_len) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
       return 0;
