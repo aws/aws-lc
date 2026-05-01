@@ -203,6 +203,41 @@ jobs:
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
+  cross-clang-cl-ninja:
+    # Cross-compile from Linux to x86_64-pc-windows-msvc with Ninja + clang-cl,
+    # mirroring the default aws-lc-rs setup. This catches command-line quoting
+    # regressions the Windows-native clang-cl-ninja job misses because cmd.exe
+    # and /bin/sh tokenize arguments differently (see aws/aws-lc-rs#981).
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup toolchain
+        run: |
+          set -ex
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends \
+            cmake ninja-build nasm \
+            wget lsb-release software-properties-common gnupg
+          # Clang 19 (xwin's MSVC STL headers require Clang >= 19; 24.04 ships 18).
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+          sudo ln -sf /usr/bin/clang-19    /usr/local/bin/clang-cl
+          sudo ln -sf /usr/bin/lld-19      /usr/local/bin/lld-link
+          sudo ln -sf /usr/bin/llvm-ar-19  /usr/local/bin/llvm-lib
+          sudo ln -sf /usr/bin/llvm-rc-19  /usr/local/bin/llvm-rc
+          sudo ln -sf /usr/bin/llvm-mt-19  /usr/local/bin/llvm-mt
+          # xwin provides the MSVC SDK headers/libs for cross-compiling.
+          XWIN_VERSION=0.6.5
+          wget -qO- https://github.com/Jake-Shadle/xwin/releases/download/${XWIN_VERSION}/xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz
+          sudo mv xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl/xwin /usr/local/bin/
+          xwin --accept-license --arch x86_64 splat --output /tmp/xwin
+      - name: Build
+        run: |
+          set -ex
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=util/x86_64-windows-clang-cl-toolchain.cmake
+          cmake --build build --target all
   msys2:
     name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
     if: github.repository_owner == 'aws'

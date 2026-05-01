@@ -804,6 +804,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
 
   std::string certPathFlag;
   int verify = SSL_VERIFY_NONE;
+  bool loaded_verify_locations = false;
   if (args_map.count("-root-certs") != 0) {
     certPathFlag = "-root-certs";
     verify = SSL_VERIFY_PEER;
@@ -819,6 +820,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       ERR_print_errors_fp(stderr);
       return false;
     }
+    loaded_verify_locations = true;
   }
 
   certPathFlag = "";
@@ -838,6 +840,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       ERR_print_errors_fp(stderr);
       return false;
     }
+    loaded_verify_locations = true;
   }
 
   if (args_map.count("-verify") != 0) {
@@ -847,7 +850,19 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       return false;
     }
     fprintf(stdout, "verify depth is %d\n", (int)depth);
+    SSL_CTX_set_verify_depth(ctx.get(), (int)depth);
     verify = SSL_VERIFY_PEER;
+    // If no explicit CA source was provided (via -CAfile, -CApath, -root-certs,
+    // or -root-cert-dir), fall back to the platform default CA store. This
+    // mirrors the behaviour of OpenSSL's s_client -verify, which enables peer
+    // verification against whatever trust store the system provides when no
+    // explicit CA source is given.
+    if (!loaded_verify_locations) {
+      if (!SSL_CTX_set_default_verify_paths(ctx.get())) {
+        fprintf(stderr, "Warning: failed to load default verify paths.\n");
+        ERR_print_errors_fp(stderr);
+      }
+    }
   }
 
   if (is_openssl_s_client) { // openssl tool

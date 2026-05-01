@@ -620,9 +620,9 @@ TEST_P(KEMTest, ParsePublicKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 }
@@ -650,14 +650,73 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 
   // ---- 4. Verify private key is present ----
   ASSERT_TRUE(kem_key->secret_key);
+}
+
+TEST_P(KEMTest, GetType) {
+  int nid = GetParam().nid;
+
+  // ---- 1. Generate a key pair and verify the NID ----
+  bssl::UniquePtr<EVP_PKEY> pkey = generate_kem_key_pair(nid);
+  ASSERT_TRUE(pkey);
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), nid);
+}
+
+TEST(KEMTest, GetTypeWrongKeyType) {
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_EXPECTING_A_KEM_KEY
+  // when called on an EVP_PKEY whose type is not EVP_PKEY_KEM. Check both a
+  // classical (EC) key and a post-quantum (PQDSA) key, to ensure that
+  // adjacent post-quantum types do not slip past the type check.
+
+  // ---- EC key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ec_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ec_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(
+      ec_ctx.get(), NID_X9_62_prime256v1));
+  EVP_PKEY *raw_ec = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ec_ctx.get(), &raw_ec));
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw_ec);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(ec_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+
+  // ---- PQDSA key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> pqdsa_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+  ASSERT_TRUE(pqdsa_ctx);
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(pqdsa_ctx.get(), NID_MLDSA44));
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pqdsa_ctx.get()));
+  EVP_PKEY *raw_pqdsa = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pqdsa_ctx.get(), &raw_pqdsa));
+  bssl::UniquePtr<EVP_PKEY> pqdsa_pkey(raw_pqdsa);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pqdsa_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+}
+
+TEST(KEMTest, GetTypeUninitializedKey) {
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_NO_PARAMETERS_SET when
+  // called on an EVP_PKEY whose type is EVP_PKEY_KEM but which has no
+  // underlying KEM_KEY attached.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_KEM));
+  ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_KEM);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_NO_PARAMETERS_SET);
 }
 
 // Invalid length test vectors - truncated DER structures
@@ -1012,6 +1071,99 @@ TEST_P(KEMTest, RawImportExpandedFormat) {
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
   ASSERT_TRUE(CBS_get_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING));
   ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
+}
+
+// Test EVP_PKEY_get_private_seed for ML-KEM keys.
+TEST_P(KEMTest, GetPrivateSeed) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.kem_key->seed, seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = seed.size() + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = pkey->pkey.kem_key->kem->keygen_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(
+      PEM_to_DER(test.private_pem_seed_str, &priv_der, &priv_der_len));
+  bssl::UniquePtr<uint8_t> free_priv_der(priv_der);
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.kem_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.kem_key->seed, seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  size_t sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  std::vector<uint8_t> sk(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(test.nid, sk.data(), sk_len));
+  ASSERT_TRUE(raw_pkey);
+  ASSERT_EQ(raw_pkey->pkey.kem_key->seed, nullptr);
+
+  seed_len = raw_pkey->pkey.kem_key->kem->keygen_seed_len;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(raw_pkey.get(), unused.data(), &seed_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err),
+            EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+}
+
+// EVP_PKEY_get_private_seed should reject NULL |key| and NULL |out_len|.
+TEST(KEMTest, GetPrivateSeedNullArguments) {
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(NID_MLKEM512));
+  ASSERT_TRUE(pkey);
+
+  size_t seed_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
 }
 
 // Test that a generated key (seed format) can perform encaps/decaps correctly

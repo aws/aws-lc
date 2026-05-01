@@ -18,12 +18,12 @@ static void kem_free(EVP_PKEY *pkey) {
 
 static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
                             size_t *out_len) {
-  if (pkey->pkey.kem_key == NULL) {
+  const KEM_KEY *key = pkey->pkey.kem_key;
+  if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  KEM_KEY *key = pkey->pkey.kem_key;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -53,12 +53,12 @@ static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
 
 static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
                            size_t *out_len) {
-  if (pkey->pkey.kem_key == NULL) {
+  const KEM_KEY *key = pkey->pkey.kem_key;
+  if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  KEM_KEY *key = pkey->pkey.kem_key;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -125,7 +125,12 @@ static int kem_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
 }
 
 static int kem_pub_encode(CBB *out, const EVP_PKEY *pkey) {
-  KEM_KEY *key = pkey->pkey.kem_key;
+  const KEM_KEY *key = pkey->pkey.kem_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
   const KEM *kem = key->kem;
   if (key->public_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -220,7 +225,12 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
 }
 
 static int kem_priv_encode(CBB *out, const EVP_PKEY *pkey) {
-  KEM_KEY *key = pkey->pkey.kem_key;
+  const KEM_KEY *key = pkey->pkey.kem_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
   const KEM *kem = key->kem;
   if (key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
@@ -262,6 +272,44 @@ static int kem_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   return 1;
 }
 
+static int kem_get_priv_seed(const EVP_PKEY *pkey, uint8_t *out,
+                            size_t *out_len) {
+  GUARD_PTR(pkey);
+  GUARD_PTR(out_len);
+
+  const KEM_KEY *key = pkey->pkey.kem_key;
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
+  if (key->secret_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
+      return 0;
+  }
+
+  if (key->seed == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return 0;
+  }
+
+  size_t kem_seed_len = key->kem->keygen_seed_len;
+
+  if (out == NULL) {
+    *out_len = kem_seed_len;
+    return 1;
+  }
+
+  if (*out_len < kem_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  OPENSSL_memcpy(out, key->seed, kem_seed_len);
+  *out_len = kem_seed_len;
+  return 1;
+}
+
 const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
     // 2.16.840.1.101.3.4.4
     EVP_PKEY_KEM,
@@ -282,6 +330,7 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
     NULL, // kem_set_pub_raw
     kem_get_priv_raw,
     kem_get_pub_raw,
+    kem_get_priv_seed,
     NULL, // pkey_opaque
     NULL, // kem_size
     NULL, // kem_bits 

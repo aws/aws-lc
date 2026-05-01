@@ -6426,6 +6426,42 @@ TEST(X509Test, ITUT_X509_nid_rsa) {
   EXPECT_TRUE(rsa);
 }
 
+// kRsaesOaepCertPEM is a TPM 1.2 EK certificate with |NID_rsaesOaep| SPKI.
+static const char kRsaesOaepCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDhDCCAmygAwIBAgIUBchBXcXPAWxNMJEsLXEXHv/eVZswDQYJKoZIhvcNAQEL
+BQAwVTELMAkGA1UEBhMCQ0gxHjAcBgNVBAoTFVNUTWljcm9lbGVjdHJvbmljcyBO
+VjEmMCQGA1UEAxMdU1RNIFRQTSBFSyBJbnRlcm1lZGlhdGUgQ0EgMDIwHhcNMjEw
+OTA0MDAwMDAwWhcNMzEwOTA0MDAwMDAwWjAAMIIBNzAiBgkqhkiG9w0BAQcwFaIT
+MBEGCSqGSIb3DQEBCQQEVENQQQOCAQ8AMIIBCgKCAQEAxpd3DnecpD87acEsYp4J
+stM2q5Ss3CkjAP2Ei8yGjbO6DG/6WBIZjTdI5RfIcInoqN4QMso94vm8VqijdRI+
+Zo5hLTCPLKXYwa6UG5yIPZ3ENQdhgZWeEPWe+pp9VUwz8wi78Ifk+CCV6Xp/5kQi
+DCsR+RYbOVb9QgR6kjq+cx1z8YFp5u+k3Pl9tMq9xgIp5E6hT2MaS12KnoN8+hYI
+mfCYVnpzBeQaHDp1KUoyDK6xGt86VxB0QyRbniHI38qgQL6qhO7z96aQ0pNGoQde
+QUxFf/sETurQ5zSf+3btnS8afjxdVBKzj3isv5BaQrt0mdB7+3XWD+ASda33SY12
+6wIDAQABo4GLMIGIMB8GA1UdIwQYMBaAFFcfgGtHzOeb+jWUfO2IuNEAWuCeMEIG
+A1UdIAQ7MDkwNwYEVR0gADAvMC0GCCsGAQUFBwIBFiFodHRwOi8vd3d3LnN0LmNv
+bS9UUE0vcmVwb3NpdG9yeS8wDAYDVR0TAQH/BAIwADATBgNVHSUBAf8ECTAHBgVn
+gQUIATANBgkqhkiG9w0BAQsFAAOCAQEAMOhFPNcebyCRFOBztlWhmDb2DHTCD0nC
+DVobH4WZJXGf4bkYNO3mOLyWtHEVzb36kiq7enh3f/eGhDPwKB8axlozpR5KAvER
+szKNO8iLGOjuYzI2A4DazkttczFfzSB9QDgJrwTNEfIJtwRm2HQSiL0zzuEQOnaS
+UWyt/iKn4/34BjEeaw4/Ld7+f06LXqSr18SUr0LTB2kk+Zzf0Och1C+G1CNLgJMM
+MNQikAv0xdaOMX3HzA+phFlLbw/x8sboMlzmrbr92a/4Fp5WvmOSHH3ciwTtbAQn
+A2TfExNOaKD2BG5FnB7c66puw2/yVxhveocQYgmT9XtMrNX00vEZJQ==
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, RsaesOaepSPKI) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kRsaesOaepCertPEM));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
+  EXPECT_TRUE(evp_pkey);
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(evp_pkey.get()));
+  EXPECT_TRUE(rsa);
+}
+
 // kLargeSerialPEM is a certificate with a large serial number.
 static const char kLargeSerialPEM[] = R"(
 -----BEGIN CERTIFICATE-----

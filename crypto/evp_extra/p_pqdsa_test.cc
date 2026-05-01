@@ -2213,6 +2213,90 @@ TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
 }
 
+TEST_P(PQDSAParameterTest, GetPrivateSeed) {
+  const int nid = GetParam().nid;
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.pqdsa_key->seed);
+  const size_t expected_seed_len =
+      pkey->pkey.pqdsa_key->pqdsa->keygen_seed_len;
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = expected_seed_len + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = expected_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &priv_der,
+                         &priv_der_len));
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  OPENSSL_free(priv_der);
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.pqdsa_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  const size_t sk_len = GetParam().private_key_len;
+  std::vector<uint8_t> sk(sk_len);
+  size_t sk_len_out = sk_len;
+  ASSERT_TRUE(
+      EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len_out));
+  bssl::UniquePtr<EVP_PKEY> expanded_pkey(
+      EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
+  ASSERT_TRUE(expanded_pkey);
+  ASSERT_EQ(expanded_pkey->pkey.pqdsa_key->seed, nullptr);
+
+  seed_len = expected_seed_len;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(expanded_pkey.get(), unused.data(),
+                                         &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  // Sanity NULL argument checks.
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
+}
+
 // ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
 struct KnownMLDSA {
   const char name[20];

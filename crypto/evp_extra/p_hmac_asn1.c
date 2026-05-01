@@ -84,6 +84,7 @@ const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
     NULL /* set_pub_raw */,
     hmac_get_key /* get_priv_raw */,
     NULL /* get_pub_raw */,
+    NULL /* get_priv_seed */,
     NULL /* pkey_opaque */,
     hmac_size /* pkey_size */,
     NULL /* pkey_bits */,

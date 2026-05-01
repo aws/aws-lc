@@ -990,6 +990,14 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+// EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key in |pkey|.
+// If |pkey| is not of type |EVP_PKEY_KEM|, it returns 0 and pushes
+// |EVP_R_EXPECTING_A_KEM_KEY| onto the error queue. If |pkey| is of type
+// |EVP_PKEY_KEM| but has no underlying KEM key attached, it returns 0 and
+// pushes |EVP_R_NO_PARAMETERS_SET| onto the error queue. |pkey| must not be
+// NULL.
+OPENSSL_EXPORT int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey);
+
 // PQDSA specific functions.
 
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
@@ -1063,6 +1071,18 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            int *ppkey_flags, const char **pinfo,
                                            const char **ppem_str,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
+
+// EVP_PKEY_get_private_seed returns the seed representation of the private key
+// for the key type configured in |key|. If |out| is NULL, it sets |*out_len| to
+// the size of the seed. Otherwise, it writes at most |*out_len| bytes to |out|
+// and sets |*out_len| to the number of bytes written.
+//
+// Return 1 on success and 0 otherwise.
+//
+// Note, the private key might not have a seed representation configured. In
+// this case, the operation is unsupported and 0 is returned.
+OPENSSL_EXPORT int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len);
 
 
 // EVP_PKEY_CTX keygen/paramgen functions.
