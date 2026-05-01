@@ -713,6 +713,35 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // Normalize absolute DNS names by removing the trailing dot, if any.
+  // RFC 1034 §3.1 defines that a trailing dot denotes the DNS root; names with
+  // and without it refer to the same host. This matches the normalization in
+  // nc_dns().
+  if (ends_with_byte(&host, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&host, &unused);
+  }
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&base_cbs, &unused);
+  }
+
+  // RFC 5280 §4.2.1.10 requires the host to be a fully qualified domain name.
+  // Validate that the host contains only characters valid in a DNS name
+  // (RFC 1034 §3.5): letters, digits, hyphens, and dots. This rejects
+  // percent-encoded hosts, IPv4 literals, and any other non-FQDN syntax,
+  // preventing equivalence bypasses (e.g., "b%61d.com" evading ".bad.com").
+  if (CBS_len(&host) == 0) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+  for (size_t i = 0; i < CBS_len(&host); i++) {
+    uint8_t c = CBS_data(&host)[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c == '-' || c == '.')) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+  }
+
   // Special case: initial '.' is RHS match
   if (starts_with(&base_cbs, '.')) {
     if (has_suffix_case(&host, &base_cbs)) {

@@ -2670,14 +2670,37 @@ TEST(X509Test, NameConstraints) {
       {GEN_URI, "foo://example.com/path@thing", ".example.com",
        X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
       // '@' after '?' or '#' is not in the authority and is not rejected.
+      // However, since the host parser doesn't treat '?' or '#' as authority
+      // terminators, the extracted host contains invalid FQDN characters and
+      // is rejected by FQDN validation.
       {GEN_URI, "foo://example.com?x@y", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo://example.com#x@y", "example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       // Empty userinfo and user:pass userinfo are both rejected.
       {GEN_URI, "foo://@example.com", "example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_URI, "foo://user:pass@example.com", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // Trailing dot normalization: "host." and "host" are the same FQDN.
+      // This matches the normalization in nc_dns().
+      {GEN_URI, "spiffe://admin.team-a.corp./admin", ".team-a.corp",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "spiffe://admin.team-a.corp/admin", ".team-a.corp.",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "spiffe://team-a.corp./admin", "team-a.corp",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+
+      // FQDN validation: hosts must contain only a-z, A-Z, 0-9, '-', '.'.
+      // Percent-encoded hosts are rejected, preventing equivalence bypasses
+      // (e.g., "b%61d.com" should not evade an exclusion for ".bad.com").
+      {GEN_URI, "spiffe://evil.b%61d.com/resource", ".bad.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://ex%61mple.com/path", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Underscores are not valid in FQDNs.
+      {GEN_URI, "foo://my_host.example.com/path", ".example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
