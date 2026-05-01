@@ -1072,6 +1072,18 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            const char **ppem_str,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
 
+// EVP_PKEY_get_private_seed returns the seed representation of the private key
+// for the key type configured in |key|. If |out| is NULL, it sets |*out_len| to
+// the size of the seed. Otherwise, it writes at most |*out_len| bytes to |out|
+// and sets |*out_len| to the number of bytes written.
+//
+// Return 1 on success and 0 otherwise.
+//
+// Note, the private key might not have a seed representation configured. In
+// this case, the operation is unsupported and 0 is returned.
+OPENSSL_EXPORT int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len);
+
 
 // EVP_PKEY_CTX keygen/paramgen functions.
 

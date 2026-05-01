@@ -236,6 +236,7 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   NULL /* set_pub_raw */,
   NULL /* get_priv_raw */,
   NULL /* get_pub_raw */,
+  NULL /* get_priv_seed */,
 
   eckey_opaque,
 
