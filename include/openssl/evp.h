@@ -828,15 +828,28 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
                                                  const EVP_MD **out_md);
 
 
-// EVP_PKEY_CTX_set_signature_context sets |context| of length |context_len| to
+// EVP_PKEY_CTX_set1_signature_context_string sets |context| of length |context_len| to
 // be used as the context octet string for the signing operation. |context| will
 // be copied to an internal buffer allowing for the caller to free it
 // afterwards.
 //
-// EVP_PKEY_ED25519PH is the only key type that currently supports setting a
-// a signature context that is used in computing the HashEdDSA signature.
+// EVP_PKEY_ED25519PH and EVP_PKEY_PQDSA are the key types that currently
+// support setting a signature context. For Ed25519ph, the context is used in
+// computing the HashEdDSA signature. For ML-DSA (PQDSA), the context string is
+// used per FIPS 204 sections 5.2-5.3. The maximum context length is 255 bytes.
+// Note: for ML-DSA, the context string is only used with
+// |EVP_DigestSign|/|EVP_DigestVerify| (message signing). It is ignored when
+// using |EVP_PKEY_sign|/|EVP_PKEY_verify| (digest signing), because the pre-
+// hashed |mu| input already encodes the context per FIPS 204 section 5.3.
 //
 // It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);
+
+// EVP_PKEY_CTX_set_signature_context is the previous name for
+// |EVP_PKEY_CTX_set1_signature_context_string|. It is retained for backward
+// compatibility.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
                                                       const uint8_t *context,
                                                       size_t context_len);
@@ -845,8 +858,8 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
 // buffer containing the signing context octet string (which may be NULL) and
 // writes the length to |*context_len|.
 //
-// EVP_PKEY_ED25519PH is the only key type that currently supports retrieving a
-// a signature context that is used in computing the HashEdDSA signature.
+// EVP_PKEY_ED25519PH and EVP_PKEY_PQDSA are the key types that currently
+// support retrieving a signature context.
 //
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
