@@ -211,6 +211,17 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, len(data), 0))
 	}
 
+	// Only inject the extra future-seq fragment during the plaintext
+	// handshake. The encrypted epoch uses a separate code path on the
+	// peer that enforces an exact-seq match (d1_both.cc: r_epoch == 1
+	// branch), which is not what this knob is meant to exercise.
+	if offset := c.config.Bugs.SendExtraFutureHandshakeFragment; offset != 0 && c.out.cipher == nil {
+		origSeq := c.sendHandshakeSeq
+		c.sendHandshakeSeq = origSeq + uint16(offset)
+		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, 0, len(data)))
+		c.sendHandshakeSeq = origSeq
+	}
+
 	firstRun := true
 	fragOffset := 0
 	for firstRun || fragOffset < len(data) {
