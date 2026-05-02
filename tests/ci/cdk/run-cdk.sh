@@ -241,6 +241,74 @@ function deploy_dev_pipeline() {
   cdk deploy AwsLcCiPipeline --require-approval never
 }
 
+function deploy_ai_code_review() {
+  local cr_dir="$(dirname "$0")/cr"
+
+  echo "Deploying AI code review stack first..."
+  cdk deploy AwsLcCiPipeline/Dev-CiTests/aws-lc-ai-code-review --require-approval never
+
+  if [[ ! -d "${cr_dir}" ]]; then
+    echo "Error: cr/ directory not found at ${cr_dir}"
+    return
+  fi
+
+  # Find bucket after deployment
+  bucket_name=$(aws s3api list-buckets --query "Buckets[].Name" --output text | tr '\t' '\n' | while read -r bucket; do
+    tags=$(aws s3api get-bucket-tagging --bucket "${bucket}" 2>/dev/null || echo "")
+    if echo "${tags}" | grep -q ${S3_BUCKET_TAG_FOR_AI_CODE_REVIEW}; then
+      echo "${bucket}"
+      break
+    fi
+  done)
+  
+  echo "Uploading files to s3://${bucket_name}/"
+  aws s3 sync "${cr_dir}/" "s3://${bucket_name}/" --delete
+}
+
+function upload_ai_code_review_files() {
+  local cr_dir="$(dirname "$0")/cr"
+
+  if [[ ! -d "${cr_dir}" ]]; then
+    echo "Error: cr/ directory not found at ${cr_dir}"
+    return
+  fi
+
+  # Find bucket after deployment
+  bucket_name=$(aws s3api list-buckets --query "Buckets[].Name" --output text | tr '\t' '\n' | while read -r bucket; do
+    tags=$(aws s3api get-bucket-tagging --bucket "${bucket}" 2>/dev/null || echo "")
+    if echo "${tags}" | grep -q ${S3_BUCKET_TAG_FOR_AI_CODE_REVIEW}; then
+      echo "${bucket}"
+      break
+    fi
+  done)
+  
+  echo "Uploading files to s3://${bucket_name}/"
+  aws s3 sync "${cr_dir}/" "s3://${bucket_name}/" --delete
+}
+
+function download_ai_code_review_files() {
+  local cr_dir="$(dirname "$0")/cr"
+  
+  # Find bucket by tag
+  local bucket_name=$(aws s3api list-buckets --query "Buckets[].Name" --output text | tr '\t' '\n' | while read -r bucket; do
+    tags=$(aws s3api get-bucket-tagging --bucket "${bucket}" 2>/dev/null || echo "")
+    if echo "${tags}" | grep -q ${S3_BUCKET_TAG_FOR_AI_CODE_REVIEW}; then
+      echo "${bucket}"
+      break
+    fi
+  done)
+  
+  if [[ -z "${bucket_name}" ]]; then
+    echo "Error: No bucket found with tag ${S3_BUCKET_TAG_FOR_AI_CODE_REVIEW}"
+    exit 1
+  fi
+  
+  mkdir -p "${cr_dir}"
+  
+  echo "Downloading files from s3://${bucket_name}/ to cr/"
+  aws s3 sync "s3://${bucket_name}/" "${cr_dir}/"
+}
+
 ###########################
 # Main and related helper #
 ###########################
@@ -266,6 +334,8 @@ Options:
                                                 After image build, AWS resources are cleaned up.
                                    'build-win-img': builds Windows Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
+                                   'deploy-ai-code-review': syncs cr/ files to S3 and deploys AI code review stack.
+                                   'download-ai-code-review-files': downloads files from S3 to local cr/ directory.
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
                                    'bootstrap': Bootstraps the CDK stack. This is needed before deployment or updating the CI.
@@ -302,6 +372,7 @@ function export_global_variables() {
   export S3_FOR_WIN_DOCKER_IMG_BUILD='aws-lc-windows-docker-image-build-s3'
   export MAX_TEST_RETRY=2
   export IMG_BUILD_STATUS='unknown'
+  export S3_BUCKET_TAG_FOR_AI_CODE_REVIEW='aws-lc-ai-code-review-files'
   # 620771051181 and 351119683581 is AWS-LC team AWS account.
   if [[ "${DEPLOY_ACCOUNT}" != "620771051181" && "${DEPLOY_ACCOUNT}" != '351119683581' ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
     echo "Only team account is allowed to create CI stacks on aws repo."
@@ -377,6 +448,15 @@ function main() {
   deploy-dev-pipeline)
     export IS_DEV="True"
     deploy_dev_pipeline
+    ;;
+  deploy-ai-code-review)
+    deploy_ai_code_review
+    ;;
+  upload-ai-code-review-files)
+    upload_ai_code_review_files
+    ;;
+  download-ai-code-review-files)
+    download_ai_code_review_files
     ;;
   deploy-ci)
     setup_ci
