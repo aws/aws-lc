@@ -153,7 +153,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
   // we ignore.
   if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
-    if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
+    if (!CBS_get_asn1(&pkcs8, NULL, kAttributesTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
