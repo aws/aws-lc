@@ -164,6 +164,9 @@ static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
   const KEM_KEY *a_key = a->pkey.kem_key;
   const KEM_KEY *b_key = b->pkey.kem_key;
+  if (a_key->public_key == NULL || b_key->public_key == NULL) {
+    return -2;
+  }
   return OPENSSL_memcmp(a_key->public_key, b_key->public_key,
                         a_key->kem->public_key_len) == 0;
 }
