@@ -3784,3 +3784,46 @@ TEST(EVPExtraTest, CustomCurve) {
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   EXPECT_FALSE(EVP_marshal_private_key(cbb.get(), pkey.get()));
 }
+
+// See P425780141.
+// Minimal RFC 5958 v2 OneAsymmetricKey for Ed25519 with an empty
+// [0] attributes SET and a [1] publicKey. Hand-rolled so the on-the-wire
+// attributes tag is the conformant 0xA0 (context-specific | constructed | 0).
+//
+// SEQUENCE {
+//   INTEGER 1                           -- v2
+//   SEQUENCE { OID 1.3.101.112 }        -- Ed25519
+//   OCTET STRING { OCTET STRING seed }  -- 32-byte seed
+//   [0] { }                             -- empty Attributes (0xA0 0x00)
+//   [1] { 00 || pubkey }                -- 33 bytes, leading 0 pad
+// }
+TEST(EVPExtraTest, Ed25519PKCS8v2WithAttributes) {
+  static const uint8_t kDER[] = {
+    0x30, 0x51,                                     // SEQUENCE, len 0x51
+      0x02, 0x01, 0x01,                             // version = 1 (v2)
+      0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,     // AlgId { OID 1.3.101.112 }
+      0x04, 0x22,                                   // OCTET STRING, len 0x22
+        0x04, 0x20,                                 //   OCTET STRING, len 32
+        0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
+        0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4,
+        0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19,
+        0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+      0xa0, 0x00,                                   // [0] attributes = { } (empty SET)
+      0x81, 0x21, 0x00,                             // [1] publicKey BIT STRING, 0 pad bits
+        0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
+        0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
+        0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25,
+        0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
+  };
+
+  CBS cbs;
+  CBS_init(&cbs, kDER, sizeof(kDER));
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed);
+  EXPECT_EQ(CBS_len(&cbs), 0u);
+
+  uint8_t pub[32];
+  size_t pub_len = sizeof(pub);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(parsed.get(), pub, &pub_len));
+  EXPECT_EQ(Bytes(pub, pub_len), Bytes(kPublicKey));
+}
