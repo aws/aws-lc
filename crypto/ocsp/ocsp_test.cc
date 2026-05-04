@@ -2054,3 +2054,149 @@ TEST(OCSPTest, OCSP_SINGLERESP) {
                                   X509_EXTENSION_get_data(ext.get())),
             0);
 }
+
+// Helper to create an OCSP responder cert issued by |ca_cert|/|ca_key|, with
+// EKU=OCSP Signing. If |add_nocheck| is true, the id-pkix-ocsp-nocheck
+// extension is added.
+static bssl::UniquePtr<X509> MakeOCSPResponderCert(EVP_PKEY *responder_key,
+                                                   X509 *ca_cert,
+                                                   EVP_PKEY *ca_key,
+                                                   bool add_nocheck) {
+  bssl::UniquePtr<X509> cert(X509_new());
+  if (!cert ||
+      !X509_set_version(cert.get(), X509_VERSION_3) ||
+      !ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1) ||
+      !X509_set_issuer_name(cert.get(), X509_get_subject_name(ca_cert)) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(cert.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>("OCSP Responder"), -1, -1, 0) ||
+      !X509_set_pubkey(cert.get(), responder_key) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+
+  // Add EKU: OCSP Signing (required for delegated responder).
+  bssl::UniquePtr<STACK_OF(ASN1_OBJECT)> eku(sk_ASN1_OBJECT_new_null());
+  if (!eku || !sk_ASN1_OBJECT_push(eku.get(), OBJ_nid2obj(NID_OCSP_sign)) ||
+      !X509_add1_ext_i2d(cert.get(), NID_ext_key_usage, eku.get(),
+                         /*crit=*/1, /*flags=*/0)) {
+    return nullptr;
+  }
+
+  if (add_nocheck) {
+    ASN1_NULL *null_val = ASN1_NULL_new();
+    if (null_val == NULL ||
+        !X509_add1_ext_i2d(cert.get(), NID_id_pkix_OCSP_noCheck, null_val,
+                           /*crit=*/0, /*flags=*/0)) {
+      ASN1_NULL_free(null_val);
+      return nullptr;
+    }
+    ASN1_NULL_free(null_val);
+  }
+
+  if (!X509_sign(cert.get(), ca_key, EVP_sha256())) {
+    return nullptr;
+  }
+  return cert;
+}
+
+// Test that the id-pkix-ocsp-nocheck extension on a delegated OCSP responder
+// certificate causes CRL checking to be skipped during verification. Without
+// the extension, verification should fail when CRL checking is enabled because
+// no CRL is available.
+TEST(OCSPTest, OCSPNoCheckExtension) {
+  // Generate CA key and self-signed CA cert.
+  bssl::UniquePtr<EVP_PKEY> ca_key(EVP_PKEY_new());
+  ASSERT_TRUE(ca_key);
+  bssl::UniquePtr<RSA> ca_rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  ASSERT_TRUE(RSA_generate_key_ex(ca_rsa.get(), 2048, e.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(ca_key.get(), ca_rsa.get()));
+
+  bssl::UniquePtr<X509> ca_cert =
+      MakeTestCert("Test CA", "Test CA", ca_key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(ca_cert);
+  ASSERT_TRUE(X509_sign(ca_cert.get(), ca_key.get(), EVP_sha256()));
+
+  // Generate responder key.
+  bssl::UniquePtr<EVP_PKEY> resp_key(EVP_PKEY_new());
+  ASSERT_TRUE(resp_key);
+  bssl::UniquePtr<RSA> resp_rsa(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_ex(resp_rsa.get(), 2048, e.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(resp_key.get(), resp_rsa.get()));
+
+  // Create trust store with CRL checking enabled and verification time set
+  // to kReferenceTime (certs from MakeTestCert are only valid around that time).
+  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+  ASSERT_TRUE(trust_store);
+  ASSERT_TRUE(X509_STORE_add_cert(trust_store.get(), ca_cert.get()));
+  X509_STORE_set_flags(trust_store.get(), X509_V_FLAG_CRL_CHECK);
+  X509_VERIFY_PARAM *store_param = X509_STORE_get0_param(trust_store.get());
+  ASSERT_TRUE(store_param);
+  X509_VERIFY_PARAM_set_time_posix(store_param, kReferenceTime);
+
+  // Create an OCSP_CERTID for use in the OCSP response.
+  bssl::UniquePtr<OCSP_CERTID> cert_id(
+      OCSP_cert_to_id(EVP_sha1(), ca_cert.get(), ca_cert.get()));
+  ASSERT_TRUE(cert_id);
+
+  // Test with nocheck extension: verification should succeed despite CRL
+  // checking being enabled, because the extension causes the flag to be
+  // cleared for the responder cert.
+  {
+    bssl::UniquePtr<X509> responder_cert = MakeOCSPResponderCert(
+        resp_key.get(), ca_cert.get(), ca_key.get(), /*add_nocheck=*/true);
+    ASSERT_TRUE(responder_cert);
+
+    bssl::UniquePtr<OCSP_BASICRESP> bs(OCSP_BASICRESP_new());
+    ASSERT_TRUE(bs);
+
+    bssl::UniquePtr<ASN1_TIME> this_update(ASN1_TIME_adj(nullptr, kReferenceTime, -1, 0));
+    bssl::UniquePtr<ASN1_TIME> next_update(ASN1_TIME_adj(nullptr, kReferenceTime, 1, 0));
+    ASSERT_TRUE(OCSP_basic_add1_status(bs.get(), cert_id.get(),
+                                       V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
+                                       this_update.get(), next_update.get()));
+
+    ASSERT_TRUE(OCSP_basic_sign(bs.get(), responder_cert.get(), resp_key.get(),
+                                EVP_sha256(),
+                                CertsToStack({ca_cert.get()}).get(), 0));
+
+    int ret = OCSP_basic_verify(
+        bs.get(), CertsToStack({responder_cert.get()}).get(), trust_store.get(),
+        0);
+    EXPECT_EQ(ret, OCSP_VERIFYSTATUS_SUCCESS)
+        << "Verification should succeed with nocheck extension";
+  }
+
+  ERR_clear_error();
+
+  // Test without nocheck extension: verification should fail because CRL
+  // checking is enabled but no CRL is available.
+  {
+    bssl::UniquePtr<X509> responder_cert = MakeOCSPResponderCert(
+        resp_key.get(), ca_cert.get(), ca_key.get(), /*add_nocheck=*/false);
+    ASSERT_TRUE(responder_cert);
+
+    bssl::UniquePtr<OCSP_BASICRESP> bs(OCSP_BASICRESP_new());
+    ASSERT_TRUE(bs);
+
+    bssl::UniquePtr<ASN1_TIME> this_update(ASN1_TIME_adj(nullptr, kReferenceTime, -1, 0));
+    bssl::UniquePtr<ASN1_TIME> next_update(ASN1_TIME_adj(nullptr, kReferenceTime, 1, 0));
+    ASSERT_TRUE(OCSP_basic_add1_status(bs.get(), cert_id.get(),
+                                       V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
+                                       this_update.get(), next_update.get()));
+
+    ASSERT_TRUE(OCSP_basic_sign(bs.get(), responder_cert.get(), resp_key.get(),
+                                EVP_sha256(),
+                                CertsToStack({ca_cert.get()}).get(), 0));
+
+    int ret = OCSP_basic_verify(
+        bs.get(), CertsToStack({responder_cert.get()}).get(), trust_store.get(),
+        0);
+    EXPECT_NE(ret, OCSP_VERIFYSTATUS_SUCCESS)
+        << "Verification should fail without nocheck extension when CRL "
+           "checking is enabled";
+  }
+}

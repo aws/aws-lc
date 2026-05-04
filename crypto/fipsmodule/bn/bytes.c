@@ -199,14 +199,16 @@ void bn_words_to_big_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
     num_bytes = out_len;
   }
 
+  // The redundant `i < out_len` guard below silences a GCC 14+
+  // `-Wstringop-overflow` false positive under LTO (see aws-lc#3166).
 #ifdef OPENSSL_BIG_ENDIAN
-  for (size_t i = 0; i < num_bytes; i++) {
+  for (size_t i = 0; i < num_bytes && i < out_len; i++) {
     BN_ULONG l = in[i / BN_BYTES];
     out[out_len - i - 1] = (uint8_t)(l >> (8 * (i % BN_BYTES))) & 0xff;
   }
 #else
   const uint8_t *bytes = (const uint8_t *)in;
-  for (size_t i = 0; i < num_bytes; i++) {
+  for (size_t i = 0; i < num_bytes && i < out_len; i++) {
     out[out_len - i - 1] = bytes[i];
   }
 #endif

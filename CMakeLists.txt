@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.72.0")
+set(SOFTWARE_VERSION "1.72.1")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -849,9 +849,12 @@ if(WIN32)
   # Allow use of fopen.
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   # VS 2017 and higher supports STL-only warning suppressions.
-  # A bug in CMake < 3.13.0 may cause the space in this value to
-  # cause issues when building with NASM. In that case, update CMake.
-  add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
+  # _STL_EXTRA_DISABLED_WARNINGS is only consumed by MSVC STL headers,
+  # so scope the definition to C++. Using add_compile_options with a
+  # CMake-escaped space keeps the value as a single argument under
+  # Ninja + clang-cl, where add_definitions with a space-containing
+  # value is not quoted robustly (see aws/aws-lc-rs#981).
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-D_STL_EXTRA_DISABLED_WARNINGS=4774\ 4987>)
 endif()
 
 add_flag_if_supported(C_CXX_FLAGS "-Wshadow")

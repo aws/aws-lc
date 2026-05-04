@@ -194,7 +194,7 @@ jobs:
             ./tests/ci/run_posix_tests.sh
 
   fips_tests:
-    name: ${{ matrix.enableASAN && 'asan-' || '' }}fips-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+    name: ${{ matrix.enableASAN && 'asan-' || '' }}${{ matrix.enableMSAN && 'msan-' || '' }}fips-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
@@ -315,6 +315,10 @@ jobs:
           - image: ubuntu:22.04
             arch: x86_64
             compiler: clang-14
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: clang-19
+            enableMSAN: 1
           - image: ubuntu:22.04
             arch: x86_64
             compiler: gcc-10
@@ -349,6 +353,7 @@ jobs:
             compiler: gcc-12
     env:
       AWSLC_ENABLE_FIPS_ASAN: ${{ matrix.enableASAN }}
+      AWSLC_ENABLE_FIPS_MSAN: ${{ matrix.enableMSAN }}
     steps:
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
@@ -360,6 +365,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
             AWSLC_ENABLE_FIPS_ASAN
+            AWSLC_ENABLE_FIPS_MSAN
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             if [[ "${{ matrix.goTestTimeout }}z" != "z" ]]; then

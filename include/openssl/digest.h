@@ -101,6 +101,8 @@ OPENSSL_EXPORT int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
 // EVP_DigestInit_ex configures |ctx|, which must already have been
 // initialised, for a fresh hashing operation using |type|. It returns one on
 // success and zero on allocation failure.
+//
+// On failure, |ctx| must be released with |EVP_MD_CTX_[cleanup,free]|.
 OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
                                      ENGINE *engine);
 
