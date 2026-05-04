@@ -37,7 +37,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 static int is_dNS_name(const char *host)
 {
     const size_t MAX_LABEL_LENGTH = 63;
-    size_t i;
+    size_t i = 0;
     int isdnsname = 0;
     size_t length = strlen(host);
     size_t label_length = 0;
