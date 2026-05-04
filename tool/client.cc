@@ -26,6 +26,95 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "transport_common.h"
 
 
+// Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Ported verbatim from OpenSSL 3.x apps/s_client.c (is_dNS_name).
+/*
+ * Host dNS Name verifier: used for checking that the hostname is in dNS format
+ * before setting it as SNI
+ */
+static int is_dNS_name(const char *host)
+{
+    const size_t MAX_LABEL_LENGTH = 63;
+    size_t i;
+    int isdnsname = 0;
+    size_t length = strlen(host);
+    size_t label_length = 0;
+    int all_numeric = 1;
+
+    /*
+     * Deviation from strict DNS name syntax, also check names with '_'
+     * Check DNS name syntax, any '-' or '.' must be internal,
+     * and on either side of each '.' we can't have a '-' or '.'.
+     *
+     * If the name has just one label, we don't consider it a DNS name.
+     */
+    for (i = 0; i < length && label_length < MAX_LABEL_LENGTH; ++i) {
+        char c = host[i];
+
+        if ((c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || c == '_') {
+            label_length += 1;
+            all_numeric = 0;
+            continue;
+        }
+
+        if (c >= '0' && c <= '9') {
+            label_length += 1;
+            continue;
+        }
+
+        /* Dot and hyphen cannot be first or last. */
+        if (i > 0 && i < length - 1) {
+            if (c == '-') {
+                label_length += 1;
+                continue;
+            }
+            /*
+             * Next to a dot the preceding and following characters must not be
+             * another dot or a hyphen.  Otherwise, record that the name is
+             * plausible, since it has two or more labels.
+             */
+            if (c == '.'
+                && host[i + 1] != '.'
+                && host[i - 1] != '-'
+                && host[i + 1] != '-') {
+                label_length = 0;
+                isdnsname = 1;
+                continue;
+            }
+        }
+        isdnsname = 0;
+        break;
+    }
+
+    /* dNS name must not be all numeric and labels must be shorter than 64 characters. */
+    isdnsname &= !all_numeric && !(label_length == MAX_LABEL_LENGTH);
+
+    return isdnsname;
+}
+
+static std::string DefaultSNIFromConnect(
+    const std::string &hostname_and_port) {
+  if (hostname_and_port.empty()) {
+    return std::string();
+  }
+  std::string host = hostname_and_port;
+  size_t colon = hostname_and_port.find_last_of(':');
+  if (colon != std::string::npos) {
+    host = hostname_and_port.substr(0, colon);
+  }
+  if (host.size() >= 2 && host.front() == '[' && host.back() == ']') {
+    return std::string();
+  }
+  if (!is_dNS_name(host.c_str())) {
+    return std::string();
+  }
+  return host;
+}
+
 static const argument_t kArguments[] = {
     {
         "-connect", kRequiredArgument,
@@ -444,6 +533,13 @@ static bool DoConnection(SSL_CTX *ctx,
   if (args_map.count("-server-name") != 0) {
     if (!SSL_set_tlsext_host_name(ssl.get(),
                                   args_map["-server-name"].c_str())) {
+      return false;
+    }
+  } else if (is_openssl_s_client && args_map.count("-noservername") == 0) {
+    // Default SNI to the -connect hostname, matching OpenSSL 1.1+ s_client.
+    std::string default_sni = DefaultSNIFromConnect(args_map["-connect"]);
+    if (!default_sni.empty() &&
+        !SSL_set_tlsext_host_name(ssl.get(), default_sni.c_str())) {
       return false;
     }
   }
