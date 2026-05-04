@@ -660,6 +660,43 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_TRUE(kem_key->secret_key);
 }
 
+// When a private key is parsed from the RFC 9935 section 6
+// Case-2 "expandedKey" form, only |secret_key| is populated and |public_key|
+// stays NULL. Comparing that private key against a public key (as
+// |X509_check_private_key| does during |PKCS12_parse|) must return -2 instead
+// of dereferencing NULL.
+TEST_P(KEMTest, PubCmpExpandedPrivateKeyNullPublic) {
+  const KEMTestVector &test = GetParam();
+
+  uint8_t *pub_der = nullptr;
+  long pub_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.public_pem_str, &pub_der, &pub_der_len));
+  bssl::UniquePtr<uint8_t> free_pub_der(pub_der);
+  CBS pub_cbs;
+  CBS_init(&pub_cbs, pub_der, pub_der_len);
+  bssl::UniquePtr<EVP_PKEY> pub_pkey(EVP_parse_public_key(&pub_cbs));
+  ASSERT_TRUE(pub_pkey);
+
+  // Parse the expanded-form private key. Case 2 in |kem_priv_decode| only
+  // sets |secret_key|, so |public_key| is NULL.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(
+      PEM_to_DER(test.private_pem_expanded_str, &priv_der, &priv_der_len));
+  bssl::UniquePtr<uint8_t> free_priv_der(priv_der);
+  CBS priv_cbs;
+  CBS_init(&priv_cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> priv_pkey(EVP_parse_private_key(&priv_cbs));
+  ASSERT_TRUE(priv_pkey);
+  ASSERT_EQ(priv_pkey->pkey.kem_key->public_key, nullptr);
+
+  // |EVP_PKEY_cmp| must not dereference the NULL |public_key|. It should
+  // return -2 to signal that the comparison could not be performed.
+  EXPECT_EQ(EVP_PKEY_cmp(pub_pkey.get(), priv_pkey.get()), -2);
+  // Same check with arguments swapped, exercising the other NULL branch.
+  EXPECT_EQ(EVP_PKEY_cmp(priv_pkey.get(), pub_pkey.get()), -2);
+}
+
 TEST_P(KEMTest, GetType) {
   int nid = GetParam().nid;
 
