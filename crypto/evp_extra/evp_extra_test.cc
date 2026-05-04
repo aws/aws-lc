@@ -3799,7 +3799,7 @@ TEST(EVPExtraTest, CustomCurve) {
 // }
 TEST(EVPExtraTest, Ed25519PKCS8v2WithAttributes) {
   static const uint8_t kDER[] = {
-    0x30, 0x51,                                     // SEQUENCE, len 0x51
+    0x30, 0x53,                                     // SEQUENCE, len 0x51
       0x02, 0x01, 0x01,                             // version = 1 (v2)
       0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,     // AlgId { OID 1.3.101.112 }
       0x04, 0x22,                                   // OCTET STRING, len 0x22
