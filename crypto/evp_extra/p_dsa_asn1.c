@@ -217,6 +217,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   NULL /* set_pub_raw */,
   NULL /* get_priv_raw */,
   NULL /* get_pub_raw */,
+  NULL /* get_priv_seed */,
 
   NULL /* pkey_opaque */,
 

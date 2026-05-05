@@ -2646,6 +2646,27 @@ read alert 1 0
 			},
 		},
 		{
+			protocol: dtls,
+			name:     "SendExtraFutureHandshakeFragment-AtWindowEdge-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					// 7 == SSL_MAX_HANDSHAKE_FLIGHT. With the off-by-one
+					// in the outer filter, this fragment would hit the
+					// inner bounds check and abort the connection.
+					SendExtraFutureHandshakeFragment: 7,
+				},
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "SendExtraFutureHandshakeFragment-FarFuture-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendExtraFutureHandshakeFragment: 100,
+				},
+			},
+		},
+		{
 			name: "SendInvalidRecordType",
 			config: Config{
 				Bugs: ProtocolBugs{

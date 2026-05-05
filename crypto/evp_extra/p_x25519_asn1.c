@@ -255,6 +255,7 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     x25519_set_pub_raw,
     x25519_get_priv_raw,
     x25519_get_pub_raw,
+    NULL /* get_priv_seed */,
     NULL /* pkey_opaque */,
     x25519_size,
     x25519_bits,

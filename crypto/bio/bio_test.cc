@@ -447,6 +447,63 @@ TEST(BIOTest, BioGetMemLeak) {
   ASSERT_EQ(Bytes(buf_mem->data, buf_mem->length), Bytes("Hello World\n"));
 }
 
+// SetMemBufNoClose, SetMemBufClose, and SetMemBufReplacesState exercise
+// a number of code-paths to ensure |BIO_set_mem_buf| functions correctly.
+TEST(BIOTest, SetMemBufNoClose) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  BUF_MEM *m = BUF_MEM_new();
+  ASSERT_TRUE(m);
+  ASSERT_TRUE(BUF_MEM_grow(m, 5));
+  OPENSSL_memcpy(m->data, "hello", 5);
+
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m, BIO_NOCLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(5, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 5), Bytes("hello", 5));
+
+  // Exercise to surface memory violations. 
+  bio.reset();
+  BUF_MEM_free(m);
+}
+
+TEST(BIOTest, SetMemBufClose) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  BUF_MEM *m = BUF_MEM_new();
+  ASSERT_TRUE(m);
+  ASSERT_TRUE(BUF_MEM_grow(m, 5));
+  OPENSSL_memcpy(m->data, "world", 5);
+
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m, BIO_CLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(5, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 5), Bytes("world", 5));
+
+  // Exercise to surface memory violations. 
+  bio.reset();
+}
+
+TEST(BIOTest, SetMemBufReplacesState) {
+  // After BIO_set_mem_buf, reads must see the new buffer, not the
+  // zero-initialized BUF_MEM allocated by mem_new().
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_EQ(BIO_puts(bio.get(), "initial"), 7);
+
+  bssl::UniquePtr<BUF_MEM> m(BUF_MEM_new());
+  ASSERT_TRUE(BUF_MEM_grow(m.get(), 3));
+  OPENSSL_memcpy(m->data, "abc", 3);
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m.get(), BIO_NOCLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(3, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 3), Bytes("abc", 3));
+}
+
 TEST(BIOTest, Gets) {
   const struct {
     std::string bio;

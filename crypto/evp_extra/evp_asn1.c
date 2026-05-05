@@ -19,6 +19,7 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../fipsmodule/kem/internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
@@ -123,7 +124,7 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
 }
 
 static const unsigned kAttributesTag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0;
 
 static const unsigned kPublicKeyTag =
     CBS_ASN1_CONTEXT_SPECIFIC | 1;
@@ -152,7 +153,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
   // we ignore.
   if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
-    if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
+    if (!CBS_get_asn1(&pkcs8, NULL, kAttributesTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
@@ -717,4 +718,18 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
     *ppem_str = ameth->pem_str;
   }
   return 1;
+}
+
+int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len) {
+  SET_DIT_AUTO_RESET;
+  GUARD_PTR(key);
+  GUARD_PTR(out_len);
+
+  if (key->ameth == NULL || key->ameth->get_priv_seed == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return key->ameth->get_priv_seed(key, out, out_len);
 }

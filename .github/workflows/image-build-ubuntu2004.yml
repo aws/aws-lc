@@ -35,7 +35,7 @@ jobs:
     outputs:
       ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -48,8 +48,8 @@ jobs:
         run: |
           echo ubuntu2004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2004
           context: ./.github/docker_images/aws-lc/ubuntu
@@ -131,7 +131,7 @@ jobs:
     outputs:
       ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -144,8 +144,8 @@ jobs:
         run: |
           echo ubuntu2004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2004
           context: ./.github/docker_images/aws-lc/ubuntu

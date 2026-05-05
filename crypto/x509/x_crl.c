@@ -71,8 +71,7 @@ static int crl_parse_entry_extensions(X509_CRL *crl) {
     ASN1_ENUMERATED *reason =
         X509_REVOKED_get_ext_d2i(rev, NID_crl_reason, &crit, NULL);
     if (!reason && crit != -1) {
-      crl->flags |= EXFLAG_INVALID;
-      return 1;
+      return 0;
     }
 
     if (reason) {
