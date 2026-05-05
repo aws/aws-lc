@@ -35,7 +35,7 @@ jobs:
     outputs:
       ubuntu1004: ${{ steps.images.outputs.ubuntu1004 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -55,7 +55,7 @@ jobs:
             https://github.com/Kitware/CMake/releases/download/v3.9.6/cmake-3.9.6.tar.gz
           echo directory=${temp_dir} >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver: docker
       - name: Import ubuntu:10.04 OCI Image
@@ -63,7 +63,7 @@ jobs:
           temp_dir="$(mktemp -d)"
           curl -o container.tar --output-dir "${temp_dir}" https://d2yr98kym3baw0.cloudfront.net/ubuntu1004.tar
           docker load < "${temp_dir}/container.tar"
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.1004
           context: ./.github/docker_images/aws-lc/ubuntu
