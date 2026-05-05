@@ -35,14 +35,14 @@ jobs:
           c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
           cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
           options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_BUILD_TOOL=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/ninja.exe \
-            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64 \
-            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TOOL=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/ninja.exe
+            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64
+            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+            CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build "path has spaces/build" --target all
       - name: Run tests
@@ -68,9 +68,9 @@ jobs:
           c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
           cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
           options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -101,16 +101,16 @@ jobs:
         uses: threeal/cmake-action@v2.1.0
         with:
           options: |
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_BUILD_TYPE=Release
       - if: ${{ matrix.target  == 'x64_arm64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
         with:
           options: |
-            CMAKE_GENERATOR_PLATFORM=ARM64 \
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=ARM64 \
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_GENERATOR_PLATFORM=ARM64
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=ARM64
+            CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all_tests
       - if: ${{ matrix.target  == 'x64' }}
@@ -144,7 +144,7 @@ jobs:
           c-compiler: clang-cl
           cxx-compiler: clang-cl
           options: |
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_BUILD_TYPE=Release
       - if: ${{ matrix.target  == 'x64_arm64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
@@ -153,12 +153,12 @@ jobs:
           c-compiler: clang-cl
           cxx-compiler: clang-cl
           options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=ARM64 \
-            CMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc \
-            CMAKE_ASM_COMPILER_TARGET=arm64-pc-windows-msvc \
-            CMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc \
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=ARM64
+            CMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc
+            CMAKE_ASM_COMPILER_TARGET=arm64-pc-windows-msvc
+            CMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc
+            CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
       - if: ${{ matrix.target  == 'x64' }}
@@ -285,13 +285,13 @@ jobs:
         with:
           build-dir: ./build
           options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}\' \
-            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            CMAKE_BUILD_TYPE=Release \
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}\'
+            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+            CMAKE_BUILD_TYPE=Release
       - name: Run tests
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests
