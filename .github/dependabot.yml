@@ -44,6 +44,12 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+      # The golang.org/x/* packages use v0.x.y versioning and will likely never
+      # have a semver-major bump. Minor bumps in these packages frequently raise
+      # the minimum Go toolchain version, so suppress them too.
+      - dependency-name: "golang.org/x/*"
+        update-types:
+          - "version-update:semver-minor"
     cooldown:
       default-days: 7
       semver-major-days: 30
@@ -87,6 +93,9 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+      - dependency-name: "golang.org/x/*"
+        update-types:
+          - "version-update:semver-minor"
     cooldown:
       default-days: 7
       semver-major-days: 30
