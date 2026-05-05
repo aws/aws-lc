@@ -2504,7 +2504,8 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 #define SSL_PKEY_RSA 0
 #define SSL_PKEY_ECC 1
 #define SSL_PKEY_ED25519 2
-#define SSL_PKEY_SIZE 3
+#define SSL_PKEY_PQDSA 3
+#define SSL_PKEY_SIZE 4
 
 struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;

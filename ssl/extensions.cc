@@ -299,6 +299,12 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
 
+    // ML-DSA (TLS 1.3 only; ignored in earlier versions by
+    // pkey_supports_algorithm).
+    SSL_SIGN_MLDSA44,
+    SSL_SIGN_MLDSA65,
+    SSL_SIGN_MLDSA87,
+
     // For now, SHA-1 is still accepted but least preferable.
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
@@ -322,6 +328,12 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_ECDSA_SECP521R1_SHA512,
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
+
+    // ML-DSA (TLS 1.3 only; ignored in earlier versions by
+    // pkey_supports_algorithm).
+    SSL_SIGN_MLDSA44,
+    SSL_SIGN_MLDSA65,
+    SSL_SIGN_MLDSA87,
 
     // If the peer supports nothing else, sign with SHA-1.
     SSL_SIGN_ECDSA_SHA1,

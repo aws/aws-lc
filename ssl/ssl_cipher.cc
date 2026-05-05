@@ -1328,6 +1328,8 @@ int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
       return SSL_PKEY_ECC;
     case EVP_PKEY_ED25519:
       return SSL_PKEY_ED25519;
+    case EVP_PKEY_PQDSA:
+      return SSL_PKEY_PQDSA;
     default:
       return -1;
   }
