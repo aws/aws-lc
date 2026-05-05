@@ -2197,6 +2197,39 @@ TEST_P(PQDSAParameterTest, ContextString) {
                                                    &read_ctx_len));
   ASSERT_TRUE(read_ctx);
   ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
+
+  // ---- 9. Context is rejected on the EVP_PKEY_sign/verify digest path ----
+  // For ML-DSA, the pre-hashed |mu| input already encodes the context per
+  // FIPS 204 section 5.3, so combining a configured context with the digest
+  // path must fail rather than be silently ignored.
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_sign_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_sign_ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(raw_sign_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_sign_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+
+  // |mu| is the 64-byte SHAKE256 output expected by the digest path; the
+  // context guard fires before any cryptographic check, so the contents
+  // don't need to be a valid mu for this test.
+  uint8_t mu[64] = {0};
+  size_t raw_sig_len = 0;
+  // Query the signature size (|sig == NULL| short-circuits before the guard).
+  ASSERT_TRUE(EVP_PKEY_sign(raw_sign_ctx.get(), nullptr, &raw_sig_len, mu,
+                            sizeof(mu)));
+  std::vector<uint8_t> raw_sig(raw_sig_len);
+  ASSERT_FALSE(EVP_PKEY_sign(raw_sign_ctx.get(), raw_sig.data(), &raw_sig_len,
+                             mu, sizeof(mu)));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_verify_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_verify_ctx);
+  ASSERT_TRUE(EVP_PKEY_verify_init(raw_verify_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_verify_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+  std::vector<uint8_t> dummy_sig(raw_sig_len, 0);
+  ASSERT_FALSE(EVP_PKEY_verify(raw_verify_ctx.get(), dummy_sig.data(),
+                               dummy_sig.size(), mu, sizeof(mu)));
 }
 
 TEST_P(PQDSAParameterTest, ParsePublicKey) {
