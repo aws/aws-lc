@@ -37,7 +37,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 static int is_dNS_name(const char *host)
 {
     const size_t MAX_LABEL_LENGTH = 63;
-    size_t i = 0;
     int isdnsname = 0;
     size_t length = strlen(host);
     size_t label_length = 0;
@@ -50,7 +49,7 @@ static int is_dNS_name(const char *host)
      *
      * If the name has just one label, we don't consider it a DNS name.
      */
-    for (i = 0; i < length && label_length < MAX_LABEL_LENGTH; ++i) {
+    for (size_t i = 0; i < length && label_length < MAX_LABEL_LENGTH; ++i) {
         char c = host[i];
 
         if ((c >= 'a' && c <= 'z')
