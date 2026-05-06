@@ -27,7 +27,7 @@ jobs:
       - name: Install seccomp dependencies
         run: |
           sudo apt-get -y --no-install-recommends install libseccomp-dev
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Test sandbox configuration
         run: |
           ./tests/ci/run_presandbox_tests.sh
@@ -96,24 +96,24 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v6
         with:
           go-version: '>=1.18'
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: "path has spaces/aws-lc"
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Setup CMake (Ninja)
         if:  ${{ matrix.ninja == '1' }}
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@v2.1.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
       - name: Setup CMake
         if:  ${{ matrix.ninja != '1' }}
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@v2.1.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
@@ -122,7 +122,7 @@ jobs:
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
       - name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@v2.1.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build-fips'
@@ -138,11 +138,11 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Check for git tag
@@ -154,7 +154,7 @@ jobs:
         image:linux-5.0
         instance-size:large
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

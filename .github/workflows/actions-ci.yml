@@ -27,7 +27,7 @@ jobs:
       AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Sanity Test Run
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
@@ -45,8 +45,8 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -63,8 +63,8 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
@@ -82,8 +82,8 @@ jobs:
           - "macos-14"
           - "macos-15"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -101,8 +101,8 @@ jobs:
           - "windows-latest"
           - "windows-11-arm"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install NASM
@@ -131,8 +131,8 @@ jobs:
           - 20
           - 0 # default
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - if: matrix.clang == 20
@@ -184,8 +184,8 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -253,8 +253,8 @@ jobs:
               total_shards: 1
             shard_index: 0
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install dependencies
@@ -291,8 +291,8 @@ jobs:
       image: rust:latest
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - run: |
@@ -320,8 +320,8 @@ jobs:
         gcc_version: ["9", "10", "11", "12", "13", "14", "15"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -357,8 +357,8 @@ jobs:
         clang_version: ["20"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -395,8 +395,8 @@ jobs:
           - clang_version: "18"
             fips: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -429,8 +429,8 @@ jobs:
         clang_version: ["11", "12", "13"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -463,8 +463,8 @@ jobs:
         clang_version: ["7", "8", "9", "10"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -494,12 +494,12 @@ jobs:
           - "1"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@v2.1.0
         with:
           generator: Ninja
           c-compiler: gcc-${{ matrix.gccversion }}
@@ -537,8 +537,8 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -572,7 +572,7 @@ jobs:
         arch: ["x86-64", "arm64"]
         version: ["7.5", "7.6"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: OpenBSD
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
@@ -623,7 +623,7 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build Docker Image
         working-directory: .github/docker_images/gcc-4.8
         run: |
@@ -651,7 +651,7 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build Docker Image
         working-directory: .github/docker_images/alpine-linux
         run: |
@@ -667,7 +667,7 @@ jobs:
   #    runs-on: aws-lc_windows-2019_64-core
   #    steps:
   #      - name: Git clone the repository
-  #        uses: actions/checkout@v3
+  #        uses: actions/checkout@v6
   #
   #      - name: Build Windows Dependencies
   #        run: |
@@ -704,7 +704,7 @@ jobs:
           - "14.2"
           - "15.0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: "recursive"
       - name: Prepare VM
@@ -739,7 +739,7 @@ jobs:
         version:
           - "10.1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: "recursive"
       - name: Prepare VM
