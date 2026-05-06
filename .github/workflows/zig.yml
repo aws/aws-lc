@@ -45,6 +45,12 @@ jobs:
         uses: jiacai2050/my-works@8707121a859749b56c1a553e16cec59d1dddb24e # zigcc v1.1.0
         with:
           zig-version: 0.15.2
+      - name: Exclude zig cache from Windows Defender
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}\.zig-cache"
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}\build"
       - name: Set compiler wrappers
         shell: bash
         run: |
@@ -79,8 +85,10 @@ jobs:
           probe zig env
 
           echo 'int main(void){return 0;}' > hello.c
+          echo 'int main(){return 0;}' > hello.cpp
 
           probe "${ZIGCC}" -v -c hello.c -o hello.o
+          probe "${ZIGCXX}" -v -c hello.cpp -o hello_cpp.o
 
           if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
             probe "${ZIGCC}" -v hello.c -o hello_trivial.exe
@@ -90,9 +98,17 @@ jobs:
               -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 \
               -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
             [[ -x ./hello.exe ]] && probe ./hello.exe
+            probe "${ZIGCXX}" -v hello.cpp -o hello_cpp.exe \
+              -Wl,--out-implib,hellocpp.dll.a \
+              -Wl,--major-image-version,0,--minor-image-version,0 \
+              -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 \
+              -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+            [[ -x ./hello_cpp.exe ]] && probe ./hello_cpp.exe
           else
             probe "${ZIGCC}" -v hello.c -o hello
             [[ -x ./hello ]] && probe ./hello
+            probe "${ZIGCXX}" -v hello.cpp -o hello_cpp
+            [[ -x ./hello_cpp ]] && probe ./hello_cpp
           fi
       - name: Create toolchain
         shell: bash
