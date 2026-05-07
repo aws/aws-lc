@@ -729,8 +729,8 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
   // RFC 5280 §4.2.1.10 requires the host to be a fully qualified domain name.
   // Validate that the host contains only characters valid in a DNS name
   // (RFC 1034 §3.5): letters, digits, hyphens, and dots. This rejects
-  // percent-encoded hosts, IPv4 literals, and any other non-FQDN syntax,
-  // preventing equivalence bypasses (e.g., "b%61d.com" evading ".bad.com").
+  // percent-encoded hosts and any other non-FQDN syntax, preventing
+  // equivalence bypasses (e.g., "b%61d.com" evading ".bad.com").
   if (CBS_len(&host) == 0) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
