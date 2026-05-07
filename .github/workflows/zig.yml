@@ -21,7 +21,8 @@ jobs:
           - host: ubuntu-24.04-arm
             target_arch: aarch64
             target_system: Linux
-          - host: windows-latest
+          # Broken on windows-2025
+          - host: windows-2022
             target_arch: x86_64
             target_system: Windows
           - host: ubuntu-latest
@@ -68,6 +69,10 @@ jobs:
           # Each step runs unconditionally (no `set -e`) so we see results from
           # every stage even when an earlier one fails. The wrapper reports
           # zig's real exit status (including 139 for SIGSEGV) on failure.
+          # Log the runner image up front so a `*-latest` rollover (or our own
+          # pin bump) is correlated with any new failure without having to dig
+          # through the collapsed "Set up job" group.
+          echo "=== runner image: ${ImageOS:-unknown} ${ImageVersion:-unknown} ==="
           set -x
           probe() {
             echo "=== probe: $* ==="

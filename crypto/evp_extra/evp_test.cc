@@ -1818,7 +1818,7 @@ TEST(EVPTest, ED25519PH) {
                                    pkey.get()));
 
     ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context, sizeof(context)));
+        EVP_PKEY_CTX_set1_signature_context_string(pctx, context, sizeof(context)));
     const uint8_t *sctx = NULL;
     size_t sctx_len = 0;
     ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pctx, &sctx, &sctx_len));
@@ -1836,7 +1836,7 @@ TEST(EVPTest, ED25519PH) {
     ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
                                      pubkey.get()));
     ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context, sizeof(context)));
+        EVP_PKEY_CTX_set1_signature_context_string(pctx, context, sizeof(context)));
     ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), &message[0], 3));
     ASSERT_TRUE(
         EVP_DigestVerifyUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
@@ -1850,7 +1850,7 @@ TEST(EVPTest, ED25519PH) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
     ASSERT_TRUE(ctx.get());
     ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(ctx.get(), context,
+    ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(ctx.get(), context,
                                                    sizeof(context)));
     ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature, &working_signature_len, message_sha512, sizeof(message_sha512)));
     ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
@@ -1858,7 +1858,7 @@ TEST(EVPTest, ED25519PH) {
     ctx.reset(EVP_PKEY_CTX_new(pubkey.get(), nullptr));
     ASSERT_TRUE(ctx.get());
     ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(ctx.get(), context,
+    ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(ctx.get(), context,
                                                    sizeof(context)));
     ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), working_signature,
                                 working_signature_len, message_sha512,
@@ -2006,7 +2006,7 @@ TEST(EVPTest, Ed25519phTestVectors) {
     ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
                                    pkey.get()));
     ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
+        EVP_PKEY_CTX_set1_signature_context_string(pctx, context.data(), context.size()));
     ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), message.data(), message.size()));
     ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature,
                                     &signature_len));
@@ -2016,7 +2016,7 @@ TEST(EVPTest, Ed25519phTestVectors) {
     ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
                                      pubkey.get()));
     ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
+        EVP_PKEY_CTX_set1_signature_context_string(pctx, context.data(), context.size()));
     ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), message.data(), message.size()));
     ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature,
                                       signature_len));
