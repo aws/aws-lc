@@ -483,8 +483,8 @@ int PEM_write(FILE *fp, const char *name, const char *header,
 
 int PEM_write_bio(BIO *bp, const char *name, const char *header,
                   const unsigned char *data, long len) {
-  int nlen, n, i, outl;
-  long j;
+  int nlen, n, outl;
+  long i, j;
   unsigned char *buf = NULL;
   EVP_ENCODE_CTX ctx;
   int reason = ERR_R_BUF_LIB;
@@ -534,7 +534,11 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
       (BIO_write(bp, "-----\n", 6) != 6)) {
     goto err;
   }
-  return i + outl;
+  if (i + outl > INT_MAX) {
+    reason = ERR_R_OVERFLOW;
+    goto err;
+  }
+  return (int)(i + outl);
 err:
   if (buf) {
     OPENSSL_free(buf);
