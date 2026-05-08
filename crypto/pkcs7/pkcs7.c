@@ -198,10 +198,39 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
     return 0;
   }
 
+  // Free any previously-installed content using the current |p7->type| so the
+  // correct destructor runs on the existing union member, instead of the new
+  // type's destructor running on type-confused memory.
+  if (p7->d.ptr != NULL) {
+    switch (OBJ_obj2nid(p7->type)) {
+      case NID_pkcs7_signed:
+        PKCS7_SIGNED_free(p7->d.sign);
+        break;
+      case NID_pkcs7_digest:
+        PKCS7_DIGEST_free(p7->d.digest);
+        break;
+      case NID_pkcs7_data:
+        ASN1_OCTET_STRING_free(p7->d.data);
+        break;
+      case NID_pkcs7_signedAndEnveloped:
+        PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
+        break;
+      case NID_pkcs7_enveloped:
+        PKCS7_ENVELOPE_free(p7->d.enveloped);
+        break;
+      case NID_pkcs7_encrypted:
+        PKCS7_ENCRYPT_free(p7->d.encrypted);
+        break;
+      default:
+        ASN1_TYPE_free(p7->d.other);
+        break;
+    }
+    p7->d.ptr = NULL;
+  }
+
   switch (type) {
     case NID_pkcs7_signed:
       p7->type = obj;
-      PKCS7_SIGNED_free(p7->d.sign);
       p7->d.sign = PKCS7_SIGNED_new();
       if (p7->d.sign == NULL) {
         return 0;
@@ -214,7 +243,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_digest:
       p7->type = obj;
-      PKCS7_DIGEST_free(p7->d.digest);
       p7->d.digest = PKCS7_DIGEST_new();
       if (p7->d.digest == NULL) {
         return 0;
@@ -227,7 +255,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_data:
       p7->type = obj;
-      ASN1_OCTET_STRING_free(p7->d.data);
       p7->d.data = ASN1_OCTET_STRING_new();
       if (p7->d.data == NULL) {
         return 0;
@@ -235,7 +262,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_signedAndEnveloped:
       p7->type = obj;
-      PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
       p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
       if (p7->d.signed_and_enveloped == NULL) {
         return 0;
@@ -250,7 +276,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_enveloped:
       p7->type = obj;
-      PKCS7_ENVELOPE_free(p7->d.enveloped);
       p7->d.enveloped = PKCS7_ENVELOPE_new();
       if (p7->d.enveloped == NULL) {
         return 0;
@@ -264,7 +289,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_encrypted:
       p7->type = obj;
-      PKCS7_ENCRYPT_free(p7->d.encrypted);
       p7->d.encrypted = PKCS7_ENCRYPT_new();
       if (p7->d.encrypted == NULL) {
         return 0;
