@@ -110,12 +110,12 @@ int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
     GUARD_PTR(where);
     // wherelen is expected to be the length of the path string
     // not including the terminating NUL.
-    if (wherelen + 1 > sizeof(ap->s_un.sun_path)) {
+    if (wherelen >= sizeof(ap->s_un.sun_path)) {
       return 0;
     }
     OPENSSL_cleanse(&ap->s_un, sizeof(ap->s_un));
     ap->s_un.sun_family = family;
-    OPENSSL_strlcpy(ap->s_un.sun_path, where, wherelen);
+    OPENSSL_memcpy(ap->s_un.sun_path, where, wherelen);
     return 1;
   }
 #endif
