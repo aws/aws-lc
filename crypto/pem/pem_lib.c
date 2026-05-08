@@ -269,11 +269,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
         callback = PEM_def_callback;
       }
       pass_len = (*callback)(buf, PEM_BUFSIZE, 1, u);
-      if (pass_len < 0) {
-        OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
-        goto err;
-      }
       pass = (const unsigned char *)buf;
+    }
+    if (pass_len < 0) {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
+      goto err;
     }
     assert(iv_len <= sizeof(iv));
     AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, iv_len));  // Generate a salt
