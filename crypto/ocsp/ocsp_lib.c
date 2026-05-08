@@ -146,6 +146,7 @@ int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
   *phost = NULL;
   *pport = NULL;
   *ppath = NULL;
+  *pssl = 0;
 
   // Duplicate into the buffer since the contents are going to be changed.
   buffer = OPENSSL_strdup(url);
