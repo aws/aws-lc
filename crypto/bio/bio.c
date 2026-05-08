@@ -305,6 +305,9 @@ int BIO_write(BIO *bio, const void *in, int inl) {
 }
 
 int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_bytes) {
+  if (written_bytes != NULL) {
+    *written_bytes = 0;
+  }
   if (bio == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_NULL_PARAMETER);
     return 0;

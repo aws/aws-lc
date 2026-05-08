@@ -483,7 +483,8 @@ int PEM_write(FILE *fp, const char *name, const char *header,
 
 int PEM_write_bio(BIO *bp, const char *name, const char *header,
                   const unsigned char *data, long len) {
-  int nlen, n, i, j, outl;
+  int nlen, n, i, outl;
+  long j;
   unsigned char *buf = NULL;
   EVP_ENCODE_CTX ctx;
   int reason = ERR_R_BUF_LIB;
