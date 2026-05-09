@@ -722,11 +722,13 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
   *header = headerB->data;
   *data = (unsigned char *)dataB->data;
   *len = bl;
+  OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_free(nameB);
   OPENSSL_free(headerB);
   OPENSSL_free(dataB);
   return 1;
 err:
+  OPENSSL_cleanse(buf, sizeof(buf));
   BUF_MEM_free(nameB);
   BUF_MEM_free(headerB);
   BUF_MEM_free(dataB);
