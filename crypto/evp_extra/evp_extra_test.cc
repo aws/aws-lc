@@ -1683,6 +1683,30 @@ TEST(EVPExtraTest, Ed25519) {
   ERR_clear_error();
 }
 
+// EVP_parse_private_key must reject trailing data inside the PrivateKeyInfo
+// SEQUENCE.
+TEST(EVPExtraTest, ParsePrivateKeyRejectsTrailingData) {
+  // Ed25519 PKCS#8 (the kPrivateKeyPKCS8 vector from EVPExtraTest.Ed25519)
+  // with two extra bytes (ASN.1 NULL: 05 00) appended inside the outer
+  // SEQUENCE. The SEQUENCE length byte is bumped 0x2e -> 0x30 to cover
+  // the extra bytes, so the outer TLV is itself well-formed.
+  static const uint8_t kDERWithTrailing[] = {
+      0x30, 0x30, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+      0x04, 0x22, 0x04, 0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
+      0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69,
+      0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+      0x05, 0x00,
+  };
+
+  CBS cbs;
+  CBS_init(&cbs, kDERWithTrailing, sizeof(kDERWithTrailing));
+  ERR_clear_error();
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  EXPECT_FALSE(parsed);
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_DECODE_ERROR));
+  ERR_clear_error();
+}
+
 // EVP_PKEY_get_private_seed returns an error for key types that don't
 // provide a get_priv_seed method. It must also reject NULL |key| regardless of
 // key type.

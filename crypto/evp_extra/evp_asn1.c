@@ -172,6 +172,13 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     has_pub = 1;
   }
 
+  // Reject trailing data within the SEQUENCE, matching the strictness of
+  // EVP_parse_public_key.
+  if (CBS_len(&pkcs8) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+
   // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL) {
