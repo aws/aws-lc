@@ -591,6 +591,11 @@ jobs:
                 image:arm-3.0
                 fleet:linux-graviton4-r8g-2xlarge
     steps:
+      - name: Install QEMU host dependencies
+        if: runner.environment == 'self-hosted'
+        run: |
+          sudo apt update
+          sudo apt install -y dosfstools openssh-client rsync
       - uses: actions/checkout@v6
       - name: OpenBSD
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
