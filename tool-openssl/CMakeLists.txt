@@ -174,3 +174,13 @@ if(BUILD_TESTING)
     add_dependencies(tool_openssl_test openssl)
     set_test_location(tool_openssl_test)
 endif()
+
+# Create binary symlinks for OpenSSL compatibility
+if(INSTALL_OPENSSL_SHIM AND COHABITANT_BINARIES)
+  install(CODE "
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${AWSLC_BIN_PREFIX}openssl\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/openssl\")
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${AWSLC_BIN_PREFIX}c_rehash\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/c_rehash\")
+  ")
+endif()
