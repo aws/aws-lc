@@ -3,6 +3,7 @@
 
 #include <openssl/pkcs7.h>
 
+#include <limits.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -748,6 +749,10 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
 
+  if (md_sk != NULL && sk_X509_ALGOR_num(md_sk) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
+    goto err;
+  }
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
     if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
       goto err;
@@ -1269,6 +1274,11 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     goto err;
   }
 
+  if (sk_PKCS7_RECIP_INFO_num(rsk) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
+    goto err;
+  }
+
   if ((cipher_bio = BIO_new(BIO_f_cipher())) == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
     goto err;
@@ -1665,6 +1675,10 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   STACK_OF(PKCS7_SIGNER_INFO) *sinfos = PKCS7_get_signer_info(p7);
   if (sinfos == NULL || sk_PKCS7_SIGNER_INFO_num(sinfos) == 0UL) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_SIGNATURES_ON_DATA);
+    goto out;
+  }
+  if (sk_PKCS7_SIGNER_INFO_num(sinfos) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto out;
   }
 

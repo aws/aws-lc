@@ -2,6 +2,7 @@
 // Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/base64.h>
@@ -37,6 +38,10 @@ NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str, ossl_ssize_t len) {
   }
   if (len <= 0) {
     len = strlen(str);
+  }
+  if (len > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+    return NULL;
   }
   if (!EVP_DecodedLength(&spki_len, len)) {
     OPENSSL_PUT_ERROR(X509, X509_R_BASE64_DECODE_ERROR);
