@@ -792,6 +792,9 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       }
       xalg->parameter->type = V_ASN1_OCTET_STRING;
       xalg->parameter->value.octet_string = ASN1_OCTET_STRING_new();
+      if (xalg->parameter->value.octet_string == NULL) {
+        goto err;
+      }
       // Set |p7|'s parameter value to the IV
       if (!ASN1_OCTET_STRING_set(xalg->parameter->value.octet_string, iv,
                                  ivlen)) {
@@ -1595,7 +1598,7 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
       goto out;
     }
     if (message_digest->length != (int)md_len ||
-        OPENSSL_memcmp(message_digest->data, md_data, md_len) != 0) {
+        CRYPTO_memcmp(message_digest->data, md_data, md_len) != 0) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_DIGEST_FAILURE);
       goto out;
     }
