@@ -233,6 +233,7 @@ err:
   OPENSSL_free(buffer);
   OPENSSL_free(*ppath);
   *ppath = NULL;
+  *pssl = 0;
   OPENSSL_free(*pport);
   *pport = NULL;
   OPENSSL_free(*phost);
