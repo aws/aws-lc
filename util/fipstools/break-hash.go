@@ -104,6 +104,13 @@ func doELF(objectBytes []byte) (int, []byte, error) {
 }
 
 func doPE(objectBytes []byte, mapPath string) (int, []byte, error) {
+	// Unlike doELF, we do not need to search the raw file for a unique
+	// 256-byte prefix of the module text to find its file offset: the map
+	// file gives us the exact virtual address of BORINGSSL_bcm_text_start,
+	// and the PE section table lets us translate that directly to a file
+	// offset. The uniqueness check doELF performs is a workaround for the
+	// fact that ELF symbol values alone do not pinpoint the on-disk location
+	// of the module; the PE path does not have that limitation.
 	symbolAddrs, err := fipscommon.ParseMapFile(mapPath)
 	if err != nil {
 		return 0, nil, err

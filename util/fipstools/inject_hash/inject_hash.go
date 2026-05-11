@@ -354,6 +354,10 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 	var isStatic bool
 	var perm os.FileMode
 
+	if appleOS && windowsOS {
+		return fmt.Errorf("-apple and -windows are mutually exclusive")
+	}
+
 	if windowsOS && len(mapFile) == 0 {
 		return fmt.Errorf("-map is required when -windows is set")
 	}

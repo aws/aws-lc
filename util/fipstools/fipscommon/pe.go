@@ -21,6 +21,23 @@ type PEInfo struct {
 
 // ParseMapFile reads a Windows linker map file and returns a map of
 // BORINGSSL_bcm_* symbol names to their Rva+Base addresses.
+//
+// MSVC-style map files (also produced by lld-link with /MAP:) contain several
+// sections. Symbol addresses we care about live under a column-header line of
+// the form:
+//
+//	 Address         Publics by Value              Rva+Base               Lib:Object
+//
+// followed by rows of the form:
+//
+//	 SSSS:OOOOOOOO  name  RRRRRRRRRRRRRRRR  [f]  Lib:Object
+//
+// A later "Static symbols" heading begins a section that reuses the row format,
+// so anchoring parsing to the Publics header avoids accidentally picking up a
+// same-named static symbol from some other translation unit. The
+// BORINGSSL_bcm_* markers are `extern` and therefore only ever appear in
+// Publics by Value in practice, but the anchor makes the intent explicit and
+// the parser less fragile.
 func ParseMapFile(mapPath string) (map[string]uint64, error) {
 	data, err := os.ReadFile(mapPath)
 	if err != nil {
@@ -28,8 +45,26 @@ func ParseMapFile(mapPath string) (map[string]uint64, error) {
 	}
 
 	symbols := make(map[string]uint64)
-	// Symbol lines have format: SSSS:OOOOOOOO  name  RRRRRRRRRRRRRRRR  Lib:Object
+	inPublics := false
+	sawPublicsHeading := false
 	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Section headings are column-header / label lines with no leading
+		// address column. Detect the Publics by Value column-header line
+		// (which also contains the word "Address") and the Static symbols
+		// label that terminates the public section.
+		if strings.Contains(trimmed, "Publics by Value") {
+			inPublics = true
+			sawPublicsHeading = true
+			continue
+		}
+		if trimmed == "Static symbols" {
+			inPublics = false
+			continue
+		}
+		if !inPublics {
+			continue
+		}
 		fields := strings.Fields(line)
 		if len(fields) < 3 || !strings.Contains(fields[0], ":") {
 			continue
@@ -46,6 +81,13 @@ func ParseMapFile(mapPath string) (map[string]uint64, error) {
 			return nil, fmt.Errorf("duplicate symbol %q in map file", name)
 		}
 		symbols[name] = rvaBase
+	}
+
+	// Guard against silently-malformed map files: if we never saw the
+	// expected heading the caller will get confusing "symbol not found"
+	// errors downstream. Surface the real problem here instead.
+	if !sawPublicsHeading {
+		return nil, fmt.Errorf("map file %q does not contain a \"Publics by Value\" section; is this an MSVC-style linker map?", mapPath)
 	}
 
 	return symbols, nil
@@ -85,7 +127,11 @@ func (p *PEInfo) ResolveSymbolFileOffset(symbolAddrs map[string]uint64, name str
 	for _, s := range p.File.Sections {
 		start := uint64(s.VirtualAddress)
 		if rva >= start && rva < start+uint64(s.VirtualSize) {
-			return rva - start + uint64(s.Offset), nil
+			offsetInSection := rva - start
+			if offsetInSection >= uint64(s.Size) {
+				return 0, fmt.Errorf("RVA 0x%x for %q is in zero-fill/BSS region of section %s (offset 0x%x exceeds raw data size 0x%x)", rva, name, s.Name, offsetInSection, s.Size)
+			}
+			return offsetInSection + uint64(s.Offset), nil
 		}
 	}
 	return 0, fmt.Errorf("RVA 0x%x for %q not found in any PE section", rva, name)
