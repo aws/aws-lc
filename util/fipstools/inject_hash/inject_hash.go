@@ -330,17 +330,20 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	var moduleROData []byte
+	// The Windows FIPS build is always a shared library (see the `windowsOS`
+	// branch of `do` below, which rejects static inputs). In shared builds the
+	// runtime integrity check in bcm.c hashes the rodata region in addition
+	// to the text region, so the map file must contain both rodata markers.
+	// Silently skipping rodata here would produce a hash that disagrees with
+	// what the runtime computes and the DLL would fail the power-on self-test.
 	_, hasRodataStart := symbolAddrs["BORINGSSL_bcm_rodata_start"]
 	_, hasRodataEnd := symbolAddrs["BORINGSSL_bcm_rodata_end"]
-	if hasRodataStart != hasRodataEnd {
-		return nil, nil, errors.New("rodata marker presence inconsistent")
+	if !hasRodataStart || !hasRodataEnd {
+		return nil, nil, errors.New("rodata markers missing from map file; Windows FIPS shared build requires both BORINGSSL_bcm_rodata_start and BORINGSSL_bcm_rodata_end")
 	}
-	if hasRodataStart {
-		moduleROData, err = extractRegion("BORINGSSL_bcm_rodata_start", "BORINGSSL_bcm_rodata_end")
-		if err != nil {
-			return nil, nil, err
-		}
+	moduleROData, err := extractRegion("BORINGSSL_bcm_rodata_start", "BORINGSSL_bcm_rodata_end")
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return moduleText, moduleROData, nil

@@ -76,13 +76,17 @@ cd /d %SRC_ROOT%
 go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
 copy /y %BUILD_DIR%\crypto\crypto_corrupted.dll %BUILD_DIR%\crypto\crypto.dll || goto error
 %BUILD_DIR%\util\fipstools\test_fips.exe 2>nul
-if %ERRORLEVEL% equ 0 (
-    echo FIPS integrity negative test failed: test_fips should have failed with corrupted crypto.dll
-    goto error
-)
+set FIPS_NEGATIVE_RC=%ERRORLEVEL%
+@rem Restore the unmodified DLL before we decide whether the test passed or
+@rem failed, so that a failure here does not leave a corrupted crypto.dll
+@rem behind for any subsequent local invocation.
 copy /y %BUILD_DIR%\crypto\crypto.dll.bak %BUILD_DIR%\crypto\crypto.dll || goto error
 del /q %BUILD_DIR%\crypto\crypto.dll.bak
 del /q %BUILD_DIR%\crypto\crypto_corrupted.dll
+if %FIPS_NEGATIVE_RC% equ 0 (
+    echo FIPS integrity negative test failed: test_fips should have failed with corrupted crypto.dll
+    goto error
+)
 
 @echo  LOG: %date%-%time% %1 %2 FIPS validation complete
 exit /b 0
