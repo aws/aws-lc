@@ -564,13 +564,32 @@ jobs:
 
   OpenBSD:
     needs: [sanity-test-run]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
       fail-fast: false
       matrix:
         arch: ["x86-64", "arm64"]
         version: ["7.5", "7.6"]
+        include:
+          - arch: "x86-64"
+            version: "7.5"
+            runner: ubuntu-latest
+          - arch: "x86-64"
+            version: "7.6"
+            runner: ubuntu-latest
+          - arch: "arm64"
+            version: "7.5"
+            runner:
+              - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+                image:arm-3.0
+                fleet:linux-graviton4-r8g-2xlarge
+          - arch: "arm64"
+            version: "7.6"
+            runner:
+              - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+                image:arm-3.0
+                fleet:linux-graviton4-r8g-2xlarge
     steps:
       - uses: actions/checkout@v6
       - name: OpenBSD
