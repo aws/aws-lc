@@ -1639,6 +1639,7 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
     EXPECT_FALSE(host);
     EXPECT_FALSE(port);
     EXPECT_FALSE(path);
+    EXPECT_EQ(is_ssl, 0);
   }
 }
 

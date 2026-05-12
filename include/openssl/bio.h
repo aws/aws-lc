@@ -776,9 +776,9 @@ OPENSSL_EXPORT int BIO_ADDR_family(const BIO_ADDR *ap);
 // The address data from |ap| is copied into the buffer |p| if |p| is not NULL.
 // If |l| is not NULL, |*l| will be updated with the size of the address data.
 // For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6
-// address; for AF_UNIX, the socket path. With AF_UNIX addresses, the buffer |p|
-// must be large enough for both the path and a NUL terminator. The function will
-// write the terminator to the buffer, but the length stored in |*l| excludes it.
+// address; for AF_UNIX, the socket path followed by a NUL terminator. The
+// length stored in |*l| includes the NUL for AF_UNIX so that it matches the
+// number of bytes written to |p|.
 // Returns 1 on success, 0 if the address family is unsupported or |ap| is NULL.
 OPENSSL_EXPORT int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l);
 
