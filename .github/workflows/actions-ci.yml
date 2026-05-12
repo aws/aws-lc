@@ -594,8 +594,8 @@ jobs:
       - name: Install QEMU host dependencies
         if: runner.environment == 'self-hosted'
         run: |
-          sudo apt update
-          sudo apt install -y dosfstools openssh-client rsync
+          cat /etc/os-release
+          sudo dnf install -y qemu-system-aarch64 qemu-img dosfstools openssh-clients rsync
       - uses: actions/checkout@v6
       - name: OpenBSD
         uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
