@@ -151,7 +151,10 @@ int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l) {
     return 0;
   }
   if (l != NULL) {
-    *l = len;
+    // AF_UNIX includes the trailing NUL written below so |*l| matches the
+    // bytes written to |p| and reflects sockaddr_un's NUL-terminated path.
+    // OpenSSL does not write this NUL; aws-lc intentionally does.
+    *l = (ap->sa.sa_family == AF_UNIX) ? len + 1 : len;
   }
 
   if (p != NULL) {
