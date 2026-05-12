@@ -86,7 +86,14 @@ static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
   return 1;
 }
 
+// kem_cmp_parameters returns 1 if |a| and |b| hold populated KEM keys with
+// the same KEM NID, 0 if their NIDs differ, or -2 if either operand is
+// missing its key or parameters. The tri-state return aligns with the
+// |EVP_PKEY_cmp| convention (1 = equal, 0 = not equal, negative = error).
 static int kem_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  if (a == NULL || b == NULL) {
+    return -2;
+  }
   const KEM_KEY *a_key = a->pkey.kem_key;
   const KEM_KEY *b_key = b->pkey.kem_key;
   if (a_key == NULL || b_key == NULL) {
