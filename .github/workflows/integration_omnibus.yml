@@ -392,7 +392,7 @@ jobs:
       OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -439,7 +439,7 @@ jobs:
       FIPS: ${{ matrix.buildFIPS }}
       AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.crtUseSystemCrypto }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -474,7 +474,7 @@ jobs:
     env:
       FIPS: ${{ matrix.buildFIPS }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

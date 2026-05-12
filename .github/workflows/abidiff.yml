@@ -19,11 +19,11 @@ jobs:
     name: libcrypto incremental ABI check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           path: ${{ github.workspace }}/previous
@@ -40,11 +40,11 @@ jobs:
     name: libssl incremental ABI check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           path: ${{ github.workspace }}/previous
@@ -61,7 +61,7 @@ jobs:
     name: libcrypto release ABI check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
@@ -70,7 +70,7 @@ jobs:
         uses: ./next/.github/actions/latest-semver-tag
         with:
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ steps.get-latest-tag.outputs.latest-tag }}
           path: ${{ github.workspace }}/previous
@@ -87,7 +87,7 @@ jobs:
     name: libssl release ABI check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
@@ -96,7 +96,7 @@ jobs:
         uses: ./next/.github/actions/latest-semver-tag
         with:
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: aws/aws-lc
           ref: ${{ steps.get-latest-tag.outputs.latest-tag }}

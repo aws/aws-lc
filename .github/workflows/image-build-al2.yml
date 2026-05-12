@@ -36,7 +36,7 @@ jobs:
       al2: ${{ steps.images.outputs.al2 }}
       al2_sde: ${{ steps.images.outputs.al2_sde }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -50,8 +50,8 @@ jobs:
           echo al2=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
           echo al2_sde=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -60,7 +60,7 @@ jobs:
           target: al2
           tags: ${{ steps.images.outputs.al2 }}
           push: true
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -131,7 +131,7 @@ jobs:
     outputs:
       al2: ${{ steps.images.outputs.al2 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -144,8 +144,8 @@ jobs:
         run: |
           echo al2=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
           context: ./.github/docker_images/aws-lc/amazonlinux

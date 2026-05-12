@@ -36,7 +36,7 @@ jobs:
       al2023: ${{ steps.images.outputs.al2023 }}
       x509: ${{ steps.images.outputs.x509 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -50,8 +50,8 @@ jobs:
           echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
           echo x509=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -90,7 +90,7 @@ jobs:
             source /opt/compiler-env/setup-clang-19.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -117,7 +117,7 @@ jobs:
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -130,8 +130,8 @@ jobs:
         run: |
           echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux

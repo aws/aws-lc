@@ -29,7 +29,7 @@ jobs:
           - name: fips-tests
             run: ./tests/ci/run_fips_tests.sh
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -60,7 +60,7 @@ jobs:
           - name: fips-tests
             run: ./tests/ci/run_fips_tests.sh
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -89,7 +89,7 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_END_INDEX: 3500
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -114,7 +114,7 @@ jobs:
       AWS_LC_SSL_RUNNER_START_INDEX: 3501
       AWS_LC_SSL_RUNNER_END_INDEX: 5500
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -140,7 +140,7 @@ jobs:
       AWS_LC_SSL_RUNNER_START_INDEX: 5501
       AWS_LC_SSL_RUNNER_END_INDEX: 7000
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -165,7 +165,7 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_START_INDEX: 7001
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -188,7 +188,7 @@ jobs:
         image:arm-3.0
         instance-size:large
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
