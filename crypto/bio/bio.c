@@ -325,9 +325,6 @@ int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_by
     }
     return 1;
   } else {
-    if (written_bytes != NULL) {
-      *written_bytes = 0;
-    }
     return 0;
   }
 }
