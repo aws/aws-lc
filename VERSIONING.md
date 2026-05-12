@@ -106,7 +106,7 @@ At any given time, at least one LTS branch is within its support window. Consecu
 
 FIPS validation requires a fixed snapshot of the cryptographic module's source code. Each time AWS-LC is submitted for FIPS validation, a branch is cut from mainline that preserves the exact code submitted. Most of these branches are not designated as LTS.
 
-Non-LTS FIPS branches exist solely to preserve the validated snapshot. They are not published as GitHub tagged releases, and consumers should not depend on them.
+Non-LTS FIPS branches exist solely to preserve the validated snapshot. They do not receive release tags, and consumers should not depend on them.
 
 We may apply critical security fixes to a non-LTS FIPS branch while it is the most recently NIST-certified FIPS branch. This is a maintenance concession, not a supported consumption model. Once a newer FIPS branch receives certification, the previous non-LTS branch is frozen and receives no further updates.
 
