@@ -20,6 +20,7 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
+#include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -1404,6 +1405,101 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
   CHECK_ERROR(EVP_EncryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+}
+
+// Mock cipher whose |EVP_CTRL_INIT| handler always fails. It's needed to
+// exercise the error paths in |EVP_CipherInit_ex| and |EVP_CIPHER_CTX_copy|.
+// In addition, the mock needs |ctx_size| != 0, otherwise |cipher_data| is
+// not allocated before the ctrl callback runs. This is needed below for
+// InitErrorPathReleasesCipherData, to test |cipher_data| is free'd.
+static int mock_failing_init(EVP_CIPHER_CTX *, const uint8_t *, const uint8_t *,
+                             int) {
+  return 1;
+}
+
+static int mock_failing_cipher(EVP_CIPHER_CTX *, uint8_t *, const uint8_t *,
+                               size_t) {
+  return 1;
+}
+
+static int mock_failing_ctrl(EVP_CIPHER_CTX *, int type, int, void *) {
+  if (type == EVP_CTRL_INIT) {
+    return 0;
+  }
+  return -1;
+}
+
+static int mock_failing_copy_ctrl(EVP_CIPHER_CTX *, int type, int, void *) {
+  if (type == EVP_CTRL_INIT) {
+    return 1;
+  }
+  if (type == EVP_CTRL_COPY) {
+    return 0;
+  }
+  return -1;
+}
+
+static const EVP_CIPHER kFailingInitCipher = {
+  NID_undef,
+  1,
+  16,
+  0,
+  128,
+  EVP_CIPH_STREAM_CIPHER | EVP_CIPH_CTRL_INIT,
+  mock_failing_init,
+  mock_failing_cipher,
+  nullptr,
+  mock_failing_ctrl,
+};
+
+static const EVP_CIPHER kFailingCopyCipher = {
+  NID_undef,
+  1,
+  16,
+  0,
+  128,
+  EVP_CIPH_STREAM_CIPHER | EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY,
+  mock_failing_init,
+  mock_failing_cipher,
+  nullptr,
+  mock_failing_copy_ctrl,
+};
+
+// On |EVP_CipherInit_ex| error path at |EVP_CTRL_INIT|, the context must not be
+// left with an orphaned |cipher_data|. Otherwise a subsequent
+// |EVP_CipherInit_ex| call on the same context would overwrite and leak it. Not
+// exactly how one would probably use this API, but who knows.
+TEST(CipherTest, InitErrorPathReleasesCipherData) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  std::vector<uint8_t> key(16, 0);
+  EXPECT_FALSE(EVP_CipherInit_ex(ctx.get(), &kFailingInitCipher, nullptr,
+                                 key.data(), nullptr, 1));
+  EXPECT_EQ(ctx->cipher, nullptr);
+  EXPECT_EQ(ctx->cipher_data, nullptr);
+
+  // A follow-up init with a real cipher must still work and must not depend on
+  // leaked state from the failed attempt.
+  EXPECT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_128_ecb(), nullptr,
+                                key.data(), nullptr, 1));
+}
+
+// |EVP_CIPHER_CTX_copy| shares the same shape of error path for
+// |EVP_CTRL_COPY| failures as |EVP_CTRL_INIT| above. The destination's
+// |cipher_data| must not be orphaned when the custom copy callback fails.
+TEST(CipherTest, CopyErrorPathReleasesCipherData) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> src(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  std::vector<uint8_t> key(16, 0);
+  ASSERT_TRUE(EVP_CipherInit_ex(src.get(), &kFailingCopyCipher, nullptr,
+                                key.data(), nullptr, 1));
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> dst(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(dst);
+  EXPECT_FALSE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  EXPECT_EQ(dst->cipher, nullptr);
+  EXPECT_EQ(dst->cipher_data, nullptr);
 }
 
 struct CipherInfo {
