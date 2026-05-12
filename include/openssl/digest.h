@@ -42,6 +42,16 @@ OPENSSL_EXPORT const EVP_MD *EVP_shake128(void);
 OPENSSL_EXPORT const EVP_MD *EVP_shake256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);
 
+// EVP_keccak_256 returns the Keccak-256 hash with the original (Ethereum)
+// padding byte 0x01.
+//
+// WARNING: This is NOT FIPS-approved and NOT FIPS 202 SHA3-256 (which uses
+// padding byte 0x06). It is the variant used by Ethereum, Solidity's
+// keccak256(), and similar ecosystems. It has no standardised OID and so
+// must not be used with EVP_DigestSign* / EVP_DigestVerify* nor with any
+// API that ASN.1-marshals a digest algorithm identifier.
+OPENSSL_EXPORT const EVP_MD *EVP_keccak_256(void);
+
 // EVP_md5_sha1 is a TLS-specific |EVP_MD| which computes the concatenation of
 // MD5 and SHA-1, as used in TLS 1.1 and below.
 OPENSSL_EXPORT const EVP_MD *EVP_md5_sha1(void);

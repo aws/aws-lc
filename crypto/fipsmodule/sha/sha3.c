@@ -117,8 +117,9 @@ static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
 // the internal buffer. It initialises the |ctx| fields and returns 1 on
 // success and 0 on failure.
 static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
-  if (pad != SHA3_PAD_CHAR && 
-      pad != SHAKE_PAD_CHAR) { 
+  if (pad != SHA3_PAD_CHAR &&
+      pad != SHAKE_PAD_CHAR &&
+      pad != KECCAK_PAD_CHAR) {
     return 0;
   }
       
@@ -323,6 +324,67 @@ int SHA3_512_Update(KECCAK1600_CTX *ctx, const void *data,
 int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
                                     KECCAK1600_CTX *ctx) {
     return SHA3_Final(&out[0], ctx);
+}
+
+/*
+ * Keccak-256 (Ethereum-style) APIs. Reuse the FIPS202 framework with the
+ * original Keccak padding byte (0x01). NOT FIPS-approved: these never call
+ * FIPS_service_indicator_update_state, so consumers always see
+ * AWSLC_NOT_APPROVED for the service indicator.
+ */
+int KECCAK_256_Init(KECCAK1600_CTX *ctx) {
+  if (ctx == NULL) {
+    return 0;
+  }
+  return FIPS202_Init(ctx, KECCAK_PAD_CHAR,
+                      SHA3_BLOCKSIZE(KECCAK_256_DIGEST_BITLENGTH),
+                      KECCAK_256_DIGEST_BITLENGTH);
+}
+
+int KECCAK_256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+  if (ctx == NULL) {
+    return 0;
+  }
+  if (data == NULL && len != 0) {
+    return 0;
+  }
+  if (len == 0) {
+    return 1;
+  }
+  return FIPS202_Update(ctx, data, len);
+}
+
+int KECCAK_256_Final(uint8_t out[KECCAK_256_DIGEST_LENGTH],
+                     KECCAK1600_CTX *ctx) {
+  if (out == NULL || ctx == NULL) {
+    return 0;
+  }
+  if (ctx->md_size == 0) {
+    return 1;
+  }
+  if (FIPS202_Finalize(out, ctx) == 0) {
+    return 0;
+  }
+  Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size, ctx->state);
+  ctx->state = KECCAK1600_STATE_FINAL;
+  // Intentionally no FIPS_service_indicator_update_state(): Keccak-256 with
+  // 0x01 padding is not an approved service.
+  return 1;
+}
+
+uint8_t *KECCAK_256(const uint8_t *data, size_t len,
+                    uint8_t out[KECCAK_256_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (KECCAK_256_Init(&ctx) &&
+            KECCAK_256_Update(&ctx, data, len) &&
+            KECCAK_256_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  // Intentionally no FIPS_service_indicator_update_state().
+  return out;
 }
 
 /*

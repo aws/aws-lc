@@ -116,6 +116,8 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
+  crypto/keccak/testvectors/KECCAK_256ShortMsg.txt
+  crypto/keccak/testvectors/KECCAK_256LongMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/ocsp/test/aws/certs.txt
