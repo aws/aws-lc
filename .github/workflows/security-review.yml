@@ -1,16 +1,13 @@
 name: security-review
 
 on:
-  pull_request:
+  pull_request_target:
     branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 permissions:
   contents: read
-
-env:
-  DISTRIBUTION_URL: https://d28bfvmis1skm5.cloudfront.net
 
 jobs:
   authorize:
@@ -73,16 +70,26 @@ jobs:
 
       - name: Update commit status - pass
         if: steps.codebuild.outputs.blocking == 'false'
-        uses: ouzi-dev/commit-status-updater@v2.0.2
-        with:
-          name: "security-review / report"
-          status: "success"
-          url: "${{ env.DISTRIBUTION_URL }}/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
+          REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            "${STATUS_URL}" \
+            -d "{\"state\":\"success\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
 
       - name: Update commit status - fail
         if: steps.codebuild.outputs.blocking == 'true'
-        uses: ouzi-dev/commit-status-updater@v2.0.2
-        with:
-          name: "security-review / report"
-          status: "failure"
-          url: "${{ env.DISTRIBUTION_URL }}/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
+          REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            "${STATUS_URL}" \
+            -d "{\"state\":\"failure\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
