@@ -1500,6 +1500,11 @@ TEST(CipherTest, CopyErrorPathReleasesCipherData) {
   EXPECT_FALSE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
   EXPECT_EQ(dst->cipher, nullptr);
   EXPECT_EQ(dst->cipher_data, nullptr);
+
+  // A follow-up init with a real cipher on |dst| must still work and must not
+  // depend on leaked state from the failed copy.
+  EXPECT_TRUE(EVP_CipherInit_ex(dst.get(), EVP_aes_128_ecb(), nullptr,
+                                key.data(), nullptr, 1));
 }
 
 struct CipherInfo {
