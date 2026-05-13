@@ -3246,9 +3246,15 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   return write_reply({out});
 }
 
+// TLS 1.3 KDF ACVP handlers. Ported from BoringSSL's
+// util/fipstools/acvp/modulewrapper/modulewrapper.cc |HKDFExtract| and
+// |HKDFExpandLabel|. Named with a TLS13_ prefix here because both are wired
+// to the TLS-v1.3 ACVP suite (RFC 8446) and, in the case of |TLS13_HKDFExtract|,
+// to distinguish it from the generic |HKDF| / |HKDF_expand| helpers already
+// defined in this translation unit for KDA/HKDF and KDF/Feedback.
 template <const EVP_MD *(MDFunc)()>
-static bool HKDFExtract(const Span<const uint8_t> args[],
-                        ReplyCallback write_reply) {
+static bool TLS13_HKDFExtract(const Span<const uint8_t> args[],
+                              ReplyCallback write_reply) {
   const Span<const uint8_t> ikm = args[0];
   const Span<const uint8_t> salt = args[1];
   const EVP_MD *md = MDFunc();
@@ -3264,8 +3270,8 @@ static bool HKDFExtract(const Span<const uint8_t> args[],
 }
 
 template <const EVP_MD *(MDFunc)()>
-static bool HKDFExpandLabel(const Span<const uint8_t> args[],
-                            ReplyCallback write_reply) {
+static bool TLS13_HKDFExpandLabel(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
   const Span<const uint8_t> out_len_bytes = args[0];
   const Span<const uint8_t> secret = args[1];
   const Span<const uint8_t> label = args[2];
@@ -4275,10 +4281,10 @@ static struct {
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
-    {"HKDFExtract/SHA2-256", 2, HKDFExtract<EVP_sha256>},
-    {"HKDFExtract/SHA2-384", 2, HKDFExtract<EVP_sha384>},
-    {"HKDFExpandLabel/SHA2-256", 4, HKDFExpandLabel<EVP_sha256>},
-    {"HKDFExpandLabel/SHA2-384", 4, HKDFExpandLabel<EVP_sha384>},
+    {"HKDFExtract/SHA2-256", 2, TLS13_HKDFExtract<EVP_sha256>},
+    {"HKDFExtract/SHA2-384", 2, TLS13_HKDFExtract<EVP_sha384>},
+    {"HKDFExpandLabel/SHA2-256", 4, TLS13_HKDFExpandLabel<EVP_sha256>},
+    {"HKDFExpandLabel/SHA2-384", 4, TLS13_HKDFExpandLabel<EVP_sha384>},
     {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},

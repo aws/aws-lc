@@ -130,6 +130,12 @@ end:
   return ret;
 }
 
+// CRYPTO_tls13_hkdf_expand_label: the HkdfLabel / CBB construction and the
+// overall shape of this function are ported from BoringSSL's
+// |tls13_hkdf_expand_label| (|crypto/fipsmodule/tls/internal.h|, originally
+// |hkdf_expand_label| in |ssl/tls13_enc.cc|), translated from C++ to C. The
+// FIPS service-indicator lock/unlock and |TLS13_KDF_verify_service_indicator|
+// call at the end are AWS-LC-specific and have no BoringSSL analogue.
 int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
                                    const EVP_MD *digest,
                                    const uint8_t *secret, size_t secret_len,
