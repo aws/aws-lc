@@ -25,6 +25,22 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
                                    const uint8_t *seed1, size_t seed1_len,
                                    const uint8_t *seed2, size_t seed2_len);
 
+// CRYPTO_tls13_hkdf_expand_label computes the TLS 1.3 HKDF-Expand-Label
+// function as defined in RFC 8446, Section 7.1. It derives |out_len| bytes of
+// output into |out| using |digest| as the underlying HMAC hash, |secret| as
+// the HKDF pseudorandom key, |label| (which is prefixed with "tls13 "
+// internally) and |hash| (the context/transcript hash). |out_len| must fit in
+// a |uint16_t|, |label_len| must be between 1 and 249 inclusive so that the
+// "tls13 "-prefixed label satisfies the RFC 8446 |opaque label<7..255>|
+// bounds, and |hash_len| must be at most 255. Under FIPS, the operation is
+// approved when |digest| is SHA2-256 or SHA2-384. It returns one on success
+// and zero on error.
+OPENSSL_EXPORT int CRYPTO_tls13_hkdf_expand_label(
+    uint8_t *out, size_t out_len, const EVP_MD *digest,
+    const uint8_t *secret, size_t secret_len,
+    const uint8_t *label, size_t label_len,
+    const uint8_t *hash, size_t hash_len);
+
 // SSKDF_digest computes the One-step key derivation using the
 // provided digest algorithm as the backing PRF. This algorithm
 // may be referred to as "Single-Step KDF" or "NIST Concatenation KDF" by other

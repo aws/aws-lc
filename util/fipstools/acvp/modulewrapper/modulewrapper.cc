@@ -3278,39 +3278,22 @@ static bool HKDFExpandLabel(const Span<const uint8_t> args[],
   }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
 
-  // Construct the HkdfLabel structure per RFC 8446 Section 7.1:
-  //   struct {
-  //       uint16 length = Length;
-  //       opaque label<7..255> = "tls13 " + Label;
-  //       opaque context<0..255> = Context;
-  //   };
-  static const char kProtocolLabel[] = "tls13 ";
-  const size_t protocol_label_len = sizeof(kProtocolLabel) - 1;
-  const size_t full_label_len = protocol_label_len + label.size();
-
-  // RFC 8446 constrains |length| to uint16, |label| to 7..255 bytes, and
-  // |context| to 0..255 bytes. Reject anything that would not round-trip
-  // through the 1- and 2-byte length fields below.
-  if (out_len > 0xffff || full_label_len > 255 ||
-      transcript_hash.size() > 255) {
+  // RFC 8446 Section 7.1 caps HkdfLabel.length at a uint16_t; reject oversized
+  // requests up front so we don't attempt a multi-GiB |std::vector| allocation
+  // only to have CRYPTO_tls13_hkdf_expand_label reject the size internally.
+  if (out_len > 0xFFFF) {
     return false;
   }
 
-  std::vector<uint8_t> info;
-  info.push_back(static_cast<uint8_t>(out_len >> 8));
-  info.push_back(static_cast<uint8_t>(out_len));
-  info.push_back(static_cast<uint8_t>(full_label_len));
-  info.insert(info.end(), kProtocolLabel, kProtocolLabel + protocol_label_len);
-  info.insert(info.end(), label.data(), label.data() + label.size());
-  info.push_back(static_cast<uint8_t>(transcript_hash.size()));
-  info.insert(info.end(), transcript_hash.data(),
-              transcript_hash.data() + transcript_hash.size());
-
   std::vector<uint8_t> out(out_len);
-  // Qualify with :: to unambiguously select the C library function and avoid
-  // colliding with the same-namespace HKDF_expand template defined below.
-  if (!::HKDF_expand(out.data(), out_len, md, secret.data(), secret.size(),
-                     info.data(), info.size())) {
+  // Delegate the "tls13 " prefix + HkdfLabel construction (RFC 8446 §7.1)
+  // and the RFC-mandated length-bound enforcement to the FIPS-module-internal
+  // CRYPTO_tls13_hkdf_expand_label so ACVP exercises the same code path used
+  // by ssl/tls13_enc.cc.
+  if (!CRYPTO_tls13_hkdf_expand_label(out.data(), out_len, md, secret.data(),
+                                      secret.size(), label.data(),
+                                      label.size(), transcript_hash.data(),
+                                      transcript_hash.size())) {
     return false;
   }
 

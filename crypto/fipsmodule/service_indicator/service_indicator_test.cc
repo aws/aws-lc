@@ -3397,6 +3397,42 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+// TLS 1.3 KDF (HKDF-Expand-Label) is approved under SHA2-256 and SHA2-384, and
+// not approved for any other digest. Label / context contents do not affect
+// approval state for TLS 1.3.
+static const struct TLS13KDFTestVector {
+  const EVP_MD *(*func)();
+  const FIPSStatus expect_approved;
+} kTLS13KDFTestVectors[] = {
+    {EVP_sha1, AWSLC_NOT_APPROVED},
+    {EVP_sha224, AWSLC_NOT_APPROVED},
+    {EVP_sha256, AWSLC_APPROVED},
+    {EVP_sha384, AWSLC_APPROVED},
+    {EVP_sha512, AWSLC_NOT_APPROVED},
+};
+
+class TLS13KDF_ServiceIndicatorTest
+    : public TestWithNoErrors<TLS13KDFTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, TLS13KDF_ServiceIndicatorTest,
+                         testing::ValuesIn(kTLS13KDFTestVectors));
+
+TEST_P(TLS13KDF_ServiceIndicatorTest, HKDFExpandLabel) {
+  const TLS13KDFTestVector &test = GetParam();
+
+  static const uint8_t kLabel[] = "c e traffic";
+  static const uint8_t kHash[32] = {0};
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  uint8_t output[32];
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(CRYPTO_tls13_hkdf_expand_label(
+          output, sizeof(output), test.func(), kTLSSecret, sizeof(kTLSSecret),
+          kLabel, sizeof(kLabel) - 1, kHash, sizeof(kHash))));
+  EXPECT_EQ(approved, test.expect_approved);
+}
+
 // PBKDF2 test data from RFC 6070.
 //
 // Set 1 - short password/salt; these are too short for FIPS, so they'll

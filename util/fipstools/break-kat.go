@@ -27,6 +27,7 @@ var (
 		"SHA3-256":                         "d83c721ee51b060c5a41438a8221e040",
 		"HKDF-SHA-256":                     "ca5e6410e7a52332fe0ab3601212a7d3dbdf55a162af42a5daf38b94f24523477e880dd711508684cc21",
 		"TLS-KDF":                          "abc3657b094c7628a0b282996fe75a75f4984fd94d4ecc2fcf53a2c469a3f731",
+		"TLS13-KDF":                        "024a0d80f357f2499a1244dac26dab66fc13ed85fca71dace146211119525874",
 		"PBKDF2":                           "4157532d4c434649505370617373776f7264",
 		"SSKDF":                            "39a1e2b3899e87efecf6271282d8f8008f252686dd35bfc39a0f71478da48c691565cee431254dd50cab7462c6cf199be9bf5c",
 		"KBKDF":                            "dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0",

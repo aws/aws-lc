@@ -3,9 +3,11 @@
 
 #include <assert.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/hkdf.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/mem.h>
 
 #include "../../internal.h"
@@ -124,6 +126,70 @@ end:
   FIPS_service_indicator_unlock_state();
   if(ret) {
     TLSKDF_verify_service_indicator(original_digest, label, label_len);
+  }
+  return ret;
+}
+
+int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
+                                   const EVP_MD *digest,
+                                   const uint8_t *secret, size_t secret_len,
+                                   const uint8_t *label, size_t label_len,
+                                   const uint8_t *hash, size_t hash_len) {
+  // Lock the FIPS service indicator so the underlying HKDF-Expand (which
+  // itself locks via HMAC) does not bump the indicator counter. We release and
+  // update based on the digest at the end.
+  FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
+
+  static const uint8_t kProtocolLabel[] = "tls13 ";
+  static const size_t kProtocolLabelLen = sizeof(kProtocolLabel) - 1;
+
+  CBB cbb, child;
+  uint8_t *hkdf_label = NULL;
+  size_t hkdf_label_len = 0;
+  int ret = 0;
+
+  CBB_zero(&cbb);
+  // RFC 8446 Section 7.1 constrains the HkdfLabel.length field to a uint16 and
+  // the HkdfLabel.label field to |opaque label<7..255>|. Since |kProtocolLabel|
+  // ("tls13 ") is 6 bytes, the caller-provided |label| must be at least 1 byte
+  // for the combined label to satisfy the RFC lower bound. The upper bound
+  // (combined label <= 255) and the |hash_len| bound are enforced implicitly by
+  // the CBB length-prefixed calls below.
+  if (out_len > UINT16_MAX || label_len == 0) {
+    goto end;
+  }
+
+  // Construct the HkdfLabel structure per RFC 8446 Section 7.1:
+  //   struct {
+  //       uint16 length = Length;
+  //       opaque label<7..255> = "tls13 " + Label;
+  //       opaque context<0..255> = Context;
+  //   };
+  // The CBB_add_u16 / CBB_add_u8_length_prefixed calls implicitly enforce the
+  // RFC-mandated length upper bounds and will fail if |out_len| does not fit
+  // in a |uint16_t|, if the "tls13 "-prefixed label exceeds 255 bytes, or if
+  // |hash| exceeds 255 bytes.
+  if (!CBB_init(&cbb, 2 + 1 + kProtocolLabelLen + label_len + 1 + hash_len) ||
+      !CBB_add_u16(&cbb, out_len) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, kProtocolLabel, kProtocolLabelLen) ||
+      !CBB_add_bytes(&child, label, label_len) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, hash, hash_len) ||
+      !CBB_finish(&cbb, &hkdf_label, &hkdf_label_len)) {
+    goto end;
+  }
+
+  ret = HKDF_expand(out, out_len, digest, secret, secret_len, hkdf_label,
+                    hkdf_label_len);
+
+end:
+  CBB_cleanup(&cbb);
+  OPENSSL_free(hkdf_label);
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    TLS13_KDF_verify_service_indicator(digest);
   }
   return ret;
 }
