@@ -150,16 +150,6 @@ int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
   int ret = 0;
 
   CBB_zero(&cbb);
-  // RFC 8446 Section 7.1 constrains the HkdfLabel.length field to a uint16 and
-  // the HkdfLabel.label field to |opaque label<7..255>|. Since |kProtocolLabel|
-  // ("tls13 ") is 6 bytes, the caller-provided |label| must be at least 1 byte
-  // for the combined label to satisfy the RFC lower bound. The upper bound
-  // (combined label <= 255) and the |hash_len| bound are enforced implicitly by
-  // the CBB length-prefixed calls below.
-  if (out_len > UINT16_MAX || label_len == 0) {
-    goto end;
-  }
-
   // Construct the HkdfLabel structure per RFC 8446 Section 7.1:
   //   struct {
   //       uint16 length = Length;
@@ -167,9 +157,12 @@ int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
   //       opaque context<0..255> = Context;
   //   };
   // The CBB_add_u16 / CBB_add_u8_length_prefixed calls implicitly enforce the
-  // RFC-mandated length upper bounds and will fail if |out_len| does not fit
-  // in a |uint16_t|, if the "tls13 "-prefixed label exceeds 255 bytes, or if
-  // |hash| exceeds 255 bytes.
+  // RFC-mandated upper bounds: CBB_add_u16 fails if |out_len| does not fit in a
+  // uint16_t, and the u8-length-prefixed children fail if the "tls13 "-prefixed
+  // label or |hash| exceed 255 bytes. The RFC's lower bound on the label field
+  // (|opaque label<7..255>|, i.e. |label_len| >= 1) is intentionally not
+  // enforced here: SSL_export_keying_material callers may pass an empty label,
+  // and this matches the pre-existing AWS-LC and BoringSSL behavior.
   if (!CBB_init(&cbb, 2 + 1 + kProtocolLabelLen + label_len + 1 + hash_len) ||
       !CBB_add_u16(&cbb, out_len) ||
       !CBB_add_u8_length_prefixed(&cbb, &child) ||
