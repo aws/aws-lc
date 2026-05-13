@@ -20,7 +20,7 @@ jobs:
         id: authorization
         uses: ./.github/actions/check-authorization
 
-  security-review:
+  execute:
     needs: authorize
     runs-on: ubuntu-latest
     environment: ${{ needs.authorize.outputs.approval-env }}
@@ -36,7 +36,7 @@ jobs:
       - name: Get AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::547182295936:role/SecurityReview-GitHubOIDCRole
+          role-to-assume: arn:aws:iam::547182295936:role/SecurityReview-GitHubOIDCRole #TODO: migrate to production account
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
           aws-region: us-west-2
 
@@ -68,28 +68,17 @@ jobs:
           REVIEW_STATUS=$(aws codebuild batch-get-builds --ids "${BUILD_ID}" --query 'builds[0].exportedEnvironmentVariables[?name==`REVIEW_STATUS`].value' --output text)
           echo "blocking=$([[ "$REVIEW_STATUS" == "FAIL" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - name: Update commit status - pass
-        if: steps.codebuild.outputs.blocking == 'false'
+      - name: Update commit status
+        if: always() && steps.codebuild.outputs.blocking != 'skip'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
           REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
+          BLOCKING: ${{ steps.codebuild.outputs.blocking }}
         run: |
+          STATE=$([[ "$BLOCKING" == "true" ]] && echo "failure" || echo "success")
           curl -sS -X POST \
             -H "Authorization: token ${GH_TOKEN}" \
             "${STATUS_URL}" \
-            -d "{\"state\":\"success\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
-
-      - name: Update commit status - fail
-        if: steps.codebuild.outputs.blocking == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
-          REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
-        run: |
-          curl -sS -X POST \
-            -H "Authorization: token ${GH_TOKEN}" \
-            "${STATUS_URL}" \
-            -d "{\"state\":\"failure\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
+            -d "{\"state\":\"${STATE}\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
