@@ -34,21 +34,12 @@
 #include <sys/system_properties.h>
 #endif
 
+// On non-Android Linux, delegate getauxval availability detection (including
+// the /proc/self/auxv fallback for libcs that lack <sys/auxv.h>, such as older
+// uclibc) to the shared helper. Android intentionally skips the AT_EXECFN
+// debug lookup to avoid depending on getauxval in older NDK sysroots.
 #if !defined(OPENSSL_ANDROID)
-#define OPENSSL_HAS_GETAUXVAL
-#endif
-// glibc prior to 2.16 does not have getauxval and sys/auxv.h. Android has some
-// host builds (i.e. not building for Android itself, so |OPENSSL_ANDROID| is
-// unset) which are still using a 2.15 sysroot.
-//
-// TODO(davidben): Remove this once Android updates their sysroot.
-#if defined(__GLIBC_PREREQ)
-#if !__GLIBC_PREREQ(2, 16)
-#undef OPENSSL_HAS_GETAUXVAL
-#endif
-#endif
-#if defined(OPENSSL_HAS_GETAUXVAL)
-#include <sys/auxv.h>
+#include "../fipsmodule/cpucap/cpu_getauxval_linux.h"
 #endif
 #endif  // OPENSSL_LINUX
 
