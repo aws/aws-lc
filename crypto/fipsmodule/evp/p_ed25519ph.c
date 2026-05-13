@@ -117,10 +117,16 @@ static int pkey_ed25519ph_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
     }
     case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
       EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
-      if (!params || !dctx || params->context_len > sizeof(dctx->context)) {
+      if (!params || !dctx ||
+          params->context_len > sizeof(dctx->context) ||
+          (params->context_len > 0 && !params->context)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
         return 0;
       }
-      OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      OPENSSL_cleanse(dctx->context, sizeof(dctx->context));
+      if (params->context_len > 0) {
+        OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      }
       dctx->context_len = params->context_len;
       break;
     }

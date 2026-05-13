@@ -21,12 +21,15 @@
 
 #if defined(OPENSSL_THREADS)
 #include <array>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 #include <vector>
 #endif
 
 #if !defined(OPENSSL_WINDOWS)
 #include <errno.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -523,6 +526,88 @@ TEST_F(randTest, MixedUsageMultiThreaded) {
   }
 }
 #endif  // OPENSSL_THREADS
+
+#if defined(OPENSSL_THREADS) && !defined(OPENSSL_WINDOWS) && \
+    !defined(OPENSSL_IOS) && !defined(OPENSSL_WASM) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+// Regression test for https://github.com/aws/aws-lc/issues/3197.
+//
+// Pre-fix, |rand_thread_local_state_clear_all| acquired
+// |thread_local_states_list_lock| and intentionally never released it. A
+// thread that had registered a thread-local state and exited *after* shutdown
+// zeroization would deadlock in its TLS destructor while waiting for that
+// lock. On Windows that destructor runs under the loader lock, which
+// indirectly hangs |ExitProcess|. This test reproduces the same lock cycle
+// (the lock is the same on POSIX -- only the loader-lock fallout is
+// Windows-specific) and verifies the child exits cleanly.
+//
+// We cannot run this in-process because shutdown zeroization permanently
+// disables the RNG for the whole process, breaking any later test. We fork a
+// child, run the scenario, and impose a hard timeout in the parent so a
+// regression manifests as a test failure rather than a hung suite.
+TEST_F(randTest, ShutdownDoesNotDeadlockExitingThread) {
+  pid_t child = fork();
+  ASSERT_GE(child, 0) << "fork failed: " << strerror(errno);
+
+  if (child == 0) {
+    // Register a thread-local DRBG state on a worker thread, then trigger
+    // shutdown zeroization on the main thread, then let the worker exit.
+    std::mutex m;
+    std::condition_variable cv;
+    bool shutdown_done = false;
+    bool worker_registered = false;
+
+    std::thread worker([&] {
+      uint8_t buf[16];
+      RAND_bytes(buf, sizeof(buf));
+      {
+        std::lock_guard<std::mutex> lk(m);
+        worker_registered = true;
+      }
+      cv.notify_one();
+
+      std::unique_lock<std::mutex> lk(m);
+      cv.wait(lk, [&] { return shutdown_done; });
+      // Worker now exits. Pre-fix this exit would block forever in the TLS
+      // destructor; post-fix it returns immediately.
+    });
+
+    {
+      std::unique_lock<std::mutex> lk(m);
+      cv.wait(lk, [&] { return worker_registered; });
+    }
+    rand_thread_local_state_clear_all_FOR_TESTING();
+    {
+      std::lock_guard<std::mutex> lk(m);
+      shutdown_done = true;
+    }
+    cv.notify_one();
+    worker.join();
+    _exit(0);
+  }
+
+  // Parent: enforce a timeout so a regression doesn't hang the suite.
+  constexpr int kTimeoutSeconds = 30;
+  for (int i = 0; i < kTimeoutSeconds * 10; i++) {
+    int status;
+    pid_t ret = waitpid(child, &status, WNOHANG);
+    ASSERT_GE(ret, 0) << "waitpid failed: " << strerror(errno);
+    if (ret == child) {
+      ASSERT_TRUE(WIFEXITED(status))
+          << "child terminated abnormally, status=" << status;
+      ASSERT_EQ(WEXITSTATUS(status), 0);
+      return;
+    }
+    usleep(100 * 1000);
+  }
+
+  kill(child, SIGKILL);
+  waitpid(child, nullptr, 0);
+  FAIL() << "child did not exit within " << kTimeoutSeconds
+         << "s (likely a deadlock in TLS destructor after shutdown)";
+}
+#endif  // OPENSSL_THREADS && !OPENSSL_WINDOWS && !OPENSSL_IOS &&
+        // !OPENSSL_WASM && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST_F(randTest, RdrandABI) {

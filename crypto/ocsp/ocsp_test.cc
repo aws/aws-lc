@@ -1293,6 +1293,38 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
                               pkey.get(), EVP_sha256(), additional_cert.get(),
                               OCSP_NOCERTS));
   EXPECT_EQ((int)sk_X509_num(basic_response.get()->certs), 0);
+
+  // Regression: re-signing the same |OCSP_BASICRESP| through any sequence of
+  // |OCSP_RESPID_KEY| flag combinations must not leak or free the prior
+  // responderId union arm through the wrong destructor. ASAN should flag any
+  // misuse.
+  basic_response.reset(OCSP_BASICRESP_new());
+  ASSERT_TRUE(basic_response);
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              pkey.get(), EVP_sha256(), additional_cert.get(),
+                              0));
+  EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
+            V_OCSP_RESPID_NAME);
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              pkey.get(), EVP_sha256(), additional_cert.get(),
+                              OCSP_RESPID_KEY));
+  EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
+            V_OCSP_RESPID_KEY);
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              pkey.get(), EVP_sha256(), additional_cert.get(),
+                              OCSP_RESPID_KEY));
+  EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
+            V_OCSP_RESPID_KEY);
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              pkey.get(), EVP_sha256(), additional_cert.get(),
+                              0));
+  EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
+            V_OCSP_RESPID_NAME);
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              pkey.get(), EVP_sha256(), additional_cert.get(),
+                              0));
+  EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
+            V_OCSP_RESPID_NAME);
 }
 
 static const char extended_good_http_request_hdr[] =
@@ -1632,6 +1664,7 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
     EXPECT_FALSE(host);
     EXPECT_FALSE(port);
     EXPECT_FALSE(path);
+    EXPECT_EQ(is_ssl, 0);
   }
 }
 
