@@ -15,22 +15,19 @@ AWS-LC is committed to providing a stable public API across both release types. 
 
 ## AWS-LC version numbers
 
-AWS-LC releases follow a `MAJOR.MINOR.PATCH` scheme:
+AWS-LC releases follow a `MAJOR.MINOR.PATCH` scheme. Mainline uses only major and minor; FIPS branches (LTS and non-LTS snapshot) use only minor and patch.
 
 * **Major** (`X.0.0`):
   * Bumped on mainline when a new LTS branch is cut (see [LTS version evolution](#lts-version-evolution)).
   * Signals that the previous major line now belongs to an LTS branch and mainline has moved to a new major line.
-* **Minor** (`X.Y.0`) — additive, backward-compatible changes:
-  * New APIs.
-  * New algorithms.
-  * Security fixes.
-  * Performance improvements.
-  * Other non-breaking updates.
+* **Minor** (`X.Y.0`):
+  * The only increment used on mainline. Every mainline release bumps minor, regardless of the size or kind of change (features, security fixes, performance improvements, bug fixes, platform compatibility fixes, etc.).
+  * Also used on LTS branches for backwards compatible features that do not break API/ABI compatibility.
 * **Patch** (`X.Y.Z`):
-  * Bug fixes that do not change public API or ABI.
-  * Platform compatibility fixes that do not change public API or ABI.
+  * Used only on FIPS branches (LTS or non-LTS snapshot) for non-additive changes — security fixes, bug fixes, and platform compatibility fixes.
+  * Mainline never produces patch versions, so patch increments on FIPS branches cannot collide with mainline.
 
-AWS-LC version numbers are independent of the FIPS version number. A bump in either does not imply a bump in the other.
+AWS-LC version numbers are independent of the FIPS version number. A bump in either does not imply a bump in the other. To identify the FIPS submission a build corresponds to, use `FIPS_version` (see [FIPS version number](#fips-version-number)).
 
 A build's AWS-LC version can be queried at runtime via the `awslc_version_string` API:
 
@@ -76,7 +73,7 @@ LTS release characteristics:
 
 Each LTS branch inherits mainline's major version at the time it is cut. Mainline then immediately bumps to the next major version. This guarantees that mainline and every LTS branch have distinct major version numbers.
 
-For example, when mainline is at `4.0.0` and an LTS branch is cut, the branch takes ownership of the `4.x` line. From that point on, the `4.x` line will only receive the changes permitted below (`4.0.1`, `4.0.2`, ... or `4.1.0`, ...). Mainline advances to `5.0.0` and continues normal development. When the next LTS is cut approximately two years later, it takes ownership of whatever major version line mainline is on at that moment, and mainline bumps again.
+For example, when mainline is at `4.13.0` and an LTS branch is cut, the branch takes ownership of the `4.x` line. From that point on, the `4.x` line receives only the changes permitted below, as patch (`4.13.1`, `4.13.2`, ...) or minor (`4.14.0`, `4.15.0`, ...) increments. Mainline advances to `5.0.0` and continues normal development with minor increments only (`5.1.0`, `5.2.0`, ...). Because mainline never returns to the `4.x` line, version numbers on the LTS cannot collide with mainline. When the next LTS is cut approximately two years later, it takes ownership of whatever major version line mainline is on at that moment, and mainline bumps again.
 
 ### Permitted changes on LTS branches
 
@@ -109,6 +106,8 @@ FIPS validation requires a fixed snapshot of the cryptographic module's source c
 Non-LTS FIPS branches exist solely to preserve the validated snapshot. They do not receive release tags, and consumers should not depend on them.
 
 We may apply critical security fixes to a non-LTS FIPS branch while it is the most recently NIST-certified FIPS branch. This is a maintenance concession, not a supported consumption model. Once a newer FIPS branch receives certification, the previous non-LTS branch is frozen and receives no further updates.
+
+A non-LTS FIPS branch inherits its version from mainline at cut time and only ever issues patch-level increments (e.g., a branch cut at `5.6.0` becomes `5.6.1` after a security fix). Because mainline only produces minor increments (`5.6.0` → `5.7.0`), patch versions on a non-LTS branch cannot collide with mainline.
 
 ## Branch naming conventions
 
