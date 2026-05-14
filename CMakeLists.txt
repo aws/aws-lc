@@ -49,6 +49,13 @@ include(sources.cmake)
 include(TestBigEndian)
 include(CheckCCompilerFlag)
 
+message(STATUS "Versioning name:${SOFTWARE_NAME} version:${SOFTWARE_VERSION} abi:${ABI_VERSION}")
+if(BUILD_LIBSSL)
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME} ssl:${SSL_LIB_NAME}")
+else()
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME}")
+endif()
+
 macro(add_flag_if_supported VARIABLE FLAG)
   # Create a safe, unique variable name to cache the result of the check
   string(MAKE_C_IDENTIFIER "HAVE_C_FLAG_${FLAG}" _CHECK_VAR_NAME)
