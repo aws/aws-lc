@@ -137,13 +137,42 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   return 1;
 }
 
-static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  PQDSA_KEY *a_key = a->pkey.pqdsa_key;
-  PQDSA_KEY *b_key = b->pkey.pqdsa_key;
+// pqdsa_cmp_parameters returns 1 if |a| and |b| hold populated PQDSA keys
+// with the same ML-DSA NID, 0 if their NIDs differ, or -2 if either operand
+// is missing its key or parameters. The tri-state return aligns with the
+// |EVP_PKEY_cmp| convention (1 = equal, 0 = not equal, negative = error).
+static int pqdsa_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  if (a == NULL || b == NULL) {
+    return -2;
+  }
+  const PQDSA_KEY *a_key = a->pkey.pqdsa_key;
+  const PQDSA_KEY *b_key = b->pkey.pqdsa_key;
+  if (a_key == NULL || b_key == NULL) {
+    return -2;
+  }
 
-  return OPENSSL_memcmp(a_key->public_key,
-                        b_key->public_key,
-                        a->pkey.pqdsa_key->pqdsa->public_key_len) == 0;
+  const PQDSA *a_pqdsa = a_key->pqdsa;
+  const PQDSA *b_pqdsa = b_key->pqdsa;
+  if (a_pqdsa == NULL || b_pqdsa == NULL) {
+    return -2;
+  }
+
+  return a_pqdsa->nid == b_pqdsa->nid;
+}
+
+static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
+  int ret = pqdsa_cmp_parameters(a, b);
+  if (ret <= 0) {
+    return ret;
+  }
+
+  const PQDSA_KEY *a_key = a->pkey.pqdsa_key;
+  const PQDSA_KEY *b_key = b->pkey.pqdsa_key;
+  if (a_key->public_key == NULL || b_key->public_key == NULL) {
+    return -2;
+  }
+  return OPENSSL_memcmp(a_key->public_key, b_key->public_key,
+                        a_key->pqdsa->public_key_len) == 0;
 }
 
 static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
