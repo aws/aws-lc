@@ -1689,6 +1689,8 @@ const CertificateKeyTestParams kCertificateKeyTests[] = {
      "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:", SSL_SIGN_ECDSA_SECP256R1_SHA256},
     {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519,
      "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", SSL_SIGN_ED25519},
+    {GetMLDSA65TestCertificate, GetMLDSA65TestKey, SSL_PKEY_PQDSA, "",
+     SSL_SIGN_MLDSA65},
 };
 
 class MultipleCertificateSlotTest
@@ -1760,6 +1762,10 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
     // ED25519 is not supported in versions prior to TLS1.2.
     GTEST_SKIP();
   }
+  if (version < TLS1_3_VERSION && slot_index == SSL_PKEY_PQDSA) {
+    // ML-DSA is only defined for TLS 1.3.
+    GTEST_SKIP();
+  }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
       TLS_method(), certificate_key_param().certificate(),
@@ -1768,7 +1774,7 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+       SSL_SIGN_RSA_PSS_RSAE_SHA256, SSL_SIGN_MLDSA65},
       slot_index, true);
 }
 
@@ -1776,6 +1782,10 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
 TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
+  }
+  if (version < TLS1_3_VERSION && slot_index == SSL_PKEY_PQDSA) {
+    // ML-DSA is only defined for TLS 1.3.
     GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -1797,13 +1807,18 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+       SSL_SIGN_RSA_PSS_RSAE_SHA256, SSL_SIGN_MLDSA65},
       slot_index, true);
 }
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
+  }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519
+    // credentials, so ML-DSA cannot be selected here.
     GTEST_SKIP();
   }
 
@@ -1837,9 +1852,10 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelectionCipherAuth) {
   if ((version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) ||
-      version >= TLS1_3_VERSION) {
+      version >= TLS1_3_VERSION || slot_index == SSL_PKEY_PQDSA) {
     // ED25519 is not supported in versions prior to TLS1.2.
     // TLS 1.3 not have cipher-based authentication configuration.
+    // ML-DSA is TLS 1.3 only and is not selectable via cipher-auth.
     GTEST_SKIP();
   }
 
@@ -1884,6 +1900,10 @@ TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
     // ED25519 is not supported in versions prior to TLS1.2.
     GTEST_SKIP();
   }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519 keys.
+    GTEST_SKIP();
+  }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -1909,6 +1929,10 @@ TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
 TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
+  }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519 certs.
     GTEST_SKIP();
   }
 
@@ -1988,8 +2012,9 @@ TEST_P(MLDSAHandshakeTest, HandshakeSucceeds) {
 }
 
 TEST_P(MLDSAHandshakeTest, RejectedInTLS12) {
-  // ML-DSA is only defined for TLS 1.3. Forcing a TLS 1.2 handshake with an
-  // ML-DSA sigalg preference must not succeed.
+  // When both sides are pinned to TLS 1.2 and ML-DSA is the only sigalg in
+  // play, the handshake must not succeed: the server has nothing to sign
+  // with after the version filter excludes ML-DSA.
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(
       CreateContextWithCertificate(TLS_method(), GetParam().certificate(),
@@ -2037,6 +2062,157 @@ TEST(MLDSAHandshakeTest, CrossVariantMismatchFails) {
   bssl::UniquePtr<SSL> client, server;
   EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                       server_ctx.get()));
+}
+
+TEST_P(MLDSAHandshakeTest, ClientAuth) {
+  // Test ML-DSA for client certificate authentication (mutual TLS).
+  bssl::UniquePtr<SSL_CTX> client_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  // Server requests client certificate.
+  SSL_CTX_set_custom_verify(
+      server_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(server.get()), GetParam().sigalg);
+}
+
+TEST_P(MLDSAHandshakeTest, FilteredFromTLS12) {
+  // ML-DSA is only defined for TLS 1.3 (draft-ietf-tls-mldsa §3.3). Confirm
+  // that even when the local sigalg prefs include ML-DSA, the negotiation
+  // does not pick it once the version is forced to TLS 1.2 -- the peer must
+  // fall back to a different sigalg, not fail.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  // Give the server an RSA cert/key as a fallback usable in TLS 1.2.
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+
+  // Force TLS 1.2 from the client side; server allows 1.2..1.3.
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg, SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_EQ(SSL_version(client.get()), TLS1_2_VERSION);
+  EXPECT_NE(SSL_get_peer_signature_algorithm(client.get()), GetParam().sigalg);
+}
+
+TEST(MLDSAHandshakeTest, RejectedByPeerSigalgCheckInTLS12) {
+  // Even if a peer's local verify list contains ML-DSA (we advertise the
+  // codepoints in TLS 1.2 ClientHellos so a higher-version negotiation can
+  // pick them up), |tls12_check_peer_sigalg| must reject ML-DSA arriving in
+  // a TLS 1.2 ServerKeyExchange / CertificateVerify with illegal_parameter,
+  // per draft-ietf-tls-mldsa §3.3. Without this check, the handshake would
+  // only fail later with a non-spec WRONG_SIGNATURE_TYPE.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetTestCertificate(), GetTestKey()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), ClientConfig(),
+                                     /*shed_handshake_config=*/false));
+  ASSERT_EQ(SSL_version(client.get()), TLS1_2_VERSION);
+
+  // Synthesize a fresh handshake state and seed its verify list with ML-DSA.
+  // |tls12_check_peer_sigalg| must still reject because the negotiated
+  // version is TLS 1.2.
+  bssl::UniquePtr<SSL_HANDSHAKE> hs = ssl_handshake_new(client.get());
+  ASSERT_TRUE(hs);
+  static const uint16_t kSeedSigalgs[] = {
+      SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87,
+      SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  ASSERT_TRUE(hs->config->verify_sigalgs.CopyFrom(kSeedSigalgs));
+
+  for (uint16_t sigalg :
+       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
+    uint8_t alert = 0;
+    EXPECT_FALSE(tls12_check_peer_sigalg(hs.get(), &alert, sigalg));
+    EXPECT_EQ(alert, SSL_AD_ILLEGAL_PARAMETER);
+    ERR_clear_error();
+  }
+
+  // Sanity check: a valid TLS 1.2 sigalg from the same list still passes.
+  uint8_t alert = 0;
+  EXPECT_TRUE(
+      tls12_check_peer_sigalg(hs.get(), &alert, SSL_SIGN_RSA_PSS_RSAE_SHA256));
+}
+
+TEST(MLDSAHandshakeTest, ParamNidFilterSelectsMatchingVariant) {
+  // Server has an MLDSA-44 cert/key but advertises [MLDSA-65, MLDSA-87,
+  // MLDSA-44] in its signing prefs (so MLDSA-44 is *not* the first
+  // preference). |pkey_supports_algorithm| should reject MLDSA-65 and
+  // MLDSA-87 against the MLDSA-44 key (param_nid mismatch) and fall
+  // through to MLDSA-44, which both peers offer.
+  //
+  // This positively exercises the
+  //     EVP_PKEY_pqdsa_get_type(pkey) != alg->param_nid
+  // filter that this PR adds.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetMLDSA44TestCertificate(), GetMLDSA44TestKey()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t server_sigalgs[] = {SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87,
+                                     SSL_SIGN_MLDSA44};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
+      server_ctx.get(), server_sigalgs, OPENSSL_ARRAY_SIZE(server_sigalgs)));
+
+  const uint16_t client_sigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                                     SSL_SIGN_MLDSA87};
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+      client_ctx.get(), client_sigalgs, OPENSSL_ARRAY_SIZE(client_sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  // Despite MLDSA-65 being the server's first signing preference, the param
+  // filter must have skipped it because the cert is MLDSA-44.
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()), SSL_SIGN_MLDSA44);
 }
 
 
