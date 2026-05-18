@@ -27,7 +27,7 @@ AWS-LC releases follow a `MAJOR.MINOR.PATCH` scheme. Mainline uses only major an
   * Used only on FIPS branches (LTS or non-LTS snapshot) for non-additive changes — security fixes, bug fixes, and platform compatibility fixes.
   * Mainline never produces patch versions, so patch increments on FIPS branches cannot collide with mainline.
 
-AWS-LC version numbers do not strictly follow Semantic Versioning. Major version bumps on mainline are tied to LTS branch cuts (see [LTS version evolution](#lts-version-evolution)) and do not necessarily indicate API or ABI breaking changes. Consumers needing to detect public API surface changes can use the `AWSLC_API_VERSION` macro defined in `openssl/base.h`, which increments when the API surface changes.
+AWS-LC version numbers do not follow Semantic Versioning. Major version bumps on mainline are tied to LTS branch cuts (see [LTS version evolution](#lts-version-evolution)) and do not necessarily indicate API or ABI breaking changes. Consumers needing to detect public API surface changes can use the `AWSLC_API_VERSION` macro defined in `openssl/base.h`, which increments when the API surface changes.
 
 A build's AWS-LC version can be queried at runtime via the `awslc_version_string` API:
 
