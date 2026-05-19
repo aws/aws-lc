@@ -138,6 +138,8 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
           X509_CRL_get_ext_d2i(crl, NID_issuing_distribution_point, &i, NULL);
       if (crl->idp != NULL) {
         if (!setup_idp(crl, crl->idp)) {
+          ISSUING_DIST_POINT_free(crl->idp);
+          crl->idp = NULL;
           return 0;
         }
       } else if (i != -1) {
@@ -147,6 +149,8 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       crl->akid =
           X509_CRL_get_ext_d2i(crl, NID_authority_key_identifier, &i, NULL);
       if (crl->akid == NULL && i != -1) {
+        ISSUING_DIST_POINT_free(crl->idp);
+        crl->idp = NULL;
         return 0;
       }
 
@@ -169,6 +173,10 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       }
 
       if (!crl_parse_entry_extensions(crl)) {
+        AUTHORITY_KEYID_free(crl->akid);
+        crl->akid = NULL;
+        ISSUING_DIST_POINT_free(crl->idp);
+        crl->idp = NULL;
         return 0;
       }
 
