@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <limits.h>
 #include <string.h>
 #include "../internal.h"
 #include "internal.h"
@@ -343,6 +344,11 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
                       unsigned long flags) {
   if (bs == NULL || st == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
+  if (sk_X509_num(certs) > SHRT_MAX || sk_X509_num(bs->certs) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_OVERFLOW);
     return -1;
   }
 
