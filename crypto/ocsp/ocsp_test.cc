@@ -1636,6 +1636,13 @@ static const OCSPURLTestVector kOCSPURLVectors[] = {
     // No closing bracket for ipv6.
     {"http://[2001:db8::1/", nullptr, nullptr, nullptr, 0,
      OCSP_URL_PARSE_ERROR},
+    // Protocol must match exactly, not just as a prefix.
+    {"https1://ocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    {"httpss://ocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    {"httpe://ocsp.example.com/path", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
 };
 
 class OCSPURLTest : public testing::TestWithParam<OCSPURLTestVector> {};
