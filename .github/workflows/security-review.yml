@@ -15,7 +15,7 @@ jobs:
     outputs:
       approval-env: ${{ steps.authorization.outputs.approval-env }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check authorization
         id: authorization
         uses: ./.github/actions/check-authorization
@@ -29,12 +29,12 @@ jobs:
       contents: read
       statuses: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::547182295936:role/SecurityReview-GitHubOIDCRole #TODO: migrate to production account
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
