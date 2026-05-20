@@ -661,12 +661,15 @@ if(FIPS_SHARED)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
+    if (MINGW)
+      set(INJECT_HASH_MINGW_FLAG "-mingw")
+    endif()
 
     add_custom_command(
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
       ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG} ${INJECT_HASH_MINGW_FLAG}
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
 
