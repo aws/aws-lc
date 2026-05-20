@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
+	"debug/pe"
 	"encoding/binary"
 	"errors"
 	"flag"
@@ -349,7 +350,120 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string) error {
+func doMingw(objectBytes []byte) ([]byte, []byte, error) {
+	object, err := pe.NewFile(bytes.NewReader(objectBytes))
+	if err != nil {
+		return nil, nil, errors.New("failed to parse object: " + err.Error())
+	}
+
+	// Find .text and .rdata sections. Windows uses .rdata for read-only data.
+	var textSection, rodataSection *pe.Section
+	var textSectionIndex, rodataSectionIndex int
+
+	for i, section := range object.Sections {
+		switch section.Name {
+		case ".text":
+			textSection = section
+			textSectionIndex = i + 1
+		case ".rdata":
+			rodataSection = section
+			rodataSectionIndex = i + 1
+		}
+	}
+
+	if textSection == nil {
+		return nil, nil, errors.New("failed to find .text section in object")
+	}
+
+	var textStart, textEnd, rodataStart, rodataEnd *uint64
+
+	symbols := object.Symbols
+	if symbols == nil {
+		return nil, nil, errors.New("failed to parse symbols: " + err.Error())
+	}
+
+	for _, symbol := range symbols {
+		switch int(symbol.SectionNumber) {
+		case textSectionIndex:
+		case rodataSectionIndex:
+			// rodataSectionIndex is 0 if no .rdata section was found,
+			// which would match undefined symbols (COFF section number 0) — skip those.
+			if rodataSection == nil {
+				continue
+			}
+		default:
+			continue
+		}
+
+		// In COFF, symbol.Value is the offset from the start of the section,
+		// not an RVA.
+		offset := uint64(symbol.Value)
+
+		switch symbol.Name {
+		case "BORINGSSL_bcm_text_start":
+			if textStart != nil {
+				return nil, nil, errors.New("duplicate start symbol found")
+			}
+			textStart = &offset
+		case "BORINGSSL_bcm_text_end":
+			if textEnd != nil {
+				return nil, nil, errors.New("duplicate end symbol found")
+			}
+			textEnd = &offset
+		case "BORINGSSL_bcm_rodata_start":
+			if rodataStart != nil {
+				return nil, nil, errors.New("duplicate rodata start symbol found")
+			}
+			rodataStart = &offset
+		case "BORINGSSL_bcm_rodata_end":
+			if rodataEnd != nil {
+				return nil, nil, errors.New("duplicate rodata end symbol found")
+			}
+			rodataEnd = &offset
+		}
+	}
+
+	if textStart == nil || textEnd == nil {
+		return nil, nil, errors.New("could not find .text module boundaries in object")
+	}
+
+	if (rodataStart == nil) != (rodataSection == nil) {
+		return nil, nil, errors.New("rodata start marker inconsistent with rodata section presence")
+	}
+
+	if (rodataStart != nil) != (rodataEnd != nil) {
+		return nil, nil, errors.New("rodata marker presence inconsistent")
+	}
+
+	if max := uint64(textSection.Size); *textStart > max || *textStart > *textEnd || *textEnd > max {
+		return nil, nil, fmt.Errorf("invalid module .text boundaries: start: %x, end: %x, max: %x", *textStart, *textEnd, max)
+	}
+
+	if rodataStart != nil {
+		if max := uint64(rodataSection.Size); *rodataStart > max || *rodataStart > *rodataEnd || *rodataEnd > max {
+			return nil, nil, fmt.Errorf("invalid module .rdata boundaries: start: %x, end: %x, max: %x", *rodataStart, *rodataEnd, max)
+		}
+	}
+
+	text, err := textSection.Data()
+	if err != nil {
+		return nil, nil, errors.New("failed to read .text data: " + err.Error())
+	}
+	moduleText := text[*textStart:*textEnd]
+
+	var moduleROData []byte
+	if rodataStart != nil {
+		rodata, err := rodataSection.Data()
+		if err != nil {
+			return nil, nil, errors.New("failed to read .rdata data: " + err.Error())
+		}
+		moduleROData = rodata[*rodataStart:*rodataEnd]
+	}
+
+	return moduleText, moduleROData, nil
+}
+
+func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string, mingw bool) error {
 	var objectBytes []byte
 	var isStatic bool
 	var perm os.FileMode
@@ -422,6 +536,8 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 		moduleText, moduleROData, err = doWindows(objectBytes, mapFile)
 	} else if appleOS {
 		moduleText, moduleROData, err = doAppleOS(objectBytes)
+	} else if mingw == true {
+		moduleText, moduleROData, err = doMingw(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
 	}
@@ -471,10 +587,11 @@ func main() {
 	appleOS := flag.Bool("apple", false, "Whether the FIPS module is built for macOS/iOS or not.")
 	windowsOS := flag.Bool("windows", false, "Whether the FIPS module is built for Windows or not.")
 	mapFile := flag.String("map", "", "Path to linker .map file (required for Windows)")
+	mingw := flag.Bool("mingw", false, "Whether the FIPS module is built for a Windows MinGW toolchain or not.")
 
 	flag.Parse()
 
-	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile); err != nil {
+	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile, *mingw); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
