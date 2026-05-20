@@ -14,6 +14,16 @@ NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entro
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
 
+## FIPS version number
+
+The `FIPS_version` API, declared in `openssl/crypto.h`, returns the FIPS version number of the current build:
+
+```c
+OPENSSL_EXPORT uint32_t FIPS_version(void);
+```
+
+It returns 0 when AWS-LC is not built in FIPS mode. The FIPS version number is independent of the AWS-LC version number and is incremented each time a new FIPS branch is cut from mainline.
+
 ## Platform Limitations
 
 When building AWS-LC in FIPS mode, please be aware of the following platform limitations:

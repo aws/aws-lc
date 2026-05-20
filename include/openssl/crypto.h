@@ -110,6 +110,11 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
+// FIPS_version returns the FIPS version number of the current build,
+// independent of the AWS-LC version number. It returns 0 when AWS-LC is not
+// built in FIPS mode.
+OPENSSL_EXPORT uint32_t FIPS_version(void);
+
 // Deprecated functions.
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
