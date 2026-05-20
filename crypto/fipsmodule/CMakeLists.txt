@@ -735,6 +735,28 @@ elseif(FIPS_SHARED)
       DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+  elseif(MINGW)
+    # The PE linker does not support linker scripts. Use the same start/end
+    # marker object approach as macOS by compiling the marker file twice
+    # (start and end), then partial-link the three pieces in order so
+    # BORINGSSL_bcm_text_start/end bracket all BCM code.
+    set(BCM_NAME bcm.o)
+    add_custom_command(
+      OUTPUT fips_gnu_start.o
+      COMMAND ${CMAKE_C_COMPILER} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_gnu_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_gnu_end.o
+      COMMAND ${CMAKE_C_COMPILER} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_gnu_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      COMMAND ${CMAKE_LINKER} -r fips_gnu_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_gnu_end.o -o ${BCM_NAME}
+      DEPENDS fips_gnu_start.o fips_gnu_end.o bcm_library
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   else()
     set(BCM_NAME bcm.o)
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
