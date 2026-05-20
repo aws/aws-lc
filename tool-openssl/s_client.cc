@@ -38,6 +38,8 @@ static const argument_t kArguments[] = {
                 "Show protocol messages" },
         { "-servername", kOptionalArgument,
                 "Server name for SNI extension." },
+        { "-noservername", kBooleanArgument,
+                "Do not send the server name (SNI) extension in the ClientHello" },
         { "", kOptionalArgument, "" },
 };
 
@@ -75,6 +77,12 @@ bool SClientTool(const args_list_t &args) {
   if (args_map.count("-servername")) {
     args_map["-server-name"] = args_map["-servername"];
     args_map.erase("-servername");
+  }
+
+  if (args_map.count("-noservername") && args_map.count("-server-name")) {
+    fprintf(stderr,
+            "s_client: Can't use -servername and -noservername together\n");
+    return false;
   }
 
   return DoClient(args_map, true);
