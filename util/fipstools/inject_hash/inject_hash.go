@@ -379,7 +379,7 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 
 	symbols := object.Symbols
 	if symbols == nil {
-		return nil, nil, errors.New("failed to parse symbols: " + err.Error())
+		return nil, nil, errors.New("no symbol table found in object")
 	}
 
 	for _, symbol := range symbols {
@@ -427,8 +427,8 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 		return nil, nil, errors.New("could not find .text module boundaries in object")
 	}
 
-	if (rodataStart == nil) != (rodataSection == nil) {
-		return nil, nil, errors.New("rodata start marker inconsistent with rodata section presence")
+	if rodataStart != nil && rodataSection == nil {
+		return nil, nil, errors.New("rodata start marker found but no .rdata section present")
 	}
 
 	if (rodataStart != nil) != (rodataEnd != nil) {
