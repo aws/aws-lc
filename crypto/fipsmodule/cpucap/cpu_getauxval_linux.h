@@ -51,6 +51,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+// O_CLOEXEC was added in Linux 2.6.23 / glibc 2.7. Older toolchains (e.g.
+// manylinux1 / CentOS 5 with glibc 2.5) do not define it. Fall back to 0;
+// the fd is opened, read, and closed synchronously within this function
+// (no intervening fork), so close-on-exec is not security-relevant here.
+#if !defined(O_CLOEXEC)
+#define O_CLOEXEC 0
+#endif
+
 // Auxiliary vector type constants from the Linux kernel ABI
 // (include/uapi/linux/auxvec.h). The specific values used here are stable.
 #if !defined(AT_NULL)
