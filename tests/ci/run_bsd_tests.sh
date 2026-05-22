@@ -16,8 +16,8 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     run_build all
 
     shard_gtest ${BUILD_ROOT}/crypto/crypto_test
-    #Don't co-mingle this with any sharded tests
-    ${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests --gtest_filter=*DISABLED_*
+    # This one test is 1-2 hours on Qemu+arm, disabled it to validate timings across flavors.
+    #${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests --gtest_filter=*DISABLED_*
     shard_gtest ${BUILD_ROOT}/crypto/urandom_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
