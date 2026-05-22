@@ -67,7 +67,7 @@ extern uint8_t OPENSSL_cpucap_initialized;
 void OPENSSL_cpuid_setup(void) {
 #if defined(OPENSSL_LINUX)
   OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
-#elif defined(OPENSSL_FREEBSD)
+#elif defined(OPENSSL_FREEBSD) && defined(AT_HWCAP2)
   elf_aux_info(AT_HWCAP2, &OPENSSL_ppc64le_hwcap2, sizeof(OPENSSL_ppc64le_hwcap2));
 #endif
   OPENSSL_cpucap_initialized = 1;

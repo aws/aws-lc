@@ -54,7 +54,7 @@ jobs:
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v6
       - name: PPC64LE Build/Test
-        run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
+        run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-DOPENSSL_GETAUXVAL_FORCE_PROC_FALLBACK"
   riscv64-non-fips-build-test:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
