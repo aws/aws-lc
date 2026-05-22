@@ -564,7 +564,7 @@ jobs:
 
   OpenBSD:
     needs: [sanity-test-run]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
       fail-fast: false
@@ -695,7 +695,7 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -732,7 +732,7 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
