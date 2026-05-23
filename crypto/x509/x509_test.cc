@@ -2174,7 +2174,8 @@ static bssl::UniquePtr<X509> MakeCRLDPLeaf(
 // Helper to create a CRL, optionally with an IDP extension and revoked serials.
 static bssl::UniquePtr<X509_CRL> MakeTestCRL(
     X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
-    const std::vector<int> &revoked_serials) {
+    const std::vector<int> &revoked_serials,
+    int crl_age = 0) {
   bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
   if (!crl) {
     return nullptr;
@@ -2186,7 +2187,8 @@ static bssl::UniquePtr<X509_CRL> MakeTestCRL(
   }
   bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
   if (!last_update ||
-      !ASN1_TIME_set_posix(last_update.get(), kReferenceTime) ||
+      !ASN1_TIME_adj(last_update.get(), kReferenceTime,
+                     crl_age, 0) ||
       !X509_CRL_set1_lastUpdate(crl.get(), last_update.get())) {
     return nullptr;
   }
@@ -2210,7 +2212,17 @@ static bssl::UniquePtr<X509_CRL> MakeTestCRL(
     }
     rev.release();  // Ownership transferred to crl.
   }
-  if (idp_uri) {
+  if (idp_uri && idp_uri[0] == '\0') {
+    // Empty IDP: extension present but no distribution point.
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp ||
+        !X509_CRL_add1_ext_i2d(crl.get(), NID_issuing_distribution_point,
+                                idp, /*crit=*/1, /*flags=*/0)) {
+      ISSUING_DIST_POINT_free(idp);
+      return nullptr;
+    }
+    ISSUING_DIST_POINT_free(idp);
+  } else if (idp_uri) {
     ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
     if (!idp) {
       return nullptr;
@@ -2322,6 +2334,212 @@ TEST(X509Test, CRLDistributionPointScope) {
     EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
               Verify(leaf.get(), {root.get()}, {root.get()},
                      {crl_a.get(), crl_b.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+}
+
+// A CRL whose IDP specifically matches the certificate's CRLDP must be
+// preferred over a broad CRL (no IDP or empty IDP), regardless of freshness
+// or load order.
+TEST(X509Test, CRLSpecificIDPPreferredOverBroadCRL) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x2000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  // Build a leaf with a single CRLDP pointing at kCRLURI.
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+
+  // broad_newer_vs_specific_older: clean no-IDP CRL (lastUpdate=-1d) vs
+  // revoking specific CRL (lastUpdate=-2d). The broad CRL is newer.
+  {
+    SCOPED_TRACE("broad_newer_vs_specific_older");
+    auto broad_new = MakeTestCRL(root.get(), key.get(),
+                                  nullptr, {}, /*crl_age=*/-1);
+    auto specific_old = MakeTestCRL(root.get(), key.get(),
+                                    kCRLURI, {kLeafSerial},
+                                    /*crl_age=*/-2);
+    ASSERT_TRUE(broad_new);
+    ASSERT_TRUE(specific_old);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad_new.get(), specific_old.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_old.get(), broad_new.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // empty_idp_newer_vs_specific_older: clean empty-IDP CRL (lastUpdate=-1d) vs
+  // revoking specific CRL (lastUpdate=-2d). The empty-IDP CRL is newer.
+  {
+    SCOPED_TRACE("empty_idp_newer_vs_specific_older");
+    auto empty_new = MakeTestCRL(root.get(), key.get(),
+                                  "", {}, /*crl_age=*/-1);
+    auto specific_old = MakeTestCRL(root.get(), key.get(),
+                                    kCRLURI, {kLeafSerial},
+                                    /*crl_age=*/-2);
+    ASSERT_TRUE(empty_new);
+    ASSERT_TRUE(specific_old);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {empty_new.get(), specific_old.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_old.get(), empty_new.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // broad_same_age_vs_specific_same_age: both lastUpdate=-1d.
+  // Before the fix, load order determined the result.
+  {
+    SCOPED_TRACE("broad_same_age_vs_specific_same_age");
+    auto broad_same = MakeTestCRL(root.get(), key.get(),
+                                   nullptr, {}, /*crl_age=*/-1);
+    auto specific_same = MakeTestCRL(root.get(), key.get(),
+                                     kCRLURI, {kLeafSerial},
+                                     /*crl_age=*/-1);
+    ASSERT_TRUE(broad_same);
+    ASSERT_TRUE(specific_same);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad_same.get(), specific_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_same.get(), broad_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // empty_idp_same_age_vs_specific_same_age: both lastUpdate=-1d.
+  {
+    SCOPED_TRACE("empty_idp_same_age_vs_specific_same_age");
+    auto empty_same = MakeTestCRL(root.get(), key.get(),
+                                   "", {}, /*crl_age=*/-1);
+    auto specific_same = MakeTestCRL(root.get(), key.get(),
+                                     kCRLURI, {kLeafSerial},
+                                     /*crl_age=*/-1);
+    ASSERT_TRUE(empty_same);
+    ASSERT_TRUE(specific_same);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {empty_same.get(), specific_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_same.get(), empty_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // specific_expired_vs_broad_in_window: a specific-IDP CRL that revokes the
+  // leaf but has expired (nextUpdate before verification time) should lose to
+  // a time-valid broad CRL. SCOPE_MATCH is intentionally not part of
+  // CRL_SCORE_VALID, so an expired specific CRL cannot outrank a valid broad
+  // CRL via the SCOPE_MATCH bit alone.
+  {
+    SCOPED_TRACE("specific_expired_vs_broad_in_window");
+    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
+                             /*crl_age=*/-1);
+    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
+                                {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(broad);
+    ASSERT_TRUE(specific);
+
+    // Set the specific CRL's nextUpdate to before kReferenceTime so it
+    // appears expired at verification time, then re-sign and re-parse.
+    bssl::UniquePtr<ASN1_TIME> expired(ASN1_TIME_new());
+    ASSERT_TRUE(expired);
+    ASSERT_TRUE(ASN1_TIME_adj(expired.get(), kReferenceTime, -1, 0));
+    ASSERT_TRUE(X509_CRL_set1_nextUpdate(specific.get(), expired.get()));
+    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_CRL(specific.get(), &der);
+    ASSERT_GT(der_len, 0);
+    const uint8_t *inp = der;
+    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+    OPENSSL_free(der);
+    ASSERT_TRUE(specific);
+
+    // The broad in-window CRL should be preferred. Since it doesn't list
+    // the revocation, the cert verifies as OK.
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad.get(), specific.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific.get(), broad.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // specific_with_unknown_critical_ext: a specific-IDP CRL that revokes the
+  // leaf but has an unhandled critical extension should lose to a processable
+  // broad CRL. The broad CRL doesn't list the revocation, so the cert should
+  // NOT be reported as revoked — we can't trust the specific CRL we can't
+  // fully process.
+  {
+    SCOPED_TRACE("specific_with_unknown_critical_ext");
+    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
+                             /*crl_age=*/-1);
+    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
+                                {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(broad);
+    ASSERT_TRUE(specific);
+
+    // Add an unknown critical extension to the specific CRL, then re-sign
+    // and re-parse.
+    static const uint8_t kUnknownOID[] = {0x2b, 0x06, 0x01, 0x04, 0x01,
+                                          0x82, 0x37, 0x15, 0x24};
+    bssl::UniquePtr<ASN1_OBJECT> oid(
+        OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
+    ASSERT_TRUE(oid);
+    bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
+    ASSERT_TRUE(ext_val);
+    ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_val.get(), kUnknownOID, sizeof(kUnknownOID)));
+    bssl::UniquePtr<X509_EXTENSION> ext(
+        X509_EXTENSION_create_by_OBJ(nullptr, oid.get(), /*crit=*/1,
+                                     ext_val.get()));
+    ASSERT_TRUE(ext);
+    ASSERT_TRUE(X509_CRL_add_ext(specific.get(), ext.get(), -1));
+    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
+
+    // Re-encode and re-parse to populate internal flags.
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_CRL(specific.get(), &der);
+    ASSERT_GT(der_len, 0);
+    const uint8_t *inp = der;
+    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+    OPENSSL_free(der);
+    ASSERT_TRUE(specific);
+
+    // The broad CRL should be preferred since the specific one has an
+    // unprocessable critical extension. The broad CRL doesn't revoke the
+    // leaf, so verification should succeed (cert not revoked).
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad.get(), specific.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific.get(), broad.get()},
+                     X509_V_FLAG_CRL_CHECK));
   }
 }
 
