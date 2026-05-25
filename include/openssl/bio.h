@@ -286,7 +286,9 @@ OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 // |bio|.
 OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
-// BIO_set_callback_ex sets the |callback_ex| for |bio|.
+// BIO_set_callback_ex sets the |callback_ex| for |bio|. The callback is
+// invoked without incrementing the BIO's reference count, so a callback must
+// not call BIO_free on the BIO it is invoked on.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
 
 // BIO_set_callback sets the legacy |callback| for |bio|. When both |callback| and

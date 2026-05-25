@@ -194,9 +194,6 @@ void BIO_free_all(BIO *bio) {
   BIO_free(bio);
 }
 
-// Note: BIO callbacks are designed for debugging, logging, and auditing. The
-// callback is invoked without incrementing the BIO's reference count, so a
-// callback must not call BIO_free on the BIO it is invoked on.
 int BIO_read(BIO *bio, void *buf, int len) {
 
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
