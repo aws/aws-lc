@@ -6,7 +6,7 @@
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 
-#include <sys/auxv.h>
+#include "cpu_getauxval_linux.h"
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS

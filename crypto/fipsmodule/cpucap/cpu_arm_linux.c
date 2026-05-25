@@ -7,7 +7,6 @@
     !defined(OPENSSL_STATIC_ARMCAP)
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/auxv.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -15,6 +14,7 @@
 #include <openssl/mem.h>
 
 #include "cpu_arm_linux.h"
+#include "cpu_getauxval_linux.h"
 
 static int open_eintr(const char *path, int flags) {
   int ret;
