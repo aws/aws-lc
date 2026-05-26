@@ -13,7 +13,7 @@
 #
 # Usage: ./tests/ci/run_symbol_version_test.sh [build_dir]
 
-set -e
+set -ex
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -37,12 +37,12 @@ print_test() {
 
 print_pass() {
   echo -e "${GREEN}✓ PASS${NC}: $1"
-  ((pass_count++))
+  pass_count=$((pass_count + 1))
 }
 
 print_fail() {
   echo -e "${RED}✗ FAIL${NC}: $1"
-  ((fail_count++))
+  fail_count=$((fail_count + 1))
 }
 
 print_warn() {
@@ -80,9 +80,7 @@ cmake -GNinja -B "${BUILD_DIR}" \
   -DENABLE_DIST_PKG=ON \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-ninja -C "${BUILD_DIR}" crypto ssl
-
-if [[ $? -eq 0 ]]; then
+if ninja -C "${BUILD_DIR}" crypto ssl; then
   print_pass "Build successful"
 else
   print_fail "Build failed"
@@ -90,44 +88,52 @@ else
 fi
 
 # Library paths
-LIBCRYPTO_SO="${BUILD_DIR}/crypto/libcrypto-awslc.so.0.0.0"
-LIBSSL_SO="${BUILD_DIR}/ssl/libssl-awslc.so.0.0.0"
+LIBCRYPTO_SO="${BUILD_DIR}/crypto/libcrypto-awslc.so"
+LIBSSL_SO="${BUILD_DIR}/ssl/libssl-awslc.so"
+
+# Extract the symbol version tag from the linker map
+SYMBOL_VERSION=$(grep -m1 -oP '^AWS_LC_\S+(?= \{)' "${SOURCE_ROOT}/crypto/libcrypto.map")
+if [[ -z "${SYMBOL_VERSION}" ]]; then
+  print_fail "Could not extract symbol version from libcrypto.map"
+  exit 1
+fi
+print_info "Symbol version: ${SYMBOL_VERSION}"
 
 # Test 1: Verify libraries exist
 print_test "Verify shared libraries exist"
 
 if [[ -f "${LIBCRYPTO_SO}" ]]; then
-  print_pass "libcrypto-awslc.so.0.0.0 exists"
+  print_pass "libcrypto-awslc.so exists"
 else
-  print_fail "libcrypto-awslc.so.0.0.0 not found"
+  print_fail "libcrypto-awslc.so not found"
 fi
 
 if [[ -f "${LIBSSL_SO}" ]]; then
-  print_pass "libssl-awslc.so.0.0.0 exists"
+  print_pass "libssl-awslc.so exists"
 else
-  print_fail "libssl-awslc.so.0.0.0 not found"
+  print_fail "libssl-awslc.so not found"
 fi
 
 # Test 2: Check version definition sections
 print_test "Check version definition sections"
 
-if readelf --version-info "${LIBCRYPTO_SO}" | grep -q "AWS_LC_1_0"; then
-  print_pass "libcrypto has AWS_LC_1_0 version definition"
+if readelf --version-info "${LIBCRYPTO_SO}" | grep -q "${SYMBOL_VERSION}"; then
+  print_pass "libcrypto has ${SYMBOL_VERSION} version definition"
 else
-  print_fail "libcrypto missing AWS_LC_1_0 version definition"
+  print_fail "libcrypto missing ${SYMBOL_VERSION} version definition"
 fi
 
-if readelf --version-info "${LIBSSL_SO}" | grep -q "AWS_LC_1_0"; then
-  print_pass "libssl has AWS_LC_1_0 version definition"
+if readelf --version-info "${LIBSSL_SO}" | grep -q "${SYMBOL_VERSION}"; then
+  print_pass "libssl has ${SYMBOL_VERSION} version definition"
 else
-  print_fail "libssl missing AWS_LC_1_0 version definition"
+  print_fail "libssl missing ${SYMBOL_VERSION} version definition"
 fi
 
 # Test 3: Check versioned symbols
 print_test "Check for versioned symbols"
 
-CRYPTO_VERSIONED=$(nm -D "${LIBCRYPTO_SO}" | grep -c "@@AWS_LC_1_0" || true)
-print_info "libcrypto: ${CRYPTO_VERSIONED} symbols with @@AWS_LC_1_0"
+CRYPTO_VERSIONED=$(nm -D "${LIBCRYPTO_SO}" | grep -c "@@${SYMBOL_VERSION}" || true)
+print_info "libcrypto: ${CRYPTO_VERSIONED} symbols with @@${SYMBOL_VERSION}"
 
 if [[ ${CRYPTO_VERSIONED} -gt 3000 ]]; then
   print_pass "libcrypto has expected number of versioned symbols"
@@ -135,8 +141,8 @@ else
   print_fail "libcrypto has fewer versioned symbols than expected (${CRYPTO_VERSIONED} < 3000)"
 fi
 
-SSL_VERSIONED=$(nm -D "${LIBSSL_SO}" | grep -c "@@AWS_LC_1_0" || true)
-print_info "libssl: ${SSL_VERSIONED} symbols with @@AWS_LC_1_0"
+SSL_VERSIONED=$(nm -D "${LIBSSL_SO}" | grep -c "@@${SYMBOL_VERSION}" || true)
+print_info "libssl: ${SSL_VERSIONED} symbols with @@${SYMBOL_VERSION}"
 
 if [[ ${SSL_VERSIONED} -gt 500 ]]; then
   print_pass "libssl has expected number of versioned symbols"
@@ -194,13 +200,13 @@ check_symbol() {
 }
 
 # Check some common libcrypto symbols
-check_symbol "${LIBCRYPTO_SO}" "EVP_MD_CTX_new" "AWS_LC_1_0"
-check_symbol "${LIBCRYPTO_SO}" "AES_encrypt" "AWS_LC_1_0"
-check_symbol "${LIBCRYPTO_SO}" "RSA_new" "AWS_LC_1_0"
+check_symbol "${LIBCRYPTO_SO}" "EVP_MD_CTX_new" "${SYMBOL_VERSION}"
+check_symbol "${LIBCRYPTO_SO}" "AES_encrypt" "${SYMBOL_VERSION}"
+check_symbol "${LIBCRYPTO_SO}" "RSA_new" "${SYMBOL_VERSION}"
 
 # Check some libssl symbols
-check_symbol "${LIBSSL_SO}" "SSL_CTX_new" "AWS_LC_1_0"
-check_symbol "${LIBSSL_SO}" "SSL_new" "AWS_LC_1_0"
+check_symbol "${LIBSSL_SO}" "SSL_CTX_new" "${SYMBOL_VERSION}"
+check_symbol "${LIBSSL_SO}" "SSL_new" "${SYMBOL_VERSION}"
 
 # Test 6: Link test program
 print_test "Test linking against versioned libraries"
@@ -234,14 +240,12 @@ int main() {
 }
 EOF
 
-gcc "${TEST_PROG}.c" -o "${TEST_PROG}" \
+if gcc "${TEST_PROG}.c" -o "${TEST_PROG}" \
   -I "${BUILD_DIR}/include" \
   -L "${BUILD_DIR}/crypto" \
   -L "${BUILD_DIR}/ssl" \
   -lcrypto-awslc -lssl-awslc \
-  -Wl,-rpath,"${BUILD_DIR}/crypto:${BUILD_DIR}/ssl"
-
-if [[ $? -eq 0 ]]; then
+  -Wl,-rpath,"${BUILD_DIR}/crypto:${BUILD_DIR}/ssl"; then
   print_pass "Test program compiled successfully"
 else
   print_fail "Test program compilation failed"
@@ -272,14 +276,14 @@ fi
 # Test 7: Verify symbol versions in linked program
 print_test "Verify symbol versions used by test program"
 
-if nm -D "${TEST_PROG}" | grep -q "EVP_MD_CTX_new@@AWS_LC_1_0"; then
-  print_pass "Test program uses EVP_MD_CTX_new@@AWS_LC_1_0"
+if nm -D "${TEST_PROG}" | grep -q "EVP_MD_CTX_new@@${SYMBOL_VERSION}"; then
+  print_pass "Test program uses EVP_MD_CTX_new@@${SYMBOL_VERSION}"
 else
   print_fail "Test program not using correct EVP_MD_CTX_new version"
 fi
 
-if nm -D "${TEST_PROG}" | grep -q "SSL_CTX_new@@AWS_LC_1_0"; then
-  print_pass "Test program uses SSL_CTX_new@@AWS_LC_1_0"
+if nm -D "${TEST_PROG}" | grep -q "SSL_CTX_new@@${SYMBOL_VERSION}"; then
+  print_pass "Test program uses SSL_CTX_new@@${SYMBOL_VERSION}"
 else
   print_fail "Test program not using correct SSL_CTX_new version"
 fi
