@@ -573,6 +573,10 @@ jobs:
         version: ["7.5", "7.6"]
     steps:
       - uses: actions/checkout@v6
+      - name: Host runner info
+        run: |
+          nproc
+          lscpu
       - name: OpenBSD
         uses: vmactions/openbsd-vm@v1
         env:
@@ -585,7 +589,7 @@ jobs:
           copyback: false
           envs: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_NO_SLOW_TESTS"
           prepare: |
-            pkg_add cmake ninja go gmake
+            pkg_add bash cmake ninja go gmake
           run: |
             set -x
             pfctl -d || true
@@ -682,6 +686,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: "recursive"
+      - name: Host runner info
+        run: |
+          nproc
+          lscpu
       - name: FreeBSD
         uses: vmactions/freebsd-vm@v1
         env:
@@ -697,7 +705,7 @@ jobs:
           copyback: false
           envs: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT AWS_LC_NO_SLOW_TESTS GOFLAGS"
           prepare: |
-            pkg install -y git gmake cmake go ninja
+            pkg install -y bash git gmake cmake go ninja
           run: |
             tests/ci/run_bsd_tests.sh
   netbsd:
@@ -717,6 +725,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: "recursive"
+      - name: Host runner info
+        run: |
+          nproc
+          lscpu
       - name: NetBSD
         uses: vmactions/netbsd-vm@v1
         env:
