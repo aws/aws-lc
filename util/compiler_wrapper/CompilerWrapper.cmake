@@ -3,8 +3,10 @@
 
 # CompilerWrapper.cmake
 #
-# CMake module for handling compiler flag conflicts, particularly the -S/-c conflict
-# in newer Clang versions when generating assembly output.
+# CMake module for handling the -S/-c flag conflict that arises when CMake
+# generates the compile command for the bcm_c_generated_asm target. CMake's
+# static library rules always include -c, but we set COMPILE_OPTIONS "-S" to
+# produce textual assembly. The wrapper strips -c when -S is present.
 #
 # This module dynamically generates wrapper scripts with hardcoded compiler paths,
 # eliminating the need for complex compiler discovery logic.
@@ -14,24 +16,15 @@
 #   setup_compiler_wrapper()
 #   use_compiler_wrapper_for_target(my_target)
 
-cmake_minimum_required(VERSION 3.5)
-
-# Check if we need the compiler wrapper based on compiler version
+# The bcm_c_generated_asm target uses COMPILE_OPTIONS "-S" on a normal CMake
+# static library, which causes CMake to emit both -S and -c in the same
+# command. This is semantically contradictory (-S = emit assembly, -c = emit
+# object code). GCC and older Clang versions silently let -S win, but other
+# compilers (Clang 20+, Zig) reject or mishandle the conflicting flags. The
+# wrapper unconditionally strips -c when -S is present, making the build
+# correct for all compilers.
 function(compiler_wrapper_needed result_var)
-  set(${result_var} FALSE PARENT_SCOPE)
-
-  # Check C compiler
-  if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER MATCHES "clang")
-    if(CMAKE_C_COMPILER_VERSION VERSION_GREATER "19.99.99")
-      set(${result_var} TRUE PARENT_SCOPE)
-      return()
-    endif()
-  endif()
-
-  # Allow manual override via CMake variable
-  if(FORCE_COMPILER_WRAPPER)
-    set(${result_var} TRUE PARENT_SCOPE)
-  endif()
+  set(${result_var} TRUE PARENT_SCOPE)
 endfunction()
 
 # Generate wrapper scripts with hardcoded compiler paths
