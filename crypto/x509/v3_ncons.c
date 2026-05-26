@@ -616,9 +616,9 @@ static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
 }
 
 // Returns 1 if |cbs| contains only characters valid in an RFC 5321 Sec.4.1.2
-// local-part atom (atext per RFC 5322 Sec.3.2.3). Quoted local-parts are
-// intentionally not supported -- they are vanishingly rare in practice and
-// rejecting them is the safe fail-closed behavior for name constraint checking.
+// local-part atom (atext per RFC 5322 Sec.3.2.3). RFC 5322 allows quoted
+// local-parts which may contain '@' characters. Rather than parsing
+// quoted-strings, we reject local-parts containing non-atext characters.
 static int is_valid_rfc822_local_part(const CBS *cbs) {
   if (CBS_len(cbs) == 0) {
     return 0;
@@ -700,7 +700,7 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     }
 
     // For excluded subtrees, compare the local-part case-insensitively.
-    // RFC 2821 and RFC 2985 conflict on case sensitivity; for security we
+    // RFC 5321 and RFC 5322 conflict on case sensitivity; for security we
     // err on being more strict when checking exclusions.
     int local_match = excluding
         ? equal_case(&base_local, &eml_local)

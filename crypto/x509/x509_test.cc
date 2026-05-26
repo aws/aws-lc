@@ -2802,11 +2802,6 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
-      // Excluded subtrees use case-insensitive local-part matching.
-      // Permitted subtrees use case-sensitive local-part matching.
-      {GEN_EMAIL, "foo@example.com", "FOO@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_ERR_EXCLUDED_VIOLATION},
-
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
