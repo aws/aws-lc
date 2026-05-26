@@ -2037,7 +2037,9 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in,
                                                    size_t *out_len);
 
 // SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
-// returns a newly-allocated |SSL_SESSION| on success or NULL on error.
+// returns a newly-allocated |SSL_SESSION| on success or NULL on error. The
+// caller is responsible for protecting the integrity of the serialized session
+// data; no minimum-length validation is performed on individual fields.
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
                                                    size_t in_len,
                                                    const SSL_CTX *ctx);
