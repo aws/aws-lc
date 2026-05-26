@@ -365,6 +365,13 @@ verify_dist_pkg_structure install-dist-pkg-shared .so OFF
 test_cmake_find_package install-dist-pkg-shared ON
 test_pkg_config install-dist-pkg-shared aws-lc OFF
 
+# Symbol versioning tests (reuse the shared-lib build dir from Test 1)
+echo ""
+echo "############################################"
+echo "# Symbol Versioning Tests                  #"
+echo "############################################"
+"${AWS_LC_DIR}/tests/ci/run_symbol_version_test.sh" "${SCRATCH_DIR}/build"
+
 # Test 2: ENABLE_DIST_PKG + OPENSSL_SHIM (shared libs)
 echo ""
 echo "############################################"

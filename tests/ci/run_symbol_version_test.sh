@@ -70,21 +70,28 @@ if ! command -v nm >/dev/null 2>&1; then
   exit 1
 fi
 
-print_test "Building AWS-LC with symbol versioning"
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
-
-cd "${SOURCE_ROOT}"
-cmake -GNinja -B "${BUILD_DIR}" \
-  -DBUILD_SHARED_LIBS=ON \
-  -DENABLE_DIST_PKG=ON \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo
-
-if ninja -C "${BUILD_DIR}" crypto ssl; then
-  print_pass "Build successful"
+# Build only if the shared libraries don't already exist (allows reuse from
+# run_dist_pkg_tests.sh without a redundant build).
+if [[ -f "${BUILD_DIR}/crypto/libcrypto-awslc.so" ]] && \
+   [[ -f "${BUILD_DIR}/ssl/libssl-awslc.so" ]]; then
+  print_info "Shared libraries already exist in ${BUILD_DIR}, skipping build"
 else
-  print_fail "Build failed"
-  exit 1
+  print_test "Building AWS-LC with symbol versioning"
+  rm -rf "${BUILD_DIR}"
+  mkdir -p "${BUILD_DIR}"
+
+  cd "${SOURCE_ROOT}"
+  cmake -GNinja -B "${BUILD_DIR}" \
+    -DBUILD_SHARED_LIBS=ON \
+    -DENABLE_DIST_PKG=ON \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+  if ninja -C "${BUILD_DIR}" crypto ssl; then
+    print_pass "Build successful"
+  else
+    print_fail "Build failed"
+    exit 1
+  fi
 fi
 
 # Library paths
