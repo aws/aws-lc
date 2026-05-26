@@ -565,6 +565,7 @@ SSL_use_PrivateKey_file AWS_LC_0_0 PUBLIC
 SSL_use_RSAPrivateKey AWS_LC_0_0 PUBLIC
 SSL_use_RSAPrivateKey_ASN1 AWS_LC_0_0 PUBLIC
 SSL_use_RSAPrivateKey_file AWS_LC_0_0 PUBLIC
+SSL_use_cert_and_key AWS_LC_0_0 PUBLIC
 SSL_use_certificate AWS_LC_0_0 PUBLIC
 SSL_use_certificate_ASN1 AWS_LC_0_0 PUBLIC
 SSL_use_certificate_chain_file AWS_LC_0_0 PUBLIC

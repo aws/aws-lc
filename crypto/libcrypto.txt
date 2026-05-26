@@ -505,7 +505,6 @@ CBB_add_asn1_oid_from_text AWS_LC_0_0 PUBLIC
 CBB_add_asn1_uint64 AWS_LC_0_0 PUBLIC
 CBB_add_asn1_uint64_with_tag AWS_LC_0_0 PUBLIC
 CBB_add_bytes AWS_LC_0_0 PUBLIC
-CBB_add_latin1 AWS_LC_0_0 PUBLIC
 CBB_add_space AWS_LC_0_0 PUBLIC
 CBB_add_u16 AWS_LC_0_0 PUBLIC
 CBB_add_u16_length_prefixed AWS_LC_0_0 PUBLIC
@@ -518,9 +517,6 @@ CBB_add_u64 AWS_LC_0_0 PUBLIC
 CBB_add_u64le AWS_LC_0_0 PUBLIC
 CBB_add_u8 AWS_LC_0_0 PUBLIC
 CBB_add_u8_length_prefixed AWS_LC_0_0 PUBLIC
-CBB_add_ucs2_be AWS_LC_0_0 PUBLIC
-CBB_add_utf32_be AWS_LC_0_0 PUBLIC
-CBB_add_utf8 AWS_LC_0_0 PUBLIC
 CBB_add_zeros AWS_LC_0_0 PUBLIC
 CBB_cleanup AWS_LC_0_0 PUBLIC
 CBB_data AWS_LC_0_0 PUBLIC
@@ -530,7 +526,6 @@ CBB_finish AWS_LC_0_0 PUBLIC
 CBB_finish_i2d AWS_LC_0_0 PRIVATE
 CBB_flush AWS_LC_0_0 PUBLIC
 CBB_flush_asn1_set_of AWS_LC_0_0 PUBLIC
-CBB_get_utf8_len AWS_LC_0_0 PUBLIC
 CBB_init AWS_LC_0_0 PUBLIC
 CBB_init_fixed AWS_LC_0_0 PUBLIC
 CBB_len AWS_LC_0_0 PUBLIC
@@ -553,7 +548,6 @@ CBS_get_asn1_int64 AWS_LC_0_0 PUBLIC
 CBS_get_asn1_uint64 AWS_LC_0_0 PUBLIC
 CBS_get_bytes AWS_LC_0_0 PUBLIC
 CBS_get_last_u8 AWS_LC_0_0 PUBLIC
-CBS_get_latin1 AWS_LC_0_0 PUBLIC
 CBS_get_optional_asn1 AWS_LC_0_0 PUBLIC
 CBS_get_optional_asn1_bool AWS_LC_0_0 PUBLIC
 CBS_get_optional_asn1_int64 AWS_LC_0_0 PUBLIC
@@ -571,10 +565,7 @@ CBS_get_u64_decimal AWS_LC_0_0 PUBLIC
 CBS_get_u64le AWS_LC_0_0 PUBLIC
 CBS_get_u8 AWS_LC_0_0 PUBLIC
 CBS_get_u8_length_prefixed AWS_LC_0_0 PUBLIC
-CBS_get_ucs2_be AWS_LC_0_0 PUBLIC
 CBS_get_until_first AWS_LC_0_0 PUBLIC
-CBS_get_utf32_be AWS_LC_0_0 PUBLIC
-CBS_get_utf8 AWS_LC_0_0 PUBLIC
 CBS_init AWS_LC_0_0 PUBLIC
 CBS_is_unsigned_asn1_integer AWS_LC_0_0 PUBLIC
 CBS_is_valid_asn1_bitstring AWS_LC_0_0 PUBLIC
@@ -1172,6 +1163,7 @@ EVP_PKEY_CTX_pqdsa_set_params AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set0_rsa_oaep_label AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set1_hkdf_key AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set1_hkdf_salt AWS_LC_0_0 PUBLIC
+EVP_PKEY_CTX_set1_signature_context_string AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set_app_data AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set_cb AWS_LC_0_0 PUBLIC
 EVP_PKEY_CTX_set_dh_pad AWS_LC_0_0 PUBLIC
@@ -1231,11 +1223,13 @@ EVP_PKEY_get1_DSA AWS_LC_0_0 PUBLIC
 EVP_PKEY_get1_EC_KEY AWS_LC_0_0 PUBLIC
 EVP_PKEY_get1_RSA AWS_LC_0_0 PUBLIC
 EVP_PKEY_get1_tls_encodedpoint AWS_LC_0_0 PUBLIC
+EVP_PKEY_get_private_seed AWS_LC_0_0 PUBLIC
 EVP_PKEY_get_raw_private_key AWS_LC_0_0 PUBLIC
 EVP_PKEY_get_raw_public_key AWS_LC_0_0 PUBLIC
 EVP_PKEY_id AWS_LC_0_0 PUBLIC
 EVP_PKEY_is_opaque AWS_LC_0_0 PUBLIC
 EVP_PKEY_kem_check_key AWS_LC_0_0 PUBLIC
+EVP_PKEY_kem_get_type AWS_LC_0_0 PUBLIC
 EVP_PKEY_kem_new_raw_key AWS_LC_0_0 PUBLIC
 EVP_PKEY_kem_new_raw_public_key AWS_LC_0_0 PUBLIC
 EVP_PKEY_kem_new_raw_secret_key AWS_LC_0_0 PUBLIC
@@ -1417,6 +1411,7 @@ FIPS_mode AWS_LC_0_0 PUBLIC
 FIPS_mode_set AWS_LC_0_0 PUBLIC
 FIPS_service_indicator_after_call AWS_LC_0_0 PUBLIC
 FIPS_service_indicator_before_call AWS_LC_0_0 PUBLIC
+FIPS_version AWS_LC_0_0 PUBLIC
 GENERAL_NAMES_free AWS_LC_0_0 PUBLIC
 GENERAL_NAMES_it AWS_LC_0_0 PRIVATE
 GENERAL_NAMES_new AWS_LC_0_0 PUBLIC
@@ -1907,7 +1902,6 @@ RAND_egd AWS_LC_0_0 PUBLIC
 RAND_egd_bytes AWS_LC_0_0 PUBLIC
 RAND_file_name AWS_LC_0_0 PUBLIC
 RAND_get_rand_method AWS_LC_0_0 PUBLIC
-RAND_get_system_entropy_for_custom_prng AWS_LC_0_0 PUBLIC
 RAND_keep_random_devices_open AWS_LC_0_0 PUBLIC
 RAND_load_file AWS_LC_0_0 PUBLIC
 RAND_poll AWS_LC_0_0 PUBLIC
@@ -3019,6 +3013,7 @@ override_entropy_source_method_FOR_TESTING AWS_LC_0_0 PRIVATE
 pmbtoken_exp1_get_h_for_testing AWS_LC_0_0 PRIVATE
 pmbtoken_exp2_get_h_for_testing AWS_LC_0_0 PRIVATE
 pmbtoken_pst1_get_h_for_testing AWS_LC_0_0 PRIVATE
+rand_thread_local_state_clear_all_FOR_TESTING AWS_LC_0_0 PRIVATE
 rdrand_multiple8 AWS_LC_0_0 PRIVATE
 rndr_multiple8 AWS_LC_0_0 PRIVATE
 s2i_ASN1_INTEGER AWS_LC_0_0 PUBLIC

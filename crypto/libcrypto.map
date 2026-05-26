@@ -512,7 +512,6 @@ AWS_LC_0_0 {
     CBB_add_asn1_uint64;
     CBB_add_asn1_uint64_with_tag;
     CBB_add_bytes;
-    CBB_add_latin1;
     CBB_add_space;
     CBB_add_u16;
     CBB_add_u16_length_prefixed;
@@ -525,9 +524,6 @@ AWS_LC_0_0 {
     CBB_add_u64le;
     CBB_add_u8;
     CBB_add_u8_length_prefixed;
-    CBB_add_ucs2_be;
-    CBB_add_utf32_be;
-    CBB_add_utf8;
     CBB_add_zeros;
     CBB_cleanup;
     CBB_data;
@@ -537,7 +533,6 @@ AWS_LC_0_0 {
     CBB_finish_i2d;
     CBB_flush;
     CBB_flush_asn1_set_of;
-    CBB_get_utf8_len;
     CBB_init;
     CBB_init_fixed;
     CBB_len;
@@ -560,7 +555,6 @@ AWS_LC_0_0 {
     CBS_get_asn1_uint64;
     CBS_get_bytes;
     CBS_get_last_u8;
-    CBS_get_latin1;
     CBS_get_optional_asn1;
     CBS_get_optional_asn1_bool;
     CBS_get_optional_asn1_int64;
@@ -578,10 +572,7 @@ AWS_LC_0_0 {
     CBS_get_u64le;
     CBS_get_u8;
     CBS_get_u8_length_prefixed;
-    CBS_get_ucs2_be;
     CBS_get_until_first;
-    CBS_get_utf32_be;
-    CBS_get_utf8;
     CBS_init;
     CBS_is_unsigned_asn1_integer;
     CBS_is_valid_asn1_bitstring;
@@ -1179,6 +1170,7 @@ AWS_LC_0_0 {
     EVP_PKEY_CTX_set0_rsa_oaep_label;
     EVP_PKEY_CTX_set1_hkdf_key;
     EVP_PKEY_CTX_set1_hkdf_salt;
+    EVP_PKEY_CTX_set1_signature_context_string;
     EVP_PKEY_CTX_set_app_data;
     EVP_PKEY_CTX_set_cb;
     EVP_PKEY_CTX_set_dh_pad;
@@ -1238,11 +1230,13 @@ AWS_LC_0_0 {
     EVP_PKEY_get1_EC_KEY;
     EVP_PKEY_get1_RSA;
     EVP_PKEY_get1_tls_encodedpoint;
+    EVP_PKEY_get_private_seed;
     EVP_PKEY_get_raw_private_key;
     EVP_PKEY_get_raw_public_key;
     EVP_PKEY_id;
     EVP_PKEY_is_opaque;
     EVP_PKEY_kem_check_key;
+    EVP_PKEY_kem_get_type;
     EVP_PKEY_kem_new_raw_key;
     EVP_PKEY_kem_new_raw_public_key;
     EVP_PKEY_kem_new_raw_secret_key;
@@ -1424,6 +1418,7 @@ AWS_LC_0_0 {
     FIPS_mode_set;
     FIPS_service_indicator_after_call;
     FIPS_service_indicator_before_call;
+    FIPS_version;
     GENERAL_NAMES_free;
     GENERAL_NAMES_it;
     GENERAL_NAMES_new;
@@ -1914,7 +1909,6 @@ AWS_LC_0_0 {
     RAND_egd_bytes;
     RAND_file_name;
     RAND_get_rand_method;
-    RAND_get_system_entropy_for_custom_prng;
     RAND_keep_random_devices_open;
     RAND_load_file;
     RAND_poll;
@@ -3026,6 +3020,7 @@ AWS_LC_0_0 {
     pmbtoken_exp1_get_h_for_testing;
     pmbtoken_exp2_get_h_for_testing;
     pmbtoken_pst1_get_h_for_testing;
+    rand_thread_local_state_clear_all_FOR_TESTING;
     rdrand_multiple8;
     rndr_multiple8;
     s2i_ASN1_INTEGER;
