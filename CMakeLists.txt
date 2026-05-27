@@ -5,7 +5,8 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.73.0")
+set(SOFTWARE_VERSION "5.0.0")
+set(AWSLC_FIPS_VERSION 4)
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -48,6 +49,13 @@ endif()
 include(sources.cmake)
 include(TestBigEndian)
 include(CheckCCompilerFlag)
+
+message(STATUS "Versioning name:${SOFTWARE_NAME} version:${SOFTWARE_VERSION} abi:${ABI_VERSION}")
+if(BUILD_LIBSSL)
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME} ssl:${SSL_LIB_NAME}")
+else()
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME}")
+endif()
 
 macro(add_flag_if_supported VARIABLE FLAG)
   # Create a safe, unique variable name to cache the result of the check

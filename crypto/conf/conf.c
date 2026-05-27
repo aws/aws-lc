@@ -484,6 +484,11 @@ int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
     // we now have a line with trailing \r\n removed
 
     // i is the number of bytes
+    // Ensure addition doesn't overflow and corrupt the signed buffer position
+    if (i > INT_MAX - bufnum) {
+      OPENSSL_PUT_ERROR(CONF, ERR_R_OVERFLOW);
+      goto err;
+    }
     bufnum += i;
 
     v = NULL;

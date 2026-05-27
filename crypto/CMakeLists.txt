@@ -607,6 +607,15 @@ function(build_libcrypto)
   endif()
   if(WIN32)
     target_link_libraries(${arg_NAME} PUBLIC ws2_32)
+    # MinGW (non-Clang) builds target Windows 7 (see the top-level
+    # CMakeLists.txt, which adds -D_WIN32_WINNT=_WIN32_WINNT_WIN7), so
+    # `crypto/rand_extra/windows.c` compiles under the AWSLC_WINDOWS_7_COMPAT
+    # branch and calls BCryptGenRandom from bcrypt.dll. On MSVC this is
+    # handled by `#pragma comment(lib, "bcrypt.lib")` in that file, but
+    # MinGW ignores that pragma so we need to add the link explicitly.
+    if(MINGW)
+      target_link_libraries(${arg_NAME} PUBLIC bcrypt)
+    endif()
   endif()
 
   if(AWSLC_LINK_THREADS)

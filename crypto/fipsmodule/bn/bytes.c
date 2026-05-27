@@ -91,6 +91,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
     return NULL;
   }
   ret->width = (int)num_words;
+  ret->neg = 0;
 
   bn_little_endian_to_words(ret->d, ret->width, in, len);
 

@@ -69,6 +69,15 @@ TEST(CryptoTest, aws_lc_assert_entropy_cpu_jitter) {
   }
 }
 
+// FIPS_version returns the FIPS version number in FIPS builds and 0 otherwise.
+TEST(CryptoTest, FIPSVersion) {
+  if (FIPS_mode() == 1) {
+    EXPECT_EQ(FIPS_version(), (uint32_t)AWSLC_FIPS_VERSION_NUMBER);
+  } else {
+    EXPECT_EQ(FIPS_version(), 0u);
+  }
+}
+
 TEST(CryptoTest, OPENSSL_hexstr2buf) {
   const char *test_cases[][2] = {{"a2", "\xa2"},
                                  {"a213", "\xa2\x13"},

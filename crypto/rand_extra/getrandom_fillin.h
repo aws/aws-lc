@@ -8,8 +8,7 @@
 #include "internal.h"
 
 
-#if defined(OPENSSL_RAND_URANDOM)
-
+#if defined(OPENSSL_RAND_URANDOM) && defined(OPENSSL_LINUX)
 #include <sys/syscall.h>
 
 #if defined(OPENSSL_X86_64)
@@ -54,7 +53,7 @@
 #define GRND_RANDOM 2
 #endif
 
-#endif  // OPENSSL_LINUX
+#endif  // OPENSSL_RAND_URANDOM && OPENSSL_LINUX
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_RAND_GETRANDOM_FILLIN_H
