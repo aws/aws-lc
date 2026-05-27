@@ -23,9 +23,6 @@
 # compilers (Clang 20+, Zig) reject or mishandle the conflicting flags. The
 # wrapper unconditionally strips -c when -S is present, making the build
 # correct for all compilers.
-function(compiler_wrapper_needed result_var)
-  set(${result_var} TRUE PARENT_SCOPE)
-endfunction()
 
 # Generate wrapper scripts with hardcoded compiler paths
 function(generate_compiler_wrapper)
@@ -86,14 +83,6 @@ endfunction()
 
 # Set up the compiler wrapper system
 function(setup_compiler_wrapper)
-  # Check if we need the wrapper
-  compiler_wrapper_needed(NEED_WRAPPER)
-  if(NOT NEED_WRAPPER)
-    message(STATUS "Compiler wrapper not needed for current compiler version")
-    set(COMPILER_WRAPPER_AVAILABLE FALSE CACHE INTERNAL "Whether compiler wrapper is available")
-    return()
-  endif()
-
   # Determine the compiler to wrap
   set(REAL_COMPILER "${CMAKE_C_COMPILER}")
   if(NOT REAL_COMPILER)
