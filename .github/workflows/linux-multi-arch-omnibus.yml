@@ -373,8 +373,8 @@ jobs:
             fi
             ./tests/ci/run_fips_tests.sh
 
-  dist_pkg_run_tests:
-    name: dist-pkg-run-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+  dist_pkg_tests:
+    name: dist-pkg-${{ matrix.test }}-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
@@ -382,6 +382,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        test:
+          - install
+          - run
         include:
           # Ubuntu 24.04
           - image: ubuntu:24.04
@@ -435,7 +438,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
-            ./tests/ci/run_dist_pkg_run_tests.sh
+            ./tests/ci/run_dist_pkg_${{ matrix.test }}_tests.sh
 
   prefix_tests:
     name: prefix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
