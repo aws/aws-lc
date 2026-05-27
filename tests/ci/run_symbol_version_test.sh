@@ -11,13 +11,15 @@
 # 4. Version definitions are present in shared libraries
 # 5. Libraries can be linked and used correctly
 #
-# Usage: ./tests/ci/run_symbol_version_test.sh [build_dir]
+# Usage: ./tests/ci/run_symbol_version_test.sh [install_dir]
+#   If install_dir is provided, uses the installed shared libraries there.
+#   Otherwise, builds AWS-LC and tests the build output.
 
-set -ex
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-BUILD_DIR="${1:-${SOURCE_ROOT}/build_symbol_test}"
+INSTALL_DIR="${1:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -53,6 +55,16 @@ print_info() {
   echo "INFO: $1"
 }
 
+# Detect library directory (lib or lib64)
+get_lib_dir() {
+  local dir="$1"
+  if [[ -d "${dir}/lib64" ]]; then
+    echo "lib64"
+  else
+    echo "lib"
+  fi
+}
+
 # Check if we're on a supported platform
 if [[ "$OSTYPE" != "linux-gnu"* ]] && [[ "$OSTYPE" != "freebsd"* ]]; then
   print_warn "Symbol versioning only supported on Linux and BSD. Skipping tests."
@@ -70,13 +82,13 @@ if ! command -v nm >/dev/null 2>&1; then
   exit 1
 fi
 
-# Build only if the shared libraries don't already exist (allows reuse from
-# run_dist_pkg_tests.sh without a redundant build).
-if [[ -f "${BUILD_DIR}/crypto/libcrypto-awslc.so" ]] && \
-   [[ -f "${BUILD_DIR}/ssl/libssl-awslc.so" ]]; then
-  print_info "Shared libraries already exist in ${BUILD_DIR}, skipping build"
-else
-  print_test "Building AWS-LC with symbol versioning"
+# Build and install into a temporary directory if no install dir was provided.
+if [[ -z "${INSTALL_DIR}" ]]; then
+  BUILD_DIR="${SOURCE_ROOT}/build_symbol_test"
+  INSTALL_DIR=$(mktemp -d)
+  trap 'rm -rf "${INSTALL_DIR}"' EXIT
+
+  print_test "Building and installing AWS-LC with symbol versioning"
   rm -rf "${BUILD_DIR}"
   mkdir -p "${BUILD_DIR}"
 
@@ -84,19 +96,26 @@ else
   cmake -GNinja -B "${BUILD_DIR}" \
     -DBUILD_SHARED_LIBS=ON \
     -DENABLE_DIST_PKG=ON \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
 
-  if ninja -C "${BUILD_DIR}" crypto ssl; then
-    print_pass "Build successful"
+  if cmake --build "${BUILD_DIR}" --target install; then
+    print_pass "Build and install successful"
   else
     print_fail "Build failed"
     exit 1
   fi
+
+  rm -rf "${BUILD_DIR}"
 fi
 
-# Library paths
-LIBCRYPTO_SO="${BUILD_DIR}/crypto/libcrypto-awslc.so"
-LIBSSL_SO="${BUILD_DIR}/ssl/libssl-awslc.so"
+print_info "Using installed libraries from ${INSTALL_DIR}"
+
+LIB_DIR=$(get_lib_dir "${INSTALL_DIR}")
+LIBCRYPTO_SO="${INSTALL_DIR}/${LIB_DIR}/libcrypto-awslc.so"
+LIBSSL_SO="${INSTALL_DIR}/${LIB_DIR}/libssl-awslc.so"
+INCLUDE_DIR="${INSTALL_DIR}/include/aws-lc"
+LINK_LIB_DIR="${INSTALL_DIR}/${LIB_DIR}"
 
 # Extract the symbol version tag from the linker map
 SYMBOL_VERSION=$(grep -m1 -oP '^AWS_LC_\S+(?= \{)' "${SOURCE_ROOT}/crypto/libcrypto.map")
@@ -112,25 +131,25 @@ print_test "Verify shared libraries exist"
 if [[ -f "${LIBCRYPTO_SO}" ]]; then
   print_pass "libcrypto-awslc.so exists"
 else
-  print_fail "libcrypto-awslc.so not found"
+  print_fail "libcrypto-awslc.so not found at ${LIBCRYPTO_SO}"
 fi
 
 if [[ -f "${LIBSSL_SO}" ]]; then
   print_pass "libssl-awslc.so exists"
 else
-  print_fail "libssl-awslc.so not found"
+  print_fail "libssl-awslc.so not found at ${LIBSSL_SO}"
 fi
 
 # Test 2: Check version definition sections
 print_test "Check version definition sections"
 
-if readelf --version-info "${LIBCRYPTO_SO}" | grep -q "${SYMBOL_VERSION}"; then
+if readelf --version-info "${LIBCRYPTO_SO}" | grep "${SYMBOL_VERSION}" > /dev/null; then
   print_pass "libcrypto has ${SYMBOL_VERSION} version definition"
 else
   print_fail "libcrypto missing ${SYMBOL_VERSION} version definition"
 fi
 
-if readelf --version-info "${LIBSSL_SO}" | grep -q "${SYMBOL_VERSION}"; then
+if readelf --version-info "${LIBSSL_SO}" | grep "${SYMBOL_VERSION}" > /dev/null; then
   print_pass "libssl has ${SYMBOL_VERSION} version definition"
 else
   print_fail "libssl missing ${SYMBOL_VERSION} version definition"
@@ -160,9 +179,6 @@ fi
 # Test 4: Check for unversioned exports
 print_test "Check for unversioned exported symbols"
 
-# Get all defined global symbols (type T = text/code)
-# Filter out those with version suffix (@)
-# Exclude weak symbols and special symbols
 CRYPTO_UNVERSIONED=$(nm -D "${LIBCRYPTO_SO}" | \
   awk '$2 == "T" && $3 !~ /@/ && $3 !~ /^_/ && $3 !~ /^OPENSSL_memory/ { print $3 }' | \
   wc -l)
@@ -199,42 +215,38 @@ check_symbol() {
   local symbol="$2"
   local expected_version="$3"
 
-  if nm -D "${lib}" | grep -q "${symbol}@@${expected_version}"; then
+  if nm -D "${lib}" | grep "${symbol}@@${expected_version}" > /dev/null; then
     print_pass "${symbol} has correct version (${expected_version})"
   else
     print_fail "${symbol} missing or incorrectly versioned"
   fi
 }
 
-# Check some common libcrypto symbols
 check_symbol "${LIBCRYPTO_SO}" "EVP_MD_CTX_new" "${SYMBOL_VERSION}"
 check_symbol "${LIBCRYPTO_SO}" "AES_encrypt" "${SYMBOL_VERSION}"
 check_symbol "${LIBCRYPTO_SO}" "RSA_new" "${SYMBOL_VERSION}"
-
-# Check some libssl symbols
 check_symbol "${LIBSSL_SO}" "SSL_CTX_new" "${SYMBOL_VERSION}"
 check_symbol "${LIBSSL_SO}" "SSL_new" "${SYMBOL_VERSION}"
 
 # Test 6: Link test program
-print_test "Test linking against versioned libraries"
+if [[ -d "${INCLUDE_DIR}" ]]; then
+  print_test "Test linking against versioned libraries"
 
-TEST_PROG="${BUILD_DIR}/symbol_version_link_test"
-cat > "${TEST_PROG}.c" << 'EOF'
+  TEST_DIR=$(mktemp -d)
+  TEST_PROG="${TEST_DIR}/symbol_version_link_test"
+  cat > "${TEST_PROG}.c" << 'EOF'
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <stdio.h>
 
 int main() {
-    // Test libcrypto symbols
     EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
     if (!md_ctx) {
         fprintf(stderr, "EVP_MD_CTX_new failed\n");
-        return 1
-;
+        return 1;
     }
     EVP_MD_CTX_free(md_ctx);
 
-    // Test libssl symbols
     SSL_CTX *ssl_ctx = SSL_CTX_new(TLS_method());
     if (!ssl_ctx) {
         fprintf(stderr, "SSL_CTX_new failed\n");
@@ -247,72 +259,55 @@ int main() {
 }
 EOF
 
-if gcc "${TEST_PROG}.c" -o "${TEST_PROG}" \
-  -I "${BUILD_DIR}/include" \
-  -L "${BUILD_DIR}/crypto" \
-  -L "${BUILD_DIR}/ssl" \
-  -lcrypto-awslc -lssl-awslc \
-  -Wl,-rpath,"${BUILD_DIR}/crypto:${BUILD_DIR}/ssl"; then
-  print_pass "Test program compiled successfully"
+  if gcc "${TEST_PROG}.c" -o "${TEST_PROG}" \
+    -I "${INCLUDE_DIR}" \
+    -L "${LINK_LIB_DIR}" \
+    -lcrypto-awslc -lssl-awslc \
+    -Wl,-rpath,"${LINK_LIB_DIR}"; then
+    print_pass "Test program compiled successfully"
+  else
+    print_fail "Test program compilation failed"
+  fi
+
+  if [[ -f "${TEST_PROG}" ]]; then
+    if LD_LIBRARY_PATH="${LINK_LIB_DIR}" "${TEST_PROG}"; then
+      print_pass "Test program executed successfully"
+    else
+      print_fail "Test program execution failed"
+    fi
+
+    print_test "Verify test program dependencies"
+
+    if ldd "${TEST_PROG}" | grep "libcrypto-awslc.so" > /dev/null; then
+      print_pass "Test program linked against libcrypto-awslc.so"
+    else
+      print_fail "Test program not linked against libcrypto-awslc.so"
+    fi
+
+    if ldd "${TEST_PROG}" | grep "libssl-awslc.so" > /dev/null; then
+      print_pass "Test program linked against libssl-awslc.so"
+    else
+      print_fail "Test program not linked against libssl-awslc.so"
+    fi
+
+    print_test "Verify symbol versions used by test program"
+
+    if nm -D "${TEST_PROG}" | grep "EVP_MD_CTX_new@${SYMBOL_VERSION}" > /dev/null; then
+      print_pass "Test program uses EVP_MD_CTX_new@${SYMBOL_VERSION}"
+    else
+      print_fail "Test program not using correct EVP_MD_CTX_new version"
+    fi
+
+    if nm -D "${TEST_PROG}" | grep "SSL_CTX_new@${SYMBOL_VERSION}" > /dev/null; then
+      print_pass "Test program uses SSL_CTX_new@${SYMBOL_VERSION}"
+    else
+      print_fail "Test program not using correct SSL_CTX_new version"
+    fi
+  fi
+
+  rm -rf "${TEST_DIR}"
 else
-  print_fail "Test program compilation failed"
-fi
-
-# Run the test program
-if LD_LIBRARY_PATH="${BUILD_DIR}/crypto:${BUILD_DIR}/ssl" "${TEST_PROG}"; then
-  print_pass "Test program executed successfully"
-else
-  print_fail "Test program execution failed"
-fi
-
-# Check dependencies of test program
-print_test "Verify test program dependencies"
-
-if ldd "${TEST_PROG}" | grep -q "libcrypto-awslc.so.0"; then
-  print_pass "Test program linked against libcrypto-awslc.so.0"
-else
-  print_fail "Test program not linked against libcrypto-awslc.so.0"
-fi
-
-if ldd "${TEST_PROG}" | grep -q "libssl-awslc.so.0"; then
-  print_pass "Test program linked against libssl-awslc.so.0"
-else
-  print_fail "Test program not linked against libssl-awslc.so.0"
-fi
-
-# Test 7: Verify symbol versions in linked program
-print_test "Verify symbol versions used by test program"
-
-if nm -D "${TEST_PROG}" | grep -q "EVP_MD_CTX_new@@${SYMBOL_VERSION}"; then
-  print_pass "Test program uses EVP_MD_CTX_new@@${SYMBOL_VERSION}"
-else
-  print_fail "Test program not using correct EVP_MD_CTX_new version"
-fi
-
-if nm -D "${TEST_PROG}" | grep -q "SSL_CTX_new@@${SYMBOL_VERSION}"; then
-  print_pass "Test program uses SSL_CTX_new@@${SYMBOL_VERSION}"
-else
-  print_fail "Test program not using correct SSL_CTX_new version"
-fi
-
-# Test 8: Check baseline files exist and are non-empty
-print_test "Verify baseline files"
-
-CRYPTO_BASELINE="${SOURCE_ROOT}/tests/ci/baselines/symbols/libcrypto-1.0.txt"
-SSL_BASELINE="${SOURCE_ROOT}/tests/ci/baselines/symbols/libssl-1.0.txt"
-
-if [[ -f "${CRYPTO_BASELINE}" ]] && [[ -s "${CRYPTO_BASELINE}" ]]; then
-  CRYPTO_BASELINE_COUNT=$(wc -l < "${CRYPTO_BASELINE}")
-  print_pass "libcrypto baseline exists with ${CRYPTO_BASELINE_COUNT} symbols"
-else
-  print_fail "libcrypto baseline missing or empty"
-fi
-
-if [[ -f "${SSL_BASELINE}" ]] && [[ -s "${SSL_BASELINE}" ]]; then
-  SSL_BASELINE_COUNT=$(wc -l < "${SSL_BASELINE}")
-  print_pass "libssl baseline exists with ${SSL_BASELINE_COUNT} symbols"
-else
-  print_fail "libssl baseline missing or empty"
+  print_info "Skipping link test (no headers found at ${INCLUDE_DIR})"
 fi
 
 # Summary

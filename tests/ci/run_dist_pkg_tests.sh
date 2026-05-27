@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -eo pipefail
+set -euo pipefail
 
 source tests/ci/common_posix_setup.sh
 
@@ -265,7 +265,7 @@ function test_cmake_find_package() {
     ${CMAKE_COMMAND} --build ${BUILD_DIR}
 
     # Set library path for running
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
     export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
     # Run the application
@@ -336,7 +336,7 @@ EOF
     ${CC:-cc} ${TEST_DIR}/test.c ${CFLAGS} ${LIBS} -o ${TEST_DIR}/test
 
     # Run
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
     export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
     ${TEST_DIR}/test || fail "pkg-config test application failed to run"
@@ -365,12 +365,12 @@ verify_dist_pkg_structure install-dist-pkg-shared .so OFF
 test_cmake_find_package install-dist-pkg-shared ON
 test_pkg_config install-dist-pkg-shared aws-lc OFF
 
-# Symbol versioning tests (reuse the shared-lib build dir from Test 1)
+# Symbol versioning tests (reuse the shared-lib install from Test 1)
 echo ""
 echo "############################################"
 echo "# Symbol Versioning Tests                  #"
 echo "############################################"
-"${AWS_LC_DIR}/tests/ci/run_symbol_version_test.sh" "${SCRATCH_DIR}/build"
+"${AWS_LC_DIR}/tests/ci/run_symbol_version_test.sh" "${SCRATCH_DIR}/install-dist-pkg-shared"
 
 # Test 2: ENABLE_DIST_PKG + OPENSSL_SHIM (shared libs)
 echo ""
