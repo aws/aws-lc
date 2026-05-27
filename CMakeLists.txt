@@ -71,13 +71,14 @@ if(GENERATE_RUST_BINDINGS)
   message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
   message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
 
-  # Check for rustfmt (required for --formatter rustfmt option)
+  # Check for rustfmt (optional: used to format the generated bindings if available)
   find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
-  if(NOT RUSTFMT_EXECUTABLE)
-    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
-                        "Install it with: rustup component add rustfmt")
+  if(RUSTFMT_EXECUTABLE)
+    message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+  else()
+    message(STATUS "rustfmt not found; generated Rust bindings will not be formatted. "
+                   "Install it with: rustup component add rustfmt")
   endif()
-  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
 endif()
 
 # Configure entropy source in case of FIPS build
