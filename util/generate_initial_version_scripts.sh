@@ -7,9 +7,9 @@
 # The registry files (crypto/libcrypto.txt and ssl/libssl.txt) are the source
 # of truth. Each line records a symbol, its version node, and its visibility:
 #
-#   AES_encrypt AWS_LC_0_0 PUBLIC
-#   CRYPTO_once AWS_LC_0_0 PRIVATE
-#   ssl_cert_check_key_usage AWS_LC_0_0 PRIVATE_CXX
+#   AES_encrypt AWS_LC_1.0 PUBLIC
+#   CRYPTO_once AWS_LC_1.0 PRIVATE
+#   ssl_cert_check_key_usage AWS_LC_1.0 PRIVATE_CXX
 #
 # Visibility values:
 #   PUBLIC      - public API from include/openssl/*.h, can never be removed
@@ -23,7 +23,7 @@
 #
 # Usage: ./util/generate_initial_version_scripts.sh [--cc COMPILER]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-INITIAL_VERSION="AWS_LC_0_0"
+INITIAL_VERSION="AWS_LC_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
 CRYPTO_MAP="${SOURCE_ROOT}/crypto/libcrypto.map"
@@ -89,7 +89,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
 echo ""
 echo "Step 3: Writing symbol registry files (${INITIAL_VERSION})..."
 
-# Write registry: "<symbol> AWS_LC_0_0 <visibility>" sorted by symbol name
+# Write registry: "<symbol> AWS_LC_1.0 <visibility>" sorted by symbol name
 # Input format from read_public_symbols: "SYMBOL VISIBILITY"
 awk -v ver="${INITIAL_VERSION}" '{ print $1, ver, $2 }' /tmp/libcrypto_symbols.txt \
   | sort > "${CRYPTO_REGISTRY}"

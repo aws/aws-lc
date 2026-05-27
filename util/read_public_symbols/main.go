@@ -518,7 +518,7 @@ func loadDynSyms(path string) (map[string]struct{}, error) {
 			continue
 		}
 		name := sym.Name
-		// Strip version suffix if present (e.g., "func@@AWS_LC_1_0" → "func")
+		// Strip version suffix if present (e.g., "func@@AWS_LC_1.0" → "func")
 		if idx := strings.IndexByte(name, '@'); idx >= 0 {
 			name = name[:idx]
 		}

@@ -15,11 +15,11 @@ func TestParseVersion(t *testing.T) {
 		wantMajor int
 		wantMinor int
 	}{
-		{"AWS_LC_0_0", 0, 0},
-		{"AWS_LC_1_0", 1, 0},
-		{"AWS_LC_1_1", 1, 1},
-		{"AWS_LC_2_0", 2, 0},
-		{"AWS_LC_10_3", 10, 3},
+		{"AWS_LC_0.0", 0, 0},
+		{"AWS_LC_1.0", 1, 0},
+		{"AWS_LC_1.1", 1, 1},
+		{"AWS_LC_2.0", 2, 0},
+		{"AWS_LC_10.3", 10, 3},
 		{"bad", 0, 0},
 		{"AWS_LC_", 0, 0},
 	}
@@ -39,12 +39,12 @@ func TestVersionLess(t *testing.T) {
 		a, b string
 		want bool
 	}{
-		{"AWS_LC_0_0", "AWS_LC_1_0", true},
-		{"AWS_LC_1_0", "AWS_LC_0_0", false},
-		{"AWS_LC_1_0", "AWS_LC_1_1", true},
-		{"AWS_LC_1_1", "AWS_LC_2_0", true},
-		{"AWS_LC_0_0", "AWS_LC_0_0", false},
-		{"AWS_LC_2_0", "AWS_LC_1_1", false},
+		{"AWS_LC_0.0", "AWS_LC_1.0", true},
+		{"AWS_LC_1.0", "AWS_LC_0.0", false},
+		{"AWS_LC_1.0", "AWS_LC_1.1", true},
+		{"AWS_LC_1.1", "AWS_LC_2.0", true},
+		{"AWS_LC_0.0", "AWS_LC_0.0", false},
+		{"AWS_LC_2.0", "AWS_LC_1.1", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.a+"_vs_"+tt.b, func(t *testing.T) {
@@ -78,24 +78,24 @@ func TestReadRegistryFrom(t *testing.T) {
 		},
 		{
 			name:         "single version two fields",
-			input:        "AES_encrypt AWS_LC_0_0\nAES_decrypt AWS_LC_0_0\n",
-			wantVersions: []string{"AWS_LC_0_0"},
-			wantCounts:   map[string]int{"AWS_LC_0_0": 2},
+			input:        "AES_encrypt AWS_LC_0.0\nAES_decrypt AWS_LC_0.0\n",
+			wantVersions: []string{"AWS_LC_0.0"},
+			wantCounts:   map[string]int{"AWS_LC_0.0": 2},
 		},
 		{
 			name:         "single version three fields",
-			input:        "AES_encrypt AWS_LC_0_0 PUBLIC\nCRYPTO_once AWS_LC_0_0 PRIVATE\n",
-			wantVersions: []string{"AWS_LC_0_0"},
-			wantCounts:   map[string]int{"AWS_LC_0_0": 2},
+			input:        "AES_encrypt AWS_LC_0.0 PUBLIC\nCRYPTO_once AWS_LC_0.0 PRIVATE\n",
+			wantVersions: []string{"AWS_LC_0.0"},
+			wantCounts:   map[string]int{"AWS_LC_0.0": 2},
 		},
 		{
 			name: "multiple versions sorted correctly",
-			input: "AES_encrypt AWS_LC_0_0 PUBLIC\n" +
-				"SSL_read AWS_LC_0_0 PUBLIC\n" +
-				"new_func AWS_LC_1_0 PUBLIC\n" +
-				"newer_func AWS_LC_2_0 PRIVATE\n",
-			wantVersions: []string{"AWS_LC_0_0", "AWS_LC_1_0", "AWS_LC_2_0"},
-			wantCounts:   map[string]int{"AWS_LC_0_0": 2, "AWS_LC_1_0": 1, "AWS_LC_2_0": 1},
+			input: "AES_encrypt AWS_LC_0.0 PUBLIC\n" +
+				"SSL_read AWS_LC_0.0 PUBLIC\n" +
+				"new_func AWS_LC_1.0 PUBLIC\n" +
+				"newer_func AWS_LC_2.0 PRIVATE\n",
+			wantVersions: []string{"AWS_LC_0.0", "AWS_LC_1.0", "AWS_LC_2.0"},
+			wantCounts:   map[string]int{"AWS_LC_0.0": 2, "AWS_LC_1.0": 1, "AWS_LC_2.0": 1},
 		},
 		{
 			name:    "malformed line too few fields",
@@ -104,7 +104,7 @@ func TestReadRegistryFrom(t *testing.T) {
 		},
 		{
 			name:    "malformed line too many fields",
-			input:   "AES_encrypt AWS_LC_0_0 PUBLIC EXTRA\n",
+			input:   "AES_encrypt AWS_LC_0.0 PUBLIC EXTRA\n",
 			wantErr: true,
 		},
 	}
@@ -138,12 +138,12 @@ func TestReadRegistryFrom(t *testing.T) {
 }
 
 func TestReadRegistryFromVisibility(t *testing.T) {
-	input := "foo AWS_LC_0_0\nbar AWS_LC_0_0 PRIVATE\nbaz AWS_LC_0_0 PRIVATE_CXX\n"
+	input := "foo AWS_LC_0.0\nbar AWS_LC_0.0 PRIVATE\nbaz AWS_LC_0.0 PRIVATE_CXX\n"
 	versionSymbols, _, err := readRegistryFrom(strings.NewReader(input))
 	if err != nil {
 		t.Fatal(err)
 	}
-	syms := versionSymbols["AWS_LC_0_0"]
+	syms := versionSymbols["AWS_LC_0.0"]
 	want := map[string]string{
 		"foo": "PUBLIC",
 		"bar": "PRIVATE",
@@ -159,9 +159,9 @@ func TestReadRegistryFromVisibility(t *testing.T) {
 }
 
 func TestWriteVersionScriptTo_SingleVersion(t *testing.T) {
-	versions := []string{"AWS_LC_0_0"}
+	versions := []string{"AWS_LC_0.0"}
 	versionSymbols := map[string][]symbolInfo{
-		"AWS_LC_0_0": {
+		"AWS_LC_0.0": {
 			{name: "AES_encrypt", visibility: "PUBLIC"},
 			{name: "AES_decrypt", visibility: "PUBLIC"},
 		},
@@ -178,7 +178,7 @@ func TestWriteVersionScriptTo_SingleVersion(t *testing.T) {
 		t.Error("missing header comment")
 	}
 	// Check version block.
-	if !strings.Contains(output, "AWS_LC_0_0 {") {
+	if !strings.Contains(output, "AWS_LC_0.0 {") {
 		t.Error("missing version block")
 	}
 	// Check symbols are present and sorted.
@@ -195,12 +195,12 @@ func TestWriteVersionScriptTo_SingleVersion(t *testing.T) {
 }
 
 func TestWriteVersionScriptTo_MultipleVersions(t *testing.T) {
-	versions := []string{"AWS_LC_0_0", "AWS_LC_1_0"}
+	versions := []string{"AWS_LC_0.0", "AWS_LC_1.0"}
 	versionSymbols := map[string][]symbolInfo{
-		"AWS_LC_0_0": {
+		"AWS_LC_0.0": {
 			{name: "AES_encrypt", visibility: "PUBLIC"},
 		},
-		"AWS_LC_1_0": {
+		"AWS_LC_1.0": {
 			{name: "new_func", visibility: "PUBLIC"},
 		},
 	}
@@ -216,8 +216,8 @@ func TestWriteVersionScriptTo_MultipleVersions(t *testing.T) {
 		t.Error("base version missing local: *;")
 	}
 	// Derived version inherits from base.
-	if !strings.Contains(output, "} AWS_LC_0_0;") {
-		t.Error("derived version missing inheritance from AWS_LC_0_0")
+	if !strings.Contains(output, "} AWS_LC_0.0;") {
+		t.Error("derived version missing inheritance from AWS_LC_0.0")
 	}
 	// Derived version should NOT have local: *.
 	// Count occurrences of "local:" — should be exactly 1.
@@ -227,9 +227,9 @@ func TestWriteVersionScriptTo_MultipleVersions(t *testing.T) {
 }
 
 func TestWriteVersionScriptTo_CxxSymbols(t *testing.T) {
-	versions := []string{"AWS_LC_0_0"}
+	versions := []string{"AWS_LC_0.0"}
 	versionSymbols := map[string][]symbolInfo{
-		"AWS_LC_0_0": {
+		"AWS_LC_0.0": {
 			{name: "AES_encrypt", visibility: "PUBLIC"},
 			{name: "bssl::func1", visibility: "PRIVATE_CXX"},
 			{name: "bssl::SSLKeyShare", visibility: "PRIVATE_CXX_CLASS"},
@@ -277,11 +277,11 @@ func TestWriteVersionScriptTo_Empty(t *testing.T) {
 
 func TestEndToEnd(t *testing.T) {
 	registry := `# Symbol registry for testing
-AES_encrypt AWS_LC_0_0 PUBLIC
-AES_decrypt AWS_LC_0_0 PUBLIC
-bssl::ssl_func AWS_LC_0_0 PRIVATE_CXX
-new_api AWS_LC_1_0 PUBLIC
-bssl::SSLKeyShare AWS_LC_1_0 PRIVATE_CXX_CLASS
+AES_encrypt AWS_LC_0.0 PUBLIC
+AES_decrypt AWS_LC_0.0 PUBLIC
+bssl::ssl_func AWS_LC_0.0 PRIVATE_CXX
+new_api AWS_LC_1.0 PUBLIC
+bssl::SSLKeyShare AWS_LC_1.0 PRIVATE_CXX_CLASS
 `
 	versionSymbols, versions, err := readRegistryFrom(strings.NewReader(registry))
 	if err != nil {
@@ -291,7 +291,7 @@ bssl::SSLKeyShare AWS_LC_1_0 PRIVATE_CXX_CLASS
 	if len(versions) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(versions))
 	}
-	if versions[0] != "AWS_LC_0_0" || versions[1] != "AWS_LC_1_0" {
+	if versions[0] != "AWS_LC_0.0" || versions[1] != "AWS_LC_1.0" {
 		t.Fatalf("unexpected version order: %v", versions)
 	}
 
@@ -305,16 +305,16 @@ bssl::SSLKeyShare AWS_LC_1_0 PRIVATE_CXX_CLASS
 	lines := strings.Split(output, "\n")
 	var foundBase, foundDerived, foundLocal, foundInherit bool
 	for _, line := range lines {
-		if strings.HasPrefix(line, "AWS_LC_0_0 {") {
+		if strings.HasPrefix(line, "AWS_LC_0.0 {") {
 			foundBase = true
 		}
-		if strings.HasPrefix(line, "AWS_LC_1_0 {") {
+		if strings.HasPrefix(line, "AWS_LC_1.0 {") {
 			foundDerived = true
 		}
 		if strings.TrimSpace(line) == "*;" {
 			foundLocal = true
 		}
-		if strings.TrimSpace(line) == "} AWS_LC_0_0;" {
+		if strings.TrimSpace(line) == "} AWS_LC_0.0;" {
 			foundInherit = true
 		}
 	}
@@ -328,6 +328,6 @@ bssl::SSLKeyShare AWS_LC_1_0 PRIVATE_CXX_CLASS
 		t.Error("missing local: * in base version")
 	}
 	if !foundInherit {
-		t.Error("derived version missing inheritance from AWS_LC_0_0")
+		t.Error("derived version missing inheritance from AWS_LC_0.0")
 	}
 }

@@ -238,10 +238,10 @@ When new `OPENSSL_EXPORT` symbols are added to public headers:
 
 ```bash
 # Assign them to a new version node and regenerate the map files
-./util/update_symbol_version.sh AWS_LC_1_0
+./util/update_symbol_version.sh AWS_LC_1.0
 
 # Commit the updated registry and map files
 git add crypto/libcrypto.txt ssl/libssl.txt
 git add crypto/libcrypto.map ssl/libssl.map
-git commit -m "Register new public API symbols in AWS_LC_1_0"
+git commit -m "Register new public API symbols in AWS_LC_1.0"
 ```

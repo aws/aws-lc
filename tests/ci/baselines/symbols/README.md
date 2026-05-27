@@ -8,9 +8,9 @@ The symbol version registries have moved alongside their respective libraries:
 Each line records a symbol and the version node it was introduced in:
 
 ```
-AES_encrypt AWS_LC_0_0
-EVP_MD_CTX_new AWS_LC_0_0
-new_function AWS_LC_1_0
+AES_encrypt AWS_LC_1.0
+EVP_MD_CTX_new AWS_LC_1.0
+new_function AWS_LC_1.0
 ```
 
 The GNU ld version scripts (`crypto/libcrypto.map`, `ssl/libssl.map`) are

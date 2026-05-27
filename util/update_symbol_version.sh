@@ -13,7 +13,7 @@
 #   4. Re-sorts the registry and regenerates the map files
 #
 # Usage: ./util/update_symbol_version.sh <version>
-# Example: ./util/update_symbol_version.sh AWS_LC_1_0
+# Example: ./util/update_symbol_version.sh AWS_LC_1.0
 
 set -e
 
@@ -22,15 +22,15 @@ SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if [[ $# -ne 1 ]]; then
   echo "Usage: $0 <version>"
-  echo "  version: version node for new symbols (e.g. AWS_LC_1_0)"
+  echo "  version: version node for new symbols (e.g. AWS_LC_1.0)"
   exit 1
 fi
 
 NEW_VERSION="$1"
 
 # Validate version format
-if ! [[ "${NEW_VERSION}" =~ ^AWS_LC_[0-9]+_[0-9]+$ ]]; then
-  echo "Error: version must match AWS_LC_X_Y (e.g. AWS_LC_1_0), got: ${NEW_VERSION}"
+if ! [[ "${NEW_VERSION}" =~ ^AWS_LC_[0-9]+\.[0-9]+$ ]]; then
+  echo "Error: version must match AWS_LC_X.Y (e.g. AWS_LC_1.0), got: ${NEW_VERSION}"
   exit 1
 fi
 

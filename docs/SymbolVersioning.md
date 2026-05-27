@@ -19,7 +19,7 @@ AWS-LC assigns all public API symbols to version namespaces:
 
 Both libcrypto and libssl share the same symbol version namespace:
 
-- **AWS_LC_1_0** (current baseline - ~3,800 libcrypto symbols, ~600 libssl symbols)
+- **AWS_LC_1.0** (current baseline - ~3,800 libcrypto symbols, ~600 libssl symbols)
 
 When you link an application against AWS-LC, the linker records which symbol versions your application uses. At runtime, the dynamic linker ensures your application gets the correct symbol versions.
 
@@ -30,7 +30,7 @@ When you link an application against AWS-LC, the linker records which symbol ver
 #include <openssl/evp.h>
 
 int main() {
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();  // Uses EVP_MD_CTX_new@@AWS_LC_1_0
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();  // Uses EVP_MD_CTX_new@@AWS_LC_1.0
     // ...
 }
 ```
@@ -39,10 +39,10 @@ When compiled and linked:
 ```bash
 $ gcc myapp.c -o myapp -lcrypto-awslc
 $ nm -D myapp | grep EVP_MD_CTX_new
-                 U EVP_MD_CTX_new@@AWS_LC_1_0
+                 U EVP_MD_CTX_new@@AWS_LC_1.0
 ```
 
-The `@@AWS_LC_1_0` suffix indicates your application requires the `AWS_LC_1_0` version of `EVP_MD_CTX_new`.
+The `@@AWS_LC_1.0` suffix indicates your application requires the `AWS_LC_1.0` version of `EVP_MD_CTX_new`.
 
 ## Building with Symbol Versioning
 
@@ -67,8 +67,8 @@ ninja -C build
 ```
 
 This produces:
-- `build/crypto/libcrypto-awslc.so.0.0.0` - with AWS_LC_1_0 versioned symbols
-- `build/ssl/libssl-awslc.so.0.0.0` - with AWS_LC_1_0 versioned symbols
+- `build/crypto/libcrypto-awslc.so.0.0.0` - with AWS_LC_1.0 versioned symbols
+- `build/ssl/libssl-awslc.so.0.0.0` - with AWS_LC_1.0 versioned symbols
 
 ### Verification
 
@@ -79,7 +79,7 @@ Verify symbol versioning is applied:
 readelf --version-info build/crypto/libcrypto-awslc.so.0.0.0
 
 # List versioned symbols
-nm -D build/crypto/libcrypto-awslc.so.0.0.0 | grep @AWS_LC_1_0 | head -10
+nm -D build/crypto/libcrypto-awslc.so.0.0.0 | grep @AWS_LC_1.0 | head -10
 
 # Verify all symbols are versioned
 nm -D build/crypto/libcrypto-awslc.so.0.0.0 | grep ' T ' | grep -v '@'
@@ -96,7 +96,7 @@ Symbol versioning is controlled by **GNU ld version scripts** (`.map` files):
 ### Version Script Format
 
 ```
-AWS_LC_1_0 {
+AWS_LC_1.0 {
   global:
     AES_encrypt;
     AES_decrypt;
@@ -108,7 +108,7 @@ AWS_LC_1_0 {
 ```
 
 This defines:
-- **global**: Symbols to export with version `AWS_LC_1_0`
+- **global**: Symbols to export with version `AWS_LC_1.0`
 - **local: \***: Hide all other symbols (internal implementation)
 
 ## Version Evolution
@@ -121,22 +121,22 @@ When new public APIs are added, the symbol version must be bumped:
 
 ```cmake
 # In CMakeLists.txt
-set(CRYPTO_VERSION_SCRIPT_VERSION "AWS_LC_1_1")
+set(CRYPTO_VERSION_SCRIPT_VERSION "AWS_LC_1.1")
 ```
 
 #### Step 2: Create New Version Script
 
 ```bash
 # crypto/libcrypto_1.1.map
-AWS_LC_1_1 {
+AWS_LC_1.1 {
   global:
     NewFunction1;
     NewFunction2;
     /* new symbols only */
-} AWS_LC_1_0;  /* Inherits all AWS_LC_1_0 symbols */
+} AWS_LC_1.0;  /* Inherits all AWS_LC_1.0 symbols */
 ```
 
-The version inheritance (`} AWS_LC_1_0;`) means `AWS_LC_1_1` includes all `AWS_LC_1_0` symbols plus the new ones.
+The version inheritance (`} AWS_LC_1.0;`) means `AWS_LC_1.1` includes all `AWS_LC_1.0` symbols plus the new ones.
 
 #### Step 3: Update Baseline
 
@@ -148,13 +148,13 @@ The version inheritance (`} AWS_LC_1_0;`) means `AWS_LC_1_1` includes all `AWS_L
 
 ### Version Naming Convention
 
-- **Format**: `AWS_LC_<MAJOR>_<MINOR>`
+- **Format**: `AWS_LC_<MAJOR>.<MINOR>`
 - **Increment**: Bump minor version for each API addition
 - **Examples**:
-  - `AWS_LC_1_0` - Initial release
-  - `AWS_LC_1_1` - First update with new symbols
-  - `AWS_LC_1_2` - Second update with new symbols
-  - `AWS_LC_2_0` - After ABI break (new SOVERSION)
+  - `AWS_LC_1.0` - Initial release
+  - `AWS_LC_1.1` - First update with new symbols
+  - `AWS_LC_1.2` - Second update with new symbols
+  - `AWS_LC_2.0` - After ABI break (new SOVERSION)
 
 ### Symbol Removal (ABI Break)
 
@@ -168,7 +168,7 @@ The version inheritance (`} AWS_LC_1_0;`) means `AWS_LC_1_1` includes all `AWS_L
 
 2. **Start New Version Series**:
    ```cmake
-   set(CRYPTO_VERSION_SCRIPT_VERSION "AWS_LC_2_0")
+   set(CRYPTO_VERSION_SCRIPT_VERSION "AWS_LC_2.0")
    ```
 
 3. **Update SONAME**:
@@ -268,11 +268,11 @@ git commit -m "Update symbol baselines for new APIs"
 
 ### Forward Compatibility
 
-Applications using `AWS_LC_1_0` symbols work with `AWS_LC_1_1` libraries because version inheritance ensures all `AWS_LC_1_0` symbols remain available.
+Applications using `AWS_LC_1.0` symbols work with `AWS_LC_1.1` libraries because version inheritance ensures all `AWS_LC_1.0` symbols remain available.
 
 ### Backward Compatibility
 
-Applications using `AWS_LC_1_1` symbols **require** `AWS_LC_1_1` or later. They won't work with `AWS_LC_1_0` only libraries.
+Applications using `AWS_LC_1.1` symbols **require** `AWS_LC_1.1` or later. They won't work with `AWS_LC_1.0` only libraries.
 
 ### Package Management
 
@@ -280,7 +280,7 @@ Package managers can enforce version requirements:
 
 ```
 # Application package metadata
-Requires: libcrypto-awslc.so.0(AWS_LC_1_1)
+Requires: libcrypto-awslc.so.0(AWS_LC_1.1)
 ```
 
 This ensures users have a compatible AWS-LC version installed.
@@ -312,7 +312,7 @@ On unsupported platforms, `ENABLE_DIST_PKG` builds libraries without symbol vers
 ./util/generate_initial_version_scripts.sh
 ```
 
-### Runtime Error: "symbol version `AWS_LC_1_1' not found"
+### Runtime Error: "symbol version `AWS_LC_1.1' not found"
 
 **Cause**: Application was built against newer library version than is installed
 

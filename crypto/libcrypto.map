@@ -3,7 +3,7 @@
 # To add new symbols: util/update_symbol_version.sh <new_version>
 # To regenerate:      util/generate_initial_version_scripts.sh
 
-AWS_LC_0_0 {
+AWS_LC_1.0 {
   global:
     ACCESS_DESCRIPTION_free;
     ACCESS_DESCRIPTION_new;

@@ -100,8 +100,8 @@ sudo ninja -C build install
 
 This mode enables:
 
-- **SONAME versioning**: Shared libraries use standard SONAME (e.g., `libcrypto-awslc.so.0`)
-- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_1_0`)
+- **SONAME versioning**: Shared libraries use standard SONAME (e.g., `libcrypto-awslc.so.1`)
+- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_1.0`)
 - **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other
   crypto libraries without conflicts
 

@@ -6,7 +6,7 @@
 // script with proper version inheritance.
 //
 // Symbols are grouped by version node. Versions are sorted numerically
-// (AWS_LC_0_0 < AWS_LC_1_0 < AWS_LC_1_1 < AWS_LC_2_0), and each version
+// (AWS_LC_1.0 < AWS_LC_1_1 < AWS_LC_2_0), and each version
 // automatically inherits from its immediate predecessor. The oldest (base)
 // version includes "local: *;" to hide all unlisted symbols.
 //
@@ -138,10 +138,10 @@ func versionLess(a, b string) bool {
 	return na < nb
 }
 
-// parseVersion extracts (major, minor) from "AWS_LC_X_Y".
+// parseVersion extracts (major, minor) from "AWS_LC_X.Y".
 func parseVersion(v string) (int, int) {
 	s := strings.TrimPrefix(v, "AWS_LC_")
-	parts := strings.SplitN(s, "_", 2)
+	parts := strings.SplitN(s, ".", 2)
 	if len(parts) != 2 {
 		return 0, 0
 	}
