@@ -24,6 +24,10 @@
 # wrapper unconditionally strips -c when -S is present, making the build
 # correct for all compilers.
 
+# Save the directory of this file at include-time. Inside functions,
+# CMAKE_CURRENT_LIST_DIR reflects the *caller's* directory, not ours.
+set(_COMPILER_WRAPPER_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 # Generate wrapper scripts with hardcoded compiler paths
 function(generate_compiler_wrapper)
   # Get current timestamp for generated file header
@@ -34,7 +38,7 @@ function(generate_compiler_wrapper)
   file(MAKE_DIRECTORY "${WRAPPER_OUTPUT_DIR}")
 
   # Generate shell script wrapper (Unix/Linux/macOS)
-  set(SHELL_TEMPLATE "${CMAKE_SOURCE_DIR}/util/compiler_wrapper/compiler_wrapper_template.sh.in")
+  set(SHELL_TEMPLATE "${_COMPILER_WRAPPER_DIR}/compiler_wrapper_template.sh.in")
   set(SHELL_OUTPUT "${WRAPPER_OUTPUT_DIR}/compiler_wrapper.sh")
 
   if(EXISTS "${SHELL_TEMPLATE}")
@@ -52,7 +56,7 @@ function(generate_compiler_wrapper)
   endif()
 
   # Generate batch file wrapper (Windows)
-  set(BAT_TEMPLATE "${CMAKE_SOURCE_DIR}/util/compiler_wrapper/compiler_wrapper_template.bat.in")
+  set(BAT_TEMPLATE "${_COMPILER_WRAPPER_DIR}/compiler_wrapper_template.bat.in")
   set(BAT_OUTPUT "${WRAPPER_OUTPUT_DIR}/compiler_wrapper.bat")
 
   if(EXISTS "${BAT_TEMPLATE}")
