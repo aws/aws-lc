@@ -2383,5 +2383,51 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+static int test_security_callback(const SSL *ssl, const SSL_CTX *ctx, int op,
+                                  int bits, int nid, void *other, void *ex) {
+  return 1;
+}
+
+TEST(SSLTest, SecurityCallback) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Initially no callback is set.
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), nullptr);
+
+  // Set and retrieve the callback on SSL_CTX.
+  SSL_CTX_set_security_callback(ctx.get(), test_security_callback);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), test_security_callback);
+
+  // Set and retrieve ex_data on SSL_CTX.
+  int dummy_data = 42;
+  SSL_CTX_set0_security_ex_data(ctx.get(), &dummy_data);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), &dummy_data);
+
+  // Per-SSL object tests.
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  // Initially no callback is set on the SSL object.
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), nullptr);
+
+  // Set and retrieve the callback on SSL.
+  SSL_set_security_callback(ssl.get(), test_security_callback);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), test_security_callback);
+
+  // Set and retrieve ex_data on SSL.
+  int ssl_dummy_data = 99;
+  SSL_set0_security_ex_data(ssl.get(), &ssl_dummy_data);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &ssl_dummy_data);
+
+  // Setting NULL callback is allowed.
+  SSL_CTX_set_security_callback(ctx.get(), nullptr);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  SSL_set_security_callback(ssl.get(), nullptr);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
