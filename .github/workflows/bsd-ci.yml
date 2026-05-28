@@ -1,0 +1,160 @@
+name: BSD CI Tests
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+  schedule:
+    - cron: '0 8 * * *'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  PACKAGE_NAME: aws-lc
+
+permissions:
+  contents: read
+
+# BSD CI Strategy:
+# - FreeBSD x86-64: scheduled(daily) + on every PR(with slow tests disabled)
+# - FreeBSD arm64: schedule only (daily)
+# - OpenBSD: schedule only (daily)
+# - NetBSD: schedule only (daily)
+# Full test suite (including slow tests) runs on the daily schedule.
+
+jobs:
+  freebsd:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "x86-64"
+        version:
+          - "14.2"
+          - "15.0"
+        include: ${{ github.event_name == 'schedule' && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.0"}]') || fromJSON('[]') }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: "recursive"
+      - name: Prepare VM
+        uses: cross-platform-actions/action@v0.32.0
+        env:
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
+          AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
+          AWS_LC_NO_SLOW_TESTS: ${{ github.event_name != 'schedule' && '1' || '0' }}
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT AWS_LC_NO_SLOW_TESTS GOFLAGS"
+          operating_system: freebsd
+          architecture: ${{ matrix.arch }}
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 12G
+          cpu_count: 3
+          run: |
+            sudo pkg install -y git gmake cmake go ninja
+            tests/ci/run_bsd_tests.sh
+
+  OpenBSD:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ["x86-64", "arm64"]
+        version: ["7.5", "7.6"]
+    steps:
+      - uses: actions/checkout@v6
+      - name: OpenBSD
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
+        env:
+          AWS_LC_GO_TEST_TIMEOUT: 120m
+        with:
+          environment_variables: AWS_LC_GO_TEST_TIMEOUT
+          operating_system: openbsd
+          cpu_count: 3
+          memory: 12G
+          architecture: ${{ matrix.arch }}
+          version: "${{ matrix.version }}"
+          shell: bash
+          run: |
+            set -x
+            sudo pkg_add cmake ninja go gmake
+            sudo pfctl -d
+            mkdir "${HOME}/bin"
+            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
+            cat << EOF | sudo tee /etc/login.conf.d/unlimited
+            unlimited:\
+                :datasize-cur=infinity:\
+                :datasize-max=infinity:\
+                :stacksize-cur=infinity:\
+                :stacksize-max=infinity:\
+                :memoryuse-cur=infinity:\
+                :memoryuse-max=infinity:\
+                :maxproc-cur=infinity:\
+                :maxproc-max=infinity:\
+                :openfiles-cur=infinity:\
+                :openfiles-max=infinity:\
+                :cpuuse-cur=infinity:\
+                :cpuuse-max=infinity:\
+                :priority=0:\
+                :ignoretime:
+            EOF
+            sudo usermod -L unlimited runner
+            sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
+            set -x
+            export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
+            cd $(pwd)
+            export PATH="${HOME}/bin:${PATH}"
+            env
+            tests/ci/run_bsd_tests.sh
+            EOF
+
+  netbsd:
+    if: github.repository_owner == 'aws' && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "x86-64"
+          - "arm64"
+        version:
+          - "10.1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: "recursive"
+      - name: Prepare VM
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
+        env:
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          operating_system: netbsd
+          architecture: ${{ matrix.arch }}
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 12G
+          cpu_count: 3
+          run: |
+            set -x
+            export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
+            sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+            ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
+            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+            curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
+            sudo mkdir -p /usr/local
+            sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
+            export GOROOT=/usr/local/go
+            export PATH="$PATH:$GOROOT/bin"
+            tests/ci/run_bsd_tests.sh
