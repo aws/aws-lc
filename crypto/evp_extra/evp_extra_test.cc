@@ -2782,15 +2782,12 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_TRUE(pkey_new);
   ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
 
-  // Not supported for anything but EC and RSA keys
+  // Test EVP_PKEY_check and EVP_PKEY_public_check
   bssl::UniquePtr<EVP_PKEY_CTX> kem_key_ctx(
           EVP_PKEY_CTX_new(pkey_new.get(), NULL));
   ASSERT_TRUE(kem_key_ctx);
-  EXPECT_FALSE(EVP_PKEY_check(kem_key_ctx.get()));
-  EXPECT_FALSE(EVP_PKEY_public_check((kem_key_ctx.get())));
-  ASSERT_EQ((uint16_t)ERR_get_error(),
-            (uint16_t)EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-  ERR_clear_error();
+  EXPECT_TRUE(EVP_PKEY_check(kem_key_ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_public_check((kem_key_ctx.get())));
 
   // ---- 5. Test encaps/decaps with new keys ----
   // Create Alice's context with the new key that has both
@@ -2976,6 +2973,121 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   //    Mismatched key pair should fail the check.
   pkey_new->pkey.kem_key->public_key[0] ^= 1;
   ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_new.get()));
+}
+
+TEST_P(PerKEMTest, KEMCheckKeyTests) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
+  ASSERT_TRUE(ctx);
+
+  EVP_PKEY *valid_pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
+  ASSERT_TRUE(valid_pkey);
+
+  // Valid key passes both checks
+  bssl::UniquePtr<EVP_PKEY_CTX> kem_key_ctx(EVP_PKEY_CTX_new(valid_pkey, nullptr));
+  ASSERT_TRUE(kem_key_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(kem_key_ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_public_check(kem_key_ctx.get()));
+
+  // Extract raw keys
+  size_t pk_len = GetParam().public_key_len;
+  size_t sk_len = GetParam().secret_key_len;
+  std::vector<uint8_t> pk_copy(pk_len);
+  std::vector<uint8_t> sk_copy(sk_len);
+
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(valid_pkey, pk_copy.data(), &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(valid_pkey, sk_copy.data(), &sk_len));
+
+  // Non-canonical public key fails (inject coefficient >= q=3329)
+  // ML-KEM coefficients are 12-bit little-endian packed.
+  // Set first coefficient to 0xFFF (4095 > 3329) to trigger check_pk failure.
+  std::vector<uint8_t> corrupted_pk = pk_copy;
+  corrupted_pk[0] = 0xFF;
+  corrupted_pk[1] = (corrupted_pk[1] & 0xF0) | 0x0F;
+
+  bssl::UniquePtr<EVP_PKEY> corrupted_pk_pkey(
+      EVP_PKEY_kem_new_raw_key(GetParam().nid, corrupted_pk.data(), pk_len,
+                               sk_copy.data(), sk_len));
+  ASSERT_TRUE(corrupted_pk_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> corrupted_pk_ctx(
+      EVP_PKEY_CTX_new(corrupted_pk_pkey.get(), nullptr));
+  ASSERT_TRUE(corrupted_pk_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(corrupted_pk_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(corrupted_pk_ctx.get()));
+
+  // Corrupted secret key fails
+  std::vector<uint8_t> corrupted_sk = sk_copy;
+  corrupted_sk[sk_len - 64] ^= 1;
+
+  bssl::UniquePtr<EVP_PKEY> corrupted_sk_pkey(
+      EVP_PKEY_kem_new_raw_key(GetParam().nid, pk_copy.data(), pk_len,
+                               corrupted_sk.data(), sk_len));
+  ASSERT_TRUE(corrupted_sk_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> corrupted_sk_ctx(
+      EVP_PKEY_CTX_new(corrupted_sk_pkey.get(), nullptr));
+  ASSERT_TRUE(corrupted_sk_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(corrupted_sk_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(corrupted_sk_ctx.get()));
+
+  // Mismatched keypair fails PCT
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx2;
+  ctx2 = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
+  ASSERT_TRUE(ctx2);
+
+  EVP_PKEY *second_pkey = EVP_PKEY_CTX_get0_pkey(ctx2.get());
+  ASSERT_TRUE(second_pkey);
+
+  std::vector<uint8_t> second_sk(sk_len);
+  size_t second_sk_len = sk_len;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(second_pkey, second_sk.data(), &second_sk_len));
+
+  bssl::UniquePtr<EVP_PKEY> mismatched_pkey(
+      EVP_PKEY_kem_new_raw_key(GetParam().nid, pk_copy.data(), pk_len,
+                               second_sk.data(), sk_len));
+  ASSERT_TRUE(mismatched_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> mismatched_ctx(
+      EVP_PKEY_CTX_new(mismatched_pkey.get(), nullptr));
+  ASSERT_TRUE(mismatched_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(mismatched_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(mismatched_ctx.get()));
+
+  // Public key only - valid
+  bssl::UniquePtr<EVP_PKEY> pk_only_pkey(
+      EVP_PKEY_kem_new_raw_public_key(GetParam().nid, pk_copy.data(), pk_len));
+  ASSERT_TRUE(pk_only_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> pk_only_ctx(
+      EVP_PKEY_CTX_new(pk_only_pkey.get(), nullptr));
+  ASSERT_TRUE(pk_only_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(pk_only_ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_public_check(pk_only_ctx.get()));
+
+  // Public key only - corrupted
+  bssl::UniquePtr<EVP_PKEY> corrupted_pk_only_pkey(
+      EVP_PKEY_kem_new_raw_public_key(GetParam().nid, corrupted_pk.data(), pk_len));
+  ASSERT_TRUE(corrupted_pk_only_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> corrupted_pk_only_ctx(
+      EVP_PKEY_CTX_new(corrupted_pk_only_pkey.get(), nullptr));
+  ASSERT_TRUE(corrupted_pk_only_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(corrupted_pk_only_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(corrupted_pk_only_ctx.get()));
+
+  // Secret key only - fails (public key required)
+  bssl::UniquePtr<EVP_PKEY> sk_only_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(GetParam().nid, sk_copy.data(), sk_len));
+  ASSERT_TRUE(sk_only_pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> sk_only_ctx(
+      EVP_PKEY_CTX_new(sk_only_pkey.get(), nullptr));
+  ASSERT_TRUE(sk_only_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(sk_only_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(sk_only_ctx.get()));
+
+  ERR_clear_error();
 }
 
 // Perform Known Answer Test (KAT) on known KEMs.
