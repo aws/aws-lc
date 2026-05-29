@@ -10,11 +10,17 @@ function shard_gtest() {
         GTEST_TOTAL_SHARDS=4
     fi
 
+    local TEST_NAME
+    TEST_NAME=$(basename "${1%% *}")
+    local REPORT_DIR="${BUILD_ROOT}/test_reports"
+    mkdir -p "${REPORT_DIR}"
+
     echo shard_gtest-Command: ${1}
     PIDS=()
     COUNTER=0
     while [ $COUNTER -lt $GTEST_TOTAL_SHARDS ]; do
         export GTEST_SHARD_INDEX=$COUNTER
+        export GTEST_OUTPUT="json:${REPORT_DIR}/${TEST_NAME}_shard_${COUNTER}.json"
         ${1} &
         PIDS[${COUNTER}]=$!
         COUNTER=$(( COUNTER+1 ))
@@ -30,6 +36,7 @@ function shard_gtest() {
     done
     unset GTEST_SHARD_INDEX
     unset GTEST_TOTAL_SHARDS
+    unset GTEST_OUTPUT
 
     if [ $RESULT -ne "0" ]; then
       #  Run w/o sharding to isolate the problem
