@@ -936,6 +936,120 @@ TEST_P(HPKEMLKEMTest, ExportSecret) {
   EXPECT_EQ(Bytes(sender_export), Bytes(recipient_export));
 }
 
+TEST_P(HPKEMLKEMTest, InvalidPrivateKeyLength) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+
+  const uint8_t bogus_key[100] = {0xff};
+  ScopedEVP_HPKE_KEY key;
+  EXPECT_FALSE(EVP_HPKE_KEY_init(key.get(), kem, bogus_key, sizeof(bogus_key)));
+}
+
+TEST_P(HPKEMLKEMTest, CorruptedPrivateKey) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+
+  // A buffer of the right length but garbage content should fail check_sk.
+  std::vector<uint8_t> garbage(EVP_HPKE_KEM_private_key_len(kem), 0xAB);
+  ScopedEVP_HPKE_KEY key;
+  EXPECT_FALSE(
+      EVP_HPKE_KEY_init(key.get(), kem, garbage.data(), garbage.size()));
+}
+
+TEST_P(HPKEMLKEMTest, WrongSeedLength) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+  const EVP_HPKE_KDF *kdf = param.kdf_func();
+  const EVP_HPKE_AEAD *aead = param.aead_func();
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+
+  uint8_t public_key_r[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_r_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                      &public_key_r_len, sizeof(public_key_r)));
+
+  // Use setup_sender_with_seed_for_testing with wrong seed length.
+  const uint8_t bad_seed[5] = {1, 2, 3, 4, 5};
+  ScopedEVP_HPKE_CTX sender_ctx;
+  uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+  size_t enc_len;
+  EXPECT_FALSE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
+      sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
+      public_key_r, public_key_r_len, nullptr, 0, bad_seed, sizeof(bad_seed)));
+}
+
+TEST_P(HPKEMLKEMTest, InvalidPublicKeyLength) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+  const EVP_HPKE_KDF *kdf = param.kdf_func();
+  const EVP_HPKE_AEAD *aead = param.aead_func();
+
+  const uint8_t bogus_pk[100] = {0xff};
+  ScopedEVP_HPKE_CTX sender_ctx;
+  uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+  size_t enc_len;
+  EXPECT_FALSE(EVP_HPKE_CTX_setup_sender(sender_ctx.get(), enc, &enc_len,
+                                         sizeof(enc), kem, kdf, aead, bogus_pk,
+                                         sizeof(bogus_pk), nullptr, 0));
+}
+
+TEST_P(HPKEMLKEMTest, EncBufferTooSmall) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+  const EVP_HPKE_KDF *kdf = param.kdf_func();
+  const EVP_HPKE_AEAD *aead = param.aead_func();
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+
+  uint8_t public_key_r[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_r_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                      &public_key_r_len, sizeof(public_key_r)));
+
+  ScopedEVP_HPKE_CTX sender_ctx;
+  uint8_t enc[10];
+  size_t enc_len;
+  EXPECT_FALSE(EVP_HPKE_CTX_setup_sender(sender_ctx.get(), enc, &enc_len,
+                                         sizeof(enc), kem, kdf, aead,
+                                         public_key_r, public_key_r_len,
+                                         nullptr, 0));
+}
+
+TEST_P(HPKEMLKEMTest, PublicKeyBufferTooSmall) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+
+  uint8_t small_buf[10];
+  size_t out_len;
+  EXPECT_FALSE(
+      EVP_HPKE_KEY_public_key(key.get(), small_buf, &out_len, sizeof(small_buf)));
+}
+
+TEST(HPKETest, CopyZeroedKey) {
+  ScopedEVP_HPKE_KEY src;
+  ScopedEVP_HPKE_KEY dst;
+  EXPECT_TRUE(EVP_HPKE_KEY_copy(dst.get(), src.get()));
+}
+
+TEST_P(HPKEMLKEMTest, PrivateKeyBufferTooSmall) {
+  const MLKEMTestParam &param = GetParam();
+  const EVP_HPKE_KEM *kem = param.kem_func();
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+
+  uint8_t small_buf[10];
+  size_t out_len;
+  EXPECT_FALSE(
+      EVP_HPKE_KEY_private_key(key.get(), small_buf, &out_len, sizeof(small_buf)));
+}
+
 static const MLKEMTestParam kMLKEMTestParams[] = {
     {"MLKEM512_SHA256_AES128GCM", &EVP_hpke_mlkem512, &EVP_hpke_hkdf_sha256,
      &EVP_hpke_aes_128_gcm},
