@@ -2665,6 +2665,7 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 static int test_security_callback(const SSL *ssl, const SSL_CTX *ctx, int op,
                                   int bits, int nid, void *other, void *ex) {
   return 1;
@@ -2688,15 +2689,15 @@ TEST(SSLTest, SecurityCallback) {
   SSL_CTX_set0_security_ex_data(ctx.get(), &dummy_data);
   EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), &dummy_data);
 
-  // Per-SSL object tests.
+  // SSL_new propagates the callback and ex_data from SSL_CTX.
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   ASSERT_TRUE(ssl);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &dummy_data);
 
-  // Initially no callback is set on the SSL object.
+  // Per-SSL overrides.
+  SSL_set_security_callback(ssl.get(), nullptr);
   EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
-  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), nullptr);
-
-  // Set and retrieve the callback on SSL.
   SSL_set_security_callback(ssl.get(), cb);
   EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
 
@@ -2723,6 +2724,7 @@ TEST(SSLTest, SecurityCallback) {
   SSL_set0_security_ex_data(nullptr, &ssl_dummy_data);
   EXPECT_EQ(SSL_get0_security_ex_data(nullptr), nullptr);
 }
+OPENSSL_END_ALLOW_DEPRECATED
 
 }  // namespace
 BSSL_NAMESPACE_END

@@ -1176,6 +1176,10 @@ int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 0; }
 
 void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level) {}
 
+int SSL_get_security_level(const SSL *ssl) { return 0; }
+
+void SSL_set_security_level(const SSL *ssl, int level) {}
+
 void SSL_CTX_set_security_callback(SSL_CTX *ctx, SSL_security_callback cb) {
   if (ctx == nullptr) {
     return;
