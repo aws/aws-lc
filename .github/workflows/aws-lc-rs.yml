@@ -310,8 +310,11 @@ jobs:
         run: |
           set -ex
           # Wine binfmt allows the kernel to transparently run .exe files through
-          # Wine. This is needed for the FIPS build, which runs fips_empty_main.exe
-          # at build time to capture the integrity hash.
+          # Wine. The FIPS build itself no longer needs Wine (inject_hash.go
+          # patches the integrity hash directly into crypto.dll using the
+          # linker map), but we still need Wine to run the FIPS sanity test
+          # below, which loads the cross-built DLL so the .CRT$XCU initializer
+          # can trigger the power-on self-test.
           #
           # Ubuntu 24.04's wine64 (9.0) does not properly execute .CRT$XCU
           # initializers in cross-compiled DLLs, which prevents the FIPS

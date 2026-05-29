@@ -165,8 +165,12 @@ function(generate_rust_bindings)
     "--with-derive-eq"
     "--generate" "functions,types,vars,methods,constructors,destructors"
     "--rust-target" "${RUST_BINDINGS_TARGET_VERSION}"
-    "--formatter" "rustfmt"
   )
+  # Use rustfmt as the formatter only if it was discovered. Otherwise fall back
+  # to bindgen's default ("prettyplease") so the build doesn't require rustfmt.
+  if(RUSTFMT_EXECUTABLE)
+    list(APPEND _bindgen_args "--formatter" "rustfmt")
+  endif()
   # Add symbol prefix if specified. See module-level comment for why we use
   # --prefix-link-name instead of including the prefix symbols header.
   if(ARG_PREFIX AND NOT ARG_PREFIX STREQUAL "")
