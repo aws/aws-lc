@@ -19,11 +19,11 @@ index 29d7fe8..20c0e6e 100644
 +#if !defined(OPENSSL_IS_AWSLC)
    RAND_add(rndbuf, sizeof(rndbuf), 0);
 +#endif
- 
+
    if (!(flags & NSOCK_SSL_MAX_SPEED)) {
      if (!RAND_status())
 diff --git a/nse_ssl_cert.cc b/nse_ssl_cert.cc
-index 1234567..89abcdef 100644
+index a8d4e0d77..6748b7f0b 100644
 --- a/nse_ssl_cert.cc
 +++ b/nse_ssl_cert.cc
 @@ -492,7 +492,7 @@ int lua_push_ecdhparams(lua_State *L, EVP_PKEY *pubkey) {

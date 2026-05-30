@@ -295,7 +295,7 @@ jobs:
             run: ./tests/ci/integration/run_accp_integration.sh
 
           # NMAP Integration Tests
-          - name: nmap
+          - name: nmap-7.99
             arch: x86_64
             size: medium
             image: ubuntu:22.04
