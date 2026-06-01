@@ -4,6 +4,8 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+  schedule:
+    - cron: "0 0 * * *"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -11,6 +13,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 permissions:
   contents: read
+  actions: read
 
 jobs:
   integrations:
@@ -410,6 +413,39 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
+      # matrix.name (e.g. "postgresql") doesn't always match the patch dir
+      # name ("postgres_patch"), we use the runner script path as the source of truth.
+      - name: Get failed integration name and version
+        id: autofix-target
+        if: failure() && github.event_name == 'schedule'
+        shell: bash
+        run: |
+          # Iterate every line so multi-line `run:` blocks (e.g. bind9, which
+          # pip-installs meson before the runner) correctly identify the runner script.
+          while read -r line_path line_ver _; do
+            [[ -n "$line_path" ]] && script_path="$line_path" version="$line_ver"
+          done <<< "$run_command"
+
+          integration=${script_path##*/}
+          integration=${integration%.sh}
+          integration=${integration#run_}
+          integration=${integration%_integration}
+          version=${version//[\'\"]/}
+
+          # openssh selects its branch via $OPENSSH_BRANCH, not a positional arg.
+          [[ -z "$version" && "$integration" == "openssh" ]] && version="$OPENSSH_BRANCH"
+          echo "integration=$integration" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        env:
+          run_command: ${{ matrix.run }}
+
+      - name: Upload failed integration target
+        if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/emit-autofix-target
+        with:
+          integration: ${{ steps.autofix-target.outputs.integration }}
+          version: ${{ steps.autofix-target.outputs.version }}
+          failed-integration: ${{ matrix.name }}-${{ matrix.arch }}
 
   python:
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
@@ -454,6 +490,12 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
+      - if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/emit-autofix-target
+        with:
+          integration: python
+          version: ${{ matrix.version }}
+          failed-integration: python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
 
   ruby:
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
@@ -488,3 +530,35 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
+      - if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/emit-autofix-target
+        with:
+          integration: ruby
+          version: ${{ matrix.version }}
+          failed-integration: ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
+
+  report-failures:
+    name: report-failures
+    needs: [integrations, python, ruby]
+    if: ${{ always() && github.event_name == 'schedule' && (needs.integrations.result == 'failure' || needs.python.result == 'failure' || needs.ruby.result == 'failure') }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionStandardRole
+      - name: Emit failure metric
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -exo pipefail
+          failure_count=$(gh run view "$GITHUB_RUN_ID" --json jobs \
+            --jq '[.jobs[] | select(.conclusion == "failure" and .name != "report-failures")] | length')
+
+          aws cloudwatch put-metric-data \
+            --namespace AWS-LC \
+            --metric-name IntegrationOmnibusFailure \
+            --value "$failure_count"
