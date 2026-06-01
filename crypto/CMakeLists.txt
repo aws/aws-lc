@@ -745,6 +745,10 @@ if(BUILD_TESTING)
   add_test_executable(${RANDOM_ISOLATED_EXEC} fipsmodule/rand/rand_isolated_test.cc)
   add_test_executable(${TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC} fipsmodule/rand/entropy/tree_drbg_jitter_entropy_isolated_test.cc)
 
+  # aead_fork_test must be a separate binary because it requires that AEAD
+  # vtables are NOT initialized before the test runs.
+  add_test_executable(${AEAD_FORK_TEST_EXEC} cipher_extra/aead_fork_test.cc)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
