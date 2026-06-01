@@ -300,6 +300,7 @@ jobs:
             size: medium
             image: ubuntu:22.04
             compiler: gcc-12
+            credentials: true
             run: ./tests/ci/integration/run_nmap_integration.sh deb076224e9f138ea29fa4823bcce0030301dc54
           - name: nmap-master
             arch: x86_64

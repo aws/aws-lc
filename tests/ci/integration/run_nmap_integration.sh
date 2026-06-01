@@ -77,6 +77,27 @@ function nmap_run_tests() {
   make check
 }
 
+# Emit a CloudWatch metric when the pinned nmap ref's version (NMAP_MAJOR.NMAP_MINOR
+# from nmap.h) drifts from master, so we get reminded to refresh the pin. nmap
+# doesn't publish git tags or GitHub releases, so the version macro is the only
+# in-repo signal of an upstream release. Only meaningful for pinned refs.
+function nmap_version_drift_check() {
+  local pinned_version
+  pinned_version="$(awk '/^#define NMAP_MAJOR/ {maj=$3} /^#define NMAP_MINOR/ {min=$3} END {print maj"."min}' "${NMAP_SRC_FOLDER}/nmap.h")"
+  local latest_version
+  latest_version="$(curl -fsSL https://raw.githubusercontent.com/nmap/nmap/master/nmap.h \
+    | awk '/^#define NMAP_MAJOR/ {maj=$3} /^#define NMAP_MINOR/ {min=$3} END {print maj"."min}')"
+  if [[ -z "${latest_version}" || -z "${pinned_version}" ]]; then
+    echo "Could not determine nmap version (pinned='${pinned_version}', latest='${latest_version}'); skipping drift metric." >&2
+    return 0
+  fi
+  if [[ "${pinned_version}" != "${latest_version}" ]]; then
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name NmapVersionMismatch --value 1
+  else
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name NmapVersionMismatch --value 0
+  fi
+}
+
 # Required first argument: nmap git ref (commit, tag, or branch).
 if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
   echo "Usage: $0 <nmap-git-ref>" >&2
@@ -98,6 +119,11 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${AWS_LC_INSTALL_FO
 
 # Build nmap from source.
 pushd ${NMAP_SRC_FOLDER}
+# Only emit the drift metric for pinned refs; master is always at tip-of-tree.
+case "${NMAP_REF}" in
+  main|master) ;;
+  *) nmap_version_drift_check ;;
+esac
 nmap_patch_build
 nmap_build
 nmap_run_tests
