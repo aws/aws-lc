@@ -300,7 +300,15 @@ jobs:
             size: medium
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_nmap_integration.sh
+            run: ./tests/ci/integration/run_nmap_integration.sh deb076224e9f138ea29fa4823bcce0030301dc54
+          - name: nmap-main
+            arch: x86_64
+            size: medium
+            image: ubuntu:22.04
+            compiler: gcc-12
+            # integration test against main is informational, subject to upstream breakage.
+            allow_failure: true
+            run: ./tests/ci/integration/run_nmap_integration.sh main
 
           # IBM TPM Integration Tests
           - name: ibmtpm

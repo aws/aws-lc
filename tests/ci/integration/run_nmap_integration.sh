@@ -62,10 +62,15 @@ function nmap_run_tests() {
   make check
 }
 
-# Pin to nmap 7.99 release (2026-03-27)
-NMAP_RELEASE_COMMIT="deb076224e9f138ea29fa4823bcce0030301dc54"
+# Required first argument: nmap git ref (commit, tag, or branch).
+if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
+  echo "Usage: $0 <nmap-git-ref>" >&2
+  echo "  ref may be a commit SHA, tag, or branch (e.g. 'main')." >&2
+  exit 1
+fi
+NMAP_REF="$1"
 git init ${NMAP_SRC_FOLDER}
-git -C ${NMAP_SRC_FOLDER} fetch --depth 1 https://github.com/nmap/nmap.git ${NMAP_RELEASE_COMMIT}
+git -C ${NMAP_SRC_FOLDER} fetch --depth 1 https://github.com/nmap/nmap.git ${NMAP_REF}
 git -C ${NMAP_SRC_FOLDER} checkout FETCH_HEAD
 cd ${NMAP_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
