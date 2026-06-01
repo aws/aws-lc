@@ -20,16 +20,9 @@ source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SYS_ROOT}/NTP_BUILD_ROOT"
-NTP_WEBSITE_URL="https://downloads.nwtime.org/ntp/"
-
-# - curl fetches the HTML content of the website,
-# - the first grep searches for all occurrences of href attributes in anchor tags and outputs only the URLs,
-# - sed removes the href=" and trailing " from the URLs,
-# - the second grep filters only the links ending with .tar.gz,
-# - "head -n 1" gets only the first matching line
-# - cut strips "/ntp/" from the link and retains only the tar name.
-NTP_TAR=$(curl -s ${NTP_WEBSITE_URL} | grep -o 'href="[^"]*"' | sed 's/href="//;s/"$//' | grep '.tar.gz$' | head -n 1 | cut -d '/' -f3)
-NTP_DOWNLOAD_URL="${NTP_WEBSITE_URL}/${NTP_TAR}"
+NTP_VERSION="4.2.8p18"
+NTP_TAR="ntp-${NTP_VERSION}.tar.gz"
+NTP_DOWNLOAD_URL="https://downloads.nwtime.org/ntp/${NTP_TAR}"
 NTP_SRC_FOLDER="${SCRATCH_FOLDER}/ntp-src"
 NTP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ntp_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -57,7 +50,18 @@ mkdir -p "$SCRATCH_FOLDER"
 rm -rf "${SCRATCH_FOLDER:?}/*"
 cd "$SCRATCH_FOLDER"
 
-wget -q $NTP_DOWNLOAD_URL
+# Use cached tarball from workspace if available, otherwise download.
+CACHE_DIR="${SRC_ROOT}/.cache/integration"
+if [[ -n "${NTP_TAR}" && -f "${CACHE_DIR}/${NTP_TAR}" ]]; then
+  echo "Using cached tarball: ${CACHE_DIR}/${NTP_TAR}"
+  cp "${CACHE_DIR}/${NTP_TAR}" .
+else
+  wget -q $NTP_DOWNLOAD_URL
+  # Cache the tarball for future runs if directory exists
+  if [[ -n "${NTP_TAR}" && -d "${CACHE_DIR}" ]]; then
+    cp "${NTP_TAR}" "${CACHE_DIR}/"
+  fi
+fi
 mkdir -p "$NTP_SRC_FOLDER"
 tar -xzf "$NTP_TAR" -C "$NTP_SRC_FOLDER" --strip-components=1
 

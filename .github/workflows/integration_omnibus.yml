@@ -393,6 +393,12 @@ jobs:
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
       - uses: actions/checkout@v6
+      - name: Setup integration cache directory
+        run: mkdir -p .cache/integration
+      - uses: actions/cache@v5
+        with:
+          path: .cache/integration
+          key: integration-${{ matrix.name }}-${{ hashFiles('tests/ci/integration/run_ntp_integration.sh') }}
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
