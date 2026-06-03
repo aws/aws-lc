@@ -67,6 +67,26 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_p521(void);
 // EC_group_secp256k1 returns an |EC_GROUP| for secp256k1.
 OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 
+// EC_group_brainpoolP224r1 returns an |EC_GROUP| for brainpoolP224r1, defined
+// in RFC 5639.
+OPENSSL_EXPORT const EC_GROUP *EC_group_brainpoolP224r1(void);
+
+// EC_group_brainpoolP256r1 returns an |EC_GROUP| for brainpoolP256r1, defined
+// in RFC 5639.
+OPENSSL_EXPORT const EC_GROUP *EC_group_brainpoolP256r1(void);
+
+// EC_group_brainpoolP320r1 returns an |EC_GROUP| for brainpoolP320r1, defined
+// in RFC 5639.
+OPENSSL_EXPORT const EC_GROUP *EC_group_brainpoolP320r1(void);
+
+// EC_group_brainpoolP384r1 returns an |EC_GROUP| for brainpoolP384r1, defined
+// in RFC 5639.
+OPENSSL_EXPORT const EC_GROUP *EC_group_brainpoolP384r1(void);
+
+// EC_group_brainpoolP512r1 returns an |EC_GROUP| for brainpoolP512r1, defined
+// in RFC 5639.
+OPENSSL_EXPORT const EC_GROUP *EC_group_brainpoolP512r1(void);
+
 // EC_GROUP_new_by_curve_name returns the |EC_GROUP| object for the elliptic
 // curve specified by |nid|, or NULL on unsupported NID.  For OpenSSL
 // compatibility, this function returns a non-const pointer which may be passed
@@ -79,6 +99,11 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 // - |NID_secp384r1| (NIST P-384)
 // - |NID_secp521r1| (NIST P-521)
 // - |NID_secp256k1| (SEC/ANSI P-256 K1)
+// - |NID_brainpoolP224r1| (RFC 5639)
+// - |NID_brainpoolP256r1| (RFC 5639)
+// - |NID_brainpoolP320r1| (RFC 5639)
+// - |NID_brainpoolP384r1| (RFC 5639)
+// - |NID_brainpoolP512r1| (RFC 5639)
 //
 // Calling this function causes all four curves to be linked into the binary.
 // Prefer calling |EC_group_*| to allow the static linker to drop unused curves.

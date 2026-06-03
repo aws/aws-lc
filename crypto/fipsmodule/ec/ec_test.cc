@@ -2099,6 +2099,21 @@ static const EC_GROUP *GetCurve(FileTest *t, const char *key) {
   if (curve_name == "secp256k1") {
     return EC_group_secp256k1();
   }
+  if (curve_name == "brainpoolP224r1") {
+    return EC_group_brainpoolP224r1();
+  }
+  if (curve_name == "brainpoolP256r1") {
+    return EC_group_brainpoolP256r1();
+  }
+  if (curve_name == "brainpoolP320r1") {
+    return EC_group_brainpoolP320r1();
+  }
+  if (curve_name == "brainpoolP384r1") {
+    return EC_group_brainpoolP384r1();
+  }
+  if (curve_name == "brainpoolP512r1") {
+    return EC_group_brainpoolP512r1();
+  }
 
   t->PrintLine("Unknown curve '%s'", curve_name.c_str());
   return nullptr;
@@ -2777,6 +2792,53 @@ TEST(ECTest, ECPKParmatersBio) {
 
   EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
   EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_brainpoolP224r1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_brainpoolP224r1());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_brainpoolP256r1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_brainpoolP256r1());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_brainpoolP320r1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_brainpoolP320r1());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_brainpoolP384r1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_brainpoolP384r1());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_brainpoolP512r1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_brainpoolP512r1());
+}
+
+// Test that Brainpool curves support key generation, ECDSA sign, and verify.
+TEST(ECTest, BrainpoolKeygenSignVerify) {
+  static const int kBrainpoolNIDs[] = {
+      NID_brainpoolP224r1, NID_brainpoolP256r1, NID_brainpoolP320r1,
+      NID_brainpoolP384r1, NID_brainpoolP512r1,
+  };
+  static const uint8_t kDigest[32] = {0x01, 0x02, 0x03, 0x04};
+
+  for (int nid : kBrainpoolNIDs) {
+    SCOPED_TRACE(nid);
+    bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+    ASSERT_TRUE(key);
+    ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+    // Sign a digest.
+    std::vector<uint8_t> sig(ECDSA_size(key.get()));
+    unsigned sig_len = 0;
+    ASSERT_TRUE(
+        ECDSA_sign(0, kDigest, sizeof(kDigest), sig.data(), &sig_len, key.get()));
+    sig.resize(sig_len);
+
+    // Verify the signature.
+    EXPECT_TRUE(
+        ECDSA_verify(0, kDigest, sizeof(kDigest), sig.data(), sig.size(), key.get()));
+
+    // Verify that a corrupted signature fails.
+    sig[0] ^= 0x80;
+    EXPECT_FALSE(
+        ECDSA_verify(0, kDigest, sizeof(kDigest), sig.data(), sig.size(), key.get()));
+  }
 }
 
 TEST(ECTest, MutableCustomECGroup) {
