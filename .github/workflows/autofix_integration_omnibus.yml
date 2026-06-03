@@ -56,6 +56,7 @@ jobs:
         instance-size:small
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip secret creds from the env Claude's Bash subprocesses inherit to guard against prompt injection
       AWS_REGION: us-west-2
       ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
       ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
@@ -69,8 +70,12 @@ jobs:
           roleName: AwsLcGitHubActionIntegrationFailureReasoningRole
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2.1.161
-      # Fetch logs in a token-holding step. The next step runs Claude with no
-      # token in its environment, so the agent never has GitHub access.
+      - name: Install Bash sandbox deps
+        # bubblewrap + socat back Claude Code's sandbox (settings.json restricts
+        # its Bash subprocesses to the downstream git/tarball hosts). Best-effort:
+        # if the unprivileged CodeBuild container can't run bubblewrap, Claude
+        # falls back to unsandboxed and the permission allow list still applies.
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat || true
       - name: Fetch failed-job logs
         run: |
           set -exo pipefail

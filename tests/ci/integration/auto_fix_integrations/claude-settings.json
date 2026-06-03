@@ -3,6 +3,8 @@
     "defaultMode": "dontAsk",
     "allow": [
       "Bash(git clone *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
       "Bash(git checkout *)",
       "Bash(git reset *)",
       "Bash(git log *)",
@@ -14,10 +16,8 @@
       "Bash(git commit *)",
       "Bash(git format-patch *)",
       "Bash(git am *)",
-      "Bash(git ls-remote *)",
       "Bash(git rev-list *)",
       "Bash(git rev-parse *)",
-      "Bash(git fetch *)",
       "Bash(git config user.email *)",
       "Bash(git config user.name *)",
       "Bash(patch *)",
@@ -31,8 +31,6 @@
       "Bash(git clone *--config*)",
       "Bash(git clone *--upload-pack*)",
       "Bash(rm *)",
-      "Bash(curl *)",
-      "Bash(wget *)",
       "Bash(nc *)",
       "Bash(ssh *)",
       "Bash(scp *)",
@@ -47,5 +45,20 @@
       "Bash(brew *)",
       "Bash(docker *)"
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "enableWeakerNestedSandbox": true,
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "gitlab.isc.org",
+        "git.code.sf.net",
+        "downloads.nwtime.org"
+      ]
+    },
+    "filesystem": {
+      "denyRead": ["~/.aws", "~/.ssh"]
+    }
   }
 }

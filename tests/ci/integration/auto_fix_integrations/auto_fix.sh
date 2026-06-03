@@ -98,22 +98,23 @@ run_claude() {
   return "${rc}"
 }
 
-# Fail the job if the patch (diff + commit message) contains credentials, before
+# Fail the job if the patch (diff + commit message) contains secrets, before
 # it can reach a public branch/PR.
 scan_secrets() {
-  local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|aws_secret_access_key|gh[pousr]_[A-Za-z0-9]{36}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
+  local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|aws_secret_access_key|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
 
   if LC_ALL=C grep -E -i -q "${patterns}" "$@"; then
     echo "::error::Potential secret detected in patch; refusing to open PR."
     exit 1
   fi
 }
+
 open_pr() {
   local target="$1"
   local branch_name="$2"
   local push_url="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
 
-  # Skip if the branch already exists.
+  # Skip if the branch already exists, triggered by a previous nighly run.
   if git -C "${SRC_ROOT}" ls-remote --exit-code "${push_url}" "refs/heads/${branch_name}" >/dev/null 2>&1; then
     echo "Branch ${branch_name} already exists on ${REPO}; skipping push (existing PR is still open)."
     return

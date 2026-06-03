@@ -426,11 +426,11 @@ jobs:
             [[ -n "$line_path" ]] && script_path="$line_path" version="$line_ver"
           done <<< "$run_command"
 
-          integration=${script_path##*/}
-          integration=${integration%.sh}
-          integration=${integration#run_}
-          integration=${integration%_integration}
-          version=${version//[\'\"]/}
+          integration=${script_path##*/}  # Strip everything before the last / so we have just the filename.
+          integration=${integration%.sh}  # Drop the .sh extension.
+          integration=${integration#run_} # Drop the run_ prefix shared by every runner.
+          integration=${integration%_integration} # Drop the _integration suffix to leave the bare integration name.
+          version=${version//[\'\"]/} # Strip surrounding quotes (some matrix entries quote the version arg).
 
           # openssh selects its branch via $OPENSSH_BRANCH, not a positional arg.
           [[ -z "$version" && "$integration" == "openssh" ]] && version="$OPENSSH_BRANCH"
@@ -547,6 +547,8 @@ jobs:
         instance-size:small
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
         with:
           roleName: AwsLcGitHubActionStandardRole
