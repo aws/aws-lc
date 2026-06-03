@@ -48,7 +48,7 @@ static int RunInChild(std::function<void()> func) {
     _exit(0);
   }
 
-  int status;
+  int status = 0;
   if (WaitpidEINTR(pid, &status) < 0) {
     return -1;
   }
