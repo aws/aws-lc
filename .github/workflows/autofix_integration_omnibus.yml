@@ -75,7 +75,7 @@ jobs:
         # its Bash subprocesses to the downstream git/tarball hosts). Best-effort:
         # if the unprivileged CodeBuild container can't run bubblewrap, Claude
         # falls back to unsandboxed and the permission allow list still applies.
-        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat || true
+        run: sudo dnf install -y bubblewrap socat || true
       - name: Fetch failed-job logs
         run: |
           set -exo pipefail
