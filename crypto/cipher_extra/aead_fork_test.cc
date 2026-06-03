@@ -26,7 +26,7 @@
 // parent's vtable remains zeroed. EVP_AEAD_CTX_cleanup must tolerate this.
 
 static pid_t WaitpidEINTR(pid_t pid, int *out_status) {
-  pid_t ret;
+  pid_t ret = 0;
   do {
     ret = waitpid(pid, out_status, 0);
   } while (ret < 0 && errno == EINTR);
