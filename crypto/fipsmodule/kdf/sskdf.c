@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <assert.h>
+#include <limits.h>
 #include <openssl/base.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
@@ -327,6 +328,11 @@ int SSKDF_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 
   sskdf_variant_ctx ctx = {0};
   int ret = 0;
+
+  if (salt_len > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_OVERFLOW);
+    goto end;
+  }
 
   if (!sskdf_variant_hmac_ctx_init(&ctx, digest, salt, salt_len)) {
     FIPS_service_indicator_unlock_state();

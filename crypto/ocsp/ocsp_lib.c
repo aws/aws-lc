@@ -146,6 +146,7 @@ int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
   *phost = NULL;
   *pport = NULL;
   *ppath = NULL;
+  *pssl = 0;
 
   // Duplicate into the buffer since the contents are going to be changed.
   buffer = OPENSSL_strdup(url);
@@ -162,10 +163,10 @@ int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
 
   // Set default ports for http and https. If a port is specified later, this
   // will be overwritten. |pssl| will be set to true, if https is being used.
-  if (strncmp(buffer, "https", 5) == 0) {
+  if (strcmp(buffer, "https") == 0) {
     *pssl = 1;
     port = (char *)"443";
-  } else if (strncmp(buffer, "http", 4) == 0) {
+  } else if (strcmp(buffer, "http") == 0) {
     *pssl = 0;
     port = (char *)"80";
   } else {
@@ -232,6 +233,7 @@ err:
   OPENSSL_free(buffer);
   OPENSSL_free(*ppath);
   *ppath = NULL;
+  *pssl = 0;
   OPENSSL_free(*pport);
   *pport = NULL;
   OPENSSL_free(*phost);

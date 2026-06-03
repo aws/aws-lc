@@ -89,7 +89,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.define_matrix.outputs.include) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run

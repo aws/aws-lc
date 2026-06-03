@@ -19,13 +19,14 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../fipsmodule/kem/internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
 // specific key type implementations like PQDSA.
 // The OID is then searched against ASN.1 methods for a method with that OID.
 // As the |OID| is read from |cbs| the buffer is advanced.
-// For the case of |NID_rsa| the method |rsa_asn1_meth| is returned.
+// For the case of |NID_rsa| or |NID_rsaesOaep| the method |rsa_asn1_meth| is returned.
 // For the case of |EVP_PKEY_PQDSA| the method |pqdsa_asn1.meth| is returned.
 // For the case of |EVP_PKEY_KEM| the method |kem_asn1.meth| is returned.
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
@@ -46,20 +47,25 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
     }
   }
 
-  // Special logic to handle the rarer |NID_rsa|.
+  // Special logic to handle the rarer |NID_rsa| and |NID_rsaesOaep|.
+  // NID_rsa:
   // https://www.itu.int/ITU-T/formal-language/itu-t/x/x509/2008/AlgorithmObjectIdentifiers.html
-  if (OBJ_cbs2nid(&oid) == NID_rsa) {
+  // NID_rsaesOaep: underlying key is the same as |NID_rsa|. Used by
+  // TPM 1.2 Endorsement Key certificates per TCG Credential Profiles
+  // V1.2, section 3.2.7.
+  int nid = OBJ_cbs2nid(&oid);
+  if (nid == NID_rsa || nid == NID_rsaesOaep) {
     return &rsa_asn1_meth;
   }
 
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(nid);
   if (pqdsa_method != NULL) {
     return pqdsa_method;
   }
-  return KEM_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  return KEM_find_asn1_by_nid(nid);
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
@@ -118,7 +124,7 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
 }
 
 static const unsigned kAttributesTag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0;
 
 static const unsigned kPublicKeyTag =
     CBS_ASN1_CONTEXT_SPECIFIC | 1;
@@ -147,7 +153,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
   // we ignore.
   if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
-    if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
+    if (!CBS_get_asn1(&pkcs8, NULL, kAttributesTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
@@ -164,6 +170,12 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
       return NULL;
     }
     has_pub = 1;
+  }
+
+  // Reject trailing data within the SEQUENCE.
+  if (CBS_len(&pkcs8) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
   }
 
   // Set up an |EVP_PKEY| of the appropriate type.
@@ -712,4 +724,18 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
     *ppem_str = ameth->pem_str;
   }
   return 1;
+}
+
+int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len) {
+  SET_DIT_AUTO_RESET;
+  GUARD_PTR(key);
+  GUARD_PTR(out_len);
+
+  if (key->ameth == NULL || key->ameth->get_priv_seed == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return key->ameth->get_priv_seed(key, out, out_len);
 }

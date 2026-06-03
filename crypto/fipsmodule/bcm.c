@@ -156,7 +156,7 @@
 
 #if defined(BORINGSSL_FIPS)
 
-#if !defined(OPENSSL_ASAN)
+#if !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
 
 static const void* function_entry_ptr(const void* func_sym) {
 #if defined(OPENSSL_PPC64BE)
@@ -243,7 +243,7 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
 static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ANDROID
 
-#endif  // !ASAN
+#endif  // !ASAN && !MSAN
 
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 #if defined(__ELF__) && defined(__GNUC__)
@@ -271,20 +271,21 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
     AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
 
-#if !defined(OPENSSL_ASAN)
-  // Integrity tests cannot run under ASAN because it involves reading the full
-  // .text section, which triggers the global-buffer overflow detection.
+#if !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
+  // Integrity tests cannot run under ASAN or MSAN because it involves reading
+  // the full .text section, which triggers the global-buffer overflow detection
+  // (ASAN) or use of uninstrumented code (MSAN).
   if (!BORINGSSL_integrity_test()) {
     AWS_LC_FIPS_failure("Integrity test failed");
   }
-#endif  // OPENSSL_ASAN
+#endif  // !ASAN && !MSAN
 
   if (!boringssl_self_test_startup()) {
     AWS_LC_FIPS_failure("Power on self test failed");
   }
 }
 
-#if !defined(OPENSSL_ASAN)
+#if !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
 int BORINGSSL_integrity_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
@@ -385,7 +386,7 @@ int BORINGSSL_integrity_test(void) {
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
   return 1;
 }
-#endif  // OPENSSL_ASAN
+#endif  // !ASAN && !MSAN
 
 void AWS_LC_FIPS_failure(const char* message) {
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)

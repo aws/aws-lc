@@ -65,14 +65,33 @@ int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert) {
   return 1;
 }
 
+// ocsp_respid_clear frees any previously-installed content of |respid| using
+// the destructor matching the current |respid->type|, so callers can install
+// a new value without leaking or triggering a type-confused free.
+static void ocsp_respid_clear(OCSP_RESPID *respid) {
+  switch (respid->type) {
+    case V_OCSP_RESPID_NAME:
+      X509_NAME_free(respid->value.byName);
+      respid->value.byName = NULL;
+      break;
+    case V_OCSP_RESPID_KEY:
+      ASN1_OCTET_STRING_free(respid->value.byKey);
+      respid->value.byKey = NULL;
+      break;
+  }
+}
+
 static int OCSP_RESPID_set_by_name(OCSP_RESPID *respid, X509 *cert) {
   GUARD_PTR(respid);
   GUARD_PTR(cert);
-  if (!X509_NAME_set(&respid->value.byName, X509_get_subject_name(cert))) {
+
+  X509_NAME *byName = X509_NAME_dup(X509_get_subject_name(cert));
+  if (byName == NULL) {
     return 0;
   }
-
+  ocsp_respid_clear(respid);
   respid->type = V_OCSP_RESPID_NAME;
+  respid->value.byName = byName;
   return 1;
 }
 
@@ -95,6 +114,7 @@ static int OCSP_RESPID_set_by_key(OCSP_RESPID *respid, X509 *cert) {
     ASN1_OCTET_STRING_free(byKey);
     return 0;
   }
+  ocsp_respid_clear(respid);
   respid->type = V_OCSP_RESPID_KEY;
   respid->value.byKey = byKey;
 

@@ -19,6 +19,7 @@
 #include "../../pem/internal.h"
 #include "../../console/internal.h"
 #include "../../internal.h"
+#include "../kem/internal.h"
 #include "../pqdsa/internal.h"
 #include "internal.h"
 
@@ -255,6 +256,19 @@ int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey) {
     return 0;
   }
   return pkey->pkey.pqdsa_key->pqdsa->nid;
+}
+
+int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
+  if (pkey->type != EVP_PKEY_KEM) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_KEM_KEY);
+    return 0;
+  }
+  if (!pkey->pkey.kem_key || !pkey->pkey.kem_key->kem) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+  return pkey->pkey.kem_key->kem->nid;
 }
 
 int EVP_MD_get_pkey_type(const EVP_MD *md) {
@@ -659,12 +673,18 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
-int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                        const uint8_t *context,
                                        size_t context_len) {
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
                            EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+}
+
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  return EVP_PKEY_CTX_set1_signature_context_string(ctx, context, context_len);
 }
 
 int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,

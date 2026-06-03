@@ -136,7 +136,7 @@ OPENSSL_INLINE void EVP_PKEY_decapsulate_verify_service_indicator(OPENSSL_UNUSED
 #endif // AWSLC_FIPS
 
 // is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
-// of #if defined(OPENSSL_ASAN)
+// of #if defined(OPENSSL_ASAN) or #if defined(OPENSSL_MSAN)
 int is_fips_build(void);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

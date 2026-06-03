@@ -1,22 +1,17 @@
 diff --git a/Makefile b/Makefile
-index ff0e109..53b4611 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -110,8 +110,13 @@ test-certvalidator: $(NEEDS_VENV)
- test-gnutls:
- 	$(MAKE) run ARGS="harness --output ./results/gnutls.json -- ./$(VENV_BIN)/python ./harness/gnutls/test-gnutls"
+@@ -104,8 +104,8 @@ test-boringssl:
  
-+.PHONY: test-aws-lc
-+test-aws-lc:
+ .PHONY: test-aws-lc
+ test-aws-lc:
+-	$(MAKE) -C harness/openssl aws-lc
+-	$(MAKE) run ARGS="harness --output ./results/aws-lc.json -- docker run --rm -i x509-limbo-aws-lc"
 +	$(MAKE) -C harness/aws-lc build-image
 +	$(MAKE) run ARGS="harness --output ./results/aws-lc.json -- docker run --platform linux/amd64 --rm -i x509-limbo-aws-lc"
-+
- .PHONY: test
--test: test-go test-openssl test-rust-webpki test-rustls-webpki test-pyca-cryptography test-certvalidator test-gnutls
-+test: test-go test-openssl test-rust-webpki test-rustls-webpki test-pyca-cryptography test-certvalidator test-gnutls test-aws-lc
  
- .PHONY: site
- site: $(NEEDS_VENV)
+ .PHONY: test-rust-webpki
+ test-rust-webpki:
 diff --git a/harness/aws-lc/.gitignore b/harness/aws-lc/.gitignore
 new file mode 100644
 index 0000000..9bc5102

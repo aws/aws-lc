@@ -1,0 +1,84 @@
+name: security-review
+
+on:
+  pull_request_target:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      approval-env: ${{ steps.authorization.outputs.approval-env }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check authorization
+        id: authorization
+        uses: ./.github/actions/check-authorization
+
+  execute:
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: ${{ needs.authorize.outputs.approval-env }}
+    permissions:
+      id-token: write
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::547182295936:role/SecurityReview-GitHubOIDCRole #TODO: migrate to production account
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+          aws-region: us-west-2
+
+      - name: Start CodeBuild and wait for completion
+        id: codebuild
+        shell: bash
+        env:
+          PROJECT_NAME: SecurityReview-${{ github.event.repository.name }}
+          SOURCE_VERSION: "pr/${{ github.event.pull_request.number }}"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Start the build
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name "${PROJECT_NAME}" \
+            --source-version "${SOURCE_VERSION}" \
+            --environment-variables-override "name=PR_NUMBER,value=${PR_NUMBER},type=PLAINTEXT" \
+            --query 'build.id' --output text)
+
+          # Wait for completion
+          while STATUS=$(aws codebuild batch-get-builds --ids "${BUILD_ID}" --query 'builds[0].buildStatus' --output text); [[ "$STATUS" == "IN_PROGRESS" ]]; do
+            sleep 30
+          done
+
+          if [[ "$STATUS" != "SUCCEEDED" ]]; then
+            echo "blocking=skip" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          REVIEW_STATUS=$(aws codebuild batch-get-builds --ids "${BUILD_ID}" --query 'builds[0].exportedEnvironmentVariables[?name==`REVIEW_STATUS`].value' --output text)
+          echo "blocking=$([[ "$REVIEW_STATUS" == "FAIL" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Update commit status
+        if: always() && steps.codebuild.outputs.blocking != 'skip'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
+          REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
+          BLOCKING: ${{ steps.codebuild.outputs.blocking }}
+        run: |
+          STATE=$([[ "$BLOCKING" == "true" ]] && echo "failure" || echo "success")
+          curl -sS -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            "${STATUS_URL}" \
+            -d "{\"state\":\"${STATE}\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"

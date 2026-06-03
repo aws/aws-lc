@@ -614,6 +614,11 @@ int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
     return 0;
   }
 
+  if (len > (size_t)SHRT_MAX) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    return 0;
+  }
+
   CBS cbs;
   CBS_init(&cbs, (const uint8_t *)text, len);
 

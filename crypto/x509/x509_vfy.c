@@ -21,20 +21,42 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
 // CRL score values
+//
+// The bit layout below is carefully chosen so that a numerical comparison
+// against |CRL_SCORE_VALID| is equivalent to "NOCRITICAL, SCOPE, and TIME
+// are all set." For that to hold, the sum of every bit strictly below TIME
+// (ISSUER_NAME | ISSUER_CERT | SAME_PATH | AKID) must be less than TIME,
+// TIME must be less than SCOPE, and SCOPE less than NOCRITICAL. Preserve
+// this invariant when adjusting these values.
 
 // No unhandled critical extensions
-#define CRL_SCORE_NOCRITICAL 0x100
+#define CRL_SCORE_NOCRITICAL 0x200
 
 // certificate is within CRL scope
-#define CRL_SCORE_SCOPE 0x080
+#define CRL_SCORE_SCOPE 0x100
 
 // CRL times valid
-#define CRL_SCORE_TIME 0x040
+#define CRL_SCORE_TIME 0x080
+
+// CRL's IDP specifically matches the certificate's CRLDP. Always set
+// alongside CRL_SCORE_SCOPE; refines a broad in-scope match into a
+// specific one so a specific-IDP CRL outranks a broad no-IDP CRL of
+// equal freshness. 
+//
+// This bit is placed strictly below CRL_SCORE_TIME 
+// so that an invalid specific-IDP CRL cannot win over a valid broad CRL. 
+// A specific-IDP CRL must still be fresh (TIME) and free of unhandled critical 
+// extensions (NOCRITICAL) to qualify as valid.
+#define CRL_SCORE_IDP_MATCH 0x040
 
 // Issuer name matches certificate
 #define CRL_SCORE_ISSUER_NAME 0x020
 
-// If this score or above CRL is probably valid
+// If this score or above CRL is probably valid.
+//
+// CRL_SCORE_IDP_MATCH is intentionally excluded: a specific-IDP CRL that
+// is missing NOCRITICAL or TIME must not be considered valid on the basis
+// of its scope match alone.
 #define CRL_SCORE_VALID \
   (CRL_SCORE_NOCRITICAL | CRL_SCORE_TIME | CRL_SCORE_SCOPE)
 
@@ -63,7 +85,7 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
 static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
 static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
                           int *pcrl_score);
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score);
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score, int *idp_match);
 static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x);
 
 static int internal_verify(X509_STORE_CTX *ctx);
@@ -1058,11 +1080,13 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
     return 0;
   }
 
-  // Check cert for matching CRL distribution points
-  if (crl_crldp_check(x, crl, crl_score)) {
+  int idp_match = 0;
+  if (crl_crldp_check(x, crl, crl_score, &idp_match)) {
     crl_score |= CRL_SCORE_SCOPE;
+    if (idp_match) {
+      crl_score |= CRL_SCORE_IDP_MATCH;
+    }
   }
-
   return crl_score;
 }
 
@@ -1169,7 +1193,7 @@ static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
 
 // Check CRLDP and IDP. Return true when the CRL is a good
 // candidate CRL from which to check revocation of the certificate.
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score, int *idp_match) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
   }
@@ -1198,7 +1222,12 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
     // the certificate issuer (and set CRL_SCORE_ISSUER_NAME);
 
     // RFC 5280 Section 6.3.3 step b.2
-    if (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint)){
+
+    // A CRL with a specific IDP match will be preferred
+    // over a broad no-IDP/empty-IDP match.
+    if (crl->idp && crl->idp->distpoint &&
+        idp_check_dp(dp->distpoint, crl->idp->distpoint)) {
+      *idp_match = 1;
       return 1;
     }
   }
@@ -1206,13 +1235,13 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   // If the CRL does not specify an issuing distribution point, allow it to
   // match anything.
   // RFC5280 section 6.3.3 check (b).(2) does not prescribe what to do if the
-  // CRL does not include an IDP. This fallback returns true if the CRL did not
-  // include an IDP or an IDP without a DP. Such a CRL could still be a good
-  // candidate CRL to check against although we cannot check if it matches the
-  // DP in the certificate. In the event of multiple good candidate CRLs
-  // (crl_crldp_check() returns 1 and get_crl_score() scores them high), some
-  // without an IDP or with an IDP and without a DP and others matching the
-  // certificate's DP, get_crl_sk() will pick the freshest one.
+  // CRL does not include an IDP. This fallback returns CRL_SCORE_SCOPE (broad
+  // match) if the CRL did not include an IDP or an IDP without a DP. Such a
+  // CRL could still be a good candidate CRL to check against although we
+  // cannot check if it matches the DP in the certificate. A CRL with a
+  // specific IDP match receives (CRL_SCORE_SCOPE | CRL_SCORE_IDP_MATCH), so it will be preferred
+  // over a broad match. Among CRLs with the same scope class, get_crl_sk()
+  // will pick the freshest one.
   return !crl->idp || !crl->idp->distpoint;
 }
 
