@@ -171,7 +171,7 @@ TEST(AEADForkTest, PreForkInitProtectsBothProcesses) {
     uint8_t nonce[12] = {0};
     uint8_t pt[] = "test";
     uint8_t ct[128];
-    size_t ct_len;
+    size_t ct_len = 0;
     if (!EVP_AEAD_CTX_seal(ctx, ct, &ct_len, sizeof(ct), nonce, sizeof(nonce),
                            pt, sizeof(pt), NULL, 0)) {
       _exit(2);
