@@ -81,7 +81,7 @@ def write_summary(suites, output):
 
 def main():
     report_dir = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
-        "GTEST_REPORT_DIR", "build/test_reports"
+        "GTEST_REPORT_DIR", "test_reports"
     )
 
     if not os.path.isdir(report_dir):

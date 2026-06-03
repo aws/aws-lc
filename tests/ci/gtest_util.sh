@@ -12,7 +12,7 @@ function shard_gtest() {
 
     local TEST_NAME
     TEST_NAME=$(basename "${1%% *}")
-    local REPORT_DIR="${BUILD_ROOT}/test_reports"
+    local REPORT_DIR="${SRC_ROOT}/test_reports"
     mkdir -p "${REPORT_DIR}"
 
     echo shard_gtest-Command: ${1}

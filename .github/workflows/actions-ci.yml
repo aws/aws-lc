@@ -70,6 +70,9 @@ jobs:
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
+      - name: gtest timing summary
+        if: always()
+        run: python3 tests/ci/gtest_summary.py test_reports >> $GITHUB_STEP_SUMMARY
 
   macOS-ARM:
     if: github.repository_owner == 'aws'
