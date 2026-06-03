@@ -18,6 +18,25 @@ Steps:
 5. Read the failing source context in the cloned repo to understand what changed upstream.
 6. Author corrected patches, replacing broken ones. If a hunk is redundant (upstream already does what the patch did), delete it. To remove a whole patch file, use `git rm` (bare `rm` is not permitted in this environment).
 7. Validate: run `patch --dry-run -p1` against a fresh clone of the downstream repo at the correct ref. Every patch must apply with zero fuzz and zero rejects. If validation fails, go back to step 6 and fix the patches until they pass.
-8. Stage and commit with a descriptive message. Title: `autofix(INTEGRATION_PLACEHOLDER): repair patch (run RUN_ID_PLACEHOLDER)`. Body (after blank line): 3 sentences — why the patch was failing, what changed upstream, and how you fixed it.
+8. Stage and commit. Title: `autofix(INTEGRATION_PLACEHOLDER): repair patch (run RUN_ID_PLACEHOLDER)`.
+
+   Body (after blank line): write in GitHub-flavored markdown so it renders
+   cleanly when used as the PR description. Use these three sections:
+
+   ```
+   ### Why the patch was failing
+   <2-4 sentences naming the broken hunk(s) and the symptom from the logs>
+
+   ### What changed upstream
+   <2-4 sentences citing the upstream change and the affected lines>
+
+   ### How I fixed it
+   <2-4 sentences; include a small fenced diff or `inline code` for hunk
+   headers, file paths, or symbols where it makes the change concrete>
+   ```
+
+   Use `` `inline code` `` for symbols, file paths, and line refs (e.g.
+   `` `vio/viosslfactories.c:488` ``). Use fenced code blocks for diffs,
+   error excerpts, or commands. Keep prose tight.
 
 Do NOT push or open a PR. If you cannot fix it, print 'AUTOFIX_FAILED: INTEGRATION_PLACEHOLDER' and exit.

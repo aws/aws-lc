@@ -43,8 +43,9 @@ sanitize_log() {
 
 # Fetch the last 200 lines of each failed job's log as context for Claude.
 fetch_logs() {
-  local integration="$1"
-  local logs_dir="$2"
+  local integration="$1" version="$2"
+  local target="${integration}${version:+-${version}}"
+  local logs_dir="${WORK_ROOT}/${target}/logs"
   local prefix="${integration//_/-}"
   mkdir -p "${logs_dir}"
 
@@ -107,13 +108,12 @@ scan_secrets() {
     exit 1
   fi
 }
-
-# Push the fix branch and open the draft PR, skipping if the branch already exists.
 open_pr() {
   local target="$1"
   local branch_name="$2"
   local push_url="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
 
+  # Skip if the branch already exists.
   if git -C "${SRC_ROOT}" ls-remote --exit-code "${push_url}" "refs/heads/${branch_name}" >/dev/null 2>&1; then
     echo "Branch ${branch_name} already exists on ${REPO}; skipping push (existing PR is still open)."
     return
@@ -124,12 +124,12 @@ open_pr() {
   local pr_body
   pr_body="$(git -C "${SRC_ROOT}" log -1 --format=%b)
 
-  ---
-  This PR was drafted automatically by the nightly integration-resolver workflow using Claude Code. A maintainer should review and run CI before merging.
-  Model: ${ANTHROPIC_DEFAULT_OPUS_MODEL:-unknown}
-  Session: ${GITHUB_RUN_ID:-unknown}-${GITHUB_RUN_ATTEMPT:-0}
-  Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-  Triggered by: https://github.com/${REPO}/actions/runs/${RUN_ID}"
+---
+This PR was drafted automatically by the nightly integration-resolver workflow using Claude Code. A maintainer should review and run CI before merging.
+
+- Session: \`${GITHUB_RUN_ID:-unknown}-${GITHUB_RUN_ATTEMPT:-0}\`
+- Generated: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`
+- Triggered by: https://github.com/${REPO}/actions/runs/${RUN_ID}"
 
   gh pr create --draft --repo "${REPO}" \
     --head "${branch_name}" \
@@ -137,12 +137,6 @@ open_pr() {
     --body "${pr_body}"
 }
 
-
-fetch_logs_for_target() {
-  local integration="$1" version="$2"
-  local target="${integration}${version:+-${version}}"
-  fetch_logs "${integration}" "${WORK_ROOT}/${target}/logs"
-}
 
 reason_integration_failure() {
   local integration="$1" version="$2" base_ref="$3"
@@ -168,7 +162,8 @@ reason_integration_failure() {
     run_claude "${prompt}" "${work_dir}/claude-${attempt}.log" || rc=$?
 
     echo "::group::${target}: Claude transcript (attempt ${attempt})"
-    # Render stream-json as Claude prose + tool calls (name + command/path).
+
+    # Render stream-json as Claude thinking output + tool calls (name + command/path).
     jq -Rr 'fromjson? | .message.content[]?
       | if .type == "text" then .text
         elif .type == "tool_use" then "[tool] \(.name): \(.input.command // .input.file_path // .input.path)"
@@ -257,13 +252,13 @@ case "${mode}" in
     ;;
   fetch-logs|reason|resolve)
     integration="$1"
-    # Sanitize / in versions like openvpn's "release/2.6" so it doesn't create
-    # nested subdirs in WORK_ROOT or invalid artifact names downstream.
+    # Some versions contain a slash (openvpn's "release/2.6"). Swap it for a
+    # dash so we don't end up creating nested folders or breaking artifact names.
     version="${2//\//-}"
     setup "$3"
     base_ref=$(git -C "${SRC_ROOT}" rev-parse HEAD)
     case "${mode}" in
-      fetch-logs) fetch_logs_for_target "${integration}" "${version}" ;;
+      fetch-logs) fetch_logs "${integration}" "${version}" ;;
       reason)     reason_integration_failure "${integration}" "${version}" "${base_ref}" ;;
       resolve)
         : "${GH_TOKEN:?GH_TOKEN is not set; cannot push branches or open PRs.}"
