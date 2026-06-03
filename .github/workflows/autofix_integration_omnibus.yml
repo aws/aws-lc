@@ -11,25 +11,18 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.id || inputs.run_id }}
-  cancel-in-progress: false
-
 permissions:
   contents: read
   id-token: write
   actions: read
-  pull-requests: write
 
 env:
   TARGET_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
-  GITHUB_REPO_OWNER: aws
-  GITHUB_REPO_NAME: aws-lc
   AUTOFIX_SCRIPT: ./tests/ci/integration/auto_fix_integrations/auto_fix.sh
 
 jobs:
-  discover:
-    name: discover
+  recognize:
+    name: recognize
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.event == 'schedule' &&
@@ -39,32 +32,30 @@ jobs:
         image:linux-5.0
         instance-size:small
     outputs:
-      targets: ${{ steps.discover.outputs.targets }}
+      targets: ${{ steps.recognize.outputs.targets }}
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: ./.github/actions/configure-aws-credentials
-        with:
-          roleName: AwsLcIntegrationAutofixRole
-      - uses: ./.github/actions/fetch-github-token
-      - id: discover
+      - id: recognize
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eo pipefail
           chmod +x "$AUTOFIX_SCRIPT"
-          targets=$("$AUTOFIX_SCRIPT" discover "$TARGET_RUN_ID")
+          targets=$("$AUTOFIX_SCRIPT" recognize "$TARGET_RUN_ID")
           echo "Targets: $targets"
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
 
-  autofix:
-    name: autofix (${{ matrix.target }})
-    needs: discover
-    if: needs.discover.outputs.targets != '[]' && needs.discover.outputs.targets != ''
+  reason:
+    name: reason (${{ matrix.target }})
+    needs: recognize
+    if: needs.recognize.outputs.targets != '[]' && needs.recognize.outputs.targets != ''
     strategy:
       fail-fast: false
       max-parallel: 5
       matrix:
-        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+        target: ${{ fromJSON(needs.recognize.outputs.targets) }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -72,7 +63,7 @@ jobs:
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
       AWS_REGION: us-west-2
-      ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-6-v1
+      ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
       ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
       ANTHROPIC_DEFAULT_HAIKU_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
     steps:
@@ -81,13 +72,71 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
         with:
-          roleName: AwsLcIntegrationAutofixRole
-      - uses: ./.github/actions/fetch-github-token
-      - run: npm install -g @anthropic-ai/claude-code
+          roleName: AwsLcGitHubActionIntegrationFailureReasoningRole
+      - run: npm install -g @anthropic-ai/claude-code@2.1.161
+      # Fetch logs in a token-holding step. The next step runs Claude with no
+      # token in its environment, so the agent never has GitHub access.
       - run: |
           set -exo pipefail
           chmod +x "$AUTOFIX_SCRIPT"
           IFS='|' read -r integration version <<< "$TARGET"
-          "$AUTOFIX_SCRIPT" fix "$integration" "$version" "$TARGET_RUN_ID"
+          "$AUTOFIX_SCRIPT" fetch-logs "$integration" "$version" "$TARGET_RUN_ID"
         env:
           TARGET: ${{ matrix.target }}
+          GH_TOKEN: ${{ github.token }}
+      - run: |
+          set -exo pipefail
+          IFS='|' read -r integration version <<< "$TARGET"
+          "$AUTOFIX_SCRIPT" reason "$integration" "$version" "$TARGET_RUN_ID"
+        env:
+          TARGET: ${{ matrix.target }}
+          # Restrict git to standard transports so an injected `git clone ext::…`
+          # cannot execute arbitrary commands via git's transport helpers.
+          GIT_ALLOW_PROTOCOL: file:git:http:https:ssh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resolve-patch-${{ matrix.target }}
+          path: .resolve-integration-failures/${{ matrix.target }}/out/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resolve-audit-log-${{ matrix.target }}
+          path: .resolve-integration-failures/${{ matrix.target }}/claude-*.log
+          if-no-files-found: ignore
+
+  resolve:
+    name: resolve (${{ matrix.target }})
+    needs: [recognize, reason]
+    if: ${{ always() && needs.recognize.outputs.targets != '[]' && needs.recognize.outputs.targets != '' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        target: ${{ fromJSON(needs.recognize.outputs.targets) }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionIntegrationFailureResolveRole
+      - uses: ./.github/actions/fetch-github-token
+      - uses: actions/download-artifact@v4
+        with:
+          name: resolve-patch-${{ matrix.target }}
+          path: .resolve-integration-failures/${{ matrix.target }}/out/
+        continue-on-error: true
+      - run: |
+          set -exo pipefail
+          chmod +x "$AUTOFIX_SCRIPT"
+          IFS='|' read -r integration version <<< "$TARGET"
+          "$AUTOFIX_SCRIPT" resolve "$integration" "$version" "$TARGET_RUN_ID"
+        env:
+          TARGET: ${{ matrix.target }}
+          ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
+    

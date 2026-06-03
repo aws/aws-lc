@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git commit *)",
+      "Bash(git format-patch *)",
+      "Bash(git am *)",
+      "Bash(git ls-remote *)",
+      "Bash(git rev-list *)",
+      "Bash(git rev-parse *)",
+      "Bash(git fetch *)",
+      "Bash(git config user.email *)",
+      "Bash(git config user.name *)",
+      "Bash(patch *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)"
+    ],
+    "deny": [
+      "Bash(git config core.* *)",
+      "Bash(git -c *)",
+      "Bash(git clone *--config*)",
+      "Bash(git clone *--upload-pack*)",
+      "Bash(rm *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(nc *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(aws *)",
+      "Bash(eval *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pip *)",
+      "Bash(pip3 *)",
+      "Bash(apt *)",
+      "Bash(apt-get *)",
+      "Bash(brew *)",
+      "Bash(docker *)"
+    ]
+  }
+}
