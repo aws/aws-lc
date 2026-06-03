@@ -255,25 +255,20 @@ case "${mode}" in
     setup "$1"
     recognize_targets
     ;;
-  fetch-logs)
+  fetch-logs|reason|resolve)
     integration="$1"
-    version="$2"
-    setup "$3"
-    fetch_logs_for_target "${integration}" "${version}"
-    ;;
-  reason)
-    integration="$1"
-    version="$2"
+    # Sanitize / in versions like openvpn's "release/2.6" so it doesn't create
+    # nested subdirs in WORK_ROOT or invalid artifact names downstream.
+    version="${2//\//-}"
     setup "$3"
     base_ref=$(git -C "${SRC_ROOT}" rev-parse HEAD)
-    reason_integration_failure "${integration}" "${version}" "${base_ref}"
-    ;;
-  resolve)
-    integration="$1"
-    version="$2"
-    setup "$3"
-    : "${GH_TOKEN:?GH_TOKEN is not set; cannot push branches or open PRs.}"
-    base_ref=$(git -C "${SRC_ROOT}" rev-parse HEAD)
-    resolve_integration_failure "${integration}" "${version}" "${base_ref}"
+    case "${mode}" in
+      fetch-logs) fetch_logs_for_target "${integration}" "${version}" ;;
+      reason)     reason_integration_failure "${integration}" "${version}" "${base_ref}" ;;
+      resolve)
+        : "${GH_TOKEN:?GH_TOKEN is not set; cannot push branches or open PRs.}"
+        resolve_integration_failure "${integration}" "${version}" "${base_ref}"
+        ;;
+    esac
     ;;
 esac

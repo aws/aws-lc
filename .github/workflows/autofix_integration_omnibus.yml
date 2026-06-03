@@ -84,10 +84,17 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           GH_TOKEN: ${{ github.token }}
-      - run: |
+      - id: reason
+        run: |
           set -exo pipefail
           IFS='|' read -r integration version <<< "$TARGET"
           "$AUTOFIX_SCRIPT" reason "$integration" "$version" "$TARGET_RUN_ID"
+          # Mirror auto_fix.sh's "${integration}${version:+-${version}}" work-dir
+          # naming. Replace / (e.g. openvpn's release/2.6) so we don't create
+          # nested subdirs in the artifact upload path.
+          slug=${TARGET//[|\/]/-}
+          slug=${slug%-}
+          echo "target_dir=$slug" >> "$GITHUB_OUTPUT"
         env:
           TARGET: ${{ matrix.target }}
           # Restrict git to standard transports so an injected `git clone ext::…`
@@ -95,14 +102,14 @@ jobs:
           GIT_ALLOW_PROTOCOL: file:git:http:https:ssh
       - uses: actions/upload-artifact@v4
         with:
-          name: resolve-patch-${{ matrix.target }}
-          path: .resolve-integration-failures/${{ matrix.target }}/out/
+          name: resolve-patch-${{ steps.reason.outputs.target_dir }}
+          path: .resolve-integration-failures/${{ steps.reason.outputs.target_dir }}/out/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: resolve-audit-log-${{ matrix.target }}
-          path: .resolve-integration-failures/${{ matrix.target }}/claude-*.log
+          name: resolve-audit-log-${{ steps.reason.outputs.target_dir }}
+          path: .resolve-integration-failures/${{ steps.reason.outputs.target_dir }}/claude-*.log
           if-no-files-found: ignore
 
   resolve:
@@ -126,10 +133,17 @@ jobs:
         with:
           roleName: AwsLcGitHubActionIntegrationFailureResolveRole
       - uses: ./.github/actions/fetch-github-token
+      - id: target
+        run: |
+          slug=${TARGET//[|\/]/-}
+          slug=${slug%-}
+          echo "dir=$slug" >> "$GITHUB_OUTPUT"
+        env:
+          TARGET: ${{ matrix.target }}
       - uses: actions/download-artifact@v4
         with:
-          name: resolve-patch-${{ matrix.target }}
-          path: .resolve-integration-failures/${{ matrix.target }}/out/
+          name: resolve-patch-${{ steps.target.outputs.dir }}
+          path: .resolve-integration-failures/${{ steps.target.outputs.dir }}/out/
         continue-on-error: true
       - run: |
           set -exo pipefail
