@@ -48,6 +48,7 @@
   },
   "sandbox": {
     "enabled": true,
+    "failIfUnavailable": true,
     "enableWeakerNestedSandbox": true,
     "network": {
       "allowedDomains": [
