@@ -401,6 +401,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
@@ -417,7 +418,7 @@ jobs:
       # name ("postgres_patch"), we use the runner script path as the source of truth.
       - name: Get failed integration name and version
         id: autofix-target
-        if: failure() && github.event_name == 'schedule'
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         shell: bash
         run: |
           # Iterate every line so multi-line `run:` blocks (e.g. bind9, which
@@ -441,7 +442,7 @@ jobs:
           run_command: ${{ matrix.run }}
 
       - name: Upload failed integration target
-        if: failure() && github.event_name == 'schedule'
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         uses: ./.github/actions/emit-autofix-target
         with:
           integration: ${{ steps.autofix-target.outputs.integration }}
@@ -482,6 +483,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
           env: |
@@ -491,7 +493,7 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
-      - if: failure() && github.event_name == 'schedule'
+      - if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         uses: ./.github/actions/emit-autofix-target
         with:
           integration: python
@@ -523,6 +525,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:24.04
           env: |
@@ -531,7 +534,7 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
-      - if: failure() && github.event_name == 'schedule'
+      - if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         uses: ./.github/actions/emit-autofix-target
         with:
           integration: ruby
@@ -541,7 +544,7 @@ jobs:
   report-failures:
     name: report-failures
     needs: [integrations, python, ruby]
-    if: ${{ always() && github.event_name == 'schedule' && (needs.integrations.result == 'failure' || needs.python.result == 'failure' || needs.ruby.result == 'failure') }}
+    if: ${{ always() && github.event_name == 'schedule' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -555,11 +558,13 @@ jobs:
           roleName: AwsLcGitHubActionStandardRole
       - name: Emit failure metric
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -exo pipefail
-          failure_count=$(gh run view "$GITHUB_RUN_ID" --json jobs \
-            --jq '[.jobs[] | select(.conclusion == "failure" and .name != "report-failures")] | length')
+          failure_count=$(gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            --jq '.artifacts[].name' \
+            | wc -l)
 
           aws cloudwatch put-metric-data \
             --namespace AWS-LC \

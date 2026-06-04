@@ -108,15 +108,17 @@ scan_secrets() {
 open_pr() {
   local target="$1"
   local branch_name="$2"
-  local push_url="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+  local repo_url="https://github.com/${REPO}.git"
+
+  gh auth setup-git
 
   # Skip if the branch already exists, triggered by a previous nighly run.
-  if git -C "${SRC_ROOT}" ls-remote --exit-code "${push_url}" "refs/heads/${branch_name}" >/dev/null 2>&1; then
+  if git -C "${SRC_ROOT}" ls-remote --exit-code "${repo_url}" "refs/heads/${branch_name}" >/dev/null 2>&1; then
     echo "Branch ${branch_name} already exists on ${REPO}; skipping push (existing PR is still open)."
     return
   fi
 
-  git -C "${SRC_ROOT}" push "${push_url}" "${branch_name}"
+  git -C "${SRC_ROOT}" push "${repo_url}" "${branch_name}"
 
   local pr_body
   pr_body="$(git -C "${SRC_ROOT}" log -1 --format=%b)
@@ -146,8 +148,9 @@ recognize_targets() {
   # A failed run might not have any autofix-target artifacts (e.g. an infra failure),
   # so return if there are none as otherwise the gh run download below would error.
   local count
-  count=$(gh api "/repos/${REPO}/actions/runs/${RUN_ID}/artifacts" \
-    --jq '[.artifacts[] | select(.name | startswith("autofix-target-"))] | length')
+  count=$(gh api --paginate "/repos/${REPO}/actions/runs/${RUN_ID}/artifacts" \
+    --jq '.artifacts[].name' \
+    | wc -l)
   if [[ "${count}" -eq 0 ]]; then
     echo "No autofix-target artifacts in run ${RUN_ID} (run had no failures)." >&2
     echo '[]'

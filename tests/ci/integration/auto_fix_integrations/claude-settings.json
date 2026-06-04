@@ -17,7 +17,7 @@
       "Bash(mkdir *)",
       "Bash(cp *)",
       "Bash(mv *)",
-      "Bash(wget *downloads.nwtime.org/*)"
+      "Bash(wget *)"
     ],
     "deny": [
       "Bash(git config core.* *)",
