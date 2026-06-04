@@ -92,6 +92,9 @@ jobs:
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "test_results_*.json" >> $GITHUB_STEP_SUMMARY
 
   windows:
     if: github.repository_owner == 'aws'

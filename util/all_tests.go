@@ -557,7 +557,7 @@ func main() {
 			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
-			testOutput.AddSkip(test.longName())
+			testOutput.AddSkip(test.longName(), durSecs)
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
 				fmt.Printf("[%v] %s\n", dur, test.longName())
