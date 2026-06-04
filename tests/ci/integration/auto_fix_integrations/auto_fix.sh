@@ -279,6 +279,16 @@ resolve_integration_failure() {
   git -C "${SRC_ROOT}" checkout -B "resolve/${target}" "${base_ref}"
   git -C "${SRC_ROOT}" am "${out_dir}"/*.patch
 
+  # Reject patches that touch anything outside this integration's patch dir.
+  local bad_paths
+  if bad_paths=$(git -C "${SRC_ROOT}" diff --name-only "${base_ref}..HEAD" \
+                   | grep -vE "^tests/ci/integration/${integration}_patch/"); then
+    echo "::error::Patch touches files outside the patch dir; refusing to push:"
+    echo "${bad_paths}"
+    git -C "${SRC_ROOT}" reset --hard "${base_ref}"
+    exit 1
+  fi
+
   open_pr "${target}" "resolve/${target}"
 }
 
