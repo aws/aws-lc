@@ -32,22 +32,26 @@ func NewResults() *Results {
 	}
 }
 
-func (t *Results) addResult(name, result, expected string) {
+func (t *Results) addResult(name, result, expected string, seconds ...float64) {
 	if _, found := t.Tests[name]; found {
 		panic(fmt.Sprintf("duplicate test name %q", name))
 	}
-	t.Tests[name] = Result{
+	r := Result{
 		Actual:       result,
 		Expected:     expected,
 		IsUnexpected: result != expected,
 	}
+	if len(seconds) > 0 {
+		r.Time = seconds[0]
+	}
+	t.Tests[name] = r
 	t.NumFailuresByType[result]++
 }
 
 // AddResult records a test result with the given result string. The test is a
 // failure if the result is not "PASS".
-func (t *Results) AddResult(name, result string) {
-	t.addResult(name, result, "PASS")
+func (t *Results) AddResult(name, result string, seconds ...float64) {
+	t.addResult(name, result, "PASS", seconds...)
 }
 
 // AddSkip marks a test as being skipped. It is not considered a failure.
@@ -79,7 +83,8 @@ func (t *Results) WriteToFile(name string) error {
 }
 
 type Result struct {
-	Actual       string `json:"actual"`
-	Expected     string `json:"expected"`
-	IsUnexpected bool   `json:"is_unexpected"`
+	Actual       string  `json:"actual"`
+	Expected     string  `json:"expected"`
+	IsUnexpected bool    `json:"is_unexpected"`
+	Time         float64 `json:"time,omitempty"`
 }

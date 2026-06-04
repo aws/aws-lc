@@ -1503,7 +1503,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                 ${AWSLC_BINARY_DIR}
+                 ${AWSLC_BINARY_DIR} -json-output ${AWSLC_SOURCE_DIR}/test_results_${CMAKE_BUILD_TYPE}.json
           WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
@@ -1515,7 +1515,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${AWSLC_BINARY_DIR} -ssl-tests=false
+                  ${AWSLC_BINARY_DIR} -ssl-tests=false -json-output ${AWSLC_SOURCE_DIR}/test_results_${CMAKE_BUILD_TYPE}.json
           WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
