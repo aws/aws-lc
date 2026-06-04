@@ -68,11 +68,13 @@ jobs:
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        env:
+          GTEST_REPORT_DIR: ${{ github.workspace }}/gtest_reports
         run: |
           ./tests/ci/run_fips_tests.sh
       - name: Test timing summary
         if: always()
-        run: python3 tests/ci/test_results_summary.py "test_results_*.json" >> $GITHUB_STEP_SUMMARY
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-ARM:
     if: github.repository_owner == 'aws'

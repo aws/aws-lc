@@ -285,6 +285,17 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_SHARD_INDEX=%d", test.shard))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_TOTAL_SHARDS=%d", test.numShards))
 	}
+	// Write per-test-case gtest JSON report if report dir is set.
+	if reportDir := os.Getenv("GTEST_REPORT_DIR"); reportDir != "" {
+		os.MkdirAll(reportDir, 0777)
+		binName := filepath.Base(prog)
+		reportFile := filepath.Join(reportDir, fmt.Sprintf("%s_shard_%d_%d.json", binName, test.shard, os.Getpid()))
+		if cmd.Env == nil {
+			cmd.Env = make([]string, len(os.Environ()))
+			copy(cmd.Env, os.Environ())
+		}
+		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_OUTPUT=json:%s", reportFile))
+	}
 	var outBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &outBuf
