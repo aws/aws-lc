@@ -2,9 +2,6 @@
   "permissions": {
     "defaultMode": "dontAsk",
     "allow": [
-      "Bash(git clone *)",
-      "Bash(curl *)",
-      "Bash(wget *)",
       "Bash(git checkout *)",
       "Bash(git reset *)",
       "Bash(git log *)",
@@ -14,22 +11,22 @@
       "Bash(git add *)",
       "Bash(git rm *)",
       "Bash(git commit *)",
-      "Bash(git format-patch *)",
-      "Bash(git am *)",
       "Bash(git rev-list *)",
       "Bash(git rev-parse *)",
-      "Bash(git config user.email *)",
-      "Bash(git config user.name *)",
       "Bash(patch *)",
       "Bash(mkdir *)",
       "Bash(cp *)",
-      "Bash(mv *)"
+      "Bash(mv *)",
+      "Bash(wget *downloads.nwtime.org/*)"
     ],
     "deny": [
       "Bash(git config core.* *)",
       "Bash(git -c *)",
-      "Bash(git clone *--config*)",
-      "Bash(git clone *--upload-pack*)",
+      "Bash(git clone *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git remote *)",
+      "Bash(curl *)",
       "Bash(rm *)",
       "Bash(nc *)",
       "Bash(ssh *)",
@@ -52,9 +49,6 @@
     "enableWeakerNestedSandbox": true,
     "network": {
       "allowedDomains": [
-        "github.com",
-        "gitlab.isc.org",
-        "git.code.sf.net",
         "downloads.nwtime.org"
       ]
     },

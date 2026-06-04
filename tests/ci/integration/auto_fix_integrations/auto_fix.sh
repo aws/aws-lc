@@ -2,11 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 #
-# Drives the loop that resolves failed integration tests. Modes:
-#   recognize - read the (integration, version) targets emitted by failed
-#               integration omnibus jobs and print them as a JSON array
-#   reason    - ask Claude to reason on the failures and  author a fix and export it as a patch (no push)
-#   resolve   - apply the exported patch, push the branch, and open a draft PR
+
 
 set -euo pipefail
 
@@ -68,12 +64,14 @@ build_prompt() {
   local runner_script="$4"
   local logs_dir="$5"
   local branch_name="$6"
+  local src_clone_dir="$7"
 
   sed -e "s|INTEGRATION_PLACEHOLDER|${integration}|g" \
       -e "s|VERSION_PLACEHOLDER|${version:-all}|g" \
       -e "s|PATCH_DIR_PLACEHOLDER|${patch_dir}|g" \
       -e "s|RUNNER_SCRIPT_PLACEHOLDER|${runner_script}|g" \
       -e "s|LOGS_DIR_PLACEHOLDER|${logs_dir}|g" \
+      -e "s|SRC_CLONE_DIR_PLACEHOLDER|${src_clone_dir}|g" \
       -e "s|BRANCH_NAME_PLACEHOLDER|${branch_name}|g" \
       -e "s|FAILING_RUN_PLACEHOLDER|https://github.com/${REPO}/actions/runs/${RUN_ID}|g" \
       -e "s|SRC_ROOT_PLACEHOLDER|${SRC_ROOT}|g" \
@@ -98,8 +96,7 @@ run_claude() {
   return "${rc}"
 }
 
-# Fail the job if the patch (diff + commit message) contains secrets, before
-# it can reach a public branch/PR.
+
 scan_secrets() {
   local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|aws_secret_access_key|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
 
@@ -138,70 +135,6 @@ This PR was drafted automatically by the nightly integration-resolver workflow u
     --body "${pr_body}"
 }
 
-
-reason_integration_failure() {
-  local integration="$1" version="$2" base_ref="$3"
-
-  local patch_dir="${INTEGRATION_DIR}/${integration}_patch"
-  local runner_script="${INTEGRATION_DIR}/run_${integration}_integration.sh"
-
-  local target="${integration}${version:+-${version}}"
-  local work_dir="${WORK_ROOT}/${target}"
-  mkdir -p "${work_dir}"
-
-  git -C "${SRC_ROOT}" checkout -B "resolve/${target}" "${base_ref}"
-
-  local prompt attempt rc
-  prompt=$(build_prompt "${integration}" "${version}" "${patch_dir}" \
-                        "${runner_script}" "${work_dir}/logs" "resolve/${target}")
-
-  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
-    echo "=== ${target}: attempt ${attempt}/${MAX_ATTEMPTS} ==="
-    git -C "${SRC_ROOT}" reset --hard "${base_ref}"
-
-    rc=0
-    run_claude "${prompt}" "${work_dir}/claude-${attempt}.log" || rc=$?
-
-    echo "::group::${target}: Claude transcript (attempt ${attempt})"
-
-    # Render Claude thinking output + tool calls (name + command/path).
-    jq -Rr 'fromjson? | .message.content[]?
-      | if .type == "text" then .text
-        elif .type == "tool_use" then "[tool] \(.name): \(.input.command // .input.file_path // .input.path)"
-        else empty end' \
-      "${work_dir}/claude-${attempt}.log" || true
-    echo "::endgroup::"
-
-    # HEAD advanced: Claude committed a fix, create the resolving patch.
-    if [[ -n "$(git -C "${SRC_ROOT}" rev-list "${base_ref}..HEAD")" ]]; then
-      git -C "${SRC_ROOT}" format-patch "${base_ref}..HEAD" -o "${work_dir}/out"
-      return
-    fi
-    [[ "${rc}" -eq 0 ]] && { echo "::warning::${target}: Claude declined; not retrying."; return; }
-    echo "::warning::${target}: attempt ${attempt} failed (exit ${rc}); retrying."
-  done
-
-  echo "::warning::${target}: ${MAX_ATTEMPTS} transient Claude failures; giving up."
-}
-
-resolve_integration_failure() {
-  local integration="$1" version="$2" base_ref="$3"
-
-  local target="${integration}${version:+-${version}}"
-  local out_dir="${WORK_ROOT}/${target}/out"
-
-  if ! compgen -G "${out_dir}/*.patch" >/dev/null; then
-    echo "${target}: no patch produced by reason; nothing to resolve."
-    return
-  fi
-
-  scan_secrets "${out_dir}"/*.patch
-
-  git -C "${SRC_ROOT}" checkout -B "resolve/${target}" "${base_ref}"
-  git -C "${SRC_ROOT}" am "${out_dir}"/*.patch
-
-  open_pr "${target}" "resolve/${target}"
-}
 
 # Download (integration, version) targets from failed omnibus jobs and emit as deduped JSON, e.g. ["mariadb|", "python|3.13"].
 recognize_targets() {
@@ -245,13 +178,107 @@ recognize_targets() {
       continue
     fi
     echo "${integration}|${version}"
-    
-  # Some integrations run on both x86 and aarch64, so a broken patch fails twice
-  # and emits the same line twice. sort -u drops the duplicates, then jq turns
-  # the lines into a JSON list.
+  # The same integration+version can fail in more than one job (e.g. different
+  #  build flags), emitting the same line each time. sort -u drops the
+  # duplicates, then jq turns the lines into a JSON list.
   done < <(find "${targets_dir}" -type f -name autofix-target.txt -exec cat {} +) \
     | sort -u \
     | jq -R -s -c 'split("\n") | map(select(length > 0))'
+}
+
+
+# Clone the downstream repos the runner script uses into <dest>/<n>, so Claude
+# can read the source and dry-run patches without needing clone or network access.
+clone_downstream_repos() {
+  local runner_script="$1" dest="$2"
+  mkdir -p "${dest}"
+
+  # Grab the URL from each `git clone` line. Skip ones that are a shell variable
+  # so we don't try to clone an unexpanded "${VAR}".
+  local url name
+  while read -r url; do
+    [[ -z "${url}" || "${url}" == *'$'* ]] && continue
+    name="$(basename "${url}" .git)"
+    if ! git clone "${url}" "${dest}/${name}" >&2; then
+      echo "::warning::Failed to clone ${url}; Claude will work without it." >&2
+    fi
+  done < <(grep -hoE 'git clone[^|;&]*(https?|git)://[^[:space:]]+' "${runner_script}" \
+             | grep -oE '(https?|git)://[^[:space:]]+')
+}
+
+# Run Claude on one failed target to repair its patch. We pre-clone the
+# downstream repos and pre-fetch the logs first, so Claude works without clone or
+# network access: it reads the runner script, checks out the right ref in the
+# existing clone, and commits a fix on a resolve/<target> branch. If it commits,
+# we export that commit as a patch for the resolve step.
+reason_integration_failure() {
+  local integration="$1" version="$2" base_ref="$3"
+
+  local patch_dir="${INTEGRATION_DIR}/${integration}_patch"
+  local runner_script="${INTEGRATION_DIR}/run_${integration}_integration.sh"
+
+  local target="${integration}${version:+-${version}}"
+  local work_dir="${WORK_ROOT}/${target}"
+  local src_clone_dir="${work_dir}/src"
+  mkdir -p "${work_dir}"
+
+  clone_downstream_repos "${runner_script}" "${src_clone_dir}"
+
+  git -C "${SRC_ROOT}" checkout -B "resolve/${target}" "${base_ref}"
+
+  local prompt attempt rc
+  prompt=$(build_prompt "${integration}" "${version}" "${patch_dir}" \
+                        "${runner_script}" "${work_dir}/logs" "resolve/${target}" \
+                        "${src_clone_dir}")
+
+  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
+    echo "=== ${target}: attempt ${attempt}/${MAX_ATTEMPTS} ==="
+    git -C "${SRC_ROOT}" reset --hard "${base_ref}"
+
+    rc=0
+    run_claude "${prompt}" "${work_dir}/claude-${attempt}.log" || rc=$?
+
+    echo "::group::${target}: Claude transcript (attempt ${attempt})"
+
+    # Render Claude thinking output + tool calls 
+    jq -Rr 'fromjson? | .message.content[]?
+      | if .type == "text" then .text
+        elif .type == "tool_use" then "[tool] \(.name): \(.input.command // .input.file_path // .input.path)"
+        else empty end' \
+      "${work_dir}/claude-${attempt}.log" || true
+    echo "::endgroup::"
+
+    # Detect changes to see if Claude committed a fix, and if so create the resolving patch.
+    if [[ -n "$(git -C "${SRC_ROOT}" rev-list "${base_ref}..HEAD")" ]]; then
+      git -C "${SRC_ROOT}" format-patch "${base_ref}..HEAD" -o "${work_dir}/out"
+      return
+    fi
+    [[ "${rc}" -eq 0 ]] && { echo "::warning::${target}: Claude declined; not retrying."; return; }
+    echo "::warning::${target}: attempt ${attempt} failed (exit ${rc}); retrying."
+  done
+
+  echo "::warning::${target}: ${MAX_ATTEMPTS} transient Claude failures; giving up."
+}
+
+# Take the patch the reason step produced, scan it for leaked secrets, apply it
+# to a new branch, and open a draft PR. Skips if no patch was produced.
+resolve_integration_failure() {
+  local integration="$1" version="$2" base_ref="$3"
+
+  local target="${integration}${version:+-${version}}"
+  local out_dir="${WORK_ROOT}/${target}/out"
+
+  if ! compgen -G "${out_dir}/*.patch" >/dev/null; then
+    echo "${target}: no patch produced by reason; nothing to resolve."
+    return
+  fi
+
+  scan_secrets "${out_dir}"/*.patch
+
+  git -C "${SRC_ROOT}" checkout -B "resolve/${target}" "${base_ref}"
+  git -C "${SRC_ROOT}" am "${out_dir}"/*.patch
+
+  open_pr "${target}" "resolve/${target}"
 }
 
 

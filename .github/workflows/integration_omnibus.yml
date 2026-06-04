@@ -432,7 +432,8 @@ jobs:
           integration=${integration%_integration} # Drop the _integration suffix to leave the bare integration name.
           version=${version//[\'\"]/} # Strip surrounding quotes (some matrix entries quote the version arg).
 
-          # openssh selects its branch via $OPENSSH_BRANCH, not a positional arg.
+          # openssh doesn't pass its branch on the command line as it reads it
+          # from the $OPENSSH_BRANCH env var, so grab the version from there.
           [[ -z "$version" && "$integration" == "openssh" ]] && version="$OPENSSH_BRANCH"
           echo "integration=$integration" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"

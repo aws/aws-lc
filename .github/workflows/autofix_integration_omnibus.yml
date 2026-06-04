@@ -71,10 +71,9 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2.1.161
       - name: Install Bash sandbox deps
-        # Claude Code's sandbox needs bubblewrap (filesystem/process isolation)
+        # Claude Code's sandbox feature needs bubblewrap (filesystem/process isolation)
         # and socat (relays Bash traffic through the proxy that enforces the
-        # domain allowlist in claude-setings.json). Without them the sandbox can't
-        # start.
+        # domain allowlist). 
         run: sudo dnf install -y bubblewrap socat
       - name: Fetch failed-job logs
         run: |
@@ -88,9 +87,7 @@ jobs:
       # matrix.target is "<integration>|<version>" but auto_fix.sh writes its
       # work dir as "<integration>[-<version>]". Convert | and / to - so the
       # artifact paths below match the dir the script creates (e.g.
-      # "openvpn|release/2.6" -> "openvpn-release-2.6"). Derived before the
-      # Claude step so the slug is set even if that step fails, keeping the
-      # always() audit-log upload pointed at the right path.
+      # "openvpn|release/2.6" -> "openvpn-release-2.6").
       - name: Derive target slug
         id: target
         run: |
@@ -105,9 +102,7 @@ jobs:
           IFS='|' read -r integration version <<< "$TARGET"
           "$AUTOFIX_SCRIPT" reason "$integration" "$version" "$TARGET_RUN_ID"
         env:
-          TARGET: ${{ matrix.target }}
-          # Restrict git to standard protocols so an injected `git clone ext::…`
-          # cannot execute arbitrary commands.
+          TARGET: ${{ matrix.target }}.
           GIT_ALLOW_PROTOCOL: file:git:http:https:ssh
       - uses: actions/upload-artifact@v4
         with:
