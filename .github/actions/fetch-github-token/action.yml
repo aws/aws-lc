@@ -1,0 +1,24 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: "fetch-github-token"
+description: "Fetch the GitHub PAT from AWS Secrets Manager and export it as GH_TOKEN."
+inputs:
+  secret-id:
+    description: "AWS Secrets Manager secret id"
+    required: false
+    default: "aws-lc/ci/github/token"
+  aws-region:
+    description: "AWS region the secret lives in."
+    required: false
+    default: "us-west-2"
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -eo pipefail
+        token=$(aws secretsmanager get-secret-value --region "${{ inputs.aws-region }}" \
+          --secret-id "${{ inputs.secret-id }}" --query SecretString --output text)
+        echo "::add-mask::$token"
+        echo "GH_TOKEN=$token" >> "$GITHUB_ENV"

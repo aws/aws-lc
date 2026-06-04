@@ -13,7 +13,7 @@ from cdk.aws_lc_devicefarm_ci_stack import DeviceFarmCiProps
 from constructs import Construct
 
 from util.metadata import (
-    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME)
+    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME, GITHUB_TOKEN_SECRET_NAME)
 
 
 class AwsLcGitHubOidcStack(Stack):
@@ -73,6 +73,14 @@ class AwsLcGitHubOidcStack(Stack):
             self, "AwsLcGitHubActionDockerImageBuildRole", env, self.minimal_oidc_role, ecr_repos)
         self.docker_image_build_role.grant_assume_role(
             self.minimal_oidc_role)
+
+        self.reasoning_role = create_integration_failure_reasoning_role(
+            self, "AwsLcGitHubActionIntegrationFailureReasoningRole", env, self.minimal_oidc_role)
+        self.reasoning_role.grant_assume_role(self.minimal_oidc_role)
+
+        self.resolve_role = create_integration_failure_resolve_role(
+            self, "AwsLcGitHubActionIntegrationFailureResolveRole", env, self.minimal_oidc_role)
+        self.resolve_role.grant_assume_role(self.minimal_oidc_role)
 
 
 def create_device_farm_role(scope: Construct, id: str,
@@ -278,4 +286,51 @@ def create_standard_github_actions_role(scope: Construct, id: str,
                         ),
                     })
 
+    return role
+
+
+def create_integration_failure_reasoning_role(scope: Construct, id: str,
+                                               env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                                               principal: iam.IPrincipal) -> iam.Role:
+    role = iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "bedrock_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "bedrock:InvokeModel",
+                                        "bedrock:InvokeModelWithResponseStream",
+                                    ],
+                                    resources=[
+                                        "arn:aws:bedrock:*::foundation-model/*",
+                                        f"arn:aws:bedrock:{env.region}:{env.account}:inference-profile/*",
+                                        f"arn:aws:bedrock:{env.region}:{env.account}:application-inference-profile/*",
+                                    ],
+                                ),
+                            ]
+                        ),
+                    })
+    return role
+
+
+def create_integration_failure_resolve_role(scope: Construct, id: str,
+                                             env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                                             principal: iam.IPrincipal) -> iam.Role:
+    role = iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "secrets_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=["secretsmanager:GetSecretValue"],
+                                    resources=[
+                                        f"arn:aws:secretsmanager:{env.region}:{env.account}:secret:{GITHUB_TOKEN_SECRET_NAME}-*"
+                                    ],
+                                ),
+                            ]
+                        ),
+                    })
     return role
