@@ -526,6 +526,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       read_ahead_buffer_size(ctx_arg->read_ahead_buffer_size),
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
+      security_callback(ctx_arg->security_callback),
+      security_callback_ex_data(ctx_arg->security_callback_ex_data),
       ctx(UpRef(ctx_arg)),
       session_ctx(UpRef(ctx_arg)),
       options(ctx->options),
