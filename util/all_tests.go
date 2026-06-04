@@ -552,36 +552,35 @@ func main() {
 		args := test.Cmd
 
 		dur := testResult.Duration.Round(time.Second)
-		durSecs := testResult.Duration.Seconds()
 		if testResult.Error == errTestSkipped {
 			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
-			testOutput.AddSkip(test.longName(), durSecs)
+			testOutput.AddSkip(test.longName(), dur.Seconds())
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
 				fmt.Printf("[%v] %s\n", dur, test.longName())
 				fmt.Printf("%s did not finish. Try increasing timeout.\n", args[0])
 				failed = append(failed, test)
-				testOutput.AddResult(test.longName(), "FAIL", durSecs)
+				testOutput.AddResult(test.longName(), "FAIL", dur.Seconds())
 			} else {
 				fmt.Printf("[%v] %s\n", dur, test.shortName())
 				fmt.Printf("%s was left hanging, but actually passed\n", args[0])
-				testOutput.AddResult(test.longName(), "PASS", durSecs)
+				testOutput.AddResult(test.longName(), "PASS", dur.Seconds())
 			}
 		} else if testResult.Error != nil {
 			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
-			testOutput.AddResult(test.longName(), "CRASH", durSecs)
+			testOutput.AddResult(test.longName(), "CRASH", dur.Seconds())
 		} else if !testResult.Passed {
 			fmt.Printf("[%v] %s\n", dur, test.longName())
 			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
-			testOutput.AddResult(test.longName(), "FAIL", durSecs)
+			testOutput.AddResult(test.longName(), "FAIL", dur.Seconds())
 		} else {
 			fmt.Printf("[%v] %s\n", dur, test.shortName())
-			testOutput.AddResult(test.longName(), "PASS", durSecs)
+			testOutput.AddResult(test.longName(), "PASS", dur.Seconds())
 		}
 	}
 
