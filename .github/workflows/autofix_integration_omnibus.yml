@@ -71,11 +71,11 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2.1.161
       - name: Install Bash sandbox deps
-        # bubblewrap + socat back Claude Code's sandbox (settings.json restricts
-        # its Bash subprocesses to the downstream git/tarball hosts). Best-effort:
-        # if the unprivileged CodeBuild container can't run bubblewrap, Claude
-        # falls back to unsandboxed and the permission allow list still applies.
-        run: sudo dnf install -y bubblewrap socat || true
+        # Claude Code's sandbox needs bubblewrap (filesystem/process isolation)
+        # and socat (relays Bash traffic through the proxy that enforces the
+        # domain allowlist in claude-setings.json). Without them the sandbox can't
+        # start.
+        run: sudo dnf install -y bubblewrap socat
       - name: Fetch failed-job logs
         run: |
           set -exo pipefail
@@ -85,20 +85,25 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           GH_TOKEN: ${{ github.token }}
-      - name: Claude's thoughts (reason on the failure and author a patch)
-        id: reason
+      # matrix.target is "<integration>|<version>" but auto_fix.sh writes its
+      # work dir as "<integration>[-<version>]". Convert | and / to - so the
+      # artifact paths below match the dir the script creates (e.g.
+      # "openvpn|release/2.6" -> "openvpn-release-2.6"). Derived before the
+      # Claude step so the slug is set even if that step fails, keeping the
+      # always() audit-log upload pointed at the right path.
+      - name: Derive target slug
+        id: target
+        run: |
+          slug=${TARGET//[|\/]/-}
+          slug=${slug%-}
+          echo "dir=$slug" >> "$GITHUB_OUTPUT"
+        env:
+          TARGET: ${{ matrix.target }}
+      - name: Claude's thinking traces
         run: |
           set -exo pipefail
           IFS='|' read -r integration version <<< "$TARGET"
           "$AUTOFIX_SCRIPT" reason "$integration" "$version" "$TARGET_RUN_ID"
-
-          # matrix.target is "<integration>|<version>" but auto_fix.sh writes its
-          # work dir as "<integration>[-<version>]". Convert | and / to - so the
-          # artifact upload path below matches the dir the script created
-          # (e.g. "openvpn|release/2.6" -> "openvpn-release-2.6").
-          slug=${TARGET//[|\/]/-}
-          slug=${slug%-}
-          echo "target_dir=$slug" >> "$GITHUB_OUTPUT"
         env:
           TARGET: ${{ matrix.target }}
           # Restrict git to standard protocols so an injected `git clone ext::…`
@@ -106,14 +111,14 @@ jobs:
           GIT_ALLOW_PROTOCOL: file:git:http:https:ssh
       - uses: actions/upload-artifact@v4
         with:
-          name: resolve-patch-${{ steps.reason.outputs.target_dir }}
-          path: .resolve-integration-failures/${{ steps.reason.outputs.target_dir }}/out/
+          name: resolve-patch-${{ steps.target.outputs.dir }}
+          path: .resolve-integration-failures/${{ steps.target.outputs.dir }}/out/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: resolve-audit-log-${{ steps.reason.outputs.target_dir }}
-          path: .resolve-integration-failures/${{ steps.reason.outputs.target_dir }}/claude-*.log
+          name: resolve-audit-log-${{ steps.target.outputs.dir }}
+          path: .resolve-integration-failures/${{ steps.target.outputs.dir }}/claude-*.log
           if-no-files-found: ignore
 
   resolve:

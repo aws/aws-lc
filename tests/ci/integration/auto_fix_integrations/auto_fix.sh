@@ -164,7 +164,7 @@ reason_integration_failure() {
 
     echo "::group::${target}: Claude transcript (attempt ${attempt})"
 
-    # Render stream-json as Claude thinking output + tool calls (name + command/path).
+    # Render Claude thinking output + tool calls (name + command/path).
     jq -Rr 'fromjson? | .message.content[]?
       | if .type == "text" then .text
         elif .type == "tool_use" then "[tool] \(.name): \(.input.command // .input.file_path // .input.path)"
@@ -172,7 +172,7 @@ reason_integration_failure() {
       "${work_dir}/claude-${attempt}.log" || true
     echo "::endgroup::"
 
-    # HEAD advanced: Claude committed a fix; export it as a patch for resolve.
+    # HEAD advanced: Claude committed a fix, create the resolving patch.
     if [[ -n "$(git -C "${SRC_ROOT}" rev-list "${base_ref}..HEAD")" ]]; then
       git -C "${SRC_ROOT}" format-patch "${base_ref}..HEAD" -o "${work_dir}/out"
       return
@@ -224,19 +224,31 @@ recognize_targets() {
   gh run download "${RUN_ID}" --repo "${REPO}" \
     --pattern 'autofix-target-*' --dir "${targets_dir}"
 
+  # Each failed job emitted one "<integration>\t<version>" line (emit-autofix-target);
+  # read them all, keep only the targets we can actually fix, and emit as JSON.
   local integration version patch_dir
   while IFS=$'\t' read -r integration version _; do
+    # Skip blank lines (a target file can end with a trailing newline).
     [[ -z "${integration}" ]] && continue
+
+    # emit-autofix-target fires on ANY integration-job failure, but some
+    # integrations build the downstream project unmodified and so have no
+    # *_patch dir. There is no patch for Claude to repair, so skip them.
     patch_dir="${INTEGRATION_DIR}/${integration}_patch"
     [[ -d "${patch_dir}" ]] || continue
 
-    # Skip tip-of-tree versions (python|main, ruby|master): version-split patch
-    # dirs exist (python_patch/3.13/) but there's no subdir for the tip ref to fix.
+    # Some integrations keep a separate patch set per version, in subdirs like
+    # python_patch/3.13/. If this integration uses that layout but has no subdir
+    # for the version that failed, we don't have patches for it so skip it.
     if [[ -n "${version}" && ! -d "${patch_dir}/${version}" ]] \
        && compgen -G "${patch_dir}/*/" >/dev/null; then
       continue
     fi
     echo "${integration}|${version}"
+    
+  # Some integrations run on both x86 and aarch64, so a broken patch fails twice
+  # and emits the same line twice. sort -u drops the duplicates, then jq turns
+  # the lines into a JSON list.
   done < <(find "${targets_dir}" -type f -name autofix-target.txt -exec cat {} +) \
     | sort -u \
     | jq -R -s -c 'split("\n") | map(select(length > 0))'
