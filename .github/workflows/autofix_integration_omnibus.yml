@@ -102,7 +102,7 @@ jobs:
           IFS='|' read -r integration version <<< "$TARGET"
           "$AUTOFIX_SCRIPT" reason "$integration" "$version" "$TARGET_RUN_ID"
         env:
-          TARGET: ${{ matrix.target }}.
+          TARGET: ${{ matrix.target }}
           GIT_ALLOW_PROTOCOL: file:git:http:https:ssh
       - uses: actions/upload-artifact@v4
         with:

@@ -157,7 +157,7 @@ recognize_targets() {
   gh run download "${RUN_ID}" --repo "${REPO}" \
     --pattern 'autofix-target-*' --dir "${targets_dir}"
 
-  # Each failed job emitted one "<integration>\t<version>" line (emit-autofix-target);
+  # Each failed job emitted one "<integration>\t<version>" line
   # read them all, keep only the targets we can actually fix, and emit as JSON.
   local integration version patch_dir
   while IFS=$'\t' read -r integration version _; do
@@ -187,8 +187,6 @@ recognize_targets() {
 }
 
 
-# Clone the downstream repos the runner script uses into <dest>/<n>, so Claude
-# can read the source and dry-run patches without needing clone or network access.
 clone_downstream_repos() {
   local runner_script="$1" dest="$2"
   mkdir -p "${dest}"
@@ -207,8 +205,8 @@ clone_downstream_repos() {
 }
 
 # Run Claude on one failed target to repair its patch. We pre-clone the
-# downstream repos and pre-fetch the logs first, so Claude works without clone or
-# network access: it reads the runner script, checks out the right ref in the
+# downstream repos and pre-fetch the logs first,
+# then reads the runner script, checks out the right ref in the
 # existing clone, and commits a fix on a resolve/<target> branch. If it commits,
 # we export that commit as a patch for the resolve step.
 reason_integration_failure() {
