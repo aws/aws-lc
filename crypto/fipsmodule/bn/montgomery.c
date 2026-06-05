@@ -40,6 +40,7 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
          S2NBIGNUM_KMUL_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS);
   assert(BN_BITS2 == 64);
   return !CRYPTO_is_ARMv8_wide_multiplier_capable() &&
+          !CRYPTO_is_Neoverse_N2() &&
           (num % 8 == 0) &&
           CRYPTO_is_NEON_capable();
 }
@@ -50,6 +51,12 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   return 0;
 }
 
+#endif
+
+#if defined(BORINGSSL_DISPATCH_TEST)
+int bn_montgomery_use_s2n_bignum_for_testing(unsigned int num) {
+  return montgomery_use_s2n_bignum(num);
+}
 #endif
 
 void bn_mont_ctx_init(BN_MONT_CTX *mont) {

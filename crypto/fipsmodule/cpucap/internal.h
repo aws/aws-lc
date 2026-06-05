@@ -276,6 +276,10 @@ OPENSSL_INLINE int CRYPTO_is_Neoverse_V2(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_Neoverse_N2(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_N2) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_Apple_M(void) {
   return (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
 }
