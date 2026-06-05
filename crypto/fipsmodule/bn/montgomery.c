@@ -52,6 +52,12 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
 
 #endif
 
+#if defined(BORINGSSL_DISPATCH_TEST)
+int bn_montgomery_use_s2n_bignum_for_testing(unsigned int num) {
+  return montgomery_use_s2n_bignum(num);
+}
+#endif
+
 void bn_mont_ctx_init(BN_MONT_CTX *mont) {
   OPENSSL_memset(mont, 0, sizeof(BN_MONT_CTX));
   BN_init(&mont->RR);
