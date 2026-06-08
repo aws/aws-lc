@@ -22,7 +22,7 @@ RUN set -ex && \
     # Install Intel® Software Development Emulator
     # This emulator is needed when running BoringSSL/AWS-LC code under Intel's SDE for each supported chip (like ice lake).
     # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
-    wget ${SDE_MIRROR_URL} && tar -xf "${SDE_VERSION_TAG}.tar.xz" && rm "${SDE_VERSION_TAG}.tar.xz" && \
+    wget ${SDE_MIRROR_URL} && tar -xJf "${SDE_VERSION_TAG}.tar.xz" && rm "${SDE_VERSION_TAG}.tar.xz" && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
