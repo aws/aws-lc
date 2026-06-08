@@ -579,6 +579,16 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
                        static_cast<int>(read_amount));
     if (ret <= 0) {
+      // If the peer closed the transport without a close_notify and the caller
+      // enabled SSL_OP_IGNORE_UNEXPECTED_EOF, report a clean shutdown with
+      // SSL_ERROR_ZERO_RETURN.
+      if (ret == 0  && (ssl->options & SSL_OP_IGNORE_UNEXPECTED_EOF) &&
+          ssl->s3->read_shutdown == ssl_shutdown_none &&
+          BIO_eof(ssl->rbio.get())) {
+        ssl->s3->rwstate = SSL_ERROR_ZERO_RETURN;
+        return ret;
+      }
+      
       ssl->s3->rwstate = SSL_ERROR_WANT_READ;
       return ret;
     }
