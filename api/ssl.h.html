@@ -421,6 +421,12 @@
           
             <li><a href="#SSL_SIGN_ED25519"><tt>SSL_SIGN_ED25519</tt></a></li>
           
+            <li><a href="#SSL_SIGN_MLDSA44"><tt>SSL_SIGN_MLDSA44</tt></a></li>
+          
+            <li><a href="#SSL_SIGN_MLDSA65"><tt>SSL_SIGN_MLDSA65</tt></a></li>
+          
+            <li><a href="#SSL_SIGN_MLDSA87"><tt>SSL_SIGN_MLDSA87</tt></a></li>
+          
             <li><a href="#SSL_SIGN_RSA_PKCS1_MD5_SHA1"><tt>SSL_SIGN_RSA_PKCS1_MD5_SHA1</tt></a></li>
           
             <li><a href="#SSL_get_signature_algorithm_name"><tt>SSL_get_signature_algorithm_name</tt></a></li>
@@ -2071,6 +2077,28 @@
           
             <li><a href="#SSL_CTX_set_security_level"><tt>SSL_CTX_set_security_level</tt></a></li>
           
+            <li><a href="#SSL_get_security_level"><tt>SSL_get_security_level</tt></a></li>
+          
+            <li><a href="#SSL_set_security_level"><tt>SSL_set_security_level</tt></a></li>
+          
+            
+          
+            <li><a href="#SSL_CTX_set_security_callback"><tt>SSL_CTX_set_security_callback</tt></a></li>
+          
+            
+          
+            <li><a href="#SSL_CTX_set0_security_ex_data"><tt>SSL_CTX_set0_security_ex_data</tt></a></li>
+          
+            <li><a href="#SSL_CTX_get0_security_ex_data"><tt>SSL_CTX_get0_security_ex_data</tt></a></li>
+          
+            <li><a href="#SSL_set_security_callback"><tt>SSL_set_security_callback</tt></a></li>
+          
+            
+          
+            <li><a href="#SSL_set0_security_ex_data"><tt>SSL_set0_security_ex_data</tt></a></li>
+          
+            <li><a href="#SSL_get0_security_ex_data"><tt>SSL_get0_security_ex_data</tt></a></li>
+          
         
       
         
@@ -3119,6 +3147,21 @@ SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);</
             <pre class="code">#define SSL_SIGN_ED25519 0x0807</pre>
           </div>
         
+          <div class="decl" id="SSL_SIGN_MLDSA44">
+            
+            <pre class="code">#define SSL_SIGN_MLDSA44 0x0904</pre>
+          </div>
+        
+          <div class="decl" id="SSL_SIGN_MLDSA65">
+            
+            <pre class="code">#define SSL_SIGN_MLDSA65 0x0905</pre>
+          </div>
+        
+          <div class="decl" id="SSL_SIGN_MLDSA87">
+            
+            <pre class="code">#define SSL_SIGN_MLDSA87 0x0906</pre>
+          </div>
+        
           <div class="decl" id="SSL_SIGN_RSA_PKCS1_MD5_SHA1">
             <div class="comment"><p><span class="first-word">SSL_SIGN_RSA_PKCS1_MD5_SHA1</span> is an internal signature algorithm used to specify raw RSASSA-PKCS1-v1_5 with an MD5/SHA-1 concatenation, as used in TLS before TLS 1.2.</p></div>
             <pre class="code">#define SSL_SIGN_RSA_PKCS1_MD5_SHA1 0xff01</pre>
@@ -3830,7 +3873,7 @@ SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);</
           </div>
         
           <div class="decl" id="SSL_SESSION_from_bytes">
-            <div class="comment"><p><span class="first-word">SSL_SESSION_from_bytes</span> parses <tt>in_len</tt> bytes from <tt>in</tt> as an SSL_SESSION. It returns a newly-allocated <tt>SSL_SESSION</tt> on success or NULL on error.</p></div>
+            <div class="comment"><p><span class="first-word">SSL_SESSION_from_bytes</span> parses <tt>in_len</tt> bytes from <tt>in</tt> as an SSL_SESSION. It returns a newly-allocated <tt>SSL_SESSION</tt> on success or NULL on error. The caller is responsible for protecting the integrity of the serialized session data; no minimum-length validation is performed on individual fields.</p></div>
             <pre class="code">OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
                                                    size_t in_len,
                                                    const SSL_CTX *ctx);</pre>
@@ -7648,6 +7691,72 @@ DEFINE_STACK_OF(SSL_COMP)</pre>
             <div class="comment"><p><span class="first-word">SSL_CTX_set_security_level</span> does nothing. See documentation in <tt><a href="ssl.h.html#SSL_CTX_get_security_level">SSL_CTX_get_security_level</a></tt> about implied security levels for AWS-LC.</p></div>
             <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_level(
     const SSL_CTX *ctx, int level);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_get_security_level">
+            <div class="comment"><p><span class="first-word">SSL_get_security_level</span> returns 0. This is only to maintain compatibility with OpenSSL. See <tt><a href="ssl.h.html#SSL_CTX_get_security_level">SSL_CTX_get_security_level</a></tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_security_level(const SSL *ssl);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_set_security_level">
+            <div class="comment"><p><span class="first-word">SSL_set_security_level</span> does nothing. See documentation in <tt><a href="ssl.h.html#SSL_CTX_get_security_level">SSL_CTX_get_security_level</a></tt> about implied security levels for AWS-LC.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_level(const SSL *ssl,
+                                                              int level);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">SSL_security_callback</span> is the type of a security callback function set via <tt><a href="ssl.h.html#SSL_CTX_set_security_callback">SSL_CTX_set_security_callback</a></tt> or <tt><a href="ssl.h.html#SSL_set_security_callback">SSL_set_security_callback</a></tt>. In OpenSSL, this callback is invoked to make security decisions based on the configured security level. In AWS-LC, security levels are not supported and the callback is never invoked, so any restrictions the callback would have enforced are silently bypassed. These functions are provided only for API compatibility.</p></div>
+            <pre class="code">typedef int (*SSL_security_callback)(const SSL *ssl, const SSL_CTX *ctx,
+                                     int op, int bits, int nid, void *other,
+                                     void *ex);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_CTX_set_security_callback">
+            <div class="comment"><p><span class="first-word">SSL_CTX_set_security_callback</span> stores <tt>cb</tt> on <tt>ctx</tt> but never invokes it. AWS-LC never invokes the callback, so any restrictions the callback would have enforced are silently bypassed.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_callback(
+    SSL_CTX *ctx, SSL_security_callback cb);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">SSL_CTX_get_security_callback</span> returns the callback previously set with <tt><a href="ssl.h.html#SSL_CTX_set_security_callback">SSL_CTX_set_security_callback</a></tt>, or NULL if none was set.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_CTX_get_security_callback(const SSL_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_CTX_set0_security_ex_data">
+            <div class="comment"><p><span class="first-word">SSL_CTX_set0_security_ex_data</span> stores <tt>ex</tt> on <tt>ctx</tt> for use by a security callback. The data is never used internally.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set0_security_ex_data(
+    SSL_CTX *ctx, void *ex);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_CTX_get0_security_ex_data">
+            <div class="comment"><p><span class="first-word">SSL_CTX_get0_security_ex_data</span> returns the data previously set with <tt><a href="ssl.h.html#SSL_CTX_set0_security_ex_data">SSL_CTX_set0_security_ex_data</a></tt>, or NULL if none was set.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_CTX_get0_security_ex_data(
+    const SSL_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_set_security_callback">
+            <div class="comment"><p><span class="first-word">SSL_set_security_callback</span> stores <tt>cb</tt> on <tt>ssl</tt> but never invokes it. AWS-LC never invokes the callback, so any restrictions the callback would have enforced are silently bypassed.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_callback(
+    SSL *ssl, SSL_security_callback cb);</pre>
+          </div>
+        
+          <div class="decl" >
+            <div class="comment"><p><span class="first-word">SSL_get_security_callback</span> returns the callback previously set with <tt><a href="ssl.h.html#SSL_set_security_callback">SSL_set_security_callback</a></tt>, or the callback inherited from <tt>SSL_CTX</tt> if none was set directly on the <tt>SSL</tt>.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_get_security_callback(const SSL *ssl);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_set0_security_ex_data">
+            <div class="comment"><p><span class="first-word">SSL_set0_security_ex_data</span> stores <tt>ex</tt> on <tt>ssl</tt> for use by a security callback. The data is never used internally.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set0_security_ex_data(SSL *ssl,
+                                                                 void *ex);</pre>
+          </div>
+        
+          <div class="decl" id="SSL_get0_security_ex_data">
+            <div class="comment"><p><span class="first-word">SSL_get0_security_ex_data</span> returns the data previously set with <tt><a href="ssl.h.html#SSL_set0_security_ex_data">SSL_set0_security_ex_data</a></tt>, or NULL if none was set.</p></div>
+            <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_get0_security_ex_data(
+    const SSL *ssl);</pre>
           </div>
         
         </div>

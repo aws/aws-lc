@@ -819,12 +819,12 @@ typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
           </div>
         
           <div class="decl" id="BIO_set_callback_ex">
-            <div class="comment"><p><span class="first-word">BIO_set_callback_ex</span> sets the <tt>callback_ex</tt> for <tt>bio</tt>.</p></div>
+            <div class="comment"><p><span class="first-word">BIO_set_callback_ex</span> sets the <tt>callback_ex</tt> for <tt>bio</tt>. The callback is invoked without incrementing the BIO&#39;s reference count, so a callback must not call BIO_free on the BIO it is invoked on.</p></div>
             <pre class="code">OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);</pre>
           </div>
         
           <div class="decl" id="BIO_set_callback">
-            <div class="comment"><p><span class="first-word">BIO_set_callback</span> sets the legacy <tt>callback</tt> for <tt>bio</tt>. When both <tt>callback</tt> and <tt>callback_ex</tt> are set, <tt>callback_ex</tt> will be used. Added for compatibility with existing applications.</p></div>
+            <div class="comment"><p><span class="first-word">BIO_set_callback</span> sets the legacy <tt>callback</tt> for <tt>bio</tt>. The same reference count note as <tt><a href="bio.h.html#BIO_set_callback_ex">BIO_set_callback_ex</a></tt> applies. When both <tt>callback</tt> and <tt>callback_ex</tt> are set, <tt>callback_ex</tt> will be used. Added for compatibility with existing applications.</p></div>
             <pre class="code">OPENSSL_EXPORT OPENSSL_DEPRECATED void BIO_set_callback(BIO *bio, BIO_callback_fn callback);</pre>
           </div>
         
@@ -1368,7 +1368,7 @@ typedef union bio_addr_st BIO_ADDR;</pre>
           </div>
         
           <div class="decl" id="BIO_ADDR_rawaddress">
-            <div class="comment"><p><span class="first-word">BIO_ADDR_rawaddress</span> retrieves the raw address data from a BIO_ADDR structure. The address data from <tt>ap</tt> is copied into the buffer <tt>p</tt> if <tt>p</tt> is not NULL. If <tt>l</tt> is not NULL, <tt>*l</tt> will be updated with the size of the address data. For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6 address; for AF_UNIX, the socket path. With AF_UNIX addresses, the buffer <tt>p</tt> must be large enough for both the path and a NUL terminator. The function will write the terminator to the buffer, but the length stored in <tt>*l</tt> excludes it. Returns 1 on success, 0 if the address family is unsupported or <tt>ap</tt> is NULL.</p></div>
+            <div class="comment"><p><span class="first-word">BIO_ADDR_rawaddress</span> retrieves the raw address data from a BIO_ADDR structure. The address data from <tt>ap</tt> is copied into the buffer <tt>p</tt> if <tt>p</tt> is not NULL. If <tt>l</tt> is not NULL, <tt>*l</tt> will be updated with the size of the address data. For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6 address; for AF_UNIX, the socket path followed by a NUL terminator. The length stored in <tt>*l</tt> includes the NUL for AF_UNIX so that it matches the number of bytes written to <tt>p</tt>. Returns 1 on success, 0 if the address family is unsupported or <tt>ap</tt> is NULL.</p></div>
             <pre class="code">OPENSSL_EXPORT int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l);</pre>
           </div>
         

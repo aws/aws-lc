@@ -356,7 +356,7 @@
 
         
           <div class="decl" id="EVP_DigestInit_ex">
-            <div class="comment"><p><span class="first-word">EVP_DigestInit_ex</span> configures <tt>ctx</tt>, which must already have been initialised, for a fresh hashing operation using <tt>type</tt>. It returns one on success and zero on allocation failure.</p></div>
+            <div class="comment"><p><span class="first-word">EVP_DigestInit_ex</span> configures <tt>ctx</tt>, which must already have been initialised, for a fresh hashing operation using <tt>type</tt>. It returns one on success and zero on allocation failure.</p><p><span class="first-word">On</span> failure, <tt>ctx</tt> must be released with <tt>EVP_MD_CTX_[cleanup,free]</tt>.</p></div>
             <pre class="code">OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
                                      ENGINE *engine);</pre>
           </div>

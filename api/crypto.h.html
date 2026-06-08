@@ -52,6 +52,8 @@
           
             <li><a href="#FIPS_is_entropy_cpu_jitter"><tt>FIPS_is_entropy_cpu_jitter</tt></a></li>
           
+            <li><a href="#FIPS_version"><tt>FIPS_version</tt></a></li>
+          
             
           
             <li><a href="#OPENSSL_VERSION_TEXT"><tt>OPENSSL_VERSION_TEXT</tt></a></li>
@@ -227,6 +229,11 @@
           <div class="decl" id="FIPS_is_entropy_cpu_jitter">
             <div class="comment"><p><span class="first-word">FIPS_is_entropy_cpu_jitter</span> returns 1 if CPU jitter is used as the entropy source for AWS-LC. Otherwise, returns 0;</p></div>
             <pre class="code">OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_version">
+            <div class="comment"><p><span class="first-word">FIPS_version</span> returns the FIPS version number of the current build, independent of the AWS-LC version number. It returns 0 when AWS-LC is not built in FIPS mode.</p></div>
+            <pre class="code">OPENSSL_EXPORT uint32_t FIPS_version(void);</pre>
           </div>
         
           <div class="decl" >

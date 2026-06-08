@@ -13,7 +13,7 @@
       <a href="headers.html">All headers</a>
     </div>
 
-    <div class="comment"><p><span class="first-word">Legacy</span> X.509 library.</p><p><span class="first-word">This</span> header is part of OpenSSL&#39;s X.509 implementation. It is retained for compatibility but should not be used by new code. The functions are difficult to use correctly, and have buggy or non-standard behaviors. They are thus particularly prone to behavior changes and API removals, as BoringSSL iterates on these issues.</p><p><span class="first-word">In</span> the future, a replacement library will be available. Meanwhile, minimize dependencies on this header where possible.</p></div>
+    <div class="comment"><p><span class="first-word">Legacy</span> X.509 library.</p><p><span class="first-word">This</span> header is part of OpenSSL&#39;s X.509 implementation. It is retained for compatibility but should not be used by new code. The functions are difficult to use correctly, and have buggy or non-standard behaviors. They are thus particularly prone to behavior changes and API removals, as BoringSSL iterates on these issues.</p><p><span class="first-word">In</span> the future, a replacement library will be available. Meanwhile, minimize dependencies on this header where possible.</p><p><span class="first-word">Thread</span> safety: Unlike other objects in this library, <tt>X509</tt> objects are not yet safe for concurrent use by non-mutating functions (see https://crbug.com/boringssl/407). Callers must not concurrently read and mutate the same <tt>X509</tt> object without external synchronization.</p></div>
 
     <ol class="toc">
       

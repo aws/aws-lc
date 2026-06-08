@@ -299,6 +299,8 @@
         
           
           
+            <li><a href="#EVP_PKEY_CTX_set1_signature_context_string"><tt>EVP_PKEY_CTX_set1_signature_context_string</tt></a></li>
+          
             <li><a href="#EVP_PKEY_CTX_set_signature_context"><tt>EVP_PKEY_CTX_set_signature_context</tt></a></li>
           
             <li><a href="#EVP_PKEY_CTX_get0_signature_context"><tt>EVP_PKEY_CTX_get0_signature_context</tt></a></li>
@@ -348,6 +350,8 @@
           
             <li><a href="#EVP_PKEY_kem_check_key"><tt>EVP_PKEY_kem_check_key</tt></a></li>
           
+            <li><a href="#EVP_PKEY_kem_get_type"><tt>EVP_PKEY_kem_get_type</tt></a></li>
+          
             
           
             <li><a href="#EVP_PKEY_CTX_pqdsa_set_params"><tt>EVP_PKEY_CTX_pqdsa_set_params</tt></a></li>
@@ -374,6 +378,8 @@
             <li><a href="#EVP_PKEY_asn1_find_str"><tt>EVP_PKEY_asn1_find_str</tt></a></li>
           
             <li><a href="#EVP_PKEY_asn1_get0_info"><tt>EVP_PKEY_asn1_get0_info</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_get_private_seed"><tt>EVP_PKEY_get_private_seed</tt></a></li>
           
         
       
@@ -1221,15 +1227,22 @@
         
 
         
+          <div class="decl" id="EVP_PKEY_CTX_set1_signature_context_string">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set1_signature_context_string</span> sets <tt>context</tt> of length <tt>context_len</tt> to be used as the context octet string for the signing operation. <tt>context</tt> will be copied to an internal buffer allowing for the caller to free it afterwards.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> and EVP_PKEY_PQDSA are the key types that currently support setting a signature context. For Ed25519ph, the context is used in computing the HashEdDSA signature. For ML-DSA (PQDSA), the context string is used per FIPS 204 sections 5.2-5.3. The maximum context length is 255 bytes. Note: for ML-DSA, the context string is only used with <tt><a href="evp.h.html#EVP_DigestSign">EVP_DigestSign</a></tt>/<tt><a href="evp.h.html#EVP_DigestVerify">EVP_DigestVerify</a></tt> (message signing). It is not permitted and will return an error when using <tt><a href="evp.h.html#EVP_PKEY_sign">EVP_PKEY_sign</a></tt>/<tt><a href="evp.h.html#EVP_PKEY_verify">EVP_PKEY_verify</a></tt> (digest signing), because the pre-hashed <tt>mu</tt> input already encodes the context per FIPS 204 section 5.3.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);</pre>
+          </div>
+        
           <div class="decl" id="EVP_PKEY_CTX_set_signature_context">
-            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_signature_context</span> sets <tt>context</tt> of length <tt>context_len</tt> to be used as the context octet string for the signing operation. <tt>context</tt> will be copied to an internal buffer allowing for the caller to free it afterwards.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> is the only key type that currently supports setting a a signature context that is used in computing the HashEdDSA signature.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_set_signature_context</span> is the previous name for <tt><a href="evp.h.html#EVP_PKEY_CTX_set1_signature_context_string">EVP_PKEY_CTX_set1_signature_context_string</a></tt>. It is retained for backward compatibility.</p></div>
             <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
                                                       const uint8_t *context,
                                                       size_t context_len);</pre>
           </div>
         
           <div class="decl" id="EVP_PKEY_CTX_get0_signature_context">
-            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get0_signature_context</span> sets <tt>*context</tt> to point to the internal buffer containing the signing context octet string (which may be NULL) and writes the length to <tt>*context_len</tt>.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> is the only key type that currently supports retrieving a a signature context that is used in computing the HashEdDSA signature.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
+            <div class="comment"><p><span class="first-word">EVP_PKEY_CTX_get0_signature_context</span> sets <tt>*context</tt> to point to the internal buffer containing the signing context octet string (which may be NULL) and writes the length to <tt>*context_len</tt>.</p><p><span class="first-word">EVP_PKEY_ED25519PH</span> and EVP_PKEY_PQDSA are the key types that currently support retrieving a signature context.</p><p><span class="first-word">It</span> returns one on success or zero on error.</p></div>
             <pre class="code">OPENSSL_EXPORT int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
                                                        const uint8_t **context,
                                                        size_t *context_len);</pre>
@@ -1362,6 +1375,11 @@
             <pre class="code">OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);</pre>
           </div>
         
+          <div class="decl" id="EVP_PKEY_kem_get_type">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_kem_get_type</span> returns the <tt>nid</tt> of the configured KEM key in <tt>pkey</tt>. If <tt>pkey</tt> is not of type <tt><a href="evp.h.html#EVP_PKEY_KEM">EVP_PKEY_KEM</a></tt>, it returns 0 and pushes <tt>EVP_R_EXPECTING_A_KEM_KEY</tt> onto the error queue. If <tt>pkey</tt> is of type <tt><a href="evp.h.html#EVP_PKEY_KEM">EVP_PKEY_KEM</a></tt> but has no underlying KEM key attached, it returns 0 and pushes <tt>EVP_R_NO_PARAMETERS_SET</tt> onto the error queue. <tt>pkey</tt> must not be NULL.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey);</pre>
+          </div>
+        
           <div class="decl" >
             <div class="comment"><p><span class="first-word">PQDSA</span> specific functions.</p></div>
             
@@ -1428,6 +1446,12 @@
                                            int *ppkey_flags, const char **pinfo,
                                            const char **ppem_str,
                                            const EVP_PKEY_ASN1_METHOD *ameth);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_get_private_seed">
+            <div class="comment"><p><span class="first-word">EVP_PKEY_get_private_seed</span> returns the seed representation of the private key for the key type configured in <tt>key</tt>. If <tt>out</tt> is NULL, it sets <tt>*out_len</tt> to the size of the seed. Otherwise, it writes at most <tt>*out_len</tt> bytes to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written.</p><p><span class="first-word">Return</span> 1 on success and 0 otherwise.</p><p><span class="first-word">Note,</span> the private key might not have a seed representation configured. In this case, the operation is unsupported and 0 is returned.</p></div>
+            <pre class="code">OPENSSL_EXPORT int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len);</pre>
           </div>
         
         </div>
