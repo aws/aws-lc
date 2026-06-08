@@ -1495,10 +1495,6 @@ if(BUILD_TESTING)
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
-      if(NOT TEST_RESULTS_LABEL)
-        set(TEST_RESULTS_LABEL "${CMAKE_BUILD_TYPE}")
-      endif()
-
       add_custom_target(
           run_tests
           COMMAND ${CMAKE_COMMAND} -E echo
