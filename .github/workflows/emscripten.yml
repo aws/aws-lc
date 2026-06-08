@@ -21,10 +21,10 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -34,7 +34,7 @@ jobs:
           sudo apt-get -y --no-install-recommends install cmake ninja-build
 
       - name: Setup Emscripten SDK
-        uses: mymindstorm/setup-emsdk@v14
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: ${{ env.EMSDK_VERSION }}
 

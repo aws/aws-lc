@@ -119,6 +119,15 @@ UniquePtr<X509> GetLeafRoot();
 UniquePtr<X509> GetED25519TestCertificate();
 UniquePtr<EVP_PKEY> GetED25519TestKey();
 
+// Test fixtures sourced from draft-ietf-lamps-dilithium-certificates examples
+// (https://github.com/lamps-wg/dilithium-certificates/tree/main/examples).
+UniquePtr<X509> GetMLDSA44TestCertificate();
+UniquePtr<EVP_PKEY> GetMLDSA44TestKey();
+UniquePtr<X509> GetMLDSA65TestCertificate();
+UniquePtr<EVP_PKEY> GetMLDSA65TestKey();
+UniquePtr<X509> GetMLDSA87TestCertificate();
+UniquePtr<EVP_PKEY> GetMLDSA87TestKey();
+
 bool ExpectSingleError(int lib, int reason);
 
 UniquePtr<X509> X509FromBuffer(UniquePtr<CRYPTO_BUFFER> buffer);

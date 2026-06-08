@@ -36,7 +36,7 @@ jobs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
       ubuntu2204_sde: ${{ steps.images.outputs.ubuntu2204_sde }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -50,8 +50,8 @@ jobs:
           echo ubuntu2204=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
           echo ubuntu2204_sde=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2204
           context: ./.github/docker_images/aws-lc/ubuntu
@@ -60,7 +60,7 @@ jobs:
           target: ubuntu2204
           tags: ${{ steps.images.outputs.ubuntu2204 }}
           push: true
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2204
           context: ./.github/docker_images/aws-lc/ubuntu
@@ -197,7 +197,7 @@ jobs:
     outputs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -210,8 +210,8 @@ jobs:
         run: |
           echo ubuntu2204=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+        uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2204
           context: ./.github/docker_images/aws-lc/ubuntu

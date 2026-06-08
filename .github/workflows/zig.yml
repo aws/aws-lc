@@ -7,6 +7,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   zig:
     if: github.repository_owner == 'aws'
@@ -21,7 +25,8 @@ jobs:
           - host: ubuntu-24.04-arm
             target_arch: aarch64
             target_system: Linux
-          - host: windows-latest
+          # Broken on windows-2025
+          - host: windows-2022
             target_arch: x86_64
             target_system: Windows
           - host: ubuntu-latest
@@ -35,7 +40,7 @@ jobs:
         if: matrix.config.target_arch == 'x86_64'
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install ninja-build tool
         uses: seanmiddleditch/gha-setup-ninja@v6
       - uses: actions/setup-go@v6
@@ -54,6 +59,49 @@ jobs:
           else
             echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
             echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
+          fi
+      - name: Self-test compiler wrapper
+        shell: bash
+        run: |
+          # Progressively probe zig + our wrapper so any regression surfaces
+          # here rather than being nested inside CMake's TryCompile harness:
+          #   1) zig runs at all on this host?          (`zig version`)
+          #   2) zig can report its environment?        (`zig env`)
+          #   3) zig can compile without linking?       (`-c hello.c`)
+          #   4) zig can compile+link trivially?        (`hello.c -o hello`)
+          #   5) zig can handle CMake's Windows link line? (full TryCompile args)
+          # Each step runs unconditionally (no `set -e`) so we see results from
+          # every stage even when an earlier one fails. The wrapper reports
+          # zig's real exit status (including 139 for SIGSEGV) on failure.
+          # Log the runner image up front so a `*-latest` rollover (or our own
+          # pin bump) is correlated with any new failure without having to dig
+          # through the collapsed "Set up job" group.
+          echo "=== runner image: ${ImageOS:-unknown} ${ImageVersion:-unknown} ==="
+          set -x
+          probe() {
+            echo "=== probe: $* ==="
+            "$@"
+            echo "=== probe exit: $? ==="
+          }
+
+          probe zig version
+          probe zig env
+
+          echo 'int main(void){return 0;}' > hello.c
+
+          probe "${ZIGCC}" -v -c hello.c -o hello.o
+
+          if [[ "${{ matrix.config.target_system }}" == "Windows" ]]; then
+            probe "${ZIGCC}" -v hello.c -o hello_trivial.exe
+            probe "${ZIGCC}" -v hello.c -o hello.exe \
+              -Wl,--out-implib,hello.dll.a \
+              -Wl,--major-image-version,0,--minor-image-version,0 \
+              -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 \
+              -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+            [[ -x ./hello.exe ]] && probe ./hello.exe
+          else
+            probe "${ZIGCC}" -v hello.c -o hello
+            [[ -x ./hello ]] && probe ./hello
           fi
       - name: Create toolchain
         shell: bash

@@ -28,7 +28,7 @@ TEST(SClientTest, Help) {
 
 // Test -connect, -verify, -showcerts
 TEST(SClientTest, ConnectVerifyShowcerts) {
-  args_list_t args = {"-connect", "amazon.com:443", "-verify", "99"};
+  args_list_t args = {"-connect", "amazon.com:443", "-verify", "99", "-showcerts"};
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }

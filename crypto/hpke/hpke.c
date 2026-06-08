@@ -13,6 +13,7 @@
 #include <openssl/err.h>
 #include <openssl/evp_errors.h>
 #include <openssl/hkdf.h>
+#include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
@@ -126,11 +127,13 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
   uint8_t suite_id[5] = {'K', 'E', 'M', kem_id >> 8, kem_id & 0xff};
   uint8_t prk[EVP_MAX_MD_SIZE];
   size_t prk_len;
-  return hpke_labeled_extract(hkdf_md, prk, &prk_len, NULL, 0, suite_id,
+  int ret = hpke_labeled_extract(hkdf_md, prk, &prk_len, NULL, 0, suite_id,
                               sizeof(suite_id), "eae_prk", dh, dh_len) &&
          hpke_labeled_expand(hkdf_md, out_key, out_len, prk, prk_len, suite_id,
                              sizeof(suite_id), "shared_secret", kem_context,
                              kem_context_len);
+  OPENSSL_cleanse(prk, sizeof(prk));
+  return ret;
 }
 
 static int x25519_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,

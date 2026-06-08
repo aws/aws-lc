@@ -340,7 +340,9 @@ static int x509_name_canon(X509_NAME *a) {
 
   a->canon_enc = p;
 
-  i2d_name_canon(intname, &p);
+  if (i2d_name_canon(intname, &p) < 0) {
+    goto err;
+  }
 
   ret = 1;
 

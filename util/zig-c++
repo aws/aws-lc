@@ -38,4 +38,43 @@ for arg in "$@"; do
     esac
 done
 
-exec zig c++ -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}"
+# On macOS we compile with `zig c++` but link with `/usr/bin/c++`, because
+# zig's self-hosted MachO linker segfaults (see toolchain.cmake overrides
+# in zig.yml). That split means compile-time and link-time libc++ ABIs
+# must stay in sync. Starting with LLVM 21, libc++ out-of-lines helpers
+# like std::__1::__hash_memory into the dylib; zig versions shipping a
+# newer libc++ than the system's /usr/bin/c++ would then emit object
+# files referencing symbols the system libc++ can't resolve.
+#
+# The Apple build of libc++ handles exactly this via a vendor-availability
+# mechanism: when _LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS is 1 the
+# headers define each _LIBCPP_INTRODUCED_IN_LLVM_<N> macro to 0 for
+# versions not yet shipped in the platform's dylib, causing the affected
+# helpers to be inlined in the header instead of referenced as dylib
+# exports. Zig's libc++ defaults this macro to 0, so we force it on for
+# Darwin targets. This is a no-op on zig versions whose libc++ LLVM
+# version is already covered by the system dylib, and prevents a linker
+# failure on any newer zig version whose libc++ is ahead of the runner's.
+# -U first to avoid -Wmacro-redefined.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    filtered_args=(
+        -U_LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS
+        -D_LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS=1
+        "${filtered_args[@]}"
+    )
+fi
+
+# Merge stderr into stdout and print the invocation on failure so CI logs
+# always surface zig's diagnostic even when something in the cmd.exe ->
+# bash -> zig chain drops stderr (observed on windows-11-arm previously).
+#
+# Capture rc via `|| rc=$?` rather than `if ! ...; then rc=$?` because the
+# latter makes $? reflect the negated if-test result (0/1) instead of zig's
+# real exit status (e.g. 139 for SIGSEGV).
+rc=0
+zig c++ -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}" 2>&1 || rc=$?
+if [[ "${rc}" -ne 0 ]]; then
+    echo "zig-c++: zig exited with status ${rc}" >&2
+    echo "zig-c++: invocation was: zig c++ ${filtered_args[*]}" >&2
+    exit "${rc}"
+fi

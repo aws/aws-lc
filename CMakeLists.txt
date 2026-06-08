@@ -5,7 +5,8 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.72.0")
+set(SOFTWARE_VERSION "5.0.0")
+set(AWSLC_FIPS_VERSION 4)
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -49,6 +50,13 @@ include(sources.cmake)
 include(TestBigEndian)
 include(CheckCCompilerFlag)
 
+message(STATUS "Versioning name:${SOFTWARE_NAME} version:${SOFTWARE_VERSION} abi:${ABI_VERSION}")
+if(BUILD_LIBSSL)
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME} ssl:${SSL_LIB_NAME}")
+else()
+  message(STATUS "Libraries crypto:${CRYPTO_LIB_NAME}")
+endif()
+
 macro(add_flag_if_supported VARIABLE FLAG)
   # Create a safe, unique variable name to cache the result of the check
   string(MAKE_C_IDENTIFIER "HAVE_C_FLAG_${FLAG}" _CHECK_VAR_NAME)
@@ -86,6 +94,7 @@ if(ENABLE_DIST_PKG)
   else()
     set(SET_LIB_SONAME 1)
     set(COHABITANT_HEADERS 1)
+    set(COHABITANT_BINARIES 1)
     if(ENABLE_DIST_PKG_OPENSSL_SHIM)
       set(INSTALL_OPENSSL_SHIM 1)
     else()
@@ -95,15 +104,18 @@ if(ENABLE_DIST_PKG)
 elseif(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
   set(SET_LIB_SONAME 1)
   set(COHABITANT_HEADERS 0)
+  set(COHABITANT_BINARIES 0)
   set(INSTALL_OPENSSL_SHIM 1)
 else()
   set(SET_LIB_SONAME 0)
   set(COHABITANT_HEADERS 0)
+  set(COHABITANT_BINARIES 0)
   set(INSTALL_OPENSSL_SHIM 1)
 endif()
 
 message(STATUS "SET_LIB_SONAME: ${SET_LIB_SONAME}")
 message(STATUS "COHABITANT_HEADERS: ${COHABITANT_HEADERS}")
+message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 message(STATUS "INSTALL_OPENSSL_SHIM: ${INSTALL_OPENSSL_SHIM}")
 
 if(SET_LIB_SONAME)
@@ -132,6 +144,13 @@ if(COHABITANT_HEADERS)
   set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/aws-lc")
 else()
   set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
+
+# Set the install bin prefix based on whether cohabitation is desired
+if(COHABITANT_BINARIES)
+  set(AWSLC_BIN_PREFIX "aws-lc-")
+else()
+  set(AWSLC_BIN_PREFIX "")
 endif()
 
 function(target_add_awslc_include_paths)
@@ -198,13 +217,14 @@ if(GENERATE_RUST_BINDINGS)
   message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
   message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
 
-  # Check for rustfmt (required for --formatter rustfmt option)
+  # Check for rustfmt (optional: used to format the generated bindings if available)
   find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
-  if(NOT RUSTFMT_EXECUTABLE)
-    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
-                        "Install it with: rustup component add rustfmt")
+  if(RUSTFMT_EXECUTABLE)
+    message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+  else()
+    message(STATUS "rustfmt not found; generated Rust bindings will not be formatted. "
+                   "Install it with: rustup component add rustfmt")
   endif()
-  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
 endif()
 
 if(DISABLE_CPU_JITTER_ENTROPY)
@@ -849,9 +869,12 @@ if(WIN32)
   # Allow use of fopen.
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   # VS 2017 and higher supports STL-only warning suppressions.
-  # A bug in CMake < 3.13.0 may cause the space in this value to
-  # cause issues when building with NASM. In that case, update CMake.
-  add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
+  # _STL_EXTRA_DISABLED_WARNINGS is only consumed by MSVC STL headers,
+  # so scope the definition to C++. Using add_compile_options with a
+  # CMake-escaped space keeps the value as a single argument under
+  # Ninja + clang-cl, where add_definitions with a space-containing
+  # value is not quoted robustly (see aws/aws-lc-rs#981).
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-D_STL_EXTRA_DISABLED_WARNINGS=4774\ 4987>)
 endif()
 
 add_flag_if_supported(C_CXX_FLAGS "-Wshadow")

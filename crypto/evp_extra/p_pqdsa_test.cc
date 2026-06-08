@@ -2061,6 +2061,177 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   md_ctx_verify.Reset();
 }
 
+TEST_P(PQDSAParameterTest, ContextString) {
+  // ---- 1. Setup: generate key pair ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+  ASSERT_TRUE(pkey);
+
+  std::vector<uint8_t> msg = {0x48, 0x65, 0x6c, 0x6c, 0x6f};  // "Hello"
+  uint8_t ctx_bytes[] = {0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74};  // "Context"
+
+  // ---- 2. Sign with context, verify with same context ----
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+
+  // Verify the context can be read back correctly.
+  const uint8_t *read_ctx = nullptr;
+  size_t read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_NE(read_ctx, ctx_bytes);  // Must be an internal copy.
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
+
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
+                             msg.size()));
+  std::vector<uint8_t> sig(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
+                             msg.size()));
+
+  bssl::ScopedEVP_MD_CTX md_ctx_verify;
+  EVP_PKEY_CTX *verify_pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  // Exercise the backward-compatible |EVP_PKEY_CTX_set_signature_context|
+  // wrapper on the verify side to ensure both setter names stay functional.
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(verify_pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                               msg.data(), msg.size()));
+
+  // ---- 3. Mismatched context string causes verification failure ----
+  md_ctx_verify.Reset();
+  verify_pkey_ctx = nullptr;
+  uint8_t wrong_ctx[] = {0x57, 0x72, 0x6f, 0x6e, 0x67};  // "Wrong"
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx, wrong_ctx,
+                                                  sizeof(wrong_ctx)));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                                msg.data(), msg.size()));
+
+  // ---- 4. Verify with no context fails for signature made with context ----
+  md_ctx_verify.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr,
+                                   nullptr, pkey.get()));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                                msg.data(), msg.size()));
+
+  // ---- 5. Default (empty context) remains unchanged ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+
+  // Verify default context is empty (NULL with length 0).
+  read_ctx = nullptr;
+  read_ctx_len = 1;  // Non-zero to confirm it gets set to 0.
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_EQ(read_ctx, nullptr);
+  ASSERT_EQ(read_ctx_len, (size_t)0);
+  std::vector<uint8_t> sig_no_ctx(sig_len);
+  size_t sig_no_ctx_len = sig_len;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_no_ctx.data(), &sig_no_ctx_len,
+                             msg.data(), msg.size()));
+
+  md_ctx_verify.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr,
+                                   nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig_no_ctx.data(),
+                               sig_no_ctx_len, msg.data(), msg.size()));
+
+  // ---- 6. Context string > 255 bytes is rejected ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  uint8_t long_ctx[256];
+  OPENSSL_memset(long_ctx, 0x41, sizeof(long_ctx));
+  ASSERT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, long_ctx,
+                                                   sizeof(long_ctx)));
+
+  // ---- 7. Max length context (255 bytes) round-trip sign + verify ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  uint8_t max_ctx[255];
+  OPENSSL_memset(max_ctx, 0x42, sizeof(max_ctx));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, max_ctx,
+                                                  sizeof(max_ctx)));
+  sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
+                             msg.size()));
+  std::vector<uint8_t> sig_max_ctx(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_max_ctx.data(), &sig_len,
+                             msg.data(), msg.size()));
+
+  md_ctx_verify.Reset();
+  verify_pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx,
+                                                  max_ctx, sizeof(max_ctx)));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig_max_ctx.data(),
+                               sig_len, msg.data(), msg.size()));
+
+  // ---- 8. EVP_PKEY_CTX_dup preserves the context ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+  bssl::UniquePtr<EVP_PKEY_CTX> dup_ctx(EVP_PKEY_CTX_dup(pkey_ctx));
+  ASSERT_TRUE(dup_ctx);
+
+  read_ctx = nullptr;
+  read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(dup_ctx.get(), &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
+
+  // ---- 9. Context is rejected on the EVP_PKEY_sign/verify digest path ----
+  // For ML-DSA, the pre-hashed |mu| input already encodes the context per
+  // FIPS 204 section 5.3, so combining a configured context with the digest
+  // path must fail rather than be silently ignored.
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_sign_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_sign_ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(raw_sign_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_sign_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+
+  // |mu| is the 64-byte SHAKE256 output expected by the digest path; the
+  // context guard fires before any cryptographic check, so the contents
+  // don't need to be a valid mu for this test.
+  uint8_t mu[64] = {0};
+  size_t raw_sig_len = 0;
+  // Query the signature size (|sig == NULL| short-circuits before the guard).
+  ASSERT_TRUE(EVP_PKEY_sign(raw_sign_ctx.get(), nullptr, &raw_sig_len, mu,
+                            sizeof(mu)));
+  std::vector<uint8_t> raw_sig(raw_sig_len);
+  ASSERT_FALSE(EVP_PKEY_sign(raw_sign_ctx.get(), raw_sig.data(), &raw_sig_len,
+                             mu, sizeof(mu)));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_verify_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_verify_ctx);
+  ASSERT_TRUE(EVP_PKEY_verify_init(raw_verify_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_verify_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+  std::vector<uint8_t> dummy_sig(raw_sig_len, 0);
+  ASSERT_FALSE(EVP_PKEY_verify(raw_verify_ctx.get(), dummy_sig.data(),
+                               dummy_sig.size(), mu, sizeof(mu)));
+}
+
 TEST_P(PQDSAParameterTest, ParsePublicKey) {
   // Test the example public key kPublicKey encodes correctly as kPublicKeySPKI
   // Public key version of d2i_PrivateKey as part of the EVPExtraTest Gtest
@@ -2211,6 +2382,90 @@ TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
 
   // ---- 4. Test that the calculated pk is equal to original pkey ----
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
+}
+
+TEST_P(PQDSAParameterTest, GetPrivateSeed) {
+  const int nid = GetParam().nid;
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.pqdsa_key->seed);
+  const size_t expected_seed_len =
+      pkey->pkey.pqdsa_key->pqdsa->keygen_seed_len;
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = expected_seed_len + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = expected_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &priv_der,
+                         &priv_der_len));
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  OPENSSL_free(priv_der);
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.pqdsa_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  const size_t sk_len = GetParam().private_key_len;
+  std::vector<uint8_t> sk(sk_len);
+  size_t sk_len_out = sk_len;
+  ASSERT_TRUE(
+      EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len_out));
+  bssl::UniquePtr<EVP_PKEY> expanded_pkey(
+      EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
+  ASSERT_TRUE(expanded_pkey);
+  ASSERT_EQ(expanded_pkey->pkey.pqdsa_key->seed, nullptr);
+
+  seed_len = expected_seed_len;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(expanded_pkey.get(), unused.data(),
+                                         &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  // Sanity NULL argument checks.
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
 }
 
 // ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
@@ -2551,91 +2806,23 @@ INSTANTIATE_TEST_SUITE_P(
       return params.param.name;
     });
 
-// ComputeMLDSAExternalMu formats |pk|, |ctx|, and |msg_ctx| to the ExternalMu
-// format expected by |EVP_PKEY_verify|. For more information, see the docstring
-// for |EVP_PKEY_verify|.
-//
-// It returns true on success and false on error.
-static bool ComputeMLDSAExternalMu(const std::vector<uint8_t> &pk,
-                                   const std::vector<uint8_t> &msg_ctx,
-                                   const std::vector<uint8_t> &msg,
-                                   std::vector<uint8_t> &mu_out) {
-  // Ensure |msg_ctx| <= 255 to be representable by a uint8
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#algorithm.4
-  if (msg_ctx.size() > 255) {
-    return false;
-  }
-
-  // Compute tr = SHAKE256(pk)
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#algorithm.8
-  std::vector<uint8_t> tr(64);
-  bssl::ScopedEVP_MD_CTX md_ctx_pk;
-  if (!EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr) ||
-      !EVP_DigestUpdate(md_ctx_pk.get(), pk.data(), pk.size()) ||
-      !EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), tr.size())) {
-    return false;
-  }
-
-  // Compute mu = SHAKE256(tr || 0 || |msg_ctx| || msg_ctx || M)
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#subsection.5.3
-  mu_out.resize(64);
-  bssl::ScopedEVP_MD_CTX md_ctx_mu;
-  if (!EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr) ||
-      !EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), tr.size())) {
-    return false;
-  }
-
-  // Add 0 byte for "pure" mode, distinguished from "pre-hash" mode
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#subsection.5.4
-  uint8_t zero = 0;
-  if (!EVP_DigestUpdate(md_ctx_mu.get(), &zero, 1)) {
-    return false;
-  }
-
-  // Add |msg_ctx|, msg_ctx, and msg, in that order
-  uint8_t ctx_len = static_cast<uint8_t>(msg_ctx.size());
-  if (!EVP_DigestUpdate(md_ctx_mu.get(), &ctx_len, 1)) {
-    return false;
-  }
-  if (!msg_ctx.empty() &&
-      !EVP_DigestUpdate(md_ctx_mu.get(), msg_ctx.data(), msg_ctx.size())) {
-    return false;
-  }
-  if (!EVP_DigestUpdate(md_ctx_mu.get(), msg.data(), msg.size()) ||
-      !EVP_DigestFinalXOF(md_ctx_mu.get(), mu_out.data(), mu_out.size())) {
-    return false;
-  }
-
-  return true;
-}
-
 // VerifyMLDSAWithContext verifies that |sig| is a valid signature for |msg|
-// with context |msg_ctx|. We need this wrapper because |EVP_DigestVerify| does
-// not support verification with contexts.
+// with context |msg_ctx| using the EVP_DigestVerify path with
+// EVP_PKEY_CTX_set1_signature_context_string.
 //
 // It returns one on success and zero on error.
 static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
-                                  const std::vector<uint8_t> &pk,
                                   const std::vector<uint8_t> &sig,
                                   const std::vector<uint8_t> &msg,
                                   const std::vector<uint8_t> &msg_ctx) {
-  // If there's a non-empty context string, do ExternalMu verification
-  if (!msg_ctx.empty()) {
-    std::vector<uint8_t> mu;
-    if (!ComputeMLDSAExternalMu(pk, msg_ctx, msg, mu)) {
-      return 0;
-    }
-    bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new(pkey, nullptr));
-    if (!pkey_ctx || !EVP_PKEY_verify_init(pkey_ctx.get())) {
-      return 0;
-    }
-    return EVP_PKEY_verify(pkey_ctx.get(), sig.data(), sig.size(), mu.data(),
-                           mu.size());
-  }
-
-  // Otherwise, do standard verification
   bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!EVP_DigestVerifyInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  if (!EVP_DigestVerifyInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr, pkey)) {
+    return 0;
+  }
+  if (!msg_ctx.empty() &&
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
+                                          msg_ctx.size())) {
     return 0;
   }
   return EVP_DigestVerify(md_ctx.get(), sig.data(), sig.size(), msg.data(),
@@ -2643,33 +2830,21 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
 }
 
 // SignMLDSAWithContext produces a signature |sig| for message |msg| with
-// context |msg_ctx|. We need this wrapper because |EVP_DigestSign| does not
-// support signing with contexts.
+// context |msg_ctx| using the EVP_DigestSign path with
+// EVP_PKEY_CTX_set1_signature_context_string.
 //
 // It returns one on success and zero on error.
 static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
-                                const std::vector<uint8_t> &pk,
                                 const std::vector<uint8_t> &msg,
                                 const std::vector<uint8_t> &msg_ctx) {
-  // If there's a non-empty context string, do ExternalMu signing
-  if (!msg_ctx.empty()) {
-    std::vector<uint8_t> mu;
-    if (!ComputeMLDSAExternalMu(pk, msg_ctx, msg, mu)) {
-      return 0;
-    }
-    bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new(pkey, nullptr));
-    if (!pkey_ctx || !EVP_PKEY_sign_init(pkey_ctx.get())) {
-      return 0;
-    }
-
-    size_t sig_len = sig.size();
-    return EVP_PKEY_sign(pkey_ctx.get(), sig.data(), &sig_len, mu.data(),
-                         mu.size());
-  }
-
-  // Otherwise, do standard signing
   bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  if (!EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr, pkey)) {
+    return 0;
+  }
+  if (!msg_ctx.empty() &&
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
+                                          msg_ctx.size())) {
     return 0;
   }
   size_t sig_len = sig.size();
@@ -2724,7 +2899,7 @@ TEST_P(WycheproofMLDSATest, Verify) {
     ASSERT_TRUE(EVP_PKEY_cmp(pub_pkey_from_raw.get(), pub_pkey_from_der.get()));
 
     int verify_result =
-        VerifyMLDSAWithContext(pub_pkey_from_der.get(), pk, sig, msg, msg_ctx);
+        VerifyMLDSAWithContext(pub_pkey_from_der.get(), sig, msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(verify_result)
           << "Signature verification failed for valid test case";
@@ -2789,7 +2964,7 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     std::vector<uint8_t> sig(expected_sig.size());
     EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
     int sign_result =
-        SignMLDSAWithContext(signing_key, sig, pk, msg, msg_ctx);
+        SignMLDSAWithContext(signing_key, sig, msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
@@ -2836,7 +3011,7 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
 
     std::vector<uint8_t> sig(expected_sig.size());
     int sign_result = SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig,
-                                           pk, msg, msg_ctx);
+                                           msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
