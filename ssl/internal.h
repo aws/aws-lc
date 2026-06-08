@@ -3857,6 +3857,9 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
 
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
+
   int verify_mode = SSL_VERIFY_NONE;
   int (*default_verify_callback)(int ok, X509_STORE_CTX *ctx) =
       nullptr;  // called 'verify_callback' in the SSL
@@ -4110,6 +4113,9 @@ struct ssl_st {
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
+
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
 
   // session info
 

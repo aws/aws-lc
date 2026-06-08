@@ -2665,5 +2665,66 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+static int test_security_callback(const SSL *ssl, const SSL_CTX *ctx, int op,
+                                  int bits, int nid, void *other, void *ex) {
+  return 1;
+}
+
+TEST(SSLTest, SecurityCallback) {
+  SSL_security_callback cb = test_security_callback;
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Initially no callback is set.
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), nullptr);
+
+  // Set and retrieve the callback on SSL_CTX.
+  SSL_CTX_set_security_callback(ctx.get(), cb);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), cb);
+
+  // Set and retrieve ex_data on SSL_CTX.
+  int dummy_data = 42;
+  SSL_CTX_set0_security_ex_data(ctx.get(), &dummy_data);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), &dummy_data);
+
+  // SSL_new propagates the callback and ex_data from SSL_CTX.
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &dummy_data);
+
+  // Per-SSL overrides.
+  SSL_set_security_callback(ssl.get(), nullptr);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+  SSL_set_security_callback(ssl.get(), cb);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
+
+  // Set and retrieve ex_data on SSL.
+  int ssl_dummy_data = 99;
+  SSL_set0_security_ex_data(ssl.get(), &ssl_dummy_data);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &ssl_dummy_data);
+
+  // Setting NULL callback is allowed.
+  SSL_CTX_set_security_callback(ctx.get(), nullptr);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  SSL_set_security_callback(ssl.get(), nullptr);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+
+  // NULL SSL_CTX is handled gracefully.
+  SSL_CTX_set_security_callback(nullptr, cb);
+  EXPECT_EQ(SSL_CTX_get_security_callback(nullptr), nullptr);
+  SSL_CTX_set0_security_ex_data(nullptr, &dummy_data);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(nullptr), nullptr);
+
+  // NULL SSL is handled gracefully.
+  SSL_set_security_callback(nullptr, cb);
+  EXPECT_EQ(SSL_get_security_callback(nullptr), nullptr);
+  SSL_set0_security_ex_data(nullptr, &ssl_dummy_data);
+  EXPECT_EQ(SSL_get0_security_ex_data(nullptr), nullptr);
+}
+OPENSSL_END_ALLOW_DEPRECATED
+
 }  // namespace
 BSSL_NAMESPACE_END

@@ -6,6 +6,10 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
+# AWS_LC_NO_SLOW_TESTS: when set to "1", reduces test scope on all platforms.
+# - ARM64: skips disabled (slow) tests
+# - x86-64: skips FIPS build configurations
+
 if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     # ARM64 platforms are tested via emulation.
     # We narrow testing to libcrypto to avoid exceeding 1 hour duration
@@ -15,7 +19,11 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
 
     run_build all
 
-    shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+    if [[ "${AWS_LC_NO_SLOW_TESTS:-0}" == "0" ]]; then
+        shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+    else
+        shard_gtest ${BUILD_ROOT}/crypto/crypto_test
+    fi
     shard_gtest ${BUILD_ROOT}/crypto/urandom_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
@@ -39,6 +47,11 @@ build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 echo "Testing AWS-LC static library in release mode."
 build_and_test -DCMAKE_BUILD_TYPE=Release
+
+if [[ "${AWS_LC_NO_SLOW_TESTS:-0}" != "0" ]]; then
+    echo "AWS_LC_NO_SLOW_TESTS is set, skipping FIPS builds."
+    exit 0
+fi
 
 # The FIPS builds fail on NetBSD
 if [[ "$KERNEL_NAME" != "NetBSD" ]]; then

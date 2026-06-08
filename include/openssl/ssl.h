@@ -5995,6 +5995,68 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_get_security_level(
 OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_level(
     const SSL_CTX *ctx, int level);
 
+// SSL_get_security_level returns 0. This is only to maintain compatibility
+// with OpenSSL. See |SSL_CTX_get_security_level|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_security_level(const SSL *ssl);
+
+// SSL_set_security_level does nothing. See documentation in
+// |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_level(const SSL *ssl,
+                                                              int level);
+
+// SSL_security_callback is the type of a security callback function set via
+// |SSL_CTX_set_security_callback| or |SSL_set_security_callback|. In OpenSSL,
+// this callback is invoked to make security decisions based on the configured
+// security level. In AWS-LC, security levels are not supported and the callback
+// is never invoked, so any restrictions the callback would have enforced are
+// silently bypassed. These functions are provided only for API compatibility.
+typedef int (*SSL_security_callback)(const SSL *ssl, const SSL_CTX *ctx,
+                                     int op, int bits, int nid, void *other,
+                                     void *ex);
+
+// SSL_CTX_set_security_callback stores |cb| on |ctx| but never invokes it.
+// AWS-LC never invokes the callback, so any restrictions the callback would
+// have enforced are silently bypassed.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_callback(
+    SSL_CTX *ctx, SSL_security_callback cb);
+
+// SSL_CTX_get_security_callback returns the callback previously set with
+// |SSL_CTX_set_security_callback|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_CTX_get_security_callback(const SSL_CTX *ctx);
+
+// SSL_CTX_set0_security_ex_data stores |ex| on |ctx| for use by a security
+// callback. The data is never used internally.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set0_security_ex_data(
+    SSL_CTX *ctx, void *ex);
+
+// SSL_CTX_get0_security_ex_data returns the data previously set with
+// |SSL_CTX_set0_security_ex_data|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_CTX_get0_security_ex_data(
+    const SSL_CTX *ctx);
+
+// SSL_set_security_callback stores |cb| on |ssl| but never invokes it.
+// AWS-LC never invokes the callback, so any restrictions the callback would
+// have enforced are silently bypassed.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_callback(
+    SSL *ssl, SSL_security_callback cb);
+
+// SSL_get_security_callback returns the callback previously set with
+// |SSL_set_security_callback|, or the callback inherited from |SSL_CTX| if
+// none was set directly on the |SSL|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_get_security_callback(const SSL *ssl);
+
+// SSL_set0_security_ex_data stores |ex| on |ssl| for use by a security
+// callback. The data is never used internally.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set0_security_ex_data(SSL *ssl,
+                                                                 void *ex);
+
+// SSL_get0_security_ex_data returns the data previously set with
+// |SSL_set0_security_ex_data|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_get0_security_ex_data(
+    const SSL *ssl);
+
 
 // General No-op Functions [Deprecated].
 
