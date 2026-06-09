@@ -741,20 +741,25 @@ elseif(FIPS_SHARED)
     # (start and end), then partial-link the three pieces in order so
     # BORINGSSL_bcm_text_start/end bracket all BCM code.
     set(BCM_NAME bcm.o)
+    # These custom commands invoke the compiler directly (outside CMake's normal
+    # target compilation), so we must forward CMAKE_C_FLAGS manually. This is
+    # necessary for cross-compilation where the flags contain --target and
+    # system include paths (e.g. clang targeting MinGW).
+    separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
     add_custom_command(
-      OUTPUT fips_gnu_start.o
-      COMMAND ${CMAKE_C_COMPILER} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_gnu_start.o
+      OUTPUT fips_mingw_start.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
-      OUTPUT fips_gnu_end.o
-      COMMAND ${CMAKE_C_COMPILER} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_gnu_end.o
+      OUTPUT fips_mingw_end.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${CMAKE_LINKER} -r fips_gnu_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_gnu_end.o -o ${BCM_NAME}
-      DEPENDS fips_gnu_start.o fips_gnu_end.o bcm_library
+      COMMAND ${CMAKE_LINKER} -r fips_mingw_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_mingw_end.o -o ${BCM_NAME}
+      DEPENDS fips_mingw_start.o fips_mingw_end.o bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()
