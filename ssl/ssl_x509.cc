@@ -848,9 +848,55 @@ int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
   return ssl_cert_add1_chain_cert(ctx->cert.get(), x509);
 }
 
+// ssl_cert_append_extra_chain_cert appends |x509| to the slot whose key type
+// matches |x509|'s public key. See |SSL_CTX_add_extra_chain_cert|.
+static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
+  assert(cert->x509_method);
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
+  if (!buffer) {
+    return 0;
+  }
+
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return 0;
+  }
+  int slot_index = ssl_get_certificate_slot_index(pubkey.get());
+  if (slot_index < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return 0;
+  }
+
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[slot_index].chain;
+  if (chain != nullptr) {
+    if (!PushToStack(chain.get(), std::move(buffer))) {
+      return 0;
+    }
+  } else {
+    chain = new_leafless_chain();
+    if (!chain || !PushToStack(chain.get(), std::move(buffer))) {
+      chain.reset();
+      return 0;
+    }
+  }
+
+  X509_free(cert->x509_stash);
+  cert->x509_stash = x509;
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
+  return 1;
+}
+
 int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
   check_ssl_ctx_x509_method(ctx);
-  return SSL_CTX_add0_chain_cert(ctx, x509);
+  return ssl_cert_append_extra_chain_cert(ctx->cert.get(), x509);
 }
 
 int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {
