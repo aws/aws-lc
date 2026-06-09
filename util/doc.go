@@ -2,10 +2,11 @@
 
 // doc generates HTML files from the comments in header files.
 //
-// doc expects to be given the path to a JSON file via the --config option.
-// From that JSON (which is defined by the Config struct) it reads a list of
-// header file locations and generates HTML files for each in the current
-// directory.
+// doc reads a JSON config file (defined by the Config struct) for a list of
+// header file locations and generates HTML files. The config file is located
+// automatically relative to this source file, or can be overridden with
+// --config. Output is written to OutputDirectory from the config, or
+// overridden with --out.
 package main
 
 import (
@@ -956,14 +957,14 @@ func main() {
 	// Use --out if provided, otherwise fall back to config, resolved
 	// relative to the config file's location.
 	if len(*outputDir) == 0 {
+		if len(config.OutputDirectory) == 0 {
+			fmt.Printf("No output directory given by --out or OutputDirectory in config\n")
+			os.Exit(1)
+		}
 		*outputDir = config.OutputDirectory
 		if !filepath.IsAbs(*outputDir) {
 			*outputDir = filepath.Join(configDir, *outputDir)
 		}
-	}
-	if len(*outputDir) == 0 {
-		fmt.Printf("No output directory given by --out or OutputDirectory in config\n")
-		os.Exit(1)
 	}
 
 	if err := os.MkdirAll(*outputDir, 0777); err != nil {
