@@ -97,13 +97,24 @@ run_claude() {
 }
 
 
+readonly SECRET_PATTERNS='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|aws_secret_access_key|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
+
 scan_secrets() {
-  local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|aws_secret_access_key|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
-  if LC_ALL=C grep -E -i -q "${patterns}" "$@"; then
+  if LC_ALL=C grep -E -i -q "${SECRET_PATTERNS}" "$@"; then
     echo "::error::Potential secret detected in patch; refusing to open PR."
     exit 1
   fi
 }
+
+scrub_logs() {
+  for f in "$@"; do
+    [[ -f "$f" ]] || continue
+    local tmp="${f}.tmp"
+    sanitize_log < "$f" | LC_ALL=C sed -E "s/${SECRET_PATTERNS}/[REDACTED]/g" > "$tmp"
+    mv "$tmp" "$f"
+  done
+}
+
 
 open_pr() {
   local target="$1"
@@ -238,6 +249,7 @@ reason_integration_failure() {
 
     rc=0
     run_claude "${prompt}" "${work_dir}/claude-${attempt}.log" || rc=$?
+    scrub_logs "${work_dir}/claude-${attempt}.log"
 
     echo "::group::${target}: Claude transcript (attempt ${attempt})"
 
@@ -259,6 +271,14 @@ reason_integration_failure() {
   done
 
   echo "::warning::${target}: ${MAX_ATTEMPTS} transient Claude failures; giving up."
+}
+
+scrub_logs() {
+  local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
+  for f in "$@"; do
+    [[ -f "$f" ]] || continue
+    LC_ALL=C sed -E -i "s/${patterns}/[REDACTED]/g" "$f"
+  done
 }
 
 # Take the patch the reason step produced, scan it for leaked secrets, apply it

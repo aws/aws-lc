@@ -68,7 +68,7 @@ jobs:
         with:
           roleName: AwsLcGitHubActionIntegrationFailureReasoningRole
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code@2.1.161
+        run: npm install -g @anthropic-ai/claude-code@~2.1
       - name: Install Bash sandbox deps
         # Claude Code's sandbox feature needs bubblewrap (filesystem/process isolation)
         # and socat (relays Bash traffic through the proxy that enforces the

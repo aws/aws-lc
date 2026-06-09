@@ -426,6 +426,7 @@ jobs:
       # name ("postgres_patch"), we use the runner script path as the source of truth.
       - name: Get failed integration name and version
         id: autofix-target
+        # NOTICE: the 'schedule' check is required. Without it this step runs on every PR, triggering the downstream autofix workflow unnecessarily.
         if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         shell: bash
         run: |
@@ -441,15 +442,13 @@ jobs:
           integration=${integration%_integration} # Drop the _integration suffix to leave the bare integration name.
           version=${version//[\'\"]/} # Strip surrounding quotes (some matrix entries quote the version arg).
 
-          # openssh doesn't pass its branch on the command line as it reads it
-          # from the $OPENSSH_BRANCH env var, so grab the version from there.
-          [[ -z "$version" && "$integration" == "openssh" ]] && version="$OPENSSH_BRANCH"
           echo "integration=$integration" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
         env:
           run_command: ${{ matrix.run }}
 
       - name: Upload failed integration target
+        # NOTICE: the 'schedule' check is required. Without it this step runs on every PR, triggering the downstream autofix workflow unnecessarily.
         if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         uses: ./.github/actions/emit-autofix-target
         with:
