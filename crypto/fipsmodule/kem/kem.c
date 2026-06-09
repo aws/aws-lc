@@ -250,6 +250,10 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
   return key->kem;
 }
 
+const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key) {
+  return key->secret_key;
+}
+
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
   OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
@@ -348,6 +352,8 @@ static int kem_check_public_key(const KEM_KEY *key) {
     case NID_MLKEM1024:
       return ml_kem_1024_check_pk(key->public_key, key->kem->public_key_len) == 0;
     default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
   }
 }
@@ -361,6 +367,8 @@ static int kem_check_secret_key(const KEM_KEY *key) {
     case NID_MLKEM1024:
       return ml_kem_1024_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
     default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
   }
 }
@@ -419,33 +427,33 @@ cleanup:
 
 int KEM_check_key(const KEM_KEY *key) {
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
   if (key->kem == NULL || key->kem->method == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
   if (key->public_key == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PUBLIC_KEY);
     return 0;
   }
 
   if (!kem_check_public_key(key)) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PUBLIC_KEY);
     return 0;
   }
 
   if (key->secret_key != NULL) {
     if (!kem_check_secret_key(key)) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PRIVATE_KEY);
       return 0;
     }
 
     if (!kem_check_pct(key)) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_KEM_PCT_FAILED);
       return 0;
     }
   }
