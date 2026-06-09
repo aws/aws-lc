@@ -1163,7 +1163,7 @@ endif()
 
 # FIPS_SHARED's linker script does not collect per-symbol sections, which causes
 # `ld -r` to fail. Disable GNU-style section flags even when inherited from a
-# toolchain or CFLAGS.
+# toolchain or CFLAGS (e.g. Android CMake files, or a future MinGW default).
 if(FIPS_SHARED AND (GCC OR CLANG) AND NOT MSVC)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
@@ -1481,7 +1481,10 @@ endif()
 # via Web Workers and SharedArrayBuffer, configured through compiler flags.
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
-  if(MINGW)
+  if(MINGW AND FIPS)
+    # The FIPS shared module on MinGW must contain its own copy of the
+    # winpthread implementation so that the integrity-checked DLL does not
+    # depend on an external libwinpthread DLL at runtime.
     set_property(TARGET Threads::Threads PROPERTY
       INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
   endif()
