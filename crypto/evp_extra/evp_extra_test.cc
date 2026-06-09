@@ -3054,7 +3054,9 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
   EXPECT_FALSE(EVP_PKEY_check(mismatched_ctx.get()));
   EXPECT_FALSE(EVP_PKEY_public_check(mismatched_ctx.get()));
 
-  // Public key only - valid
+  // Public key only: EVP_PKEY_public_check passes (public component is valid),
+  // but EVP_PKEY_check fails because it requires the private component, as with
+  // the EC and RSA cases.
   bssl::UniquePtr<EVP_PKEY> pk_only_pkey(
       EVP_PKEY_kem_new_raw_public_key(GetParam().nid, pk_copy.data(), pk_len));
   ASSERT_TRUE(pk_only_pkey);
@@ -3062,7 +3064,7 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
   bssl::UniquePtr<EVP_PKEY_CTX> pk_only_ctx(
       EVP_PKEY_CTX_new(pk_only_pkey.get(), nullptr));
   ASSERT_TRUE(pk_only_ctx);
-  EXPECT_TRUE(EVP_PKEY_check(pk_only_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_check(pk_only_ctx.get()));
   EXPECT_TRUE(EVP_PKEY_public_check(pk_only_ctx.get()));
 
   // Public key only - corrupted
