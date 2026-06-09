@@ -1033,9 +1033,11 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# The Android CMake files set -ffunction-sections and -fdata-sections, which
-# is incompatible with FIPS_SHARED.
-if(FIPS_SHARED AND ANDROID)
+# -ffunction-sections / -fdata-sections are incompatible with FIPS_SHARED.
+# The Android CMake files set these flags. Although the MinGW build does not
+# currently enable them, defensively disabling them here to keep the FIPS
+# integrity check robust if added in the future.
+if(FIPS_SHARED AND (ANDROID OR MINGW))
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS
@@ -1332,7 +1334,10 @@ endif()
 # via Web Workers and SharedArrayBuffer, configured through compiler flags.
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
-  if(MINGW)
+  if(MINGW AND FIPS)
+    # The FIPS shared module on MinGW must contain its own copy of the
+    # winpthread implementation so that the integrity-checked DLL does not
+    # depend on an external libwinpthread DLL at runtime.
     set_property(TARGET Threads::Threads PROPERTY
       INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
   endif()
