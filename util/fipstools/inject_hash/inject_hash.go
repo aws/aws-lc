@@ -383,15 +383,11 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 	}
 
 	for _, symbol := range symbols {
-		switch int(symbol.SectionNumber) {
-		case textSectionIndex:
-		case rodataSectionIndex:
-			// rodataSectionIndex is 0 if no .rdata section was found,
-			// which would match undefined symbols (COFF section number 0) — skip those.
-			if rodataSection == nil {
-				continue
-			}
-		default:
+		// Only consider symbols defined in .text or, if present, .rdata. COFF
+		// section numbers are 1-based; undefined symbols carry section number 0,
+		// which must not be mistaken for a real section when .rdata is absent.
+		sn := int(symbol.SectionNumber)
+		if sn != textSectionIndex && (rodataSection == nil || sn != rodataSectionIndex) {
 			continue
 		}
 
@@ -427,8 +423,8 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 		return nil, nil, errors.New("could not find .text module boundaries in object")
 	}
 
-	if rodataStart != nil && rodataSection == nil {
-		return nil, nil, errors.New("rodata start marker found but no .rdata section present")
+	if (rodataStart == nil) != (rodataSection == nil) {
+		return nil, nil, errors.New("rodata start marker inconsistent with .rdata section presence")
 	}
 
 	if (rodataStart != nil) != (rodataEnd != nil) {
@@ -536,7 +532,7 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 		moduleText, moduleROData, err = doWindows(objectBytes, mapFile)
 	} else if appleOS {
 		moduleText, moduleROData, err = doAppleOS(objectBytes)
-	} else if mingw == true {
+	} else if mingw {
 		moduleText, moduleROData, err = doMingw(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
