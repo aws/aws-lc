@@ -46,6 +46,7 @@
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
     "enableWeakerNestedSandbox": true,
     "network": {
       "allowedDomains": [
@@ -53,7 +54,8 @@
       ]
     },
     "filesystem": {
-      "denyRead": ["~/.aws", "~/.ssh"]
+      "denyRead": ["~/"],
+      "allowRead": ["."]
     }
   }
 }

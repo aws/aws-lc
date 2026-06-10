@@ -266,19 +266,15 @@ reason_integration_failure() {
       git -C "${SRC_ROOT}" format-patch "${base_ref}..HEAD" -o "${work_dir}/out"
       return
     fi
-    [[ "${rc}" -eq 0 ]] && { echo "::warning::${target}: Claude declined; not retrying."; return; }
-    echo "::warning::${target}: attempt ${attempt} failed (exit ${rc}); retrying."
+    if [[ "${rc}" -eq 0 ]]; then
+      echo "::error::${target}: Claude ran but was unable to produce a patch."
+      exit 1
+    fi
+    echo "::warning::${target}: attempt ${attempt} failed (exit ${rc}). retrying."
   done
 
-  echo "::warning::${target}: ${MAX_ATTEMPTS} transient Claude failures; giving up."
-}
-
-scrub_logs() {
-  local patterns='(AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN[A-Z ]*PRIVATE KEY-----|[Bb]earer[[:space:]]+[A-Za-z0-9._-]{16,}'
-  for f in "$@"; do
-    [[ -f "$f" ]] || continue
-    LC_ALL=C sed -E -i "s/${patterns}/[REDACTED]/g" "$f"
-  done
+  echo "::error::${target}: ${MAX_ATTEMPTS} transient failures. Claude was unable to produce a patch."
+  exit 1
 }
 
 # Take the patch the reason step produced, scan it for leaked secrets, apply it
