@@ -27,6 +27,7 @@ class AwsLcBaseCiStack(Stack):
         super().__init__(scope, id, env=env, **kwargs)
         self.ignore_failure = ignore_failure
         self.timeout = timeout
+        self.env = env
 
         self.github_repo_owner = (
             STAGING_GITHUB_REPO_OWNER

@@ -422,39 +422,16 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
-      # matrix.name (e.g. "postgresql") doesn't always match the patch dir
-      # name ("postgres_patch"), we use the runner script path as the source of truth.
-      - name: Get failed integration name and version
-        id: autofix-target
-        # NOTICE: the 'schedule' check is required. Without it this step runs on every PR, triggering the downstream autofix workflow unnecessarily.
+      # Emit a marker only when the integration test itself fails, not on
+      # operational failures, so the report-failures alarm counts real downstream breakages only.
+      - name: Mark integration failure
         if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        shell: bash
-        run: |
-          # Iterate every line so multi-line `run:` blocks (e.g. bind9, which
-          # pip-installs meson before the runner) correctly identify the runner script.
-          while read -r line_path line_ver _; do
-            [[ -n "$line_path" ]] && script_path="$line_path" version="$line_ver"
-          done <<< "$run_command"
-
-          integration=${script_path##*/}  # Strip everything before the last / so we have just the filename.
-          integration=${integration%.sh}  # Drop the .sh extension.
-          integration=${integration#run_} # Drop the run_ prefix shared by every runner.
-          integration=${integration%_integration} # Drop the _integration suffix to leave the bare integration name.
-          version=${version//[\'\"]/} # Strip surrounding quotes (some matrix entries quote the version arg).
-
-          echo "integration=$integration" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-        env:
-          run_command: ${{ matrix.run }}
-
-      - name: Upload failed integration target
-        # NOTICE: the 'schedule' check is required. Without it this step runs on every PR, triggering the downstream autofix workflow unnecessarily.
+        run: echo "${{ matrix.name }}-${{ matrix.arch }}" > integration-failure.txt
+      - uses: actions/upload-artifact@v4
         if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        uses: ./.github/actions/emit-autofix-target
         with:
-          integration: ${{ steps.autofix-target.outputs.integration }}
-          version: ${{ steps.autofix-target.outputs.version }}
-          failed-integration: ${{ matrix.name }}-${{ matrix.arch }}
+          name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
+          path: integration-failure.txt
 
   python:
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
@@ -500,12 +477,14 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
-      - if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        uses: ./.github/actions/emit-autofix-target
+      - name: Mark integration failure
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        run: echo "python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}" > integration-failure.txt
+      - uses: actions/upload-artifact@v4
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
-          integration: python
-          version: ${{ matrix.version }}
-          failed-integration: python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
+          name: integration-failure-python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
+          path: integration-failure.txt
 
   ruby:
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
@@ -541,12 +520,14 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
-      - if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        uses: ./.github/actions/emit-autofix-target
+      - name: Mark integration failure
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        run: echo "ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}" > integration-failure.txt
+      - uses: actions/upload-artifact@v4
+        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
-          integration: ruby
-          version: ${{ matrix.version }}
-          failed-integration: ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
+          name: integration-failure-ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
+          path: integration-failure.txt
 
   report-failures:
     name: report-failures
@@ -568,10 +549,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -exo pipefail
+          # Each failed integration test uploads one artifact, so count them to
+          # get the number of breakages.
           failure_count=$(gh api --paginate \
             "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
-            --jq '.artifacts[].name' \
-            | wc -l)
+            --jq '[.artifacts[] | select(.name | startswith("integration-failure-"))] | length')
 
           aws cloudwatch put-metric-data \
             --namespace AWS-LC \
