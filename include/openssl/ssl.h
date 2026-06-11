@@ -863,6 +863,12 @@ OPENSSL_EXPORT int SSL_add0_chain_cert(SSL *ssl, X509 *x509);
 //
 // For either case, use |SSL_CTX_set1_chain|, |SSL_CTX_add1_chain_cert|, or
 // |SSL_CTX_use_certificate_chain_file|.
+//
+// This is the only chain API that routes by key type; the others
+// (|SSL_CTX_set1_chain|, |SSL_CTX_add1_chain_cert|,
+// |SSL_CTX_get_extra_chain_certs|, |SSL_CTX_clear_extra_chain_certs|) act on
+// the current certificate's slot, so a get or clear after an add may target a
+// different slot.
 OPENSSL_EXPORT int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509);
 
 // SSL_add1_chain_cert appends |x509| to |ctx|'s certificate chain. It returns

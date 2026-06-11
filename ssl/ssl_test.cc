@@ -2012,6 +2012,29 @@ TEST(SSLTest, ExtraChainCertRoutesByPubkeyTypeECC) {
   EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 1u);
 }
 
+// Intermediate-first ordering: append the intermediate to a fresh ctx, then
+// set the matching leaf + key. The intermediate must end up in the same slot.
+TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  // Now set the RSA leaf + key into the same slot.
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetChainTestKey().get()));
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
+
+  // The RSA slot holds the leaf at index 0 and the intermediate at index 1.
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(rsa_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
+}
+
 // End-to-end: server sends leaf + intermediate over TLS 1.2 even when
 // |cert_private_key_idx| drifts to a different slot before the
 // intermediate is appended.

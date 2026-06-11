@@ -766,19 +766,12 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
   return 1;
 }
 
-static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
-  assert(cert->x509_method);
-  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
-    return 0;
-  }
-
-  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
-  if (!buffer) {
-    return 0;
-  }
-
+// ssl_cert_append_cert_to_slot appends |buffer| to slot |slot_index|'s chain,
+// creating a leafless chain if the slot is empty. It consumes |buffer|.
+static int ssl_cert_append_cert_to_slot(CERT *cert, int slot_index,
+                                         UniquePtr<CRYPTO_BUFFER> buffer) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_private_keys[cert->cert_private_key_idx].chain;
+      cert->cert_private_keys[slot_index].chain;
   if (chain != nullptr) {
     return PushToStack(chain.get(), std::move(buffer));
   }
@@ -790,6 +783,21 @@ static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
   }
 
   return 1;
+}
+
+static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
+  assert(cert->x509_method);
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
+  if (!buffer) {
+    return 0;
+  }
+
+  return ssl_cert_append_cert_to_slot(cert, cert->cert_private_key_idx,
+                                      std::move(buffer));
 }
 
 static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
@@ -861,6 +869,7 @@ static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
+  // Route by the certificate's key type, like |ssl_set_cert|.
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
@@ -874,18 +883,8 @@ static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_private_keys[slot_index].chain;
-  if (chain != nullptr) {
-    if (!PushToStack(chain.get(), std::move(buffer))) {
-      return 0;
-    }
-  } else {
-    chain = new_leafless_chain();
-    if (!chain || !PushToStack(chain.get(), std::move(buffer))) {
-      chain.reset();
-      return 0;
-    }
+  if (!ssl_cert_append_cert_to_slot(cert, slot_index, std::move(buffer))) {
+    return 0;
   }
 
   X509_free(cert->x509_stash);
