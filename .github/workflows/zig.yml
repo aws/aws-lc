@@ -41,6 +41,9 @@ jobs:
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Cpu info
+        if: runner.os == 'Linux' && runner.arch == 'ARM64'
+        run: lscpu
       - name: Install ninja-build tool
         uses: seanmiddleditch/gha-setup-ninja@v6
       - uses: actions/setup-go@v6

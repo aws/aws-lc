@@ -254,6 +254,9 @@ jobs:
             shard_index: 0
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        if: runner.arch == 'ARM64'
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -292,6 +295,9 @@ jobs:
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        if: runner.arch == 'ARM64'
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -321,6 +327,8 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -358,6 +366,8 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -396,6 +406,8 @@ jobs:
             fips: "1"
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -430,6 +442,8 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -464,6 +478,8 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v6
+      - name: Cpu info
+        run: lscpu
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
