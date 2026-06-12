@@ -14,6 +14,7 @@ env:
 permissions:
   contents: read
   actions: read
+  id-token: write
 
 jobs:
   integrations:
@@ -423,12 +424,13 @@ jobs:
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
       # Emit a marker only when the integration test itself fails, not on
-      # operational failures, so the report-failures alarm counts real downstream breakages only.
+      # operational failures, so the report-failures alarm counts real downstream breakages only, except for tests
+      # that are purely informational and breakages are accepted.
       - name: Mark integration failure
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         run: echo "${{ matrix.name }}-${{ matrix.arch }}" > integration-failure.txt
       - uses: actions/upload-artifact@v4
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
           name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
           path: integration-failure.txt
@@ -478,10 +480,10 @@ jobs:
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         run: echo "python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}" > integration-failure.txt
       - uses: actions/upload-artifact@v4
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
           path: integration-failure.txt
@@ -521,10 +523,10 @@ jobs:
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         run: echo "ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}" > integration-failure.txt
       - uses: actions/upload-artifact@v4
-        if: steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
           path: integration-failure.txt
@@ -549,11 +551,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -exo pipefail
-          # Each failed integration test uploads one artifact, so count them to
-          # get the number of breakages.
+          # Count the failure artifacts to get the number of broken integration tests.
+          # We keep only the integration-failure-* markers and count lines with wc -l instead of jq length,
+          # since --paginate would make jq emit a separate count for each page.
           failure_count=$(gh api --paginate \
             "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
-            --jq '[.artifacts[] | select(.name | startswith("integration-failure-"))] | length')
+            --jq '.artifacts[] | select(.name | startswith("integration-failure-")) | .name' \
+            | wc -l | tr -d ' ')
 
           aws cloudwatch put-metric-data \
             --namespace AWS-LC \
