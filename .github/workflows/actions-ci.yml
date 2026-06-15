@@ -15,6 +15,10 @@ env:
   # Used to enable ASAN test dimension.
   AWSLC_ENABLE_FIPS_ASAN: 1
   DEBIAN_FRONTEND: noninteractive
+  # Set globally so every job routing tests through util/all_tests.go emits
+  # per-test-case gtest JSON reports. Jobs opt in to surfacing the summary by
+  # adding a "Test timing summary" step.
+  GTEST_REPORT_DIR: ${{ github.workspace }}/gtest_reports
 
 permissions:
   contents: read
@@ -52,6 +56,9 @@ jobs:
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-x86-FIPS:
     if: github.repository_owner == 'aws'
@@ -68,8 +75,6 @@ jobs:
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
-        env:
-          GTEST_REPORT_DIR: ${{ github.workspace }}/gtest_reports
         run: |
           ./tests/ci/run_fips_tests.sh
       - name: Test timing summary
@@ -92,8 +97,6 @@ jobs:
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
-        env:
-          GTEST_REPORT_DIR: ${{ github.workspace }}/gtest_reports
         run: |
           ./tests/ci/run_posix_tests.sh
       - name: Test timing summary
@@ -159,6 +162,9 @@ jobs:
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   compiler-tests:
     name: >-

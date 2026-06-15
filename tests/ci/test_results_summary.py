@@ -37,10 +37,14 @@ def main():
         for suite in data.get("testsuites", []):
             suite_name = suite.get("name", "")
             for test in suite.get("testsuite", []):
+                # Skip tests that never executed (disabled/suppressed); they
+                # have no meaningful timing and aren't failures.
+                if test.get("result") == "SUPPRESSED" or test.get("status") == "NOTRUN":
+                    continue
                 name = f"{suite_name}.{test.get('name', '')}"
                 time_str = test.get("time", "0s")
                 secs = float(time_str.rstrip("s")) if time_str.endswith("s") else float(time_str)
-                status = "PASS" if test.get("failures") is None and test.get("result") != "SUPPRESSED" else "FAIL"
+                status = "FAIL" if test.get("failures") is not None else "PASS"
                 all_tests.append((name, secs, status, binary))
 
     if not all_tests:
