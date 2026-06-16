@@ -428,7 +428,7 @@ jobs:
       # that are purely informational and breakages are accepted.
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
-        run: echo "${{ matrix.name }}-${{ matrix.arch }}" > integration-failure.txt
+        run: touch integration-failure.txt
       - uses: actions/upload-artifact@v4
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
@@ -481,7 +481,7 @@ jobs:
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: echo "python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}" > integration-failure.txt
+        run: touch integration-failure.txt
       - uses: actions/upload-artifact@v4
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
@@ -524,7 +524,7 @@ jobs:
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: echo "ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}" > integration-failure.txt
+        run: touch integration-failure.txt
       - uses: actions/upload-artifact@v4
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
@@ -544,8 +544,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
-        with:
-          roleName: AwsLcGitHubActionStandardRole
       - name: Emit failure metric
         env:
           GH_TOKEN: ${{ github.token }}
