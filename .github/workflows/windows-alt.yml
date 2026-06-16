@@ -86,7 +86,10 @@ jobs:
           - x64_arm64
     runs-on: windows-latest
     env:
-      CMAKE_GENERATOR: "Visual Studio 17 2022"
+      # Keep CMAKE_GENERATOR pinned: the ClangCL toolset is ignored unless it is
+      # set, and CMake then silently uses MSVC (breaking the ARM64 ClangCL
+      # guard). Bump the version on the next VS upgrade.
+      CMAKE_GENERATOR: "Visual Studio 18 2026"
       CMAKE_GENERATOR_TOOLSET: "ClangCL,host=x64"
     steps:
       - if: ${{ matrix.target  == 'x64' }}
