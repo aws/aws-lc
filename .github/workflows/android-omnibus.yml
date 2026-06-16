@@ -16,6 +16,7 @@ env:
 permissions:
   id-token: write
   contents: read
+  deployments: write
 
 jobs:
   authorization-check:
@@ -76,3 +77,14 @@ jobs:
             --release ${{ matrix.release }} \
             --shared ${{ matrix.shared }} \
             --action start-job
+
+
+  cleanup-deployments:
+    if: always()
+    needs: [device-farm]
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/cleanup-deployments

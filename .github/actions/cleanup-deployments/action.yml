@@ -1,0 +1,40 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: 'cleanup-deployments'
+description: 'Removes deployment entries from the PR timeline created by environment-gated jobs. Marks each deployment as inactive then deletes it. Does not affect CI check results.'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/github-script@v8
+      if: github.event_name == 'pull_request_target'
+      with:
+        script: |
+          const sha = context.payload.pull_request?.head?.sha || context.sha;
+          for (const env of ['auto-approve', 'manual-approval']) {
+            const deployments = await github.rest.repos.listDeployments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              environment: env,
+              sha: sha,
+              per_page: 100,
+            });
+            console.log(`Found ${deployments.data.length} deployments for ${env} (sha: ${sha})`);
+            for (const d of deployments.data) {
+              try {
+                await github.rest.repos.createDeploymentStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: d.id,
+                  state: 'inactive',
+                });
+                await github.rest.repos.deleteDeployment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: d.id,
+                });
+              } catch (e) {
+                console.log(`Failed to delete deployment ${d.id}: ${e.message}`);
+              }
+            }
+          }
