@@ -11,7 +11,7 @@ runs:
       with:
         script: |
           const sha = context.payload.pull_request?.head?.sha || context.sha;
-          for (const env of ['auto-approve', 'manual-approval']) {
+          for (const env of ['auto-approve']) {
             const deployments = await github.rest.repos.listDeployments({
               owner: context.repo.owner,
               repo: context.repo.repo,
