@@ -59,7 +59,8 @@ jobs:
         uses: KyleMayes/install-llvm-action@v2
         id: clang
         with:
-          version: 19
+          # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
+          version: 20
           env: true
       - name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
