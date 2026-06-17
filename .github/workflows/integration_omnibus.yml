@@ -15,6 +15,7 @@ permissions:
 jobs:
   integrations:
     name: ${{ matrix.name }}-${{ matrix.arch }}
+    continue-on-error: ${{ matrix.allow_failure || false }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
@@ -45,13 +46,21 @@ jobs:
             compiler: gcc-11
             run: ./tests/ci/integration/run_crt_integration.sh
 
-          # libgit2
+          # libgit2 (pinned to a release - required)
           - name: libgit2
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_libgit2_integration.sh
+            run: ./tests/ci/integration/run_libgit2_integration.sh v1.9.4
+          # libgit2 (tracking upstream main - informational, allowed to fail)
+          - name: libgit2-main
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            allow_failure: true
+            run: ./tests/ci/integration/run_libgit2_integration.sh main
 
           # OpenSSH Integration Tests
           - name: openssh-master
