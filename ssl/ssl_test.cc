@@ -1958,20 +1958,19 @@ TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
       {certificate_key_param().corresponding_sigalg}, -1, false);
 }
 
-// SSL_CTX_add_extra_chain_cert must route by the intermediate's public key
-// type, not by |cert_private_key_idx|. Regression seen in Ruby + AWS-LC,
-// where |Net::HTTP#extra_chain_cert=| calls this API before the leaf is
-// configured and |cert_private_key_idx| still holds its default.
+// SSL_CTX_add_extra_chain_cert routes the intermediate to the current
+// certificate's slot when one is configured, and falls back to the slot
+// matching the intermediate's own key type when no leaf is set yet. The
+// fallback fixes the Ruby + AWS-LC ordering, where
+// |Net::HTTP#extra_chain_cert=| appends before any leaf is configured.
 
-// RSA intermediate must land in the RSA slot even when
-// |cert_private_key_idx| points at ECC.
-TEST(SSLTest, ExtraChainCertRoutesByPubkeyTypeRSA) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+// Leaf-first, cross-type: an RSA intermediate added after an ECDSA leaf must
+// join the ECDSA leaf's slot, not the RSA slot. This is the common case of an
+// RSA intermediate for an ECDSA leaf, which key-type routing would misplace.
+TEST(SSLTest, ExtraChainCertCrossTypeLeafFirst) {
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
   ASSERT_TRUE(ctx);
-
-  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(),
-                                      GetECDSATestCertificate().get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetECDSATestKey().get()));
   ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
 
   bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
@@ -1979,41 +1978,18 @@ TEST(SSLTest, ExtraChainCertRoutesByPubkeyTypeRSA) {
   ASSERT_TRUE(
       SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
 
-  // Leafless chain layout: index 0 is the (NULL) leaf placeholder, the
-  // appended intermediate sits at index 1.
-  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
-  const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
-  ASSERT_TRUE(rsa_chain);
-  EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
-  ASSERT_TRUE(ecc_chain);
-  EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 1u);
-}
-
-// ECDSA intermediate must land in the ECC slot even when
-// |cert_private_key_idx| points at RSA.
-TEST(SSLTest, ExtraChainCertRoutesByPubkeyTypeECC) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-
-  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), GetTestCertificate().get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetTestKey().get()));
-  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
-
-  bssl::UniquePtr<X509> ecdsa_intermediate = GetECDSATestCertificate();
-  ASSERT_TRUE(ecdsa_intermediate);
-  ASSERT_TRUE(
-      SSL_CTX_add_extra_chain_cert(ctx.get(), ecdsa_intermediate.release()));
-
+  // The intermediate joins the ECDSA leaf's slot (leaf at index 0,
+  // intermediate at index 1); the RSA slot stays empty.
   const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
   const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
   ASSERT_TRUE(ecc_chain);
   EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 2u);
-  ASSERT_TRUE(rsa_chain);
-  EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 1u);
+  EXPECT_FALSE(rsa_chain);
 }
 
-// Intermediate-first ordering: append the intermediate to a fresh ctx, then
-// set the matching leaf + key. The intermediate must end up in the same slot.
+// No leaf configured yet: routing falls back to the intermediate's own key
+// type. Append the RSA intermediate to a fresh ctx, then set the matching
+// RSA leaf + key; both must end up in the RSA slot.
 TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -2023,7 +1999,6 @@ TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
   ASSERT_TRUE(
       SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
 
-  // Now set the RSA leaf + key into the same slot.
   ASSERT_TRUE(
       SSL_CTX_use_certificate(ctx.get(), GetChainTestCertificate().get()));
   ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetChainTestKey().get()));
@@ -2035,9 +2010,8 @@ TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
   EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
 }
 
-// End-to-end: server sends leaf + intermediate over TLS 1.2 even when
-// |cert_private_key_idx| drifts to a different slot before the
-// intermediate is appended.
+// End-to-end Ruby ordering: append the intermediate before the leaf, then
+// complete a TLS 1.2 handshake. The server must send leaf + intermediate.
 TEST(SSLTest, ExtraChainCertSentDuringHandshake) {
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -2049,35 +2023,15 @@ TEST(SSLTest, ExtraChainCertSentDuringHandshake) {
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
 
-  bssl::UniquePtr<X509> rsa_leaf = GetChainTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> rsa_key = GetChainTestKey();
+  // Append the intermediate first (no leaf yet, so routing falls back to the
+  // intermediate's key type), then set the matching leaf + key.
   bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
-  ASSERT_TRUE(rsa_leaf && rsa_key && rsa_intermediate);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), rsa_leaf.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), rsa_key.get()));
-
-  // Configuring an ECDSA leaf+key drifts |cert_private_key_idx| to
-  // SSL_PKEY_ECC. Pre-fix, the RSA intermediate appended below would file
-  // into the ECC slot.
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
-                                      GetECDSATestCertificate().get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(),
-                                     GetECDSATestKey().get()));
-  ASSERT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
-
+  ASSERT_TRUE(rsa_intermediate);
   ASSERT_TRUE(SSL_CTX_add_extra_chain_cert(server_ctx.get(),
                                             rsa_intermediate.release()));
-
-  // Force RSA negotiation. Mirrors
-  // |MultipleCertificateSlotTest::StandardCertificateSlotIndexTests|.
-  const uint16_t rsa_only[] = {SSL_SIGN_RSA_PSS_RSAE_SHA256,
-                                SSL_SIGN_RSA_PKCS1_SHA256};
-  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
-      client_ctx.get(), rsa_only, OPENSSL_ARRAY_SIZE(rsa_only)));
-  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
-      client_ctx.get(), rsa_only, OPENSSL_ARRAY_SIZE(rsa_only)));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
-                                      "TLS_RSA_WITH_AES_256_CBC_SHA:"));
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetChainTestKey().get()));
 
   // We are asserting what the server sends, not what the client validates.
   SSL_CTX_set_custom_verify(
@@ -2099,12 +2053,9 @@ TEST(SSLTest, ExtraChainCertSentDuringHandshake) {
 // Regression guard: SSL_CTX_add0_chain_cert still routes by
 // |cert_private_key_idx|, unchanged by the fix.
 TEST(SSLTest, Add0ChainCertCrossTypeRoutingUnchanged) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
   ASSERT_TRUE(ctx);
-
-  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(),
-                                      GetECDSATestCertificate().get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetECDSATestKey().get()));
   ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
 
   bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();

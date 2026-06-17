@@ -856,8 +856,20 @@ int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
   return ssl_cert_add1_chain_cert(ctx->cert.get(), x509);
 }
 
-// ssl_cert_append_extra_chain_cert appends |x509| to the slot whose key type
-// matches |x509|'s public key. See |SSL_CTX_add_extra_chain_cert|.
+// slot_has_leaf returns true if |slot_index| is valid and that slot holds a
+// leaf certificate (a non-NULL element 0 in its chain).
+static bool slot_has_leaf(const CERT *cert, int slot_index) {
+  if (slot_index < 0) {
+    return false;
+  }
+  const UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[slot_index].chain;
+  return chain != nullptr && sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr;
+}
+
+// ssl_cert_append_extra_chain_cert appends |x509| to the current certificate's
+// slot if a leaf is configured there, and otherwise to the slot matching
+// |x509|'s own key type. See |SSL_CTX_add_extra_chain_cert|.
 static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
   assert(cert->x509_method);
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
@@ -869,18 +881,25 @@ static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
-  // Route by the certificate's key type, like |ssl_set_cert|.
-  CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
-  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return 0;
-  }
-  int slot_index = ssl_get_certificate_slot_index(pubkey.get());
-  if (slot_index < 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return 0;
+  // When a leaf is already configured, append to its slot so a chain set up
+  // leaf-first lands with its leaf, including cross-type chains (e.g. an RSA
+  // intermediate for an ECDSA leaf). Only when no leaf is set yet do we route
+  // by the intermediate's own key type, which fixes appends made before the
+  // leaf.
+  int slot_index = cert->cert_private_key_idx;
+  if (!slot_has_leaf(cert, slot_index)) {
+    CBS cert_cbs;
+    CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+    UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+    if (!pubkey) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return 0;
+    }
+    slot_index = ssl_get_certificate_slot_index(pubkey.get());
+    if (slot_index < 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+      return 0;
+    }
   }
 
   if (!ssl_cert_append_cert_to_slot(cert, slot_index, std::move(buffer))) {
