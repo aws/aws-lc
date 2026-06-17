@@ -781,6 +781,12 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 // SSL_OP_NO_TICKET disables session ticket support (RFC 5077).
 #define SSL_OP_NO_TICKET 0x00004000L
 
+// SSL_OP_IGNORE_UNEXPECTED_EOF configures a connection to treat an unexpected
+// transport EOF (the peer closing the connection without sending a
+// close_notify alert) as a clean shutdown. When set, |SSL_read| reports
+// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SYSCALL|. 
+#define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
+
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
 // ECDHE curves according to the server's preferences instead of the
 // client's.
