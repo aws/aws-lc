@@ -52,6 +52,7 @@ jobs:
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
+            allow_failure: false
             run: ./tests/ci/integration/run_libgit2_integration.sh v1.9.4
           # libgit2 (tracking upstream main - informational, allowed to fail)
           - name: libgit2-main

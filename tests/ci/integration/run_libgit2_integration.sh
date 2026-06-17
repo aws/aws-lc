@@ -65,32 +65,21 @@ function libgit2_build_static() {
 }
 
 function libgit2_run_tests() {
-  # Local suites: git plumbing; exercises AWS-LC libcrypto (hashing, X.509, RNG).
-  # 'offline' is the full clar suite with -xonline.
+  # Local suites (git plumbing; exercises AWS-LC libcrypto). 'offline' is the
+  # full libgit2_tests suite with -xonline.
   ctest --extra-verbose -R 'offline|invasive'
 
-  # Online suite: the ONLY coverage of AWS-LC libssl (TLS handshake + X.509 chain
-  # verification via libgit2's streams/openssl.c, since USE_HTTPS=openssl). Run the
-  # clar binary directly so we can drop subtests that depend on endpoints we cannot
-  # reach/control, while keeping the github.com and dev.azure.com HTTPS clones
-  # (incl. certificate_valid/certificate_invalid) that genuinely exercise libssl:
-  #   online::customcert          - clones test.libgit2.org:{1,2,3}443 with no timeout;
-  #                                 from our network that host accepts TCP but its TLS
-  #                                 service never responds, so the clone hangs forever.
-  #   online::badssl              - *.badssl.com connections are reset at the transport
-  #                                 layer before cert validation (a one-off request works,
-  #                                 the suite's repeated connects do not), so it is not an
-  #                                 AWS-LC signal.
-  #   online::clone::*bitbucket*  - the bitbucket test repo now returns HTTP 410 Gone.
-  # The 'timeout' is a safety net: clar leaves the per-test timeout effectively
-  # infinite, so if a kept endpoint goes dark we fail fast instead of hanging.
+  # Online suite: the only coverage of AWS-LC libssl (TLS via streams/openssl.c).
+  # Run libgit2_tests directly so we can exclude:
+  #   online::badssl     - *.badssl.com resets before cert validation from our
+  #                        networks (server-side, not AWS-LC; cert rejection is
+  #                        still covered by online::clone::certificate_invalid).
+  #   online::customcert - clones test.libgit2.org with no timeout, and that host
+  #                        is unreachable from our CI and dev networks, so it hangs.
+  # 'timeout' is a backstop so a future unresponsive endpoint fails fast instead
+  # of hanging indefinitely.
   timeout --kill-after=60s 1200s \
-    "${LIBGIT2_BUILD_FOLDER}/libgit2_tests" -v -sonline \
-      -xonline::customcert \
-      -xonline::badssl \
-      -xonline::clone::credentials_via_custom_headers \
-      -xonline::clone::bitbucket_style \
-      -xonline::clone::bitbucket_uses_creds_in_url
+    "${LIBGIT2_BUILD_FOLDER}/libgit2_tests" -v -sonline -xonline::customcert -xonline::badssl
 }
 
 # Fetch the requested libgit2 ref (tag, branch, or commit).
