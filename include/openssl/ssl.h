@@ -636,6 +636,12 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 // SSL_OP_NO_TICKET disables session ticket support (RFC 5077).
 #define SSL_OP_NO_TICKET 0x00004000L
 
+// SSL_OP_IGNORE_UNEXPECTED_EOF configures a connection to treat an unexpected
+// transport EOF (the peer closing the connection without sending a
+// close_notify alert) as a clean shutdown. When set, |SSL_read| reports
+// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SYSCALL|. 
+#define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
+
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
 // ECDHE curves according to the server's preferences instead of the
 // client's.
@@ -1149,6 +1155,9 @@ OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
 #define SSL_SIGN_RSA_PSS_RSAE_SHA384 0x0805
 #define SSL_SIGN_RSA_PSS_RSAE_SHA512 0x0806
 #define SSL_SIGN_ED25519 0x0807
+#define SSL_SIGN_MLDSA44 0x0904
+#define SSL_SIGN_MLDSA65 0x0905
+#define SSL_SIGN_MLDSA87 0x0906
 
 // SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal signature algorithm used to
 // specify raw RSASSA-PKCS1-v1_5 with an MD5/SHA-1 concatenation, as used in TLS
@@ -2037,7 +2046,9 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in,
                                                    size_t *out_len);
 
 // SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
-// returns a newly-allocated |SSL_SESSION| on success or NULL on error.
+// returns a newly-allocated |SSL_SESSION| on success or NULL on error. The
+// caller is responsible for protecting the integrity of the serialized session
+// data; no minimum-length validation is performed on individual fields.
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
                                                    size_t in_len,
                                                    const SSL_CTX *ctx);
@@ -5983,6 +5994,68 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_get_security_level(
 // |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_level(
     const SSL_CTX *ctx, int level);
+
+// SSL_get_security_level returns 0. This is only to maintain compatibility
+// with OpenSSL. See |SSL_CTX_get_security_level|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_security_level(const SSL *ssl);
+
+// SSL_set_security_level does nothing. See documentation in
+// |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_level(const SSL *ssl,
+                                                              int level);
+
+// SSL_security_callback is the type of a security callback function set via
+// |SSL_CTX_set_security_callback| or |SSL_set_security_callback|. In OpenSSL,
+// this callback is invoked to make security decisions based on the configured
+// security level. In AWS-LC, security levels are not supported and the callback
+// is never invoked, so any restrictions the callback would have enforced are
+// silently bypassed. These functions are provided only for API compatibility.
+typedef int (*SSL_security_callback)(const SSL *ssl, const SSL_CTX *ctx,
+                                     int op, int bits, int nid, void *other,
+                                     void *ex);
+
+// SSL_CTX_set_security_callback stores |cb| on |ctx| but never invokes it.
+// AWS-LC never invokes the callback, so any restrictions the callback would
+// have enforced are silently bypassed.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_callback(
+    SSL_CTX *ctx, SSL_security_callback cb);
+
+// SSL_CTX_get_security_callback returns the callback previously set with
+// |SSL_CTX_set_security_callback|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_CTX_get_security_callback(const SSL_CTX *ctx);
+
+// SSL_CTX_set0_security_ex_data stores |ex| on |ctx| for use by a security
+// callback. The data is never used internally.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set0_security_ex_data(
+    SSL_CTX *ctx, void *ex);
+
+// SSL_CTX_get0_security_ex_data returns the data previously set with
+// |SSL_CTX_set0_security_ex_data|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_CTX_get0_security_ex_data(
+    const SSL_CTX *ctx);
+
+// SSL_set_security_callback stores |cb| on |ssl| but never invokes it.
+// AWS-LC never invokes the callback, so any restrictions the callback would
+// have enforced are silently bypassed.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_security_callback(
+    SSL *ssl, SSL_security_callback cb);
+
+// SSL_get_security_callback returns the callback previously set with
+// |SSL_set_security_callback|, or the callback inherited from |SSL_CTX| if
+// none was set directly on the |SSL|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED SSL_security_callback
+SSL_get_security_callback(const SSL *ssl);
+
+// SSL_set0_security_ex_data stores |ex| on |ssl| for use by a security
+// callback. The data is never used internally.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set0_security_ex_data(SSL *ssl,
+                                                                 void *ex);
+
+// SSL_get0_security_ex_data returns the data previously set with
+// |SSL_set0_security_ex_data|, or NULL if none was set.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *SSL_get0_security_ex_data(
+    const SSL *ssl);
 
 
 // General No-op Functions [Deprecated].

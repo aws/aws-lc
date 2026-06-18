@@ -33,7 +33,8 @@ static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen,
 static int nc_dn(X509_NAME *sub, X509_NAME *nm);
 static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns,
                   int excluding);
-static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
+static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml,
+                    int excluding);
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base);
 static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base);
 
@@ -477,7 +478,7 @@ static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
       return nc_dns(gen->d.dNSName, base->d.dNSName, excluding);
 
     case GEN_EMAIL:
-      return nc_email(gen->d.rfc822Name, base->d.rfc822Name);
+      return nc_email(gen->d.rfc822Name, base->d.rfc822Name, excluding);
 
     case GEN_URI:
       return nc_uri(gen->d.uniformResourceIdentifier,
@@ -614,48 +615,120 @@ static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
   return X509_V_OK;
 }
 
-static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
+// Returns 1 if |cbs| contains only characters valid in an RFC 5321 Sec.4.1.2
+// local-part atom (atext per RFC 5322 Sec.3.2.3). RFC 5322 allows quoted
+// local-parts which may contain '@' characters. Rather than parsing
+// quoted-strings, we reject local-parts containing non-atext characters.
+static int is_valid_rfc822_local_part(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;
+  }
+  for (size_t i = 0; i < CBS_len(cbs); i++) {
+    uint8_t c = CBS_data(cbs)[i];
+    if (!(OPENSSL_isalnum(c) || c == '!' || c == '#' || c == '$' ||
+          c == '%' || c == '&' || c == '\'' || c == '*' || c == '+' ||
+          c == '-' || c == '/' || c == '=' || c == '?' || c == '^' ||
+          c == '_' || c == '`' || c == '{' || c == '|' || c == '}' ||
+          c == '~' || c == '.')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+// Returns 1 if |cbs| contains only characters valid in a DNS domain label
+// per RFC 1034 Sec.3.5 (alphanumeric, hyphen, dot).
+static int is_valid_rfc822_domain(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;
+  }
+  for (size_t i = 0; i < CBS_len(cbs); i++) {
+    uint8_t c = CBS_data(cbs)[i];
+    if (!(OPENSSL_isalnum(c) || c == '-' || c == '.')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
+                    int excluding) {
   CBS eml_cbs, base_cbs;
   CBS_init(&eml_cbs, eml->data, eml->length);
   CBS_init(&base_cbs, base->data, base->length);
 
-  // TODO(davidben): In OpenSSL 1.1.1, this switched from the first '@' to the
-  // last one. Match them here, or perhaps do an actual parse. Looks like
-  // multiple '@'s may be allowed in quoted strings.
-  CBS eml_local, base_local;
-  if (!CBS_get_until_first(&eml_cbs, &eml_local, '@')) {
+  CBS eml_local;
+  if (!CBS_get_until_first(&eml_cbs, &eml_local, '@') ||
+      !CBS_skip(&eml_cbs, 1)) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
+  CBS eml_domain = eml_cbs;
+
+  // Reject subject emails with multiple '@'. This catches both
+  // "a@b"@evil.example and a@b@evil.example.
+  CBS unused;
+  if (CBS_get_until_first(&eml_cbs, &unused, '@')) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // Reject subject emails with characters outside RFC 5321 atext in the
+  // local-part (rejects quoted local-parts like "user"@example.com) or
+  // invalid domain characters.
+  if (!is_valid_rfc822_local_part(&eml_local) ||
+      !is_valid_rfc822_domain(&eml_domain)) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  CBS base_local;
   int base_has_at = CBS_get_until_first(&base_cbs, &base_local, '@');
 
+  if (base_has_at) {
+    // "@example.com" is not a valid constraint per RFC 5280 Sec.4.2.1.10.
+    if (CBS_len(&base_local) == 0) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+    CBS_skip(&base_cbs, 1);  // skip past '@'
+    CBS base_domain = base_cbs;
+
+    // Reject constraints with multiple '@'.
+    if (CBS_get_until_first(&base_cbs, &unused, '@')) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+    if (!is_valid_rfc822_local_part(&base_local) ||
+        !is_valid_rfc822_domain(&base_domain)) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+
+    // For excluded subtrees, compare the local-part case-insensitively.
+    // RFC 5321 and RFC 5322 conflict on case sensitivity; for security we
+    // err on being more strict when checking exclusions.
+    int local_match = excluding
+        ? equal_case(&base_local, &eml_local)
+        : CBS_mem_equal(&base_local, CBS_data(&eml_local),
+                        CBS_len(&eml_local));
+    if (!local_match) {
+      return X509_V_ERR_PERMITTED_VIOLATION;
+    }
+    if (!equal_case(&base_domain, &eml_domain)) {
+      return X509_V_ERR_PERMITTED_VIOLATION;
+    }
+    return X509_V_OK;
+  }
+
+  if (!is_valid_rfc822_domain(&base_cbs)) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
   // Special case: initial '.' is RHS match
-  if (!base_has_at && starts_with(&base_cbs, '.')) {
-    if (has_suffix_case(&eml_cbs, &base_cbs)) {
+  if (starts_with(&base_cbs, '.')) {
+    if (has_suffix_case(&eml_domain, &base_cbs)) {
       return X509_V_OK;
     }
     return X509_V_ERR_PERMITTED_VIOLATION;
   }
 
-  // If we have anything before '@' match local part
-  if (base_has_at) {
-    // TODO(davidben): This interprets a constraint of "@example.com" as
-    // "example.com", which is not part of RFC5280.
-    if (CBS_len(&base_local) > 0) {
-      // Case sensitive match of local part
-      if (!CBS_mem_equal(&base_local, CBS_data(&eml_local),
-                         CBS_len(&eml_local))) {
-        return X509_V_ERR_PERMITTED_VIOLATION;
-      }
-    }
-    // Position base after '@'
-    assert(starts_with(&base_cbs, '@'));
-    CBS_skip(&base_cbs, 1);
-  }
-
-  // Just have hostname left to match: case insensitive
-  assert(starts_with(&eml_cbs, '@'));
-  CBS_skip(&eml_cbs, 1);
-  if (!equal_case(&base_cbs, &eml_cbs)) {
+  // Domain-only constraint: case insensitive match
+  if (!equal_case(&base_cbs, &eml_domain)) {
     return X509_V_ERR_PERMITTED_VIOLATION;
   }
 

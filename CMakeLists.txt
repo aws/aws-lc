@@ -217,13 +217,14 @@ if(GENERATE_RUST_BINDINGS)
   message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
   message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
 
-  # Check for rustfmt (required for --formatter rustfmt option)
+  # Check for rustfmt (optional: used to format the generated bindings if available)
   find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
-  if(NOT RUSTFMT_EXECUTABLE)
-    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
-                        "Install it with: rustup component add rustfmt")
+  if(RUSTFMT_EXECUTABLE)
+    message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+  else()
+    message(STATUS "rustfmt not found; generated Rust bindings will not be formatted. "
+                   "Install it with: rustup component add rustfmt")
   endif()
-  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
 endif()
 
 if(DISABLE_CPU_JITTER_ENTROPY)
@@ -844,8 +845,19 @@ elseif(MSVC)
                             ${MSVC_DISABLED_WARNINGS_LIST})
   string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
                             ${MSVC_LEVEL4_WARNINGS_LIST})
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  # Newer MSVC (VS2026/14.51) emits C4865 from Windows SDK headers; with -WX
+  # that fails the build over warnings we don't own. Mark the toolchain/SDK
+  # include dirs external so -WX only covers our code. /external: is stable
+  # since MSVC 19.29; exclude clang-cl (it never emits C4865 and can error on
+  # an unrecognized /external:env: arg under -WX).
+  if(MSVC_VERSION GREATER_EQUAL 1929 AND CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    set(MSVC_EXTERNAL_WARNINGS_STR
+        "/external:W0 /external:env:INCLUDE /external:env:EXTERNAL_INCLUDE")
+  else()
+    set(MSVC_EXTERNAL_WARNINGS_STR "")
+  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR} ${MSVC_EXTERNAL_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR} ${MSVC_EXTERNAL_WARNINGS_STR}")
 endif()
 
 # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.

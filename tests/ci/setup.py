@@ -20,7 +20,7 @@ setuptools.setup(
 
     install_requires=[
         # CDK dependencies.
-        "aws-cdk-lib==2.251.0",
+        "aws-cdk-lib==2.255.0",
         "constructs==10.6.0",
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==6.0.3",
