@@ -677,12 +677,12 @@ elseif(FIPS_SHARED)
     separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
     add_custom_command(
       OUTPUT fips_mingw_start.o
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_mingw_end.o
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
