@@ -2007,7 +2007,9 @@ TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
   // The RSA slot holds the leaf at index 0 and the intermediate at index 1.
   const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
   ASSERT_TRUE(rsa_chain);
-  EXPECT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
+  ASSERT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 0) != nullptr);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 1) != nullptr);
 }
 
 // End-to-end Ruby ordering: append the intermediate before the leaf, then

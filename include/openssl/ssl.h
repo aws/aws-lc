@@ -852,8 +852,8 @@ OPENSSL_EXPORT int SSL_add0_chain_cert(SSL *ssl, X509 *x509);
 // OpenSSL keeps extra chain certs on a single global stack and uses it
 // whenever a certificate has no chain of its own. AWS-LC instead stores chains
 // per key-type slot, so this routes |x509| to a slot: if a leaf certificate is
-// already configured, |x509| joins that leaf's slot (so a chain built
-// leaf-first stays together, including cross-type chains such as an RSA
+// already configured, |x509| joins the current certificate's slot (so a chain
+// built leaf-first stays together, including cross-type chains such as an RSA
 // intermediate for an ECDSA leaf); if no leaf is set yet, |x509| goes to the
 // slot matching its own key type (so chains built intermediate-first land
 // correctly once the matching leaf is added).
