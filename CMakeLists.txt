@@ -1044,6 +1044,18 @@ if(FIPS_SHARED AND (ANDROID OR MINGW))
       "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
 endif()
 
+# GCC (-O2+) splits cold code into separate .text.unlikely/.text.* sections.
+# On ELF, gcc_fips_shared.lds gathers these between the bcm text markers, but
+# the MinGW path partial-links with a plain `ld -r` (PE has no linker script
+# support), so any split-out section would land outside the integrity-checked
+# region. Keep all module code in one contiguous .text bracketed by the markers.
+if(FIPS_SHARED AND MINGW AND GCC)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
+endif()
+
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
 endif()
