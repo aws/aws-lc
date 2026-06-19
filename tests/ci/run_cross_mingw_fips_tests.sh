@@ -14,7 +14,13 @@ set -ex
 TARGET_CPU="${1}"
 TARGET_PLATFORM="${2}"
 BUILD_OPTIONS=("${@:3:5}")
-GCC_VERSION="10"
+# MinGW FIPS shared requires a reasonably recent binutils (>= ~2.41, as shipped
+# by Ubuntu 24.04 / mingw-w64 gcc-13). Older linkers (e.g. binutils 2.38 on
+# Ubuntu 22.04) drop the dllexport directives (.drectve) for the FIPS module's
+# symbols during the bcm.o partial link, leaving libcrypto.dll under-exported.
+# This is a new build target with no existing consumers, so we set the floor
+# here rather than fall back to -Wl,--export-all-symbols.
+GCC_VERSION="13"
 THREAD_MODEL="posix"
 
 if [ "${#BUILD_OPTIONS[@]}" -lt 1 ]; then
