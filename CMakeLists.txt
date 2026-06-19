@@ -1387,6 +1387,14 @@ if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
     # The FIPS shared module on MinGW must contain its own copy of the
     # winpthread implementation so that the integrity-checked DLL does not
     # depend on an external libwinpthread DLL at runtime.
+    #
+    # NOTE: crypto links Threads::Threads PUBLIC, so mutating the imported
+    # target's interface here statically links winpthread into *every* artifact
+    # in this build that pulls in threads (libssl.dll, bssl.exe, and the test
+    # binaries), not just the crypto DLL. That is intentional for the integrity
+    # boundary's sake and otherwise harmless (just some duplicated code), but it
+    # is broader than "the FIPS DLL only". This mutation is build-local and is
+    # not propagated to downstream consumers of the installed crypto target.
     set_property(TARGET Threads::Threads PROPERTY
       INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
   endif()
