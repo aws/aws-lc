@@ -616,14 +616,6 @@ function(build_libcrypto)
     # MinGW ignores that pragma so we need to add the link explicitly.
     if(MINGW)
       target_link_libraries(${arg_NAME} PUBLIC bcrypt)
-      if(FIPS AND BUILD_SHARED_LIBS)
-        # MinGW's default auto-export handling does not reliably include all
-        # symbols consumers need from libcrypto.dll in FIPS shared builds, where
-        # the module is linked through bcm.o and jitterentropy is built into
-        # crypto. Force a complete import library so libssl.dll, bssl.exe, and
-        # test binaries can resolve those symbols.
-        target_link_options(${arg_NAME} PRIVATE "-Wl,--export-all-symbols")
-      endif()
     endif()
   endif()
 
