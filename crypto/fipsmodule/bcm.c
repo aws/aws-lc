@@ -8,6 +8,9 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
+#if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
+#include <windows.h>
+#endif
 #if defined(BORINGSSL_FIPS) && !defined(OPENSSL_WINDOWS)
 #include <sys/mman.h>
 #include <unistd.h>
@@ -181,6 +184,133 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
+#if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
+// Defined in fips_shared_support.c and filled in by inject_hash.go with the
+// link-time preferred PE image base. See the comment there for why the runtime
+// cannot read this from the in-memory PE header.
+extern const uint64_t BORINGSSL_bcm_preferred_base;
+#endif
+
+#if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
+#if !defined(OPENSSL_64_BIT)
+#error "FIPS shared MinGW builds are only supported on 64-bit (x86_64) targets."
+#endif
+// MinGW is the only supported FIPS target whose hashed module region contains
+// base relocations: GCC emits .refptr indirection cells (and genuine imports
+// such as the CRT's free) into .rdata, inside the integrity boundary. Every
+// other toolchain keeps the hashed region relocation-free by construction
+// (ELF/Mach-O segregate relocated read-only pointers into separate sections;
+// MSVC does not emit .refptr cells), so they hash the region directly via the
+// plain definition below. Here we recompute the hash as it would appear at the
+// preferred image base by un-applying the ASLR load delta to each relocation.
+static int hmac_update_module_region(HMAC_CTX *hmac_ctx, const uint8_t *start,
+                                     size_t len) {
+  MEMORY_BASIC_INFORMATION mbi;
+  if (VirtualQuery(start, &mbi, sizeof(mbi)) == 0) {
+    return 0;
+  }
+
+  const uint8_t *const image_base = (const uint8_t *)mbi.AllocationBase;
+  const IMAGE_DOS_HEADER *const dos_header =
+      (const IMAGE_DOS_HEADER *)image_base;
+  if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
+    return 0;
+  }
+
+  const IMAGE_NT_HEADERS *const nt_headers =
+      (const IMAGE_NT_HEADERS *)(image_base + dos_header->e_lfanew);
+  if (nt_headers->Signature != IMAGE_NT_SIGNATURE ||
+      nt_headers->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+    return 0;
+  }
+
+  // The Windows loader overwrites the in-memory OptionalHeader.ImageBase with
+  // the actual load address, so use the link-time base recorded by
+  // inject_hash.go to recover the ASLR load delta.
+  const uintptr_t preferred_base = (uintptr_t)BORINGSSL_bcm_preferred_base;
+  const uintptr_t load_delta = (uintptr_t)image_base - preferred_base;
+  const IMAGE_DATA_DIRECTORY *const reloc_dir =
+      &nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+  if (load_delta == 0 || reloc_dir->VirtualAddress == 0 ||
+      reloc_dir->Size == 0) {
+    return HMAC_Update(hmac_ctx, start, len);
+  }
+
+  const uintptr_t region_start = (uintptr_t)start;
+  const uintptr_t region_end = region_start + len;
+  if (region_end < region_start) {
+    return 0;
+  }
+
+  const uint8_t *cursor = start;
+  const uint8_t *const end = start + len;
+  const uint8_t *reloc_block_ptr = image_base + reloc_dir->VirtualAddress;
+  const uint8_t *const reloc_end = reloc_block_ptr + reloc_dir->Size;
+  while (reloc_block_ptr + sizeof(IMAGE_BASE_RELOCATION) <= reloc_end) {
+    const IMAGE_BASE_RELOCATION *const reloc_block =
+        (const IMAGE_BASE_RELOCATION *)reloc_block_ptr;
+    if (reloc_block->SizeOfBlock < sizeof(IMAGE_BASE_RELOCATION) ||
+        reloc_block_ptr + reloc_block->SizeOfBlock > reloc_end) {
+      return 0;
+    }
+
+    const WORD *const entries =
+        (const WORD *)(reloc_block_ptr + sizeof(IMAGE_BASE_RELOCATION));
+    const size_t entry_count =
+        (reloc_block->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) /
+        sizeof(WORD);
+    for (size_t i = 0; i < entry_count; i++) {
+      const WORD entry = entries[i];
+      const WORD type = entry >> 12;
+      const WORD offset = entry & 0x0fff;
+
+      // IMAGE_REL_BASED_ABSOLUTE entries are block padding, not relocations.
+      if (type == IMAGE_REL_BASED_ABSOLUTE) {
+        continue;
+      }
+      const uintptr_t reloc_addr =
+          (uintptr_t)image_base + reloc_block->VirtualAddress + offset;
+      if (reloc_addr < region_start || reloc_addr >= region_end) {
+        continue;
+      }
+      // Inside the hashed region only 64-bit absolute relocations are expected.
+      // Anything else (or one that would run past the region end) cannot be
+      // reconciled, so fail closed rather than hash load-dependent bytes.
+      if (type != IMAGE_REL_BASED_DIR64 ||
+          (size_t)(region_end - reloc_addr) < sizeof(uint64_t)) {
+        return 0;
+      }
+
+      // PE base relocations are emitted in ascending address order; the cursor
+      // check enforces that and bounds the gap length below.
+      const uint8_t *const reloc_ptr = (const uint8_t *)reloc_addr;
+      if (reloc_ptr < cursor ||
+          !HMAC_Update(hmac_ctx, cursor, (size_t)(reloc_ptr - cursor))) {
+        return 0;
+      }
+
+      uint8_t adjusted[sizeof(uint64_t)];
+      const uint64_t value =
+          CRYPTO_load_u64_le(reloc_ptr) - (uint64_t)load_delta;
+      CRYPTO_store_u64_le(adjusted, value);
+      if (!HMAC_Update(hmac_ctx, adjusted, sizeof(uint64_t))) {
+        return 0;
+      }
+      cursor = reloc_ptr + sizeof(uint64_t);
+    }
+
+    reloc_block_ptr += reloc_block->SizeOfBlock;
+  }
+
+  return HMAC_Update(hmac_ctx, cursor, (size_t)(end - cursor));
+}
+#else
+static int hmac_update_module_region(HMAC_CTX *hmac_ctx, const uint8_t *start,
+                                     size_t len) {
+  return HMAC_Update(hmac_ctx, start, len);
+}
+#endif
+
 #define STRING_POINTER_LENGTH 18
 #define MAX_FUNCTION_NAME 32
 #define ASSERT_WITHIN_MSG "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n"
@@ -350,18 +480,29 @@ int BORINGSSL_integrity_test(void) {
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
 #endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
-  uint64_t length = end - start;
+  size_t region_len = (size_t)(end - start);
+  uint64_t length = region_len;
   uint8_t buffer[sizeof(length)];
   CRYPTO_store_u64_le(buffer, length);
-  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
-  HMAC_Update(&hmac_ctx, start, length);
+  if (!HMAC_Update(&hmac_ctx, buffer, sizeof(length)) ||
+      !hmac_update_module_region(&hmac_ctx, start, region_len)) {
+    fprintf(stderr, "HMAC failed.\n");
+    return 0;
+  }
 
-  length = rodata_end - rodata_start;
+  region_len = (size_t)(rodata_end - rodata_start);
+  length = region_len;
   CRYPTO_store_u64_le(buffer, length);
-  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
-  HMAC_Update(&hmac_ctx, rodata_start, length);
+  if (!HMAC_Update(&hmac_ctx, buffer, sizeof(length)) ||
+      !hmac_update_module_region(&hmac_ctx, rodata_start, region_len)) {
+    fprintf(stderr, "HMAC failed.\n");
+    return 0;
+  }
 #else
-  HMAC_Update(&hmac_ctx, start, end - start);
+  if (!hmac_update_module_region(&hmac_ctx, start, (size_t)(end - start))) {
+    fprintf(stderr, "HMAC failed.\n");
+    return 0;
+  }
 #endif
 #if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
