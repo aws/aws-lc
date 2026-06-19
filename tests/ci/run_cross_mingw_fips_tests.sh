@@ -70,10 +70,20 @@ EOF
 
 cat ${TARGET_CPU}-${TARGET_PLATFORM}.cmake
 
-# Make the cross-compiled crypto/ssl DLLs and the mingw runtime DLLs
-# (libstdc++, libgcc_s, libwinpthread) discoverable by Wine when it loads the
-# test executables. WINEPATH is a colon-separated list of Unix paths.
-export WINEPATH="${BUILD_ROOT}/crypto:${BUILD_ROOT}/ssl:/usr/lib/gcc/${TARGET_CPU}-${TARGET_PLATFORM}/${GCC_VERSION}-${THREAD_MODEL}:/usr/${TARGET_CPU}-${TARGET_PLATFORM}/lib"
+function wine_z_path {
+  local unix_path="${1%/}"
+  printf 'Z:%s' "${unix_path//\//\\}"
+}
+
+# Make the cross-compiled crypto/ssl DLLs, generated test DLLs, and the mingw
+# runtime DLLs (libstdc++, libgcc_s, libwinpthread) discoverable by Wine when it
+# loads the test executables. WINEPATH is a semicolon-separated list of
+# Windows-style paths.
+export WINEPATH="$(wine_z_path "${BUILD_ROOT}")"
+WINEPATH+=";$(wine_z_path "${BUILD_ROOT}/crypto")"
+WINEPATH+=";$(wine_z_path "${BUILD_ROOT}/ssl")"
+WINEPATH+=";$(wine_z_path "/usr/lib/gcc/${TARGET_CPU}-${TARGET_PLATFORM}/${GCC_VERSION}-${THREAD_MODEL}")"
+WINEPATH+=";$(wine_z_path "/usr/${TARGET_CPU}-${TARGET_PLATFORM}/lib")"
 # Keep Wine quiet and non-interactive in CI.
 export WINEDEBUG="-all"
 
@@ -91,10 +101,40 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   module_status=$(${BUILD_ROOT}/tool/bssl.exe isfips)
   [[ "${module_status}" == "1" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
 
-  # test_fips exercises the power-on self-test, including the runtime integrity
-  # check that recomputes the module hash. This is the primary validation that
+  # Positive test: test_fips exercises the power-on self-test, including the
+  # runtime integrity check that recomputes the module hash. This validates that
   # inject_hash.go wrote a correct hash into the PE/COFF DLL.
   ${BUILD_ROOT}/util/fipstools/test_fips.exe
+
+  # Negative test: corrupt the FIPS module inside the crypto DLL and confirm the
+  # runtime integrity check detects it (test_fips must now FAIL). This proves the
+  # integrity check actually runs and has teeth on the MinGW PE/COFF DLL, rather
+  # than merely being self-consistent with inject_hash.go (both measure the same
+  # window, so a passing positive test alone cannot distinguish a working check
+  # from a no-op one). break-hash.go -mingw locates the module via the PE/COFF
+  # symbol table (no .map file) and flips a byte inside
+  # [BORINGSSL_bcm_text_start, BORINGSSL_bcm_text_end].
+  crypto_dll="${BUILD_ROOT}/crypto/libcrypto.dll"
+  if [ ! -f "${crypto_dll}" ]; then
+    echo >&2 "Expected crypto DLL not found at ${crypto_dll}"; exit 1
+  fi
+  cp "${crypto_dll}" "${crypto_dll}.bak"
+  (cd "${SRC_ROOT}" && go run util/fipstools/break-hash.go -mingw "${crypto_dll}" "${crypto_dll}.corrupted")
+  cp "${crypto_dll}.corrupted" "${crypto_dll}"
+  # test_fips is expected to fail here; disable errexit so we can capture its
+  # exit code instead of aborting the script.
+  set +e
+  ${BUILD_ROOT}/util/fipstools/test_fips.exe
+  fips_negative_rc=$?
+  set -e
+  # Restore the pristine DLL before asserting, so a failure does not leave a
+  # corrupted DLL behind for the gtest runs below or for local re-runs.
+  cp "${crypto_dll}.bak" "${crypto_dll}"
+  rm -f "${crypto_dll}.bak" "${crypto_dll}.corrupted"
+  if [ "${fips_negative_rc}" -eq 0 ]; then
+    echo >&2 "FIPS integrity negative test failed: test_fips should have failed with a corrupted crypto DLL."
+    exit 1
+  fi
 
   # Confirm the module loads and basic functionality works through the DLL.
   shard_gtest "${BUILD_ROOT}/crypto/crypto_test.exe --gtest_also_run_disabled_tests"
