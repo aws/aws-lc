@@ -185,16 +185,14 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
 #if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
+#if !defined(OPENSSL_64_BIT)
+#error "FIPS shared MinGW builds are only supported on 64-bit (x86_64) targets."
+#endif
 // Defined in fips_shared_support.c and filled in by inject_hash.go with the
 // link-time preferred PE image base. See the comment there for why the runtime
 // cannot read this from the in-memory PE header.
 extern const uint64_t BORINGSSL_bcm_preferred_base;
-#endif
 
-#if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
-#if !defined(OPENSSL_64_BIT)
-#error "FIPS shared MinGW builds are only supported on 64-bit (x86_64) targets."
-#endif
 // MinGW is the only supported FIPS target whose hashed module region contains
 // base relocations: GCC emits .refptr indirection cells (and genuine imports
 // such as the CRT's free) into .rdata, inside the integrity boundary. Every
