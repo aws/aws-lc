@@ -456,6 +456,46 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 		moduleROData = rodata[*rodataStart:*rodataEnd]
 	}
 
+	// Record the link-time preferred PE image base in BORINGSSL_bcm_preferred_base
+	// so the runtime integrity check can compute the ASLR load delta. The Windows
+	// loader rewrites OptionalHeader.ImageBase in the in-memory image once the DLL
+	// is relocated, so the runtime cannot read the preferred base from the header.
+	var imageBase uint64
+	switch oh := object.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		imageBase = oh.ImageBase
+	case *pe.OptionalHeader32:
+		imageBase = uint64(oh.ImageBase)
+	default:
+		return nil, nil, errors.New("unsupported or missing PE optional header")
+	}
+
+	var baseSym *pe.Symbol
+	for _, symbol := range symbols {
+		if symbol.Name == "BORINGSSL_bcm_preferred_base" {
+			if baseSym != nil {
+				return nil, nil, errors.New("duplicate preferred base symbol found")
+			}
+			baseSym = symbol
+		}
+	}
+	if baseSym == nil {
+		return nil, nil, errors.New("could not find BORINGSSL_bcm_preferred_base symbol")
+	}
+	sn := int(baseSym.SectionNumber)
+	if sn < 1 || sn > len(object.Sections) {
+		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base has invalid section number")
+	}
+	baseSection := object.Sections[sn-1]
+	if baseSection.Offset == 0 {
+		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base section has no file data")
+	}
+	baseFileOffset := int64(baseSection.Offset) + int64(baseSym.Value)
+	if baseFileOffset < 0 || baseFileOffset+8 > int64(len(objectBytes)) {
+		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base lies outside the object file")
+	}
+	binary.LittleEndian.PutUint64(objectBytes[baseFileOffset:], imageBase)
+
 	return moduleText, moduleROData, nil
 }
 
