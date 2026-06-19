@@ -42,33 +42,51 @@ endif()
 
 # Extract section names (the second whitespace-delimited column of `objdump -h`)
 # and flag any that indicate split-out module code or data. Dollar-suffixed
-# grouped sections such as .rdata$zzz are benign compiler metadata that the
-# linker collates into .rdata, so only the dot-form splits are forbidden.
+# grouped .rdata sections contain MinGW refptr cells, so the build must merge
+# them into .rdata before this check runs.
 string(REPLACE "\n" ";" objdump_lines "${objdump_output}")
 set(forbidden_sections "")
+set(forbidden_section_metadata "")
+set(current_section_name "")
 foreach(line IN LISTS objdump_lines)
   string(REGEX REPLACE "^[ \t]+" "" line "${line}")
-  string(REGEX REPLACE "[ \t]+" ";" fields "${line}")
-  list(LENGTH fields field_count)
-  if(field_count GREATER 1)
-    list(GET fields 1 section_name)
-    if(section_name MATCHES "^\\.text\\." OR section_name MATCHES "^\\.rdata\\.")
+  if(line MATCHES "^[0-9]+[ \t]+([^ \t]+)")
+    set(section_name "${CMAKE_MATCH_1}")
+    set(current_section_name "${section_name}")
+    if(section_name MATCHES "^\\.text[\\.$]" OR section_name MATCHES "^\\.rdata[\\.$]")
       list(APPEND forbidden_sections "${section_name}")
     endif()
+  elseif(current_section_name STREQUAL ".rdata" AND line MATCHES "LINK_ONCE|COMDAT")
+    list(APPEND forbidden_section_metadata ".rdata: ${line}")
   endif()
 endforeach()
 
-if(forbidden_sections)
+if(forbidden_sections OR forbidden_section_metadata)
   list(REMOVE_DUPLICATES forbidden_sections)
+  list(REMOVE_DUPLICATES forbidden_section_metadata)
   string(REPLACE ";" ", " forbidden_pretty "${forbidden_sections}")
+  string(REPLACE ";" ", " forbidden_metadata_pretty "${forbidden_section_metadata}")
+  set(failure_details "")
+  if(forbidden_sections)
+    string(APPEND failure_details
+      "split-out section(s) outside the integrity markers: ${forbidden_pretty}.")
+  endif()
+  if(forbidden_section_metadata)
+    if(failure_details)
+      string(APPEND failure_details " ")
+    endif()
+    string(APPEND failure_details
+      "merged .rdata still has grouped-section metadata: ${forbidden_metadata_pretty}.")
+  endif()
   message(FATAL_ERROR
     "FIPS integrity check would be incomplete: '${BCM_OBJECT}' contains "
-    "split-out section(s) outside the integrity markers: ${forbidden_pretty}.\n"
+    "${failure_details}\n"
     "All module code must live in a single contiguous .text (and rodata in "
     ".rdata) bracketed by BORINGSSL_bcm_text_start/end. Ensure the module is "
     "built with -fno-reorder-functions -fno-reorder-blocks-and-partition "
-    "(and -fno-function-sections -fno-data-sections); see the FIPS_SHARED "
-    "MinGW blocks in the top-level CMakeLists.txt.")
+    "(and -fno-function-sections -fno-data-sections), and ensure grouped "
+    ".rdata$ sections are merged by merge_fips_mingw_rodata.cmake; see the "
+    "FIPS_SHARED MinGW blocks in the top-level CMakeLists.txt.")
 endif()
 
 message(STATUS "FIPS MinGW section check passed for ${BCM_OBJECT}")
