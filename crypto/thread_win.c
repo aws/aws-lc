@@ -183,6 +183,7 @@ __pragma(comment(
 #ifdef _WIN64
 
 // .CRT section is merged with .rdata on x64 so it must be constant data.
+#if defined(_MSC_VER) || defined(__clang__)
 #pragma const_seg(".CRT$XLC")
 // When defining a const variable, it must have external linkage to be sure the
 // linker doesn't discard it.
@@ -190,13 +191,27 @@ extern const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl;
 const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 // Reset the default section.
 #pragma const_seg()
+#else
+// GCC (e.g. MinGW-GCC) does not support the const_seg/data_seg pragmas, so use
+// the section attribute to place the callback in the .CRT$XLC callback array.
+// 'used' keeps the optimizer from discarding it (the linker /INCLUDE pragmas
+// above are likewise MSVC-only).
+extern const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl;
+const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl
+    __attribute__((section(".CRT$XLC"), used)) = thread_local_destructor;
+#endif  // _MSC_VER || __clang__
 
 #else
 
+#if defined(_MSC_VER) || defined(__clang__)
 #pragma data_seg(".CRT$XLC")
 PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 // Reset the default section.
 #pragma data_seg()
+#else
+PIMAGE_TLS_CALLBACK p_thread_callback_boringssl
+    __attribute__((section(".CRT$XLC"), used)) = thread_local_destructor;
+#endif  // _MSC_VER || __clang__
 
 #endif  // _WIN64
 
