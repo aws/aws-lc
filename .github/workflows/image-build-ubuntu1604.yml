@@ -35,7 +35,7 @@ jobs:
     outputs:
       ubuntu1604: ${{ steps.images.outputs.ubuntu1604 }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
