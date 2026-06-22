@@ -3419,17 +3419,23 @@ INSTANTIATE_TEST_SUITE_P(All, TLS13KDF_ServiceIndicatorTest,
 
 TEST_P(TLS13KDF_ServiceIndicatorTest, HKDFExpandLabel) {
   const TLS13KDFTestVector &test = GetParam();
+  const EVP_MD *digest = test.func();
 
   static const uint8_t kLabel[] = "c e traffic";
-  static const uint8_t kHash[32] = {0};
+  // The HKDF-Expand-Label context is a transcript hash, so its length tracks
+  // the digest in use (e.g. 48 bytes for SHA-384, 32 for SHA-256). Size it from
+  // the digest rather than pinning it to 32 bytes so each parameterization
+  // mirrors a real caller.
+  uint8_t hash[EVP_MAX_MD_SIZE] = {0};
+  const size_t hash_len = EVP_MD_size(digest);
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   uint8_t output[32];
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved,
       ASSERT_TRUE(CRYPTO_tls13_hkdf_expand_label(
-          output, sizeof(output), test.func(), kTLSSecret, sizeof(kTLSSecret),
-          kLabel, sizeof(kLabel) - 1, kHash, sizeof(kHash))));
+          output, sizeof(output), digest, kTLSSecret, sizeof(kTLSSecret),
+          kLabel, sizeof(kLabel) - 1, hash, hash_len)));
   EXPECT_EQ(approved, test.expect_approved);
 }
 

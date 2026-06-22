@@ -32,7 +32,8 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
 // internally) and |hash| (the context/transcript hash). |out_len| must be at
 // most 65535, |label_len| must be at most 249 so that the "tls13 "-prefixed
 // label fits in the RFC 8446 |opaque label<...255>| bound, and |hash_len|
-// must be at most 255. An empty |label| (|label_len == 0|) is permitted to
+// must be at most 255; a request that exceeds any of these upper bounds fails
+// and returns zero. An empty |label| (|label_len == 0|) is permitted to
 // support |SSL_export_keying_material| callers; this matches the long-standing
 // behavior of the equivalent BoringSSL function. Under FIPS, the operation is
 // approved when |digest| is SHA2-256 or SHA2-384. It returns one on success

@@ -5,6 +5,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
+#include <openssl/err.h>
 #include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/kdf.h>
@@ -162,19 +163,22 @@ int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
   //       opaque label<7..255> = "tls13 " + Label;
   //       opaque context<0..255> = Context;
   //   };
-  // |CBB_add_u16| takes a |uint16_t|, so passing |out_len| (a |size_t|) goes
-  // through an implicit narrowing conversion that would silently truncate the
-  // high bits before |CBB_add_u16| sees the value. Reject |out_len > 65535|
-  // explicitly so that an oversized request fails cleanly rather than producing
-  // a spec-violating |HkdfLabel.length|. The label and context length bounds
-  // are enforced for us by |CBB_add_u8_length_prefixed|, whose child sizes are
-  // accumulated as |size_t| (no narrowing at the call site) and which fails on
-  // finalization if the child exceeds 255 bytes. The RFC's lower bound on the
-  // label field (|opaque label<7..255>|, i.e. |label_len| >= 1) is
-  // intentionally not enforced: |SSL_export_keying_material| callers may pass
-  // an empty label, and this matches the pre-existing AWS-LC and BoringSSL
-  // behavior.
-  if (out_len > UINT16_MAX) {
+  // Validate the documented input bounds up front so an oversized request fails
+  // cleanly with a diagnostic instead of relying on a downstream CBB failure
+  // (or, for |out_len|, silently producing a spec-violating length):
+  //   * |CBB_add_u16| takes a |uint16_t|, so |out_len| (a |size_t|) would be
+  //     narrowed at the call site before |CBB_add_u16| ever sees it; reject
+  //     values that do not fit the uint16 |HkdfLabel.length|.
+  //   * The "tls13 "-prefixed label must fit |opaque label<...255>|, i.e.
+  //     |kProtocolLabelLen + label_len <= 255|.
+  //   * The context must fit |opaque context<0..255>|, i.e. |hash_len <= 255|.
+  // The RFC's lower bound on the label field (|opaque label<7..255>|, i.e.
+  // |label_len| >= 1) is intentionally not enforced: |SSL_export_keying_material|
+  // callers may pass an empty label, and this matches the pre-existing AWS-LC
+  // and BoringSSL behavior.
+  if (out_len > UINT16_MAX || label_len > UINT8_MAX - kProtocolLabelLen ||
+      hash_len > UINT8_MAX) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
     goto end;
   }
   if (!CBB_init(&cbb, 2 + 1 + kProtocolLabelLen + label_len + 1 + hash_len) ||
