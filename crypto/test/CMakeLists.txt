@@ -21,5 +21,13 @@ endif()
 target_link_libraries(test_support_lib boringssl_gtest crypto)
 target_add_awslc_include_paths(TARGET test_support_lib SCOPE PRIVATE)
 
-add_library(boringssl_gtest_main STATIC gtest_main.cc)
+# For WASI (Generic systems), use OBJECT library instead of STATIC to ensure
+# the main() symbol is directly included in executables. Static libraries on
+# WASI may not have their 'main' symbol pulled in, resulting in
+# "undefined_weak:main" runtime errors.
+if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+  add_library(boringssl_gtest_main OBJECT gtest_main.cc)
+else()
+  add_library(boringssl_gtest_main STATIC gtest_main.cc)
+endif()
 target_link_libraries(boringssl_gtest_main boringssl_gtest crypto test_support_lib)
