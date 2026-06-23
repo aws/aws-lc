@@ -126,6 +126,7 @@
 #include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
+#include "modes/cts.c"
 #include "modes/ctr.c"
 #include "modes/gcm.c"
 #include "modes/gcm_nohw.c"
