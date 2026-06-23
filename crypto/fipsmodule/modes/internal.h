@@ -413,6 +413,9 @@ void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
 // as a 16-byte residue, and inputs of length <= 16 are rejected with a return
 // of zero (use plain CBC for those). On success each function returns the
 // number of bytes written, which equals |len|.
+//
+// The public CBC-based variants (CRYPTO_cts128_encrypt, CRYPTO_cts128_decrypt)
+// are declared in <openssl/modes.h>.
 
 // CRYPTO_cts128_encrypt_block performs CTS-mode encryption using |block| in
 // place of a CBC routine. |in| and |out| may not alias.
@@ -420,25 +423,11 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
                                    const AES_KEY *key, uint8_t ivec[16],
                                    block128_f block);
 
-// CRYPTO_cts128_encrypt is like |CRYPTO_cts128_encrypt_block| but takes a
-// |cbc128_f| (e.g. |AES_cbc_encrypt|) so it can use the cipher-specific CBC
-// implementation.
-size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                             const AES_KEY *key, uint8_t ivec[16],
-                             cbc128_f cbc);
-
 // CRYPTO_cts128_decrypt_block performs CTS-mode decryption using |block|.
 // |in| and |out| may not alias.
 size_t CRYPTO_cts128_decrypt_block(const uint8_t *in, uint8_t *out, size_t len,
                                    const AES_KEY *key, uint8_t ivec[16],
                                    block128_f block);
-
-// CRYPTO_cts128_decrypt is like |CRYPTO_cts128_decrypt_block| but takes a
-// |cbc128_f| (e.g. |AES_cbc_encrypt|) so it can use the cipher-specific CBC
-// implementation.
-size_t CRYPTO_cts128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                             const AES_KEY *key, uint8_t ivec[16],
-                             cbc128_f cbc);
 
 // XTS.
 
