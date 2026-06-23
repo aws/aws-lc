@@ -44,6 +44,11 @@ endif()
 # and flag any that indicate split-out module code or data. Dollar-suffixed
 # grouped .rdata sections contain MinGW refptr cells, so the build must merge
 # them into .rdata before this check runs.
+#
+# MinGW may also emit .ctors/.dtors records for module constructors and
+# destructors. Those are loader registration metadata analogous to ELF
+# .init_array/.fini_array or MSVC .CRT$XCU records, and are intentionally not
+# treated as module rodata by this check.
 string(REPLACE "\n" ";" objdump_lines "${objdump_output}")
 set(forbidden_sections "")
 set(forbidden_section_metadata "")

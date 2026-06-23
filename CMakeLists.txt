@@ -1347,9 +1347,9 @@ endif()
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
   if(MINGW AND FIPS)
-    # The FIPS shared module on MinGW must contain its own copy of the
-    # winpthread implementation so that the integrity-checked DLL does not
-    # depend on an external libwinpthread DLL at runtime.
+    # If CMake's MinGW Threads::Threads target resolves to winpthread, keep it
+    # statically linked so the FIPS build products do not acquire an external
+    # libwinpthread DLL dependency at runtime.
     #
     # NOTE: crypto links Threads::Threads PUBLIC, so mutating the imported
     # target's interface here statically links winpthread into *every* artifact
