@@ -24,6 +24,7 @@ source tests/ci/common_posix_setup.sh
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER="${SYS_ROOT}/KRB5_SCRATCH"
 KRB5_SRC_FOLDER="${SCRATCH_FOLDER}/krb5"
+KRB5_PATCH_FOLDER="${SCRIPT_DIR}/krb5_patch"
 KRB5_BUILD_FOLDER="${SCRATCH_FOLDER}/krb5-build"
 KRB5_INSTALL_FOLDER="${SCRATCH_FOLDER}/krb5-install"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -45,6 +46,15 @@ if [[ -z "${KRB5_RELEASE_TAG}" ]]; then
   exit 1
 fi
 echo "Using krb5 release tag: ${KRB5_RELEASE_TAG}"
+
+function krb5_apply_patches() {
+  pushd "${KRB5_SRC_FOLDER}"
+  for patchfile in $(find -L "${KRB5_PATCH_FOLDER}" -type f -name '*.patch' | sort); do
+    echo "Applying patch ${patchfile}..."
+    patch -p1 --quiet -i "${patchfile}"
+  done
+  popd
+}
 
 function krb5_build() {
   pushd "${KRB5_SRC_FOLDER}/src"
@@ -96,6 +106,8 @@ git clone --depth 1 --branch "${KRB5_RELEASE_TAG}" \
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" \
          "${KRB5_BUILD_FOLDER}" "${KRB5_INSTALL_FOLDER}"
 ls
+
+krb5_apply_patches
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" \
   -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF \
