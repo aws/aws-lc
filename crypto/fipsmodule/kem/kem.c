@@ -8,6 +8,7 @@
 #include "internal.h"
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
 
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
@@ -381,13 +382,13 @@ static int kem_check_pct(const KEM_KEY *key) {
   uint8_t *ss_enc = OPENSSL_malloc(kem->shared_secret_len);
   uint8_t *ss_dec = OPENSSL_malloc(kem->shared_secret_len);
 
-  if (ciphertext == NULL || ss_enc == NULL || ss_dec == NULL) {
-    goto cleanup;
-  }
-
   size_t ct_len = kem->ciphertext_len;
   size_t ss_enc_len = kem->shared_secret_len;
   size_t ss_dec_len = kem->shared_secret_len;
+
+  if (ciphertext == NULL || ss_enc == NULL || ss_dec == NULL) {
+    goto cleanup;
+  }
 
   if (!kem->method->encaps(ciphertext, &ct_len, ss_enc, &ss_enc_len,
                            key->public_key)) {
