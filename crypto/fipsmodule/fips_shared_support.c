@@ -33,18 +33,18 @@ const uint8_t BORINGSSL_bcm_text_hash[32] AWSLC_FIPS_HASH_SECTION = {
 
 #if defined(__MINGW32__)
 // BORINGSSL_bcm_preferred_base records the link-time (preferred) PE image base
-// of the crypto DLL. When a module is relocated for ASLR, the Windows loader
-// rewrites OptionalHeader.ImageBase in the in-memory PE header to the actual
-// load address, so the runtime integrity check cannot recover the load delta
-// from the header. inject_hash.go writes the real preferred base here during the
-// build. Like BORINGSSL_bcm_text_hash it lives outside the hashed module
-// boundary, and because it is an integer (not a pointer) it carries no base
-// relocation of its own, so its value is identical on disk and in memory.
+// of the crypto DLL. When a module is relocated for ASLR, the runtime integrity
+// check subtracts the load delta from relocated cells before hashing, matching
+// the on-disk preferred-base bytes that inject_hash.go measured. Like
+// BORINGSSL_bcm_text_hash it lives outside the hashed module boundary, and
+// because it is an integer (not a pointer) it carries no base relocation of its
+// own, so its value is identical on disk and in memory.
 //
 // The initializer is a recognizable sentinel: if it survives to runtime, base
 // injection did not run and the integrity check fails closed.
+#define BORINGSSL_BCM_PREFERRED_BASE_UNSET UINT64_C(0xBADC0FFEE0DDF00D)
 const uint64_t BORINGSSL_bcm_preferred_base AWSLC_FIPS_HASH_SECTION =
-    UINT64_C(0xBADC0FFEE0DDF00D);
+    BORINGSSL_BCM_PREFERRED_BASE_UNSET;
 #endif
 #else
 // C requires a translation unit to contain at least one declaration. Since
