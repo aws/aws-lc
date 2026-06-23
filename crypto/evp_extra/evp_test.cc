@@ -932,6 +932,25 @@ TEST(EVPTest, WycheproofECDSAsecp256k1) {
 }
 
 //= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt`.
+TEST(EVPTest, WycheproofECDSABrainpool) {
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt");
+}
+
+//= third_party/vectors/vectors_spec.md#wycheproof
 //# AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
 TEST(EVPTest, WycheproofEdDSA) {
   RunWycheproofVerifyTest(

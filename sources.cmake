@@ -320,6 +320,11 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt
   third_party/wycheproof_testvectors/hkdf_sha1_test.txt
   third_party/wycheproof_testvectors/hkdf_sha256_test.txt
