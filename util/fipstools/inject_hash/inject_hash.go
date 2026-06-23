@@ -457,9 +457,8 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 	}
 
 	// Record the link-time preferred PE image base in BORINGSSL_bcm_preferred_base
-	// so the runtime integrity check can compute the ASLR load delta. The Windows
-	// loader rewrites OptionalHeader.ImageBase in the in-memory image once the DLL
-	// is relocated, so the runtime cannot read the preferred base from the header.
+	// so the runtime integrity check computes the ASLR load delta against the
+	// same preferred-base image bytes hashed here.
 	var imageBase uint64
 	switch oh := object.OptionalHeader.(type) {
 	case *pe.OptionalHeader64:
@@ -504,12 +503,25 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 	var isStatic bool
 	var perm os.FileMode
 
-	if appleOS && windowsOS {
-		return fmt.Errorf("-apple and -windows are mutually exclusive")
+	modeCount := 0
+	if appleOS {
+		modeCount++
+	}
+	if windowsOS {
+		modeCount++
+	}
+	if mingw {
+		modeCount++
+	}
+	if modeCount > 1 {
+		return fmt.Errorf("-apple, -windows, and -mingw are mutually exclusive")
 	}
 
 	if windowsOS && len(mapFile) == 0 {
 		return fmt.Errorf("-map is required when -windows is set")
+	}
+	if !windowsOS && len(mapFile) != 0 {
+		return fmt.Errorf("-map is only valid when -windows is set")
 	}
 
 	if len(arInput) > 0 {
@@ -525,6 +537,9 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 
 		if windowsOS {
 			return fmt.Errorf("only shared libraries can be handled on Windows")
+		}
+		if mingw {
+			return fmt.Errorf("only shared libraries can be handled on MinGW")
 		}
 
 		fi, err := os.Stat(arInput)
