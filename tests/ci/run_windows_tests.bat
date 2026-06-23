@@ -2,13 +2,42 @@
 set SRC_ROOT=%cd%
 set BUILD_DIR=%TEMP%\awslc
 
-@rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
-@rem %2 specifies the architecture option to build against: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
-@rem %3 is to indicate running SDE simulation tests. If not set, SDE tests are not run.
-set MSVC_PATH=%1
+@rem %1 path to vcvarsall.bat, or "auto" to auto-detect the newest VS via
+@rem    vswhere (an empty or non-existent path also auto-detects). An explicit
+@rem    existing path (windows-omnibus pins a specific VS) is honored as-is.
+@rem    Pass "auto" rather than "": PowerShell drops empty-string arguments to
+@rem    native commands, which would shift %2 into %1.
+@rem %2 architecture: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
+@rem %3 run SDE simulation tests. If unset, SDE tests are not run.
+set MSVC_PATH=%~1
 set ARCH_OPTION=%2
 if "%~3"=="" ( set RUN_SDE=false ) else ( set RUN_SDE=%3 )
-call %MSVC_PATH% %ARCH_OPTION% || goto error
+
+@rem "auto" (or an empty / non-existent path) => auto-detect via vswhere so
+@rem hosted runners survive VS version bumps without hard-coded paths.
+if /i "%MSVC_PATH%"=="auto" set "MSVC_PATH="
+if not "%MSVC_PATH%"=="" if exist "%MSVC_PATH%" goto have_vcvars
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" (
+    echo Could not find vswhere.exe to locate Visual Studio.
+    goto error
+)
+set "VSINSTALL="
+for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -prerelease -products * -property installationPath`) do set "VSINSTALL=%%i"
+if not defined VSINSTALL (
+    echo vswhere did not find a Visual Studio installation.
+    goto error
+)
+set "MSVC_PATH=%VSINSTALL%\VC\Auxiliary\Build\vcvarsall.bat"
+if not exist "%MSVC_PATH%" (
+    echo Could not find vcvarsall.bat at "%MSVC_PATH%".
+    goto error
+)
+
+:have_vcvars
+echo Using Visual Studio environment: "%MSVC_PATH%"
+call "%MSVC_PATH%" %ARCH_OPTION% || goto error
 
 if /i "%ARCH_OPTION%" == "arm64" (
   set "CC=clang-cl"
@@ -31,7 +60,7 @@ goto :EOF
 @rem Run the same builds as run_posix_tests.sh
 @rem Check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
 @rem original string. MSVC 14 has an issue with a missing DLL that causes the debug unit tests to fail
-if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
+if "%MSVC_PATH:14.0=%"=="%MSVC_PATH%" call :build_and_test Debug "" || goto error
 call :build_and_test Release "" || goto error
 call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
 call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error

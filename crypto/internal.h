@@ -803,7 +803,10 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
 // These wrapper functions behave the same as the corresponding C standard
 // functions, but behave as expected when passed NULL if the length is zero.
 //
-// Note |OPENSSL_memcmp| is a different function from |CRYPTO_memcmp|.
+// |OPENSSL_memcmp| performs a constant-time comparison that preserves the
+// ordering semantics of |memcmp| (negative, zero, or positive). It iterates
+// over the full length regardless of where the first differing byte is, so it
+// can be used safely with secret data without leaking timing information.
 
 // C++ defines |memchr| as a const-correct overload.
 #if defined(__cplusplus)
@@ -842,11 +845,21 @@ static inline void *OPENSSL_memchr(const void *s, int c, size_t n) {
 #endif  // __cplusplus
 
 static inline int OPENSSL_memcmp(const void *s1, const void *s2, size_t n) {
-  if (n == 0) {
-    return 0;
+  const uint8_t *a = (const uint8_t *)s1;
+  const uint8_t *b = (const uint8_t *)s2;
+  // Walk from the end so the lowest-index differing byte (the one that decides
+  // memcmp's sign) is the last write to |result|. Equal-byte iterations leave
+  // |result| unchanged. The loop always runs |n| iterations, so timing depends
+  // only on |n|.
+  int result = 0;
+  for (size_t i = n; i > 0; i--) {
+    uint8_t ai = a[i - 1];
+    uint8_t bi = b[i - 1];
+    crypto_word_t diff_mask =
+        ~constant_time_is_zero_w((crypto_word_t)(ai ^ bi));
+    result = constant_time_select_int(diff_mask, (int)ai - (int)bi, result);
   }
-
-  return memcmp(s1, s2, n);
+  return result;
 }
 
 static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {

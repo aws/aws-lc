@@ -3,9 +3,12 @@
 
 #include <assert.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/digest.h>
+#include <openssl/err.h>
 #include <openssl/hkdf.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/mem.h>
 
 #include "../../internal.h"
@@ -124,6 +127,80 @@ end:
   FIPS_service_indicator_unlock_state();
   if(ret) {
     TLSKDF_verify_service_indicator(original_digest, label, label_len);
+  }
+  return ret;
+}
+
+// CRYPTO_tls13_hkdf_expand_label: the HkdfLabel / CBB construction and the
+// overall shape of this function are ported from BoringSSL's
+// |tls13_hkdf_expand_label| (|crypto/fipsmodule/tls/internal.h|, originally
+// |hkdf_expand_label| in |ssl/tls13_enc.cc|), translated from C++ to C. The
+// FIPS service-indicator lock/unlock and |TLS13_KDF_verify_service_indicator|
+// call at the end are AWS-LC-specific and have no BoringSSL analogue.
+int CRYPTO_tls13_hkdf_expand_label(uint8_t *out, size_t out_len,
+                                   const EVP_MD *digest,
+                                   const uint8_t *secret, size_t secret_len,
+                                   const uint8_t *label, size_t label_len,
+                                   const uint8_t *hash, size_t hash_len) {
+  // Lock the FIPS service indicator so the underlying HKDF-Expand (which
+  // itself locks via HMAC) does not bump the indicator counter. We release and
+  // update based on the digest at the end.
+  FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
+
+  static const uint8_t kProtocolLabel[] = "tls13 ";
+  static const size_t kProtocolLabelLen = sizeof(kProtocolLabel) - 1;
+
+  CBB cbb, child;
+  uint8_t *hkdf_label = NULL;
+  size_t hkdf_label_len = 0;
+  int ret = 0;
+
+  CBB_zero(&cbb);
+  // Construct the HkdfLabel structure per RFC 8446 Section 7.1:
+  //   struct {
+  //       uint16 length = Length;
+  //       opaque label<7..255> = "tls13 " + Label;
+  //       opaque context<0..255> = Context;
+  //   };
+  // Validate the documented input bounds up front so an oversized request fails
+  // cleanly with a diagnostic instead of relying on a downstream CBB failure
+  // (or, for |out_len|, silently producing a spec-violating length):
+  //   * |CBB_add_u16| takes a |uint16_t|, so |out_len| (a |size_t|) would be
+  //     narrowed at the call site before |CBB_add_u16| ever sees it; reject
+  //     values that do not fit the uint16 |HkdfLabel.length|.
+  //   * The "tls13 "-prefixed label must fit |opaque label<...255>|, i.e.
+  //     |kProtocolLabelLen + label_len <= 255|.
+  //   * The context must fit |opaque context<0..255>|, i.e. |hash_len <= 255|.
+  // The RFC's lower bound on the label field (|opaque label<7..255>|, i.e.
+  // |label_len| >= 1) is intentionally not enforced: |SSL_export_keying_material|
+  // callers may pass an empty label, and this matches the pre-existing AWS-LC
+  // and BoringSSL behavior.
+  if (out_len > UINT16_MAX || label_len > UINT8_MAX - kProtocolLabelLen ||
+      hash_len > UINT8_MAX) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    goto end;
+  }
+  if (!CBB_init(&cbb, 2 + 1 + kProtocolLabelLen + label_len + 1 + hash_len) ||
+      !CBB_add_u16(&cbb, out_len) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, kProtocolLabel, kProtocolLabelLen) ||
+      !CBB_add_bytes(&child, label, label_len) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, hash, hash_len) ||
+      !CBB_finish(&cbb, &hkdf_label, &hkdf_label_len)) {
+    goto end;
+  }
+
+  ret = HKDF_expand(out, out_len, digest, secret, secret_len, hkdf_label,
+                    hkdf_label_len);
+
+end:
+  CBB_cleanup(&cbb);
+  OPENSSL_free(hkdf_label);
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    TLS13_KDF_verify_service_indicator(digest);
   }
   return ret;
 }
