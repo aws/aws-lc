@@ -13,10 +13,25 @@
 #include <openssl/nid.h>
 
 #include "../fipsmodule/bn/internal.h"
-#include "../fipsmodule/delocate.h"
 #include "../fipsmodule/ec/internal.h"
+#include "../internal.h"
 
 #include "../fipsmodule/ec/builtin_curves.h"
+
+// DEFINE_METHOD_FUNCTION (from delocate.h) cannot be used outside the FIPS
+// module because it relies on delocated BSS storage within bcm.o. Since
+// Brainpool curves are not FIPS-approved, we use an equivalent lazy-init
+// pattern directly.
+#define DEFINE_CURVE_DATA(type, name)                                         \
+  static type name##_storage;                                                \
+  static CRYPTO_once_t name##_once = CRYPTO_ONCE_INIT;                      \
+  static void name##_do_init(type *out);                                     \
+  static void name##_init(void) { name##_do_init(&name##_storage); }         \
+  const type *name(void) {                                                   \
+    CRYPTO_once(&name##_once, name##_init);                                  \
+    return (const type *)&name##_storage;                                     \
+  }                                                                          \
+  static void name##_do_init(type *out)
 
 
 // Duplicated from crypto/fipsmodule/ec/ec.c to avoid exposing
@@ -45,7 +60,7 @@ static void ec_group_set_a_mont(EC_GROUP *group, const BN_ULONG *mont_a,
   OPENSSL_memcpy(group->a.words, mont_a, num_bytes);
 }
 
-DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP224r1) {
+DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP224r1) {
   out->curve_name = NID_brainpoolP224r1;
   out->comment = "brainpoolP224r1";
   // OID 1.3.36.3.3.2.8.1.1.5 — RFC 5639, Section 4.1
@@ -80,7 +95,7 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP224r1) {
   out->mutable_ec_group = 0;
 }
 
-DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP256r1) {
+DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP256r1) {
   out->curve_name = NID_brainpoolP256r1;
   out->comment = "brainpoolP256r1";
   // OID 1.3.36.3.3.2.8.1.1.7 — RFC 5639, Section 4.1
@@ -115,7 +130,7 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP256r1) {
   out->mutable_ec_group = 0;
 }
 
-DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP320r1) {
+DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP320r1) {
   out->curve_name = NID_brainpoolP320r1;
   out->comment = "brainpoolP320r1";
   // OID 1.3.36.3.3.2.8.1.1.9 — RFC 5639, Section 4.1
@@ -150,7 +165,7 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP320r1) {
   out->mutable_ec_group = 0;
 }
 
-DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP384r1) {
+DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP384r1) {
   out->curve_name = NID_brainpoolP384r1;
   out->comment = "brainpoolP384r1";
   // OID 1.3.36.3.3.2.8.1.1.11 — RFC 5639, Section 4.1
@@ -185,7 +200,7 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP384r1) {
   out->mutable_ec_group = 0;
 }
 
-DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_brainpoolP512r1) {
+DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP512r1) {
   out->curve_name = NID_brainpoolP512r1;
   out->comment = "brainpoolP512r1";
   // OID 1.3.36.3.3.2.8.1.1.13 — RFC 5639, Section 4.1
