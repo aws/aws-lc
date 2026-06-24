@@ -18,13 +18,13 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install lcov
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run Code Coverage Build
         run: ./util/codecov-ci.sh ./build
       - name: Upload code coverage report to Codecov
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: "./build/coverage-default.info,./build/coverage-no-asm.info"

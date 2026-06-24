@@ -4,6 +4,8 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+  schedule:
+    - cron: "0 0 * * *"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -11,10 +13,13 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 permissions:
   contents: read
+  actions: read
+  id-token: write
 
 jobs:
   integrations:
     name: ${{ matrix.name }}-${{ matrix.arch }}
+    continue-on-error: ${{ matrix.allow_failure || false }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
@@ -45,13 +50,22 @@ jobs:
             compiler: gcc-11
             run: ./tests/ci/integration/run_crt_integration.sh
 
-          # libgit2
+          # libgit2 (pinned to a release - required)
           - name: libgit2
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_libgit2_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_libgit2_integration.sh v1.9.4
+          # libgit2 (tracking upstream main - informational, allowed to fail)
+          - name: libgit2-main
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            allow_failure: true
+            run: ./tests/ci/integration/run_libgit2_integration.sh main
 
           # OpenSSH Integration Tests
           - name: openssh-master
@@ -400,12 +414,13 @@ jobs:
       OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
@@ -418,6 +433,17 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
+      # Emit a marker only when the integration test itself fails, not on
+      # operational failures, so the report-failures alarm counts real downstream breakages only, except for tests
+      # that are purely informational and breakages are accepted.
+      - name: Mark integration failure
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
+        run: touch integration-failure.txt
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
+        with:
+          name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
+          path: integration-failure.txt
 
   python:
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
@@ -447,12 +473,13 @@ jobs:
       FIPS: ${{ matrix.buildFIPS }}
       AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.crtUseSystemCrypto }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
           env: |
@@ -462,6 +489,14 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
+      - name: Mark integration failure
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        run: touch integration-failure.txt
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        with:
+          name: integration-failure-python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
+          path: integration-failure.txt
 
   ruby:
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
@@ -482,12 +517,13 @@ jobs:
     env:
       FIPS: ${{ matrix.buildFIPS }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
+        id: integration-test
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:24.04
           env: |
@@ -496,3 +532,42 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
+      - name: Mark integration failure
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        run: touch integration-failure.txt
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
+        with:
+          name: integration-failure-ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
+          path: integration-failure.txt
+
+  report-failures:
+    name: report-failures
+    needs: [integrations, python, ruby]
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/configure-aws-credentials
+      - name: Emit failure metric
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -exo pipefail
+          # Count the failure artifacts to get the number of broken integration tests.
+          # We keep only the integration-failure-* markers and count lines with wc -l instead of jq length,
+          # since --paginate would make jq emit a separate count for each page.
+          failure_count=$(gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name | startswith("integration-failure-")) | .name' \
+            | wc -l | tr -d ' ')
+
+          aws cloudwatch put-metric-data \
+            --namespace AWS-LC \
+            --metric-name IntegrationOmnibusFailure \
+            --value "$failure_count"
