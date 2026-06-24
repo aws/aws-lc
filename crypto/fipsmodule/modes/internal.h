@@ -408,27 +408,6 @@ void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
                              const AES_KEY *key, uint8_t ivec[16],
                              unsigned *num, int enc, block128_f block);
 
-// CTS (Ciphertext Stealing). CS1 / RFC 2040 variant: the last two ciphertext
-// blocks are unconditionally swapped, an exact-block-length input is treated
-// as a 16-byte residue, and inputs of length <= 16 are rejected with a return
-// of zero (use plain CBC for those). On success each function returns the
-// number of bytes written, which equals |len|.
-//
-// The public CBC-based variants (CRYPTO_cts128_encrypt, CRYPTO_cts128_decrypt)
-// are declared in <openssl/modes.h>.
-
-// CRYPTO_cts128_encrypt_block performs CTS-mode encryption using |block| in
-// place of a CBC routine. |in| and |out| may not alias.
-size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const AES_KEY *key, uint8_t ivec[16],
-                                   block128_f block);
-
-// CRYPTO_cts128_decrypt_block performs CTS-mode decryption using |block|.
-// |in| and |out| may not alias.
-size_t CRYPTO_cts128_decrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const AES_KEY *key, uint8_t ivec[16],
-                                   block128_f block);
-
 // XTS.
 
 // CRYPTO_xts128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes

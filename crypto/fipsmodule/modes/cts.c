@@ -24,38 +24,6 @@
 // should use plain CBC). On success they return the number of bytes written,
 // which equals |len|.
 
-size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const AES_KEY *key, uint8_t ivec[16],
-                                   block128_f block) {
-  size_t residue, n;
-
-  if (len <= 16) {
-    return 0;
-  }
-
-  if ((residue = len % 16) == 0) {
-    residue = 16;
-  }
-  len -= residue;
-
-  CRYPTO_cbc128_encrypt(in, out, len, key, ivec, block);
-
-  in += len;
-  out += len;
-
-  for (n = 0; n < residue; ++n) {
-    ivec[n] ^= in[n];
-  }
-  (*block)(ivec, ivec, key);
-  // Swap the last two output blocks: the just-encrypted residue-sized block
-  // moves into the |out - 16| slot, and the previous full ciphertext block
-  // (currently at |out - 16|) is truncated to |residue| bytes at |out|.
-  OPENSSL_memcpy(out, out - 16, residue);
-  OPENSSL_memcpy(out - 16, ivec, 16);
-
-  return len + residue;
-}
-
 size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              cbc128_f cbc) {
@@ -85,53 +53,6 @@ size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   (*cbc)(tmp, out - 16, 16, key, ivec, 1 /* enc */);
 
   return len + residue;
-}
-
-size_t CRYPTO_cts128_decrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const AES_KEY *key, uint8_t ivec[16],
-                                   block128_f block) {
-  size_t residue, n;
-  alignas(16) uint8_t tmp[32];
-
-  if (len <= 16) {
-    return 0;
-  }
-
-  if ((residue = len % 16) == 0) {
-    residue = 16;
-  }
-  len -= 16 + residue;
-
-  if (len) {
-    CRYPTO_cbc128_decrypt(in, out, len, key, ivec, block);
-    in += len;
-    out += len;
-  }
-
-  // Decrypt the swapped second-to-last ciphertext block (which holds the
-  // last full encryption output) into |tmp[16..31]|. Then form |tmp[0..15]|
-  // by overlaying the |residue| ciphertext bytes from the final stolen
-  // block on top of the just-decrypted block, and decrypt that.
-  (*block)(in, tmp + 16, key);
-
-  OPENSSL_memcpy(tmp, tmp + 16, 16);
-  OPENSSL_memcpy(tmp, in + 16, residue);
-  (*block)(tmp, tmp, key);
-
-  // CBC-style XOR with the running IV for the last full-block of plaintext;
-  // update |ivec| to the last full ciphertext block as we go.
-  for (n = 0; n < 16; ++n) {
-    uint8_t c = in[n];
-    out[n] = tmp[n] ^ ivec[n];
-    ivec[n] = c;
-  }
-  // Recover the |residue| trailing plaintext bytes by XOR-ing the
-  // (post-decryption) tmp tail with the corresponding ciphertext.
-  for (residue += 16; n < residue; ++n) {
-    out[n] = tmp[n] ^ in[n];
-  }
-
-  return 16 + len + residue;
 }
 
 size_t CRYPTO_cts128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
