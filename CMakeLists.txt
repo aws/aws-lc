@@ -1034,9 +1034,11 @@ if(FIPS)
 endif()
 
 # -ffunction-sections / -fdata-sections are incompatible with FIPS_SHARED.
-# The Android CMake files set these flags. Although the MinGW build does not
-# currently enable them, defensively disabling them here to keep the FIPS
-# integrity check robust if added in the future.
+# On ELF, gcc_fips_shared.lds already handles this: it gathers known split
+# sections into .text and /DISCARD/s anything unexpected. Android and MinGW
+# lack that linker-script safety net (Android's NDK toolchain injects these
+# flags externally; MinGW/PE has no linker script support), so we override
+# at the compiler level.
 if(FIPS_SHARED AND (ANDROID OR MINGW))
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
@@ -1347,17 +1349,10 @@ endif()
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
   if(MINGW AND FIPS)
-    # If CMake's MinGW Threads::Threads target resolves to winpthread, keep it
-    # statically linked so the FIPS build products do not acquire an external
-    # libwinpthread DLL dependency at runtime.
-    #
-    # NOTE: crypto links Threads::Threads PUBLIC, so mutating the imported
-    # target's interface here statically links winpthread into *every* artifact
-    # in this build that pulls in threads (libssl.dll, bssl.exe, and the test
-    # binaries), not just the crypto DLL. That is intentional for the integrity
-    # boundary's sake and otherwise harmless (just some duplicated code), but it
-    # is broader than "the FIPS DLL only". This mutation is build-local and is
-    # not propagated to downstream consumers of the installed crypto target.
+    # Statically link winpthread so the FIPS module has no DLL dependency on it.
+    # This overwrites (not appends) INTERFACE_LINK_LIBRARIES because
+    # find_package(Threads) already set it to -lpthread (dynamic); appending
+    # would leave the dynamic entry on the link line.
     set_property(TARGET Threads::Threads PROPERTY
       INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
   endif()
