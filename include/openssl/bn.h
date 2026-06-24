@@ -974,11 +974,10 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
 
-// |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
-// on it will not compile unless the flag above is set. Consumers should use the
-// higher-level cryptographic algorithms exposed by other modules. Consumers
-// within the library should call the appropriate timing-sensitive algorithm
-// directly.
+// All AWS-LC BIGNUM operations are constant-time by default, so this flag is a
+// no-op. Defined for source compatibility with consumers (e.g. MIT krb5) that
+// set it via |BN_set_flags|.
+#define BN_FLG_CONSTTIME 0x04
 
 
 #if defined(__cplusplus)
