@@ -20,6 +20,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../../ec_extra/internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
 
@@ -338,19 +339,14 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
       return (EC_GROUP *)EC_group_p521();
     case NID_secp256k1:
 	  return (EC_GROUP *)EC_group_secp256k1();
-    case NID_brainpoolP224r1:
-      return (EC_GROUP *)EC_group_brainpoolP224r1();
-    case NID_brainpoolP256r1:
-      return (EC_GROUP *)EC_group_brainpoolP256r1();
-    case NID_brainpoolP320r1:
-      return (EC_GROUP *)EC_group_brainpoolP320r1();
-    case NID_brainpoolP384r1:
-      return (EC_GROUP *)EC_group_brainpoolP384r1();
-    case NID_brainpoolP512r1:
-      return (EC_GROUP *)EC_group_brainpoolP512r1();
-    default:
+    default: {
+      const EC_GROUP *g = ec_group_new_by_curve_name_nonfips(nid);
+      if (g != NULL) {
+        return (EC_GROUP *)g;
+      }
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
+    }
   }
 }
 
@@ -372,24 +368,15 @@ EC_GROUP *EC_GROUP_new_by_curve_name_mutable(int nid) {
     case NID_secp256k1:
       ret = (EC_GROUP *)OPENSSL_memdup(EC_group_secp256k1(), sizeof(EC_GROUP));
       break;
-    case NID_brainpoolP224r1:
-      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_brainpoolP224r1(), sizeof(EC_GROUP));
-      break;
-    case NID_brainpoolP256r1:
-      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_brainpoolP256r1(), sizeof(EC_GROUP));
-      break;
-    case NID_brainpoolP320r1:
-      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_brainpoolP320r1(), sizeof(EC_GROUP));
-      break;
-    case NID_brainpoolP384r1:
-      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_brainpoolP384r1(), sizeof(EC_GROUP));
-      break;
-    case NID_brainpoolP512r1:
-      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_brainpoolP512r1(), sizeof(EC_GROUP));
-      break;
-    default:
+    default: {
+      const EC_GROUP *g = ec_group_new_by_curve_name_nonfips(nid);
+      if (g != NULL) {
+        ret = (EC_GROUP *)OPENSSL_memdup(g, sizeof(EC_GROUP));
+        break;
+      }
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
+    }
   }
   if (ret == NULL) {
     return NULL;
