@@ -35,7 +35,7 @@ jobs:
     outputs:
       centos8: ${{ steps.images.outputs.centos8 }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

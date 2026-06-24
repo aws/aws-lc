@@ -31,7 +31,7 @@ jobs:
           wget -q "https://dl.google.com/go/${GO_ARCHIVE}"
           sudo tar -C /usr/local -xf $GO_ARCHIVE
           echo "${GOROOT}/bin" >> $GITHUB_PATH
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run integration build
         run: |
           ./tests/ci/run_fips_tests.sh

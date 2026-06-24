@@ -34,7 +34,7 @@ jobs:
               envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
               runSDE: true
       steps:
-        - uses: actions/checkout@v6
+        - uses: actions/checkout@v7
         - name: Login to Amazon ECR
           id: login-ecr
           uses: aws-actions/amazon-ecr-login@v2
