@@ -89,6 +89,54 @@ static const CTSTestCase kRFC8009Cases[] = {
      "B2A602AC86"},
 };
 
+// RFC 3962 Appendix B test vectors. Same AES-128 key ("chicken teriyaki"),
+// IV = all zeros, progressively longer plaintexts ("I would like the...").
+// These are the canonical Kerberos AES-CTS test vectors.
+static const CTSTestCase kRFC3962Cases[] = {
+    {"RFC3962: 17 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520",
+     "C6353568F2BF8CB4D8A580362DA7FF7F97"},
+    {"RFC3962: 31 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520"
+     "47656E6572616C20476175277320",
+     "FC00783E0EFDB2C1D445D4C8EFF7ED22"
+     "97687268D6ECCCC0C07B25E25ECFE5"},
+    {"RFC3962: 32 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520"
+     "47656E6572616C2047617527732043",
+     "39312523A78662D5BE7FCBCC98EBF5A8"
+     "97687268D6ECCCC0C07B25E25ECFE584"},
+    {"RFC3962: 47 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520"
+     "47656E6572616C20476175277320436869"
+     "636B656E2C20706C656173652C",
+     "97687268D6ECCCC0C07B25E25ECFE584"
+     "B3FFFD940C16A18C1B5549D2F838029E"
+     "39312523A78662D5BE7FCBCC98EBF5"},
+    {"RFC3962: 48 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520"
+     "47656E6572616C20476175277320436869"
+     "636B656E2C20706C656173652C20",
+     "97687268D6ECCCC0C07B25E25ECFE584"
+     "9DAD8BBB96C4CDC03BC103E1A194BBD8"
+     "39312523A78662D5BE7FCBCC98EBF5A8"},
+    {"RFC3962: 64 bytes",
+     "636869636B656E207465726979616B69",
+     "4920776F756C64206C696B652074686520"
+     "47656E6572616C20476175277320436869"
+     "636B656E2C20706C656173652C20616E64"
+     "20776F6E746F6E20736F75702E",
+     "97687268D6ECCCC0C07B25E25ECFE584"
+     "39312523A78662D5BE7FCBCC98EBF5A8"
+     "4807EFE836EE89A526730DBC2F7BC840"
+     "9DAD8BBB96C4CDC03BC103E1A194BBD8"},
+};
+
 // Decode like HexToBytes, but tolerate spaces (used to keep the literals above
 // readable line-by-line).
 static std::vector<uint8_t> DecodeHexSp(const std::string &in) {
@@ -104,6 +152,39 @@ static std::vector<uint8_t> DecodeHexSp(const std::string &in) {
     ADD_FAILURE() << "Bad hex literal: '" << in << "'";
   }
   return out;
+}
+
+TEST(CTS128Test, RFC3962Vectors) {
+  for (const auto &t : kRFC3962Cases) {
+    SCOPED_TRACE(t.name);
+    const auto key_bytes = DecodeHexSp(t.key_hex);
+    const auto pt = DecodeHexSp(t.plaintext_hex);
+    const auto ct = DecodeHexSp(t.ciphertext_hex);
+    ASSERT_GT(pt.size(), size_t{16}) << "CTS requires >16-byte input";
+    ASSERT_EQ(pt.size(), ct.size());
+
+    AES_KEY enc_key, dec_key;
+    ASSERT_EQ(0, AES_set_encrypt_key(key_bytes.data(),
+                                     static_cast<unsigned>(key_bytes.size() * 8),
+                                     &enc_key));
+    ASSERT_EQ(0, AES_set_decrypt_key(key_bytes.data(),
+                                     static_cast<unsigned>(key_bytes.size() * 8),
+                                     &dec_key));
+
+    std::vector<uint8_t> got_ct(pt.size());
+    uint8_t iv[16] = {0};
+    size_t n = CRYPTO_cts128_encrypt(pt.data(), got_ct.data(), pt.size(),
+                                     &enc_key, iv, AES_cbc_encrypt);
+    EXPECT_EQ(pt.size(), n);
+    EXPECT_EQ(Bytes(ct.data(), ct.size()), Bytes(got_ct.data(), got_ct.size()));
+
+    std::vector<uint8_t> got_pt(ct.size());
+    uint8_t iv2[16] = {0};
+    n = CRYPTO_cts128_decrypt(ct.data(), got_pt.data(), ct.size(), &dec_key,
+                              iv2, AES_cbc_encrypt);
+    EXPECT_EQ(ct.size(), n);
+    EXPECT_EQ(Bytes(pt.data(), pt.size()), Bytes(got_pt.data(), got_pt.size()));
+  }
 }
 
 TEST(CTS128Test, RFC8009RoundTrip) {
