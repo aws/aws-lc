@@ -84,6 +84,7 @@
 #  endif
 #elif defined(__asmjs__) // Allowed but no macro defined
 #elif defined(__myriad2__) // Allowed but no macro defined
+#elif defined(__e2k__) // Allowed but no macro defined
 #else
 // Run the crypto_test binary, notably crypto/compiler_test.cc, before adding
 // a new architecture.
