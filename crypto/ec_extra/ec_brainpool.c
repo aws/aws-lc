@@ -15,6 +15,7 @@
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 #include "../fipsmodule/ec/builtin_curves.h"
 
@@ -233,4 +234,21 @@ DEFINE_CURVE_DATA(EC_GROUP, EC_group_brainpoolP512r1) {
   out->field_greater_than_order = 1;
   out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   out->mutable_ec_group = 0;
+}
+
+const EC_GROUP *ec_group_new_by_curve_name_nonfips(int nid) {
+  switch (nid) {
+    case NID_brainpoolP224r1:
+      return EC_group_brainpoolP224r1();
+    case NID_brainpoolP256r1:
+      return EC_group_brainpoolP256r1();
+    case NID_brainpoolP320r1:
+      return EC_group_brainpoolP320r1();
+    case NID_brainpoolP384r1:
+      return EC_group_brainpoolP384r1();
+    case NID_brainpoolP512r1:
+      return EC_group_brainpoolP512r1();
+    default:
+      return NULL;
+  }
 }
