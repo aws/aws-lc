@@ -6,6 +6,8 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+KRB5_GIT_REF="${1:?Usage: $0 <krb5-git-ref>}"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -35,17 +37,7 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 
 pushd "${SCRATCH_FOLDER}"
 
-# Resolve the latest MIT krb5 release tag (e.g. "krb5-1.21.3-final"). The tag
-# scheme is `krb5-<major>.<minor>(.<patch>)?-final`; sorting by version:refname
-# descending and taking the first match gives us the newest final release.
-KRB5_RELEASE_TAG="$(git ls-remote --tags --refs --sort='-version:refname' \
-  https://github.com/krb5/krb5.git 'krb5-*-final' \
-  | awk '{print $2}' | sed 's|refs/tags/||' | head -n1)"
-if [[ -z "${KRB5_RELEASE_TAG}" ]]; then
-  echo "Failed to resolve latest krb5 release tag." >&2
-  exit 1
-fi
-echo "Using krb5 release tag: ${KRB5_RELEASE_TAG}"
+echo "Using krb5 git ref: ${KRB5_GIT_REF}"
 
 function krb5_apply_patches() {
   pushd "${KRB5_SRC_FOLDER}"
@@ -112,9 +104,7 @@ function krb5_run_tests() {
   popd
 }
 
-# Shallow-clone the resolved release tag so we test against a real released
-# version rather than tip-of-tree.
-git clone --depth 1 --branch "${KRB5_RELEASE_TAG}" \
+git clone --depth 1 --branch "${KRB5_GIT_REF}" \
   https://github.com/krb5/krb5.git "${KRB5_SRC_FOLDER}"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" \
          "${KRB5_BUILD_FOLDER}" "${KRB5_INSTALL_FOLDER}"
