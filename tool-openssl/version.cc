@@ -9,6 +9,7 @@ static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-a", kBooleanArgument, "Print all version information"},
     {"-p", kBooleanArgument, "Print platform"},
+    {"-fips", kBooleanArgument, "Print FIPS status and module version"},
     {"", kOptionalArgument, ""}
 };
 
@@ -30,17 +31,10 @@ bool VersionTool(const args_list_t &args) {
 
   bool all = false;
   bool platform = false;
+  bool fips = false;
   GetBoolArgument(&all, "-a", parsed_args);
   GetBoolArgument(&platform, "-p", parsed_args);
-
-  if (all) {
-    printf("%s\n", OPENSSL_VERSION_TEXT);
-    printf("%s\n", OpenSSL_version(OPENSSL_BUILT_ON));
-    printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
-    printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
-    printf("%s\n", OpenSSL_version(OPENSSL_DIR));
-    return true;
-  }
+  GetBoolArgument(&fips, "-fips", parsed_args);
 
   if (platform) {
     printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
@@ -48,5 +42,24 @@ bool VersionTool(const args_list_t &args) {
   }
 
   printf("%s\n", OPENSSL_VERSION_TEXT);
+
+  if (all) {
+    printf("%s\n", OpenSSL_version(OPENSSL_BUILT_ON));
+    printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
+    printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
+    printf("%s\n", OpenSSL_version(OPENSSL_DIR));
+    return true;
+  }
+
+  if (fips) {
+    if (FIPS_mode()) {
+      printf("FIPS: enabled\n");
+      printf("FIPS module version: %u\n", FIPS_version());
+    } else {
+      printf("FIPS: disabled\n");
+    }
+    return true;
+  }
+
   return true;
 }
