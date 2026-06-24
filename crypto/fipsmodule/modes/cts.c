@@ -27,7 +27,7 @@
 size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              cbc128_f cbc) {
-  size_t residue;
+  size_t residue = 0;
   alignas(16) uint8_t tmp[16];
 
   if (len <= 16) {
@@ -58,7 +58,7 @@ size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 size_t CRYPTO_cts128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              cbc128_f cbc) {
-  size_t residue;
+  size_t residue = 0;
   alignas(16) uint8_t tmp[32];
 
   if (len <= 16) {
