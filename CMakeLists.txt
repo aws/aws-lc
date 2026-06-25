@@ -94,8 +94,17 @@ option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" O
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(COHABITANT_BINARIES "Install tool binaries with an 'aws-lc-' prefix to avoid conflicts with OpenSSL" OFF)
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
+
+# Set the install binary prefix based on whether cohabitation is desired
+if(COHABITANT_BINARIES)
+  set(AWSLC_BIN_PREFIX "aws-lc-")
+else()
+  set(AWSLC_BIN_PREFIX "")
+endif()
+message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 
 include(cmake/go.cmake)
 

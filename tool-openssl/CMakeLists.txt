@@ -44,10 +44,19 @@ endif()
 
 target_add_awslc_include_paths(TARGET openssl SCOPE PRIVATE)
 
+if(COHABITANT_BINARIES)
+  set_target_properties(openssl PROPERTIES OUTPUT_NAME "${AWSLC_BIN_PREFIX}openssl")
+endif()
+
 install(TARGETS openssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+set(C_REHASH_INSTALL_NAME "c_rehash")
+if(COHABITANT_BINARIES)
+  set(C_REHASH_INSTALL_NAME "${AWSLC_BIN_PREFIX}c_rehash")
+endif()
 
 file(INSTALL
     ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
@@ -64,7 +73,7 @@ file(INSTALL
 
 install(
     PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
-    RENAME c_rehash
+    RENAME ${C_REHASH_INSTALL_NAME}
     DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
