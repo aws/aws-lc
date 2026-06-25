@@ -1,6 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#include <inttypes.h>
+
 #include <openssl/base.h>
 #include <openssl/crypto.h>
 #include "internal.h"
@@ -44,6 +49,9 @@ bool VersionTool(const args_list_t &args) {
   printf("%s\n", OPENSSL_VERSION_TEXT);
 
   if (all) {
+    // The fields below are hard-coded "n/a" compatibility placeholders: AWS-LC
+    // does not track build-time metadata the way OpenSSL does, so OpenSSL_version
+    // returns fixed strings for them.
     printf("%s\n", OpenSSL_version(OPENSSL_BUILT_ON));
     printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
     printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
@@ -54,7 +62,7 @@ bool VersionTool(const args_list_t &args) {
   if (fips) {
     if (FIPS_mode()) {
       printf("FIPS: enabled\n");
-      printf("FIPS module version: %u\n", FIPS_version());
+      printf("FIPS module version: %" PRIu32 "\n", FIPS_version());
     } else {
       printf("FIPS: disabled\n");
     }
