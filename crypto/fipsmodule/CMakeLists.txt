@@ -397,8 +397,9 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
 endif()
 
-# mldsa-native assembly files can be compiled on Unix platforms for x86_64 only.
-if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+# mldsa-native assembly files can be compiled on Unix platforms for x86_64
+# and aarch64.
+if(UNIX AND ((ARCH STREQUAL "x86_64" AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR (ARCH STREQUAL "aarch64")))
 
   set(MLDSA_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_dsa")
 
@@ -406,10 +407,15 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   # compiled; glob so that refreshes which add/remove files don't need a
   # matching edit here. CONFIGURE_DEPENDS makes CMake re-run when the set of
   # matching files changes.
-  file(GLOB MLDSA_NATIVE_X86_64_ASM_SOURCES CONFIGURE_DEPENDS
-    "${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/*.S")
+  if(ARCH STREQUAL "x86_64")
+    file(GLOB MLDSA_NATIVE_ASM_SOURCES CONFIGURE_DEPENDS
+      "${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/*.S")
+  else()
+    file(GLOB MLDSA_NATIVE_ASM_SOURCES CONFIGURE_DEPENDS
+      "${MLDSA_NATIVE_DIR}/mldsa/native/aarch64/src/*.S")
+  endif()
 
-  list(APPEND BCM_ASM_SOURCES ${MLDSA_NATIVE_X86_64_ASM_SOURCES})
+  list(APPEND BCM_ASM_SOURCES ${MLDSA_NATIVE_ASM_SOURCES})
 
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
