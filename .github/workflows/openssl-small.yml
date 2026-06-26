@@ -18,9 +18,10 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
-  # default build, measured on the tests/binary-size consumer. Measured at ~25%
-  # on x86_64 Linux (higher once OPENSSL_SMALL also disables AVX-512); threshold
-  # set conservatively below that with margin for compiler/platform variance.
+  # default build, measured on the tests/binary-size consumer. Measured at ~37%
+  # on x86_64 Linux (with AVX-512 disabled via MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX);
+  # threshold set conservatively below that with margin for compiler/platform
+  # variance.
   EXPECTED_REDUCTION_PERCENT: 15
 permissions:
   contents: read
@@ -88,12 +89,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # x86_64 covers both compilers; aarch64 is the platform where Phase 2's
-        # s2n-bignum variant pinning is the sole size mechanism (and the only one
-        # once OPENSSL_SMALL also disables AVX-512 on x86_64), so it is covered on
-        # both compilers too. The aarch64 legs use GitHub-hosted Arm64 runners
-        # (available for public repos); swap `runner` for a CodeBuild Arm runner
-        # if preferred.
+        # x86_64 covers both compilers; aarch64 is the platform where the
+        # s2n-bignum variant pinning is the sole size mechanism (on x86_64,
+        # OPENSSL_SMALL disables s2n-bignum entirely via
+        # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX), so it is covered on both compilers
+        # too.
         include:
           - { name: "x86_64 gcc",    runner: ubuntu-latest,    cc: gcc,   cxx: g++ }
           - { name: "x86_64 clang",  runner: ubuntu-latest,    cc: clang, cxx: clang++ }

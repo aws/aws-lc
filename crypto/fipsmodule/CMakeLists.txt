@@ -326,43 +326,16 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     endif()
   endif()
 
-  # Under OPENSSL_SMALL, pin each s2n-bignum operation to a single,
-  # universally-compatible variant and drop the other to save binary size. This
-  # mirrors the compile-time pinning in
-  # third_party/s2n-bignum/s2n-bignum_aws-lc.h:
-  #   - x86_64: keep _alt (generic, no BMI2/ADX); drop the primary.
-  #   - aarch64: keep non-_alt (generic); drop _alt (wide-multiplier).
-  # REMOVE_ITEM silently ignores entries that are not in the list, and the
-  # selectors reference only the kept symbols, so the dropped objects are
-  # unreferenced. The kept/dropped sets are the exact mirror of the selector
-  # pinning, which keeps this correct independent of whether OPENSSL_SMALL also
-  # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX:
-  #   - With that implication in effect, the enclosing condition is false on
-  #     x86_64 (no s2n-bignum was appended), so the x86_64 branch is a no-op and
-  #     aarch64 is the sole beneficiary.
-  #   - Without it, the x86_64 branch is the operative path.
+  # Under OPENSSL_SMALL on aarch64, pin each s2n-bignum operation to the
+  # non-_alt (generic) variant and drop the _alt (wide-multiplier) form to save
+  # binary size. This mirrors the compile-time pinning in
+  # third_party/s2n-bignum/s2n-bignum_aws-lc.h.
+  #
+  # On x86_64, OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX (see
+  # #3319), which makes the enclosing condition false -- s2n-bignum is not
+  # compiled at all, so no removal is needed.
   if(OPENSSL_SMALL)
-    if(ARCH STREQUAL "x86_64")
-      list(REMOVE_ITEM BCM_ASM_SOURCES
-        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul.S
-        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
-        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
-        ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
-        ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
-        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble.S
-        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul.S
-        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
-        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
-        ${S2N_BIGNUM_DIR}/p521/p521_jdouble.S
-        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul.S
-        ${S2N_BIGNUM_DIR}/curve25519/bignum_madd_n25519.S
-        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_decode.S
-        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase.S
-        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble.S
-        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519.S
-        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base.S
-      )
-    elseif(ARCH STREQUAL "aarch64")
+    if(ARCH STREQUAL "aarch64")
       list(REMOVE_ITEM BCM_ASM_SOURCES
         ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul_alt.S
         ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
