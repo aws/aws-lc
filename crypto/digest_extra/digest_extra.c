@@ -45,7 +45,7 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
     // Keccak-256 has no NID/OID (the Ethereum-style 0x01-padding variant is
     // not standardised). Registered by name only; matches OpenSSL 3.2+'s
     // "KECCAK-256" provider name for cross-library lookups.
-    {NID_undef, EVP_keccak_256, "KECCAK-256", "keccak-256"},
+    {NID_undef, EVP_keccak_256, SN_keccak_256, LN_keccak_256},
     {NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1},
     // As a remnant of signing |EVP_MD|s, OpenSSL returned the corresponding
     // hash function when given a signature OID. To avoid unintended lax parsing

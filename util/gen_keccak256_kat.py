@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 # Generate Keccak-256 known-answer test (KAT) vectors for AWS-LC.
 #
 # Mirrors the format used by NIST SHA-3 KATs (Len, Msg, MD per record). Inputs

@@ -518,7 +518,6 @@ int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 // permutation as the SHA-3 family but is NOT FIPS-approved: it does not
 // update the FIPS service indicator. Streaming functions are exposed only
 // internally; public consumers reach Keccak-256 via |EVP_keccak_256|.
-//
 // KECCAK_256_Init initialises |ctx| and returns 1 on success or 0 on failure.
 int KECCAK_256_Init(KECCAK1600_CTX *ctx);
 
