@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.0.0")
+set(SOFTWARE_VERSION "5.1.0")
 set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
