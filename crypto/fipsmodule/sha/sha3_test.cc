@@ -510,7 +510,7 @@ TEST(SHAKETest_x4, RandomMessages) {
   uint8_t digest[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
   uint8_t digest_x4[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
 
-  // Test |SHAKE128_Init_x4|, |SHAKE128_Absorb_once_x4|, and |SHAKE128_Squeezeblocks_x4| functions
+  // Test |SHAKE_Init_x4|, |SHAKE128_Absorb_once_x4|, and |SHAKE128_Squeezeblocks_x4| functions
   // Assert success when digest and digest_x4 values are equal
   for (int i = 0; i < NUM_TESTS; i++) {
     for (int j = 0; j < BATCHED_x4; j++) {
@@ -523,7 +523,7 @@ TEST(SHAKETest_x4, RandomMessages) {
     }
 
     // Compute one batched x4 SHAKE128
-    ASSERT_TRUE(SHAKE128_Init_x4(&ctx));
+    ASSERT_TRUE(SHAKE_Init_x4(&ctx));
     ASSERT_TRUE(SHAKE128_Absorb_once_x4(&ctx, random_in[0], random_in[1], random_in[2], random_in[3],
                                                                                           RAND_BYTES_x4));
     ASSERT_TRUE(SHAKE128_Squeezeblocks_x4(digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3],
