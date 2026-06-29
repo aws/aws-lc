@@ -6,6 +6,7 @@ import typing
 from aws_cdk import (
     aws_ecr as ecr,
     aws_iam as iam,
+    aws_s3 as s3,
     Stack,
     Environment,
 )
@@ -13,7 +14,7 @@ from cdk.aws_lc_devicefarm_ci_stack import DeviceFarmCiProps
 from constructs import Construct
 
 from util.metadata import (
-    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME)
+    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME, S3_FOR_AUTOFIX_INTEGRATION_FAILURES)
 
 
 class AwsLcGitHubOidcStack(Stack):
@@ -73,6 +74,21 @@ class AwsLcGitHubOidcStack(Stack):
             self, "AwsLcGitHubActionDockerImageBuildRole", env, self.minimal_oidc_role, ecr_repos)
         self.docker_image_build_role.grant_assume_role(
             self.minimal_oidc_role)
+
+        self.autofix_bucket = s3.Bucket(
+            self, "aws-lc-autofix-integration-failures",
+            bucket_name=f"{env.account}-{S3_FOR_AUTOFIX_INTEGRATION_FAILURES}",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+        )
+
+        self.autofix_reasoning_role = create_autofix_reasoning_role(
+            self, "AwsLcGitHubActionAutofixReasoningRole", env, self.minimal_oidc_role)
+        self.autofix_reasoning_role.grant_assume_role(self.minimal_oidc_role)
+
+        self.autofix_upload_role = create_autofix_upload_role(
+            self, "AwsLcGitHubActionAutofixUploadRole", self.minimal_oidc_role,
+            self.autofix_bucket)
+        self.autofix_upload_role.grant_assume_role(self.minimal_oidc_role)
 
 
 def create_device_farm_role(scope: Construct, id: str,
@@ -279,3 +295,46 @@ def create_standard_github_actions_role(scope: Construct, id: str,
                     })
 
     return role
+
+
+def create_autofix_reasoning_role(scope: Construct, id: str,
+                                       env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                                       principal: iam.IPrincipal) -> iam.Role:
+    return iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "bedrock_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "bedrock:InvokeModel",
+                                        "bedrock:InvokeModelWithResponseStream",
+                                    ],
+                                    resources=[
+                                        "arn:aws:bedrock:*::foundation-model/*",
+                                        f"arn:aws:bedrock:{env.region}:{env.account}:inference-profile/*",
+                                        f"arn:aws:bedrock:{env.region}:{env.account}:application-inference-profile/*",
+                                    ],
+                                ),
+                            ]
+                        ),
+                    })
+
+
+def create_autofix_upload_role(scope: Construct, id: str,
+                                    principal: iam.IPrincipal,
+                                    bucket: s3.IBucket) -> iam.Role:
+    return iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "s3_put_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=["s3:PutObject"],
+                                    resources=[bucket.arn_for_objects("*")],
+                                ),
+                            ]
+                        ),
+                    })
