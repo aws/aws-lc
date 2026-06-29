@@ -271,9 +271,20 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
 // authenticates |ad_len| bytes from |ad| and writes the result to |out|. It
 // returns one on success and zero otherwise.
 //
-// This function generally CANNOT be called concurrently with itself or any
-// other seal/open function on the same |EVP_AEAD_CTX|. Which |EVP_AEAD|
-// implementations that support concurrency is not documented.
+// Concurrency: this function may be called concurrently with itself and with
+// the other seal/open functions (|EVP_AEAD_CTX_open|,
+// |EVP_AEAD_CTX_seal_scatter|, |EVP_AEAD_CTX_open_gather|) on the same
+// |EVP_AEAD_CTX|, but ONLY for the following AEADs. For any AEAD not listed
+// here, callers must not share an |EVP_AEAD_CTX| across threads:
+//   - |EVP_aead_aes_128_gcm|, |EVP_aead_aes_192_gcm|, |EVP_aead_aes_256_gcm|
+//   - |EVP_aead_aes_128_gcm_siv|, |EVP_aead_aes_256_gcm_siv|
+//   - |EVP_aead_aes_128_gcm_randnonce|, |EVP_aead_aes_256_gcm_randnonce|
+//   - |EVP_aead_chacha20_poly1305|, |EVP_aead_xchacha20_poly1305|
+//   - |EVP_aead_aes_128_ctr_hmac_sha256|, |EVP_aead_aes_256_ctr_hmac_sha256|
+//   - |EVP_aead_aes_128_ccm_bluetooth|, |EVP_aead_aes_128_ccm_bluetooth_8|,
+//     |EVP_aead_aes_128_ccm_matter|
+// This list is tested by the ConcurrentStability test fixture in aead_test.cc.
+// New |EVP_AEAD| implementations must be added to the list of implementations.
 //
 // At most |max_out_len| bytes are written to |out| and, in order to ensure
 // success, |max_out_len| should be |in_len| plus the result of
@@ -298,9 +309,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 // from |ad| and decrypts at most |in_len| bytes into |out|. It returns one on
 // success and zero otherwise.
 //
-// This function generally CANNOT be called concurrently with itself or any
-// other seal/open function on the same |EVP_AEAD_CTX|. Which |EVP_AEAD|
-// implementations that support concurrency is not documented.
+// Concurrency: see the concurrency note on |EVP_AEAD_CTX_seal| for the list of
+// AEADs that may be used concurrently on a shared |EVP_AEAD_CTX|.
 //
 // At most |in_len| bytes are written to |out|. In order to ensure success,
 // |max_out_len| should be at least |in_len|. On successful return, |*out_len|
@@ -325,9 +335,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 // ciphertext to |out| and the authentication tag to |out_tag|. It returns one
 // on success and zero otherwise.
 //
-// This function generally CANNOT be called concurrently with itself or any
-// other seal/open function on the same |EVP_AEAD_CTX|. Which |EVP_AEAD|
-// implementations that support concurrency is not documented.
+// Concurrency: see the concurrency note on |EVP_AEAD_CTX_seal| for the list of
+// AEADs that may be used concurrently on a shared |EVP_AEAD_CTX|.
 //
 // Exactly |in_len| bytes are written to |out|, and up to
 // |EVP_AEAD_max_overhead+extra_in_len| bytes to |out_tag|. On successful
@@ -361,9 +370,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
 // authentication tag from |in_tag|. If successful, it writes |in_len| bytes of
 // plaintext to |out|. It returns one on success and zero otherwise.
 //
-// This function generally CANNOT be called concurrently with itself or any
-// other seal/open function on the same |EVP_AEAD_CTX|. Which |EVP_AEAD|
-// implementations that support concurrency is not documented.
+// Concurrency: see the concurrency note on |EVP_AEAD_CTX_seal| for the list of
+// AEADs that may be used concurrently on a shared |EVP_AEAD_CTX|.
 //
 // The length of |nonce|, |nonce_len|, must be equal to the result of
 // |EVP_AEAD_nonce_length| for this AEAD.

@@ -21,6 +21,10 @@
 #include "./internal.h"
 #include "internal.h"
 
+#if defined(OPENSSL_THREADS)
+#include <thread>
+#endif
+
 // kLimitedImplementation indicates that tests that assume a generic AEAD
 // interface should not be performed. For example, the key-wrap AEADs only
 // handle inputs that are a multiple of eight bytes in length and the TLS CBC
@@ -35,6 +39,11 @@ constexpr uint32_t kVariableNonce = 1 << 2;
 // one cannot assume that encrypting the same data will result in the same
 // ciphertext.
 constexpr uint32_t kNondeterministic = 1 << 7;
+// kConcurrent indicates that the AEAD's seal/open/seal_scatter/open_gather
+// functions may be called concurrently on the same |EVP_AEAD_CTX|. This is the
+// single source of truth for the concurrency guarantee documented in
+// <openssl/aead.h>. The two must be synchronized.
+constexpr uint32_t kConcurrent = 1 << 12;
 
 // RequiresADLength encodes an AD length requirement into flags.
 constexpr uint32_t RequiresADLength(size_t length) {
@@ -70,39 +79,41 @@ struct KnownAEAD {
 
 static const struct KnownAEAD kAEADs[] = {
     {"AES_128_GCM", EVP_aead_aes_128_gcm, "aes_128_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce},
+     kCanTruncateTags | kVariableNonce | kConcurrent},
 
     {"AES_128_GCM_NIST", EVP_aead_aes_128_gcm, "nist_cavp/aes_128_gcm.txt",
-     kCanTruncateTags | kVariableNonce},
+     kCanTruncateTags | kVariableNonce | kConcurrent},
 
     {"AES_192_GCM", EVP_aead_aes_192_gcm, "aes_192_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce},
+     kCanTruncateTags | kVariableNonce | kConcurrent},
 
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce},
+     kCanTruncateTags | kVariableNonce | kConcurrent},
 
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
-     kCanTruncateTags | kVariableNonce},
+     kCanTruncateTags | kVariableNonce | kConcurrent},
 
     {"AES_128_GCM_SIV", EVP_aead_aes_128_gcm_siv, "aes_128_gcm_siv_tests.txt",
-     0},
+     kConcurrent},
 
     {"AES_256_GCM_SIV", EVP_aead_aes_256_gcm_siv, "aes_256_gcm_siv_tests.txt",
-     0},
+     kConcurrent},
 
     {"AES_128_GCM_RandomNonce", EVP_aead_aes_128_gcm_randnonce,
      "aes_128_gcm_randnonce_tests.txt",
-     kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13)},
+     kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13) |
+         kConcurrent},
 
     {"AES_256_GCM_RandomNonce", EVP_aead_aes_256_gcm_randnonce,
      "aes_256_gcm_randnonce_tests.txt",
-     kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13)},
+     kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13) |
+         kConcurrent},
 
     {"ChaCha20Poly1305", EVP_aead_chacha20_poly1305,
-     "chacha20_poly1305_tests.txt", kCanTruncateTags},
+     "chacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent},
 
     {"XChaCha20Poly1305", EVP_aead_xchacha20_poly1305,
-     "xchacha20_poly1305_tests.txt", kCanTruncateTags},
+     "xchacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent},
 
     {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,
      "aes_128_cbc_sha1_tls_tests.txt",
@@ -145,19 +156,19 @@ static const struct KnownAEAD kAEADs[] = {
      kLimitedImplementation | RequiresADLength(11)},
 
     {"AES_128_CTR_HMAC_SHA256", EVP_aead_aes_128_ctr_hmac_sha256,
-     "aes_128_ctr_hmac_sha256.txt", kCanTruncateTags},
+     "aes_128_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent},
 
     {"AES_256_CTR_HMAC_SHA256", EVP_aead_aes_256_ctr_hmac_sha256,
-     "aes_256_ctr_hmac_sha256.txt", kCanTruncateTags},
+     "aes_256_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent},
 
     {"AES_128_CCM_BLUETOOTH", EVP_aead_aes_128_ccm_bluetooth,
-     "aes_128_ccm_bluetooth_tests.txt", 0},
+     "aes_128_ccm_bluetooth_tests.txt", kConcurrent},
 
     {"AES_128_CCM_BLUETOOTH_8", EVP_aead_aes_128_ccm_bluetooth_8,
-     "aes_128_ccm_bluetooth_8_tests.txt", 0},
+     "aes_128_ccm_bluetooth_8_tests.txt", kConcurrent},
 
     {"AES_128_CCM_Matter", EVP_aead_aes_128_ccm_matter,
-     "aes_128_ccm_matter_tests.txt", 0},
+     "aes_128_ccm_matter_tests.txt", kConcurrent},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
@@ -742,6 +753,122 @@ TEST_P(PerAEADTest, TruncatedTags) {
 
   EXPECT_EQ(Bytes(plaintext), Bytes(plaintext2, plaintext2_len));
 }
+
+#if defined(OPENSSL_THREADS)
+// ConcurrentStability verifies that the seal/open/seal_scatter/open_gather
+// functions of AEADs flagged |kConcurrent| may be safely called concurrently on
+// the same |EVP_AEAD_CTX|. It hammers a single shared context from many threads
+// and tests correctness using a KAT in each thread.
+//
+// Not all |EVP_AEAD| implementations are deterministic functions. We take care
+// of this in the test using two distinct test "oracles". The universal oracle
+// is a cross-context round-trip: each thread also creates its own private,
+// uncontended |EVP_AEAD_CTX| "oracle" from the same key, and checks that
+// ciphertext produced on the shared ctx opens on the oracle (and vice versa) to
+// the reference plaintext. This works even for nondeterministic AEADs
+// (e.g. RandomNonce), whose nonce is embedded in the output. For deterministic
+// AEADs we additionally assert the shared-ctx ciphertext matches a reference
+// computed single-threaded.
+TEST_P(PerAEADTest, ConcurrentStability) {
+  if (!(GetParam().flags & kConcurrent)) {
+    return;
+  }
+
+  const bool deterministic = !(GetParam().flags & kNondeterministic);
+
+  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
+  OPENSSL_memset(key, 0x2a, sizeof(key));
+  const size_t key_len = EVP_AEAD_key_length(aead());
+
+  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  OPENSSL_memset(nonce, 0x5c, sizeof(nonce));
+  const size_t nonce_len = EVP_AEAD_nonce_length(aead());
+
+  const uint8_t kPlaintext[40] =
+      "Concurrency stability reference payload";
+  const uint8_t kAd[16] = "associated data";
+
+  auto seal = [&](const EVP_AEAD_CTX *ctx, std::vector<uint8_t> *out) -> bool {
+    out->resize(sizeof(kPlaintext) + EVP_AEAD_max_overhead(aead()));
+    size_t out_len;
+    if (!EVP_AEAD_CTX_seal(ctx, out->data(), &out_len, out->size(), nonce,
+                           nonce_len, kPlaintext, sizeof(kPlaintext), kAd,
+                           sizeof(kAd))) {
+      return false;
+    }
+    out->resize(out_len);
+    return true;
+  };
+
+  auto open_and_test = [&](const EVP_AEAD_CTX *ctx,
+                            const std::vector<uint8_t> &ct) -> bool {
+    std::vector<uint8_t> out(ct.size());
+    size_t out_len;
+    if (!EVP_AEAD_CTX_open(ctx, out.data(), &out_len, out.size(), nonce,
+                           nonce_len, ct.data(), ct.size(), kAd, sizeof(kAd))) {
+      return false;
+    }
+    out.resize(out_len);
+    // Test that we got back the expected plaintext. If not, this could indicate
+    // corruption from race conditions.
+    return out.size() == sizeof(kPlaintext) &&
+           OPENSSL_memcmp(out.data(), kPlaintext, sizeof(kPlaintext)) == 0;
+  };
+
+  // Shared context that must support concurrent access.
+  bssl::ScopedEVP_AEAD_CTX universal_oracle;
+  ASSERT_TRUE(EVP_AEAD_CTX_init(universal_oracle.get(), aead(), key, key_len,
+                                EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+
+  std::vector<uint8_t> reference_ct;
+  ASSERT_TRUE(seal(universal_oracle.get(), &reference_ct));
+  ASSERT_TRUE(open_and_test(universal_oracle.get(), reference_ct));
+
+#if defined(OPENSSL_TSAN)
+  const size_t num_threads = 8;
+  constexpr size_t kIterationsPerThread = 20;
+#else
+  size_t num_threads = 64;
+  constexpr size_t kIterationsPerThread = 200;
+  const char *limit = getenv("AEAD_TEST_THREADS_LIMIT");
+  if (limit != nullptr) {
+    num_threads = std::stoul(std::string(limit), nullptr);
+  }
+#endif
+
+  auto worker = [&] {
+    bssl::ScopedEVP_AEAD_CTX local_oracle;
+    ASSERT_TRUE(EVP_AEAD_CTX_init(local_oracle.get(), aead(), key, key_len,
+                                  EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+
+    for (size_t i = 0; i < kIterationsPerThread; i++) {
+      std::vector<uint8_t> ct_a;
+      ASSERT_TRUE(seal(universal_oracle.get(), &ct_a));
+      EXPECT_TRUE(open_and_test(local_oracle.get(), ct_a));
+
+      std::vector<uint8_t> ct_b;
+      ASSERT_TRUE(seal(local_oracle.get(), &ct_b));
+      EXPECT_TRUE(open_and_test(universal_oracle.get(), ct_b));
+
+      if (deterministic) {
+        EXPECT_EQ(Bytes(reference_ct), Bytes(ct_a));
+      }
+    }
+  };
+
+  // Run all threads at the same time, maximizing likelihood of concurrent
+  // access to the shared context. In turn maximizing likelihood that any
+  // (unknown) mutations are surfaced.
+  std::vector<std::thread> threads;
+  threads.reserve(num_threads);
+  for (size_t i = 0; i < num_threads; i++) {
+    threads.emplace_back(worker);
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+#endif  // OPENSSL_THREADS
 
 TEST_P(PerAEADTest, AliasedBuffers) {
   if (GetParam().flags & kLimitedImplementation) {
