@@ -118,6 +118,8 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/keccak/testvectors/KECCAK_256LongMsg.txt
+  crypto/keccak/testvectors/KECCAK_256ShortMsg.txt
   crypto/ocsp/test/aws/certs.txt
   crypto/ocsp/test/aws/certs_revoked.txt
   crypto/ocsp/test/aws/certs_unknown.txt

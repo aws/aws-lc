@@ -27,6 +27,7 @@
 #include "../fipsmodule/md5/internal.h"
 #include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
+#include "../test/file_test.h"
 #include "../test/test_util.h"
 
 
@@ -61,6 +62,7 @@ static const MD shake128 = { "shake128", &EVP_shake128, nullptr, &SHAKE128};
 static const MD shake256 = { "shake256", &EVP_shake256, nullptr, &SHAKE256};
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr, nullptr };
 static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr, nullptr };
+static const MD keccak_256 = { "KECCAK-256", &EVP_keccak_256, &KECCAK_256, nullptr };
 static const MD md_null = { "NULL", &EVP_md_null, nullptr, nullptr };
 
 struct DigestTestVector {
@@ -224,6 +226,16 @@ static const DigestTestVector kTestVectors[] = {
     {sha3_512, "\x0c\xe9\xf8\xc3\xa9\x90\xc2\x68\xf3\x4e\xfd\x9b\xef\xdb\x0f\x7c\x4e\xf8\x46\x6c\xfd\xb0\x11\x71\xf8\xde\x70\xdc\x5f\xef\xa9\x2a\xcb\xe9\x3d\x29\xe2\xac\x1a\x5c\x29\x79\x12\x9f\x1a\xb0\x8c\x0e\x77\xde\x79\x24\xdd\xf6\x8a\x20\x9c\xdf\xa0\xad\xc6\x2f\x85\xc1\x86\x37\xd9\xc6\xb3\x3f\x4f\xf8",
     1, "b018a20fcf831dde290e4fb18c56342efe138472cbe142da6b77eea4fce52588c04c808eb32912faa345245a850346faec46c3a16d39bd2e1ddb1816bc57d2da"},
 
+    // Keccak-256 tests (Ethereum-style, original 0x01 padding). Reproducible
+    // by anyone using e.g. eth_utils.keccak() or pycryptodome with
+    // digest_bits=256. NOT FIPS, no OID.
+    {keccak_256, "", 1,
+     "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"},
+    {keccak_256, "abc", 1,
+     "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"},
+    {keccak_256, "The quick brown fox jumps over the lazy dog", 1,
+     "4d741b6f1eb29cb2a9b9911c82f56fa8d73b04959d3d9d222895df6c0b28aa15"},
+
     // SHAKE128 XOF tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
     // NOTE: the |repeat| field in this struct denotes output length for XOF digests.
@@ -383,6 +395,56 @@ TEST(DigestTest, TestVectors) {
   }
 }
 
+// Keccak-256 (Ethereum-style, 0x01 padding) and FIPS SHA3-256 share rate and
+// digest length but use different padding bytes, so their outputs must always
+// differ. This guards against a future maintainer "fixing" the padding.
+TEST(DigestTest, Keccak256DiffersFromSHA3_256) {
+  static_assert(KECCAK_256_DIGEST_LENGTH == SHA3_256_DIGEST_LENGTH,
+                "size mismatch invalidates compare");
+  const char *kInputs[] = {"", "abc", "keccak", "hello world"};
+  for (const char *in : kInputs) {
+    SCOPED_TRACE(in);
+    const size_t len = strlen(in);
+    const uint8_t *data = reinterpret_cast<const uint8_t *>(in);
+    uint8_t k[KECCAK_256_DIGEST_LENGTH];
+    uint8_t s[SHA3_256_DIGEST_LENGTH];
+    ASSERT_EQ(k, KECCAK_256(data, len, k));
+    ASSERT_EQ(s, SHA3_256(data, len, s));
+    EXPECT_NE(0, OPENSSL_memcmp(k, s, KECCAK_256_DIGEST_LENGTH))
+        << "Keccak-256 and SHA3-256 must produce different digests";
+  }
+}
+
+// File-driven Keccak-256 KAT vectors. Format mirrors NIST SHA-3 KATs
+// (Len in bits, Msg/MD in lowercase hex). See sha3_test.cc:391 for the same
+// pattern applied to SHA-3.
+TEST(DigestTest, Keccak256KAT) {
+  auto run = [](FileTest *t) {
+    std::string len_str;
+    ASSERT_TRUE(t->GetAttribute(&len_str, "Len"));
+    int bit_len = 0;
+    ASSERT_EQ(1, sscanf(len_str.c_str(), "%d", &bit_len));
+    ASSERT_GE(bit_len, 0);
+    // The current KAT covers byte-aligned messages only; bit-level inputs
+    // need a separate API.
+    ASSERT_EQ(0, bit_len % 8) << "Non-byte-aligned KAT vectors are unsupported";
+    const size_t byte_len = static_cast<size_t>(bit_len) / 8;
+
+    std::vector<uint8_t> msg, md;
+    ASSERT_TRUE(t->GetBytes(&msg, "Msg"));
+    ASSERT_TRUE(t->GetBytes(&md, "MD"));
+    ASSERT_LE(byte_len, msg.size());
+    ASSERT_EQ(static_cast<size_t>(KECCAK_256_DIGEST_LENGTH), md.size());
+
+    uint8_t out[KECCAK_256_DIGEST_LENGTH];
+    ASSERT_EQ(out, KECCAK_256(msg.data(), byte_len, out));
+    EXPECT_EQ(EncodeHex(bssl::MakeConstSpan(md)),
+              EncodeHex(bssl::MakeConstSpan(out, KECCAK_256_DIGEST_LENGTH)));
+  };
+  FileTestGTest("crypto/keccak/testvectors/KECCAK_256ShortMsg.txt", run);
+  FileTestGTest("crypto/keccak/testvectors/KECCAK_256LongMsg.txt", run);
+}
+
 TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("RSA-SHA512"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512WithRSAEncryption"));
@@ -391,6 +453,13 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512"));
   EXPECT_EQ(EVP_md4(), EVP_get_digestbyname("md4"));
   EXPECT_EQ(EVP_md4(), EVP_get_digestbyname("MD4"));
+
+  // Keccak-256 is registered by name only (no OID), matching OpenSSL 3.x's
+  // "KECCAK-256" provider name. Lookup via either casing must work; lookup
+  // by NID does not (the digest's type is NID_undef).
+  EXPECT_EQ(EVP_keccak_256(), EVP_get_digestbyname("KECCAK-256"));
+  EXPECT_EQ(EVP_keccak_256(), EVP_get_digestbyname("keccak-256"));
+  EXPECT_EQ(NID_undef, EVP_MD_type(EVP_keccak_256()));
 
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbynid(NID_sha512));
   EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_sha512WithRSAEncryption));

@@ -4251,6 +4251,9 @@ extern "C" {
 #define NID_shake256 980
 #define OBJ_shake256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 12L
 
+#define SN_keccak_256 "KECCAK-256"
+#define LN_keccak_256 "keccak-256"
+
 #define SN_ffdhe3072 "ffdhe3072"
 #define NID_ffdhe3072 983
 

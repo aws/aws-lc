@@ -56,6 +56,14 @@ extern "C" {
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
 #define SHA3_PAD_CHAR 0x06
 
+// KECCAK_PAD_CHAR is the original Keccak submission's padding byte, as used
+// by Ethereum's keccak256. It is NOT FIPS-approved.
+#define KECCAK_PAD_CHAR 0x01
+
+#define KECCAK_256_DIGEST_BITLENGTH 256
+#define KECCAK_256_DIGEST_LENGTH 32
+#define KECCAK_256_CBLOCK SHA3_BLOCKSIZE(KECCAK_256_DIGEST_BITLENGTH)
+
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define SHAKE_PAD_CHAR 0x1F
@@ -505,6 +513,27 @@ int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 // SHA3_512_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
 int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// Keccak-256 (Ethereum-style, padding 0x01). Reuses the same context type and
+// permutation as the SHA-3 family but is NOT FIPS-approved: it does not
+// update the FIPS service indicator. Streaming functions are exposed only
+// internally; public consumers reach Keccak-256 via |EVP_keccak_256|.
+// KECCAK_256_Init initialises |ctx| and returns 1 on success or 0 on failure.
+int KECCAK_256_Init(KECCAK1600_CTX *ctx);
+
+// KECCAK_256_Update absorbs |len| bytes from |data| into |ctx|.
+int KECCAK_256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
+
+// KECCAK_256_Final pads the last block and writes |KECCAK_256_DIGEST_LENGTH|
+// bytes to |out|. It returns one on success and zero on programmer error.
+int KECCAK_256_Final(uint8_t out[KECCAK_256_DIGEST_LENGTH], KECCAK1600_CTX *ctx);
+
+// KECCAK_256 writes the Keccak-256 digest of |len| bytes from |data| to |out|
+// and returns |out|. Like the SHA-3 one-shots, this is OPENSSL_EXPORTed for
+// in-tree consumers; external users should access Keccak-256 via
+// |EVP_keccak_256|.
+OPENSSL_EXPORT uint8_t *KECCAK_256(const uint8_t *data, size_t len,
+                                   uint8_t out[KECCAK_256_DIGEST_LENGTH]);
 
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer

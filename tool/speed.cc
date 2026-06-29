@@ -2962,6 +2962,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
        !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
 #endif
+#if defined(OPENSSL_IS_AWSLC)
+       !SpeedHash(EVP_keccak_256(), "KECCAK-256", selected) ||
+#endif
 #if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
        // OpenSSL 1.0 and BoringSSL don't support SHAKE
        !SpeedHash(EVP_shake128(), "SHAKE-128", selected) ||

@@ -403,6 +403,12 @@ static const uint8_t kOutput_sha3_512[SHA3_512_DIGEST_LENGTH] = {
     0x85, 0x3c, 0x64, 0xa1, 0x56, 0x6f, 0xeb, 0x76, 0x25, 0x9a, 0x4a, 0x44,
     0x23, 0xf7, 0xcf, 0x46};
 
+// Keccak-256 of |kPlaintext|, computed by util/gen_keccak256_kat.py.
+static const uint8_t kOutput_keccak_256[KECCAK_256_DIGEST_LENGTH] = {
+    0xaa, 0x2f, 0x0b, 0xbd, 0x30, 0xd5, 0xf5, 0xd1, 0x2e, 0xf9, 0xca, 0xe0,
+    0xbe, 0xea, 0x24, 0xb1, 0x99, 0x9c, 0x95, 0xea, 0x50, 0xe9, 0x03, 0xaf,
+    0xaf, 0xea, 0x7d, 0xcb, 0x36, 0xf4, 0x59, 0xfc};
+
 // NOTE: SHAKE is a variable-length XOF; this number is chosen somewhat
 //       arbitrarily for testing.
 static const size_t SHAKE_OUTPUT_LENGTH = 64;
@@ -1166,6 +1172,18 @@ static const struct DigestTestVector {
         &SHA3_512,
         kOutput_sha3_512,
         AWSLC_APPROVED,
+    },
+    {
+        // Keccak-256 (Ethereum-style, 0x01 padding) shares the SHA-3
+        // implementation but is NOT FIPS-approved: Init/Update/Final/one-shot
+        // intentionally do not call FIPS_service_indicator_update_state, so
+        // the indicator must remain unset.
+        "KECCAK-256",
+        KECCAK_256_DIGEST_LENGTH,
+        &EVP_keccak_256,
+        &KECCAK_256,
+        kOutput_keccak_256,
+        AWSLC_NOT_APPROVED,
     },
 };
 

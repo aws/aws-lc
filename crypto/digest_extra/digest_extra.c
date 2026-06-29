@@ -15,6 +15,7 @@
 #include "../asn1/internal.h"
 #include "../internal.h"
 #include "../fipsmodule/digest/internal.h"
+#include "../fipsmodule/sha/internal.h"
 
 
 struct nid_to_digest {
@@ -41,6 +42,10 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
     {NID_sha3_512, EVP_sha3_512, SN_sha3_512, LN_sha3_512},
     {NID_shake128, EVP_shake128, SN_shake128, LN_shake128},
     {NID_shake256, EVP_shake256, SN_shake256, LN_shake256},
+    // Keccak-256 has no NID/OID (the Ethereum-style 0x01-padding variant is
+    // not standardised). Registered by name only; matches OpenSSL 3.2+'s
+    // "KECCAK-256" provider name for cross-library lookups.
+    {NID_undef, EVP_keccak_256, SN_keccak_256, LN_keccak_256},
     {NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1},
     // As a remnant of signing |EVP_MD|s, OpenSSL returned the corresponding
     // hash function when given a signature OID. To avoid unintended lax parsing
@@ -261,6 +266,40 @@ static const EVP_MD evp_md_blake2b256 = {
 };
 
 const EVP_MD *EVP_blake2b256(void) { return &evp_md_blake2b256; }
+
+// Keccak-256 (Ethereum-style, 0x01 padding). NOT FIPS-approved, no OID.
+static void keccak_256_init(EVP_MD_CTX *ctx) {
+  AWSLC_ASSERT(KECCAK_256_Init(ctx->md_data));
+}
+
+static int keccak_256_update(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  return KECCAK_256_Update(ctx->md_data, data, len);
+}
+
+static void keccak_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
+  AWSLC_ASSERT(KECCAK_256_Final(md, ctx->md_data));
+}
+
+// |EVP_MD_FLAG_DIGALGID_ABSENT| matches OpenSSL 3.2+'s
+// |PROV_DIGEST_FLAG_ALGID_ABSENT| on KECCAK-{224,256,384,512}. With
+// |NID_undef| this is effectively unreachable in current AWS-LC code paths
+// (|EVP_marshal_digest_algorithm| rejects digests without a known OID before
+// inspecting flags), but we set it for parity with OpenSSL and to remain
+// correct if any downstream caller starts honouring the flag.
+static const EVP_MD evp_md_keccak_256 = {
+  NID_undef,
+  KECCAK_256_DIGEST_LENGTH,
+  EVP_MD_FLAG_DIGALGID_ABSENT,
+  keccak_256_init,
+  keccak_256_update,
+  keccak_256_final,
+  KECCAK_256_CBLOCK,
+  sizeof(KECCAK1600_CTX),
+  /*finalXOF=*/   NULL,
+  /*squeezeXOF=*/ NULL
+};
+
+const EVP_MD *EVP_keccak_256(void) { return &evp_md_keccak_256; }
 
 static void null_init(EVP_MD_CTX *ctx) {}
 
