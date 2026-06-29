@@ -6,6 +6,7 @@
 #include <openssl/crypto.h>
 
 #include "internal.h"
+#include "../../../rand_extra/internal.h"
 #include "../../../ube/vm_ube_detect.h"
 
 #define MAX_MULTIPLE_FROM_RNG (16)
@@ -78,6 +79,11 @@ TEST(EntropySources, Configuration) {
 // that kernel.
 #if defined(AWSLC_VM_UBE_TESTING) && defined(OPENSSL_LINUX)
   EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+
+// In this mode, we expect deterministic behaviour from the randomness
+// generation.
+#elif defined(OPENSSL_RAND_DETERMINISTIC)
+  EXPECT_EQ(DETERMINISTIC_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
 
 // If entropy build configuration choose to explicitly opt-out of CPU Jitter
 // Entropy
