@@ -1,0 +1,145 @@
+name: autofix
+
+on:
+  workflow_run:
+    workflows: ["integration-omnibus"]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+env:
+  TARGET_RUN_ID: ${{ github.event.workflow_run.id }}
+  AUTOFIX_SCRIPT: ./tests/ci/integration/autofix_integration_failures/autofix.sh
+
+jobs:
+  get-failing-integrations:
+    name: get-failing-integrations
+    if: >-
+      github.event.workflow_run.event == 'schedule' &&
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Collect failing targets
+        id: targets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          targets=$("$AUTOFIX_SCRIPT" get-failing-targets "$TARGET_RUN_ID")
+          echo "Targets: $targets"
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+      - name: Download each failing integration's logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGETS: ${{ steps.targets.outputs.targets }}
+        run: |
+          echo "$TARGETS" | jq -r '.[] | "\(.integration)\t\(.version)"' \
+            | while IFS=$'\t' read -r integration version; do
+            "$AUTOFIX_SCRIPT" fetch-logs "$TARGET_RUN_ID" "$integration" "$version"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autofix-logs
+          # Save the logs folder so the `reason` job find the logs.
+          path: .autofix/
+          if-no-files-found: ignore
+
+  reason:
+    name: reason (${{ matrix.target.dir }})
+    needs: get-failing-integrations
+    if: needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != ''
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        target: ${{ fromJSON(needs.get-failing-integrations.outputs.targets) }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    env:
+      CLAUDE_CODE_USE_BEDROCK: "1"
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip secret creds from the env Claude's Bash subprocesses inherit to guard against prompt injection
+      AWS_REGION: us-west-2
+      ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
+      ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionAutofixReasoningRole
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.161
+      - name: Install Bash sandbox deps
+        # Claude Code's sandbox needs bubblewrap (filesystem/process isolation)
+        # and socat (relays Bash traffic through the domain-allowlist proxy).
+        run: sudo dnf install -y bubblewrap socat
+      - name: Download pre-fetched logs
+        uses: actions/download-artifact@v4
+        with:
+          name: autofix-logs
+          path: .autofix/
+        continue-on-error: true
+      - name: Autofix the patch
+        env:
+          INTEGRATION: ${{ matrix.target.integration }}
+          VERSION: ${{ matrix.target.version }}
+        run: |
+          set -x
+          "$AUTOFIX_SCRIPT" reason "$TARGET_RUN_ID" "$INTEGRATION" "$VERSION"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autofix-${{ matrix.target.dir }}
+          path: .autofix/${{ matrix.target.dir }}/
+          if-no-files-found: ignore
+
+  upload:
+    name: upload (${{ matrix.target.dir }})
+    needs: [get-failing-integrations, reason]
+    if: ${{ always() && needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != '' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        target: ${{ fromJSON(needs.get-failing-integrations.outputs.targets) }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionAutofixUploadRole
+      - name: Download results from reason job
+        uses: actions/download-artifact@v4
+        with:
+          name: autofix-${{ matrix.target.dir }}
+          path: .autofix/${{ matrix.target.dir }}/
+        continue-on-error: true
+      - name: Upload results to S3
+        env:
+          INTEGRATION: ${{ matrix.target.integration }}
+          VERSION: ${{ matrix.target.version }}
+        run: |
+          set -x
+          # Suffix must match S3_FOR_AUTOFIX_INTEGRATION_FAILURES in tests/ci/cdk/util/metadata.py
+          export AUTOFIX_BUCKET="${AWS_ACCOUNT_ID}-aws-lc-autofix-integration-failures"
+          "$AUTOFIX_SCRIPT" upload "$TARGET_RUN_ID" "$INTEGRATION" "$VERSION"
