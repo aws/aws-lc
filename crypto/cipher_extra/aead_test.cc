@@ -816,13 +816,13 @@ TEST_P(PerAEADTest, ConcurrentStability) {
   };
 
   // Shared context that must support concurrent access.
-  bssl::ScopedEVP_AEAD_CTX universal_oracle;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(universal_oracle.get(), aead(), key, key_len,
+  bssl::ScopedEVP_AEAD_CTX global_ctx;
+  ASSERT_TRUE(EVP_AEAD_CTX_init(global_ctx.get(), aead(), key, key_len,
                                 EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
 
   std::vector<uint8_t> reference_ct;
-  ASSERT_TRUE(seal(universal_oracle.get(), &reference_ct));
-  ASSERT_TRUE(open_and_test(universal_oracle.get(), reference_ct));
+  ASSERT_TRUE(seal(global_ctx.get(), &reference_ct));
+  ASSERT_TRUE(open_and_test(global_ctx.get(), reference_ct));
 
 #if defined(OPENSSL_TSAN)
   const size_t num_threads = 8;
@@ -837,18 +837,18 @@ TEST_P(PerAEADTest, ConcurrentStability) {
 #endif
 
   auto worker = [&] {
-    bssl::ScopedEVP_AEAD_CTX local_oracle;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(local_oracle.get(), aead(), key, key_len,
+    bssl::ScopedEVP_AEAD_CTX per_thread_ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init(per_thread_ctx.get(), aead(), key, key_len,
                                   EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
 
     for (size_t i = 0; i < kIterationsPerThread; i++) {
       std::vector<uint8_t> ct_a;
-      ASSERT_TRUE(seal(universal_oracle.get(), &ct_a));
-      EXPECT_TRUE(open_and_test(local_oracle.get(), ct_a));
+      ASSERT_TRUE(seal(global_ctx.get(), &ct_a));
+      EXPECT_TRUE(open_and_test(per_thread_ctx.get(), ct_a));
 
       std::vector<uint8_t> ct_b;
-      ASSERT_TRUE(seal(local_oracle.get(), &ct_b));
-      EXPECT_TRUE(open_and_test(universal_oracle.get(), ct_b));
+      ASSERT_TRUE(seal(per_thread_ctx.get(), &ct_b));
+      EXPECT_TRUE(open_and_test(global_ctx.get(), ct_b));
 
       if (deterministic) {
         EXPECT_EQ(Bytes(reference_ct), Bytes(ct_a));
