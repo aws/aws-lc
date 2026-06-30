@@ -8,6 +8,8 @@
 #include "internal.h"
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
 
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 // 2.16.840.1.101.3.4.4.1
@@ -249,6 +251,10 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
   return key->kem;
 }
 
+const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key) {
+  return key->secret_key;
+}
+
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
   OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
@@ -333,6 +339,124 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   if (key->seed == NULL) {
     KEM_KEY_clear(key);
     return 0;
+  }
+
+  return 1;
+}
+
+static int kem_check_public_key(const KEM_KEY *key) {
+  switch (key->kem->nid) {
+    case NID_MLKEM512:
+      return ml_kem_512_check_pk(key->public_key, key->kem->public_key_len) == 0;
+    case NID_MLKEM768:
+      return ml_kem_768_check_pk(key->public_key, key->kem->public_key_len) == 0;
+    case NID_MLKEM1024:
+      return ml_kem_1024_check_pk(key->public_key, key->kem->public_key_len) == 0;
+    default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+  }
+}
+
+static int kem_check_secret_key(const KEM_KEY *key) {
+  switch (key->kem->nid) {
+    case NID_MLKEM512:
+      return ml_kem_512_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+    case NID_MLKEM768:
+      return ml_kem_768_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+    case NID_MLKEM1024:
+      return ml_kem_1024_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+    default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+  }
+}
+
+static int kem_check_pct(const KEM_KEY *key) {
+  int ret = 0;
+  const KEM *kem = key->kem;
+
+  uint8_t *ciphertext = OPENSSL_malloc(kem->ciphertext_len);
+  uint8_t *ss_enc = OPENSSL_malloc(kem->shared_secret_len);
+  uint8_t *ss_dec = OPENSSL_malloc(kem->shared_secret_len);
+
+  size_t ct_len = kem->ciphertext_len;
+  size_t ss_enc_len = kem->shared_secret_len;
+  size_t ss_dec_len = kem->shared_secret_len;
+
+  if (ciphertext == NULL || ss_enc == NULL || ss_dec == NULL) {
+    goto cleanup;
+  }
+
+  if (!kem->method->encaps(ciphertext, &ct_len, ss_enc, &ss_enc_len,
+                           key->public_key)) {
+    goto cleanup;
+  }
+
+  if (!kem->method->decaps(ss_dec, &ss_dec_len, ciphertext, key->secret_key)) {
+    goto cleanup;
+  }
+
+  if (ss_enc_len != kem->shared_secret_len ||
+      ss_dec_len != kem->shared_secret_len) {
+    goto cleanup;
+  }
+
+  if (CRYPTO_memcmp(ss_enc, ss_dec, kem->shared_secret_len) != 0) {
+    goto cleanup;
+  }
+
+  ret = 1;
+
+cleanup:
+  if (ciphertext != NULL) {
+    OPENSSL_cleanse(ciphertext, kem->ciphertext_len);
+  }
+  if (ss_enc != NULL) {
+    OPENSSL_cleanse(ss_enc, kem->shared_secret_len);
+  }
+  if (ss_dec != NULL) {
+    OPENSSL_cleanse(ss_dec, kem->shared_secret_len);
+  }
+  OPENSSL_free(ciphertext);
+  OPENSSL_free(ss_enc);
+  OPENSSL_free(ss_dec);
+  return ret;
+}
+
+int KEM_check_key(const KEM_KEY *key) {
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (key->kem == NULL || key->kem->method == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PUBLIC_KEY);
+    return 0;
+  }
+
+  if (!kem_check_public_key(key)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PUBLIC_KEY);
+    return 0;
+  }
+
+  if (key->secret_key != NULL) {
+    if (!kem_check_secret_key(key)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PRIVATE_KEY);
+      return 0;
+    }
+
+    if (!kem_check_pct(key)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_KEM_PCT_FAILED);
+      return 0;
+    }
   }
 
   return 1;
