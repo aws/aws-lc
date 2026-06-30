@@ -5,8 +5,8 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.0.0")
-set(AWSLC_FIPS_VERSION 4)
+set(SOFTWARE_VERSION "5.1.0")
+set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -1044,6 +1044,13 @@ endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
+  # OPENSSL_SMALL implies disabling AVX-512 optimizations on x86_64 for size.
+  # This is also enforced in include/openssl/target.h for non-CMake builds.
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
+    add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing ADX, AVX2 and AVX512 optimisations")
+  endif()
 endif()
 
 if(CONSTANT_TIME_VALIDATION)

@@ -255,4 +255,24 @@
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
+// Assembler-capability flag implications.
+//
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX.
+// CMakeLists.txt enforces this for CMake builds, but it must also be enforced
+// here for builds that pass defines directly via CFLAGS (e.g., the aws-lc-sys
+// CcBuilder path).
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
+
+// OPENSSL_SMALL implies disabling AVX-512 code paths on x86_64. The AVX-512
+// assembly (AES-GCM, XTS, RSAZ) is the largest single contributor to binary
+// size on x86_64 (~912 KB of object code). The performance cost is borne only
+// on AVX-512-capable CPUs (Ice Lake+, Zen 4+) for bulk symmetric operations.
+#if defined(OPENSSL_SMALL) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
+
 #endif  // OPENSSL_HEADER_TARGET_H
