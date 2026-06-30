@@ -757,7 +757,13 @@ static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
   if ((NID_secp224r1 != curve_nid) &&
       (NID_X9_62_prime256v1 != curve_nid) &&
       (NID_secp384r1 != curve_nid) &&
-      (NID_secp521r1 != curve_nid)) {
+      (NID_secp521r1 != curve_nid) &&
+      (NID_secp256k1 != curve_nid) &&
+      (NID_brainpoolP224r1 != curve_nid) &&
+      (NID_brainpoolP256r1 != curve_nid) &&
+      (NID_brainpoolP320r1 != curve_nid) &&
+      (NID_brainpoolP384r1 != curve_nid) &&
+      (NID_brainpoolP512r1 != curve_nid)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
     goto err;
   }
