@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -242,6 +243,9 @@ var (
 	errTestHanging = errors.New("test hangs without exiting")
 )
 
+// reportSeq uniquely identifies each gtest JSON report file.
+var reportSeq int64
+
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
@@ -284,6 +288,22 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	if test.numShards != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_SHARD_INDEX=%d", test.shard))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_TOTAL_SHARDS=%d", test.numShards))
+	}
+	// Write per-test-case gtest JSON report if report dir is set. Report
+	// generation is a diagnostic aid, so on error we warn and skip the report
+	// rather than failing the test run.
+	if reportDir := os.Getenv("GTEST_REPORT_DIR"); reportDir != "" {
+		if err := os.MkdirAll(reportDir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not create GTEST_REPORT_DIR %q: %v; skipping timing report\n", reportDir, err)
+		} else {
+			binName := filepath.Base(prog)
+			reportFile := filepath.Join(reportDir, fmt.Sprintf("%s_shard_%d_%d.json", binName, test.shard, atomic.AddInt64(&reportSeq, 1)))
+			if cmd.Env == nil {
+				cmd.Env = make([]string, len(os.Environ()))
+				copy(cmd.Env, os.Environ())
+			}
+			cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_OUTPUT=json:%s", reportFile))
+		}
 	}
 	var outBuf bytes.Buffer
 	cmd.Stdout = &outBuf
