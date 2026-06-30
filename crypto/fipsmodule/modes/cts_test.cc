@@ -234,7 +234,7 @@ TEST(CTS128Test, RoundTripAllLengthsAllKeySizes) {
   for (unsigned bits : kKeyBits) {
     SCOPED_TRACE(testing::Message() << "AES-" << bits);
     std::vector<uint8_t> key_bytes(bits / 8);
-    RAND_bytes(key_bytes.data(), key_bytes.size());
+    ASSERT_TRUE(RAND_bytes(key_bytes.data(), key_bytes.size()));
 
     AES_KEY enc_key, dec_key;
     ASSERT_EQ(0, AES_set_encrypt_key(key_bytes.data(), bits, &enc_key));
@@ -244,8 +244,8 @@ TEST(CTS128Test, RoundTripAllLengthsAllKeySizes) {
       SCOPED_TRACE(testing::Message() << "len=" << len);
       std::vector<uint8_t> pt(len);
       std::vector<uint8_t> iv_seed(16);
-      RAND_bytes(pt.data(), pt.size());
-      RAND_bytes(iv_seed.data(), iv_seed.size());
+      ASSERT_TRUE(RAND_bytes(pt.data(), pt.size()));
+      ASSERT_TRUE(RAND_bytes(iv_seed.data(), iv_seed.size()));
 
       // Encrypt.
       std::vector<uint8_t> ct(len);
@@ -292,7 +292,7 @@ TEST(CTS128Test, AgreesWithRawCBCOnExactBlockMultiple) {
   // CTS at residue==16 should agree with running plain CBC over the whole
   // input and then swapping the final two blocks (i.e. the CS1 convention).
   uint8_t key_bytes[16];
-  RAND_bytes(key_bytes, sizeof(key_bytes));
+  ASSERT_TRUE(RAND_bytes(key_bytes, sizeof(key_bytes)));
   AES_KEY enc_key, dec_key;
   ASSERT_EQ(0, AES_set_encrypt_key(key_bytes, 128, &enc_key));
   ASSERT_EQ(0, AES_set_decrypt_key(key_bytes, 128, &dec_key));
@@ -300,8 +300,8 @@ TEST(CTS128Test, AgreesWithRawCBCOnExactBlockMultiple) {
   // Exactly 4 blocks.
   constexpr size_t kLen = 64;
   std::vector<uint8_t> pt(kLen), iv_seed(16);
-  RAND_bytes(pt.data(), kLen);
-  RAND_bytes(iv_seed.data(), 16);
+  ASSERT_TRUE(RAND_bytes(pt.data(), kLen));
+  ASSERT_TRUE(RAND_bytes(iv_seed.data(), 16));
 
   std::vector<uint8_t> cts_ct(kLen);
   uint8_t iv[16];
@@ -326,13 +326,13 @@ TEST(CTS128Test, IVUpdatedToLastFullCipherBlock) {
   // ciphertext block, matching OpenSSL's behavior — that's how krb5 chains CTS
   // calls together for streamed input.
   uint8_t key_bytes[16];
-  RAND_bytes(key_bytes, sizeof(key_bytes));
+  ASSERT_TRUE(RAND_bytes(key_bytes, sizeof(key_bytes)));
   AES_KEY enc_key;
   ASSERT_EQ(0, AES_set_encrypt_key(key_bytes, 128, &enc_key));
 
   constexpr size_t kLen = 37;  // residue 5 after 2 full blocks
   std::vector<uint8_t> pt(kLen);
-  RAND_bytes(pt.data(), kLen);
+  ASSERT_TRUE(RAND_bytes(pt.data(), kLen));
 
   std::vector<uint8_t> ct(kLen);
   uint8_t iv[16] = {0};
