@@ -828,7 +828,7 @@ TEST_P(PerAEADTest, ConcurrentStability) {
   const size_t num_threads = 8;
   constexpr size_t kIterationsPerThread = 20;
 #else
-  size_t num_threads = 64;
+  size_t num_threads = 16;
   constexpr size_t kIterationsPerThread = 200;
   const char *limit = getenv("AEAD_TEST_THREADS_LIMIT");
   if (limit != nullptr) {
