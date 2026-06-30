@@ -326,6 +326,36 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     endif()
   endif()
 
+  # Under OPENSSL_SMALL on aarch64, pin each s2n-bignum operation to the
+  # non-_alt (generic) variant and drop the _alt (wide-multiplier) form to save
+  # binary size. This mirrors the compile-time pinning in
+  # third_party/s2n-bignum/s2n-bignum_aws-lc.h.
+  #
+  # On x86_64, OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX (see
+  # #3319), which makes the enclosing condition false -- s2n-bignum is not
+  # compiled at all, so no removal is needed.
+  if(OPENSSL_SMALL)
+    if(ARCH STREQUAL "aarch64")
+      list(REMOVE_ITEM BCM_ASM_SOURCES
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/bignum_madd_n25519_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_decode_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_byte_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte_alt.S
+      )
+    endif()
+  endif()
+
 endif()
 
 # Include s2n-bignum files in Windows AArch64 which replace similar implementation that was available on Windows
