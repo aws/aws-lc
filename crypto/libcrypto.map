@@ -694,6 +694,7 @@ AWS_LC_1.0 {
     CRYPTO_set_mem_functions;
     CRYPTO_set_thread_local;
     CRYPTO_sysrand;
+    CRYPTO_tls13_hkdf_expand_label;
     CRYPTO_tls1_prf;
     CTR_DRBG_clear;
     CTR_DRBG_free;
