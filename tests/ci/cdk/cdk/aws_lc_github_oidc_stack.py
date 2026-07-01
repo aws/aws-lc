@@ -56,6 +56,41 @@ class AwsLcGitHubOidcStack(Stack):
                                                       )
                                                   )
                                               },
+                                              "StringNotLike": {
+                                                  "token.actions.githubusercontent.com:job_workflow_ref":
+                                                      "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
+                                                          GITHUB_REPO_OWNER, (
+                                                              STAGING_GITHUB_REPO_NAME
+                                                              if (env.account == PRE_PROD_ACCOUNT)
+                                                              else GITHUB_REPO_NAME
+                                                          )
+                                                      )
+                                              },
+                                          }))
+
+        autofix_oidc_role_name = "AwsLcGitHubActionsAutofixOidcRole"
+        self.autofix_oidc_role = iam.Role(self, id=autofix_oidc_role_name, role_name=autofix_oidc_role_name,
+                                          assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
+                                              "StringEquals": {
+                                                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                              },
+                                              "StringLike": {
+                                                  "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
+                                                      GITHUB_REPO_OWNER, (
+                                                          STAGING_GITHUB_REPO_NAME
+                                                          if (env.account == PRE_PROD_ACCOUNT)
+                                                          else GITHUB_REPO_NAME
+                                                      )
+                                                  ),
+                                                  "token.actions.githubusercontent.com:job_workflow_ref":
+                                                      "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
+                                                          GITHUB_REPO_OWNER, (
+                                                              STAGING_GITHUB_REPO_NAME
+                                                              if (env.account == PRE_PROD_ACCOUNT)
+                                                              else GITHUB_REPO_NAME
+                                                          )
+                                                      ),
+                                              },
                                           }))
 
         ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
@@ -82,13 +117,13 @@ class AwsLcGitHubOidcStack(Stack):
         )
 
         self.autofix_reasoning_role = create_autofix_reasoning_role(
-            self, "AwsLcGitHubActionAutofixReasoningRole", env, self.minimal_oidc_role)
-        self.autofix_reasoning_role.grant_assume_role(self.minimal_oidc_role)
+            self, "AwsLcGitHubActionAutofixReasoningRole", env, self.autofix_oidc_role)
+        self.autofix_reasoning_role.grant_assume_role(self.autofix_oidc_role)
 
         self.autofix_upload_role = create_autofix_upload_role(
-            self, "AwsLcGitHubActionAutofixUploadRole", self.minimal_oidc_role,
+            self, "AwsLcGitHubActionAutofixUploadRole", self.autofix_oidc_role,
             self.autofix_bucket)
-        self.autofix_upload_role.grant_assume_role(self.minimal_oidc_role)
+        self.autofix_upload_role.grant_assume_role(self.autofix_oidc_role)
 
 
 def create_device_farm_role(scope: Construct, id: str,
@@ -312,7 +347,7 @@ def create_autofix_reasoning_role(scope: Construct, id: str,
                                         "bedrock:InvokeModelWithResponseStream",
                                     ],
                                     resources=[
-                                        "arn:aws:bedrock:*::foundation-model/*",
+                                        "arn:aws:bedrock:*::foundation-model/anthropic.*",
                                         f"arn:aws:bedrock:{env.region}:{env.account}:inference-profile/*",
                                         f"arn:aws:bedrock:{env.region}:{env.account}:application-inference-profile/*",
                                     ],
