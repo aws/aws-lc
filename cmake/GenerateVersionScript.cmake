@@ -46,6 +46,13 @@ function(apply_version_script)
     "LINKER:--version-script=${ARG_VERSION_SCRIPT}"
   )
 
+  # The version script is passed via a linker flag, which CMake does not parse
+  # to discover a build dependency. Record it explicitly so editing the .map
+  # (e.g. regenerating it from the registry) triggers a re-link.
+  set_target_properties(${ARG_TARGET} PROPERTIES
+    LINK_DEPENDS "${ARG_VERSION_SCRIPT}"
+  )
+
   if(LINKER_HAS_UNDEFINED_VERSION)
     target_link_options(${ARG_TARGET} PRIVATE
       "LINKER:--undefined-version"
