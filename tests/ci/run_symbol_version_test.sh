@@ -30,6 +30,16 @@ NC='\033[0m' # No Color
 pass_count=0
 fail_count=0
 
+# Directories to remove on exit. Only paths we create ourselves are added here;
+# a caller-supplied install_dir is never registered for deletion.
+CLEANUP_DIRS=()
+cleanup() {
+  for d in ${CLEANUP_DIRS[@]+"${CLEANUP_DIRS[@]}"}; do
+    [[ -n "${d}" ]] && rm -rf "${d}"
+  done
+}
+trap cleanup EXIT
+
 print_test() {
   echo ""
   echo "=========================================="
@@ -86,7 +96,7 @@ fi
 if [[ -z "${INSTALL_DIR}" ]]; then
   BUILD_DIR="${SOURCE_ROOT}/build_symbol_test"
   INSTALL_DIR=$(mktemp -d)
-  trap 'rm -rf "${INSTALL_DIR}"' EXIT
+  CLEANUP_DIRS+=("${INSTALL_DIR}")
 
   print_test "Building and installing AWS-LC with symbol versioning"
   rm -rf "${BUILD_DIR}"
@@ -309,6 +319,97 @@ EOF
 else
   print_info "Skipping link test (no headers found at ${INCLUDE_DIR})"
 fi
+
+# Test 7: Detect silently dropped exported symbols (independent of the registry)
+#
+# The registry checks (check_symbols.sh) and the version scripts are both
+# derived from util/read_public_symbols. If that extractor misses an
+# OPENSSL_EXPORT symbol, the symbol is absent from the registry AND hidden by
+# "local: *;" in the version script -- a silent ABI drop that the
+# registry-based checks cannot see, because they never look at what the
+# compiler actually exports.
+#
+# To catch this we build the same sources WITHOUT symbol versioning (a plain
+# shared build does not set ENABLE_DIST_PKG, so no version script is applied)
+# and diff the exported symbol sets. Any symbol exported by the unversioned
+# build but missing from the versioned library was hidden by the version
+# script and is a silent drop.
+print_test "Detect silently dropped exported symbols (independent of registry)"
+
+# Print the sorted set of defined, exported symbol names for a library,
+# stripping version tags (func@@AWS_LC_1.0 -> func) and excluding linker /
+# runtime internals that are intentionally local in the versioned build.
+normalized_exports() {
+  local lib="$1"
+  nm -D --defined-only "${lib}" 2>/dev/null | \
+    awk '$2 ~ /^[TWDBR]$/ { print $3 }' | \
+    sed 's/@.*//' | \
+    grep -v '^_' | \
+    grep -v '^OPENSSL_memory' | \
+    sort -u
+}
+
+check_dropped_symbols() {
+  local name="$1" unversioned_lib="$2" versioned_lib="$3"
+  normalized_exports "${unversioned_lib}" > /tmp/uv_${name}.txt
+  normalized_exports "${versioned_lib}" > /tmp/v_${name}.txt
+  # Symbols exported unversioned but NOT in the versioned library.
+  local dropped dropped_count
+  dropped=$(comm -23 /tmp/uv_${name}.txt /tmp/v_${name}.txt)
+  dropped_count=$(echo "${dropped}" | grep -c . || true)
+  if [[ ${dropped_count} -eq 0 ]]; then
+    print_pass "${name}: no exported symbols hidden by the version script"
+  else
+    print_fail "${name}: ${dropped_count} exported symbol(s) silently hidden by the version script"
+    print_info "These are exported by the compiler but missing from the registry/.map:"
+    echo "${dropped}" | head -10 | sed 's/^/  /'
+    [[ ${dropped_count} -gt 10 ]] && print_info "... and $((dropped_count - 10)) more"
+  fi
+}
+
+# This check requires building an unversioned reference from source. The build
+# tools are mandatory: skipping the check would mask exactly the silent-drop
+# class of bug it exists to catch, so a missing prerequisite is a failure.
+if ! command -v cmake >/dev/null 2>&1; then
+  print_fail "cmake not found; required for the silent-drop check. Install cmake."
+  exit 1
+fi
+if ! command -v ninja >/dev/null 2>&1; then
+  print_fail "ninja not found; required for the silent-drop check. Install ninja-build."
+  exit 1
+fi
+
+UNVERSIONED_BUILD=$(mktemp -d)
+CLEANUP_DIRS+=("${UNVERSIONED_BUILD}")
+
+print_info "Building unversioned reference libraries (no ENABLE_DIST_PKG)"
+# A plain shared build still sets SET_LIB_SONAME (so filenames match the
+# versioned -awslc libraries) but does NOT enable symbol versioning.
+if ! cmake -GNinja -B "${UNVERSIONED_BUILD}" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DCMAKE_BUILD_TYPE=RelWithDebInfo > /dev/null 2>&1 || \
+   ! cmake --build "${UNVERSIONED_BUILD}" --target crypto ssl > /dev/null 2>&1; then
+  print_fail "Unversioned reference build failed; cannot run silent-drop check"
+  exit 1
+fi
+
+UV_CRYPTO=$(find "${UNVERSIONED_BUILD}" -name 'libcrypto-awslc.so*' -type f | head -1)
+UV_SSL=$(find "${UNVERSIONED_BUILD}" -name 'libssl-awslc.so*' -type f | head -1)
+
+if [[ -z "${UV_CRYPTO}" || -z "${UV_SSL}" ]]; then
+  print_fail "Could not locate unversioned reference libraries after build"
+  exit 1
+fi
+
+# Guard: the unversioned reference must actually be unversioned, otherwise the
+# diff is meaningless (both sides hidden identically).
+if readelf --version-info "${UV_CRYPTO}" | grep -q "${SYMBOL_VERSION}"; then
+  print_fail "Unversioned reference unexpectedly carries version definitions; drop check invalid"
+  exit 1
+fi
+
+check_dropped_symbols "libcrypto" "${UV_CRYPTO}" "${LIBCRYPTO_SO}"
+check_dropped_symbols "libssl" "${UV_SSL}" "${LIBSSL_SO}"
 
 # Summary
 echo ""
