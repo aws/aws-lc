@@ -428,7 +428,7 @@ jobs:
             arch: aarch64
             compiler: clang-15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
