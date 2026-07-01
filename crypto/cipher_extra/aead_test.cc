@@ -45,6 +45,11 @@ constexpr uint32_t kNondeterministic = 1 << 7;
 // <openssl/aead.h>. The two must be synchronized.
 constexpr uint32_t kConcurrent = 1 << 12;
 
+// kCanCopy indicates that the AEAD supports duplicating an initialized
+// |EVP_AEAD_CTX| with |EVP_AEAD_CTX_copy|. AEADs whose state owns external
+// resources (e.g. the TLS record-layer AEADs) do not set this.
+constexpr uint32_t kCanCopy = 1 << 12;
+
 // RequiresADLength encodes an AD length requirement into flags.
 constexpr uint32_t RequiresADLength(size_t length) {
   // If we had a more recent C++ version we could assert that the length is
@@ -79,41 +84,41 @@ struct KnownAEAD {
 
 static const struct KnownAEAD kAEADs[] = {
     {"AES_128_GCM", EVP_aead_aes_128_gcm, "aes_128_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce | kConcurrent},
+     kCanTruncateTags | kVariableNonce | kConcurrent | kCanCopy},
 
     {"AES_128_GCM_NIST", EVP_aead_aes_128_gcm, "nist_cavp/aes_128_gcm.txt",
-     kCanTruncateTags | kVariableNonce | kConcurrent},
+     kCanTruncateTags | kVariableNonce | kConcurrent | kCanCopy},
 
     {"AES_192_GCM", EVP_aead_aes_192_gcm, "aes_192_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce | kConcurrent},
+     kCanTruncateTags | kVariableNonce | kConcurrent | kCanCopy},
 
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt",
-     kCanTruncateTags | kVariableNonce | kConcurrent},
+     kCanTruncateTags | kVariableNonce | kConcurrent | kCanCopy},
 
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
-     kCanTruncateTags | kVariableNonce | kConcurrent},
+     kCanTruncateTags | kVariableNonce | kConcurrent | kCanCopy},
 
     {"AES_128_GCM_SIV", EVP_aead_aes_128_gcm_siv, "aes_128_gcm_siv_tests.txt",
-     kConcurrent},
+     kConcurrent | kCanCopy},
 
     {"AES_256_GCM_SIV", EVP_aead_aes_256_gcm_siv, "aes_256_gcm_siv_tests.txt",
-     kConcurrent},
+     kConcurrent | kCanCopy},
 
     {"AES_128_GCM_RandomNonce", EVP_aead_aes_128_gcm_randnonce,
      "aes_128_gcm_randnonce_tests.txt",
      kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13) |
-         kConcurrent},
+         kConcurrent | kCanCopy},
 
     {"AES_256_GCM_RandomNonce", EVP_aead_aes_256_gcm_randnonce,
      "aes_256_gcm_randnonce_tests.txt",
      kNondeterministic | kCanTruncateTags | RequiresMinimumTagLength(13) |
-         kConcurrent},
+         kConcurrent | kCanCopy},
 
     {"ChaCha20Poly1305", EVP_aead_chacha20_poly1305,
-     "chacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent},
+     "chacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent | kCanCopy},
 
     {"XChaCha20Poly1305", EVP_aead_xchacha20_poly1305,
-     "xchacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent},
+     "xchacha20_poly1305_tests.txt", kCanTruncateTags | kConcurrent | kCanCopy},
 
     {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,
      "aes_128_cbc_sha1_tls_tests.txt",
@@ -156,19 +161,19 @@ static const struct KnownAEAD kAEADs[] = {
      kLimitedImplementation | RequiresADLength(11)},
 
     {"AES_128_CTR_HMAC_SHA256", EVP_aead_aes_128_ctr_hmac_sha256,
-     "aes_128_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent},
+     "aes_128_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent | kCanCopy},
 
     {"AES_256_CTR_HMAC_SHA256", EVP_aead_aes_256_ctr_hmac_sha256,
-     "aes_256_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent},
+     "aes_256_ctr_hmac_sha256.txt", kCanTruncateTags | kConcurrent | kCanCopy},
 
     {"AES_128_CCM_BLUETOOTH", EVP_aead_aes_128_ccm_bluetooth,
-     "aes_128_ccm_bluetooth_tests.txt", kConcurrent},
+     "aes_128_ccm_bluetooth_tests.txt", kConcurrent | kCanCopy},
 
     {"AES_128_CCM_BLUETOOTH_8", EVP_aead_aes_128_ccm_bluetooth_8,
-     "aes_128_ccm_bluetooth_8_tests.txt", kConcurrent},
+     "aes_128_ccm_bluetooth_8_tests.txt", kConcurrent | kCanCopy},
 
     {"AES_128_CCM_Matter", EVP_aead_aes_128_ccm_matter,
-     "aes_128_ccm_matter_tests.txt", kConcurrent},
+     "aes_128_ccm_matter_tests.txt", kConcurrent | kCanCopy},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
@@ -284,6 +289,115 @@ TEST_P(PerAEADTest, TestVector) {
         << "Decrypted bad data with corrupted byte.";
     ERR_clear_error();
   });
+}
+
+TEST_P(PerAEADTest, Copy) {
+  const uint32_t flags = GetParam().flags;
+  const bool expect_copyable = (flags & kCanCopy) != 0;
+
+  std::vector<uint8_t> key(EVP_AEAD_key_length(aead()), 'k');
+  const size_t tag_len = EVP_AEAD_DEFAULT_TAG_LENGTH;
+
+  // Copying an uninitialized context always fails, regardless of the AEAD.
+  {
+    bssl::ScopedEVP_AEAD_CTX uninitialized;
+    EVP_AEAD_CTX_zero(uninitialized.get());
+    bssl::ScopedEVP_AEAD_CTX dst;
+    EXPECT_FALSE(EVP_AEAD_CTX_copy(dst.get(), uninitialized.get()));
+    ERR_clear_error();
+  }
+
+  // Use |init_with_direction| so this also works for the direction-bound TLS
+  // AEADs, which do not implement |init|.
+  bssl::ScopedEVP_AEAD_CTX src;
+  ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+      src.get(), aead(), key.data(), key.size(), tag_len, evp_aead_seal));
+
+  // The result of |EVP_AEAD_CTX_copy| must agree with the advertised
+  // capability. This keeps |kCanCopy| and the AEAD's |copy| hook in sync.
+  {
+    bssl::ScopedEVP_AEAD_CTX dst;
+    const int copied = EVP_AEAD_CTX_copy(dst.get(), src.get());
+    ASSERT_EQ(copied == 1, expect_copyable);
+  }
+  if (!expect_copyable) {
+    ERR_clear_error();
+    return;
+  }
+
+  static const uint8_t kPlaintext[] = "EVP_AEAD_CTX_copy test plaintext";
+  static const uint8_t kAD[] = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint8_t> nonce(EVP_AEAD_nonce_length(aead()), 'n');
+
+  auto seal = [&](const EVP_AEAD_CTX *ctx, std::vector<uint8_t> *out) -> bool {
+    out->resize(sizeof(kPlaintext) + EVP_AEAD_max_overhead(aead()));
+    size_t out_len = 0;
+    if (!EVP_AEAD_CTX_seal(ctx, out->data(), &out_len, out->size(),
+                           nonce.data(), nonce.size(), kPlaintext,
+                           sizeof(kPlaintext), kAD, sizeof(kAD))) {
+      return false;
+    }
+    out->resize(out_len);
+    return true;
+  };
+
+  auto open_and_check = [&](const EVP_AEAD_CTX *ctx,
+                            const std::vector<uint8_t> &ct) -> bool {
+    std::vector<uint8_t> out(ct.size());
+    size_t out_len = 0;
+    if (!EVP_AEAD_CTX_open(ctx, out.data(), &out_len, out.size(), nonce.data(),
+                           nonce.size(), ct.data(), ct.size(), kAD,
+                           sizeof(kAD))) {
+      return false;
+    }
+    return out_len == sizeof(kPlaintext) &&
+           OPENSSL_memcmp(out.data(), kPlaintext, sizeof(kPlaintext)) == 0;
+  };
+
+  // A copy must be usable independently of the source, in both directions.
+  bssl::ScopedEVP_AEAD_CTX copy;
+  ASSERT_TRUE(EVP_AEAD_CTX_copy(copy.get(), src.get()));
+
+  std::vector<uint8_t> ct_src, ct_copy;
+  ASSERT_TRUE(seal(src.get(), &ct_src));
+  ASSERT_TRUE(seal(copy.get(), &ct_copy));
+  EXPECT_TRUE(open_and_check(copy.get(), ct_src));
+  EXPECT_TRUE(open_and_check(src.get(), ct_copy));
+
+  // For deterministic AEADs the copy must reproduce the source byte-for-byte.
+  if (!(flags & kNondeterministic)) {
+    EXPECT_EQ(Bytes(ct_src), Bytes(ct_copy));
+  }
+
+  // Self-copy is a no-op and must leave the context usable.
+  ASSERT_TRUE(EVP_AEAD_CTX_copy(src.get(), src.get()));
+  std::vector<uint8_t> ct_self;
+  ASSERT_TRUE(seal(src.get(), &ct_self));
+  EXPECT_TRUE(open_and_check(src.get(), ct_self));
+
+  // Copy between contexts whose |state| fields have different 16-byte
+  // alignment. |a| is 16-byte aligned; |b| is placed a further 8 bytes past a
+  // 16-byte boundary so exactly one of the two has an over-aligned |state|.
+  // This exercises the |state_offset| relocation path that AES-GCM-SIV's
+  // assembly implementation depends on; a verbatim |state| copy would silently
+  // break there. The two contexts must not overlap.
+  alignas(16) uint8_t storage[3 * sizeof(EVP_AEAD_CTX) + 32];
+  const size_t b_off =
+      ((sizeof(EVP_AEAD_CTX) + 15) & ~static_cast<size_t>(15)) + 8;
+  EVP_AEAD_CTX *a = reinterpret_cast<EVP_AEAD_CTX *>(storage);
+  EVP_AEAD_CTX *b = reinterpret_cast<EVP_AEAD_CTX *>(storage + b_off);
+  EVP_AEAD_CTX_zero(a);
+  EVP_AEAD_CTX_zero(b);
+  ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+      a, aead(), key.data(), key.size(), tag_len, evp_aead_seal));
+  ASSERT_TRUE(EVP_AEAD_CTX_copy(b, a));
+  std::vector<uint8_t> ct_a, ct_b;
+  ASSERT_TRUE(seal(a, &ct_a));
+  ASSERT_TRUE(seal(b, &ct_b));
+  EXPECT_TRUE(open_and_check(b, ct_a));
+  EXPECT_TRUE(open_and_check(a, ct_b));
+  EVP_AEAD_CTX_cleanup(a);
+  EVP_AEAD_CTX_cleanup(b);
 }
 
 struct KnownTLSLegacyAEAD {
