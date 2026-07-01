@@ -422,10 +422,17 @@ UNVERSIONED_BUILD=$(mktemp -d)
 CLEANUP_DIRS+=("${UNVERSIONED_BUILD}")
 
 print_info "Building unversioned reference libraries (no ENABLE_DIST_PKG)"
-# A plain shared build still sets SET_LIB_SONAME (so filenames match the
-# versioned -awslc libraries) but does NOT enable symbol versioning.
+# Build with SONAME enabled (ENABLE_PRE_SONAME_BUILD=OFF) so the library file
+# names carry the same "-awslc" suffix as the versioned dist-pkg build, but with
+# ENABLE_DIST_PKG=OFF (set explicitly) so symbol versioning is not applied.
+# Symbol versioning is gated solely on ENABLE_DIST_PKG, so this reference is
+# guaranteed unversioned. (A bare -DBUILD_SHARED_LIBS=ON build would leave
+# ENABLE_PRE_SONAME_BUILD at its default ON, yielding SET_LIB_SONAME=0 and
+# unsuffixed libcrypto.so names.)
 if ! cmake -GNinja -B "${UNVERSIONED_BUILD}" -S "${SOURCE_ROOT}" \
      -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_DIST_PKG=OFF \
+     -DENABLE_PRE_SONAME_BUILD=OFF \
      -DCMAKE_BUILD_TYPE=RelWithDebInfo > /dev/null 2>&1 || \
    ! cmake --build "${UNVERSIONED_BUILD}" --target crypto ssl > /dev/null 2>&1; then
   print_fail "Unversioned reference build failed; cannot run silent-drop check"
