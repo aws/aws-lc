@@ -68,7 +68,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -exclude ssl.h \
   -internal-dirs crypto,third_party/jitterentropy \
   -emit-visibility \
-  -out "${TMPDIR}/all_crypto.txt" 2>/dev/null
+  -out "${TMPDIR}/all_crypto.txt"
 
 go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -include-dir "${SOURCE_ROOT}/include" \
@@ -77,7 +77,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -internal-dirs ssl \
   -suppress-internal-dirs crypto \
   -emit-visibility \
-  -out "${TMPDIR}/all_ssl.txt" 2>/dev/null
+  -out "${TMPDIR}/all_ssl.txt"
 
 # Find symbols not yet in the registry
 # Registry format: "SYMBOL VERSION [VISIBILITY]" — extract column 1
