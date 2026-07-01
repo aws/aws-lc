@@ -158,7 +158,7 @@ elif [[ "${MODE}" == "baseline" ]]; then
     -source-root . \
     -emit-visibility \
     "${READ_FLAGS[@]}" \
-    -out /tmp/header_syms.txt 2>/dev/null
+    -out /tmp/header_syms.txt
 
   # Extract registered symbol names (column 1)
   awk '{print $1}' "${REGISTRY_PATH}" | sort > /tmp/registry_syms.txt

@@ -114,11 +114,11 @@ jobs:
     name: libcrypto symbol check (incremental)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           path: ${{ github.workspace }}/previous
@@ -135,11 +135,11 @@ jobs:
     name: libssl symbol check (incremental)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
           path: ${{ github.workspace }}/next
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           path: ${{ github.workspace }}/previous
@@ -156,7 +156,7 @@ jobs:
     name: libcrypto symbol check (baseline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Build Docker Image
         working-directory: .github/docker_images/symbol_check
         run: |
@@ -170,7 +170,7 @@ jobs:
     name: libssl symbol check (baseline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Build Docker Image
         working-directory: .github/docker_images/symbol_check
         run: |

@@ -126,11 +126,12 @@ endif()
 
 enable_language(C)
 
-# Enable symbol versioning for shared libraries on UNIX platforms.
+# Enable symbol versioning for shared libraries in distribution packaging mode
+# on UNIX platforms (excluding Apple).
 # Version scripts are derived from the symbol registry files and have stable
 # filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
 # recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
-if(SET_LIB_SONAME AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+if(ENABLE_DIST_PKG AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
   set(ENABLE_SYMBOL_VERSIONING TRUE)
   message(STATUS "Symbol versioning enabled")
 
