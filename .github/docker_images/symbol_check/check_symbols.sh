@@ -13,7 +13,7 @@ set -e
 #
 # This script checks that the registry is kept up to date with the headers.
 #
-# Usage: check_symbols.sh <crypto|ssl> <incremental|baseline>
+# Usage: check_symbols.sh <crypto|ssl> <incremental|baseline|mapcheck>
 #
 # Modes:
 #   incremental - Compare registry files between /previous and /next commits.
@@ -25,9 +25,15 @@ set -e
 #                 every symbol is present in the registry. Detects unregistered
 #                 new API. Requires Go and a C compiler in the container.
 #
+#   mapcheck    - Regenerate the version script (.map) from the registry (.txt)
+#                 and verify it matches the committed .map byte-for-byte. The
+#                 .map is auto-generated and must never be hand-edited or left
+#                 stale relative to its registry. Requires Go in the container.
+#
 # Exit codes:
 #   0 - No problems (additions are warned but allowed)
-#   1 - PUBLIC symbol removals detected (ABI break) or unregistered new API
+#   1 - PUBLIC symbol removals detected (ABI break), unregistered new API, or
+#       version script out of sync with its registry
 #   2 - Usage error or missing file
 
 CHECK_LIB="$1"
@@ -38,8 +44,8 @@ if [[ "${CHECK_LIB}" != "crypto" && "${CHECK_LIB}" != "ssl" ]]; then
   exit 2
 fi
 
-if [[ "${MODE}" != "incremental" && "${MODE}" != "baseline" ]]; then
-  echo "Error: second argument must be 'incremental' or 'baseline'"
+if [[ "${MODE}" != "incremental" && "${MODE}" != "baseline" && "${MODE}" != "mapcheck" ]]; then
+  echo "Error: second argument must be 'incremental', 'baseline', or 'mapcheck'"
   exit 2
 fi
 
@@ -198,4 +204,48 @@ elif [[ "${MODE}" == "baseline" ]]; then
 
   echo "✅ Baseline registry check passed"
   exit 0
+
+# ---------------------------------------------------------------------------
+elif [[ "${MODE}" == "mapcheck" ]]; then
+  echo "=========================================="
+  echo "Map Drift Check: ${CHECK_LIB}"
+  echo "=========================================="
+  echo "Regenerating .map from registry and comparing to committed .map"
+  echo ""
+
+  cd /workspace
+
+  MAP_PATH="${CHECK_LIB}/lib${CHECK_LIB}.map"
+
+  if [[ ! -f "${REGISTRY_PATH}" ]]; then
+    echo "Error: registry not found: ${REGISTRY_PATH}"
+    exit 2
+  fi
+  if [[ ! -f "${MAP_PATH}" ]]; then
+    echo "Error: version script not found: ${MAP_PATH}"
+    exit 2
+  fi
+
+  # Regenerate the version script from the registry into a temp file and diff
+  # it against the committed .map. The generator is deterministic, so any
+  # difference means the .map was hand-edited or not regenerated after the
+  # registry changed.
+  GENERATED_MAP=$(mktemp)
+  go run ./util/generate_version_script -in "${REGISTRY_PATH}" -out "${GENERATED_MAP}"
+
+  if diff -u "${MAP_PATH}" "${GENERATED_MAP}"; then
+    echo ""
+    echo "✅ ${MAP_PATH} is in sync with ${REGISTRY_PATH}"
+    rm -f "${GENERATED_MAP}"
+    exit 0
+  else
+    echo ""
+    echo "❌ ${MAP_PATH} is out of sync with ${REGISTRY_PATH} (diff above)."
+    echo "🛑 The version script is auto-generated and must not drift."
+    echo "   Regenerate it with:"
+    echo "     go run ./util/generate_version_script -in ${REGISTRY_PATH} -out ${MAP_PATH}"
+    echo "   (or util/generate_initial_version_scripts.sh) and commit the result."
+    rm -f "${GENERATED_MAP}"
+    exit 1
+  fi
 fi

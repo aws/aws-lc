@@ -178,3 +178,31 @@ jobs:
       - name: Check libssl symbols against baseline
         run: |
           docker run -v ${{ github.workspace }}:/workspace symbol_check ssl baseline
+
+  libcrypto-symbols-mapcheck:
+    if: github.repository_owner == 'aws'
+    name: libcrypto version script drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build Docker Image
+        working-directory: .github/docker_images/symbol_check
+        run: |
+          docker build -t symbol_check .
+      - name: Check libcrypto version script is in sync with registry
+        run: |
+          docker run -v ${{ github.workspace }}:/workspace symbol_check crypto mapcheck
+
+  libssl-symbols-mapcheck:
+    if: github.repository_owner == 'aws'
+    name: libssl version script drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build Docker Image
+        working-directory: .github/docker_images/symbol_check
+        run: |
+          docker build -t symbol_check .
+      - name: Check libssl version script is in sync with registry
+        run: |
+          docker run -v ${{ github.workspace }}:/workspace symbol_check ssl mapcheck
