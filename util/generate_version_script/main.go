@@ -6,7 +6,7 @@
 // script with proper version inheritance.
 //
 // Symbols are grouped by version node. Versions are sorted numerically
-// (AWS_LC_1.0 < AWS_LC_1_1 < AWS_LC_2_0), and each version
+// (AWS_LC_1.0 < AWS_LC_1.1 < AWS_LC_2.0), and each version
 // automatically inherits from its immediate predecessor. The oldest (base)
 // version includes "local: *;" to hide all unlisted symbols.
 //
