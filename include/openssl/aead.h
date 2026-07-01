@@ -267,6 +267,18 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
 // all zeros.
 OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
 
+// EVP_AEAD_CTX_copy sets |out| to be a duplicate of the current state of |in|.
+// The |out| argument must either have been initialised with
+// |EVP_AEAD_CTX_init| or set to the zero state with |EVP_AEAD_CTX_zero|; any
+// existing state in |out| is released before the copy. It returns one on
+// success and zero on error, including when the AEAD does not support being
+// copied. On error, |out| is left in the zero state (as if |EVP_AEAD_CTX_zero|
+// had been called on it), so it is safe to pass to |EVP_AEAD_CTX_cleanup|.
+//
+// Not all AEADs support copying. In particular, the TLS record-layer AEADs
+// (see |EVP_aead_aes_128_cbc_sha1_tls| and friends) cannot be copied.
+OPENSSL_EXPORT int EVP_AEAD_CTX_copy(EVP_AEAD_CTX *out, const EVP_AEAD_CTX *in);
+
 // EVP_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and
 // authenticates |ad_len| bytes from |ad| and writes the result to |out|. It
 // returns one on success and zero otherwise.
