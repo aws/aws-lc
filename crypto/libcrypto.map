@@ -1505,6 +1505,7 @@ AWS_LC_1.0 {
     NETSCAPE_SPKI_sign;
     NETSCAPE_SPKI_verify;
     NOTICEREF_free;
+    NOTICEREF_it;
     NOTICEREF_new;
     OBJ_NAME_do_all_sorted;
     OBJ_cbs2nid;
@@ -1891,8 +1892,10 @@ AWS_LC_1.0 {
     PKCS8_marshal_encrypted_private_key;
     PKCS8_parse_encrypted_private_key;
     POLICYINFO_free;
+    POLICYINFO_it;
     POLICYINFO_new;
     POLICYQUALINFO_free;
+    POLICYQUALINFO_it;
     POLICYQUALINFO_new;
     POLICY_CONSTRAINTS_free;
     POLICY_CONSTRAINTS_it;
@@ -2127,6 +2130,7 @@ AWS_LC_1.0 {
     UI_new;
     UI_process;
     USERNOTICE_free;
+    USERNOTICE_it;
     USERNOTICE_new;
     X25519;
     X25519_keypair;
