@@ -46,7 +46,7 @@ fi
 REGISTRY_PATH="${CHECK_LIB}/lib${CHECK_LIB}.txt"
 
 if [[ "${CHECK_LIB}" == "crypto" ]]; then
-  READ_FLAGS=(-exclude ssl.h -internal-dirs crypto)
+  READ_FLAGS=(-exclude ssl.h -internal-dirs crypto,third_party/jitterentropy)
 else
   READ_FLAGS=(-include ssl.h -internal-dirs ssl -suppress-internal-dirs crypto)
 fi
