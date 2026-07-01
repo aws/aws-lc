@@ -5,8 +5,8 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.0.0")
-set(AWSLC_FIPS_VERSION 4)
+set(SOFTWARE_VERSION "5.1.0")
+set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 1)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -247,13 +247,14 @@ if(GENERATE_RUST_BINDINGS)
   message(STATUS "Found bindgen-cli: ${BINDGEN_EXECUTABLE} (version ${BINDGEN_VERSION})")
   message(STATUS "Rust bindings target version: ${RUST_BINDINGS_TARGET_VERSION}")
 
-  # Check for rustfmt (required for --formatter rustfmt option)
+  # Check for rustfmt (optional: used to format the generated bindings if available)
   find_program(RUSTFMT_EXECUTABLE NAMES rustfmt)
-  if(NOT RUSTFMT_EXECUTABLE)
-    message(FATAL_ERROR "GENERATE_RUST_BINDINGS requires rustfmt but it was not found. "
-                        "Install it with: rustup component add rustfmt")
+  if(RUSTFMT_EXECUTABLE)
+    message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
+  else()
+    message(STATUS "rustfmt not found; generated Rust bindings will not be formatted. "
+                   "Install it with: rustup component add rustfmt")
   endif()
-  message(STATUS "Found rustfmt: ${RUSTFMT_EXECUTABLE}")
 endif()
 
 if(DISABLE_CPU_JITTER_ENTROPY)
@@ -874,8 +875,19 @@ elseif(MSVC)
                             ${MSVC_DISABLED_WARNINGS_LIST})
   string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
                             ${MSVC_LEVEL4_WARNINGS_LIST})
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  # Newer MSVC (VS2026/14.51) emits C4865 from Windows SDK headers; with -WX
+  # that fails the build over warnings we don't own. Mark the toolchain/SDK
+  # include dirs external so -WX only covers our code. /external: is stable
+  # since MSVC 19.29; exclude clang-cl (it never emits C4865 and can error on
+  # an unrecognized /external:env: arg under -WX).
+  if(MSVC_VERSION GREATER_EQUAL 1929 AND CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    set(MSVC_EXTERNAL_WARNINGS_STR
+        "/external:W0 /external:env:INCLUDE /external:env:EXTERNAL_INCLUDE")
+  else()
+    set(MSVC_EXTERNAL_WARNINGS_STR "")
+  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR} ${MSVC_EXTERNAL_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR} ${MSVC_EXTERNAL_WARNINGS_STR}")
 endif()
 
 # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
@@ -1062,6 +1074,13 @@ endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
+  # OPENSSL_SMALL implies disabling AVX-512 optimizations on x86_64 for size.
+  # This is also enforced in include/openssl/target.h for non-CMake builds.
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
+    add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing ADX, AVX2 and AVX512 optimisations")
+  endif()
 endif()
 
 if(CONSTANT_TIME_VALIDATION)
@@ -1262,6 +1281,15 @@ if(BUILD_TESTING)
     PUBLIC third_party/googletest/include
     PRIVATE third_party/googletest
   )
+
+  # WASI does not support fork() or process exit code detection required by
+  # GTest death tests, nor dup()/dup2()/mkstemp() required for stream
+  # redirection. Define these before gtest headers are included to prevent
+  # gtest-port.h from auto-detecting based on the host OS.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Generic" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32")
+    add_compile_definitions(GTEST_HAS_DEATH_TEST=0)
+    add_compile_definitions(GTEST_HAS_STREAM_REDIRECTION=0)
+  endif()
 
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.

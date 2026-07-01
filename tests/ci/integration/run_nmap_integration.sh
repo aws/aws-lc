@@ -26,7 +26,7 @@ SCRATCH_FOLDER="${SYS_ROOT}/NMAP_BUILD_ROOT"
 NMAP_SRC_FOLDER="${SCRATCH_FOLDER}/nmap"
 NMAP_BUILD_PREFIX="${NMAP_SRC_FOLDER}/build/install"
 NMAP_BUILD_EPREFIX="${NMAP_SRC_FOLDER}/build/exec-install"
-NMAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/nmap_patch"
+NMAP_PATCH_ROOT="${SRC_ROOT}/tests/ci/integration/nmap_patch"
 
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -56,13 +56,38 @@ function nmap_patch_build() {
    done
 }
 
+# Map nmap git ref to its patch subdirectory. Each supported ref needs its own
+# subdir under nmap_patch/ because patches drift as nmap evolves.
+function nmap_patch_folder_for_ref() {
+  case "$1" in
+    main|master)
+      echo "${NMAP_PATCH_ROOT}/master" ;;
+    deb076224e9f138ea29fa4823bcce0030301dc54)
+      echo "${NMAP_PATCH_ROOT}/v7.99" ;;
+    *)
+      echo "ERROR: no patch directory configured for nmap ref '$1'" >&2
+      echo "Add one under ${NMAP_PATCH_ROOT}/ and update nmap_patch_folder_for_ref." >&2
+      return 1 ;;
+  esac
+}
+
 function nmap_run_tests() {
   # Add nmap executable to path, needed for zenmap tests
   export PATH="${NMAP_BUILD_EPREFIX}/bin/:$PATH"
   make check
 }
 
-git clone --depth 1 https://github.com/nmap/nmap.git ${NMAP_SRC_FOLDER} 
+# Required first argument: nmap git ref (commit, tag, or branch).
+if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
+  echo "Usage: $0 <nmap-git-ref>" >&2
+  echo "  ref may be a commit SHA, tag, or branch (e.g. 'main')." >&2
+  exit 1
+fi
+NMAP_REF="$1"
+NMAP_PATCH_FOLDER="$(nmap_patch_folder_for_ref "${NMAP_REF}")" || exit 1
+git init ${NMAP_SRC_FOLDER}
+git -C ${NMAP_SRC_FOLDER} fetch --depth 1 https://github.com/nmap/nmap.git ${NMAP_REF}
+git -C ${NMAP_SRC_FOLDER} checkout FETCH_HEAD
 cd ${NMAP_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls

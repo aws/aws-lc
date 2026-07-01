@@ -2773,16 +2773,34 @@ TEST(X509Test, NameConstraints) {
       {GEN_EMAIL, "foo@example.com", "foo@EXAMPLE.COM", X509_V_OK,
        X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@example.com", "FOO@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@example.com", "bar@example.com",
        X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
-      // OpenSSL ignores a stray leading @.
-      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
-      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
+      // "@example.com" is not a valid constraint per RFC 5280 Sec.4.2.1.10.
+      {GEN_EMAIL, "foo@example.com", "@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_EMAIL, "foo@bar.example.com", "@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // Reject subject emails with quoted local-parts.
+      // A quoted local-part containing '@' would cause the parser to split
+      // at the wrong '@', bypassing name constraints.
+      {GEN_EMAIL, "\"a@b\"@evil.example", ".evil.example",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Reject subject emails with multiple '@' signs.
+      {GEN_EMAIL, "a@b@evil.example", ".evil.example",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Reject constraints with multiple '@' signs.
+      {GEN_EMAIL, "foo@example.com", "a@b@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,

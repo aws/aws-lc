@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run libssh2 integration tests
         run: |
           ./tests/ci/integration/run_libssh2_integration.sh
@@ -34,7 +34,7 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
@@ -47,7 +47,7 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run librdkafka build
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
@@ -61,7 +61,7 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf pkg-config openssl
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run socat integration test
         run: |
           ./tests/ci/integration/run_socat_integration.sh
@@ -70,11 +70,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout aws-lc
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: aws-lc
       - name: Checkout rust-openssl
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: sfackler/rust-openssl
           path: rust-openssl
@@ -99,7 +99,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libpcre2-dev libnghttp2-dev nghttp2-client zlib1g-dev libtool-bin libxml2-dev pebble python3-venv
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build AWS-LC, build httpd, run tests
         run: |
           ./tests/ci/integration/run_httpd_integration.sh '2.4.65'
