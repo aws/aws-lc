@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
   actions: read
 
 env:
@@ -52,13 +51,17 @@ jobs:
         with:
           name: autofix-logs
           # Save the logs folder so the `reason` job find the logs.
-          path: .autofix/
+          path: autofix/
           if-no-files-found: ignore
 
   reason:
     name: reason (${{ matrix.target.dir }})
     needs: get-failing-integrations
     if: needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != ''
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 5
@@ -70,7 +73,7 @@ jobs:
         instance-size:small
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
-      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip secret creds from the env Claude's Bash subprocesses inherit to guard against prompt injection
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip Anthropic creds from all subprocesses
       AWS_REGION: us-west-2
       ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
       ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
@@ -81,6 +84,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
         with:
+          oidcRole: AwsLcGitHubActionsAutofixOidcRole
           roleName: AwsLcGitHubActionAutofixReasoningRole
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2
@@ -88,11 +92,14 @@ jobs:
         # Claude Code's sandbox needs bubblewrap (filesystem/process isolation)
         # and socat (relays Bash traffic through the domain-allowlist proxy).
         run: sudo dnf install -y bubblewrap socat
+      - name: Verify the sandbox hides credentials and blocks non-allowlisted hosts
+        run: |
+          "$AUTOFIX_SCRIPT" verify-settings
       - name: Download pre-fetched logs
         uses: actions/download-artifact@v4
         with:
           name: autofix-logs
-          path: .autofix/
+          path: autofix/
         continue-on-error: true
       - name: Autofix the patch
         env:
@@ -105,13 +112,17 @@ jobs:
         if: always()
         with:
           name: autofix-${{ matrix.target.dir }}
-          path: .autofix/${{ matrix.target.dir }}/
+          path: autofix/${{ matrix.target.dir }}/
           if-no-files-found: ignore
 
   upload:
     name: upload (${{ matrix.target.dir }})
     needs: [get-failing-integrations, reason]
     if: ${{ always() && needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != '' }}
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 5
@@ -127,12 +138,13 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
         with:
+          oidcRole: AwsLcGitHubActionsAutofixOidcRole
           roleName: AwsLcGitHubActionAutofixUploadRole
       - name: Download results from reason job
         uses: actions/download-artifact@v4
         with:
           name: autofix-${{ matrix.target.dir }}
-          path: .autofix/${{ matrix.target.dir }}/
+          path: autofix/${{ matrix.target.dir }}/
         continue-on-error: true
       - name: Upload results to S3
         env:
