@@ -50,9 +50,19 @@ SSL_MAP="${SOURCE_ROOT}/ssl/libssl.map"
 echo "Step 1: Building shared libraries for validation..."
 BUILD_DIR="$(mktemp -d)"
 rm -rf "${BUILD_DIR}"
+# This build only produces libraries to validate the extracted symbols against
+# (via read_public_symbols -validate-against); it does not need symbol
+# versioning. Crucially, building with -DENABLE_DIST_PKG=ON would require the
+# .map files to already exist (apply_version_script fatal-errors otherwise),
+# which is a chicken-and-egg problem for a script whose job is to regenerate
+# those .map files from scratch. Instead build with SONAME enabled
+# (ENABLE_PRE_SONAME_BUILD=OFF, so the libraries keep the -awslc suffix the
+# find globs below expect) but ENABLE_DIST_PKG=OFF (so no version script is
+# required or applied).
 cmake -B "${BUILD_DIR}" -S "${SOURCE_ROOT}" \
   -DBUILD_SHARED_LIBS=ON \
-  -DENABLE_DIST_PKG=ON \
+  -DENABLE_DIST_PKG=OFF \
+  -DENABLE_PRE_SONAME_BUILD=OFF \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -GNinja
 ninja -C "${BUILD_DIR}" crypto ssl

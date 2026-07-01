@@ -47,9 +47,11 @@ for f in "${CRYPTO_REGISTRY}" "${SSL_REGISTRY}"; do
   fi
 done
 
-# Verify the new version is not already present in the registry (check field 2)
-if awk '{print $2}' "${CRYPTO_REGISTRY}" | grep -qx "${NEW_VERSION}" 2>/dev/null || \
-   awk '{print $2}' "${SSL_REGISTRY}" | grep -qx "${NEW_VERSION}" 2>/dev/null; then
+# Verify the new version is not already present in the registry (check field 2).
+# Use -F so the '.' in the version (e.g. AWS_LC_1.0) is matched literally rather
+# than as a regex wildcard.
+if awk '{print $2}' "${CRYPTO_REGISTRY}" | grep -Fqx "${NEW_VERSION}" 2>/dev/null || \
+   awk '{print $2}' "${SSL_REGISTRY}" | grep -Fqx "${NEW_VERSION}" 2>/dev/null; then
   echo "Error: ${NEW_VERSION} already exists in the registry."
   exit 1
 fi
