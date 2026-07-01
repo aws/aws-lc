@@ -5,9 +5,11 @@ FROM amazonlinux:2023
 
 VOLUME ["/previous", "/next", "/workspace"]
 
-# golang: to run read_public_symbols (baseline mode)
-# gcc:    C preprocessor needed by read_public_symbols
-RUN yum install -y golang gcc
+# golang:  to run read_public_symbols (baseline mode)
+# gcc:     C preprocessor needed by read_public_symbols
+# gcc-c++: C++ preprocessor (cc1plus) needed by read_public_symbols for the
+#          C++ header pass (e.g. PRIVATE_CXX symbols)
+RUN yum install -y golang gcc gcc-c++
 
 COPY check_symbols.sh /
 

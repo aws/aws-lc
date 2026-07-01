@@ -68,13 +68,26 @@ if [[ "${MODE}" == "incremental" ]]; then
   PREV="/previous/${REGISTRY_PATH}"
   NEXT="/next/${REGISTRY_PATH}"
 
-  if [[ ! -f "${PREV}" || ! -f "${NEXT}" ]]; then
-    echo "Error: registry file not found in /previous or /next"
+  # The registry must exist in /next: the current commit is expected to carry
+  # it. Its absence is a genuine error.
+  if [[ ! -f "${NEXT}" ]]; then
+    echo "Error: registry file not found in /next: ${REGISTRY_PATH}"
     exit 2
   fi
 
-  # Extract and sort symbol names (column 1) from each registry
-  awk '{print $1}' "${PREV}" | sort > /tmp/prev_syms.txt
+  # The registry may legitimately be absent in /previous when the base commit
+  # predates the symbol registry (e.g. the PR that introduces it, or a branch
+  # forked before it landed). Treat that as an empty prior set so every current
+  # symbol is reported as an addition rather than failing the check.
+  if [[ ! -f "${PREV}" ]]; then
+    echo "ℹ️  No registry in /previous (${REGISTRY_PATH}); treating as empty baseline."
+    echo ""
+    : > /tmp/prev_syms.txt
+  else
+    awk '{print $1}' "${PREV}" | sort > /tmp/prev_syms.txt
+  fi
+
+  # Extract and sort symbol names (column 1) from the current registry
   awk '{print $1}' "${NEXT}" | sort > /tmp/next_syms.txt
 
   added=$(comm -13 /tmp/prev_syms.txt /tmp/next_syms.txt)
