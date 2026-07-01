@@ -144,10 +144,10 @@ func TestReadRegistryFromVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	syms := versionSymbols["AWS_LC_0.0"]
-	want := map[string]string{
-		"foo": "PUBLIC",
-		"bar": "PRIVATE",
-		"baz": "PRIVATE_CXX",
+	want := map[string]visibility{
+		"foo": visPublic,
+		"bar": visPrivate,
+		"baz": visPrivateCxx,
 	}
 	for _, s := range syms {
 		if expected, ok := want[s.name]; ok {

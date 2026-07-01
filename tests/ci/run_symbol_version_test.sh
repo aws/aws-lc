@@ -75,11 +75,15 @@ get_lib_dir() {
   fi
 }
 
-# Check if we're on a supported platform
-if [[ "$OSTYPE" != "linux-gnu"* ]] && [[ "$OSTYPE" != "freebsd"* ]]; then
-  print_warn "Symbol versioning only supported on Linux and BSD. Skipping tests."
-  exit 0
-fi
+# Check if we're on a supported platform. Symbol versioning requires GNU ld or
+# a compatible linker, available on Linux and the BSDs (see docs/SymbolVersioning.md).
+case "$OSTYPE" in
+  linux-gnu*|freebsd*|openbsd*|netbsd*) ;;
+  *)
+    print_warn "Symbol versioning only supported on Linux and BSD. Skipping tests."
+    exit 0
+    ;;
+esac
 
 # Check for required tools
 if ! command -v readelf >/dev/null 2>&1; then
@@ -133,6 +137,11 @@ if [[ -z "${SYMBOL_VERSION}" ]]; then
   print_fail "Could not extract symbol version from libcrypto.map"
   exit 1
 fi
+# Guard against a malformed .map: the node must be a well-formed AWS_LC_X.Y tag.
+if [[ ! "${SYMBOL_VERSION}" =~ ^AWS_LC_[0-9]+\.[0-9]+$ ]]; then
+  print_fail "Extracted symbol version is not a well-formed AWS_LC_X.Y string: ${SYMBOL_VERSION}"
+  exit 1
+fi
 print_info "Symbol version: ${SYMBOL_VERSION}"
 
 # Test 1: Verify libraries exist
@@ -166,29 +175,49 @@ else
 fi
 
 # Test 3: Check versioned symbols
+#
+# These are sanity floors, not exact counts: they only assert that the bulk of
+# the API is present and versioned, catching a catastrophically empty or
+# unversioned build. The registries currently hold ~3000 (libcrypto) and ~640
+# (libssl) symbols; the thresholds sit comfortably below those so ordinary API
+# growth or removal never trips them. For exact registry/symbol accounting see
+# the check_symbols.sh CI jobs.
+#
+# grep -c exits 1 when it finds no matches, which under `set -e` would abort the
+# script; `|| true` keeps a legitimate zero count flowing to the comparison
+# below (where it is reported as a failure).
 print_test "Check for versioned symbols"
 
 CRYPTO_VERSIONED=$(nm -D "${LIBCRYPTO_SO}" | grep -c "@@${SYMBOL_VERSION}" || true)
 print_info "libcrypto: ${CRYPTO_VERSIONED} symbols with @@${SYMBOL_VERSION}"
 
-if [[ ${CRYPTO_VERSIONED} -gt 3000 ]]; then
+CRYPTO_MIN_SYMBOLS=3000
+if [[ ${CRYPTO_VERSIONED} -gt ${CRYPTO_MIN_SYMBOLS} ]]; then
   print_pass "libcrypto has expected number of versioned symbols"
 else
-  print_fail "libcrypto has fewer versioned symbols than expected (${CRYPTO_VERSIONED} < 3000)"
+  print_fail "libcrypto has fewer versioned symbols than expected (${CRYPTO_VERSIONED} < ${CRYPTO_MIN_SYMBOLS})"
 fi
 
 SSL_VERSIONED=$(nm -D "${LIBSSL_SO}" | grep -c "@@${SYMBOL_VERSION}" || true)
 print_info "libssl: ${SSL_VERSIONED} symbols with @@${SYMBOL_VERSION}"
 
-if [[ ${SSL_VERSIONED} -gt 500 ]]; then
+SSL_MIN_SYMBOLS=500
+if [[ ${SSL_VERSIONED} -gt ${SSL_MIN_SYMBOLS} ]]; then
   print_pass "libssl has expected number of versioned symbols"
 else
-  print_fail "libssl has fewer versioned symbols than expected (${SSL_VERSIONED} < 500)"
+  print_fail "libssl has fewer versioned symbols than expected (${SSL_VERSIONED} < ${SSL_MIN_SYMBOLS})"
 fi
 
 # Test 4: Check for unversioned exports
 print_test "Check for unversioned exported symbols"
 
+# The awk filter selects defined text symbols that leaked out unversioned:
+#   $2 == "T"            defined symbol in the text section (exported code)
+#   $3 !~ /@/            no version tag (a properly versioned symbol has @@VER)
+#   $3 !~ /^_/           exclude toolchain/runtime internals (e.g. _init, _fini)
+#   $3 !~ /^OPENSSL_memory/  exclude the OPENSSL_memory_* allocator hooks, which
+#                            are intentionally left unversioned
+# Anything remaining is a public symbol that escaped versioning.
 CRYPTO_UNVERSIONED=$(nm -D "${LIBCRYPTO_SO}" | \
   awk '$2 == "T" && $3 !~ /@/ && $3 !~ /^_/ && $3 !~ /^OPENSSL_memory/ { print $3 }' | \
   wc -l)
@@ -232,6 +261,11 @@ check_symbol() {
   fi
 }
 
+# A small set of ubiquitous, long-stable public symbols used as canaries: they
+# confirm that concrete, well-known API is versioned (not just that some large
+# count of symbols exists, per Test 3). Any handful of always-present public
+# functions works; there is no need to grow this list as new API is added --
+# broad coverage is already provided by Test 3 and the check_symbols.sh jobs.
 check_symbol "${LIBCRYPTO_SO}" "EVP_MD_CTX_new" "${SYMBOL_VERSION}"
 check_symbol "${LIBCRYPTO_SO}" "AES_encrypt" "${SYMBOL_VERSION}"
 check_symbol "${LIBCRYPTO_SO}" "RSA_new" "${SYMBOL_VERSION}"
@@ -279,7 +313,12 @@ EOF
     print_fail "Test program compilation failed"
   fi
 
-  if [[ -f "${TEST_PROG}" ]]; then
+  if [[ ! -f "${TEST_PROG}" ]]; then
+    # Compilation above failed (already recorded as a FAIL). Flag that the
+    # dependent run/link/version checks cannot execute rather than skipping
+    # them silently.
+    print_fail "Test program binary missing; skipping run/link/version checks"
+  else
     if LD_LIBRARY_PATH="${LINK_LIB_DIR}" "${TEST_PROG}"; then
       print_pass "Test program executed successfully"
     else

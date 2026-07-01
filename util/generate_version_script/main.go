@@ -10,10 +10,11 @@
 // automatically inherits from its immediate predecessor. The oldest (base)
 // version includes "local: *;" to hide all unlisted symbols.
 //
-// The optional third field (visibility) can be PUBLIC, PRIVATE, or PRIVATE_CXX.
-// All symbols are included in the version script regardless of visibility.
-// PRIVATE_CXX symbols are emitted in an "extern C++" block with glob patterns
-// so the linker matches their demangled C++ names.
+// The optional third field is the visibility (see the visibility type below):
+// PUBLIC, PRIVATE, PRIVATE_CXX, PRIVATE_CXX_CLASS, PUBLIC_CXX, or
+// PUBLIC_CXX_CLASS. All symbols are included in the version script regardless of
+// visibility. C++ symbols are emitted in an "extern C++" block with glob
+// patterns so the linker matches their demangled C++ names.
 //
 // Usage:
 //
@@ -39,10 +40,26 @@ func init() {
 	flag.StringVar(&outFile, "out", "", "Output GNU ld version script (.map)")
 }
 
+// visibility classifies a symbol's linkage and export status. It is the third
+// field of a registry line. Go has no native enum; the idiom is a defined
+// string type with typed constants, which keeps parsing trivial (the on-disk
+// value is the constant itself) while giving the compiler a named type to
+// reason about.
+type visibility string
+
+const (
+	visPublic         visibility = "PUBLIC"            // public C API from include/openssl/*.h
+	visPrivate        visibility = "PRIVATE"           // internal C-linkage API
+	visPrivateCxx     visibility = "PRIVATE_CXX"       // internal C++ function
+	visPrivateCxxClas visibility = "PRIVATE_CXX_CLASS" // internal C++ class (all members)
+	visPublicCxx      visibility = "PUBLIC_CXX"        // public C++ function
+	visPublicCxxClass visibility = "PUBLIC_CXX_CLASS"  // public C++ class (all members)
+)
+
 // symbolInfo holds a symbol name and its visibility classification.
 type symbolInfo struct {
 	name       string
-	visibility string // "PUBLIC", "PRIVATE", or "PRIVATE_CXX"
+	visibility visibility
 }
 
 func main() {
@@ -104,13 +121,13 @@ func readRegistryFrom(r io.Reader) (map[string][]symbolInfo, []string, error) {
 			return nil, nil, fmt.Errorf("malformed line (expected 'symbol version [visibility]'): %q", line)
 		}
 		symbol, version := fields[0], fields[1]
-		visibility := "PUBLIC"
+		vis := visPublic
 		if len(fields) == 3 {
-			visibility = fields[2]
+			vis = visibility(fields[2])
 		}
 		versionSymbols[version] = append(versionSymbols[version], symbolInfo{
 			name:       symbol,
-			visibility: visibility,
+			visibility: vis,
 		})
 	}
 	if err := scanner.Err(); err != nil {
@@ -186,9 +203,9 @@ func writeVersionScriptTo(w io.Writer, versions []string, versionSymbols map[str
 		var cxxClassSymbols []string
 		for _, sym := range syms {
 			switch sym.visibility {
-			case "PRIVATE_CXX", "PUBLIC_CXX":
+			case visPrivateCxx, visPublicCxx:
 				cxxFuncSymbols = append(cxxFuncSymbols, sym.name)
-			case "PRIVATE_CXX_CLASS", "PUBLIC_CXX_CLASS":
+			case visPrivateCxxClas, visPublicCxxClass:
 				cxxClassSymbols = append(cxxClassSymbols, sym.name)
 			default:
 				cSymbols = append(cSymbols, sym.name)

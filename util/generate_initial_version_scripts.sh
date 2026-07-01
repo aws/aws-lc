@@ -36,6 +36,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# The baseline version node for a from-scratch bootstrap. This is intentionally
+# fixed: this script only ever establishes the initial node. Later additions go
+# through update_symbol_version.sh <version>, which takes the node as an argument
+# rather than hardcoding it. The major component corresponds to ABI_VERSION in
+# CMakeLists.txt (bumped only on an ABI break).
 INITIAL_VERSION="AWS_LC_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
@@ -72,7 +77,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -internal-dirs crypto,third_party/jitterentropy \
   -emit-visibility \
   -validate-against "${LIBCRYPTO_SO}" \
-  -out /tmp/libcrypto_symbols.txt 2>&1
+  -out /tmp/libcrypto_headersyms.txt 2>&1
 
 # libssl: ssl.h only + ssl internal headers (suppress crypto internals)
 go run "${SOURCE_ROOT}/util/read_public_symbols" \
@@ -84,18 +89,32 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -suppress-internal-dirs crypto \
   -emit-visibility \
   -validate-against "${LIBSSL_SO}" \
-  -out /tmp/libssl_symbols.txt 2>&1
+  -out /tmp/libssl_headersyms.txt 2>&1
 
 echo ""
 echo "Step 3: Writing symbol registry files (${INITIAL_VERSION})..."
 
-# Write registry: "<symbol> AWS_LC_1.0 <visibility>" sorted by symbol name
-# Input format from read_public_symbols: "SYMBOL VISIBILITY"
-awk -v ver="${INITIAL_VERSION}" '{ print $1, ver, $2 }' /tmp/libcrypto_symbols.txt \
-  | sort > "${CRYPTO_REGISTRY}"
+# Write registry: "<symbol> AWS_LC_1.0 <visibility>" sorted by symbol name.
+# The extractor emits two columns ("SYMBOL VISIBILITY"); we insert the version
+# node as the middle column to produce the three-column registry format. The
+# temp files are named *_headersyms to distinguish them (two columns, no
+# version) from the registry files (three columns, versioned).
+#
+# write_registry sorts the rows into the registry, then re-checks the result
+# with `sort -c` on the symbol column: if a duplicate symbol slipped through
+# (which would silently collapse an entry), the check aborts the script.
+write_registry() {
+  local src="$1" dest="$2"
+  awk -v ver="${INITIAL_VERSION}" '{ print $1, ver, $2 }' "${src}" | sort > "${dest}"
+  if ! sort -c -u -k1,1 "${dest}" 2>/dev/null; then
+    echo "Error: duplicate symbol(s) in generated registry ${dest}" >&2
+    awk '{ print $1 }' "${dest}" | sort | uniq -d >&2
+    exit 1
+  fi
+}
 
-awk -v ver="${INITIAL_VERSION}" '{ print $1, ver, $2 }' /tmp/libssl_symbols.txt \
-  | sort > "${SSL_REGISTRY}"
+write_registry /tmp/libcrypto_headersyms.txt "${CRYPTO_REGISTRY}"
+write_registry /tmp/libssl_headersyms.txt "${SSL_REGISTRY}"
 
 echo ""
 echo "Step 4: Generating version scripts from registry..."
