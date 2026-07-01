@@ -71,7 +71,7 @@ adding it to our CI.
 AWS-LC supports distribution packaging mode for system-wide installation on Linux
 and BSD systems. When built with `-DENABLE_DIST_PKG=1`, AWS-LC enables:
 
-- **SONAME versioning**: Libraries use standard SONAME (e.g., `libcrypto-awslc.so.0`)
+- **SONAME versioning**: Libraries use standard SONAME (e.g., `libcrypto-awslc.so.1`)
 - **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_1.0`)
 - **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other crypto libraries
 
