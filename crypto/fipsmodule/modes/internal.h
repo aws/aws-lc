@@ -408,10 +408,6 @@ void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
                              const AES_KEY *key, uint8_t ivec[16],
                              unsigned *num, int enc, block128_f block);
 
-size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const AES_KEY *key, uint8_t ivec[16],
-                                   block128_f block);
-
 // XTS.
 
 // CRYPTO_xts128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes

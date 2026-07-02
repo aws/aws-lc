@@ -1,0 +1,51 @@
+From: AWS-LC integration CI <aws-lc-ci@amazon.com>
+Subject: [PATCH] Gate builtin sha2 typedefs on K5_BUILTIN_SHA2
+
+When krb5 is built against AWS-LC with --with-crypto-impl=openssl,
+crypto_int.h sets K5_OPENSSL_SHA2 (i.e., K5_BUILTIN_SHA2 is *not*
+defined), so the bodies of sha256.c and sha512.c compile to nothing
+under their #ifdef K5_BUILTIN_SHA2 guards.
+
+However, the lib/crypto/builtin/sha2/ subdirectory is still built
+unconditionally, and sha2.h's struct definitions plus
+`typedef struct ... SHA{256,512}_CTX` are unguarded. AWS-LC's
+<openssl/opensslv.h> transitively includes <openssl/base.h>, which
+defines its own SHA256_CTX and SHA512_CTX typedefs. Because
+crypto_int.h pulls in <openssl/opensslv.h> when CRYPTO_OPENSSL is
+set, the typedefs collide:
+
+    sha2.h:62: error: conflicting types for 'SHA256_CTX'
+    sha2.h:64: error: conflicting types for 'SHA512_CTX'
+
+(Stock OpenSSL's <openssl/opensslv.h> only contains version macros,
+so it does not include base.h, and the conflict does not arise.)
+
+Gate the struct/typedef block in sha2.h on K5_BUILTIN_SHA2 to match
+the bodies of sha256.c/sha512.c. This is a no-op for the builtin
+build and resolves the typedef collision when building against
+AWS-LC.
+
+---
+ src/lib/crypto/builtin/sha2/sha2.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/lib/crypto/builtin/sha2/sha2.h b/src/lib/crypto/builtin/sha2/sha2.h
+index 3aebd3e..8313203 100644
+--- a/src/lib/crypto/builtin/sha2/sha2.h
++++ b/src/lib/crypto/builtin/sha2/sha2.h
+@@ -46,6 +46,8 @@
+ #define SHA384_BLOCK_SIZE 128
+ #define SHA512_BLOCK_SIZE 128
+
++#ifdef K5_BUILTIN_SHA2
++
+ struct sha256state {
+   unsigned int sz[2];
+   uint32_t counter[8];
+@@ -75,4 +77,6 @@ void k5_sha512_init(SHA512_CTX *);
+ void k5_sha512_update(SHA512_CTX *, const void *, size_t);
+ void k5_sha512_final(void *, SHA512_CTX *);
+
++#endif /* K5_BUILTIN_SHA2 */
++
+ #endif /* SHA2_H */

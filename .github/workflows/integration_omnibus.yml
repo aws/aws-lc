@@ -278,6 +278,14 @@ jobs:
             compiler: gcc-12
             run: ./tests/ci/integration/run_cyrus_sasl_integration.sh
 
+          # MIT Kerberos (krb5) Integration Tests
+          - name: krb5
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            run: ./tests/ci/integration/run_krb5_integration.sh krb5-1.22.2-final
+
           # Amazon Corretto Crypto Provider Integration Tests
           - name: accp-aarch64
             arch: aarch64
