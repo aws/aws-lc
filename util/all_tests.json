@@ -143,6 +143,10 @@
     "cmd": ["crypto/tree_drbg_jitter_entropy_isolated_test"]
   },
   {
+    "comment": "Run AEAD fork test in isolated process; AEAD vtables must not be initialized first",
+    "cmd": ["crypto/aead_fork_test"]
+  },
+  {
     "cmd": [
       "crypto/rwlock_static_init"
     ]
