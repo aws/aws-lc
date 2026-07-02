@@ -70,5 +70,9 @@ S3_FOR_WIN_DOCKER_IMG_BUILD = EnvUtil.get(
     "S3_FOR_WIN_DOCKER_IMG_BUILD", "aws-lc-windows-docker-image-build-s3"
 )
 
+S3_FOR_AUTOFIX_INTEGRATION_FAILURES = EnvUtil.get(
+    "S3_FOR_AUTOFIX_INTEGRATION_FAILURES", "aws-lc-autofix-integration-failures"
+)
+
 GITHUB_PUSH_CI_BRANCH_TARGETS = r"(main|fips-\d{4}-\d{2}-\d{2}.*)"
 SCRUTINICE_PRINCIPAL_ROLE_ARN = "arn:aws:iam::222961743098:role/scrutini-ecr"
