@@ -670,6 +670,72 @@ elseif(FIPS_SHARED)
       DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+  elseif(MINGW)
+    # The PE linker does not support linker scripts. Use the same start/end
+    # marker object approach as macOS by compiling the marker file twice
+    # (start and end), then partial-link the three pieces in order so
+    # BORINGSSL_bcm_text_start/end bracket all BCM code.
+    set(BCM_NAME bcm.o)
+    # These custom commands invoke the compiler directly (outside CMake's normal
+    # target compilation), so we must forward CMAKE_C_FLAGS manually. This is
+    # necessary for cross-compilation where the flags contain --target and
+    # system include paths (e.g. clang targeting MinGW).
+    separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
+
+    # Resolve an objdump for the target toolchain. It is used below to verify
+    # that the assembled module object keeps all code/rodata in the single
+    # .text/.rdata sections bracketed by the integrity markers.
+    get_filename_component(FIPS_LD_DIR "${CMAKE_LINKER}" DIRECTORY)
+    get_filename_component(FIPS_LD_NAME "${CMAKE_LINKER}" NAME)
+
+    set(FIPS_MINGW_OBJDUMP "${CMAKE_OBJDUMP}")
+    if(NOT FIPS_MINGW_OBJDUMP)
+      # Derive from the linker (e.g. <triple>-ld -> <triple>-objdump).
+      string(REGEX REPLACE "ld(\\.exe)?$" "objdump" FIPS_OD_NAME "${FIPS_LD_NAME}")
+      find_program(FIPS_MINGW_OBJDUMP NAMES "${FIPS_OD_NAME}" objdump llvm-objdump
+                   HINTS "${FIPS_LD_DIR}")
+    endif()
+    if(NOT FIPS_MINGW_OBJDUMP)
+      message(FATAL_ERROR
+        "FIPS MinGW build: could not find objdump to verify the module "
+        "integrity section layout. Set CMAKE_OBJDUMP to the target objdump.")
+    endif()
+
+    set(FIPS_MINGW_OBJCOPY "${CMAKE_OBJCOPY}")
+    if(NOT FIPS_MINGW_OBJCOPY)
+      # Derive from the linker (e.g. <triple>-ld -> <triple>-objcopy).
+      string(REGEX REPLACE "ld(\\.exe)?$" "objcopy" FIPS_OC_NAME "${FIPS_LD_NAME}")
+      find_program(FIPS_MINGW_OBJCOPY NAMES "${FIPS_OC_NAME}" objcopy llvm-objcopy
+                   HINTS "${FIPS_LD_DIR}")
+    endif()
+    if(NOT FIPS_MINGW_OBJCOPY)
+      message(FATAL_ERROR
+        "FIPS MinGW build: could not find objcopy to merge the module "
+        "read-only data sections. Set CMAKE_OBJCOPY to the target objcopy.")
+    endif()
+
+    add_custom_command(
+      OUTPUT fips_mingw_start.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_mingw_end.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    set(BCM_UNMERGED_NAME bcm.unmerged.o)
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      COMMAND ${CMAKE_LINKER} -r fips_mingw_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_mingw_end.o -o ${BCM_UNMERGED_NAME}
+      COMMAND ${CMAKE_COMMAND} -DOBJDUMP=${FIPS_MINGW_OBJDUMP} -DOBJCOPY=${FIPS_MINGW_OBJCOPY} -DLINKER=${CMAKE_LINKER} -DINPUT_OBJECT=${BCM_UNMERGED_NAME} -DOUTPUT_OBJECT=${BCM_NAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/merge_fips_mingw_rodata.cmake
+      # Fail the build if GCC split any module code/rodata into sections that
+      # would fall outside the integrity markers in the final DLL.
+      COMMAND ${CMAKE_COMMAND} -DOBJDUMP=${FIPS_MINGW_OBJDUMP} -DBCM_OBJECT=${BCM_NAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/check_fips_mingw_sections.cmake
+      DEPENDS fips_mingw_start.o fips_mingw_end.o bcm_library ${CMAKE_CURRENT_SOURCE_DIR}/check_fips_mingw_sections.cmake ${CMAKE_CURRENT_SOURCE_DIR}/merge_fips_mingw_rodata.cmake
+      BYPRODUCTS ${BCM_UNMERGED_NAME}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   else()
     set(BCM_NAME bcm.o)
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
