@@ -113,7 +113,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.define_images.outputs.images).* }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: awslabs/aws-lc-verification
           ref: ${{ matrix.branch || 'master' }}

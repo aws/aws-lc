@@ -19,7 +19,7 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
@@ -28,7 +28,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
         run: rm -rf aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
       - uses: dtolnay/rust-toolchain@stable
@@ -84,7 +84,7 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
@@ -93,7 +93,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
         run: rm -rf aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
       - uses: dtolnay/rust-toolchain@stable
@@ -153,7 +153,7 @@ jobs:
     name: aws-lc-rs iOS aarch64 cross-compilation
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
@@ -162,7 +162,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
         run: rm -rf aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
       - run: brew install llvm
@@ -181,7 +181,7 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
@@ -190,7 +190,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
         run: rm -rf aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
       - uses: dtolnay/rust-toolchain@stable
@@ -266,7 +266,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             fips: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
@@ -276,10 +276,10 @@ jobs:
         run: |
           rm -rf ./aws-lc-rs/aws-lc-sys/aws-lc
           rm -rf ./aws-lc-rs/aws-lc-fips-sys/aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-fips-sys/aws-lc
       - uses: dtolnay/rust-toolchain@stable
@@ -384,7 +384,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: cmake-rust-bindings (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: 'rustfmt'

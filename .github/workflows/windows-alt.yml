@@ -18,7 +18,7 @@ jobs:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: "path has spaces/aws-lc"
       - name: Setup MinGW
@@ -54,7 +54,7 @@ jobs:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
         id: clang
@@ -96,7 +96,7 @@ jobs:
         name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.target }}
@@ -136,7 +136,7 @@ jobs:
       - name: Remove wrong clang-cl.exe
         run:  rm "C:/Program Files/LLVM/bin/clang-cl.exe"
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.target }}
@@ -203,7 +203,7 @@ jobs:
           sudo update-binfmts --enable wine
           sudo update-binfmts --display
           sudo rm -rf /tmp/*
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
@@ -215,7 +215,7 @@ jobs:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup toolchain
         run: |
           set -ex
@@ -283,7 +283,7 @@ jobs:
           echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
           cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
         with:
