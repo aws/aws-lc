@@ -76,10 +76,20 @@ function libgit2_run_tests() {
   #                        still covered by online::clone::certificate_invalid).
   #   online::customcert - clones test.libgit2.org with no timeout, and that host
   #                        is unreachable from our CI and dev networks, so it hangs.
+  # The bitbucket-specific clone tests clone
+  # bitbucket.org/libgit2-test/testgitrepository.git, which Bitbucket has
+  # removed (the endpoint now returns HTTP 410 Gone). These are dead upstream
+  # fixtures unrelated to AWS-LC, so exclude them individually:
+  #   online::clone::credentials_via_custom_headers
+  #   online::clone::bitbucket_style
+  #   online::clone::bitbucket_uses_creds_in_url
   # 'timeout' is a backstop so a future unresponsive endpoint fails fast instead
   # of hanging indefinitely.
   timeout --kill-after=60s 1200s \
-    "${LIBGIT2_BUILD_FOLDER}/libgit2_tests" -v -sonline -xonline::customcert -xonline::badssl
+    "${LIBGIT2_BUILD_FOLDER}/libgit2_tests" -v -sonline -xonline::customcert -xonline::badssl \
+      -xonline::clone::credentials_via_custom_headers \
+      -xonline::clone::bitbucket_style \
+      -xonline::clone::bitbucket_uses_creds_in_url
 }
 
 # Fetch the requested libgit2 ref (tag, branch, or commit).

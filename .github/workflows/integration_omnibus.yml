@@ -340,14 +340,24 @@ jobs:
             compiler: gcc-12
             run: ./tests/ci/integration/run_libwebsockets_integration.sh
 
-          # GRPC Integration Tests
+          # GRPC Integration Tests (pinned release - blocking)
           - name: grpc
             arch: x86_64
             size: 2xlarge
             image: ubuntu:22.04
             compiler: gcc-12
             ipv6: true
-            run: ./tests/ci/integration/run_grpc_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_grpc_integration.sh v1.72.2
+          # GRPC (tracking upstream master - informational, allowed to fail)
+          - name: grpc-master
+            arch: x86_64
+            size: 2xlarge
+            image: ubuntu:22.04
+            compiler: gcc-12
+            ipv6: true
+            allow_failure: true
+            run: ./tests/ci/integration/run_grpc_integration.sh master
 
           # Bind9 Integration Tests
           - name: bind9
