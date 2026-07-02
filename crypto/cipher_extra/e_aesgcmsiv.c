@@ -111,7 +111,8 @@ static int aead_aes_gcm_siv_asm_copy(EVP_AEAD_CTX *out,
   out->state_offset = (uint8_t)(((uintptr_t)&out->state) & 8);
   struct aead_aes_gcm_siv_asm_ctx *out_ctx = asm_ctx_from_ctx(out);
   const struct aead_aes_gcm_siv_asm_ctx *in_ctx = asm_ctx_from_ctx(in);
-  if (out_ctx == NULL || in_ctx == NULL) {
+  if (in_ctx == NULL) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
     return 0;
   }
   OPENSSL_memcpy(out_ctx, in_ctx, sizeof(*out_ctx));

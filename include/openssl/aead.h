@@ -272,8 +272,9 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
 // |EVP_AEAD_CTX_init| or set to the zero state with |EVP_AEAD_CTX_zero|; any
 // existing state in |out| is released before the copy. It returns one on
 // success and zero on error, including when the AEAD does not support being
-// copied. On error, |out| is left in the zero state (as if |EVP_AEAD_CTX_zero|
-// had been called on it), so it is safe to pass to |EVP_AEAD_CTX_cleanup|.
+// copied. On error, |out| is either left unmodified or set to the zero state
+// (as if |EVP_AEAD_CTX_zero| had been called on it); in both cases it remains
+// safe to pass to |EVP_AEAD_CTX_cleanup|.
 //
 // Not all AEADs support copying. In particular, the TLS record-layer AEADs
 // (see |EVP_aead_aes_128_cbc_sha1_tls| and friends) cannot be copied.

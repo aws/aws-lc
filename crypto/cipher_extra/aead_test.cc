@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <new>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -301,7 +302,6 @@ TEST_P(PerAEADTest, Copy) {
   // Copying an uninitialized context always fails, regardless of the AEAD.
   {
     bssl::ScopedEVP_AEAD_CTX uninitialized;
-    EVP_AEAD_CTX_zero(uninitialized.get());
     bssl::ScopedEVP_AEAD_CTX dst;
     EXPECT_FALSE(EVP_AEAD_CTX_copy(dst.get(), uninitialized.get()));
     ERR_clear_error();
@@ -384,8 +384,8 @@ TEST_P(PerAEADTest, Copy) {
   alignas(16) uint8_t storage[3 * sizeof(EVP_AEAD_CTX) + 32];
   const size_t b_off =
       ((sizeof(EVP_AEAD_CTX) + 15) & ~static_cast<size_t>(15)) + 8;
-  EVP_AEAD_CTX *a = reinterpret_cast<EVP_AEAD_CTX *>(storage);
-  EVP_AEAD_CTX *b = reinterpret_cast<EVP_AEAD_CTX *>(storage + b_off);
+  EVP_AEAD_CTX *a = new (storage) EVP_AEAD_CTX;
+  EVP_AEAD_CTX *b = new (storage + b_off) EVP_AEAD_CTX;
   EVP_AEAD_CTX_zero(a);
   EVP_AEAD_CTX_zero(b);
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
