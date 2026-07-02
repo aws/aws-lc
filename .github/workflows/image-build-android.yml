@@ -31,6 +31,7 @@ env:
 permissions:
   id-token: write
   contents: read
+  deployments: write
 
 jobs:
   authorization-check:
@@ -130,3 +131,14 @@ jobs:
       - name: Push Images
         run: |
           docker push ${{ steps.images.outputs.latest }}
+
+
+  cleanup-deployments:
+    if: always()
+    needs: [build, push]
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/cleanup-deployments
