@@ -461,6 +461,20 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(tls_output, sizeof(tls_output));
 
+  /* TLS 1.3 KDF (HKDF-Expand-Label) */
+  printf("About to run TLS 1.3 KDF\n");
+  uint8_t tls13_output[32];
+  static const uint8_t kTLS13Label[] = "c e traffic";
+  if (!CRYPTO_tls13_hkdf_expand_label(
+          tls13_output, sizeof(tls13_output), EVP_sha256(), kAESKey,
+          sizeof(kAESKey), kTLS13Label, sizeof(kTLS13Label) - 1,
+          kPlaintextSHA256, sizeof(kPlaintextSHA256))) {
+    fprintf(stderr, "TLS 1.3 KDF failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(tls13_output, sizeof(tls13_output));
+
   /* FFDH */
   printf("About to compute FFDH key-agreement:\n");
   DH *dh = DH_get_rfc7919_2048();

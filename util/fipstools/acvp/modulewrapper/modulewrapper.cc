@@ -1311,6 +1311,20 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ]
       },
       {
+        "algorithm": "TLS-v1.3",
+        "revision": "RFC8446",
+        "mode": "KDF",
+        "hmacAlg": [
+          "SHA2-256",
+          "SHA2-384"
+        ],
+        "runningMode": [
+          "PSK",
+          "DHE",
+          "PSK-DHE"
+        ]
+      },
+      {
         "vsId": 0,
         "algorithm": "KDA",
         "mode": "HKDF",
@@ -3232,6 +3246,66 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   return write_reply({out});
 }
 
+// TLS 1.3 KDF ACVP handlers. Ported from BoringSSL's
+// util/fipstools/acvp/modulewrapper/modulewrapper.cc |HKDFExtract| and
+// |HKDFExpandLabel|. Named with a TLS13_ prefix here because both are wired
+// to the TLS-v1.3 ACVP suite (RFC 8446) and, in the case of |TLS13_HKDFExtract|,
+// to distinguish it from the generic |HKDF| / |HKDF_expand| helpers already
+// defined in this translation unit for KDA/HKDF and KDF/Feedback.
+template <const EVP_MD *(MDFunc)()>
+static bool TLS13_HKDFExtract(const Span<const uint8_t> args[],
+                              ReplyCallback write_reply) {
+  const Span<const uint8_t> ikm = args[0];
+  const Span<const uint8_t> salt = args[1];
+  const EVP_MD *md = MDFunc();
+
+  uint8_t out_key[EVP_MAX_MD_SIZE];
+  size_t out_len;
+  if (!HKDF_extract(out_key, &out_len, md, ikm.data(), ikm.size(), salt.data(),
+                    salt.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out_key, out_len)});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool TLS13_HKDFExpandLabel(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> secret = args[1];
+  const Span<const uint8_t> label = args[2];
+  const Span<const uint8_t> transcript_hash = args[3];
+  const EVP_MD *md = MDFunc();
+
+  uint32_t out_len;
+  if (out_len_bytes.size() != sizeof(out_len)) {
+    return false;
+  }
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  // RFC 8446 Section 7.1 caps HkdfLabel.length at a uint16_t; reject oversized
+  // requests up front so we don't attempt a multi-GiB |std::vector| allocation
+  // only to have CRYPTO_tls13_hkdf_expand_label reject the size internally.
+  if (out_len > 0xFFFF) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(out_len);
+  // Delegate the "tls13 " prefix + HkdfLabel construction (RFC 8446 §7.1)
+  // and the RFC-mandated length-bound enforcement to the FIPS-module-internal
+  // CRYPTO_tls13_hkdf_expand_label so ACVP exercises the same code path used
+  // by ssl/tls13_enc.cc.
+  if (!CRYPTO_tls13_hkdf_expand_label(out.data(), out_len, md, secret.data(),
+                                      secret.size(), label.data(),
+                                      label.size(), transcript_hash.data(),
+                                      transcript_hash.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 template <int Nid>
 static bool ECDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
@@ -4207,6 +4281,10 @@ static struct {
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
+    {"HKDFExtract/SHA2-256", 2, TLS13_HKDFExtract<EVP_sha256>},
+    {"HKDFExtract/SHA2-384", 2, TLS13_HKDFExtract<EVP_sha384>},
+    {"HKDFExpandLabel/SHA2-256", 4, TLS13_HKDFExpandLabel<EVP_sha256>},
+    {"HKDFExpandLabel/SHA2-384", 4, TLS13_HKDFExpandLabel<EVP_sha384>},
     {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},

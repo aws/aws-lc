@@ -1958,6 +1958,122 @@ TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
       {certificate_key_param().corresponding_sigalg}, -1, false);
 }
 
+// SSL_CTX_add_extra_chain_cert routes the intermediate to the current
+// certificate's slot when one is configured, and falls back to the slot
+// matching the intermediate's own key type when no leaf is set yet. The
+// fallback fixes the Ruby + AWS-LC ordering, where
+// |Net::HTTP#extra_chain_cert=| appends before any leaf is configured.
+
+// Leaf-first, cross-type: an RSA intermediate added after an ECDSA leaf must
+// join the ECDSA leaf's slot, not the RSA slot. This is the common case of an
+// RSA intermediate for an ECDSA leaf, which key-type routing would misplace.
+TEST(SSLTest, ExtraChainCertCrossTypeLeafFirst) {
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
+  ASSERT_TRUE(ctx);
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  // The intermediate joins the ECDSA leaf's slot (leaf at index 0,
+  // intermediate at index 1); the RSA slot stays empty.
+  const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(ecc_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 2u);
+  EXPECT_FALSE(rsa_chain);
+}
+
+// No leaf configured yet: routing falls back to the intermediate's own key
+// type. Append the RSA intermediate to a fresh ctx, then set the matching
+// RSA leaf + key; both must end up in the RSA slot.
+TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetChainTestKey().get()));
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
+
+  // The RSA slot holds the leaf at index 0 and the intermediate at index 1.
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(rsa_chain);
+  ASSERT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 0) != nullptr);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 1) != nullptr);
+}
+
+// End-to-end Ruby ordering: append the intermediate before the leaf, then
+// complete a TLS 1.2 handshake. The server must send leaf + intermediate.
+TEST(SSLTest, ExtraChainCertSentDuringHandshake) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(client_ctx);
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  // Append the intermediate first (no leaf yet, so routing falls back to the
+  // intermediate's key type), then set the matching leaf + key.
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(SSL_CTX_add_extra_chain_cert(server_ctx.get(),
+                                            rsa_intermediate.release()));
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetChainTestKey().get()));
+
+  // We are asserting what the server sends, not what the client validates.
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  const STACK_OF(CRYPTO_BUFFER) *peer_chain =
+      SSL_get0_peer_certificates(client.get());
+  ASSERT_TRUE(peer_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(peer_chain), 2u);
+}
+
+// Regression guard: SSL_CTX_add0_chain_cert still routes by
+// |cert_private_key_idx|, unchanged by the fix.
+TEST(SSLTest, Add0ChainCertCrossTypeRoutingUnchanged) {
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
+  ASSERT_TRUE(ctx);
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add0_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  // RSA intermediate lands in the ECC slot because |cert_private_key_idx|
+  // points there.
+  const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(ecc_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 2u);
+  EXPECT_FALSE(rsa_chain);
+}
+
 
 // ML-DSA TLS 1.3 signature-scheme tests (draft-ietf-tls-mldsa). These
 // exercise the plumbing in ssl_privkey.cc / ssl_cipher.cc that wires

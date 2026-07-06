@@ -1,5 +1,5 @@
 name: mldsa-native
 source: pq-code-package/mldsa-native.git
-branch: main
-commit: b61e84f0c73d4ed612ffcaea4282a9d682de3f46
-imported-at: 2026-01-16T13:12:01-0800
+branch: 08d40f9403a9ca80f160118bc63e96bf36627866
+commit: 08d40f9403a9ca80f160118bc63e96bf36627866
+imported-at: 2026-06-12T17:04:44+0000

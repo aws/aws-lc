@@ -36,7 +36,7 @@ jobs:
       al2: ${{ steps.images.outputs.al2 }}
       al2_sde: ${{ steps.images.outputs.al2_sde }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -131,7 +131,7 @@ jobs:
     outputs:
       al2: ${{ steps.images.outputs.al2 }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
