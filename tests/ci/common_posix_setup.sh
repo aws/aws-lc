@@ -149,7 +149,20 @@ function fips_build_and_test {
       break
     fi
   done
-  module_status=$("${BUILD_ROOT}/tool/bssl" isfips)
+  # Locate the bssl tool. ENABLE_DIST_PKG builds set COHABITANT_BINARIES, which
+  # prefixes the tool name (e.g. aws-lc-bssl), so check both names.
+  bssl_tool=""
+  for candidate in "${BUILD_ROOT}/tool/bssl" "${BUILD_ROOT}/tool/aws-lc-bssl"; do
+    if [[ -x "${candidate}" ]]; then
+      bssl_tool="${candidate}"
+      break
+    fi
+  done
+  if [[ -z "${bssl_tool}" ]]; then
+    echo >&2 "bssl tool not found under ${BUILD_ROOT}/tool (looked for bssl and aws-lc-bssl)."
+    exit 1
+  fi
+  module_status=$("${bssl_tool}" isfips)
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'
