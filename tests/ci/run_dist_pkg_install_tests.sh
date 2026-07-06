@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -eo pipefail
+set -euo pipefail
 
 source tests/ci/common_posix_setup.sh
 
@@ -106,35 +106,31 @@ function verify_dist_pkg_structure() {
         fail "crypto.h not found in include/aws-lc/openssl/"
     fi
 
-    # Check libraries have -awslc suffix (SET_LIB_SONAME)
-    if [[ "${LIB_EXT}" == ".so" ]]; then
-        # For shared libraries, check for .so files
-        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/libcrypto-awslc.so" ]]; then
-            fail "libcrypto-awslc.so not found in ${LIB_DIR}/"
-        fi
-        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/libssl-awslc.so" ]]; then
-            fail "libssl-awslc.so not found in ${LIB_DIR}/"
-        fi
-    else
-        # For static libraries, check for .a files
-        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/libcrypto-awslc.a" ]]; then
-            fail "libcrypto-awslc.a not found in ${LIB_DIR}/"
-        fi
-        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/libssl-awslc.a" ]]; then
-            fail "libssl-awslc.a not found in ${LIB_DIR}/"
-        fi
+    # The suffix is the SOFTWARE_NAME, which differs per release branch, so it is
+    # derived from the installed pc file rather than assumed.
+    local SUFFIX
+    SUFFIX=$(find "${INSTALL_DIR}/${LIB_DIR}/pkgconfig" -name 'libcrypto-*.pc' \
+        -exec basename {} .pc \; | sed 's/^libcrypto//' | head -1)
+    if [[ -z "${SUFFIX}" ]]; then
+        fail "no suffixed libcrypto pc file in ${LIB_DIR}/pkgconfig/ (SET_LIB_SONAME)"
     fi
+    echo "Derived product suffix: ${SUFFIX}"
+
+    # Check libraries carry the product suffix (SET_LIB_SONAME)
+    local LIB
+    for LIB in "libcrypto${SUFFIX}${LIB_EXT}" "libssl${SUFFIX}${LIB_EXT}"; do
+        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/${LIB}" ]]; then
+            fail "${LIB} not found in ${LIB_DIR}/"
+        fi
+    done
 
     # Check pkg-config files
-    if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/aws-lc.pc" ]]; then
-        fail "aws-lc.pc not found in ${LIB_DIR}/pkgconfig/"
-    fi
-    if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/libcrypto-awslc.pc" ]]; then
-        fail "libcrypto-awslc.pc not found in ${LIB_DIR}/pkgconfig/"
-    fi
-    if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/libssl-awslc.pc" ]]; then
-        fail "libssl-awslc.pc not found in ${LIB_DIR}/pkgconfig/"
-    fi
+    local PC
+    for PC in aws-lc.pc "libcrypto${SUFFIX}.pc" "libssl${SUFFIX}.pc"; do
+        if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/${PC}" ]]; then
+            fail "${PC} not found in ${LIB_DIR}/pkgconfig/"
+        fi
+    done
 
     # Check OpenSSL shim symlinks
     if [[ "${OPENSSL_SHIM}" == "ON" ]]; then
@@ -265,7 +261,7 @@ function test_cmake_find_package() {
     ${CMAKE_COMMAND} --build ${BUILD_DIR}
 
     # Set library path for running
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
     export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
     # Run the application
@@ -336,7 +332,7 @@ EOF
     ${CC:-cc} ${TEST_DIR}/test.c ${CFLAGS} ${LIBS} -o ${TEST_DIR}/test
 
     # Run
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
     export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
     ${TEST_DIR}/test || fail "pkg-config test application failed to run"
@@ -364,6 +360,13 @@ install_aws_lc_dist_pkg install-dist-pkg-shared ON OFF
 verify_dist_pkg_structure install-dist-pkg-shared .so OFF
 test_cmake_find_package install-dist-pkg-shared ON
 test_pkg_config install-dist-pkg-shared aws-lc OFF
+
+# Symbol versioning tests (reuse the shared-lib install from Test 1)
+echo ""
+echo "############################################"
+echo "# Symbol Versioning Tests                  #"
+echo "############################################"
+"${AWS_LC_DIR}/tests/ci/run_symbol_version_test.sh" "${SCRATCH_DIR}/install-dist-pkg-shared"
 
 # Test 2: ENABLE_DIST_PKG + OPENSSL_SHIM (shared libs)
 echo ""

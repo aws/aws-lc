@@ -168,6 +168,37 @@ else()
 endif()
 message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 
+include(cmake/GenerateVersionScript.cmake)
+
+# Enable symbol versioning for shared libraries in distribution packaging mode
+# on UNIX platforms (excluding Apple).
+# Version scripts are derived from the symbol registry files and have stable
+# filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
+# recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
+if(ENABLE_DIST_PKG AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(ENABLE_SYMBOL_VERSIONING TRUE)
+  message(STATUS "Symbol versioning enabled")
+
+  # lld treats undefined symbols in version scripts as errors by default.
+  # The --undefined-version flag downgrades them to warnings, matching GNU ld.
+  # Probe once during configure; the result is cached.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      LINK_OPTIONS "-Wl,--undefined-version"
+    )
+  else()
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      CMAKE_FLAGS "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--undefined-version"
+    )
+  endif()
+endif()
+
 # The validated entropy source will always be configured to be CPU Jitter
 # Entropy by default; because it's the root of the Tree DRBG.
 message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
