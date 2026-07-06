@@ -40,7 +40,7 @@ jobs:
         if: matrix.config.target_arch == 'x86_64'
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install ninja-build tool
         uses: seanmiddleditch/gha-setup-ninja@v6
       - uses: actions/setup-go@v6

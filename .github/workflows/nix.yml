@@ -12,7 +12,7 @@ jobs:
   nixflake:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -21,8 +21,8 @@ jobs:
   nixfmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - name: nix fmt
         run: nix fmt $(find . -name \*nix -type f -not -path "./.git/*")
       - name: Changed files

@@ -20,7 +20,7 @@ jobs:
     env:
       ANALYTICS_BRANCH: ${{ github.ref }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
