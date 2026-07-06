@@ -38,6 +38,15 @@ struct dh_st {
 // DoS bounds.
 int dh_check_params_fast(const DH *dh);
 
+// dh_fast_path_from_safe_group returns one if |dh| is one of the well-known
+// standard safe-prime groups (RFC 3526 MODP or RFC 7919 ffdhe) and can be
+// validated without primality testing, and zero otherwise. It requires g = 2
+// and p to match a known group prime. A subgroup order q is optional: if
+// present, it is accepted only when the matched group defines one (RFC 7919)
+// and it equals (p-1)/2; a q that is not part of the group definition returns
+// zero so that |DH_check| performs its full validation.
+int dh_fast_path_from_safe_group(const DH *dh);
+
 // dh_compute_key_padded_no_self_test does the same as |DH_compute_key_padded|,
 // but doesn't try to run the self-test first. This is for use in the self tests
 // themselves, to prevent an infinite loop.
@@ -53,6 +62,16 @@ OPENSSL_EXPORT DH *DH_get_rfc7919_3072(void);
 // https://tools.ietf.org/html/rfc7919#appendix-A.4. It returns NULL if out
 // of memory.
 OPENSSL_EXPORT DH *DH_get_rfc7919_8192(void);
+
+// dh_calculate_rfc7919_from_p constructs a |DH| from a raw RFC 7919 modulus,
+// deriving q = (p-1)/2 and g = 2 as all RFC 7919 groups do. |data| points to
+// the |data_len| little-endian |BN_ULONG| words of p. It returns NULL on
+// allocation failure.
+//
+// |DH_get_rfc7919_2048| declaration can be removed when |DH_get_rfc7919_2048|
+// has been moved to params.c; |DH_get_rfc7919_2048| is used in a bunch of FIPS
+// test code still.
+DH *dh_calculate_rfc7919_from_p(const BN_ULONG data[], size_t data_len);
 
 #if defined(__cplusplus)
 }
