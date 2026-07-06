@@ -95,7 +95,9 @@ void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx) {
   if (ctx->aead == NULL) {
     return;
   }
-  ctx->aead->cleanup(ctx);
+  if (ctx->aead->cleanup != NULL) {
+    ctx->aead->cleanup(ctx);
+  }
   ctx->aead = NULL;
 }
 
