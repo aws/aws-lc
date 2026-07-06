@@ -967,7 +967,7 @@ func main() {
 		}
 	}
 
-	if err := os.MkdirAll(*outputDir, 0777); err != nil {
+	if err := os.MkdirAll(*outputDir, 0755); err != nil {
 		fmt.Printf("Failed to create output directory: %s\n", err)
 		os.Exit(1)
 	}
