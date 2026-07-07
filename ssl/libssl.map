@@ -338,6 +338,7 @@ AWS_LC_1.0 {
     SSL_get0_ocsp_response;
     SSL_get0_param;
     SSL_get0_peer_application_settings;
+    SSL_get0_peer_certificate;
     SSL_get0_peer_certificates;
     SSL_get0_peer_delegation_algorithms;
     SSL_get0_peer_verify_algorithms;
@@ -346,6 +347,7 @@ AWS_LC_1.0 {
     SSL_get0_session_id_context;
     SSL_get0_signed_cert_timestamp_list;
     SSL_get0_verified_chain;
+    SSL_get1_peer_certificate;
     SSL_get1_session;
     SSL_get_SSL_CTX;
     SSL_get_all_cipher_names;
