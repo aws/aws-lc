@@ -394,12 +394,8 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
-        env:
-          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
-          env: |
-            AWSLC_32BIT
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ./tests/ci/run_dist_pkg_${{ matrix.test }}_tests.sh
