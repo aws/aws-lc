@@ -7,7 +7,7 @@ endif()
 set(SOFTWARE_NAME "awslc")
 set(SOFTWARE_VERSION "5.1.0")
 set(AWSLC_FIPS_VERSION 5)
-set(ABI_VERSION 0)
+set(ABI_VERSION 1)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
 set(OPENSSL_VERSION_NUMBER "0x1010107f")
@@ -83,6 +83,7 @@ endif()
 set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
 
 include(cmake/go.cmake)
+include(cmake/GenerateVersionScript.cmake)
 
 if(ENABLE_DIST_PKG_OPENSSL_SHIM AND NOT ENABLE_DIST_PKG)
   message(FATAL_ERROR "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
@@ -124,6 +125,35 @@ if(SET_LIB_SONAME)
 endif()
 
 enable_language(C)
+
+# Enable symbol versioning for shared libraries in distribution packaging mode
+# on UNIX platforms (excluding Apple).
+# Version scripts are derived from the symbol registry files and have stable
+# filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
+# recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
+if(ENABLE_DIST_PKG AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(ENABLE_SYMBOL_VERSIONING TRUE)
+  message(STATUS "Symbol versioning enabled")
+
+  # lld treats undefined symbols in version scripts as errors by default.
+  # The --undefined-version flag downgrades them to warnings, matching GNU ld.
+  # Probe once during configure; the result is cached.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      LINK_OPTIONS "-Wl,--undefined-version"
+    )
+  else()
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      CMAKE_FLAGS "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--undefined-version"
+    )
+  endif()
+endif()
 
 if (NOT WIN32 AND NOT APPLE)
   include(GNUInstallDirs)
