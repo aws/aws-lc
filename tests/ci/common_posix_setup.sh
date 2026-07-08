@@ -54,7 +54,7 @@ function run_build {
   mkdir -p "$BUILD_ROOT"
   cd "$BUILD_ROOT" || exit 1
 
-  if [[ "${AWSLC_32BIT}" == "1" ]]; then
+  if [[ "${AWSLC_32BIT:-0}" == "1" ]]; then
     cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
   fi
 

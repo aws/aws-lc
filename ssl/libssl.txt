@@ -331,6 +331,7 @@ SSL_get0_next_proto_negotiated AWS_LC_1.0 PUBLIC
 SSL_get0_ocsp_response AWS_LC_1.0 PUBLIC
 SSL_get0_param AWS_LC_1.0 PUBLIC
 SSL_get0_peer_application_settings AWS_LC_1.0 PUBLIC
+SSL_get0_peer_certificate AWS_LC_1.0 PUBLIC
 SSL_get0_peer_certificates AWS_LC_1.0 PUBLIC
 SSL_get0_peer_delegation_algorithms AWS_LC_1.0 PUBLIC
 SSL_get0_peer_verify_algorithms AWS_LC_1.0 PUBLIC
@@ -339,6 +340,7 @@ SSL_get0_server_requested_CAs AWS_LC_1.0 PUBLIC
 SSL_get0_session_id_context AWS_LC_1.0 PUBLIC
 SSL_get0_signed_cert_timestamp_list AWS_LC_1.0 PUBLIC
 SSL_get0_verified_chain AWS_LC_1.0 PUBLIC
+SSL_get1_peer_certificate AWS_LC_1.0 PUBLIC
 SSL_get1_session AWS_LC_1.0 PUBLIC
 SSL_get_SSL_CTX AWS_LC_1.0 PUBLIC
 SSL_get_all_cipher_names AWS_LC_1.0 PUBLIC
