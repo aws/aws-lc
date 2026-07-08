@@ -8,6 +8,7 @@ concurrency:
   cancel-in-progress: true
 permissions:
   contents: read
+  deployments: write
 
 jobs:
   authorize:
@@ -89,3 +90,13 @@ jobs:
             -H "Authorization: token ${GH_TOKEN}" \
             "${STATUS_URL}" \
             -d "{\"state\":\"${STATE}\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
+
+  cleanup-deployments:
+    if: always()
+    needs: [execute]
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cleanup-deployments
