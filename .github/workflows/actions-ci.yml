@@ -27,7 +27,7 @@ jobs:
       AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Sanity Test Run
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
@@ -45,7 +45,7 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -63,7 +63,7 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -82,7 +82,7 @@ jobs:
           - "macos-14"
           - "macos-15"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -101,7 +101,7 @@ jobs:
           - "windows-latest"
           - "windows-11-arm"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -131,7 +131,7 @@ jobs:
           - 20
           - 0 # default
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -184,7 +184,7 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -253,7 +253,7 @@ jobs:
               total_shards: 1
             shard_index: 0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -291,7 +291,7 @@ jobs:
       image: rust:latest
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -320,7 +320,7 @@ jobs:
         gcc_version: ["9", "10", "11", "12", "13", "14", "15"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -357,7 +357,7 @@ jobs:
         clang_version: ["20"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -395,7 +395,7 @@ jobs:
           - clang_version: "18"
             fips: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -429,7 +429,7 @@ jobs:
         clang_version: ["11", "12", "13"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -463,7 +463,7 @@ jobs:
         clang_version: ["7", "8", "9", "10"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -494,7 +494,7 @@ jobs:
           - "1"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -537,7 +537,7 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
@@ -568,7 +568,7 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         working-directory: .github/docker_images/gcc-4.8
         run: |
@@ -596,7 +596,7 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         working-directory: .github/docker_images/alpine-linux
         run: |
@@ -612,7 +612,7 @@ jobs:
   #    runs-on: aws-lc_windows-2019_64-core
   #    steps:
   #      - name: Git clone the repository
-  #        uses: actions/checkout@v6
+  #        uses: actions/checkout@v7
   #
   #      - name: Build Windows Dependencies
   #        run: |

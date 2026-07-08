@@ -851,7 +851,27 @@ OPENSSL_EXPORT int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509);
 // it returns one and takes ownership of |x509|. Otherwise, it returns zero.
 OPENSSL_EXPORT int SSL_add0_chain_cert(SSL *ssl, X509 *x509);
 
-// SSL_CTX_add_extra_chain_cert calls |SSL_CTX_add0_chain_cert|.
+// SSL_CTX_add_extra_chain_cert appends |x509| to |ctx|'s certificate chain. On
+// success it returns one and takes ownership of |x509|; otherwise it returns
+// zero.
+//
+// OpenSSL keeps extra chain certs on a single global stack and uses it
+// whenever a certificate has no chain of its own. AWS-LC instead stores chains
+// per key-type slot, so this routes |x509| to a slot: if a leaf certificate is
+// already configured, |x509| joins the current certificate's slot (so a chain
+// built leaf-first stays together, including cross-type chains such as an RSA
+// intermediate for an ECDSA leaf); if no leaf is set yet, |x509| goes to the
+// slot matching its own key type (so chains built intermediate-first land
+// correctly once the matching leaf is added).
+//
+// To append an intermediate whose key type differs from a not-yet-configured
+// leaf (e.g. an RSA intermediate for an ECDSA leaf added before the leaf), set
+// the leaf first, or use |SSL_CTX_set1_chain|, |SSL_CTX_add1_chain_cert|, or
+// |SSL_CTX_use_certificate_chain_file|.
+//
+// |SSL_CTX_get_extra_chain_certs| and |SSL_CTX_clear_extra_chain_certs| always
+// act on the current certificate's slot, so they may target a different slot
+// than an add that routed by key type.
 OPENSSL_EXPORT int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509);
 
 // SSL_add1_chain_cert appends |x509| to |ctx|'s certificate chain. It returns
@@ -1790,9 +1810,20 @@ OPENSSL_EXPORT int SSL_in_init(const SSL *ssl);
 // See also |SSL_MODE_ENABLE_FALSE_START|.
 OPENSSL_EXPORT int SSL_in_false_start(const SSL *ssl);
 
-// SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
+// SSL_get0_peer_certificate returns the peer's leaf certificate or NULL if the
+// peer did not use certificates. The caller does not own the result and must
+// not call |X509_free| on it. The returned certificate is valid for as long as
+// the associated |SSL_SESSION| is.
+OPENSSL_EXPORT X509 *SSL_get0_peer_certificate(const SSL *ssl);
+
+// SSL_get1_peer_certificate returns the peer's leaf certificate or NULL if the
 // peer did not use certificates. The caller must call |X509_free| on the
 // result to release it.
+OPENSSL_EXPORT X509 *SSL_get1_peer_certificate(const SSL *ssl);
+
+// SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
+// peer did not use certificates. The caller must call |X509_free| on the
+// result to release it. This is an alias for |SSL_get1_peer_certificate|.
 OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
 
 // SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if

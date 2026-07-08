@@ -32,7 +32,7 @@ jobs:
           - 1
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         working-directory: .github/docker_images/cmake_build_versions
         run: |

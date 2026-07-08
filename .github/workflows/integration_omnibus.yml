@@ -19,6 +19,7 @@ permissions:
 jobs:
   integrations:
     name: ${{ matrix.name }}-${{ matrix.arch }}
+    continue-on-error: ${{ matrix.allow_failure || false }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
@@ -49,13 +50,22 @@ jobs:
             compiler: gcc-11
             run: ./tests/ci/integration/run_crt_integration.sh
 
-          # libgit2
+          # libgit2 (pinned to a release - required)
           - name: libgit2
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_libgit2_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_libgit2_integration.sh v1.9.4
+          # libgit2 (tracking upstream main - informational, allowed to fail)
+          - name: libgit2-main
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            allow_failure: true
+            run: ./tests/ci/integration/run_libgit2_integration.sh main
 
           # OpenSSH Integration Tests
           - name: openssh-master
@@ -330,14 +340,24 @@ jobs:
             compiler: gcc-12
             run: ./tests/ci/integration/run_libwebsockets_integration.sh
 
-          # GRPC Integration Tests
+          # GRPC Integration Tests (pinned release - blocking)
           - name: grpc
             arch: x86_64
             size: 2xlarge
             image: ubuntu:22.04
             compiler: gcc-12
             ipv6: true
-            run: ./tests/ci/integration/run_grpc_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_grpc_integration.sh v1.72.2
+          # GRPC (tracking upstream master - informational, allowed to fail)
+          - name: grpc-master
+            arch: x86_64
+            size: 2xlarge
+            image: ubuntu:22.04
+            compiler: gcc-12
+            ipv6: true
+            allow_failure: true
+            run: ./tests/ci/integration/run_grpc_integration.sh master
 
           # Bind9 Integration Tests
           - name: bind9
@@ -404,7 +424,7 @@ jobs:
       OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -429,7 +449,7 @@ jobs:
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         run: touch integration-failure.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
           name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
@@ -463,7 +483,7 @@ jobs:
       FIPS: ${{ matrix.buildFIPS }}
       AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.crtUseSystemCrypto }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -482,7 +502,7 @@ jobs:
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         run: touch integration-failure.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
@@ -507,7 +527,7 @@ jobs:
     env:
       FIPS: ${{ matrix.buildFIPS }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -525,7 +545,7 @@ jobs:
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         run: touch integration-failure.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
@@ -540,7 +560,7 @@ jobs:
         image:linux-5.0
         instance-size:small
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials

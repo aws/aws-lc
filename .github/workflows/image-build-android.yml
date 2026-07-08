@@ -41,7 +41,7 @@ jobs:
         image:linux-5.0
         instance-size:small
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/check-authorization
         id: authz 
 
@@ -55,9 +55,16 @@ jobs:
     outputs:
       android: ${{ steps.images.outputs.latest }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
+          # Safe: this job's fork checkout is gated behind the
+          # authorization-check deployment-environment approval (AWS-542), so
+          # fork code is only checked out after a maintainer approves the run.
+          # That approval gate is exactly the human-in-the-loop mitigation that
+          # actions/checkout@v7's new pull_request_target default requires; this
+          # opt-in re-asserts our existing protection, it does not weaken it.
+          allow-unsafe-pr-checkout: true
       - name: Query Environment
         id: env
         run: |

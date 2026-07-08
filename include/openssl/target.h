@@ -79,6 +79,9 @@
 #define OPENSSL_PNACL
 #elif defined(__wasm__)
 #define OPENSSL_WASM
+#  if defined(__wasi__)
+#    define OPENSSL_WASM_WASI
+#  endif
 #elif defined(__asmjs__) // Allowed but no macro defined
 #elif defined(__myriad2__) // Allowed but no macro defined
 #else
@@ -167,6 +170,19 @@
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
+// OPENSSL_WASM_WASI is set when building for WASI (WebAssembly System Interface).
+// WASI provides a standardized system interface for WebAssembly modules.
+// WASI Preview 2 does not support pthreads, BSD sockets, or terminal I/O,
+// so we disable threading, socket, and TTY support. WASI does provide
+// filesystem access and getentropy() for randomness.
+//
+// https://wasi.dev/
+#if defined(OPENSSL_WASM_WASI)
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
 #endif
@@ -237,5 +253,25 @@
 #define OPENSSL_NO_ASM
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
+
+// Assembler-capability flag implications.
+//
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX.
+// CMakeLists.txt enforces this for CMake builds, but it must also be enforced
+// here for builds that pass defines directly via CFLAGS (e.g., the aws-lc-sys
+// CcBuilder path).
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
+
+// OPENSSL_SMALL implies disabling AVX-512 code paths on x86_64. The AVX-512
+// assembly (AES-GCM, XTS, RSAZ) is the largest single contributor to binary
+// size on x86_64 (~912 KB of object code). The performance cost is borne only
+// on AVX-512-capable CPUs (Ice Lake+, Zen 4+) for bulk symmetric operations.
+#if defined(OPENSSL_SMALL) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
 
 #endif  // OPENSSL_HEADER_TARGET_H
