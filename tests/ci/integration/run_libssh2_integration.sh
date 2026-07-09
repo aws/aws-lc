@@ -56,6 +56,14 @@ if [[ -n "${LIBSSH2_REF}" ]]; then
 else
   git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
 fi
+
+# Older libssh2 releases use a floating debian:testing-slim base image in the
+# openssh_server test fixture, which no longer ships the `adduser` package.
+# Patch the Dockerfile to install it explicitly so ctest can build the fixture.
+OPENSSH_DOCKERFILE="${LIBSSH2_SRC_FOLDER}/tests/openssh_server/Dockerfile"
+if grep -q "debian:testing-slim" "${OPENSSH_DOCKERFILE}" 2>/dev/null; then
+  sed -i 's/install -y openssh-server/install -y openssh-server adduser/' "${OPENSSH_DOCKERFILE}"
+fi
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBSSH2_BUILD_FOLDER}" "${LIBSSH2_INSTALL_FOLDER}"
 ls
 
