@@ -6,6 +6,10 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Optional first argument: the libssh2 git ref (tag or branch) to test against.
+# Defaults to the default branch (main) when unset so local runs keep working.
+LIBSSH2_REF="${1:-}"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -45,8 +49,13 @@ function libssh2_run_tests() {
 
 pushd "${SCRATCH_FOLDER}"
 
-# Get latest libssh2 version.
-git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+# Clone libssh2. When LIBSSH2_REF is set (e.g. a release tag), check out that
+# ref; otherwise track the default branch (main).
+if [[ -n "${LIBSSH2_REF}" ]]; then
+  git clone --depth 1 --branch "${LIBSSH2_REF}" https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+else
+  git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+fi
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBSSH2_BUILD_FOLDER}" "${LIBSSH2_INSTALL_FOLDER}"
 ls
 

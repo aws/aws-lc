@@ -24,6 +24,22 @@ jobs:
       - uses: actions/checkout@v7
       - name: Run libssh2 integration tests
         run: |
+          ./tests/ci/integration/run_libssh2_integration.sh 'libssh2-1.11.1'
+  # Tracks libssh2 main to catch upstream breakages early. Non-blocking: main
+  # can break against AWS-LC for reasons outside our control (e.g. upstream
+  # -Werror changes), so this job is allowed to fail without failing CI.
+  libssh2-main:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v7
+      - name: Run libssh2 integration tests (main)
+        run: |
           ./tests/ci/integration/run_libssh2_integration.sh
   libevent:
     if: github.repository_owner == 'aws'
