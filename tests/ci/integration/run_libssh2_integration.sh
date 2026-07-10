@@ -60,6 +60,8 @@ fi
 # Older libssh2 releases use a floating debian:testing-slim base image in the
 # openssh_server test fixture, which no longer ships the `adduser` package.
 # Patch the Dockerfile to install it explicitly so ctest can build the fixture.
+# NOTE: this patch is keyed to the release pinned in
+# .github/workflows/integrations.yml; revisit it if that pin changes.
 OPENSSH_DOCKERFILE="${LIBSSH2_SRC_FOLDER}/tests/openssh_server/Dockerfile"
 if grep -q "debian:testing-slim" "${OPENSSH_DOCKERFILE}" 2>/dev/null; then
   sed -i 's/install -y openssh-server/install -y openssh-server adduser/' "${OPENSSH_DOCKERFILE}"

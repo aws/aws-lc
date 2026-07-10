@@ -22,6 +22,11 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v7
+      # Pinned to a libssh2 release for a stable required check. If you bump
+      # this version, revisit the openssh_server Dockerfile patch in
+      # run_libssh2_integration.sh: the patch is keyed to the floating
+      # `debian:testing-slim` base image used by current releases and may be a
+      # no-op (or need updating) for a different release's test fixture.
       - name: Run libssh2 integration tests
         run: |
           ./tests/ci/integration/run_libssh2_integration.sh 'libssh2-1.11.1'
