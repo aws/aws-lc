@@ -231,8 +231,10 @@ jobs:
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CXX=g++" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && '') || 'non-' }}FIPS Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run:
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -395,7 +397,7 @@ jobs:
           docker build -t "gcc-4.8"  .
       - name: Build using pre-generated assembly
         run: |
-          docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
+          docker run -v "${GITHUB_WORKSPACE}:/awslc" "gcc-4.8"
 
   alpine-linux-x86:
     needs: [sanity-test-run]
@@ -417,12 +419,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker Image
         working-directory: .github/docker_images/alpine-linux
+        env:
+          MATRIX_COMPILER: ${{ matrix.compiler }}
         run: |
-          docker build -t alpine_linux ${{ matrix.compiler }} .
+          docker build -t alpine_linux ${MATRIX_COMPILER} .
       - name: Run tests
+        env:
+          MATRIX_TESTS: ${{ matrix.tests }}
         run: |
-          docker run -v "${{ github.workspace }}:/awslc" \
-          alpine_linux ${{ matrix.tests }}
+          docker run -v "${GITHUB_WORKSPACE}:/awslc" \
+          alpine_linux "${MATRIX_TESTS}"
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
