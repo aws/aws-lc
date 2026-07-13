@@ -54,3 +54,10 @@ TEST(SClientTest, CipherAndTls1_1) {
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }
+
+// Test that s_client returns false (not crash) for unresolvable hostname
+TEST(SClientTest, UnresolvableHost) {
+  args_list_t args = {"-connect", "this.host.does.not.exist.invalid:443"};
+  bool result = SClientTool(args);
+  ASSERT_FALSE(result);
+}
