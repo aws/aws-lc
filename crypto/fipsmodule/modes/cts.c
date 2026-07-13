@@ -10,15 +10,16 @@
 #include "internal.h"
 #include "../../internal.h"
 
-// AES Ciphertext Stealing (CTS), CS1 / RFC 2040 variant.
+// AES Ciphertext Stealing (CTS), CBC-CS3 variant (NIST SP 800-38A Addendum).
 //
 // CTS extends CBC mode to handle inputs whose length is not a multiple of the
-// block size, without padding. This file implements the CS1 convention used by
-// OpenSSL's legacy |CRYPTO_cts128_encrypt|/|CRYPTO_cts128_decrypt| API (the
-// shape MIT krb5 1.x calls into for |aes128-cts-hmac-*| and friends): the last
-// two ciphertext blocks are unconditionally swapped, and an exact-block-length
-// input is treated as a 16-byte residue rather than zero residue. (The NIST
-// CS2 / CS3 conventions are intentionally not provided here.)
+// block size, without padding. This file implements CBC-CS3, in which the last
+// two ciphertext blocks are unconditionally swapped -- even for block-aligned
+// inputs -- so an exact-block-length message is treated as having a 16-byte
+// residue rather than zero residue. This is the convention used by OpenSSL's
+// legacy |CRYPTO_cts128_encrypt|/|CRYPTO_cts128_decrypt| API and is the shape
+// MIT krb5 1.x calls into for |aes128-cts-hmac-*| and friends (see RFC 3962,
+// RFC 8009).
 //
 // Both entry points return zero if |len| <= 16 (CTS requires at least one
 // full block of input plus a partial block; for exact-length inputs callers

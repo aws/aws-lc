@@ -17,7 +17,7 @@
 namespace {
 
 // Each case fixes |key|, the all-zero IV, and the |plaintext| / |ciphertext|
-// pair produced by encrypting under CBC-CS1 (the OpenSSL legacy convention).
+// pair produced by encrypting under CBC-CS3 (the OpenSSL legacy convention).
 // All inputs are >= 17 bytes (CTS requires more than one block).
 struct CTSTestCase {
   const char *name;
@@ -45,7 +45,7 @@ static const CTSTestCase kRFC8009Cases[] = {
      "000102030405",
      "84D7F30754ED987BAB0BF3506BEB09CF"
      "B55402CEF7E6"},
-    // AES-128: exact 32-byte input (residue is 0 mod 16; CS1 still swaps).
+    // AES-128: exact 32-byte input (residue is 0 mod 16; CS3 still swaps).
     {"AES-128, 32-byte input (exact 2 blocks)",
      "9B197DD1E8C5609D6E67C3E37C62C72E",
      "56AB21713FF62C0A1457200F6FA9948F"
@@ -69,7 +69,7 @@ static const CTSTestCase kRFC8009Cases[] = {
      "000102030405",
      "4ED7B37C2BCAC8F74F23C1CF07E62BC7"
      "B75FB3F637B9"},
-    // AES-256: 32-byte input (exact 2 blocks; CS1 always swaps).
+    // AES-256: 32-byte input (exact 2 blocks; CS3 always swaps).
     {"AES-256, 32-byte input (exact 2 blocks)",
      "56AB22BEE63D82D7BC5227F6773F8EA7"
      "A5EB1C825160C38312980C442E5C7E49",
@@ -290,7 +290,7 @@ TEST(CTS128Test, RejectsTooShortInput) {
 
 TEST(CTS128Test, AgreesWithRawCBCOnExactBlockMultiple) {
   // CTS at residue==16 should agree with running plain CBC over the whole
-  // input and then swapping the final two blocks (i.e. the CS1 convention).
+  // input and then swapping the final two blocks (i.e. the CS3 convention).
   uint8_t key_bytes[16];
   ASSERT_TRUE(RAND_bytes(key_bytes, sizeof(key_bytes)));
   AES_KEY enc_key, dec_key;
@@ -340,8 +340,8 @@ TEST(CTS128Test, IVUpdatedToLastFullCipherBlock) {
                                         iv, AES_cbc_encrypt));
   // The post-swap penultimate ciphertext block is at ct[kLen - kLen%16 - 16],
   // i.e. the one that holds a full 16 bytes adjacent to the |residue|-byte
-  // tail. After CS1 swap, that's the block originally produced last.
-  // CS1 puts the just-encrypted block at ct[len-residue-16 .. len-residue].
+  // tail. After CS3 swap, that's the block originally produced last.
+  // CS3 puts the just-encrypted block at ct[len-residue-16 .. len-residue].
   size_t residue = kLen % 16;
   EXPECT_EQ(Bytes(ct.data() + kLen - residue - 16, 16), Bytes(iv, 16));
 }
