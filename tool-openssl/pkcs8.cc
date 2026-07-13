@@ -260,6 +260,11 @@ bool pkcs8Tool(const args_list_t &args) {
                               ? EVP_aes_256_cbc()
                               : EVP_get_cipherbyname(v2_cipher.c_str()));
 
+    if (!nocrypt && cipher == nullptr) {
+      fprintf(stderr, "Unsupported PKCS#8 cipher: %s\n", v2_cipher.c_str());
+      return false;
+    }
+
     result = (outform == "PEM")
                  ? PEM_write_bio_PKCS8PrivateKey(
                        out.get(), pkey.get(), cipher,
