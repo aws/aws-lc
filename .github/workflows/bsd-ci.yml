@@ -42,7 +42,7 @@ jobs:
         with:
           submodules: "recursive"
       - name: Prepare VM
-        uses: cross-platform-actions/action@v1.2.0
+        uses: cross-platform-actions/action@v1.3.0
         env:
           AWS_LC_GO_TEST_TIMEOUT: 90m
           AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: OpenBSD
-        uses: cross-platform-actions/action@b6a4c35056840d53fa18aa198844fe4b43e3163d
+        uses: cross-platform-actions/action@e120e6112fefae4967d557130d549c4cb277ebe9
         env:
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
@@ -134,7 +134,7 @@ jobs:
         with:
           submodules: "recursive"
       - name: Prepare VM
-        uses: cross-platform-actions/action@b6a4c35056840d53fa18aa198844fe4b43e3163d
+        uses: cross-platform-actions/action@e120e6112fefae4967d557130d549c4cb277ebe9
         env:
           AWS_LC_GO_TEST_TIMEOUT: 90m
           GOFLAGS: "-buildvcs=false"
