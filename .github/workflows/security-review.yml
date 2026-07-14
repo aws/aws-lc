@@ -3,6 +3,9 @@ name: security-review
 on:
   pull_request_target:
     branches: ["*"]
+    types: [opened, synchronize, reopened, closed] # Note: closed is needed to update internal tracking state
+  push:
+    branches: [main]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -10,7 +13,24 @@ permissions:
   contents: read
 
 jobs:
+  # no-op step so that we can enable security-review / report as a required PR check
+  register-check:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Register check name on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state="success" \
+            -f context="security-review / report" \
+            -f description="No PR to review"
+
   authorize:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     outputs:
       approval-env: ${{ steps.authorization.outputs.approval-env }}
@@ -21,6 +41,7 @@ jobs:
         uses: ./.github/actions/check-authorization
 
   execute:
+    if: github.event_name != 'push'
     needs: authorize
     runs-on: ubuntu-latest
     environment: ${{ needs.authorize.outputs.approval-env }}
@@ -28,6 +49,7 @@ jobs:
       id-token: write
       contents: read
       statuses: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,49 +65,71 @@ jobs:
       - name: Get AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: arn:aws:iam::547182295936:role/SecurityReview-GitHubOIDCRole #TODO: migrate to production account
+          role-to-assume: arn:aws:iam::620771051181:role/SecurityReview-GitHubOIDCRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
           aws-region: us-west-2
 
-      - name: Start CodeBuild and wait for completion
+      - name: Run review
         id: codebuild
         shell: bash
         env:
           PROJECT_NAME: SecurityReview-${{ github.event.repository.name }}
           SOURCE_VERSION: "pr/${{ github.event.pull_request.number }}"
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_STATE: ${{ github.event.pull_request.merged && 'merged' || github.event.pull_request.state }}
         run: |
-          # Start the build
+          ENV_OVERRIDES=$(jq -nc \
+            --arg title "$PR_TITLE" --arg author "$PR_AUTHOR" --arg state "$PR_STATE" \
+            '[{name:"PR_TITLE",value:$title,type:"PLAINTEXT"},{name:"PR_AUTHOR",value:$author,type:"PLAINTEXT"},{name:"PR_STATE",value:$state,type:"PLAINTEXT"}]')
+
           BUILD_ID=$(aws codebuild start-build \
-            --project-name "${PROJECT_NAME}" \
-            --source-version "${SOURCE_VERSION}" \
-            --environment-variables-override "name=PR_NUMBER,value=${PR_NUMBER},type=PLAINTEXT" \
+            --project-name "$PROJECT_NAME" \
+            --source-version "$SOURCE_VERSION" \
+            --environment-variables-override "$ENV_OVERRIDES" \
             --query 'build.id' --output text)
 
-          # Wait for completion
-          while STATUS=$(aws codebuild batch-get-builds --ids "${BUILD_ID}" --query 'builds[0].buildStatus' --output text); [[ "$STATUS" == "IN_PROGRESS" ]]; do
+          while STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" \
+            --query 'builds[0].buildStatus' --output text); [[ "$STATUS" == "IN_PROGRESS" ]]; do
             sleep 30
           done
 
-          if [[ "$STATUS" != "SUCCEEDED" ]]; then
-            echo "blocking=skip" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          REVIEW_STATUS=$(aws codebuild batch-get-builds --ids "${BUILD_ID}" --query 'builds[0].exportedEnvironmentVariables[?name==`REVIEW_STATUS`].value' --output text)
-          echo "blocking=$([[ "$REVIEW_STATUS" == "FAIL" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          REVIEW_STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" \
+            --query 'builds[0].exportedEnvironmentVariables[?name==`REVIEW_STATUS`].value' --output text)
+            
+          echo "review_status=$REVIEW_STATUS" >> "$GITHUB_OUTPUT"
 
       - name: Update commit status
-        if: always() && steps.codebuild.outputs.blocking != 'skip'
-        shell: bash
+        if: always() && github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
-          STATUS_URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
-          REPORT_URL: https://d28bfvmis1skm5.cloudfront.net/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}.html
-          BLOCKING: ${{ steps.codebuild.outputs.blocking }}
+          REVIEW_STATUS: ${{ steps.codebuild.outputs.review_status }}
         run: |
-          STATE=$([[ "$BLOCKING" == "true" ]] && echo "failure" || echo "success")
-          curl -sS -X POST \
-            -H "Authorization: token ${GH_TOKEN}" \
-            "${STATUS_URL}" \
-            -d "{\"state\":\"${STATE}\",\"context\":\"security-review / report\",\"target_url\":\"${REPORT_URL}\"}"
+          if [[ "$REVIEW_STATUS" == "PASS" ]]; then
+            STATE="success"
+          elif [[ "$REVIEW_STATUS" == "BLOCKING" ]]; then
+            STATE="failure"
+          else
+            STATE="error"
+          fi
+          ARGS=(-f state="$STATE" -f context="security-review / report")
+          if [[ "$STATE" != "error" ]]; then
+            ARGS+=(-f target_url="https://d225oy8drgbol2.cloudfront.net/${{ github.event.repository.name }}/findings.html?pr=${{ github.event.pull_request.number }}")
+          else
+            ARGS+=(-f description="Review did not complete successfully")
+          fi
+          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" "${ARGS[@]}"
+
+      - name: Post review comment
+        if: always() && github.event.action != 'closed' && (steps.codebuild.outputs.review_status == 'PASS' || steps.codebuild.outputs.review_status == 'BLOCKING')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[].body' | grep -q "security-review-comment"; then
+            gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -f body="<!-- security-review-comment -->
+          🔒 **Security Review** — [View Report](https://d225oy8drgbol2.cloudfront.net/${{ github.event.repository.name }}/findings.html?pr=${{ github.event.pull_request.number }})
+
+          Please review before merging."
+          fi
