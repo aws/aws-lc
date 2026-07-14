@@ -140,6 +140,11 @@ bool pkeyTool(const args_list_t &args) {
   }
 
   // Set up output BIO
+  // Set restrictive permissions when writing private keys to file
+  if (!pubout && !pubin && !out_path.empty()) {
+    SetUmaskForPrivateKey();
+  }
+
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
