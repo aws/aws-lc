@@ -42,6 +42,12 @@
 // to the non-"_alt" (generic) variant, which runs on every ARMv8 CPU. On
 // x86_64, OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX which
 // disables s2n-bignum entirely, so this header is not reached (see #3319).
+//
+// Under OPENSSL_SMALL, only the curve25519 selectors are defined: the EC
+// implementations that use the P-256/P-384/P-521 selectors (p256-nistz.c,
+// p384.c, p521.c) are compiled out entirely in that configuration (ec.c
+// dispatches those curves to fiat-crypto / generic Montgomery instead), and
+// the corresponding s2n-bignum assembly is dropped from the build.
 
 #define S2NBIGNUM_KSQR_16_32_TEMP_NWORDS 24
 #define S2NBIGNUM_KMUL_16_32_TEMP_NWORDS 32
@@ -49,58 +55,6 @@
 #define S2NBIGNUM_KMUL_32_64_TEMP_NWORDS 96
 
 #if defined(OPENSSL_SMALL)
-
-// OPENSSL_SMALL: compile-time pinning to the universally-compatible variant.
-// The dropped variant's assembly is not compiled (see CMakeLists.txt), so each
-// selector must reference only the pinned symbol.
-//
-// Only aarch64 is handled here. On x86_64, OPENSSL_SMALL implies
-// MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX (see #3319), which prevents s2n-bignum
-// from being compiled at all -- so this code is unreachable on x86_64.
-
-static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]) {
-  p256_montjscalarmul(res, scalar, point);
-}
-
-static inline void bignum_deamont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
-  bignum_deamont_p384(z, x);
-}
-
-static inline void bignum_montmul_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]) {
-  bignum_montmul_p384(z, x, y);
-}
-
-static inline void bignum_montsqr_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
-  bignum_montsqr_p384(z, x);
-}
-
-static inline void bignum_tomont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
-  bignum_tomont_p384(z, x);
-}
-
-static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]) {
-  p384_montjdouble(p3, p1);
-}
-
-static inline void p384_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]) {
-  p384_montjscalarmul(res, scalar, point);
-}
-
-static inline void bignum_mul_p521_selector(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]) {
-  bignum_mul_p521(z, x, y);
-}
-
-static inline void bignum_sqr_p521_selector(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]) {
-  bignum_sqr_p521(z, x);
-}
-
-static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]) {
-  p521_jdouble(p3, p1);
-}
-
-static inline void p521_jscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]) {
-  p521_jscalarmul(res, scalar, point);
-}
 
 static inline void curve25519_x25519_byte_selector(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32], const uint8_t point[S2N_BIGNUM_STATIC 32]) {
   curve25519_x25519_byte(res, scalar, point);

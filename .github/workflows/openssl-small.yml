@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 # Validates the OPENSSL_SMALL build: it must shrink a statically-linked
 # consumer binary and must still pass the full test suite.
 #
@@ -17,21 +20,30 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
-  # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
-  # default build, measured on the tests/binary-size consumer. Measured at ~37%
-  # on x86_64 Linux (with AVX-512 disabled via MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX);
-  # threshold set conservatively below that with margin for compiler/platform
-  # variance.
-  EXPECTED_REDUCTION_PERCENT: 15
 permissions:
   contents: read
 
 jobs:
   size-reduction:
     if: github.repository_owner == 'aws'
-    name: OPENSSL_SMALL size reduction (x86_64 Linux)
-    runs-on: ubuntu-latest
+    name: OPENSSL_SMALL size reduction (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
+        # default build, measured on the tests/binary-size consumer.
+        #
+        # - x86_64: measured at ~37% (s2n-bignum is disabled entirely via the
+        #   OPENSSL_SMALL -> MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication,
+        #   see #3319); threshold set conservatively below that.
+        # - aarch64: the reduction comes from dropping the unreachable EC
+        #   s2n-bignum objects (P-256/P-384/P-521, all variants) and the
+        #   curve25519 _alt variants; threshold not yet calibrated, set low.
+        include:
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 15 }
+          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 3 }
     steps:
       - name: Install dependencies
         run: |
@@ -51,6 +63,8 @@ jobs:
             -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF -DOPENSSL_SMALL=ON
           cmake --build build-small --target crypto
       - name: Link consumer against each libcrypto and compare
+        env:
+          EXPECTED_REDUCTION_PERCENT: ${{ matrix.expected_reduction_percent }}
         run: |
           set -euo pipefail
           common="-O2 -I include -ffunction-sections -fdata-sections"
@@ -67,7 +81,7 @@ jobs:
           fi
           reduction=$(( (size_default - size_small) * 100 / size_default ))
           {
-            echo "## OPENSSL_SMALL static-link size"
+            echo "## OPENSSL_SMALL static-link size (${{ matrix.name }})"
             echo ""
             echo "| Build | Consumer binary |"
             echo "|-------|-----------------|"
@@ -90,8 +104,8 @@ jobs:
       fail-fast: false
       matrix:
         # x86_64 covers both compilers; aarch64 is the platform where the
-        # s2n-bignum variant pinning is the sole size mechanism (on x86_64,
-        # OPENSSL_SMALL disables s2n-bignum entirely via
+        # s2n-bignum removal and curve25519 variant pinning are the size
+        # mechanism (on x86_64, OPENSSL_SMALL disables s2n-bignum entirely via
         # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX), so it is covered on both compilers
         # too.
         include:

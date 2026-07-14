@@ -326,10 +326,21 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     endif()
   endif()
 
-  # Under OPENSSL_SMALL on aarch64, pin each s2n-bignum operation to the
-  # non-_alt (generic) variant and drop the _alt (wide-multiplier) form to save
-  # binary size. This mirrors the compile-time pinning in
-  # third_party/s2n-bignum/s2n-bignum_aws-lc.h.
+  # Under OPENSSL_SMALL on aarch64, drop the s2n-bignum code that becomes
+  # unreachable:
+  #
+  # - All EC (P-256/P-384/P-521) files, both non-_alt and _alt variants and
+  #   their helpers: the EC implementations that call them (p256-nistz.c,
+  #   p384.c, p521.c) are compiled out entirely under OPENSSL_SMALL. ec.c
+  #   dispatches P-256 to the fiat-crypto implementation (p256.c) and
+  #   P-384/P-521 to the generic Montgomery method instead.
+  # - The curve25519 _alt (wide-multiplier) variants: curve25519 is the only
+  #   remaining s2n-bignum selector user under OPENSSL_SMALL, and it is pinned
+  #   to the non-_alt variant at compile time (see
+  #   third_party/s2n-bignum/s2n-bignum_aws-lc.h).
+  #
+  # The fastmul/generic files (used by RSA/BN Montgomery arithmetic) and the
+  # sha3 files (used by keccak1600.c) remain reachable and are kept.
   #
   # On x86_64, OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX (see
   # #3319), which makes the enclosing condition false -- s2n-bignum is not
@@ -337,15 +348,39 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
   if(OPENSSL_SMALL)
     if(ARCH STREQUAL "aarch64")
       list(REMOVE_ITEM BCM_ASM_SOURCES
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul.S
         ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p256/bignum_montinv_p256.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_add_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_sub_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_neg_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
         ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
         ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_nonzero_6.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_littleendian_6.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble.S
         ${S2N_BIGNUM_DIR}/p384/p384_montjdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul.S
         ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montinv_p384.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_add_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sub_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_neg_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
         ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
         ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_tolebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_fromlebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble.S
         ${S2N_BIGNUM_DIR}/p521/p521_jdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul.S
         ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_inv_p521.S
         ${S2N_BIGNUM_DIR}/curve25519/bignum_madd_n25519_alt.S
         ${S2N_BIGNUM_DIR}/curve25519/edwards25519_decode_alt.S
         ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase_alt.S

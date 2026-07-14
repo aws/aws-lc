@@ -29,7 +29,8 @@ static int do_sha256(void) {
 }
 
 static int do_aes_256_gcm(void) {
-  uint8_t key[32] = {0}, nonce[12] = {0}, in[32] = {0}, out[64];
+  uint8_t key[32] = {0}, nonce[12] = {0}, in[32] = {0};
+  uint8_t out[sizeof(in) + EVP_AEAD_MAX_OVERHEAD];
   size_t out_len = 0;
   EVP_AEAD_CTX *ctx = EVP_AEAD_CTX_new(EVP_aead_aes_256_gcm(), key, sizeof(key),
                                        EVP_AEAD_DEFAULT_TAG_LENGTH);
