@@ -7,8 +7,7 @@
 #include <openssl/mem.h>
 #include <openssl/modes.h>
 
-#include "internal.h"
-#include "../../internal.h"
+#include "../internal.h"
 
 // AES Ciphertext Stealing (CTS), CS1 / RFC 2040 variant.
 //
@@ -28,7 +27,10 @@
 size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              cbc128_f cbc) {
-  assert(key != NULL && ivec != NULL);
+  GUARD_PTR(in);
+  GUARD_PTR(out);
+  GUARD_PTR(key);
+  GUARD_PTR(ivec);
 
   size_t residue = 0;
   uint8_t tmp[16];
@@ -37,7 +39,6 @@ size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  assert(in != NULL && out != NULL);
   assert(!buffers_alias(in, len, out, len));
 
   if ((residue = len % 16) == 0) {
@@ -66,7 +67,10 @@ size_t CRYPTO_cts128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 size_t CRYPTO_cts128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              cbc128_f cbc) {
-  assert(key != NULL && ivec != NULL);
+  GUARD_PTR(in);
+  GUARD_PTR(out);
+  GUARD_PTR(key);
+  GUARD_PTR(ivec);
 
   size_t residue = 0;
   uint8_t tmp[32];
@@ -75,7 +79,6 @@ size_t CRYPTO_cts128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  assert(in != NULL && out != NULL);
   assert(!buffers_alias(in, len, out, len));
 
   if ((residue = len % 16) == 0) {

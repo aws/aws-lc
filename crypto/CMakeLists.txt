@@ -374,6 +374,7 @@ add_library(
   bytestring/unicode.c
   chacha/chacha.c
   cipher_extra/cipher_extra.c
+  cipher_extra/cts.c
   cipher_extra/derive_key.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
@@ -773,6 +774,7 @@ if(BUILD_TESTING)
     chacha/chacha_test.cc
     cipher_extra/aead_test.cc
     cipher_extra/cipher_test.cc
+    cipher_extra/cts_test.cc
     compiler_test.cc
     conf/conf_test.cc
     console/console_test.cc
@@ -810,7 +812,6 @@ if(BUILD_TESTING)
     fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/ml_kem/ml_kem_test.cc
-    fipsmodule/modes/cts_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
     fipsmodule/pbkdf/pbkdf_test.cc

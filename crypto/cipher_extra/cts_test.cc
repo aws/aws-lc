@@ -10,11 +10,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../test/test_util.h"
-#include "internal.h"
+#include "../test/test_util.h"
 
-
-namespace {
 
 // Each case fixes |key|, the all-zero IV, and the |plaintext| / |ciphertext|
 // pair produced by encrypting under CBC-CS1 (the OpenSSL legacy convention).
@@ -323,7 +320,7 @@ TEST(CTS128Test, AgreesWithRawCBCOnExactBlockMultiple) {
 
 TEST(CTS128Test, IVUpdatedToLastFullCipherBlock) {
   // After encryption the |ivec| should be advanced to the (post-swap) penultimate
-  // ciphertext block, matching OpenSSL's behavior — that's how krb5 chains CTS
+  // ciphertext block, matching OpenSSL's behavior -- that's how krb5 chains CTS
   // calls together for streamed input.
   uint8_t key_bytes[16];
   ASSERT_TRUE(RAND_bytes(key_bytes, sizeof(key_bytes)));
@@ -345,5 +342,3 @@ TEST(CTS128Test, IVUpdatedToLastFullCipherBlock) {
   size_t residue = kLen % 16;
   EXPECT_EQ(Bytes(ct.data() + kLen - residue - 16, 16), Bytes(iv, 16));
 }
-
-}  // namespace
