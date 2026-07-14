@@ -4,11 +4,12 @@
 # Validates the OPENSSL_SMALL build: it must shrink a statically-linked
 # consumer binary and must still pass the full test suite.
 #
-# The size-reduction job is intentionally advisory (continue-on-error) because
-# the exact reduction depends on platform/compiler and the threshold below has
-# not been finely calibrated yet. Once the observed numbers are stable, drop
-# `continue-on-error` and/or mark this job as a required check in branch
-# protection. The small-tests jobs are real correctness gates and should block.
+# The size-reduction job is intentionally advisory (continue-on-error). The
+# thresholds are calibrated from measured CI runs (see the matrix below), but
+# have not yet been observed across enough runs to trust as a blocking gate.
+# Once the numbers prove stable, drop `continue-on-error` and/or mark this job
+# as a required check in branch protection. The small-tests jobs are real
+# correctness gates and should block.
 name: OPENSSL_SMALL
 on:
   push:
@@ -33,17 +34,19 @@ jobs:
       fail-fast: false
       matrix:
         # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
-        # default build, measured on the tests/binary-size consumer.
+        # default build, measured on the tests/binary-size consumer. Thresholds
+        # are set conservatively below the measured values (first CI runs of
+        # this workflow) to allow for compiler/runner variance:
         #
-        # - x86_64: measured at ~37% (s2n-bignum is disabled entirely via the
-        #   OPENSSL_SMALL -> MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication,
-        #   see #3319); threshold set conservatively below that.
-        # - aarch64: the reduction comes from dropping the unreachable EC
-        #   s2n-bignum objects (P-256/P-384/P-521, all variants) and the
-        #   curve25519 _alt variants; threshold not yet calibrated, set low.
+        # - x86_64: measured 55%. OPENSSL_SMALL disables s2n-bignum entirely
+        #   via the MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication (#3319).
+        # - aarch64: measured 31%. The default build links both variants of
+        #   every s2n-bignum EC operation (~500 KB), the nistz256 table
+        #   (~150 KB), and the P-384/P-521 implementations and tables; the
+        #   OPENSSL_SMALL build has none of these.
         include:
-          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 15 }
-          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 3 }
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 40 }
+          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 20 }
     steps:
       - name: Install dependencies
         run: |
