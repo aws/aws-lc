@@ -217,6 +217,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   if (!out_path.empty()) {
+    SetUmaskForPrivateKey();
     out.reset(BIO_new_file(out_path.c_str(), "wb"));
   } else {
     out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
