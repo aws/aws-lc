@@ -2028,6 +2028,31 @@ int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
                                MakeConstSpan(groups, num_groups));
 }
 
+static bool ssl_check_group_ids(Array<uint16_t> *out_group_ids,
+                                Span<const uint16_t> group_ids) {
+  for (uint16_t group_id : group_ids) {
+    if (ssl_group_id_to_nid(group_id) == NID_undef) {
+      return false;
+    }
+  }
+  return out_group_ids->CopyFrom(group_ids);
+}
+
+int SSL_CTX_set1_group_ids(SSL_CTX *ctx, const uint16_t *group_ids,
+                           size_t num_group_ids) {
+  return ssl_check_group_ids(&ctx->supported_group_list,
+                             MakeConstSpan(group_ids, num_group_ids));
+}
+
+int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
+                       size_t num_group_ids) {
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_check_group_ids(&ssl->config->supported_group_list,
+                             MakeConstSpan(group_ids, num_group_ids));
+}
+
 static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
                                  const char *str) {
   // Count the number of groups in the list.

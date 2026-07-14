@@ -134,6 +134,7 @@ SSL_CTX_set1_chain AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_curves AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_curves_list AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_ech_keys AWS_LC_1.0 PUBLIC
+SSL_CTX_set1_group_ids AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_groups AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_groups_list AWS_LC_1.0 PUBLIC
 SSL_CTX_set1_param AWS_LC_1.0 PUBLIC
@@ -483,6 +484,7 @@ SSL_set1_curves AWS_LC_1.0 PUBLIC
 SSL_set1_curves_list AWS_LC_1.0 PUBLIC
 SSL_set1_delegated_credential AWS_LC_1.0 PUBLIC
 SSL_set1_ech_config_list AWS_LC_1.0 PUBLIC
+SSL_set1_group_ids AWS_LC_1.0 PUBLIC
 SSL_set1_groups AWS_LC_1.0 PUBLIC
 SSL_set1_groups_list AWS_LC_1.0 PUBLIC
 SSL_set1_host AWS_LC_1.0 PUBLIC
