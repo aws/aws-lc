@@ -832,6 +832,28 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
   EXPECT_EQ(TLS1_2_VERSION, SSL_version(client.get()));
 }
 
+// Test that the handshake succeeds when the early callback leaves stale errors
+// on the error queue
+TEST(SSLTest, EarlyCallbackStaleErrorOnQueue) {
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(client_ctx);
+
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx.get(),
+      [](const SSL_CLIENT_HELLO *) -> ssl_select_cert_result_t {
+        // Simulate a PEM parsing loop leaving a stale error on the queue.
+        OPENSSL_PUT_ERROR(PEM, PEM_R_NO_START_LINE);
+        return ssl_select_cert_success;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+}
+
 TEST(SSLTest, SetVersion) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
