@@ -49,7 +49,7 @@ constexpr uint32_t kConcurrent = 1 << 12;
 // kCanCopy indicates that the AEAD supports duplicating an initialized
 // |EVP_AEAD_CTX| with |EVP_AEAD_CTX_copy|. AEADs whose state owns external
 // resources (e.g. the TLS record-layer AEADs) do not set this.
-constexpr uint32_t kCanCopy = 1 << 12;
+constexpr uint32_t kCanCopy = 1 << 13;
 
 // RequiresADLength encodes an AD length requirement into flags.
 constexpr uint32_t RequiresADLength(size_t length) {
