@@ -29,10 +29,10 @@ typedef void (*cbc128_f)(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16], int enc);
 
 // CRYPTO_cts128_encrypt encrypts |len| bytes from |in| to |out| in CBC
-// Ciphertext Stealing (CTS) mode (CS1 / RFC 2040 convention: the last two
-// ciphertext blocks are unconditionally swapped, and an exact-block-multiple
-// input is handled as a 16-byte residue). The IV is updated in |ivec|. |key|
-// must have been set up for encryption.
+// Ciphertext Stealing (CTS) mode (CS3 / NIST SP 800-38A Addendum convention:
+// the last two ciphertext blocks are unconditionally swapped, and an
+// exact-block-multiple input is handled as a 16-byte residue). The IV is
+// updated in |ivec|. |key| must have been set up for encryption.
 //
 // Returns the number of bytes written, equal to |len|, on success. Returns
 // zero if |len| <= 16; for inputs of one block or fewer use plain CBC.
