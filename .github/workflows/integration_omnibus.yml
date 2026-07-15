@@ -456,7 +456,24 @@ jobs:
       # that are purely informational and breakages are accepted.
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
-        run: touch integration-failure.txt
+
+        env:
+          INTEGRATION_RUNNER_COMMAND: ${{ matrix.run }}
+        run: |
+          # Read each line so multi-line run blocks (e.g. bind9 runs pip install
+          # before invocating the runner) still resolve to the runner script + its version.
+          while read -r script_path version _; do
+            [[ "$script_path" == *_integration.sh ]] && break
+          done <<< "$INTEGRATION_RUNNER_COMMAND"
+
+          # Strip the path, run_ prefix, and _integration.sh suffix to get the
+          # bare integration name (e.g. .../run_postgres_integration.sh -> postgres).
+          integration=${script_path##*/}              # .../run_postgres_integration.sh -> run_postgres_integration.sh
+          integration=${integration#run_}             # -> postgres_integration.sh
+          integration=${integration%_integration.sh}  # -> postgres
+          version=${version//[\'\"]/}  # strip quotes (e.g. pyopenssl '25.3.0')
+          echo -e "${integration}\t${version}" > integration-failure.txt
+
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
@@ -509,7 +526,7 @@ jobs:
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: touch integration-failure.txt
+        run: echo -e "python\t${{ matrix.version }}" > integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
@@ -552,7 +569,7 @@ jobs:
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
       - name: Mark integration failure
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: touch integration-failure.txt
+        run: echo -e "ruby\t${{ matrix.version }}" > integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
