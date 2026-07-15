@@ -117,6 +117,26 @@ if(ARCH STREQUAL "ppc64le")
   )
 endif()
 
+# Under OPENSSL_SMALL, the P-256 nistz implementation (p256-nistz.c) is
+# compiled out entirely -- ec.c dispatches P-256 to the fiat-crypto
+# implementation (p256.c) instead -- leaving the nistz assembly fully
+# unreferenced on both x86_64 and aarch64. Drop it from the build. (The
+# large precomputed base-point table is in p256-nistz-table.h, included
+# from C code that is already gated, not in the assembly.)
+if(OPENSSL_SMALL)
+  if(ARCH STREQUAL "x86_64")
+    list(REMOVE_ITEM BCM_ASM_SOURCES
+      p256-x86_64-asm.${ASM_EXT}
+      p256_beeu-x86_64-asm.${ASM_EXT}
+    )
+  elseif(ARCH STREQUAL "aarch64")
+    list(REMOVE_ITEM BCM_ASM_SOURCES
+      p256-armv8-asm.${ASM_EXT}
+      p256_beeu-armv8-asm.${ASM_EXT}
+    )
+  endif()
+endif()
+
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
   perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
