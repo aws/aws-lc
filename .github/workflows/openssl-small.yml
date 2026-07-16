@@ -1,0 +1,135 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+# Validates the OPENSSL_SMALL build: it must shrink a statically-linked
+# consumer binary and must still pass the full test suite.
+#
+# The size-reduction job is intentionally advisory (continue-on-error). The
+# thresholds are calibrated from measured CI runs (see the matrix below), but
+# have not yet been observed across enough runs to trust as a blocking gate.
+# Once the numbers prove stable, drop `continue-on-error` and/or mark this job
+# as a required check in branch protection. The small-tests jobs are real
+# correctness gates and should block.
+name: OPENSSL_SMALL
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
+jobs:
+  size-reduction:
+    if: github.repository_owner == 'aws'
+    name: OPENSSL_SMALL size reduction (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
+        # default build, measured on the tests/binary-size consumer. Thresholds
+        # are set conservatively below the measured values (first CI runs of
+        # this workflow) to allow for compiler/runner variance:
+        #
+        # - x86_64: measured 55%. OPENSSL_SMALL disables s2n-bignum entirely
+        #   via the MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication (#3319).
+        # - aarch64: measured 31%. The default build links both variants of
+        #   every s2n-bignum EC operation (~500 KB), the nistz256 table
+        #   (~150 KB), and the P-384/P-521 implementations and tables; the
+        #   OPENSSL_SMALL build has none of these.
+        include:
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 40 }
+          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 20 }
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake clang ninja-build golang
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v6
+      - name: Build libcrypto.a (default)
+        run: |
+          cmake -GNinja -B build-default -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF
+          cmake --build build-default --target crypto
+      - name: Build libcrypto.a (OPENSSL_SMALL)
+        run: |
+          cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF -DOPENSSL_SMALL=ON
+          cmake --build build-small --target crypto
+      - name: Link consumer against each libcrypto and compare
+        env:
+          EXPECTED_REDUCTION_PERCENT: ${{ matrix.expected_reduction_percent }}
+        run: |
+          set -euo pipefail
+          common="-O2 -I include -ffunction-sections -fdata-sections"
+          libs="-lpthread -ldl -lm -Wl,--gc-sections -s"
+          clang $common tests/binary-size/main.c build-default/crypto/libcrypto.a $libs -o consumer-default
+          clang $common tests/binary-size/main.c build-small/crypto/libcrypto.a   $libs -o consumer-small
+          echo "Sanity: run the OPENSSL_SMALL-linked consumer"
+          ./consumer-small
+          size_default=$(stat -c %s consumer-default)
+          size_small=$(stat -c %s consumer-small)
+          if [ "$size_default" -le 0 ]; then
+            echo "ERROR: default consumer binary has zero size"
+            exit 1
+          fi
+          reduction=$(( (size_default - size_small) * 100 / size_default ))
+          {
+            echo "## OPENSSL_SMALL static-link size (${{ matrix.name }})"
+            echo ""
+            echo "| Build | Consumer binary |"
+            echo "|-------|-----------------|"
+            echo "| Default | $(numfmt --to=iec "$size_default") (${size_default} B) |"
+            echo "| OPENSSL_SMALL | $(numfmt --to=iec "$size_small") (${size_small} B) |"
+            echo "| **Reduction** | **${reduction}%** |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "default=${size_default} small=${size_small} reduction=${reduction}%"
+          if [ "$reduction" -lt "$EXPECTED_REDUCTION_PERCENT" ]; then
+            echo "FAIL: expected >= ${EXPECTED_REDUCTION_PERCENT}% reduction, got ${reduction}%"
+            exit 1
+          fi
+          echo "PASS: ${reduction}% reduction meets the ${EXPECTED_REDUCTION_PERCENT}% threshold"
+
+  small-tests:
+    if: github.repository_owner == 'aws'
+    name: Tests (OPENSSL_SMALL, ${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # x86_64 covers both compilers; aarch64 is the platform where the
+        # s2n-bignum removal and curve25519 variant pinning are the size
+        # mechanism (on x86_64, OPENSSL_SMALL disables s2n-bignum entirely via
+        # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX), so it is covered on both compilers
+        # too.
+        include:
+          - { name: "x86_64 gcc",    runner: ubuntu-latest,    cc: gcc,   cxx: g++ }
+          - { name: "x86_64 clang",  runner: ubuntu-latest,    cc: clang, cxx: clang++ }
+          - { name: "aarch64 gcc",   runner: ubuntu-24.04-arm, cc: gcc,   cxx: g++ }
+          - { name: "aarch64 clang", runner: ubuntu-24.04-arm, cc: clang, cxx: clang++ }
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake ninja-build clang gcc g++
+          echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.18'
+      - uses: actions/checkout@v6
+      - name: Build and run tests (OPENSSL_SMALL)
+        run: |
+          cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DOPENSSL_SMALL=ON
+          cmake --build build-small --target all
+          cmake --build build-small --target run_tests

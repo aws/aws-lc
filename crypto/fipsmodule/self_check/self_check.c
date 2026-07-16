@@ -1485,12 +1485,12 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_decapsulate_no_self_test(shared_secret, &shared_secret_len, kDecapCiphertext,
                                           kDecapDK) ||
       !check_test(kDecapSharedSecret, shared_secret, sizeof(kDecapSharedSecret),
-                  "ML-KEM decapsulate non-rejection") ||
+                  "ML-KEM-decapsulate-non-rejection") ||
       ml_kem_512_decapsulate_no_self_test(
           shared_secret, &shared_secret_len, kDecapCiphertextRejection, kDecapDK) ||
       !check_test(kDecapSharedSecretRejection, shared_secret,
                   sizeof(kDecapSharedSecretRejection),
-                  "ML-KEM decapsulate implicit rejection")) {
+                  "ML-KEM-decapsulate-rejection")) {
     goto err;
   }
 
