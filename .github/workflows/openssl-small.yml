@@ -114,6 +114,10 @@ jobs:
           fi
           echo "PASS: ${reduction}% reduction meets the ${EXPECTED_REDUCTION_PERCENT}% threshold"
       - name: Measure GC-enabled consumer and EVP key-parsing anchor
+        # Intentionally single-toolchain (clang + GNU ld on Linux, like the
+        # whole job): the matrix legs vary only by architecture, so the
+        # reported numbers are per-arch, not a gcc cross-check. The anchor
+        # cost is a reachability property and ~compiler-independent anyway.
         run: |
           set -euo pipefail
           # Link against the section-GC library build (the aws-lc-rs-like
