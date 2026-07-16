@@ -983,7 +983,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := copyFile(*outputDir, filepath.Join(filepath.Dir(*configFlag), "doc.css")); err != nil {
+	if err := copyFile(*outputDir, filepath.Join(configDir, "doc.css")); err != nil {
 		fmt.Printf("Failed to copy static file: %s\n", err)
 		os.Exit(1)
 	}

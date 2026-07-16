@@ -28,7 +28,12 @@ concurrency:
 
 jobs:
   validate-api-docs:
+    concurrency:
+      group: api-docs-validate-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -41,6 +46,10 @@ jobs:
     if: github.event_name == 'push'
     needs: validate-api-docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
