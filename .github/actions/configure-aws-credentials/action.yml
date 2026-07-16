@@ -8,6 +8,10 @@ inputs:
     description: "The target IAM role to assume using the OIDC role credentials"
     required: true
     default: 'AwsLcGitHubActionStandardRole'
+  oidcRole:
+    description: "The OIDC entry role to assume from the GitHub token before chaining to the target role"
+    required: false
+    default: 'AwsLcGitHubActionsOidcRole'
 runs:
   using: 'composite'
   steps:
@@ -19,7 +23,7 @@ runs:
     - name: Retrieve OIDC Role Credentials
       uses: aws-actions/configure-aws-credentials@v5
       with:
-        role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
+        role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/${{ inputs.oidcRole }}
         role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
     - name: Retrieve GitHub Actions Role Credentials
       uses: aws-actions/configure-aws-credentials@v5
