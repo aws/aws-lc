@@ -124,9 +124,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			}
 
 			zeros := make([]byte, hashLen)
-			earlySecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, psk, zeros)
+			earlySecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, psk, zeros)
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			hashedToClientHello, err := m.Transact(group.HashFunc, 1, clientHello)
@@ -163,9 +163,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("HKDFExpandLabel operation failed: %s", err)
 			}
 
-			handshakeSecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, dhe, derivedSecret[0])
+			handshakeSecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, dhe, derivedSecret[0])
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			clientHandshakeTrafficSecret, err := m.Transact("HKDFExpandLabel/"+group.HashFunc, 1, hashLenBytes, handshakeSecret[0], []byte("c hs traffic"), hashedToServerHello[0])
@@ -185,9 +185,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("HKDFExpandLabel operation failed: %s", err)
 			}
 
-			masterSecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, zeros, derivedSecret[0])
+			masterSecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, zeros, derivedSecret[0])
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			clientAppTrafficSecret, err := m.Transact("HKDFExpandLabel/"+group.HashFunc, 1, hashLenBytes, masterSecret[0], []byte("c ap traffic"), hashedToServerFinished[0])
