@@ -18,14 +18,23 @@
  */
 
 
-/*************************************************
- * Name:        mld_poly_caddq_avx2_asm
- *
- * Description: For all coefficients of in/out polynomial add Q if
- *              coefficient is negative.
- *
- * Arguments:   - int32_t *r: pointer to input/output polynomial
- **************************************************/
+/*yaml
+  Name: poly_caddq_avx2_asm
+  Description: x86_64 AVX2 conditional addition of q to each coefficient.
+    For all coefficients of the in/out polynomial, add Q if the coefficient
+    is negative.
+  Signature: void mld_poly_caddq_avx2_asm(int32_t *r)
+  ABI:
+    Architecture: x86_64
+    CallingConvention: SysV
+    Features: [AVX2]
+    rdi:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t *r
+      description: Input/output polynomial (256 x int32_t)
+*/
 
 #include "_internal_s2n_bignum_x86_att.h"
 
