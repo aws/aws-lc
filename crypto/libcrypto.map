@@ -1384,6 +1384,7 @@ AWS_LC_1.0 {
     EVP_hpke_chacha20_poly1305;
     EVP_hpke_hkdf_sha256;
     EVP_hpke_x25519_hkdf_sha256;
+    EVP_keccak256;
     EVP_marshal_digest_algorithm;
     EVP_marshal_private_key;
     EVP_marshal_private_key_v2;
@@ -1471,6 +1472,7 @@ AWS_LC_1.0 {
     ISSUING_DIST_POINT_new;
     KBKDF_ctr_hmac;
     Keccak1600_Squeeze;
+    Keccak256;
     MD4;
     MD4_Final;
     MD4_Init;
