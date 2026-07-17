@@ -79,24 +79,48 @@ MLD_MUST_CHECK_RETURN_VALUE
 unsigned mld_rej_uniform_avx2(int32_t *r,
                               const uint8_t buf[MLD_AVX2_REJ_UNIFORM_BUFLEN]);
 
+#define mld_rej_uniform_avx2_asm MLD_NAMESPACE(rej_uniform_avx2_asm)
+MLD_MUST_CHECK_RETURN_VALUE
+unsigned mld_rej_uniform_avx2_asm(
+    int32_t *r, const uint8_t buf[MLD_AVX2_REJ_UNIFORM_BUFLEN],
+    const uint8_t table[256][8]);
+
 #if !defined(MLD_CONFIG_NO_KEYPAIR_API)
 #define mld_rej_uniform_eta2_avx2 MLD_NAMESPACE(mld_rej_uniform_eta2_avx2)
 MLD_MUST_CHECK_RETURN_VALUE
 unsigned mld_rej_uniform_eta2_avx2(
     int32_t *r, const uint8_t buf[MLD_AVX2_REJ_UNIFORM_ETA2_BUFLEN]);
 
+#define mld_rej_uniform_eta2_avx2_asm MLD_NAMESPACE(rej_uniform_eta2_avx2_asm)
+MLD_MUST_CHECK_RETURN_VALUE
+unsigned mld_rej_uniform_eta2_avx2_asm(
+    int32_t *r, const uint8_t buf[MLD_AVX2_REJ_UNIFORM_ETA2_BUFLEN],
+    const uint8_t table[256][8]);
+
 #define mld_rej_uniform_eta4_avx2 MLD_NAMESPACE(mld_rej_uniform_eta4_avx2)
 MLD_MUST_CHECK_RETURN_VALUE
 unsigned mld_rej_uniform_eta4_avx2(
     int32_t *r, const uint8_t buf[MLD_AVX2_REJ_UNIFORM_ETA4_BUFLEN]);
+
+#define mld_rej_uniform_eta4_avx2_asm MLD_NAMESPACE(rej_uniform_eta4_avx2_asm)
+MLD_MUST_CHECK_RETURN_VALUE
+unsigned mld_rej_uniform_eta4_avx2_asm(
+    int32_t *r, const uint8_t buf[MLD_AVX2_REJ_UNIFORM_ETA4_BUFLEN],
+    const uint8_t table[256][8]);
 #endif /* !MLD_CONFIG_NO_KEYPAIR_API */
 
 #if !defined(MLD_CONFIG_NO_SIGN_API)
 #define mld_poly_decompose_32_avx2 MLD_NAMESPACE(mld_poly_decompose_32_avx2)
 void mld_poly_decompose_32_avx2(int32_t *a1, int32_t *a0);
 
+#define mld_poly_decompose_32_avx2_asm MLD_NAMESPACE(poly_decompose_32_avx2_asm)
+void mld_poly_decompose_32_avx2_asm(int32_t *a1, int32_t *a0);
+
 #define mld_poly_decompose_88_avx2 MLD_NAMESPACE(mld_poly_decompose_88_avx2)
 void mld_poly_decompose_88_avx2(int32_t *a1, int32_t *a0);
+
+#define mld_poly_decompose_88_avx2_asm MLD_NAMESPACE(poly_decompose_88_avx2_asm)
+void mld_poly_decompose_88_avx2_asm(int32_t *a1, int32_t *a0);
 #endif /* !MLD_CONFIG_NO_SIGN_API */
 
 #define mld_poly_caddq_avx2_asm MLD_NAMESPACE(poly_caddq_avx2_asm)
@@ -114,20 +138,36 @@ __contract__(
 #define mld_poly_use_hint_32_avx2 MLD_NAMESPACE(mld_poly_use_hint_32_avx2)
 void mld_poly_use_hint_32_avx2(int32_t *a, const int32_t *h);
 
+#define mld_poly_use_hint_32_avx2_asm MLD_NAMESPACE(poly_use_hint_32_avx2_asm)
+void mld_poly_use_hint_32_avx2_asm(int32_t *a, const int32_t *h);
+
 #define mld_poly_use_hint_88_avx2 MLD_NAMESPACE(mld_poly_use_hint_88_avx2)
 void mld_poly_use_hint_88_avx2(int32_t *a, const int32_t *h);
+
+#define mld_poly_use_hint_88_avx2_asm MLD_NAMESPACE(poly_use_hint_88_avx2_asm)
+void mld_poly_use_hint_88_avx2_asm(int32_t *a, const int32_t *h);
 #endif /* !MLD_CONFIG_NO_VERIFY_API */
 
 #define mld_poly_chknorm_avx2 MLD_NAMESPACE(mld_poly_chknorm_avx2)
 MLD_MUST_CHECK_RETURN_VALUE
 int mld_poly_chknorm_avx2(const int32_t *a, int32_t B);
 
+#define mld_poly_chknorm_avx2_asm MLD_NAMESPACE(poly_chknorm_avx2_asm)
+MLD_MUST_CHECK_RETURN_VALUE
+int mld_poly_chknorm_avx2_asm(const int32_t *a, int32_t B);
+
 #if !defined(MLD_CONFIG_NO_SIGN_API) || !defined(MLD_CONFIG_NO_VERIFY_API)
 #define mld_polyz_unpack_17_avx2 MLD_NAMESPACE(mld_polyz_unpack_17_avx2)
 void mld_polyz_unpack_17_avx2(int32_t *r, const uint8_t *a);
 
+#define mld_polyz_unpack_17_avx2_asm MLD_NAMESPACE(polyz_unpack_17_avx2_asm)
+void mld_polyz_unpack_17_avx2_asm(int32_t *r, const uint8_t *a);
+
 #define mld_polyz_unpack_19_avx2 MLD_NAMESPACE(mld_polyz_unpack_19_avx2)
 void mld_polyz_unpack_19_avx2(int32_t *r, const uint8_t *a);
+
+#define mld_polyz_unpack_19_avx2_asm MLD_NAMESPACE(polyz_unpack_19_avx2_asm)
+void mld_polyz_unpack_19_avx2_asm(int32_t *r, const uint8_t *a);
 #endif /* !MLD_CONFIG_NO_SIGN_API || !MLD_CONFIG_NO_VERIFY_API */
 
 #define mld_pointwise_avx2_asm MLD_NAMESPACE(pointwise_avx2_asm)

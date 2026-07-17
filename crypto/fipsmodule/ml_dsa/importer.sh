@@ -78,22 +78,26 @@ mkdir $SRC
 find $TMP/mldsa/src -maxdepth 1 -type f -exec cp {} $SRC \;
 
 # Copy x86_64 backend
-# We import all assembly (.S) files and shared headers/constants from the
-# upstream x86_64 backend. The AVX2 C-intrinsic .c files (rej_uniform,
-# decompose, use_hint, chknorm, polyz_unpack) are excluded — their includes
-# are stripped from the BCM below.
+# The x86_64 backend is now full assembly (like aarch64): we wholesale-copy
+# all headers, shared constants (.c) and assembly (.S) files from the upstream
+# x86_64 backend. All imported .S files must have verified proofs in
+# s2n-bignum.
 #
-# The upstream meta.h advertises both assembly and C-intrinsic operations.
-# Rather than modify it, we keep a hand-maintained replacement in
-# ../mldsa_x86_64_meta.h (referenced via MLD_CONFIG_ARITH_BACKEND_FILE) that
-# declares only the assembly-backed subset. Upstream meta.h is not copied.
+# NOTE: The 10 parameter-set/API-gated .S files (rej_uniform{,_eta2,_eta4},
+# poly_decompose_{32,88}, poly_use_hint_{32,88}, poly_chknorm,
+# polyz_unpack_{17,19}) and their rej_uniform_table.c were applied by hand
+# against the current pin (08d40f94), which predates them upstream — the next
+# pin bump will regenerate them automatically via this wholesale copy.
+#
+# The wholesale copy also brings in the upstream meta.h, but it is left
+# dormant: the build references our hand-maintained ../mldsa_x86_64_meta.h
+# via MLD_CONFIG_ARITH_BACKEND_FILE, which declares only the assembly-backed
+# subset. (Switching to upstream meta.h requires the newer sys.h AVX2
+# capability macro rename, which is out of scope for this import.)
 mkdir -p $SRC/native/x86_64/src
 cp $TMP/mldsa/src/native/api.h $SRC/native
-cp $TMP/mldsa/src/native/x86_64/src/arith_native_x86_64.h $SRC/native/x86_64/src
-cp $TMP/mldsa/src/native/x86_64/src/consts.h $SRC/native/x86_64/src
-cp $TMP/mldsa/src/native/x86_64/src/consts.c $SRC/native/x86_64/src
-# NOTE: all imported .S files must have verified proofs in s2n-bignum.
-cp $TMP/mldsa/src/native/x86_64/src/*.S $SRC/native/x86_64/src
+cp $TMP/mldsa/src/native/x86_64/*.h $SRC/native/x86_64
+cp $TMP/mldsa/src/native/x86_64/src/* $SRC/native/x86_64/src
 
 # Copy aarch64 backend
 # Unlike x86_64, the aarch64 backend is 100% assembly — no C-intrinsic .c

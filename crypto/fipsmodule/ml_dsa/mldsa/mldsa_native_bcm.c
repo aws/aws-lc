@@ -78,6 +78,7 @@
 #endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 #include "native/x86_64/src/consts.c"
+#include "native/x86_64/src/rej_uniform_table.c"
 #endif /* MLD_SYS_X86_64 */
 #endif /* MLD_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
