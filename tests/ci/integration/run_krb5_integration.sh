@@ -82,10 +82,10 @@ function krb5_build() {
 
 # Run krb5's crypto unit tests. The full `make check` from the top of the tree
 # spins up KDCs and exercises end-to-end Kerberos flows, which requires Python
-# and additional CI plumbing. We build the test binaries then run the subset
-# that exercises the AWS-LC backend (AES-CTS, HMAC, SHA-2, PRF, key derivation)
-# without relying on Camellia (which AWS-LC doesn't implement) or DES
-# behaviours that differ from stock OpenSSL.
+# and additional CI plumbing. We build the test binaries then run the crypto
+# test subset, which exercises the AWS-LC backend (AES-CTS, HMAC, SHA-2, PRF,
+# key derivation) alongside krb5's built-in primitives (Camellia is served by
+# the built-in implementation when building against AWS-LC).
 function krb5_run_tests() {
   pushd "${KRB5_SRC_FOLDER}/src/lib/crypto"
 
@@ -94,11 +94,6 @@ function krb5_run_tests() {
   # test runtime.
   ln -sf "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" "../../lib/libcrypto.so"
   ln -sf "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so.1" "../../lib/libcrypto.so.1"
-
-  # The camellia-test binary is a no-op (exits 0) when Camellia is disabled,
-  # but `make check` compares its stdout to a golden file. Truncate the golden
-  # file so the comparison succeeds.
-  : > crypto_tests/camellia-expect-vt.txt
 
   make -j "${NUM_CPU_THREADS}" check
   popd

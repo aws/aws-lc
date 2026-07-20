@@ -1,0 +1,33 @@
+From: AWS-LC integration CI <aws-lc-ci@amazon.com>
+Subject: [PATCH] Use built-in Camellia when building against AWS-LC
+
+AWS-LC does not implement Camellia, so krb5's OpenSSL Camellia
+enc_provider (guarded on K5_OPENSSL_CAMELLIA) cannot link against it.
+Rather than disabling the Camellia enctypes, select krb5's own built-in
+Camellia implementation (K5_BUILTIN_CAMELLIA) when building against
+AWS-LC, detected via OPENSSL_IS_AWSLC from <openssl/opensslv.h> (already
+included by crypto_int.h under CRYPTO_OPENSSL). The built-in sources in
+lib/crypto/builtin/ are always compiled on Unix, so this keeps all
+Camellia enctypes and CMAC checksums fully functional with no changes to
+the crypto test suite.
+
+This mirrors the approach suggested by the krb5 maintainers:
+https://github.com/krb5/krb5/pull/1533#issuecomment-4974308880
+
+---
+diff --git a/src/lib/crypto/krb/crypto_int.h b/src/lib/crypto/krb/crypto_int.h
+index 3629616..fb30d1f 100644
+--- a/src/lib/crypto/krb/crypto_int.h
++++ b/src/lib/crypto/krb/crypto_int.h
+@@ -62,7 +62,11 @@
+ #endif
+
+ #define K5_OPENSSL_AES
++#ifdef OPENSSL_IS_AWSLC
++#define K5_BUILTIN_CAMELLIA
++#else
+ #define K5_OPENSSL_CAMELLIA
++#endif
+ #define K5_OPENSSL_DES
+ #define K5_OPENSSL_HMAC
+ #define K5_OPENSSL_MD5
