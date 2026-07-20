@@ -8,6 +8,14 @@
 // workflow builds this twice -- against a default libcrypto and against one
 // built with OPENSSL_SMALL -- and compares the resulting binary sizes.
 //
+// When AWSLC_SIZE_CHECK_EVP_PARSE is defined, the consumer additionally
+// marshals and parses an EVP public key. Parsing any EVP key references the
+// asn1_evp_pkey_methods[] table (crypto/evp_extra/p_methods.c), which
+// transitively retains every linked-in key type's ASN.1 machinery --
+// including, at present, all of ML-KEM and ML-DSA -- even under
+// --gc-sections. The workflow builds this variant too and reports the size
+// delta, quantifying what key-parsing consumers inherit.
+//
 // It is intentionally small and standalone (compiled directly by the workflow,
 // not part of the main CMake build).
 
@@ -21,6 +29,12 @@
 #include <openssl/ecdsa.h>
 #include <openssl/nid.h>
 #include <openssl/sha.h>
+
+#if defined(AWSLC_SIZE_CHECK_EVP_PARSE)
+#include <openssl/bytestring.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
+#endif
 
 static int do_sha256(void) {
   uint8_t in[64], out[SHA256_DIGEST_LENGTH];
@@ -71,12 +85,51 @@ static int do_ed25519(void) {
   return ED25519_verify(msg, sizeof(msg), sig, public_key);
 }
 
+#if defined(AWSLC_SIZE_CHECK_EVP_PARSE)
+static int do_evp_parse(void) {
+  uint8_t public_key[32], private_key[64];
+  ED25519_keypair(public_key, private_key);
+  EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL,
+                                               public_key, sizeof(public_key));
+  if (pkey == NULL) {
+    return 0;
+  }
+  // Marshal to a DER SubjectPublicKeyInfo and parse it back.
+  // |EVP_parse_public_key| is the call that anchors the full EVP method
+  // table (see the file comment).
+  int ok = 0;
+  uint8_t *der = NULL;
+  size_t der_len;
+  CBB cbb;
+  if (CBB_init(&cbb, 64) && EVP_marshal_public_key(&cbb, pkey) &&
+      CBB_finish(&cbb, &der, &der_len)) {
+    CBS cbs;
+    CBS_init(&cbs, der, der_len);
+    EVP_PKEY *parsed = EVP_parse_public_key(&cbs);
+    ok = parsed != NULL && CBS_len(&cbs) == 0 &&
+         EVP_PKEY_cmp(pkey, parsed) == 1;
+    EVP_PKEY_free(parsed);
+  } else {
+    CBB_cleanup(&cbb);
+  }
+  OPENSSL_free(der);
+  EVP_PKEY_free(pkey);
+  return ok;
+}
+#endif
+
 int main(void) {
   if (!do_sha256() || !do_aes_256_gcm() || !do_ecdsa_p256() || !do_x25519() ||
       !do_ed25519()) {
     fprintf(stderr, "crypto self-check failed\n");
     return 1;
   }
+#if defined(AWSLC_SIZE_CHECK_EVP_PARSE)
+  if (!do_evp_parse()) {
+    fprintf(stderr, "EVP parse self-check failed\n");
+    return 1;
+  }
+#endif
   printf("ok\n");
   return 0;
 }
