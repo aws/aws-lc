@@ -437,6 +437,32 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 // to |out| and returns |out| on success and NULL on failure.
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
+
+/*
+ * FIPS202 APIs manage the internal input/output buffer on top of the Keccak1600
+ * API layer. They are the shared padding-and-buffering primitives underneath the
+ * SHA3 and SHAKE APIs below. They are also reused, outside the FIPS module, by
+ * the (non-FIPS) Keccak-256 implementation in crypto/keccak/keccak.c, which
+ * sets up the context with the original Keccak padding byte rather than a FIPS
+ * 202 one. FIPS202_Init deliberately accepts only FIPS 202 padding characters and
+ * is therefore kept private to this module.
+ */
+
+// FIPS202_Reset zeroes the Keccak state and buffer of |ctx| and returns it to
+// the absorb phase.
+void FIPS202_Reset(KECCAK1600_CTX *ctx);
+
+// FIPS202_Update absorbs |len| bytes from |data| into |ctx|, buffering any
+// trailing partial block. It returns 1 on success and 0 if |ctx| is no longer
+// in a phase that accepts input. |len| must be non-zero (checked by callers).
+int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
+
+// FIPS202_Finalize applies the |ctx->pad| padding to the final block and absorbs
+// it. It must be called once to conclude the absorb phase, after which the caller
+// squeezes the digest via |Keccak1600_Squeeze|. It returns 1 on success and 0 if
+// |ctx| is no longer in a phase that accepts input.
+int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx);
+
 /*
  * SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
  *
