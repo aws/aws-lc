@@ -984,6 +984,7 @@ AWS_LC_1.0 {
     ERR_set_mark;
     EVP_AEAD_CTX_aead;
     EVP_AEAD_CTX_cleanup;
+    EVP_AEAD_CTX_copy;
     EVP_AEAD_CTX_deserialize_state;
     EVP_AEAD_CTX_free;
     EVP_AEAD_CTX_get_aead_id;
