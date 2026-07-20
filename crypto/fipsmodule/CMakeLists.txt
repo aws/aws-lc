@@ -34,6 +34,7 @@ if(ARCH STREQUAL "x86_64")
     ghash-ssse3-x86_64.${ASM_EXT}
     ghash-x86_64.${ASM_EXT}
     md5-x86_64.${ASM_EXT}
+    md5-avx512.${ASM_EXT}
     p256-x86_64-asm.${ASM_EXT}
     p256_beeu-x86_64-asm.${ASM_EXT}
     rdrand-x86_64.${ASM_EXT}
@@ -145,6 +146,7 @@ if(PERL_EXECUTABLE)
   perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
   perlasm(md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
   perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
+  perlasm(md5-avx512.${ASM_EXT} md5/asm/md5-avx512.pl)
   perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
   perlasm(p256_beeu-x86_64-asm.${ASM_EXT} ec/asm/p256_beeu-x86_64-asm.pl)
   perlasm(p256-armv8-asm.${ASM_EXT} ec/asm/p256-armv8-asm.pl)
