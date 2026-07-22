@@ -197,3 +197,43 @@ jobs:
             -DBUILD_SHARED_LIBS=0 -DOPENSSL_SMALL=ON
           cmake --build build-small --target all
           cmake --build build-small --target run_tests
+
+  small-tests-windows:
+    if: github.repository_owner == 'aws'
+    # Windows/x86_64 assembles the generated .asm through NASM. OPENSSL_SMALL
+    # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, which compiles out the whole
+    # body of the AVX-512-only .asm files; NASM errors on an object with no
+    # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). The Linux legs use
+    # gas, which tolerates empty objects, so they cannot catch this -- hence a
+    # dedicated Windows leg (#3355).
+    name: Tests (OPENSSL_SMALL, x86_64 Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.18'
+      - uses: actions/checkout@v6
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        id: clang
+        with:
+          # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
+          version: 20
+          env: true
+      - name: Setup CMake
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: Ninja
+          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
+          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
+          options: |
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TYPE=Release
+            OPENSSL_SMALL=ON
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests

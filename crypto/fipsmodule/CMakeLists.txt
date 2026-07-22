@@ -137,6 +137,20 @@ if(OPENSSL_SMALL)
   endif()
 endif()
 
+# These AVX-512-only files assemble to an empty translation unit once
+# MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX excludes their bodies, which NASM (win64)
+# rejects (nasm.us bug 3392738) -- breaking OPENSSL_SMALL on Windows. Their
+# symbols are only called from equally-gated C, so just drop them (#3355).
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX AND (ARCH STREQUAL "x86_64"))
+  list(REMOVE_ITEM BCM_ASM_SOURCES
+    aesni-gcm-avx512.${ASM_EXT}
+    aesni-xts-avx512.${ASM_EXT}
+    rsaz-2k-avx512.${ASM_EXT}
+    rsaz-3k-avx512.${ASM_EXT}
+    rsaz-4k-avx512.${ASM_EXT}
+  )
+endif()
+
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
   perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
