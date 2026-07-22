@@ -78,7 +78,8 @@
 #endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 #include "native/x86_64/src/consts.c"
-#endif /* MLD_SYS_X86_64 */
+#include "native/x86_64/src/rej_uniform_table.c"
+#endif
 #endif /* MLD_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
 
@@ -97,9 +98,6 @@
  * Undefine macros from MLD_CONFIG_PARAMETER_SET-specific files
  */
 /* mldsa/mldsa_native.h */
-#undef CRYPTO_BYTES
-#undef CRYPTO_PUBLICKEYBYTES
-#undef CRYPTO_SECRETKEYBYTES
 #undef MLDSA44_BYTES
 #undef MLDSA44_CRHBYTES
 #undef MLDSA44_PUBLICKEYBYTES
@@ -134,19 +132,15 @@
 #undef MLD_API_CONCAT
 #undef MLD_API_CONCAT_
 #undef MLD_API_CONCAT_UNDERSCORE
-#undef MLD_API_LEGACY_CONFIG
 #undef MLD_API_MUST_CHECK_RETURN_VALUE
 #undef MLD_API_NAMESPACE
+#undef MLD_API_NAMESPACE_PREFIX
 #undef MLD_API_QUALIFIER
-#undef MLD_CONFIG_API_CONSTANTS_ONLY
-#undef MLD_CONFIG_API_NAMESPACE_PREFIX
-#undef MLD_CONFIG_API_NO_SUPERCOP
-#undef MLD_CONFIG_API_PARAMETER_SET
-#undef MLD_CONFIG_API_QUALIFIER
 #undef MLD_DOMAIN_SEPARATION_MAX_BYTES
 #undef MLD_ERR_FAIL
 #undef MLD_ERR_OUT_OF_MEMORY
 #undef MLD_ERR_RNG_FAIL
+#undef MLD_ERR_SIGNING_PAUSED
 #undef MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED
 #undef MLD_H
 #undef MLD_MAX3_
@@ -185,11 +179,6 @@
 #undef MLD_TOTAL_ALLOC_87_PK_FROM_SK
 #undef MLD_TOTAL_ALLOC_87_SIGN
 #undef MLD_TOTAL_ALLOC_87_VERIFY
-#undef crypto_sign
-#undef crypto_sign_keypair
-#undef crypto_sign_open
-#undef crypto_sign_signature
-#undef crypto_sign_verify
 /* mldsa/src/common.h */
 #undef MLD_ADD_PARAM_SET
 #undef MLD_ALLOC
@@ -202,20 +191,11 @@
 #undef MLD_COMMON_H
 #undef MLD_CONCAT
 #undef MLD_CONCAT_
-#undef MLD_CONTEXT_PARAMETERS_0
-#undef MLD_CONTEXT_PARAMETERS_1
-#undef MLD_CONTEXT_PARAMETERS_2
-#undef MLD_CONTEXT_PARAMETERS_3
-#undef MLD_CONTEXT_PARAMETERS_4
-#undef MLD_CONTEXT_PARAMETERS_5
-#undef MLD_CONTEXT_PARAMETERS_6
-#undef MLD_CONTEXT_PARAMETERS_7
-#undef MLD_CONTEXT_PARAMETERS_8
-#undef MLD_CONTEXT_PARAMETERS_9
 #undef MLD_EMPTY_CU
 #undef MLD_ERR_FAIL
 #undef MLD_ERR_OUT_OF_MEMORY
 #undef MLD_ERR_RNG_FAIL
+#undef MLD_ERR_SIGNING_PAUSED
 #undef MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED
 #undef MLD_EXTERNAL_API
 #undef MLD_FIPS202X4_HEADER_FILE
@@ -297,6 +277,7 @@
 #undef MLDSA_SK_TR_OFFSET
 #undef MLDSA_TAU
 #undef MLDSA_TRBYTES
+#undef MLD_MAX_KAPPA
 #undef MLD_PARAMS_H
 /* mldsa/src/poly_kl.h */
 #undef MLD_POLYETA_UNPACK_LOWER_BOUND
@@ -409,10 +390,8 @@
 #undef MLD_PREHASH_SHAKE_256
 #undef MLD_SIGN_H
 #undef mld_prepare_domain_separation_prefix
-#undef mld_sign
 #undef mld_sign_keypair
 #undef mld_sign_keypair_internal
-#undef mld_sign_open
 #undef mld_sign_pk_from_sk
 #undef mld_sign_signature
 #undef mld_sign_signature_extmu
@@ -429,6 +408,22 @@
 /*
  * Undefine macros from MLD_CONFIG_PARAMETER_SET-generic files
  */
+/* mldsa/src/context.h */
+#undef MLD_CONTEXT_H
+#undef MLD_CONTEXT_PARAMETERS_0
+#undef MLD_CONTEXT_PARAMETERS_1
+#undef MLD_CONTEXT_PARAMETERS_2
+#undef MLD_CONTEXT_PARAMETERS_3
+#undef MLD_CONTEXT_PARAMETERS_4
+#undef MLD_CONTEXT_PARAMETERS_5
+#undef MLD_CONTEXT_PARAMETERS_6
+#undef MLD_CONTEXT_PARAMETERS_7
+#undef MLD_CONTEXT_PARAMETERS_8
+#undef MLD_CONTEXT_PARAMETERS_9
+#undef MLD_CONTEXT_UNUSED
+#undef mld_sign_attempt
+#undef mld_sign_finish
+#undef mld_sign_resume
 /* mldsa/src/ct.h */
 #undef MLD_CT_H
 #undef MLD_USE_ASM_VALUE_BARRIER
@@ -509,6 +504,8 @@
 #undef MLD_MUST_CHECK_RETURN_VALUE
 #undef MLD_RESTRICT
 #undef MLD_STATIC_TESTABLE
+#undef MLD_SYSV_ABI
+#undef MLD_SYSV_ABI_SUPPORTED
 #undef MLD_SYS_AARCH64
 #undef MLD_SYS_AARCH64_EB
 #undef MLD_SYS_APPLE
@@ -633,16 +630,16 @@
 #undef mld_pointwise_acc_l7_avx2_asm
 #undef mld_pointwise_avx2_asm
 #undef mld_poly_caddq_avx2_asm
-#undef mld_poly_chknorm_avx2
-#undef mld_poly_decompose_32_avx2
-#undef mld_poly_decompose_88_avx2
-#undef mld_poly_use_hint_32_avx2
-#undef mld_poly_use_hint_88_avx2
-#undef mld_polyz_unpack_17_avx2
-#undef mld_polyz_unpack_19_avx2
-#undef mld_rej_uniform_avx2
-#undef mld_rej_uniform_eta2_avx2
-#undef mld_rej_uniform_eta4_avx2
+#undef mld_poly_chknorm_avx2_asm
+#undef mld_poly_decompose_32_avx2_asm
+#undef mld_poly_decompose_88_avx2_asm
+#undef mld_poly_use_hint_32_avx2_asm
+#undef mld_poly_use_hint_88_avx2_asm
+#undef mld_polyz_unpack_17_avx2_asm
+#undef mld_polyz_unpack_19_avx2_asm
+#undef mld_rej_uniform_avx2_asm
+#undef mld_rej_uniform_eta2_avx2_asm
+#undef mld_rej_uniform_eta4_avx2_asm
 #undef mld_rej_uniform_table
 /* mldsa/src/native/x86_64/src/consts.h */
 #undef MLD_AVX2_BACKEND_DATA_OFFSET_8XDIV

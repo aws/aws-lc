@@ -905,5 +905,4 @@ void mld_polyz_unpack(mld_poly *r, const uint8_t a[MLDSA_POLYZ_PACKEDBYTES])
 #undef mld_poly_use_hint_c
 #undef mld_polyz_unpack_c
 #undef MLD_POLY_UNIFORM_ETA_NBLOCKS
-#undef MLD_POLY_UNIFORM_ETA_NBLOCKS
 #undef MLD_POLY_UNIFORM_GAMMA1_NBLOCKS

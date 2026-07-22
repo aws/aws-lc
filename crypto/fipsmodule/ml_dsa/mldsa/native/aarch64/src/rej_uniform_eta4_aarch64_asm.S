@@ -4,6 +4,38 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: rej_uniform_eta4_aarch64_asm
+  Description: AArch64 rejection sampling of eta=4 secret coefficients
+  Signature: uint64_t mld_rej_uniform_eta4_aarch64_asm(int32_t r[256], const uint8_t *buf, unsigned buflen, const uint8_t table[4096])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output buffer (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: x2
+      permissions: read-only
+      c_parameter: const uint8_t *buf
+      description: Input buffer
+    x2:
+      type: scalar
+      c_parameter: unsigned buflen
+      description: Length of input buffer (must be a multiple of 8)
+      test_with: 272  # MLD_AARCH64_REJ_UNIFORM_ETA4_BUFLEN
+    x3:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const uint8_t table[4096]
+      description: Lookup table (4096 x uint8_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*
