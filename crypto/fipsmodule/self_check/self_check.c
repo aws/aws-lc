@@ -2804,6 +2804,44 @@ static OPENSSL_NOINLINE int boringssl_self_test_fast(void) {
     goto err;
   }
 
+  // AES-KWP (Key Wrap with Padding, RFC 5649) wrap KAT. The key and plaintext
+  // are ACVP-AES-KWP sample vectors (tgId 3, tcId 211 from
+  // util/fipstools/acvp/acvptool/test/vectors/ACVP-AES-KWP.bz2); the expected
+  // ciphertext is the matching answer in
+  // util/fipstools/acvp/acvptool/test/expected/ACVP-AES-KWP.bz2.
+  static const uint8_t kAESKWPWrapKey[16] = {
+      0xeb, 0xdf, 0xd8, 0x55, 0xa8, 0xbf, 0xf8, 0x97,
+      0x6b, 0x0c, 0x93, 0x63, 0x9e, 0x19, 0x29, 0x16,
+  };
+  static const uint8_t kAESKWPWrapPlaintext[32] = {
+      0x03, 0x59, 0x42, 0x96, 0xaa, 0x84, 0xa6, 0x0e, 0x27, 0x72, 0xf8, 0x21,
+      0xc0, 0x42, 0xea, 0xb8, 0xe4, 0x33, 0xe7, 0xf7, 0x40, 0x0b, 0x88, 0x02,
+      0x8b, 0x5f, 0x12, 0xab, 0xe1, 0x91, 0xa9, 0xd5,
+  };
+  static const uint8_t kAESKWPWrapCiphertext[40] = {
+      0xd2, 0xe3, 0x8b, 0xdb, 0x7b, 0x1e, 0xcf, 0xcf, 0xf0, 0x85, 0xdd, 0xe6,
+      0x90, 0xc5, 0x47, 0xbf, 0xd2, 0xf1, 0xb5, 0xaa, 0x9f, 0x06, 0x33, 0xa2,
+      0xad, 0xf4, 0xe8, 0x9a, 0x70, 0x40, 0xe8, 0xe5, 0x96, 0xfe, 0x3b, 0x17,
+      0xbf, 0xd2, 0x58, 0x2e,
+  };
+  if (AES_set_encrypt_key(kAESKWPWrapKey, 8 * sizeof(kAESKWPWrapKey),
+                          &aes_key) != 0) {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  if (!AES_wrap_key_padded(&aes_key, output, &out_len, sizeof(output),
+                           kAESKWPWrapPlaintext,
+                           sizeof(kAESKWPWrapPlaintext)) ||
+      out_len != sizeof(kAESKWPWrapCiphertext)) {
+    AWS_LC_FIPS_failure(
+        "AES-KWP-wrap KAT failed because AES_wrap_key_padded failed");
+    goto err;
+  }
+  if (!check_test(kAESKWPWrapCiphertext, output,
+                  sizeof(kAESKWPWrapCiphertext), "AES-KWP-wrap")) {
+    goto err;
+  }
+
   // SHA-1 KAT
   static const uint8_t kSHA1Input[16] = {
       0x13, 0x2f, 0xd9, 0xba, 0xd5, 0xc1, 0x82, 0x62,

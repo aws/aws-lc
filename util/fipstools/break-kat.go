@@ -20,6 +20,7 @@ var (
 		"AES-GCM-encrypt":                  "8fcc4099808e75caaff582898848a88d808b55ab4e9370797d940be8cc1d7884",
 		"AES-GCM-decrypt":                  "35f3058f875760ff09d3120f70c4bc9ed7a86872e13452202176f7371ae04faae1dd391920f5d13953d896785994823c",
 		"AES-KWP-unwrap":                   "b81e47e31d3ba7745cc86be13280a6739eb40c80f3cf8dc6f7e6a66395767d33",
+		"AES-KWP-wrap":                     "d2e38bdb7b1ecfcff085dde690c547bfd2f1b5aa9f0633a2adf4e89a7040e8e596fe3b17bfd2582e",
 		"DRBG":                             "c4da0740d505f1ee280b95e58c4931ac6de846a0152fbb4a3f174cf4787a4f1a40c2b50babe14aae530be5886d910a27",
 		"DRBG-reseed":                      "c7161ca36c2309b716e9859bb96c6d49bdc8352103a18cd24ef42ec97ef46bf446eb1a4576c186e9351803763a7912fe",
 		"SHA-1":                            "132fd9bad5c1826263bafbb699f707a5",
