@@ -35,17 +35,20 @@ jobs:
       matrix:
         # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
         # default build, measured on the tests/binary-size consumer. Thresholds
-        # are set conservatively below the measured values (first CI runs of
-        # this workflow) to allow for compiler/runner variance:
+        # are set conservatively below the measured values to allow for
+        # compiler/runner variance:
         #
-        # - x86_64: measured 55%. OPENSSL_SMALL disables s2n-bignum entirely
-        #   via the MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication (#3319).
+        # - x86_64: measured 43.7% (clang -O2, x86_64 Linux). OPENSSL_SMALL
+        #   implies only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
+        #   MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so the ADX/AVX2/BMI2 code
+        #   (curve25519 s2n-bignum, RSA/DH mulx Montgomery, x4-batched Keccak)
+        #   remains in the build (#3355).
         # - aarch64: measured 31%. The default build links both variants of
         #   every s2n-bignum EC operation (~500 KB), the nistz256 table
         #   (~150 KB), and the P-384/P-521 implementations and tables; the
         #   OPENSSL_SMALL build has none of these.
         include:
-          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 40 }
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 35 }
           - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 20 }
     steps:
       - name: Install dependencies
@@ -167,11 +170,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # x86_64 covers both compilers; aarch64 is the platform where the
-        # s2n-bignum removal and curve25519 variant pinning are the size
-        # mechanism (on x86_64, OPENSSL_SMALL disables s2n-bignum entirely via
-        # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX), so it is covered on both compilers
-        # too.
+        # Both architectures need coverage: aarch64 is where the s2n-bignum
+        # P-256/P-384/P-521 removal and curve25519 variant pinning are the
+        # size mechanism; on x86_64, OPENSSL_SMALL sheds AVX-512 code and the
+        # dead P-256/P-384/P-521 s2n-bignum objects while curve25519, RSA/DH
+        # mulx Montgomery, and x4-batched Keccak stay reachable (#3355).
         include:
           - { name: "x86_64 gcc",    runner: ubuntu-latest,    cc: gcc,   cxx: g++ }
           - { name: "x86_64 clang",  runner: ubuntu-latest,    cc: clang, cxx: clang++ }
