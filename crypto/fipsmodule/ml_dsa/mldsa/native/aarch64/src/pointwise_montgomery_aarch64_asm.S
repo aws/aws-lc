@@ -2,6 +2,28 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: poly_pointwise_montgomery_aarch64_asm
+  Description: AArch64 pointwise Montgomery multiplication of two polynomials
+  Signature: void mld_poly_pointwise_montgomery_aarch64_asm(int32_t a[256], const int32_t b[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t a[256]
+      description: Input/output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t b[256]
+      description: Input polynomial (256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*
@@ -24,7 +46,7 @@ S2N_BN_SYMBOL(mldsa_poly_pointwise_montgomery_aarch64_asm):
         dup v1.4s, w3
         mov x3, #0x40               // =64
 
-Lmldsa_poly_pointwise_montgomery_loop_start:
+Lpoly_pointwise_montgomery_loop_start:
         ldr q16, [x0]
         ldr q17, [x0, #0x10]
         ldr q18, [x0, #0x20]
@@ -66,7 +88,7 @@ Lmldsa_poly_pointwise_montgomery_loop_start:
         str q19, [x0, #0x30]
         str q16, [x0], #0x40
         subs x3, x3, #0x4
-        cbnz x3, Lmldsa_poly_pointwise_montgomery_loop_start
+        cbnz x3, Lpoly_pointwise_montgomery_loop_start
         ret
         .cfi_endproc
 

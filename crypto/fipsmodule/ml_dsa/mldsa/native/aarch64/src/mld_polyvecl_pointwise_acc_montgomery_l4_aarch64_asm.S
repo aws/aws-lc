@@ -2,6 +2,34 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: polyvecl_pointwise_acc_montgomery_l4_aarch64_asm
+  Description: AArch64 pointwise multiply-accumulate of length-4 polynomial vectors
+  Signature: void mld_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm(int32_t r[256], const int32_t a[4][256], const int32_t b[4][256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t a[4][256]
+      description: Input polynomial vector a (4 x 256 x int32_t)
+    x2:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t b[4][256]
+      description: Input polynomial vector b (4 x 256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*
@@ -24,7 +52,7 @@ S2N_BN_SYMBOL(mldsa_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm):
         dup v1.4s, w3
         mov x3, #0x40               // =64
 
-Lmldsa_polyvecl_pointwise_acc_montgomery_l4_loop_start:
+Lpolyvecl_pointwise_acc_montgomery_l4_loop_start:
         ldr q17, [x1, #0x10]
         ldr q18, [x1, #0x20]
         ldr q19, [x1, #0x30]
@@ -114,7 +142,7 @@ Lmldsa_polyvecl_pointwise_acc_montgomery_l4_loop_start:
         str q19, [x0, #0x30]
         str q16, [x0], #0x40
         subs x3, x3, #0x4
-        cbnz x3, Lmldsa_polyvecl_pointwise_acc_montgomery_l4_loop_start
+        cbnz x3, Lpolyvecl_pointwise_acc_montgomery_l4_loop_start
         ret
         .cfi_endproc
 

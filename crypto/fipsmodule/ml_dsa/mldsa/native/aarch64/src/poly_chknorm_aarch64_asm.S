@@ -2,6 +2,27 @@
  * Copyright (c) The mldsa-native project authors
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+/*yaml
+  Name: poly_chknorm_aarch64_asm
+  Description: AArch64 infinity-norm bound check on polynomial coefficients
+  Signature: int mld_poly_chknorm_aarch64_asm(const int32_t a[256], int32_t B)
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t a[256]
+      description: Input polynomial (256 x int32_t)
+    x1:
+      type: scalar
+      c_parameter: int32_t B
+      description: Norm bound
+      test_with: 131072  # representative non-negative bound (1 << 17)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 
@@ -21,7 +42,7 @@ S2N_BN_SYMBOL(mldsa_poly_chknorm_aarch64_asm):
         eor v21.16b, v21.16b, v21.16b
         mov x2, #0x10               // =16
 
-Lmldsa_poly_chknorm_loop:
+Lpoly_chknorm_loop:
         ldr q1, [x0, #0x10]
         ldr q2, [x0, #0x20]
         ldr q3, [x0, #0x30]
@@ -39,7 +60,7 @@ Lmldsa_poly_chknorm_loop:
         cmge v0.4s, v0.4s, v20.4s
         orr v21.16b, v21.16b, v0.16b
         subs x2, x2, #0x1
-        b.ne Lmldsa_poly_chknorm_loop
+        b.ne Lpoly_chknorm_loop
         umaxv s21, v21.4s
         fmov w0, s21
         and w0, w0, #0x1

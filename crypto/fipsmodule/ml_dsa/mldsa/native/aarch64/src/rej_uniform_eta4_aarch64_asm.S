@@ -4,6 +4,39 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: rej_uniform_eta4_aarch64_asm
+  Description: AArch64 rejection sampling of eta=4 secret coefficients
+  Signature: uint64_t mld_rej_uniform_eta4_aarch64_asm(int32_t r[256], const uint8_t *buf, unsigned buflen, const uint8_t table[4096])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output buffer (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: x2
+      permissions: read-only
+      c_parameter: const uint8_t *buf
+      description: Input buffer
+    x2:
+      type: scalar
+      c_parameter: unsigned buflen
+      description: Length of input buffer (must be a multiple of 8)
+      test_with: 272  # MLD_AARCH64_REJ_UNIFORM_ETA4_BUFLEN
+    x3:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const uint8_t table[4096]
+      description: Lookup table (4096 x uint8_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*
@@ -37,21 +70,21 @@ S2N_BN_SYMBOL(mldsa_rej_uniform_eta4_aarch64_asm):
         mov x11, #0x0               // =0
         eor v16.16b, v16.16b, v16.16b
 
-Lmldsa_rej_uniform_eta4_initial_zero:
+Lrej_uniform_eta4_initial_zero:
         str q16, [x7], #0x40
         stur q16, [x7, #-0x30]
         stur q16, [x7, #-0x20]
         stur q16, [x7, #-0x10]
         add x11, x11, #0x20
         cmp x11, #0x100
-        b.lt Lmldsa_rej_uniform_eta4_initial_zero
+        b.lt Lrej_uniform_eta4_initial_zero
         mov x7, x8
         mov x9, #0x0                // =0
         mov x4, #0x100              // =256
 
-Lmldsa_rej_uniform_eta4_loop8:
+Lrej_uniform_eta4_loop8:
         cmp x9, x4
-        b.hs Lmldsa_rej_uniform_eta4_memory_copy
+        b.hs Lrej_uniform_eta4_memory_copy
         sub x2, x2, #0x8
         ld1 { v0.8b }, [x1], #8
         movi v26.8b, #0xf
@@ -86,15 +119,15 @@ Lmldsa_rej_uniform_eta4_loop8:
         add x12, x12, x13
         add x9, x9, x12
         cmp x2, #0x8
-        b.hs Lmldsa_rej_uniform_eta4_loop8
+        b.hs Lrej_uniform_eta4_loop8
 
-Lmldsa_rej_uniform_eta4_memory_copy:
+Lrej_uniform_eta4_memory_copy:
         cmp x9, x4
         csel x9, x9, x4, lo
         mov x11, #0x0               // =0
         mov x7, x8
 
-Lmldsa_rej_uniform_eta4_final_copy:
+Lrej_uniform_eta4_final_copy:
         ldr q16, [x7], #0x20
         ldur q18, [x7, #-0x10]
         sub v16.8h, v7.8h, v16.8h
@@ -109,7 +142,7 @@ Lmldsa_rej_uniform_eta4_final_copy:
         stur q19, [x0, #-0x10]
         add x11, x11, #0x10
         cmp x11, #0x100
-        b.lt Lmldsa_rej_uniform_eta4_final_copy
+        b.lt Lrej_uniform_eta4_final_copy
         mov x0, x9
         add sp, sp, #0x240
         .cfi_adjust_cfa_offset -0x240

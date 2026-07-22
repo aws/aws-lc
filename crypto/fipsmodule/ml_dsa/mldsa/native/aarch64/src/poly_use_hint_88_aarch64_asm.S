@@ -2,6 +2,28 @@
  * Copyright (c) The mldsa-native project authors
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+/*yaml
+  Name: poly_use_hint_88_aarch64_asm
+  Description: AArch64 hint application (alpha = (Q-1)/88)
+  Signature: void mld_poly_use_hint_88_aarch64_asm(int32_t a[256], const int32_t h[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t a[256]
+      description: Input/output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t h[256]
+      description: Hint polynomial (256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 
@@ -32,7 +54,7 @@ S2N_BN_SYMBOL(mldsa_poly_use_hint_88_aarch64_asm):
         movi v24.4s, #0x2b
         mov x3, #0x10               // =16
 
-Lmldsa_poly_use_hint_88_loop:
+Lpoly_use_hint_88_loop:
         ldr q1, [x0, #0x10]
         ldr q2, [x0, #0x20]
         ldr q3, [x0, #0x30]
@@ -94,7 +116,7 @@ Lmldsa_poly_use_hint_88_loop:
         str q19, [x0, #0x30]
         str q16, [x0], #0x40
         subs x3, x3, #0x1
-        b.ne Lmldsa_poly_use_hint_88_loop
+        b.ne Lpoly_use_hint_88_loop
         ret
         .cfi_endproc
 

@@ -1,5 +1,5 @@
 name: mlkem-native
 source: pq-code-package/mlkem-native.git
-branch: v1.1.0
-commit: d2cae2be522a67bfae26100fdb520576f1b2ef90
-imported-at: 2026-03-16T04:29:39+0000
+branch: main
+commit: 2cf613b6857ccec80b372814a0f387c8facbfea6
+imported-at: 2026-07-22T15:57:44+0100

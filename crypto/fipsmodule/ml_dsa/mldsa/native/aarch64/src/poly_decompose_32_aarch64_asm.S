@@ -2,6 +2,28 @@
  * Copyright (c) The mldsa-native project authors
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+/*yaml
+  Name: poly_decompose_32_aarch64_asm
+  Description: AArch64 coefficient decomposition (alpha = (Q-1)/32)
+  Signature: void mld_poly_decompose_32_aarch64_asm(int32_t a1[256], int32_t a0[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t a1[256]
+      description: Output high-part polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t a0[256]
+      description: Input polynomial / output low-part (256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 
@@ -31,7 +53,7 @@ S2N_BN_SYMBOL(mldsa_poly_decompose_32_aarch64_asm):
         dup v23.4s, w11
         mov x3, #0x10               // =16
 
-Lmldsa_poly_decompose_32_loop:
+Lpoly_decompose_32_loop:
         ldr q0, [x1]
         ldr q1, [x1, #0x10]
         ldr q2, [x1, #0x20]
@@ -69,7 +91,7 @@ Lmldsa_poly_decompose_32_loop:
         str q3, [x1, #0x30]
         str q0, [x1], #0x40
         subs x3, x3, #0x1
-        b.ne Lmldsa_poly_decompose_32_loop
+        b.ne Lpoly_decompose_32_loop
         ret
         .cfi_endproc
 

@@ -2,6 +2,22 @@
  * Copyright (c) The mldsa-native project authors
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+/*yaml
+  Name: poly_caddq_aarch64_asm
+  Description: AArch64 conditional addition of q to each coefficient
+  Signature: void mld_poly_caddq_aarch64_asm(int32_t a[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t a[256]
+      description: Input/output polynomial (256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 
@@ -22,7 +38,7 @@ S2N_BN_SYMBOL(mldsa_poly_caddq_aarch64_asm):
         dup v4.4s, w9
         mov x1, #0x10               // =16
 
-Lmldsa_poly_caddq_loop:
+Lpoly_caddq_loop:
         ldr q0, [x0]
         ldr q1, [x0, #0x10]
         ldr q2, [x0, #0x20]
@@ -40,7 +56,7 @@ Lmldsa_poly_caddq_loop:
         str q3, [x0, #0x30]
         str q0, [x0], #0x40
         subs x1, x1, #0x1
-        b.ne Lmldsa_poly_caddq_loop
+        b.ne Lpoly_caddq_loop
         ret
         .cfi_endproc
 

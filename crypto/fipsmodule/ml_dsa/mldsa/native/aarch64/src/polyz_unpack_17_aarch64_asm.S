@@ -4,6 +4,34 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: polyz_unpack_17_aarch64_asm
+  Description: AArch64 unpacking of 17-bit packed coefficients
+  Signature: void mld_polyz_unpack_17_aarch64_asm(int32_t r[256], const uint8_t buf[576], const uint8_t indices[64])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 576
+      permissions: read-only
+      c_parameter: const uint8_t buf[576]
+      description: Packed input bytes
+    x2:
+      type: buffer
+      size_bytes: 64
+      permissions: read-only
+      c_parameter: const uint8_t indices[64]
+      description: Permutation index table (64 x uint8_t)
+*/
+
  #include "_internal_s2n_bignum_arm.h"
 
 /*
@@ -31,7 +59,7 @@ S2N_BN_SYMBOL(mldsa_polyz_unpack_17_aarch64_asm):
         movi v30.4s, #0x2, lsl #16
         mov x9, #0x10               // =16
 
-Lmldsa_polyz_unpack_17_loop:
+Lpolyz_unpack_17_loop:
         ld1 { v0.16b, v1.16b }, [x1]
         add x1, x1, #0x14
         ld1 { v2.16b }, [x1], #16
@@ -56,7 +84,7 @@ Lmldsa_polyz_unpack_17_loop:
         str q7, [x0, #0x30]
         str q4, [x0], #0x40
         subs x9, x9, #0x1
-        b.ne Lmldsa_polyz_unpack_17_loop
+        b.ne Lpolyz_unpack_17_loop
         ret
         .cfi_endproc
 

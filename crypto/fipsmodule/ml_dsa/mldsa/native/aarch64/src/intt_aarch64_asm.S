@@ -14,13 +14,46 @@
  *   Becker, Hwang, Kannwischer, Yang, Yang
  *   https://eprint.iacr.org/2021/986
  *
+ * - [NeonNTT_Autoformalised]
+ *   Neon NTT - (Auto)formalised
+ *   Hanno Becker
+ *   https://eprint.iacr.org/2026/1223
+ *
  * - [SLOTHY_Paper]
  *   Fast and Clean: Auditable high-performance assembly via constraint solving
  *   Abdulrahman, Becker, Kannwischer, Klein
  *   https://eprint.iacr.org/2022/1303
  */
 
-/* AArch64 ML-DSA inverse NTT following @[NeonNTT] and @[SLOTHY_Paper] */
+/* AArch64 ML-DSA inverse NTT following @[NeonNTT], @[SLOTHY_Paper], and @[NeonNTT_Autoformalised] */
+
+/*yaml
+  Name: intt_aarch64_asm
+  Description: AArch64 ML-DSA inverse NTT
+  Signature: void mld_intt_aarch64_asm(int32_t r[256], const int32_t zetas_l78[384], const int32_t zetas_l123456[160])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t r[256]
+      description: Input/output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 1536
+      permissions: read-only
+      c_parameter: const int32_t zetas_l78[384]
+      description: Twiddle factors for layers 7-8 (384 x int32_t)
+    x2:
+      type: buffer
+      size_bytes: 640
+      permissions: read-only
+      c_parameter: const int32_t zetas_l123456[160]
+      description: Twiddle factors for layers 1-6 (160 x int32_t)
+*/
 
 #include "_internal_s2n_bignum_arm.h"
 
@@ -156,7 +189,7 @@ S2N_BN_SYMBOL(mldsa_intt_aarch64_asm):
         ldr q17, [x1], #0x60
         sub x4, x4, #0x2
 
-Lmldsa_intt_layer5678_start:
+Lintt_layer5678_start:
         ldr d4, [x2], #0x20
         mul v0.4s, v21.4s, v17.4s
         ldr q7, [x3, #0xa0]
@@ -230,7 +263,7 @@ Lmldsa_intt_layer5678_start:
         mul v8.4s, v19.4s, v4.s[0]
         sqrdmulh v24.4s, v21.4s, v2.4s
         subs x4, x4, #0x1
-        cbnz x4, Lmldsa_intt_layer5678_start
+        cbnz x4, Lintt_layer5678_start
         sqrdmulh v19.4s, v3.4s, v2.4s
         trn2 v0.4s, v14.4s, v26.4s
         str q15, [x3], #0x40
@@ -400,7 +433,7 @@ Lmldsa_intt_layer5678_start:
         mul v25.4s, v9.4s, v2.s[0]
         sub x4, x4, #0x1
 
-Lmldsa_intt_layer1234_start:
+Lintt_layer1234_start:
         sub v22.4s, v21.4s, v16.4s
         mls v25.4s, v12.4s, v31.s[0]
         add v12.4s, v21.4s, v16.4s
@@ -618,7 +651,7 @@ Lmldsa_intt_layer1234_start:
         sqrdmulh v8.4s, v24.4s, v0.s[3]
         mul v25.4s, v22.4s, v2.s[0]
         subs x4, x4, #0x1
-        cbnz x4, Lmldsa_intt_layer1234_start
+        cbnz x4, Lintt_layer1234_start
         mul v22.4s, v24.4s, v0.s[2]
         sqrdmulh v9.4s, v23.4s, v30.4s
         mls v25.4s, v12.4s, v31.s[0]

@@ -23,6 +23,11 @@
  * Make sure the configuration file is in the include path
  * (this is "mldsa_native_config.h" by default, or MLD_CONFIG_FILE if defined).
  *
+ * # API conventions
+ *
+ * Conventions shared by all functions below (return values, pointer validity,
+ * output buffers on error) are documented in API-CONVENTIONS.md.
+ *
  * # Multi-level builds
  *
  * This header specifies a build of mldsa-native for a fixed security level.
@@ -30,47 +35,7 @@
  * in the configuration file and include this header multiple times, setting
  * MLD_CONFIG_PARAMETER_SET accordingly for each, and #undef'ing the MLD_H
  * guard to allow multiple inclusions.
- *
- * # Legacy configuration (deprecated)
- *
- * Instead of providing the config file used for the build, you can
- * alternatively set the following configuration options prior to
- * including this header.
- *
- * This method of configuration is deprecated.
- * It will be removed in mldsa-native-v2.
- *
- * - MLD_CONFIG_API_PARAMETER_SET [required]
- *
- *   The parameter set used for the build; 44, 65, or 87.
- *
- * - MLD_CONFIG_API_NAMESPACE_PREFIX [required]
- *
- *   The namespace prefix used for the build.
- *
- *   NOTE:
- *   For a multi-level build, you must include the 44/65/87 suffixes
- *   in MLD_CONFIG_API_NAMESPACE_PREFIX.
- *
- * - MLD_CONFIG_API_NO_SUPERCOP [optional]
- *
- *   By default, this header will also expose the mldsa-native API in the
- *   SUPERCOP naming convention crypto_sign_xxx. If you don't want/need this,
- *   set MLD_CONFIG_API_NO_SUPERCOP. You must set this for a multi-level build.
- *
- * - MLD_CONFIG_API_CONSTANTS_ONLY [optional]
- *
- *   If you don't want this header to expose any function declarations,
- *   but only constants for the sizes of key material, set
- *   MLD_CONFIG_API_CONSTANTS_ONLY. In this case, you don't need to set
- *   MLD_CONFIG_API_PARAMETER_SET or MLD_CONFIG_API_NAMESPACE_PREFIX,
- *   nor include a configuration.
- *
- * - MLD_CONFIG_API_QUALIFIER [optional]
- *
- *   Qualifier to apply to external API.
- *
- ******************************************************************************/
+ */
 
 /******************************* Key sizes ************************************/
 
@@ -102,7 +67,13 @@
 #define MLDSA65_CRHBYTES MLDSA_CRHBYTES
 #define MLDSA87_CRHBYTES MLDSA_CRHBYTES
 
-/* Size of TR output in bytes (level-independent) */
+/* Size of TR in bytes (level-independent)
+ *
+ * TR = SHAKE256(pk, 64) is the hash of the public key. Callers of the
+ * external-mu API (signature_extmu / verify_extmu) that compute the message
+ * representative mu = SHAKE256(TR || M', MLDSA_CRHBYTES) themselves -- e.g. to
+ * sign or verify a message that is too large or streamed to hold in memory --
+ * need this constant to size the TR buffer. */
 #define MLDSA_TRBYTES 64
 #define MLDSA44_TRBYTES MLDSA_TRBYTES
 #define MLDSA65_TRBYTES MLDSA_TRBYTES
@@ -125,31 +96,29 @@
 /****************************** Error codes ***********************************/
 
 /* Generic failure condition */
-#define MLD_ERR_FAIL -1
+#define MLD_ERR_FAIL (-1)
 /* An allocation failed. This can only happen if MLD_CONFIG_CUSTOM_ALLOC_FREE
  * is defined and the provided MLD_CUSTOM_ALLOC can fail. */
-#define MLD_ERR_OUT_OF_MEMORY -2
+#define MLD_ERR_OUT_OF_MEMORY (-2)
 /* An rng failure occured. Might be due to insufficient entropy or
  * system misconfiguration. */
-#define MLD_ERR_RNG_FAIL -3
+#define MLD_ERR_RNG_FAIL (-3)
 /* The signing rejection-sampling loop exceeded
  * MLD_CONFIG_MAX_SIGNING_ATTEMPTS iterations without producing a valid
  * signature. With a FIPS 204 Appendix C compliant bound (>= 814) this
  * has probability < 2^-256. */
-#define MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED -4
+#define MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED (-4)
+/* Signing was paused before completing, at the request of a caller-provided
+ * MLD_CONFIG_SIGN_HOOK_ATTEMPT hook (see mldsa_native_config.h). The caller
+ * resumes by re-invoking signing with the same inputs; the attempt hook,
+ * together with MLD_CONFIG_SIGN_HOOK_RESUME, decides where to continue. */
+#define MLD_ERR_SIGNING_PAUSED (-5)
 
-/****************************** Function API **********************************/
+/********************* Namespacing and Qualifiers *****************************/
 
 #define MLD_API_CONCAT_(x, y) x##y
 #define MLD_API_CONCAT(x, y) MLD_API_CONCAT_(x, y)
 #define MLD_API_CONCAT_UNDERSCORE(x, y) MLD_API_CONCAT(MLD_API_CONCAT(x, _), y)
-
-#if !defined(MLD_CONFIG_API_PARAMETER_SET)
-/* Recommended configuration via same config file as used for the build. */
-
-/* For now, we derive the legacy API configuration MLD_CONFIG_API_XXX from
- * the config file. In mldsa-native-v2, this will be removed and we will
- * exclusively work with MLD_CONFIG_XXX. */
 
 /* You need to make sure the config file is in the include path. */
 #if defined(MLD_CONFIG_FILE)
@@ -158,52 +127,36 @@
 #include "mldsa_native_config.h"
 #endif
 
-#define MLD_CONFIG_API_PARAMETER_SET MLD_CONFIG_PARAMETER_SET
-
+/* Namespace prefix for the public API symbols. For multi-level builds, the
+ * parameter set is appended to disambiguate the security levels. */
 #if defined(MLD_CONFIG_MULTILEVEL_BUILD)
-#define MLD_CONFIG_API_NAMESPACE_PREFIX \
+#define MLD_API_NAMESPACE_PREFIX \
   MLD_API_CONCAT(MLD_CONFIG_NAMESPACE_PREFIX, MLD_CONFIG_PARAMETER_SET)
 #else
-#define MLD_CONFIG_API_NAMESPACE_PREFIX MLD_CONFIG_NAMESPACE_PREFIX
+#define MLD_API_NAMESPACE_PREFIX MLD_CONFIG_NAMESPACE_PREFIX
 #endif
-
-#if defined(MLD_CONFIG_NO_SUPERCOP)
-#define MLD_CONFIG_API_NO_SUPERCOP
-#endif
-
-#if defined(MLD_CONFIG_CONSTANTS_ONLY)
-#define MLD_CONFIG_API_CONSTANTS_ONLY
-#endif
-
-#if defined(MLD_CONFIG_EXTERNAL_API_QUALIFIER)
-#define MLD_CONFIG_API_QUALIFIER MLD_CONFIG_EXTERNAL_API_QUALIFIER
-#endif
-
-#else /* !MLD_CONFIG_API_PARAMETER_SET */
-#define MLD_API_LEGACY_CONFIG
-
-#endif /* MLD_CONFIG_API_PARAMETER_SET */
 
 #define MLD_API_NAMESPACE(sym) \
-  MLD_API_CONCAT_UNDERSCORE(MLD_CONFIG_API_NAMESPACE_PREFIX, sym)
+  MLD_API_CONCAT_UNDERSCORE(MLD_API_NAMESPACE_PREFIX, sym)
 
-#if defined(__GNUC__) || defined(clang)
+#if defined(__GNUC__) || defined(__clang__)
 #define MLD_API_MUST_CHECK_RETURN_VALUE __attribute__((warn_unused_result))
 #else
 #define MLD_API_MUST_CHECK_RETURN_VALUE
 #endif
 
-#if defined(MLD_CONFIG_API_QUALIFIER)
-#define MLD_API_QUALIFIER MLD_CONFIG_API_QUALIFIER
+#if defined(MLD_CONFIG_EXTERNAL_API_QUALIFIER)
+#define MLD_API_QUALIFIER MLD_CONFIG_EXTERNAL_API_QUALIFIER
 #else
 #define MLD_API_QUALIFIER
 #endif
 
-#if !defined(MLD_CONFIG_API_CONSTANTS_ONLY)
+/****************************** Function API **********************************/
+
+#if !defined(MLD_CONFIG_CONSTANTS_ONLY)
 
 #include <stddef.h>
 #include <stdint.h>
-
 
 #ifdef __cplusplus
 extern "C"
@@ -220,7 +173,7 @@ extern "C"
  * @warning The seed must be generated by a cryptographically secure random
  *          number generator.
  *
- * @spec{Implements @[FIPS204 Algorithm 6 (ML-DSA.KeyGen_internal)].}
+ * @spec{Implements @[FIPS204, Algorithm 6, ML-DSA.KeyGen_internal].}
  *
  * @param[out] pk      Output public key.
  * @param[out] sk      Output private key.
@@ -245,8 +198,8 @@ extern "C"
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(keypair_internal)(
-    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
-    uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
+    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
+    uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
     const uint8_t seed[MLDSA_SEEDBYTES]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
@@ -261,7 +214,7 @@ int MLD_API_NAMESPACE(keypair_internal)(
  * When MLD_CONFIG_KEYGEN_PCT is set, performs a Pairwise Consistency Test
  * (PCT) as required by FIPS 140-3 IG.
  *
- * @spec{Implements @[FIPS204 Algorithm 1 (ML-DSA.KeyGen)].}
+ * @spec{Implements @[FIPS204, Algorithm 1, ML-DSA.KeyGen].}
  *
  * @param[out] pk      Output public key.
  * @param[out] sk      Output private key.
@@ -284,8 +237,8 @@ int MLD_API_NAMESPACE(keypair_internal)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(keypair)(
-    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
-    uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
+    uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -298,13 +251,16 @@ int MLD_API_NAMESPACE(keypair)(
 /**
  * Compute signature using a caller-supplied random seed and prefix.
  *
- * If the returned value is non-zero, then the values of *sig and *siglen
- * should not be referenced.
+ * On error (non-zero return value), the signature buffer sig is zeroized.
  *
- * @spec{Implements @[FIPS204 Algorithm 7 (ML-DSA.Sign_internal)].}
+ * @spec{Implements @[FIPS204, Algorithm 7, ML-DSA.Sign_internal].}
  *
- * @param[out] sig        Output signature.
- * @param[out] siglen     Pointer to output length of signature.
+ * @warning This function does not perform secret key validation.
+ *          Callers importing serialized keys can use crypto_sign_pk_from_sk
+ *          to validate them before signing.
+ *
+ * @param[out] sig        Pointer to buffer to hold the generated signature of
+ *                        MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in]  m          Pointer to message to be signed (when
  *                        externalmu == 0), or to a precomputed
  *                        message representative mu (when externalmu != 0).
@@ -315,7 +271,7 @@ int MLD_API_NAMESPACE(keypair)(
  * @param      prelen     Length of prefix string. Ignored when
  *                        externalmu != 0.
  * @param[in]  rnd        Random seed.
- * @param[in]  sk         Bit-packed secret key.
+ * @param[in]  sk         Bit-packed secret key; assumed to be valid.
  * @param      externalmu 0: m/mlen is the raw message; mu = H(tr, pre, m) is
  *                        computed internally.
  *                        non-zero: m points to a precomputed mu of
@@ -331,15 +287,17 @@ int MLD_API_NAMESPACE(keypair)(
  * @retval MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED The rejection-sampling loop exceeded
  *                                         MLD_CONFIG_MAX_SIGNING_ATTEMPTS
  *                                         iterations.
+ * @retval MLD_ERR_SIGNING_PAUSED          A MLD_CONFIG_SIGN_HOOK_ATTEMPT hook
+ *                                         paused signing; re-invoke to resume.
  * @retval MLD_ERR_FAIL                    Other kinds of failure.
  */
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(signature_internal)(
-    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)], size_t *siglen,
-    const uint8_t *m, size_t mlen, const uint8_t *pre, size_t prelen,
+    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *pre, size_t prelen,
     const uint8_t rnd[MLDSA_RNDBYTES],
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
     int externalmu
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
@@ -351,17 +309,22 @@ int MLD_API_NAMESPACE(signature_internal)(
 /**
  * Compute signature. This function implements the randomized variant of
  * ML-DSA. If you require the deterministic variant, use
- * crypto_sign_signature_internal directly.
+ * signature_internal directly.
  *
- * @spec{Implements @[FIPS204 Algorithm 2 (ML-DSA.Sign)].}
+ * @spec{Implements @[FIPS204, Algorithm 2, ML-DSA.Sign].}
  *
- * @param[out] sig     Output signature.
- * @param[out] siglen  Pointer to output length of signature.
- * @param[in]  m       Pointer to message to be signed.
+ * @warning This function does not perform secret key validation.
+ *          Callers importing serialized keys can use crypto_sign_pk_from_sk
+ *          to validate them before signing.
+ *
+ * @param[out] sig     Pointer to buffer to hold the generated signature of
+ *                     MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
+ * @param[in]  m       Pointer to message to be signed. May be NULL if
+ *                     mlen == 0.
  * @param      mlen    Length of message.
  * @param[in]  ctx     Pointer to context string. May be NULL if ctxlen == 0.
  * @param      ctxlen  Length of context string. Should be <= 255.
- * @param[in]  sk      Bit-packed secret key.
+ * @param[in]  sk      Bit-packed secret key; assumed to be valid.
  * @param      context Application context. Only present when
  *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
  *                     MLD_CONFIG_CONTEXT_PARAMETER_TYPE.
@@ -379,9 +342,9 @@ int MLD_API_NAMESPACE(signature_internal)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(signature)(
-    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)], size_t *siglen,
-    const uint8_t *m, size_t mlen, const uint8_t *ctx, size_t ctxlen,
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *ctx, size_t ctxlen,
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -395,12 +358,16 @@ int MLD_API_NAMESPACE(signature)(
  * 0x00 || ctxlen || ctx || msg for pure ML-DSA). This is useful when the
  * message is large or streamed and cannot be held in memory.
  *
- * @spec{Implements @[FIPS204 Algorithm 2 (ML-DSA.Sign external mu variant)].}
+ * @spec{Implements @[FIPS204, Algorithm 2, ML-DSA.Sign external mu variant].}
  *
- * @param[out] sig     Output signature.
- * @param[out] siglen  Pointer to output length of signature.
+ * @warning This function does not perform secret key validation.
+ *          Callers importing serialized keys can use crypto_sign_pk_from_sk
+ *          to validate them before signing.
+ *
+ * @param[out] sig     Pointer to buffer to hold the generated signature of
+ *                     MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in]  mu      Precomputed message representative.
- * @param[in]  sk      Bit-packed secret key.
+ * @param[in]  sk      Bit-packed secret key; assumed to be valid.
  * @param      context Application context. Only present when
  *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
  *                     MLD_CONFIG_CONTEXT_PARAMETER_TYPE.
@@ -418,52 +385,15 @@ int MLD_API_NAMESPACE(signature)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(signature_extmu)(
-    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)], size_t *siglen,
+    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)],
     const uint8_t mu[MLDSA_CRHBYTES],
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
 #endif
 );
 
-/**
- * Compute signed message. This function implements the randomized variant of
- * ML-DSA. If you require the deterministic variant, use
- * crypto_sign_signature_internal directly.
- *
- * @param[out] sm      Pointer to output signed message (allocated array with
- *                     MLDSA{44,65,87}_BYTES + mlen bytes); can be equal to m.
- * @param[out] smlen   Pointer to output length of signed message.
- * @param[in]  m       Pointer to message to be signed.
- * @param      mlen    Length of message.
- * @param[in]  ctx     Pointer to context string.
- * @param      ctxlen  Length of context string.
- * @param[in]  sk      Bit-packed secret key.
- * @param      context Application context. Only present when
- *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
- *                     MLD_CONFIG_CONTEXT_PARAMETER_TYPE.
- *
- * @retval 0                               Success.
- * @retval MLD_ERR_OUT_OF_MEMORY           MLD_CONFIG_CUSTOM_ALLOC_FREE was
- *                                         used and an allocation via
- *                                         MLD_CUSTOM_ALLOC returned NULL.
- * @retval MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED The rejection-sampling loop exceeded
- *                                         MLD_CONFIG_MAX_SIGNING_ATTEMPTS
- *                                         iterations.
- * @retval MLD_ERR_FAIL                    Other kinds of failure.
- */
-MLD_API_QUALIFIER
-MLD_API_MUST_CHECK_RETURN_VALUE
-int MLD_API_NAMESPACE(sign)(
-    uint8_t *sm, size_t *smlen, const uint8_t *m, size_t mlen,
-    const uint8_t *ctx, size_t ctxlen,
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
-#ifdef MLD_CONFIG_CONTEXT_PARAMETER
-    ,
-    MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
-#endif
-);
 #endif /* !MLD_CONFIG_CORE_API_ONLY */
 #endif /* !MLD_CONFIG_NO_SIGN_API */
 
@@ -471,10 +401,10 @@ int MLD_API_NAMESPACE(sign)(
 /**
  * Verify signature. Internal API.
  *
- * @spec{Implements @[FIPS204 Algorithm 8 (ML-DSA.Verify_internal)].}
+ * @spec{Implements @[FIPS204, Algorithm 8, ML-DSA.Verify_internal].}
  *
- * @param[in] sig        Pointer to input signature.
- * @param     siglen     Length of signature.
+ * @param[in] sig        Pointer to input signature of
+ *                       MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in] m          Pointer to message (when externalmu == 0), or to a
  *                       precomputed message representative mu (when
  *                       externalmu != 0).
@@ -499,9 +429,9 @@ int MLD_API_NAMESPACE(sign)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(verify_internal)(
-    const uint8_t *sig, size_t siglen, const uint8_t *m, size_t mlen,
-    const uint8_t *pre, size_t prelen,
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
+    const uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *pre, size_t prelen,
+    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
     int externalmu
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
@@ -513,11 +443,11 @@ int MLD_API_NAMESPACE(verify_internal)(
 /**
  * Verify signature.
  *
- * @spec{Implements @[FIPS204 Algorithm 3 (ML-DSA.Verify)].}
+ * @spec{Implements @[FIPS204, Algorithm 3, ML-DSA.Verify].}
  *
- * @param[in] sig     Pointer to input signature.
- * @param     siglen  Length of signature.
- * @param[in] m       Pointer to message.
+ * @param[in] sig     Pointer to input signature of
+ *                    MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
+ * @param[in] m       Pointer to message. May be NULL if mlen == 0.
  * @param     mlen    Length of message.
  * @param[in] ctx     Pointer to context string. May be NULL if ctxlen == 0.
  * @param     ctxlen  Length of context string.
@@ -534,9 +464,9 @@ int MLD_API_NAMESPACE(verify_internal)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(verify)(
-    const uint8_t *sig, size_t siglen, const uint8_t *m, size_t mlen,
-    const uint8_t *ctx, size_t ctxlen,
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    const uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *ctx, size_t ctxlen,
+    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -550,10 +480,10 @@ int MLD_API_NAMESPACE(verify)(
  * 0x00 || ctxlen || ctx || msg for pure ML-DSA). The same mu must have
  * been used at signing time.
  *
- * @spec{Implements @[FIPS204 Algorithm 3 (ML-DSA.Verify external mu variant)].}
+ * @spec{Implements @[FIPS204, Algorithm 3, ML-DSA.Verify external mu variant].}
  *
- * @param[in] sig     Pointer to input signature.
- * @param     siglen  Length of signature.
+ * @param[in] sig     Pointer to input signature of
+ *                    MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in] mu      Precomputed message representative.
  * @param[in] pk      Bit-packed public key.
  * @param     context Application context. Only present when
@@ -568,45 +498,15 @@ int MLD_API_NAMESPACE(verify)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(verify_extmu)(
-    const uint8_t *sig, size_t siglen, const uint8_t mu[MLDSA_CRHBYTES],
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    const uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)],
+    const uint8_t mu[MLDSA_CRHBYTES],
+    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
 #endif
 );
 
-/**
- * Verify signed message.
- *
- * @param[out] m       Pointer to output message (allocated array with smlen
- *                     bytes); can be equal to sm.
- * @param[out] mlen    Pointer to output length of message.
- * @param[in]  sm      Pointer to signed message.
- * @param      smlen   Length of signed message.
- * @param[in]  ctx     Pointer to context string.
- * @param      ctxlen  Length of context string.
- * @param[in]  pk      Bit-packed public key.
- * @param      context Application context. Only present when
- *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
- *                     MLD_CONFIG_CONTEXT_PARAMETER_TYPE.
- *
- * @retval 0                    Success.
- * @retval MLD_ERR_OUT_OF_MEMORY MLD_CONFIG_CUSTOM_ALLOC_FREE was used and an
- *                               allocation via MLD_CUSTOM_ALLOC returned NULL.
- * @retval MLD_ERR_FAIL          Signature verification failed.
- */
-MLD_API_QUALIFIER
-MLD_API_MUST_CHECK_RETURN_VALUE
-int MLD_API_NAMESPACE(open)(
-    uint8_t *m, size_t *mlen, const uint8_t *sm, size_t smlen,
-    const uint8_t *ctx, size_t ctxlen,
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
-#ifdef MLD_CONFIG_CONTEXT_PARAMETER
-    ,
-    MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
-#endif
-);
 #endif /* !MLD_CONFIG_CORE_API_ONLY */
 #endif /* !MLD_CONFIG_NO_VERIFY_API */
 
@@ -628,8 +528,9 @@ int MLD_API_NAMESPACE(open)(
 #if !defined(MLD_CONFIG_CORE_API_ONLY)
 #if !defined(MLD_CONFIG_NO_SIGN_API)
 /**
- * FIPS 204: Algorithm 4 HashML-DSA.Sign. Compute signature with pre-hashed
- * message.
+ * Compute signature with pre-hashed message.
+ *
+ * @spec{Implements @[FIPS204, Algorithm 4, HashML-DSA.Sign].}
  *
  * Supported hash algorithm constants:
  *   MLD_PREHASH_SHA2_224, MLD_PREHASH_SHA2_256, MLD_PREHASH_SHA2_384,
@@ -637,17 +538,23 @@ int MLD_API_NAMESPACE(open)(
  *   MLD_PREHASH_SHA3_224, MLD_PREHASH_SHA3_256, MLD_PREHASH_SHA3_384,
  *   MLD_PREHASH_SHA3_512, MLD_PREHASH_SHAKE_128, MLD_PREHASH_SHAKE_256.
  *
- * @warning This is an unstable API that may change in the future. If you need
- * a stable API use crypto_sign_signature_pre_hash_shake256.
+ * MLD_PREHASH_NONE is rejected by this API.
  *
- * @param[out] sig     Output signature.
- * @param[out] siglen  Pointer to output length of signature.
+ * @warning This is an unstable API that may change in the future. If you need
+ * a stable API use signature_pre_hash_shake256.
+ *
+ * @warning This function does not perform secret key validation.
+ *          Callers importing serialized keys can use crypto_sign_pk_from_sk
+ *          to validate them before signing.
+ *
+ * @param[out] sig     Pointer to buffer to hold the generated signature of
+ *                     MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in]  ph      Pointer to pre-hashed message.
  * @param      phlen   Length of pre-hashed message.
  * @param[in]  ctx     Pointer to context string.
  * @param      ctxlen  Length of context string.
  * @param[in]  rnd     Random seed.
- * @param[in]  sk      Bit-packed secret key.
+ * @param[in]  sk      Bit-packed secret key; assumed to be valid.
  * @param      hashalg Hash algorithm constant (one of MLD_PREHASH_*).
  * @param      context Application context. Only present when
  *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
@@ -660,15 +567,17 @@ int MLD_API_NAMESPACE(open)(
  * @retval MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED The rejection-sampling loop exceeded
  *                                         MLD_CONFIG_MAX_SIGNING_ATTEMPTS
  *                                         iterations.
+ * @retval MLD_ERR_SIGNING_PAUSED          A MLD_CONFIG_SIGN_HOOK_ATTEMPT hook
+ *                                         paused signing; re-invoke to resume.
  * @retval MLD_ERR_FAIL                    Other kinds of failure.
  */
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(signature_pre_hash_internal)(
-    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)], size_t *siglen,
-    const uint8_t *ph, size_t phlen, const uint8_t *ctx, size_t ctxlen,
+    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *ph,
+    size_t phlen, const uint8_t *ctx, size_t ctxlen,
     const uint8_t rnd[MLDSA_RNDBYTES],
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
     int hashalg
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
@@ -679,8 +588,9 @@ int MLD_API_NAMESPACE(signature_pre_hash_internal)(
 
 #if !defined(MLD_CONFIG_NO_VERIFY_API)
 /**
- * FIPS 204: Algorithm 5 HashML-DSA.Verify. Verifies signature with pre-hashed
- * message.
+ * Verifies signature with pre-hashed message.
+ *
+ * @spec{Implements @[FIPS204, Algorithm 5, HashML-DSA.Verify].}
  *
  * Supported hash algorithm constants:
  *   MLD_PREHASH_SHA2_224, MLD_PREHASH_SHA2_256, MLD_PREHASH_SHA2_384,
@@ -688,11 +598,13 @@ int MLD_API_NAMESPACE(signature_pre_hash_internal)(
  *   MLD_PREHASH_SHA3_224, MLD_PREHASH_SHA3_256, MLD_PREHASH_SHA3_384,
  *   MLD_PREHASH_SHA3_512, MLD_PREHASH_SHAKE_128, MLD_PREHASH_SHAKE_256.
  *
- * @warning This is an unstable API that may change in the future. If you need
- * a stable API use crypto_sign_verify_pre_hash_shake256.
+ * MLD_PREHASH_NONE is rejected by this API.
  *
- * @param[in] sig     Pointer to input signature.
- * @param     siglen  Length of signature.
+ * @warning This is an unstable API that may change in the future. If you need
+ * a stable API use verify_pre_hash_shake256.
+ *
+ * @param[in] sig     Pointer to input signature of
+ *                    MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
  * @param[in] ph      Pointer to pre-hashed message.
  * @param     phlen   Length of pre-hashed message.
  * @param[in] ctx     Pointer to context string.
@@ -711,9 +623,9 @@ int MLD_API_NAMESPACE(signature_pre_hash_internal)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(verify_pre_hash_internal)(
-    const uint8_t *sig, size_t siglen, const uint8_t *ph, size_t phlen,
-    const uint8_t *ctx, size_t ctxlen,
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
+    const uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *ph,
+    size_t phlen, const uint8_t *ctx, size_t ctxlen,
+    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
     int hashalg
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
@@ -724,19 +636,25 @@ int MLD_API_NAMESPACE(verify_pre_hash_internal)(
 
 #if !defined(MLD_CONFIG_NO_SIGN_API)
 /**
- * FIPS 204: Algorithm 4 HashML-DSA.Sign with SHAKE256.
- *
  * Compute signature with pre-hashed message using SHAKE256. This function
  * computes the SHAKE256 hash of the message internally.
  *
- * @param[out] sig     Output signature.
- * @param[out] siglen  Pointer to output length of signature.
- * @param[in]  m       Pointer to message to be hashed and signed.
+ * @spec{Implements @[FIPS204, Algorithm 4, HashML-DSA.Sign] with SHAKE256 as
+ * the pre-hash.}
+ *
+ * @warning This function does not perform secret key validation.
+ *          Callers importing serialized keys can use crypto_sign_pk_from_sk
+ *          to validate them before signing.
+ *
+ * @param[out] sig     Pointer to buffer to hold the generated signature of
+ *                     MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
+ * @param[in]  m       Pointer to message to be hashed and signed. May be
+ *                     NULL if mlen == 0.
  * @param      mlen    Length of message.
  * @param[in]  ctx     Pointer to context string.
  * @param      ctxlen  Length of context string.
  * @param[in]  rnd     Random seed.
- * @param[in]  sk      Bit-packed secret key.
+ * @param[in]  sk      Bit-packed secret key; assumed to be valid.
  * @param      context Application context. Only present when
  *                     MLD_CONFIG_CONTEXT_PARAMETER is defined; type set by
  *                     MLD_CONFIG_CONTEXT_PARAMETER_TYPE.
@@ -748,15 +666,17 @@ int MLD_API_NAMESPACE(verify_pre_hash_internal)(
  * @retval MLD_ERR_SIGN_ATTEMPTS_EXHAUSTED The rejection-sampling loop exceeded
  *                                         MLD_CONFIG_MAX_SIGNING_ATTEMPTS
  *                                         iterations.
+ * @retval MLD_ERR_SIGNING_PAUSED          A MLD_CONFIG_SIGN_HOOK_ATTEMPT hook
+ *                                         paused signing; re-invoke to resume.
  * @retval MLD_ERR_FAIL                    Other kinds of failure.
  */
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(signature_pre_hash_shake256)(
-    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)], size_t *siglen,
-    const uint8_t *m, size_t mlen, const uint8_t *ctx, size_t ctxlen,
+    uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *ctx, size_t ctxlen,
     const uint8_t rnd[MLDSA_RNDBYTES],
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -766,14 +686,16 @@ int MLD_API_NAMESPACE(signature_pre_hash_shake256)(
 
 #if !defined(MLD_CONFIG_NO_VERIFY_API)
 /**
- * FIPS 204: Algorithm 5 HashML-DSA.Verify with SHAKE256.
- *
  * Verify signature with pre-hashed message using SHAKE256. This function
  * computes the SHAKE256 hash of the message internally.
  *
- * @param[in] sig     Pointer to input signature.
- * @param     siglen  Length of signature.
- * @param[in] m       Pointer to message to be hashed and verified.
+ * @spec{Implements @[FIPS204, Algorithm 5, HashML-DSA.Verify] with SHAKE256 as
+ * the pre-hash.}
+ *
+ * @param[in] sig     Pointer to input signature of
+ *                    MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET) bytes.
+ * @param[in] m       Pointer to message to be hashed and verified. May be
+ *                    NULL if mlen == 0.
  * @param     mlen    Length of message.
  * @param[in] ctx     Pointer to context string.
  * @param     ctxlen  Length of context string.
@@ -790,9 +712,9 @@ int MLD_API_NAMESPACE(signature_pre_hash_shake256)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(verify_pre_hash_shake256)(
-    const uint8_t *sig, size_t siglen, const uint8_t *m, size_t mlen,
-    const uint8_t *ctx, size_t ctxlen,
-    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    const uint8_t sig[MLDSA_BYTES(MLD_CONFIG_PARAMETER_SET)], const uint8_t *m,
+    size_t mlen, const uint8_t *ctx, size_t ctxlen,
+    const uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -817,15 +739,15 @@ int MLD_API_NAMESPACE(verify_pre_hash_shake256)(
  * This function is useful for building incremental signing APIs.
  *
  * @spec{For HashML-DSA (hashalg != MLD_PREHASH_NONE), implements
- * @[FIPS204, Algorithm 4, L23]. For Pure ML-DSA (hashalg == MLD_PREHASH_NONE),
- * implements
+ * @[FIPS204, Algorithm 4, line 23]. For Pure ML-DSA
+ * (hashalg == MLD_PREHASH_NONE), implements
  * ```
  *    M' <- BytesToBits(IntegerToBytes(0, 1)
  *           || IntegerToBytes(|ctx|, 1)
  *           || ctx
  * ```
- * which is part of @[FIPS204, Algorithm 2 (ML-DSA.Sign), L10] and
- * @[FIPS204, Algorithm 3 (ML-DSA.Verify), L5].}
+ * which is part of @[FIPS204, Algorithm 2, ML-DSA.Sign, line 10] and
+ * @[FIPS204, Algorithm 3, ML-DSA.Verify, line 5].}
  *
  * @param[out] prefix  Output domain separation prefix buffer.
  * @param[in]  ph      Pointer to pre-hashed message (ignored for pure
@@ -849,7 +771,7 @@ size_t MLD_API_NAMESPACE(prepare_domain_separation_prefix)(
  * Perform basic validity checks on secret key, and derive public key.
  *
  * Referring to the decoding of the secret key `sk=(rho, K, tr, s1, s2, t0)`
- * (cf. @[FIPS204, Algorithm 25 skDecode]), the following checks are
+ * (cf. @[FIPS204, Algorithm 25, skDecode]), the following checks are
  * performed:
  *   - Check that s1 and s2 have coefficients in [-MLDSA_ETA, MLDSA_ETA].
  *   - Check that t0 and tr stored in sk match recomputed values.
@@ -871,8 +793,8 @@ size_t MLD_API_NAMESPACE(prepare_domain_separation_prefix)(
 MLD_API_QUALIFIER
 MLD_API_MUST_CHECK_RETURN_VALUE
 int MLD_API_NAMESPACE(pk_from_sk)(
-    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)],
-    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)]
+    uint8_t pk[MLDSA_PUBLICKEYBYTES(MLD_CONFIG_PARAMETER_SET)],
+    const uint8_t sk[MLDSA_SECRETKEYBYTES(MLD_CONFIG_PARAMETER_SET)]
 #ifdef MLD_CONFIG_CONTEXT_PARAMETER
     ,
     MLD_CONFIG_CONTEXT_PARAMETER_TYPE context
@@ -885,43 +807,9 @@ int MLD_API_NAMESPACE(pk_from_sk)(
 }
 #endif
 
-/****************************** SUPERCOP API *********************************/
+#undef MLD_API_NAMESPACE_PREFIX
 
-#if !defined(MLD_CONFIG_API_NO_SUPERCOP)
-/* Export API in SUPERCOP naming scheme CRYPTO_xxx / crypto_sign_xxx */
-#define CRYPTO_SECRETKEYBYTES MLDSA_SECRETKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)
-#define CRYPTO_PUBLICKEYBYTES MLDSA_PUBLICKEYBYTES(MLD_CONFIG_API_PARAMETER_SET)
-#define CRYPTO_BYTES MLDSA_BYTES(MLD_CONFIG_API_PARAMETER_SET)
-
-#define crypto_sign_keypair MLD_API_NAMESPACE(keypair)
-#define crypto_sign_signature MLD_API_NAMESPACE(signature)
-#define crypto_sign MLD_API_NAMESPACE(sign)
-#define crypto_sign_verify MLD_API_NAMESPACE(verify)
-#define crypto_sign_open MLD_API_NAMESPACE(open)
-
-#else /* !MLD_CONFIG_API_NO_SUPERCOP */
-
-/* If the SUPERCOP API is not needed, we can undefine the various helper macros
- * above. Otherwise, they are needed for lazy evaluation of crypto_sign_xxx. */
-#if !defined(MLD_API_LEGACY_CONFIG)
-#undef MLD_CONFIG_API_PARAMETER_SET
-#undef MLD_CONFIG_API_NAMESPACE_PREFIX
-#undef MLD_CONFIG_API_NO_SUPERCOP
-#undef MLD_CONFIG_API_CONSTANTS_ONLY
-#undef MLD_CONFIG_API_QUALIFIER
-#endif /* !MLD_API_LEGACY_CONFIG */
-
-#undef MLD_API_CONCAT
-#undef MLD_API_CONCAT_
-#undef MLD_API_CONCAT_UNDERSCORE
-#undef MLD_API_NAMESPACE
-#undef MLD_API_MUST_CHECK_RETURN_VALUE
-#undef MLD_API_QUALIFIER
-#undef MLD_API_LEGACY_CONFIG
-
-#endif /* MLD_CONFIG_API_NO_SUPERCOP */
-#endif /* !MLD_CONFIG_API_CONSTANTS_ONLY */
-
+#endif /* !MLD_CONFIG_CONSTANTS_ONLY */
 
 /***************************** Memory Usage **********************************/
 
@@ -941,7 +829,7 @@ int MLD_API_NAMESPACE(pk_from_sk)(
  * fixed-sized buffer and a simple allocator (e.g., bump allocator).
  */
 /* check-magic: off */
-#if defined(MLD_API_LEGACY_CONFIG) || !defined(MLD_CONFIG_REDUCE_RAM)
+#if !defined(MLD_CONFIG_REDUCE_RAM)
 #define MLD_TOTAL_ALLOC_44_KEYPAIR_NO_PCT 26912
 #define MLD_TOTAL_ALLOC_44_KEYPAIR_PCT 48480
 #define MLD_TOTAL_ALLOC_44_PK_FROM_SK 28480
@@ -957,7 +845,7 @@ int MLD_API_NAMESPACE(pk_from_sk)(
 #define MLD_TOTAL_ALLOC_87_PK_FROM_SK 78272
 #define MLD_TOTAL_ALLOC_87_SIGN 108224
 #define MLD_TOTAL_ALLOC_87_VERIFY 68800
-#else /* MLD_API_LEGACY_CONFIG || !MLD_CONFIG_REDUCE_RAM */
+#else /* !MLD_CONFIG_REDUCE_RAM */
 #define MLD_TOTAL_ALLOC_44_KEYPAIR_NO_PCT 11584
 #define MLD_TOTAL_ALLOC_44_KEYPAIR_PCT 16896
 #define MLD_TOTAL_ALLOC_44_PK_FROM_SK 13152
@@ -973,15 +861,13 @@ int MLD_API_NAMESPACE(pk_from_sk)(
 #define MLD_TOTAL_ALLOC_87_PK_FROM_SK 21984
 #define MLD_TOTAL_ALLOC_87_SIGN 21344
 #define MLD_TOTAL_ALLOC_87_VERIFY 12512
-#endif /* !(MLD_API_LEGACY_CONFIG || !MLD_CONFIG_REDUCE_RAM) */
+#endif /* MLD_CONFIG_REDUCE_RAM */
 /* check-magic: on */
 
 /*
  * MLD_TOTAL_ALLOC_*_KEYPAIR adapts based on MLD_CONFIG_KEYGEN_PCT.
- * For legacy config, we don't know which options are used, so assume
- * the worst case (PCT enabled).
  */
-#if defined(MLD_API_LEGACY_CONFIG) || defined(MLD_CONFIG_KEYGEN_PCT)
+#if defined(MLD_CONFIG_KEYGEN_PCT)
 #define MLD_TOTAL_ALLOC_44_KEYPAIR MLD_TOTAL_ALLOC_44_KEYPAIR_PCT
 #define MLD_TOTAL_ALLOC_65_KEYPAIR MLD_TOTAL_ALLOC_65_KEYPAIR_PCT
 #define MLD_TOTAL_ALLOC_87_KEYPAIR MLD_TOTAL_ALLOC_87_KEYPAIR_PCT

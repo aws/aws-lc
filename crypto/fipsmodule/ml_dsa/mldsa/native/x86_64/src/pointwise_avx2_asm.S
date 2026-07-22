@@ -17,6 +17,34 @@
  * AVX2 Dilithium implementation @[REF_AVX2].
  */
 
+/*yaml
+  Name: pointwise_avx2_asm
+  Description: x86_64 AVX2 pointwise Montgomery multiplication
+  Signature: void mld_pointwise_avx2_asm(int32_t *a, const int32_t *b, const int32_t *qdata)
+  ABI:
+    Architecture: x86_64
+    CallingConvention: SysV
+    Features: [AVX2]
+    rdi:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t *a
+      description: Input/output polynomial (256 x int32_t)
+    rsi:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t *b
+      description: Input polynomial (256 x int32_t)
+    rdx:
+      type: buffer
+      size_bytes: 2496
+      permissions: read-only
+      c_parameter: const int32_t *qdata
+      description: Precomputed constants (624 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_x86_att.h"
 
 /*
@@ -35,7 +63,7 @@ S2N_BN_SYMBOL(mldsa_pointwise_avx2_asm):
         vmovdqa (%rdx), %ymm1
         xorl %eax, %eax
 
-Lmldsa_pointwise_avx2_looptop1:
+Lpointwise_avx2_looptop1:
         vmovdqa (%rdi), %ymm2
         vmovdqa 0x20(%rdi), %ymm4
         vmovdqa 0x40(%rdi), %ymm6
@@ -85,7 +113,7 @@ Lmldsa_pointwise_avx2_looptop1:
         addq $0x60, %rsi
         addl $0x1, %eax
         cmpl $0xa, %eax
-        jb Lmldsa_pointwise_avx2_looptop1
+        jb Lpointwise_avx2_looptop1
         vmovdqa (%rdi), %ymm2
         vmovdqa 0x20(%rdi), %ymm4
         vmovdqa (%rsi), %ymm10

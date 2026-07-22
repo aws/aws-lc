@@ -31,7 +31,7 @@
 # Dependencies:
 # - unifdef
 
-GITHUB_SERVER_URL=https://github.com/
+GITHUB_SERVER_URL=${GITHUB_SERVER_URL:=https://github.com/}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=pq-code-package/mldsa-native.git}
 GITHUB_SHA=${GITHUB_SHA:=main}
 
@@ -78,27 +78,22 @@ mkdir $SRC
 find $TMP/mldsa/src -maxdepth 1 -type f -exec cp {} $SRC \;
 
 # Copy x86_64 backend
-# We import all assembly (.S) files and shared headers/constants from the
-# upstream x86_64 backend. The AVX2 C-intrinsic .c files (rej_uniform,
-# decompose, use_hint, chknorm, polyz_unpack) are excluded — their includes
-# are stripped from the BCM below.
-#
-# The upstream meta.h advertises both assembly and C-intrinsic operations.
-# Rather than modify it, we keep a hand-maintained replacement in
-# ../mldsa_x86_64_meta.h (referenced via MLD_CONFIG_ARITH_BACKEND_FILE) that
-# declares only the assembly-backed subset. Upstream meta.h is not copied.
+# The x86_64 backend is fully assembly-backed: every native operation is
+# implemented by a proven .S kernel (proofs live in the upstream mldsa-native
+# repo). We import the upstream meta.h verbatim along with all assembly (.S)
+# files and shared headers/constants, so no hand-maintained meta.h shadow is
+# needed.
 mkdir -p $SRC/native/x86_64/src
 cp $TMP/mldsa/src/native/api.h $SRC/native
-cp $TMP/mldsa/src/native/x86_64/src/arith_native_x86_64.h $SRC/native/x86_64/src
-cp $TMP/mldsa/src/native/x86_64/src/consts.h $SRC/native/x86_64/src
-cp $TMP/mldsa/src/native/x86_64/src/consts.c $SRC/native/x86_64/src
-# NOTE: all imported .S files must have verified proofs in s2n-bignum.
+cp $TMP/mldsa/src/native/x86_64/meta.h $SRC/native/x86_64
+cp $TMP/mldsa/src/native/x86_64/src/*.h $SRC/native/x86_64/src
+cp $TMP/mldsa/src/native/x86_64/src/*.c $SRC/native/x86_64/src
 cp $TMP/mldsa/src/native/x86_64/src/*.S $SRC/native/x86_64/src
 
 # Copy aarch64 backend
-# Unlike x86_64, the aarch64 backend is 100% assembly — no C-intrinsic .c
-# files. The upstream meta.h is suitable as-is, so we copy it verbatim.
-# All assembly (.S) files have verified proofs in s2n-bignum.
+# Like x86_64, the aarch64 backend is fully assembly-backed (proofs live in the
+# upstream mldsa-native repo). The upstream meta.h is suitable as-is, so we copy
+# it verbatim.
 mkdir -p $SRC/native/aarch64/src
 cp $TMP/mldsa/src/native/aarch64/*.h $SRC/native/aarch64
 cp $TMP/mldsa/src/native/aarch64/src/* $SRC/native/aarch64/src
@@ -140,12 +135,6 @@ cp $TMP/mldsa/mldsa_native.h $SRC
 # hence the relative import path is just ".".
 echo "Fixup include paths"
 sed "${SED_I[@]}" 's/#include "src\/\([^"]*\)"/#include "\1"/' $SRC/mldsa_native_bcm.c
-
-# Drop #include directives for the C-intrinsic .c files we did not import.
-# Only consts.c (shared with the assembly backend) is kept.
-echo "Strip C-intrinsic includes from mldsa_native_bcm.c"
-BCM=$SRC/mldsa_native_bcm.c
-sed "${SED_I[@]}" '/^#include "native\/x86_64\/src\/[^"]*\.c"/{/consts\.c/!d;}' "$BCM"
 
 # ================================================================
 # Fixup assembly backends to use s2n-bignum macros
