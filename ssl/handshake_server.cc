@@ -614,6 +614,10 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
 
       default:
+        // The callback may have left stale errors on the error queue (e.g.
+        // from PEM parsing). Clear them so that SSL_get_error does not
+        // misinterpret them as handshake failures.
+        ERR_clear_error();
         /* fallthrough */;
     }
   }

@@ -141,6 +141,7 @@ AWS_LC_1.0 {
     SSL_CTX_set1_curves;
     SSL_CTX_set1_curves_list;
     SSL_CTX_set1_ech_keys;
+    SSL_CTX_set1_group_ids;
     SSL_CTX_set1_groups;
     SSL_CTX_set1_groups_list;
     SSL_CTX_set1_param;
@@ -490,6 +491,7 @@ AWS_LC_1.0 {
     SSL_set1_curves_list;
     SSL_set1_delegated_credential;
     SSL_set1_ech_config_list;
+    SSL_set1_group_ids;
     SSL_set1_groups;
     SSL_set1_groups_list;
     SSL_set1_host;

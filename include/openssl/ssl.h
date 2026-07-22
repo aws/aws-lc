@@ -2702,6 +2702,19 @@ OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
 OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
                                    size_t num_groups);
 
+// SSL_CTX_set1_group_ids sets the preferred groups for |ctx| to be
+// |group_ids|. Each element of |group_ids| should be a |SSL_GROUP_*| value. It
+// returns one on success and zero on failure.
+OPENSSL_EXPORT int SSL_CTX_set1_group_ids(SSL_CTX *ctx,
+                                          const uint16_t *group_ids,
+                                          size_t num_group_ids);
+
+// SSL_set1_group_ids sets the preferred groups for |ssl| to be |group_ids|.
+// Each element of |group_ids| should be a |SSL_GROUP_*| value. It returns one
+// on success and zero on failure.
+OPENSSL_EXPORT int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
+                                      size_t num_group_ids);
+
 // SSL_CTX_set1_groups_list sets the preferred groups for |ctx| to be the
 // colon-separated list |groups|. Each element of |groups| should be a curve
 // name (e.g. P-256, X25519, ...). It returns one on success and zero on
