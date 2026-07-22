@@ -932,6 +932,25 @@ TEST(EVPTest, WycheproofECDSAsecp256k1) {
 }
 
 //= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt`.
+TEST(EVPTest, WycheproofECDSABrainpool) {
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt");
+}
+
+//= third_party/vectors/vectors_spec.md#wycheproof
 //# AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
 TEST(EVPTest, WycheproofEdDSA) {
   RunWycheproofVerifyTest(
@@ -1503,8 +1522,81 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       NID_secp521r1 // curve_nid
     };
 
+    // secp256k1 test vector, taken from Wycheproof ecdh_secp256k1_test.json
+    // (tcId 1, "normal case")
+    static const uint8_t kSecp256k1PublicKey[] = {
+      /* uncompressed */
+      0x04,
+      /* x-coordinate */
+      0xd8, 0x09, 0x6a, 0xf8, 0xa1, 0x1e, 0x0b, 0x80, 0x03, 0x7e, 0x1e, 0xe6,
+      0x82, 0x46, 0xb5, 0xdc, 0xbb, 0x0a, 0xeb, 0x1c, 0xf1, 0x24, 0x4f, 0xd7,
+      0x67, 0xdb, 0x80, 0xf3, 0xfa, 0x27, 0xda, 0x2b,
+      /* y-coordinate */
+      0x39, 0x68, 0x12, 0xea, 0x16, 0x86, 0xe7, 0x47, 0x2e, 0x96, 0x92, 0xea,
+      0xf3, 0xe9, 0x58, 0xe5, 0x0e, 0x95, 0x00, 0xd3, 0xb4, 0xc7, 0x72, 0x43,
+      0xdb, 0x1f, 0x2a, 0xcd, 0x67, 0xba, 0x9c, 0xc4
+    };
+    static const uint8_t kSecp256k1PrivateKey[] = {
+      0xf4, 0xb7, 0xff, 0x7c, 0xcc, 0xc9, 0x88, 0x13, 0xa6, 0x9f, 0xae, 0x3d,
+      0xf2, 0x22, 0xbf, 0xe3, 0xf4, 0xe2, 0x8f, 0x76, 0x4b, 0xf9, 0x1b, 0x4a,
+      0x10, 0xd8, 0x09, 0x6c, 0xe4, 0x46, 0xb2, 0x54
+    };
+    static const uint8_t kSecp256k1ExpectedSharedSecret[] = {
+      0x54, 0x4d, 0xfa, 0xe2, 0x2a, 0xf6, 0xaf, 0x93, 0x90, 0x42, 0xb1, 0xd8,
+      0x5b, 0x71, 0xa1, 0xe4, 0x9e, 0x9a, 0x56, 0x14, 0x12, 0x3c, 0x4d, 0x6a,
+      0xd0, 0xc8, 0xaf, 0x65, 0xba, 0xf8, 0x7d, 0x65
+    };
+
+    struct ectlsencodedpoint_test_data secp256k1_test_data = {
+      kSecp256k1PublicKey, // public_key
+      (1 + 32 + 32), // public_key_size
+      kSecp256k1PrivateKey, // private_key
+      32, // private_key_size
+      kSecp256k1ExpectedSharedSecret, // expected_shared_secret
+      32, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_secp256k1 // curve_nid
+    };
+
+    // brainpoolP256r1 test vector, taken from RFC 7027 Section A.1
+    // (Alice's private key dA with Bob's public key Q_B)
+    static const uint8_t kBrainpoolP256r1PublicKey[] = {
+      /* uncompressed */
+      0x04,
+      /* x-coordinate (x_qB) */
+      0x8d, 0x2d, 0x68, 0x8c, 0x6c, 0xf9, 0x3e, 0x11, 0x60, 0xad, 0x04, 0xcc,
+      0x44, 0x29, 0x11, 0x7d, 0xc2, 0xc4, 0x18, 0x25, 0xe1, 0xe9, 0xfc, 0xa0,
+      0xad, 0xdd, 0x34, 0xe6, 0xf1, 0xb3, 0x9f, 0x7b,
+      /* y-coordinate (y_qB) */
+      0x99, 0x0c, 0x57, 0x52, 0x08, 0x12, 0xbe, 0x51, 0x26, 0x41, 0xe4, 0x70,
+      0x34, 0x83, 0x21, 0x06, 0xbc, 0x7d, 0x3e, 0x8d, 0xd0, 0xe4, 0xc7, 0xf1,
+      0x13, 0x6d, 0x70, 0x06, 0x54, 0x7c, 0xec, 0x6a
+    };
+    static const uint8_t kBrainpoolP256r1PrivateKey[] = {
+      0x81, 0xdb, 0x1e, 0xe1, 0x00, 0x15, 0x0f, 0xf2, 0xea, 0x33, 0x8d, 0x70,
+      0x82, 0x71, 0xbe, 0x38, 0x30, 0x0c, 0xb5, 0x42, 0x41, 0xd7, 0x99, 0x50,
+      0xf7, 0x7b, 0x06, 0x30, 0x39, 0x80, 0x4f, 0x1d
+    };
+    static const uint8_t kBrainpoolP256r1ExpectedSharedSecret[] = {
+      0x89, 0xaf, 0xc3, 0x9d, 0x41, 0xd3, 0xb3, 0x27, 0x81, 0x4b, 0x80, 0x94,
+      0x0b, 0x04, 0x25, 0x90, 0xf9, 0x65, 0x56, 0xec, 0x91, 0xe6, 0xae, 0x79,
+      0x39, 0xbc, 0xe3, 0x1f, 0x3a, 0x18, 0xbf, 0x2b
+    };
+
+    struct ectlsencodedpoint_test_data brainpool_p256r1_test_data = {
+      kBrainpoolP256r1PublicKey, // public_key
+      (1 + 32 + 32), // public_key_size
+      kBrainpoolP256r1PrivateKey, // private_key
+      32, // private_key_size
+      kBrainpoolP256r1ExpectedSharedSecret, // expected_shared_secret
+      32, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_brainpoolP256r1 // curve_nid
+    };
+
     ectlsencodedpoint_test_data test_data_all[] = {x25519_test_data,
-      p224_test_data, p256_test_data, p384_test_data, p521_test_data};
+      p224_test_data, p256_test_data, p384_test_data, p521_test_data,
+      secp256k1_test_data, brainpool_p256r1_test_data};
 
     uint8_t *output = nullptr;
     uint8_t *shared_secret = nullptr;
