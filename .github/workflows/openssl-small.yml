@@ -200,21 +200,34 @@ jobs:
 
   small-tests-windows:
     if: github.repository_owner == 'aws'
-    # Windows/x86_64 assembles the generated .asm through NASM. OPENSSL_SMALL
+    # Windows/x86_64 assembles the .asm sources through NASM. OPENSSL_SMALL
     # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, which compiles out the whole
     # body of the AVX-512-only .asm files; NASM errors on an object with no
     # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). The Linux legs use
-    # gas, which tolerates empty objects, so they cannot catch this -- hence a
-    # dedicated Windows leg (#3355).
-    name: Tests (OPENSSL_SMALL, x86_64 Windows)
+    # gas, which tolerates empty objects, so they cannot catch this -- hence
+    # dedicated Windows legs (#3355).
+    #
+    # The empty-object failure is only reachable through the pre-generated
+    # sources (DISABLE_PERL=ON), where NASM itself evaluates the %ifndef
+    # guards in generated-src. When Perl is available, perlasm regenerates the
+    # .asm with the flag and the scripts emit non-empty ud2/ret stubs instead,
+    # so that leg exercises the regeneration path. Cover both.
+    name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "perlasm",       disable_perl: "OFF" }
+          - { name: "pre-generated", disable_perl: "ON" }
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - uses: actions/setup-go@v6
         with:
           go-version: '>=1.18'
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v7
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
         id: clang
@@ -233,6 +246,7 @@ jobs:
             CMAKE_SYSTEM_PROCESSOR=x86_64
             CMAKE_BUILD_TYPE=Release
             OPENSSL_SMALL=ON
+            DISABLE_PERL=${{ matrix.disable_perl }}
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
