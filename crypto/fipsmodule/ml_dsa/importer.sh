@@ -183,10 +183,44 @@ for file in $SRC/native/aarch64/src/*.S $SRC/native/x86_64/src/*.S; do
   # ntt.S also defines `Lntt_layer123_start`). The delocator rejects
   # duplicate symbol names across the unified BCM input.
   # Build the rename list from the local label definitions (`^Lfoo:`) in
-  # this file, then s/Lfoo/Lmldsa_foo/g across all occurrences.
-  for label in $(grep -oE '^L[a-z][a-zA-Z0-9_]*:' "$file" | sed 's/:$//' | sort -u); do
-    sed "${SED_I[@]}" "s/\b${label}\b/Lmldsa_${label#L}/g" "$file"
+  # this file, then rename Lfoo -> Lmldsa_foo across all occurrences.
+  #
+  # Portability: we must emulate a word boundary rather than use `\b`, which
+  # is a GNU-sed extension that BSD sed (macOS) silently treats as a literal,
+  # producing an unprefixed (and thus colliding) import. A "word char" here is
+  # [A-Za-z0-9_]; a label match is bounded by start-of-line or a non-word char
+  # on the left, and a non-word char or end-of-line on the right. Longest
+  # labels are renamed first so that e.g. `Lrej_uniform_loop48_end` is handled
+  # before `Lrej_uniform_loop48` and never partially rewritten.
+  for label in $(grep -oE '^L[a-z][a-zA-Z0-9_]*:' "$file" | sed 's/:$//' | \
+                 awk '{ print length, $0 }' | sort -rn -k1,1 | cut -d' ' -f2- | \
+                 awk '!seen[$0]++'); do
+    rest="${label#L}"
+    # Two passes cover (a) a label at start-of-line and (b) a label preceded by
+    # a non-word char; the loop re-runs until no further change to catch the
+    # (theoretical) case of two occurrences sharing a single boundary char.
+    while :; do
+      before=$(cat "$file")
+      sed "${SED_I[@]}" -E \
+        -e "s/^${label}([^A-Za-z0-9_]|\$)/Lmldsa_${rest}\1/g" \
+        -e "s/([^A-Za-z0-9_])${label}([^A-Za-z0-9_]|\$)/\1Lmldsa_${rest}\2/g" \
+        "$file"
+      [ "$(cat "$file")" = "$before" ] && break
+    done
   done
+
+  # Guard: the prefixing above is easy to break silently (see the GNU-vs-BSD
+  # sed note). Fail loudly if any bare `L<name>` local label definition
+  # survived without the `Lmldsa_` prefix, since that would reintroduce
+  # delocator clashes with mlkem-native in the unified FIPS BCM.
+  stray=$(grep -oE '^L[a-z][a-zA-Z0-9_]*:' "$file" | grep -v '^Lmldsa_' || true)
+  if [ -n "$stray" ]; then
+    echo "ERROR: local labels not prefixed with Lmldsa_ in $file:" >&2
+    echo "$stray" >&2
+    echo "This usually means the label-rename sed did not run (e.g. non-GNU sed" >&2
+    echo "mishandling word boundaries). Aborting to avoid a broken FIPS import." >&2
+    exit 1
+  fi
 done
 
 echo "Remove temporary artifacts ..."
