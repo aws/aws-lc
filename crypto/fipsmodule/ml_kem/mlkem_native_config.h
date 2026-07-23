@@ -30,24 +30,18 @@
 #endif
 
 // Map the CPU capability function to the ones used by AWS-LC.
-// MLK_SYS_CAP_NEON is defined here (not in the vendored mlkem/sys.h enum)
-// with a value that does not collide with AVX2 == 0 / SHA3 == 1.
-#if !defined(__ASSEMBLER__)
-#define MLK_SYS_CAP_NEON 2
-#endif
 #define MLK_CONFIG_CUSTOM_CAPABILITY_FUNC
 #if !defined(__ASSEMBLER__)
 #include <stdint.h>
 #include "mlkem/sys.h"
-static MLK_INLINE int mlk_sys_check_capability(int cap)
+static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
 {
 #if defined(MLK_SYS_X86_64)
   if (cap == MLK_SYS_CAP_AVX2)
   {
     return CRYPTO_is_AVX2_capable();
   }
-#endif
-#if defined(MLK_SYS_AARCH64)
+#elif defined(MLK_SYS_AARCH64)
   if (cap == MLK_SYS_CAP_NEON)
   {
     return CRYPTO_is_NEON_capable();

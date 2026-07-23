@@ -24,8 +24,12 @@
  * this can be overwritten by the user, e.g. for single-CU builds. */
 #if !defined(MLK_CONFIG_INTERNAL_API_QUALIFIER)
 #define MLK_INTERNAL_API
+#define MLK_INTERNAL_DATA_DECLARATION extern
+#define MLK_INTERNAL_DATA_DEFINITION
 #else
 #define MLK_INTERNAL_API MLK_CONFIG_INTERNAL_API_QUALIFIER
+#define MLK_INTERNAL_DATA_DECLARATION MLK_CONFIG_INTERNAL_API_QUALIFIER
+#define MLK_INTERNAL_DATA_DEFINITION MLK_CONFIG_INTERNAL_API_QUALIFIER
 #endif
 
 #if !defined(MLK_CONFIG_EXTERNAL_API_QUALIFIER)
@@ -184,48 +188,27 @@
 #error Bad configuration: MLK_CONFIG_CUSTOM_ALLOC_FREE must be set together with MLK_CUSTOM_ALLOC and MLK_CUSTOM_FREE
 #endif
 
-/*
- * If the integration wants to provide a context parameter for use in
- * platform-specific hooks, then it should define this parameter.
- *
- * The MLK_CONTEXT_PARAMETERS_n macros are intended to be used with macros
- * defining the function names and expand to either pass or discard the context
- * argument as required by the current build.  If there is no context parameter
- * requested then these are removed from the prototypes and from all calls.
- */
-#ifdef MLK_CONFIG_CONTEXT_PARAMETER
-#define MLK_CONTEXT_PARAMETERS_0(context) (context)
-#define MLK_CONTEXT_PARAMETERS_1(arg0, context) (arg0, context)
-#define MLK_CONTEXT_PARAMETERS_2(arg0, arg1, context) (arg0, arg1, context)
-#define MLK_CONTEXT_PARAMETERS_3(arg0, arg1, arg2, context) \
-  (arg0, arg1, arg2, context)
-#define MLK_CONTEXT_PARAMETERS_4(arg0, arg1, arg2, arg3, context) \
-  (arg0, arg1, arg2, arg3, context)
-#else /* MLK_CONFIG_CONTEXT_PARAMETER */
-#define MLK_CONTEXT_PARAMETERS_0(context) ()
-#define MLK_CONTEXT_PARAMETERS_1(arg0, context) (arg0)
-#define MLK_CONTEXT_PARAMETERS_2(arg0, arg1, context) (arg0, arg1)
-#define MLK_CONTEXT_PARAMETERS_3(arg0, arg1, arg2, context) (arg0, arg1, arg2)
-#define MLK_CONTEXT_PARAMETERS_4(arg0, arg1, arg2, arg3, context) \
-  (arg0, arg1, arg2, arg3)
-#endif /* !MLK_CONFIG_CONTEXT_PARAMETER */
-
-#if defined(MLK_CONFIG_CONTEXT_PARAMETER_TYPE) != \
-    defined(MLK_CONFIG_CONTEXT_PARAMETER)
-#error MLK_CONFIG_CONTEXT_PARAMETER_TYPE must be defined if and only if MLK_CONFIG_CONTEXT_PARAMETER is defined
-#endif
+/* Context-parameter machinery (MLK_CONTEXT_PARAMETERS_n and related config
+ * checks). Kept in a separate, level-generic header for readability; included
+ * here so it is available to the allocation macros below and to all consumers
+ * of common.h. */
+#include "context.h"
 
 #if !defined(MLK_CONFIG_CUSTOM_ALLOC_FREE)
 /* Default: stack allocation */
 
+/* This is a declaration macro, not an expression macro: T is a type and v is
+ * a declarator, neither of which can be wrapped in parentheses. The
+ * bugprone-macro-parentheses diagnostic is therefore a false positive here. */
 #define MLK_ALLOC(v, T, N, context) \
   MLK_ALIGN T mlk_alloc_##v[N];     \
-  T *v = mlk_alloc_##v
+  T *v = mlk_alloc_##v /* NOLINT(bugprone-macro-parentheses) */
 
-/* TODO: This leads to a circular dependency between common and verify.h
- * It just works out before we're at the end of the file, but it's still
- * prone to issues in the future. */
-#include "verify.h"
+/* The MLK_FREE macro body references mlk_zeroize(), which is declared in
+ * verify.h. We deliberately do NOT include verify.h here: doing so would
+ * create a circular dependency (verify.h includes common.h), and common.h
+ * itself never calls mlk_zeroize() -- only the macro expansion does. Each
+ * translation unit that uses MLK_FREE therefore includes verify.h directly. */
 #define MLK_FREE(v, T, N, context)                     \
   do                                                   \
   {                                                    \
@@ -261,13 +244,13 @@
 /****************************** Error codes ***********************************/
 
 /* Generic failure condition */
-#define MLK_ERR_FAIL -1
+#define MLK_ERR_FAIL (-1)
 /* An allocation failed. This can only happen if MLK_CONFIG_CUSTOM_ALLOC_FREE
  * is defined and the provided MLK_CUSTOM_ALLOC can fail. */
-#define MLK_ERR_OUT_OF_MEMORY -2
+#define MLK_ERR_OUT_OF_MEMORY (-2)
 /* An rng failure occured. Might be due to insufficient entropy or
  * system misconfiguration. */
-#define MLK_ERR_RNG_FAIL -3
+#define MLK_ERR_RNG_FAIL (-3)
 
 #endif /* !__ASSEMBLER__ */
 

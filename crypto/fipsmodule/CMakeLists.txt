@@ -429,19 +429,12 @@ if((ARCH STREQUAL "aarch64") AND UNIX)
   # Set the source directory for s2n-bignum assembly files
   set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")
 
-  set(MLKEM_NATIVE_AARCH64_ASM_SOURCES
-
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/intt.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/ntt.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_mulcache_compute_asm.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_reduce_asm.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_tobytes_asm.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_tomont_asm.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k2.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/rej_uniform_asm.S
-  )
+  # Every .S file in this directory is imported by importer.sh and must be
+  # compiled; glob so that refreshes which add/remove/rename files don't need a
+  # matching edit here. CONFIGURE_DEPENDS makes CMake re-run when the set of
+  # matching files changes.
+  file(GLOB MLKEM_NATIVE_AARCH64_ASM_SOURCES CONFIGURE_DEPENDS
+    "${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/*.S")
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_AARCH64_ASM_SOURCES})
 
@@ -452,29 +445,12 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   # Set the source directory for s2n-bignum assembly files
   set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")
 
-  set(MLKEM_NATIVE_X86_64_ASM_SOURCES
-
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/intt.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntt.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/mulcache_compute.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttfrombytes.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntttobytes.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttunpack.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/reduce.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/tomont.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k2.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/rej_uniform_asm.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d10.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d11.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d4.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d5.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d10.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d11.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d4.S
-    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d5.S
-  )
+  # Every .S file in this directory is imported by importer.sh and must be
+  # compiled; glob so that refreshes which add/remove/rename files don't need a
+  # matching edit here. CONFIGURE_DEPENDS makes CMake re-run when the set of
+  # matching files changes.
+  file(GLOB MLKEM_NATIVE_X86_64_ASM_SOURCES CONFIGURE_DEPENDS
+    "${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/*.S")
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_X86_64_ASM_SOURCES})
 

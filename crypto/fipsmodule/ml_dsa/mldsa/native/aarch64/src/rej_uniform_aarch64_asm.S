@@ -4,6 +4,39 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: rej_uniform_aarch64_asm
+  Description: AArch64 rejection sampling of uniform coefficients mod q
+  Signature: uint64_t mld_rej_uniform_aarch64_asm(int32_t r[256], const uint8_t *buf, unsigned buflen, const uint8_t table[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output buffer (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: x2
+      permissions: read-only
+      c_parameter: const uint8_t *buf
+      description: Input buffer
+    x2:
+      type: scalar
+      c_parameter: unsigned buflen
+      description: Length of input buffer (must be a multiple of 24)
+      test_with: 840  # MLD_POLY_UNIFORM_NBLOCKS * SHAKE128_RATE = 5 * 168
+    x3:
+      type: buffer
+      size_bytes: 256
+      permissions: read-only
+      c_parameter: const uint8_t table[256]
+      description: Lookup table (256 x uint8_t)
+*/
+
  #include "_internal_s2n_bignum_arm.h"
 
 /*

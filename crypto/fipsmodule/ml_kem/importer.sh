@@ -31,7 +31,7 @@
 # Dependencies:
 # - unifdef
 
-GITHUB_SERVER_URL=https://github.com/
+GITHUB_SERVER_URL=${GITHUB_SERVER_URL:=https://github.com/}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=pq-code-package/mlkem-native.git}
 GITHUB_SHA=${GITHUB_SHA:=main}
 

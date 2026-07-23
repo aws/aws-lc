@@ -14,13 +14,46 @@
  *   Becker, Hwang, Kannwischer, Yang, Yang
  *   https://eprint.iacr.org/2021/986
  *
+ * - [NeonNTT_Autoformalised]
+ *   Neon NTT - (Auto)formalised
+ *   Hanno Becker
+ *   https://eprint.iacr.org/2026/1223
+ *
  * - [SLOTHY_Paper]
  *   Fast and Clean: Auditable high-performance assembly via constraint solving
  *   Abdulrahman, Becker, Kannwischer, Klein
  *   https://eprint.iacr.org/2022/1303
  */
 
-/* AArch64 ML-DSA forward NTT following @[NeonNTT] and @[SLOTHY_Paper] */
+/* AArch64 ML-DSA forward NTT following @[NeonNTT], @[SLOTHY_Paper], and @[NeonNTT_Autoformalised] */
+
+/*yaml
+  Name: ntt_aarch64_asm
+  Description: AArch64 ML-DSA forward NTT
+  Signature: void mld_ntt_aarch64_asm(int32_t r[256], const int32_t zetas_l123456[144], const int32_t zetas_l78[384])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    Features: [NEON]
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t r[256]
+      description: Input/output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 576
+      permissions: read-only
+      c_parameter: const int32_t zetas_l123456[144]
+      description: Twiddle factors for layers 1-6 (144 x int32_t)
+    x2:
+      type: buffer
+      size_bytes: 1536
+      permissions: read-only
+      c_parameter: const int32_t zetas_l78[384]
+      description: Twiddle factors for layers 7-8 (384 x int32_t)
+*/
 
 #include "_internal_s2n_bignum_arm.h"
 
