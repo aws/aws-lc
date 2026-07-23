@@ -37,6 +37,7 @@ var (
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
 	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
+	sdeCPUList      = flag.String("sde-cpus", "", "A comma-separated list of SDE CPU codes to test (e.g. 'hsw,bdw,icl'). If empty, a default list of CPUs is used.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", defaultNumWorkers(), "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
@@ -144,6 +145,10 @@ var cpusWithNoAVXSupport = []string{
 var sdeCPUs []string
 
 func initSDECPUs() {
+	if *sdeCPUList != "" {
+		sdeCPUs = strings.Split(*sdeCPUList, ",")
+		return
+	}
 	sdeCPUs = append([]string{}, defaultCPUs...)
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/C", "ver")

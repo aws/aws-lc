@@ -253,3 +253,31 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+
+  small-sde-tests:
+    if: github.repository_owner == 'aws'
+    # The Linux/Windows legs above run on whatever CPU the hosted runner
+    # lands on, so coverage of the CPU profiles OPENSSL_SMALL cares about
+    # (in particular ADX+AVX2 without AVX-512, the fast paths restored by
+    # #3355) is probabilistic. This leg pins them deterministically with
+    # Intel SDE; see tests/ci/run_small_tests_with_sde.sh for the CPU
+    # selection rationale.
+    name: Tests (OPENSSL_SMALL, x86_64 Linux, Intel SDE)
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04_sde
+          run: |
+            source /opt/compiler-env/setup-clang-14.sh
+            ./tests/ci/run_small_tests_with_sde.sh
+          options: --privileged
