@@ -203,11 +203,13 @@ jobs:
     # Windows/x86_64 assembles the .asm sources through NASM. OPENSSL_SMALL
     # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, which compiles out the whole
     # body of the AVX-512-only .asm files; NASM errors on an object with no
-    # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). The Linux legs use
-    # gas, which tolerates empty objects, so they cannot catch this -- hence
+    # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). To prevent this, the
+    # five avx512 perlasm scripts emit the .text directive outside the #ifndef
+    # guard so the object is never empty. The Linux legs use gas, which
+    # tolerates empty objects, so they cannot catch a regression here -- hence
     # dedicated Windows legs (#3355).
     #
-    # The empty-object failure is only reachable through the pre-generated
+    # The empty-object hazard is only reachable through the pre-generated
     # sources (DISABLE_PERL=ON), where NASM itself evaluates the %ifndef
     # guards in generated-src. When Perl is available, perlasm regenerates the
     # .asm with the flag and the scripts emit non-empty ud2/ret stubs instead,

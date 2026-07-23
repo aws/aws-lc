@@ -617,7 +617,7 @@ option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 # every AVX2 implementation: ChaCha20, RSAZ-1024, and SHA-1/256/512's AVX2
 # paths depend only on MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX. This flag implies
 # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX below, but not the reverse.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX/AVX2/BMI2 code from the build" OFF)
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX/BMI2 code paths and the AVX2 code bundled with them (not all AVX2; see comment)" OFF)
 
 # Some assemblers know about AVX, AVX2 and ADX but not AVX512 instructions.
 # This flag can be set to handle such cases, or to opt out of AVX-512 code
