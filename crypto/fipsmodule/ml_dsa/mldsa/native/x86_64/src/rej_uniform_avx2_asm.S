@@ -80,11 +80,11 @@ S2N_BN_SYMBOL(mldsa_rej_uniform_avx2_asm):
         xorl %eax, %eax
         xorl %ecx, %ecx
 
-Lrej_uniform_avx2_asm_loop:
+Lmldsa_rej_uniform_avx2_asm_loop:
         cmpl $0xf8, %eax
-        ja Lrej_uniform_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_avx2_asm_scalar
         cmpl $0x328, %ecx            # imm = 0x328
-        ja Lrej_uniform_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_avx2_asm_scalar
         vmovdqu (%rsi,%rcx), %ymm3
         addl $0x18, %ecx
         vpermq $0x94, %ymm3, %ymm3     # ymm3 = ymm3[0,1,1,2]
@@ -98,13 +98,13 @@ Lrej_uniform_avx2_asm_loop:
         vpermd %ymm3, %ymm4, %ymm3
         vmovdqu %ymm3, (%rdi,%rax,4)
         addl %r9d, %eax
-        jmp Lrej_uniform_avx2_asm_loop
+        jmp Lmldsa_rej_uniform_avx2_asm_loop
 
-Lrej_uniform_avx2_asm_scalar:
+Lmldsa_rej_uniform_avx2_asm_scalar:
         cmpl $0x100, %eax            # imm = 0x100
-        jae Lrej_uniform_avx2_asm_done
+        jae Lmldsa_rej_uniform_avx2_asm_done
         cmpl $0x345, %ecx            # imm = 0x345
-        ja Lrej_uniform_avx2_asm_done
+        ja Lmldsa_rej_uniform_avx2_asm_done
         movzwl (%rsi,%rcx), %r8d
         movzbl 0x2(%rsi,%rcx), %r9d
         shll $0x10, %r9d
@@ -112,12 +112,12 @@ Lrej_uniform_avx2_asm_scalar:
         andl $0x7fffff, %r8d         # imm = 0x7FFFFF
         addl $0x3, %ecx
         cmpl $0x7fe001, %r8d         # imm = 0x7FE001
-        jae Lrej_uniform_avx2_asm_scalar
+        jae Lmldsa_rej_uniform_avx2_asm_scalar
         movl %r8d, (%rdi,%rax,4)
         addl $0x1, %eax
-        jmp Lrej_uniform_avx2_asm_scalar
+        jmp Lmldsa_rej_uniform_avx2_asm_scalar
 
-Lrej_uniform_avx2_asm_done:
+Lmldsa_rej_uniform_avx2_asm_done:
         retq
         .cfi_endproc
 

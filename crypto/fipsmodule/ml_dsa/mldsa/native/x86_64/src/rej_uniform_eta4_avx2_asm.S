@@ -74,11 +74,11 @@ S2N_BN_SYMBOL(mldsa_rej_uniform_eta4_avx2_asm):
         xorl %eax, %eax
         xorl %ecx, %ecx
 
-Lrej_uniform_eta4_avx2_asm_loop:
+Lmldsa_rej_uniform_eta4_avx2_asm_loop:
         cmpl $0xf8, %eax
-        ja Lrej_uniform_eta4_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         cmpl $0x100, %ecx            # imm = 0x100
-        ja Lrej_uniform_eta4_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         vpmovzxbw (%rsi,%rcx), %ymm0
         vpsllw $0x4, %ymm0, %ymm1
         vpor %ymm1, %ymm0, %ymm0
@@ -97,7 +97,7 @@ Lrej_uniform_eta4_avx2_asm_loop:
         shrl $0x8, %r8d
         addl $0x4, %ecx
         cmpl $0xf8, %eax
-        ja Lrej_uniform_eta4_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         vpsrldq $0x8, %xmm5, %xmm5      # xmm5 = xmm5[8,9,10,11,12,13,14,15],zero,zero,zero,zero,zero,zero,zero,zero
         movzbl %r8b, %r10d
         vmovq (%rdx,%r10,8), %xmm6
@@ -109,7 +109,7 @@ Lrej_uniform_eta4_avx2_asm_loop:
         shrl $0x8, %r8d
         addl $0x4, %ecx
         cmpl $0xf8, %eax
-        ja Lrej_uniform_eta4_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         vextracti128 $0x1, %ymm0, %xmm5
         movzbl %r8b, %r10d
         vmovq (%rdx,%r10,8), %xmm6
@@ -121,7 +121,7 @@ Lrej_uniform_eta4_avx2_asm_loop:
         shrl $0x8, %r8d
         addl $0x4, %ecx
         cmpl $0xf8, %eax
-        ja Lrej_uniform_eta4_avx2_asm_scalar
+        ja Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         vpsrldq $0x8, %xmm5, %xmm5      # xmm5 = xmm5[8,9,10,11,12,13,14,15],zero,zero,zero,zero,zero,zero,zero,zero
         movzbl %r8b, %r10d
         vmovq (%rdx,%r10,8), %xmm6
@@ -131,38 +131,38 @@ Lrej_uniform_eta4_avx2_asm_loop:
         popcntl %r10d, %r9d
         addl %r9d, %eax
         addl $0x4, %ecx
-        jmp Lrej_uniform_eta4_avx2_asm_loop
+        jmp Lmldsa_rej_uniform_eta4_avx2_asm_loop
 
-Lrej_uniform_eta4_avx2_asm_scalar:
+Lmldsa_rej_uniform_eta4_avx2_asm_scalar:
         cmpl $0x100, %eax            # imm = 0x100
-        jae Lrej_uniform_eta4_avx2_asm_done
+        jae Lmldsa_rej_uniform_eta4_avx2_asm_done
         cmpl $0x110, %ecx            # imm = 0x110
-        jae Lrej_uniform_eta4_avx2_asm_done
+        jae Lmldsa_rej_uniform_eta4_avx2_asm_done
         movzbl (%rsi,%rcx), %r11d
         incl %ecx
         movl %r11d, %r10d
         andl $0xf, %r10d
         cmpl $0x9, %r10d
-        jae Lrej_uniform_eta4_avx2_asm_high_nibble
+        jae Lmldsa_rej_uniform_eta4_avx2_asm_high_nibble
         movl $0x4, %r9d
         subl %r10d, %r9d
         movl %r9d, (%rdi,%rax,4)
         incl %eax
         cmpl $0x100, %eax            # imm = 0x100
-        jae Lrej_uniform_eta4_avx2_asm_done
+        jae Lmldsa_rej_uniform_eta4_avx2_asm_done
 
-Lrej_uniform_eta4_avx2_asm_high_nibble:
+Lmldsa_rej_uniform_eta4_avx2_asm_high_nibble:
         shrl $0x4, %r11d
         andl $0xf, %r11d
         cmpl $0x9, %r11d
-        jae Lrej_uniform_eta4_avx2_asm_scalar
+        jae Lmldsa_rej_uniform_eta4_avx2_asm_scalar
         movl $0x4, %r10d
         subl %r11d, %r10d
         movl %r10d, (%rdi,%rax,4)
         incl %eax
-        jmp Lrej_uniform_eta4_avx2_asm_scalar
+        jmp Lmldsa_rej_uniform_eta4_avx2_asm_scalar
 
-Lrej_uniform_eta4_avx2_asm_done:
+Lmldsa_rej_uniform_eta4_avx2_asm_done:
         retq
         .cfi_endproc
 

@@ -56,7 +56,7 @@ S2N_BN_SYMBOL(mldsa_polyz_unpack_19_aarch64_asm):
         movi v30.4s, #0x8, lsl #16
         mov x9, #0x10               // =16
 
-Lpolyz_unpack_19_loop:
+Lmldsa_polyz_unpack_19_loop:
         ld1 { v0.16b, v1.16b }, [x1]
         add x1, x1, #0x18
         ld1 { v2.16b }, [x1], #16
@@ -81,7 +81,7 @@ Lpolyz_unpack_19_loop:
         str q7, [x0, #0x30]
         str q4, [x0], #0x40
         subs x9, x9, #0x1
-        b.ne Lpolyz_unpack_19_loop
+        b.ne Lmldsa_polyz_unpack_19_loop
         ret
         .cfi_endproc
 

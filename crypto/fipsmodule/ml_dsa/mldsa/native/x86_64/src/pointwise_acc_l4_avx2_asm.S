@@ -69,7 +69,7 @@ S2N_BN_SYMBOL(mldsa_pointwise_acc_l4_avx2_asm):
         vmovdqa (%rcx), %ymm1
         xorl %eax, %eax
 
-Lpointwise_acc_l4_avx2_looptop2:
+Lmldsa_pointwise_acc_l4_avx2_looptop2:
         vmovdqa (%rsi), %ymm6
         vmovdqa 0x20(%rsi), %ymm8
         vmovdqa (%rdx), %ymm10
@@ -157,7 +157,7 @@ Lpointwise_acc_l4_avx2_looptop2:
         addq $0x40, %rdi
         addl $0x1, %eax
         cmpl $0x10, %eax
-        jb Lpointwise_acc_l4_avx2_looptop2
+        jb Lmldsa_pointwise_acc_l4_avx2_looptop2
         retq
         .cfi_endproc
 

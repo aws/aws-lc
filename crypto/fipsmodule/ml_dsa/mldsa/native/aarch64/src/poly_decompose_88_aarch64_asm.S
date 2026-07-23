@@ -53,7 +53,7 @@ S2N_BN_SYMBOL(mldsa_poly_decompose_88_aarch64_asm):
         dup v23.4s, w11
         mov x3, #0x10               // =16
 
-Lpoly_decompose_88_loop:
+Lmldsa_poly_decompose_88_loop:
         ldr q0, [x1]
         ldr q1, [x1, #0x10]
         ldr q2, [x1, #0x20]
@@ -91,7 +91,7 @@ Lpoly_decompose_88_loop:
         str q3, [x1, #0x30]
         str q0, [x1], #0x40
         subs x3, x3, #0x1
-        b.ne Lpoly_decompose_88_loop
+        b.ne Lmldsa_poly_decompose_88_loop
         ret
         .cfi_endproc
 

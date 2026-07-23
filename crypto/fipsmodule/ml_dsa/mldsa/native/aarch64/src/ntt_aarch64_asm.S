@@ -171,7 +171,7 @@ S2N_BN_SYMBOL(mldsa_ntt_aarch64_asm):
         sub v15.4s, v10.4s, v26.4s
         sub x4, x4, #0x2
 
-Lntt_layer123_start:
+Lmldsa_ntt_layer123_start:
         add v31.4s, v10.4s, v26.4s
         mul v17.4s, v19.4s, v1.s[2]
         add v26.4s, v15.4s, v23.4s
@@ -249,7 +249,7 @@ Lntt_layer123_start:
         sqrdmulh v12.4s, v19.4s, v1.s[3]
         sub v15.4s, v10.4s, v26.4s
         subs x4, x4, #0x1
-        cbnz x4, Lntt_layer123_start
+        cbnz x4, Lmldsa_ntt_layer123_start
         add v13.4s, v10.4s, v26.4s
         mls v18.4s, v5.4s, v7.s[0]
         str q22, [x0, #0x180]
@@ -411,7 +411,7 @@ Lntt_layer123_start:
         sub v31.4s, v6.4s, v9.4s
         sub x4, x4, #0x1
 
-Lntt_layer45678_start:
+Lmldsa_ntt_layer45678_start:
         add v2.4s, v13.4s, v12.4s
         sqrdmulh v5.4s, v30.4s, v20.4s
         sub v25.4s, v13.4s, v12.4s
@@ -577,7 +577,7 @@ Lntt_layer45678_start:
         trn2 v10.2d, v22.2d, v1.2d
         mul v28.4s, v30.4s, v3.4s
         subs x4, x4, #0x1
-        cbnz x4, Lntt_layer45678_start
+        cbnz x4, Lmldsa_ntt_layer45678_start
         add v9.4s, v6.4s, v9.4s
         sqrdmulh v6.4s, v30.4s, v20.4s
         ldur q24, [x2, #-0xa0]

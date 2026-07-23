@@ -38,7 +38,7 @@ S2N_BN_SYMBOL(mldsa_poly_caddq_aarch64_asm):
         dup v4.4s, w9
         mov x1, #0x10               // =16
 
-Lpoly_caddq_loop:
+Lmldsa_poly_caddq_loop:
         ldr q0, [x0]
         ldr q1, [x0, #0x10]
         ldr q2, [x0, #0x20]
@@ -56,7 +56,7 @@ Lpoly_caddq_loop:
         str q3, [x0, #0x30]
         str q0, [x0], #0x40
         subs x1, x1, #0x1
-        b.ne Lpoly_caddq_loop
+        b.ne Lmldsa_poly_caddq_loop
         ret
         .cfi_endproc
 

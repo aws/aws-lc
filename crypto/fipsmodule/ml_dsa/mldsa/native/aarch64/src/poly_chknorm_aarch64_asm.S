@@ -42,7 +42,7 @@ S2N_BN_SYMBOL(mldsa_poly_chknorm_aarch64_asm):
         eor v21.16b, v21.16b, v21.16b
         mov x2, #0x10               // =16
 
-Lpoly_chknorm_loop:
+Lmldsa_poly_chknorm_loop:
         ldr q1, [x0, #0x10]
         ldr q2, [x0, #0x20]
         ldr q3, [x0, #0x30]
@@ -60,7 +60,7 @@ Lpoly_chknorm_loop:
         cmge v0.4s, v0.4s, v20.4s
         orr v21.16b, v21.16b, v0.16b
         subs x2, x2, #0x1
-        b.ne Lpoly_chknorm_loop
+        b.ne Lmldsa_poly_chknorm_loop
         umaxv s21, v21.4s
         fmov w0, s21
         and w0, w0, #0x1

@@ -46,7 +46,7 @@ S2N_BN_SYMBOL(mldsa_poly_pointwise_montgomery_aarch64_asm):
         dup v1.4s, w3
         mov x3, #0x40               // =64
 
-Lpoly_pointwise_montgomery_loop_start:
+Lmldsa_poly_pointwise_montgomery_loop_start:
         ldr q16, [x0]
         ldr q17, [x0, #0x10]
         ldr q18, [x0, #0x20]
@@ -88,7 +88,7 @@ Lpoly_pointwise_montgomery_loop_start:
         str q19, [x0, #0x30]
         str q16, [x0], #0x40
         subs x3, x3, #0x4
-        cbnz x3, Lpoly_pointwise_montgomery_loop_start
+        cbnz x3, Lmldsa_poly_pointwise_montgomery_loop_start
         ret
         .cfi_endproc
 

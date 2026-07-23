@@ -75,7 +75,7 @@ S2N_BN_SYMBOL(mldsa_poly_use_hint_88_avx2_asm):
         vpbroadcastd %xmm4, %ymm4
         vpbroadcastd %xmm3, %ymm3
 
-Lpoly_use_hint_88_avx2_asm_loop:
+Lmldsa_poly_use_hint_88_avx2_asm_loop:
         vmovdqa (%rdi), %ymm0
         vmovdqa (%rsi), %ymm1
         vpaddd %ymm0, %ymm4, %ymm10
@@ -104,7 +104,7 @@ Lpoly_use_hint_88_avx2_asm_loop:
         addq $0x20, %rsi
         addq $0x20, %rax
         cmpq $0x400, %rax            # imm = 0x400
-        jne Lpoly_use_hint_88_avx2_asm_loop
+        jne Lmldsa_poly_use_hint_88_avx2_asm_loop
         retq
         .cfi_endproc
 
