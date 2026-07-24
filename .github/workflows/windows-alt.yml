@@ -207,6 +207,32 @@ jobs:
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
+  cross-mingw-fips:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Tools
+        run: |
+          set -ex
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends  software-properties-common
+          sudo add-apt-repository --yes ppa:longsleep/golang-backports
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends build-essential cmake golang-go nasm clang wget mingw-w64
+          sudo apt-get install --assume-yes --install-recommends winehq-stable wine-binfmt binfmt-support
+          sudo update-binfmts --display
+          sudo update-binfmts --disable
+          sudo update-binfmts --enable wine
+          sudo update-binfmts --display
+          sudo rm -rf /tmp/*
+      - uses: actions/checkout@v6
+      - name: x86_64-w64-mingw32 FIPS shared Build/Test
+        run:
+          ./tests/ci/run_cross_mingw_fips_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
   cross-clang-cl-ninja:
     # Cross-compile from Linux to x86_64-pc-windows-msvc with Ninja + clang-cl,
     # mirroring the default aws-lc-rs setup. This catches command-line quoting
