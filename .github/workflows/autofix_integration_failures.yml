@@ -26,7 +26,7 @@ jobs:
     outputs:
       targets: ${{ steps.targets.outputs.targets }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Collect failing targets
@@ -46,7 +46,7 @@ jobs:
             | while IFS=$'\t' read -r integration version; do
             "$AUTOFIX_SCRIPT" fetch-logs "$TARGET_RUN_ID" "$integration" "$version"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: autofix-logs
@@ -79,7 +79,7 @@ jobs:
       ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
       ANTHROPIC_DEFAULT_HAIKU_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
@@ -96,7 +96,7 @@ jobs:
         run: |
           "$AUTOFIX_SCRIPT" verify-settings
       - name: Download pre-fetched logs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: autofix-logs
           path: autofix/
@@ -108,7 +108,7 @@ jobs:
         run: |
           set -x
           "$AUTOFIX_SCRIPT" reason "$TARGET_RUN_ID" "$INTEGRATION" "$VERSION"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: autofix-${{ matrix.target.dir }}
@@ -133,7 +133,7 @@ jobs:
         image:linux-5.0
         instance-size:small
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
@@ -141,7 +141,7 @@ jobs:
           oidcRole: AwsLcGitHubActionsAutofixOidcRole
           roleName: AwsLcGitHubActionAutofixUploadRole
       - name: Download results from reason job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: autofix-${{ matrix.target.dir }}
           path: autofix/${{ matrix.target.dir }}/
