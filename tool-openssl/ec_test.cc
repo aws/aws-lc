@@ -225,6 +225,22 @@ TEST_F(ECTest, InvalidOutputPath) {
   ASSERT_FALSE(ecTool(args));
 }
 
+// Test that private key output files are created with restrictive permissions
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(ECTest, PrivateKeyFilePermissions) {
+  args_list_t args = {"-in", pem_key_path, "-out", out_path};
+  ASSERT_TRUE(ecTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  // File should be owner-only (0600 mask applied via umask 0077)
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(perms & 0077, 0u)
+      << "Private key file should not be group/world accessible, got: 0"
+      << std::oct << perms;
+}
+#endif
+
 TEST_F(ECTest, CompareWithOpenSSLPEMOutput) {
   if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
