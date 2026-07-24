@@ -35,7 +35,11 @@ TEST(SClientTest, ConnectVerifyShowcerts) {
 
 // Test -cipher
 TEST(SClientTest, Cipher) {
-  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA"};
+  // Pin to TLS 1.2 so the -cipher list is actually enforced. Without a version
+  // pin the handshake can negotiate TLS 1.3, whose cipher suites are configured
+  // separately, leaving -cipher effectively ignored.
+  args_list_t args = {"-connect", "amazon.com:443", "-cipher",
+                      "ECDHE-RSA-AES128-GCM-SHA256", "-tls1_2"};
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }
