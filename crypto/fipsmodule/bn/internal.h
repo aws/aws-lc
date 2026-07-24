@@ -270,6 +270,10 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 // values for other operations.
 #define BN_MONTGOMERY_MAX_WORDS (8 * 1024 / sizeof(BN_ULONG))
 
+#if defined(BORINGSSL_DISPATCH_TEST)
+int bn_montgomery_use_s2n_bignum_for_testing(unsigned int num);
+#endif
+
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))

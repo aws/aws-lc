@@ -249,6 +249,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
 OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_NEOVERSE_N2) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
 }
 

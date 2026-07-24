@@ -2944,6 +2944,30 @@ TEST_F(BNTest, BNMulMontABI) {
 }
 #endif   // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
 
+#if defined(BORINGSSL_DISPATCH_TEST) && !defined(OPENSSL_NO_ASM) && \
+    defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT) &&     \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||             \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD) ||         \
+     defined(OPENSSL_NETBSD))
+TEST_F(BNTest, MontgomeryN2Dispatch) {
+#if defined(OPENSSL_STATIC_ARMCAP_NEOVERSE_N2)
+  EXPECT_TRUE(CRYPTO_is_ARMv8_wide_multiplier_capable());
+#endif
+
+  const uint32_t saved_armcap = OPENSSL_armcap_P;
+
+  OPENSSL_armcap_P = ARMV7_NEON;
+  EXPECT_TRUE(bn_montgomery_use_s2n_bignum_for_testing(8));
+  EXPECT_FALSE(bn_montgomery_use_s2n_bignum_for_testing(7));
+
+  OPENSSL_armcap_P = ARMV7_NEON | ARMV8_NEOVERSE_N2;
+  EXPECT_TRUE(CRYPTO_is_ARMv8_wide_multiplier_capable());
+  EXPECT_FALSE(bn_montgomery_use_s2n_bignum_for_testing(8));
+
+  OPENSSL_armcap_P = saved_armcap;
+}
+#endif
+
 #if defined(OPENSSL_BN_ASM_MONT5) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMont5ABI) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
