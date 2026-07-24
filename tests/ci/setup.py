@@ -31,7 +31,7 @@ setuptools.setup(
         # Introduced by Android Device Farm CI.
         "requests",
         "arnparse==0.0.2",
-        "urllib3==2.6.3"
+        "urllib3==2.7.0"
     ],
 
     python_requires=">=3.6",
