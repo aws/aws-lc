@@ -53,8 +53,10 @@ TEST(SClientTest, Tls1_1) {
 
 // Test -cipher and -tls1_1 together
 TEST(SClientTest, CipherAndTls1_1) {
-  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA",
-                      "-tls1_1"};
+  // TLS 1.1 has no AEAD/SHA-256 suites, so this stays on a CBC-SHA1 cipher, but
+  // prefer the forward-secret ECDHE variant over static-RSA AES128-SHA.
+  args_list_t args = {"-connect", "amazon.com:443", "-cipher",
+                      "ECDHE-RSA-AES128-SHA", "-tls1_1"};
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }
