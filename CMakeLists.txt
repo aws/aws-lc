@@ -609,26 +609,45 @@ endmacro()
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 
-# Some assemblers know about AVX but not ADX, AVX2 or AVX512 instructions, e.g. gcc 4.8.2.
-# This flag can be set to handle such cases.
-# Note:
-# * Although this flag name implies an effect on AVX512 instructions, it's also
-#   intended to avoid generating ADX and AVX2 instructions.
-# * This flag name has "512AVX" instead of "AVX512" so that it doesn't
+# Some assemblers know about AVX and AVX2 but not ADX instructions. This flag
+# gates the ADX/AVX2/BMI2 code paths: s2n-bignum's x86_64 implementations
+# (P-256/P-384/P-521/curve25519), RSA/DH's ADX/BMI2 Montgomery multiplication
+# (bn_mulx4x_mont/bn_sqr8x_mont), the ADX paths in p256-x86_64-asm.pl, and
+# SHA3's x4-batched Keccak (which needs AVX2, not AVX-512). It does NOT gate
+# every AVX2 implementation: ChaCha20, RSAZ-1024, and SHA-1/256/512's AVX2
+# paths depend only on MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX. This flag implies
+# MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX below, but not the reverse.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX/BMI2 code paths and the AVX2 code bundled with them (not all AVX2; see comment)" OFF)
+
+# Some assemblers know about AVX, AVX2 and ADX but not AVX512 instructions.
+# This flag can be set to handle such cases, or to opt out of AVX-512 code
+# for other reasons (e.g. OPENSSL_SMALL uses it to shed size on x86_64). It
+# guards only genuine AVX-512 (zmm/EVEX) code; for ADX/AVX2/BMI2 code see
+# MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 above.
+# Note: This flag name has "512AVX" instead of "AVX512" so that it doesn't
 #   include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match
 #   to it in the Perl files checks.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 ON)
   set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing all AVX optimisations")
 endif()
 
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 selected, removing ADX, AVX2 and AVX512 optimisations")
+endif()
+
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing ADX, AVX2 and AVX512 optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
 if (GCC)
@@ -1075,11 +1094,14 @@ endif()
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
   # OPENSSL_SMALL implies disabling AVX-512 optimizations on x86_64 for size.
-  # This is also enforced in include/openssl/target.h for non-CMake builds.
+  # This intentionally sets only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
+  # MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2/BMI2 code stays
+  # available under OPENSSL_SMALL (#3355). This is also enforced in
+  # include/openssl/target.h for non-CMake builds.
   if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
     add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing ADX, AVX2 and AVX512 optimisations")
+    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing AVX512 optimisations")
   endif()
 endif()
 

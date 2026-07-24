@@ -35,26 +35,24 @@
 // non-_alt version to run. By default this selection happens at runtime via
 // use_s2n_bignum_alt().
 //
-// Under OPENSSL_SMALL we instead pin each operation to the single,
-// universally-compatible variant at compile time and drop the other from the
-// build (see crypto/fipsmodule/CMakeLists.txt). This trades the
-// microarchitecture-specific fast path for a smaller binary. On aarch64 we pin
-// to the non-"_alt" (generic) variant, which runs on every ARMv8 CPU. On
-// x86_64, OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX which
-// disables s2n-bignum entirely, so this header is not reached (see #3319).
+// Under OPENSSL_SMALL on aarch64 we instead pin each operation to the
+// non-"_alt" variant at compile time (safe on every ARMv8 CPU) and drop the
+// other from the build (see crypto/fipsmodule/CMakeLists.txt), trading the
+// microarchitecture-specific fast path for a smaller binary. This pin is not
+// safe on x86_64, where the non-"_alt" variant requires BMI2/ADX (Haswell,
+// 2013+), so x86_64 keeps the runtime-dispatch selectors below even under
+// OPENSSL_SMALL (#3355).
 //
-// Under OPENSSL_SMALL, only the curve25519 selectors are defined: the EC
-// implementations that use the P-256/P-384/P-521 selectors (p256-nistz.c,
-// p384.c, p521.c) are compiled out entirely in that configuration (ec.c
-// dispatches those curves to fiat-crypto / generic Montgomery instead), and
-// the corresponding s2n-bignum assembly is dropped from the build.
+// Under OPENSSL_SMALL on aarch64, only the curve25519 selectors are defined:
+// the P-256/P-384/P-521 selectors are unused there since p256-nistz.c/p384.c/
+// p521.c are compiled out entirely under OPENSSL_SMALL.
 
 #define S2NBIGNUM_KSQR_16_32_TEMP_NWORDS 24
 #define S2NBIGNUM_KMUL_16_32_TEMP_NWORDS 32
 #define S2NBIGNUM_KSQR_32_64_TEMP_NWORDS 72
 #define S2NBIGNUM_KMUL_32_64_TEMP_NWORDS 96
 
-#if defined(OPENSSL_SMALL)
+#if defined(OPENSSL_SMALL) && !defined(OPENSSL_X86_64)
 
 static inline void curve25519_x25519_byte_selector(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32], const uint8_t point[S2N_BIGNUM_STATIC 32]) {
   curve25519_x25519_byte(res, scalar, point);

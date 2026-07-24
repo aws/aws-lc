@@ -35,17 +35,20 @@ jobs:
       matrix:
         # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
         # default build, measured on the tests/binary-size consumer. Thresholds
-        # are set conservatively below the measured values (first CI runs of
-        # this workflow) to allow for compiler/runner variance:
+        # are set conservatively below the measured values to allow for
+        # compiler/runner variance:
         #
-        # - x86_64: measured 55%. OPENSSL_SMALL disables s2n-bignum entirely
-        #   via the MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication (#3319).
+        # - x86_64: measured 43.7% (clang -O2, x86_64 Linux). OPENSSL_SMALL
+        #   implies only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
+        #   MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so the ADX/AVX2/BMI2 code
+        #   (curve25519 s2n-bignum, RSA/DH mulx Montgomery, x4-batched Keccak)
+        #   remains in the build (#3355).
         # - aarch64: measured 31%. The default build links both variants of
         #   every s2n-bignum EC operation (~500 KB), the nistz256 table
         #   (~150 KB), and the P-384/P-521 implementations and tables; the
         #   OPENSSL_SMALL build has none of these.
         include:
-          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 40 }
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 35 }
           - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 20 }
     steps:
       - name: Install dependencies
@@ -167,11 +170,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # x86_64 covers both compilers; aarch64 is the platform where the
-        # s2n-bignum removal and curve25519 variant pinning are the size
-        # mechanism (on x86_64, OPENSSL_SMALL disables s2n-bignum entirely via
-        # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX), so it is covered on both compilers
-        # too.
+        # Both architectures need coverage: aarch64 is where the s2n-bignum
+        # P-256/P-384/P-521 removal and curve25519 variant pinning are the
+        # size mechanism; on x86_64, OPENSSL_SMALL sheds AVX-512 code and the
+        # dead P-256/P-384/P-521 s2n-bignum objects while curve25519, RSA/DH
+        # mulx Montgomery, and x4-batched Keccak stay reachable (#3355).
         include:
           - { name: "x86_64 gcc",    runner: ubuntu-latest,    cc: gcc,   cxx: g++ }
           - { name: "x86_64 clang",  runner: ubuntu-latest,    cc: clang, cxx: clang++ }
@@ -194,3 +197,87 @@ jobs:
             -DBUILD_SHARED_LIBS=0 -DOPENSSL_SMALL=ON
           cmake --build build-small --target all
           cmake --build build-small --target run_tests
+
+  small-tests-windows:
+    if: github.repository_owner == 'aws'
+    # Windows/x86_64 assembles the .asm sources through NASM. OPENSSL_SMALL
+    # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, which compiles out the whole
+    # body of the AVX-512-only .asm files; NASM errors on an object with no
+    # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). To prevent this, the
+    # five avx512 perlasm scripts emit the .text directive outside the #ifndef
+    # guard so the object is never empty. The Linux legs use gas, which
+    # tolerates empty objects, so they cannot catch a regression here -- hence
+    # dedicated Windows legs (#3355).
+    #
+    # The empty-object hazard is only reachable through the pre-generated
+    # sources (DISABLE_PERL=ON), where NASM itself evaluates the %ifndef
+    # guards in generated-src. When Perl is available, perlasm regenerates the
+    # .asm with the flag and the scripts emit non-empty ud2/ret stubs instead,
+    # so that leg exercises the regeneration path. Cover both.
+    name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "perlasm",       disable_perl: "OFF" }
+          - { name: "pre-generated", disable_perl: "ON" }
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.18'
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        id: clang
+        with:
+          # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
+          version: 20
+          env: true
+      - name: Setup CMake
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: Ninja
+          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
+          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
+          options: |
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TYPE=Release
+            OPENSSL_SMALL=ON
+            DISABLE_PERL=${{ matrix.disable_perl }}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  small-sde-tests:
+    if: github.repository_owner == 'aws'
+    # The Linux/Windows legs above run on whatever CPU the hosted runner
+    # lands on, so coverage of the CPU profiles OPENSSL_SMALL cares about
+    # (in particular ADX+AVX2 without AVX-512, the fast paths restored by
+    # #3355) is probabilistic. This leg pins them deterministically with
+    # Intel SDE; see tests/ci/run_small_tests_with_sde.sh for the CPU
+    # selection rationale.
+    name: Tests (OPENSSL_SMALL, x86_64 Linux, Intel SDE)
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04_sde
+          run: |
+            source /opt/compiler-env/setup-clang-14.sh
+            ./tests/ci/run_small_tests_with_sde.sh
+          options: --privileged
