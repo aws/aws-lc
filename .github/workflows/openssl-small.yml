@@ -57,7 +57,7 @@ jobs:
           sudo apt-get -y --no-install-recommends install cmake clang ninja-build golang
           echo "CC=clang" >> "$GITHUB_ENV"
           echo "CXX=clang++" >> "$GITHUB_ENV"
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build libcrypto.a (default)
         run: |
           cmake -GNinja -B build-default -DCMAKE_BUILD_TYPE=Release \
@@ -187,10 +187,10 @@ jobs:
           sudo apt-get -y --no-install-recommends install cmake ninja-build clang gcc g++
           echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
           echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build and run tests (OPENSSL_SMALL)
         run: |
           cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
@@ -225,7 +225,7 @@ jobs:
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'
       - name: Checkout
