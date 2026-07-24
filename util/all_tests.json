@@ -37,7 +37,7 @@
   {
     "comment": "Test algorithm dispatch without CPU indicator bits",
     "cmd": ["crypto/crypto_test"],
-    "env": ["OPENSSL_armcap=~0x7080"],
+    "env": ["OPENSSL_armcap=~0x47080"],
     "target_arch": "arm",
     "skip_valgrind": true,
     "shard": true
@@ -45,7 +45,7 @@
   {
     "comment": "Test algorithm dispatch without CPU indicator or Neon extension capability bits",
     "cmd": ["crypto/crypto_test"],
-    "env": ["OPENSSL_armcap=~0x78fc"],
+    "env": ["OPENSSL_armcap=~0x478fc"],
     "target_arch": "arm",
     "skip_valgrind": true,
     "shard": true

@@ -359,7 +359,8 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // implementation.
 #if defined(OPENSSL_AARCH64)
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
-    if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+    if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() ||
+        CRYPTO_is_Neoverse_V3()) {
         keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
         sha3_keccak_f1600((uint64_t *)A, iotas);
         return;
@@ -440,7 +441,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() || CRYPTO_is_Neoverse_V3()) {
         keccak_log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
         sha3_keccak4_f1600_alt2((uint64_t *)A, iotas);
         return;
