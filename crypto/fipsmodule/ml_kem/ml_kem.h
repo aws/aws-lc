@@ -28,6 +28,17 @@
 #define MLKEM1024_SECRET_KEY_BYTES  (3168)
 #define MLKEM1024_CIPHERTEXT_BYTES  (1568)
 
+// Return-value convention
+// =======================
+//
+// All functions below return ML_KEM_SUCCESS (0) or ML_KEM_FAILURE (1).
+// mlkem-native's MLK_ERR_* codes are not propagated at present.
+//
+// WARNING: 0-on-success is the reverse of AWS-LC's usual convention
+// (API-CONVENTIONS.md) and the inverse of ml_dsa.h, which returns 1 on success.
+#define ML_KEM_SUCCESS 0
+#define ML_KEM_FAILURE 1
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
