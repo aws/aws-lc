@@ -411,15 +411,10 @@ static int kem_check_pct(const KEM_KEY *key) {
   ret = 1;
 
 cleanup:
-  if (ciphertext != NULL) {
-    OPENSSL_cleanse(ciphertext, kem->ciphertext_len);
-  }
-  if (ss_enc != NULL) {
-    OPENSSL_cleanse(ss_enc, kem->shared_secret_len);
-  }
-  if (ss_dec != NULL) {
-    OPENSSL_cleanse(ss_dec, kem->shared_secret_len);
-  }
+  // OPENSSL_cleanse and OPENSSL_free both no-op on NULL, so no guards needed.
+  OPENSSL_cleanse(ciphertext, kem->ciphertext_len);
+  OPENSSL_cleanse(ss_enc, kem->shared_secret_len);
+  OPENSSL_cleanse(ss_dec, kem->shared_secret_len);
   OPENSSL_free(ciphertext);
   OPENSSL_free(ss_enc);
   OPENSSL_free(ss_dec);
