@@ -59,6 +59,38 @@ install_aws_lc install-static BUILD_SHARED_LIBS=OFF
 install_aws_lc install-both BUILD_SHARED_LIBS=OFF
 install_aws_lc install-both BUILD_SHARED_LIBS=ON
 
+# Verify the pkg-config files installed by a default (non-dist-pkg) build.
+# Default Linux builds enable the OpenSSL shim, so the OpenSSL package names
+# (openssl, libcrypto, libssl) must always resolve. Shared builds use -awslc
+# suffixed libraries plus OpenSSL-named compat pc files; static builds
+# install the OpenSSL names directly.
+verify_pkgconfig_files() {
+    local INSTALL_DIR=${SCRATCH_DIR}/$1
+    local LIB_SUFFIX=$2 # "-awslc" when libraries are suffixed, "" otherwise
+
+    local LIB_DIR=lib
+    if [[ -d "${INSTALL_DIR}/lib64" ]]; then
+        LIB_DIR=lib64
+    fi
+    local PC_DIR="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+
+    local PC_FILE
+    for PC_FILE in aws-lc.pc openssl.pc libcrypto${LIB_SUFFIX}.pc libssl${LIB_SUFFIX}.pc libcrypto.pc libssl.pc; do
+        if [[ ! -f "${PC_DIR}/${PC_FILE}" ]]; then
+            fail "${PC_FILE} not found in ${PC_DIR}"
+        fi
+    done
+
+    # The OpenSSL-named files must reference the real library names and the
+    # unsuffixed package names.
+    grep -q -- "-lcrypto${LIB_SUFFIX}" "${PC_DIR}/libcrypto.pc" || fail "libcrypto.pc does not link -lcrypto${LIB_SUFFIX}"
+    grep -q -- "-lssl${LIB_SUFFIX}" "${PC_DIR}/libssl.pc" || fail "libssl.pc does not link -lssl${LIB_SUFFIX}"
+    grep -q "Requires: libssl libcrypto" "${PC_DIR}/openssl.pc" || fail "openssl.pc does not require libssl libcrypto"
+}
+
+verify_pkgconfig_files install-shared -awslc
+verify_pkgconfig_files install-static ""
+
 # write out source of a small cmake project, containing:
 # - mylib: a library that uses AWS-LC
 # - myapp: executable that uses mylib
