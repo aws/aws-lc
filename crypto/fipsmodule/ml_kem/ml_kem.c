@@ -94,7 +94,12 @@ int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */
   }
   const int res = mlkem512_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
@@ -183,7 +188,12 @@ int ml_kem_768_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
   }
   const int res = mlkem768_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
@@ -270,7 +280,12 @@ int ml_kem_1024_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */
   }
   const int res = mlkem1024_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
@@ -345,7 +360,12 @@ int ml_kem_common_keypair(int (*keypair)(uint8_t * public_key, uint8_t *secret_k
   }
   const int res = keypair(public_key.buffer, secret_key.buffer);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }

@@ -230,6 +230,12 @@ static MLD_INLINE uint32_t mld_ct_cmask_nonzero_u32(uint32_t x)
 __contract__(ensures(return_value == ((x == 0) ? 0 : 0xFFFFFFFF)))
 {
   int64_t tmp = mld_value_barrier_i64(-((int64_t)x));
+  /*
+   * PORTABILITY: Right-shift on a signed integer is
+   * implementation-defined for negative left argument.
+   * Here, we assume it's sign-preserving "arithmetic" shift right.
+   * See (C99 6.5.7 (5))
+   */
   tmp >>= 32;
   return mld_cast_int64_to_uint32(tmp);
 }
@@ -259,6 +265,12 @@ __contract__(
 )
 {
   int64_t tmp = mld_value_barrier_i64((int64_t)x);
+  /*
+   * PORTABILITY: Right-shift on a signed integer is
+   * implementation-defined for negative left argument.
+   * Here, we assume it's sign-preserving "arithmetic" shift right.
+   * See (C99 6.5.7 (5))
+   */
   tmp >>= 31;
   return mld_cast_int64_to_uint32(tmp);
 }
