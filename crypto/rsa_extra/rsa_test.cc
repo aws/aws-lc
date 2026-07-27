@@ -1648,15 +1648,15 @@ TEST(RSATest, LargeE) {
   EXPECT_FALSE(RSA_new_public_key_large_e(n, bad_e.get()));
 }
 
-// PSSWithSHA3 proves that RSASSA-PSS supports SHA-3 as both the message digest
-// and the MGF1 hash. It exercises the low-level padding functions
-// (|RSA_padding_add_PKCS1_PSS_mgf1| / |RSA_verify_PKCS1_PSS_mgf1|) and the
-// higher-level sign/verify functions (|RSA_sign_pss_mgf1| /
-// |RSA_verify_pss_mgf1|), including a case where the message digest and the
-// MGF1 digest differ.
-TEST(RSATest, PSSWithSHA3) {
-  // A 2048-bit key so that even SHA3-512 with a digest-length salt fits within
-  // the modulus (64-byte hash + 64-byte salt + overhead).
+// PSSWithVariousDigests proves that RSASSA-PSS works with a range of digest
+// and MGF1 hash functions (currently the SHA-2 and SHA-3 families). It
+// exercises the low-level padding functions (|RSA_padding_add_PKCS1_PSS_mgf1| /
+// |RSA_verify_PKCS1_PSS_mgf1|) and the higher-level sign/verify functions
+// (|RSA_sign_pss_mgf1| / |RSA_verify_pss_mgf1|), including cases where the
+// message digest and the MGF1 digest differ.
+TEST(RSATest, PSSWithVariousDigests) {
+  // A 2048-bit key so that even SHA-512 / SHA3-512 with a digest-length salt
+  // fits within the modulus (64-byte hash + 64-byte salt + overhead).
   bssl::UniquePtr<RSA> key(RSA_new());
   ASSERT_TRUE(key);
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -1668,10 +1668,17 @@ TEST(RSATest, PSSWithSHA3) {
     const EVP_MD *md;
     const EVP_MD *mgf1_md;
   } kTests[] = {
+      // SHA-2 family, message digest == MGF1 digest.
+      {EVP_sha224(), EVP_sha224()},
+      {EVP_sha256(), EVP_sha256()},
+      {EVP_sha384(), EVP_sha384()},
+      {EVP_sha512(), EVP_sha512()},
+      // SHA-3 family, message digest == MGF1 digest.
       {EVP_sha3_256(), EVP_sha3_256()},
       {EVP_sha3_384(), EVP_sha3_384()},
       {EVP_sha3_512(), EVP_sha3_512()},
       // The message digest and MGF1 digest are independent.
+      {EVP_sha256(), EVP_sha512()},
       {EVP_sha3_256(), EVP_sha3_512()},
   };
 
