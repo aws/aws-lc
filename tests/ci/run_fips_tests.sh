@@ -94,3 +94,5 @@ fi
 echo "Testing shared AWS-LC in FIPS Debug mode in a different folder."
 BUILD_ROOT=$(mktemp -d)
 fips_build_and_test -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
+
+print_timing_summary

@@ -39,3 +39,5 @@ build_and_test -DENABLE_DATA_INDEPENDENT_TIMING=ON -DCMAKE_BUILD_TYPE=Release
 
 echo "Testing building with opt-out CPU Jitter Entropy."
 build_and_test -DDISABLE_CPU_JITTER_ENTROPY=ON
+
+print_timing_summary

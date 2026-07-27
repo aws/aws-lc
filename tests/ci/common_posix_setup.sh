@@ -48,6 +48,9 @@ else
   CMAKE_COMMAND="cmake"
 fi
 
+# Accumulated timing data: "label build_secs test_secs" per variant.
+CI_TIMING_LOG=()
+
 function run_build {
   local cflags=("$@")
   rm -rf "${BUILD_ROOT:?}"
@@ -76,8 +79,10 @@ function run_build {
     cflags+=("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
   fi
 
+  _BUILD_START=$SECONDS
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
+  _LAST_BUILD_SECS=$(( SECONDS - _BUILD_START ))
   cd "$SRC_ROOT"
 }
 
@@ -87,7 +92,34 @@ function run_cmake_custom_target {
 
 function build_and_test {
   run_build "$@"
+  local test_start=$SECONDS
   run_cmake_custom_target 'run_tests'
+  local test_secs=$(( SECONDS - test_start ))
+  local label
+  label=$(printf '%s' "$*" | tr -s ' ' '_' | tr -d '"')
+  CI_TIMING_LOG+=("${label:-default} ${_LAST_BUILD_SECS:-0} ${test_secs}")
+}
+
+function print_timing_summary {
+  if [[ ${#CI_TIMING_LOG[@]} -eq 0 ]]; then
+    return
+  fi
+  echo ""
+  echo "=== Build vs Test Timing Summary ==="
+  printf "%-55s %8s %8s %8s\n" "Variant" "Build(s)" "Test(s)" "Total(s)"
+  printf "%-55s %8s %8s %8s\n" "-------" "--------" "-------" "--------"
+  local total_build=0 total_test=0
+  for entry in "${CI_TIMING_LOG[@]}"; do
+    local label build_s test_s total
+    read -r label build_s test_s <<< "$entry"
+    total=$(( build_s + test_s ))
+    total_build=$(( total_build + build_s ))
+    total_test=$(( total_test + test_s ))
+    printf "%-55s %8d %8d %8d\n" "$label" "$build_s" "$test_s" "$total"
+  done
+  printf "%-55s %8s %8s %8s\n" "" "--------" "-------" "--------"
+  printf "%-55s %8d %8d %8d\n" "TOTAL" "$total_build" "$total_test" "$(( total_build + total_test ))"
+  echo ""
 }
 
 function test_c_rehash {
@@ -170,8 +202,13 @@ function fips_build_and_test {
   module_status=$("${bssl_tool}" isfips)
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
+  local test_start=$SECONDS
   run_cmake_custom_target 'run_tests'
   "${BUILD_ROOT}/util/fipstools/test_fips"
+  local test_secs=$(( SECONDS - test_start ))
+  local label
+  label=$(printf '%s' "fips $*" | tr -s ' ' '_' | tr -d '"')
+  CI_TIMING_LOG+=("${label} ${_LAST_BUILD_SECS:-0} ${test_secs}")
 }
 
 function build_and_test_valgrind {
