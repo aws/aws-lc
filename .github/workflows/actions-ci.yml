@@ -53,6 +53,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+      - uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-ccache
+          max-size: 500M
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -74,6 +78,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+      - uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-fips-ccache
+          max-size: 500M
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
@@ -96,6 +104,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+      - uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-ccache
+          max-size: 500M
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -148,6 +160,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+      - uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.os }}-clang${{ matrix.clang }}-fips-ccache
+          max-size: 500M
       - if: matrix.clang == 20
         run: |
           brew install llvm@20

@@ -71,6 +71,11 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
+  if [[ -x "$(command -v ccache)" ]]; then
+    cflags+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
+    cflags+=("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+  fi
+
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
   cd "$SRC_ROOT"
