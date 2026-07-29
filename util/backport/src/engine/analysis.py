@@ -623,6 +623,17 @@ def classify_branch(
     branch is escalated to UNSURE rather than risk a silent false negative.
     """
     ref = f"origin/{branch}"
+    # The fix is ALREADY on this branch -- as a direct ancestor (the branch forked
+    # after the fix landed), a `-x` cherry-pick annotation naming its exact SHA, or
+    # a matching patch-id. Nothing to backport, whatever the pre-image says.
+    #
+    # This has to come first: an applied fix REMOVES the vulnerable lines, so the
+    # pre-image is provably absent on precisely these branches. Checking it further
+    # down (gated on `preimage is not False`) meant the check could never fire when
+    # it mattered, and every already-patched branch fell through to UNSURE -- i.e.
+    # got re-flagged for a backport it already has.
+    if is_already_patched(fix_sha, branch):
+        return ALREADY
     # Path 1 + Path 2: does an introducer reach the branch by SHA ancestry or
     # patch-id equivalence?
     affected = introducer_reaches(introducers, ref)
@@ -638,7 +649,7 @@ def classify_branch(
     #            never a silent miss).
     preimage = vulnerable_preimage_present(fix_sha, src_files, ref)
     if affected and preimage is not False:
-        return ALREADY if is_already_patched(fix_sha, branch) else AFFECTED
+        return AFFECTED
     # Path 2b: ancestry/patch-id missed (a branch-specific introducer), but the
     # exact removed lines ARE present -> deterministically AFFECTED.
     if not affected and preimage is True:
