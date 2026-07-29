@@ -56,7 +56,8 @@ struct X509_name_st {
 } /* X509_NAME */;
 
 // x509_name_ensure_canon lazily computes the canonical encoding of |a| if it is
-// not already valid. Returns one on success and zero on allocation failure.
+// not already valid, synchronizing with |a->canon_lock|. Returns one on success
+// and zero on failure.
 int x509_name_ensure_canon(X509_NAME *a);
 
 struct x509_attributes_st {

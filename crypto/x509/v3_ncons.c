@@ -498,7 +498,7 @@ static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
 
 static int nc_dn(X509_NAME *nm, X509_NAME *base) {
   // Ensure canonical encodings are up to date. Canonicalization is deferred at
-  // parse time, so this may compute it on first use.
+  // parse time, so this may compute it on first use (under the name's lock).
   if (!x509_name_ensure_canon(nm) || !x509_name_ensure_canon(base)) {
     return X509_V_ERR_OUT_OF_MEM;
   }

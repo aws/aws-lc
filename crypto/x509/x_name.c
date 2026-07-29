@@ -215,7 +215,13 @@ err:
 static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
                             const ASN1_ITEM *it, int tag, int aclass) {
   X509_NAME *a = (X509_NAME *)*val;
-  if (a->modified && (!x509_name_encode(a) || !x509_name_canon(a))) {
+  // Rebuild the DER (|bytes|) and canonical encodings if the name has been
+  // modified. This goes through |x509_name_ensure_canon| so that it shares the
+  // per-name lock with the comparison/hash paths: |x509_name_canon| frees and
+  // reallocates |canon_enc|, so two threads running it concurrently on a shared
+  // name would double-free. |x509_name_ensure_canon| performs the same
+  // encode-then-canon sequence under |canon_lock|.
+  if (a->modified && !x509_name_ensure_canon(a)) {
     return -1;
   }
   int ret = a->bytes->length;
