@@ -37,6 +37,7 @@ static void x509_name_ex_free(ASN1_VALUE **val, const ASN1_ITEM *it);
 
 static int x509_name_encode(X509_NAME *a);
 static int x509_name_canon(X509_NAME *a);
+static int x509_name_validate_values(X509_NAME *a);
 static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in);
 static int i2d_name_canon(STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname,
                           unsigned char **in);
@@ -95,6 +96,8 @@ static int x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it) {
   }
   ret->canon_enc = NULL;
   ret->canon_enclen = 0;
+  ret->canon_valid = 0;
+  CRYPTO_MUTEX_init(&ret->canon_lock);
   ret->modified = 1;
   *val = (ASN1_VALUE *)ret;
   return 1;
@@ -121,6 +124,7 @@ static void x509_name_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   if (a->canon_enc) {
     OPENSSL_free(a->canon_enc);
   }
+  CRYPTO_MUTEX_cleanup(&a->canon_lock);
   OPENSSL_free(a);
   *pval = NULL;
 }
@@ -185,10 +189,16 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
       (void)sk_X509_NAME_ENTRY_set(entries, j, NULL);
     }
   }
-  ret = x509_name_canon(nm);
-  if (!ret) {
+  // Building and caching the full canonical encoding is deferred until it is
+  // actually needed (e.g. by |X509_NAME_cmp| during path building or
+  // name-constraint checks); most parsed certificates never have their names
+  // compared, and canonicalizing both issuer and subject dominates |d2i_X509|
+  // cost. We still validate each attribute value here so that malformed names
+  // (e.g. invalid UTF-8) are rejected at parse time, exactly as before.
+  if (!x509_name_validate_values(nm)) {
     goto err;
   }
+  ret = 1;
   sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname, local_sk_X509_NAME_ENTRY_free);
   nm->modified = 0;
   *val = (ASN1_VALUE *)nm;
@@ -288,9 +298,11 @@ static int x509_name_canon(X509_NAME *a) {
     OPENSSL_free(a->canon_enc);
     a->canon_enc = NULL;
   }
+  a->canon_valid = 0;
   // Special case: empty X509_NAME => null encoding
   if (sk_X509_NAME_ENTRY_num(a->entries) == 0) {
     a->canon_enclen = 0;
+    a->canon_valid = 1;
     return 1;
   }
   intname = sk_STACK_OF_X509_NAME_ENTRY_new_null();
@@ -344,6 +356,7 @@ static int x509_name_canon(X509_NAME *a) {
     goto err;
   }
 
+  a->canon_valid = 1;
   ret = 1;
 
 err:
@@ -355,6 +368,54 @@ err:
     sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname,
                                          local_sk_X509_NAME_ENTRY_pop_free);
   }
+  return ret;
+}
+
+// x509_name_validate_values runs the per-attribute canonicalization purely to
+// validate each RDN value (e.g. rejecting malformed UTF-8), discarding the
+// result. This preserves the input-validation semantics that canonicalization
+// historically provided at parse time, without paying to build and cache the
+// full canonical encoding (which is deferred until first comparison). Returns
+// one on success and zero if any value is invalid.
+static int x509_name_validate_values(X509_NAME *a) {
+  int ret = 1;
+  for (size_t i = 0; i < sk_X509_NAME_ENTRY_num(a->entries); i++) {
+    X509_NAME_ENTRY *entry = sk_X509_NAME_ENTRY_value(a->entries, i);
+    // |asn1_string_canon| allocates a fresh |data| on |scratch|, so use a new
+    // |ASN1_STRING| per entry to avoid leaking the previous allocation.
+    ASN1_STRING *scratch = ASN1_STRING_new();
+    if (scratch == NULL) {
+      return 0;
+    }
+    int ok = asn1_string_canon(scratch, entry->value);
+    ASN1_STRING_free(scratch);
+    if (!ok) {
+      ret = 0;
+      break;
+    }
+  }
+  return ret;
+}
+
+int x509_name_ensure_canon(X509_NAME *a) {
+  // Parsed |X509_NAME|s are shared read-only across threads (e.g. a CA cert
+  // cached in an |X509_STORE| and compared during concurrent verifies), so the
+  // deferred canonicalization must be synchronized. We lock unconditionally:
+  // the hot path we optimize for (parse + field extraction, never compared)
+  // does not reach this function at all, and any caller that does is already
+  // doing heavier work (SHA-1, memcmp), so an uncontended mutex is negligible.
+  CRYPTO_MUTEX_lock_write(&a->canon_lock);
+  int ret = 1;
+  if (!a->canon_valid || a->modified) {
+    // A modified name may also need its DER (|bytes|) rebuilt; matching the
+    // behavior of the i2d path keeps both encodings consistent.
+    if (a->modified && !x509_name_encode(a)) {
+      ret = 0;
+    } else {
+      ret = x509_name_canon(a);
+    }
+  }
+  CRYPTO_MUTEX_unlock_write(&a->canon_lock);
   return ret;
 }
 

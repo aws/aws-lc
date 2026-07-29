@@ -44,7 +44,20 @@ struct X509_name_st {
   BUF_MEM *bytes;
   unsigned char *canon_enc;
   int canon_enclen;
+  // canon_valid is true if |canon_enc|/|canon_enclen| reflect the current
+  // |entries|. Canonicalization is deferred until first needed (e.g. by
+  // |X509_NAME_cmp|), so a freshly-parsed name has this cleared.
+  int canon_valid;
+  // canon_lock guards lazy computation of the canonical encoding. A parsed
+  // |X509_NAME| is frequently shared read-only across threads (e.g. a CA
+  // certificate cached in an |X509_STORE|), so the deferred canonicalization
+  // in |x509_name_ensure_canon| must be synchronized.
+  CRYPTO_MUTEX canon_lock;
 } /* X509_NAME */;
+
+// x509_name_ensure_canon lazily computes the canonical encoding of |a| if it is
+// not already valid. Returns one on success and zero on allocation failure.
+int x509_name_ensure_canon(X509_NAME *a);
 
 struct x509_attributes_st {
   ASN1_OBJECT *object;
