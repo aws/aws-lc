@@ -104,6 +104,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REVIEW_STATUS: ${{ steps.codebuild.outputs.review_status }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [[ "$REVIEW_STATUS" == "PASS" ]]; then
             STATE="success"
@@ -114,22 +117,24 @@ jobs:
           fi
           ARGS=(-f state="$STATE" -f context="security-review / report")
           if [[ "$STATE" != "error" ]]; then
-            ARGS+=(-f target_url="https://d225oy8drgbol2.cloudfront.net/${{ github.event.repository.name }}/findings.html?pr=${{ github.event.pull_request.number }}")
+            ARGS+=(-f target_url="https://d225oy8drgbol2.cloudfront.net/${REPO_NAME}/findings.html?pr=${PR_NUMBER}")
           else
             ARGS+=(-f description="Review did not complete successfully")
           fi
-          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" "${ARGS[@]}"
+          gh api "repos/${{ github.repository }}/statuses/${PR_HEAD_SHA}" "${ARGS[@]}"
 
       - name: Post review comment
         if: always() && github.event.action != 'closed' && (steps.codebuild.outputs.review_status == 'PASS' || steps.codebuild.outputs.review_status == 'BLOCKING')
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if ! gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          if ! gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
             --jq '.[].body' | grep -q "security-review-comment"; then
-            gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
               -f body="<!-- security-review-comment -->
-          🔒 **Security Review** — [View Report](https://d225oy8drgbol2.cloudfront.net/${{ github.event.repository.name }}/findings.html?pr=${{ github.event.pull_request.number }})
+          🔒 **Security Review** — [View Report](https://d225oy8drgbol2.cloudfront.net/${REPO_NAME}/findings.html?pr=${PR_NUMBER})
 
           Please review before merging."
           fi
