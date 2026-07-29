@@ -1,14 +1,19 @@
 """
-AI advisory layer (impact analysis only).
+The AI advisory layer.
 
-Layer: impact core (advisory). Builds on ``engine`` + ``settings``; consulted
-only by ``verdicts``. Never acts on its own.
+Layer: advisory. Builds on ``util.config`` + ``util.git`` + ``engine.analysis``;
+consulted by the commands, never by the deterministic engine -- so the verdict
+never depends on a model being reachable.
 
 `ai_impact_analysis` asks Claude (via Amazon Bedrock) whether a branch is
 affected, in one of two roles: AUDITOR (deterministic said affected -> look for a
 false positive) or TIE-BREAKER (deterministic inconclusive -> second opinion).
-Output is ADVISORY ONLY: it never cherry-picks, opens PRs, or resolves
-conflicts. If the SDK or AWS credentials are unavailable, every entry point here
+`resolve_inconclusive` is the entry point the commands call: it turns every UNSURE
+branch into a definite verdict and annotates suspicious AFFECTED ones.
+
+Output is ADVISORY ONLY: it never cherry-picks, opens PRs, or resolves conflicts,
+and the gating is directional -- it can add review noise but never cause a silent
+miss. If the SDK or AWS credentials are unavailable, every entry point here
 degrades to `None` and the deterministic engine runs alone.
 """
 
@@ -16,24 +21,30 @@ import os
 import re
 import subprocess
 import sys
+from typing import Dict, Sequence, Tuple
 
 try:
     import anthropic as _anthropic_module
 except ImportError:
     _anthropic_module = None
 
-import settings
-from engine import (
-    _AI_MAX_FILE_BYTES,
-    _BEDROCK_MODEL_ID,
+from engine.analysis import (
     fix_removed_lines,
-    get_commit_diff,
-    get_file_on_branch,
     is_noise_line,
     norm_ws,
-    show_file,
+    present_introducers,
     vulnerable_preimage_present,
 )
+from util.config import (
+    AFFECTED,
+    AWS_REGION,
+    MAX_FILE_BYTES,
+    MAX_TOKENS,
+    MODEL_ID,
+    NOT_AFFECTED,
+    UNSURE,
+)
+from util.git import get_commit_diff, get_file_on_branch, git, show_file
 
 # ---------------------------------------------------------------------------
 # Bedrock client
@@ -47,7 +58,7 @@ def ai_client():
         return None
     if os.environ.get("BACKPORT_DISABLE_AI") == "1":
         return None
-    region = settings.AWS_REGION
+    region = AWS_REGION
     # Resolve creds via the standard AWS chain (env, ~/.aws, SSO, IAM role), not
     # just AWS_ACCESS_KEY_ID which misses creds in ~/.aws/credentials.
     try:
@@ -299,7 +310,7 @@ def branch_file_context(commit, branch, branch_ref, changed_files):
             excerpt, (lo, hi) = region
             parts.append(
                 f"### {label} (on {branch}, lines {lo}-{hi}, around the change)\n"
-                f"```\n{excerpt[:_AI_MAX_FILE_BYTES]}\n```"
+                f"```\n{excerpt[:MAX_FILE_BYTES]}\n```"
             )
         else:
             parts.append(f"### {label} (on {branch})\n```\n{content}\n```")
@@ -369,8 +380,8 @@ def call_model(client, user):
     """Stream the model and return the final text, or None on API failure."""
     try:
         with client.messages.stream(
-            model=_BEDROCK_MODEL_ID,
-            max_tokens=settings.MAX_TOKENS,
+            model=MODEL_ID,
+            max_tokens=MAX_TOKENS,
             thinking={"type": "adaptive"},
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user}],
@@ -430,3 +441,184 @@ def ai_impact_analysis(
         "reasoning": raw,
         "raw_advisory": _ADVISORY_WRAP.format(raw=raw),
     }
+
+
+# --------------------------------------------------------------------------
+# Resolution pass 1: decide the UNSURE branches
+# --------------------------------------------------------------------------
+
+
+def resolve_unsure(
+    fix_sha: str,
+    files: Sequence[str],
+    introducers: Sequence[str],
+    buckets: Dict[str, str],
+    use_ai: bool = True,
+) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]":
+    """Turn every UNSURE branch into a definite AFFECTED / NOT_AFFECTED verdict.
+
+    The deterministic pass leaves a branch UNSURE when the fixed code is present
+    but ancestry/patch-id can't confirm the introducer reached it. Rather than
+    show that to the user, consult the AI advisory to decide.
+
+    Safety: if the AI is uncertain, returns no answer, or is unavailable, the
+    branch resolves to AFFECTED (flagged for review), never NOT_AFFECTED. So the
+    automatic resolution can only over-flag, never create a silent miss.
+
+    Returns ``(buckets, decided_by, summaries)``. ``decided_by[branch]`` is a
+    one-line basis; ``summaries[branch]`` is the AI's reasoning where it judged.
+    """
+    decided_by: Dict[str, str] = {b: "deterministic" for b in buckets}
+    summaries: Dict[str, str] = {}
+    unsure = [b for b, s in buckets.items() if s == UNSURE]
+    for branch in unsure:
+        adv = (
+            ai_impact_analysis(fix_sha, branch, files, set(introducers))
+            if use_ai
+            else None
+        )
+        if adv is None:
+            buckets[branch] = AFFECTED
+            decided_by[branch] = (
+                "inconclusive, --no-ai -> flagged for review"
+                if not use_ai
+                else "inconclusive, AI unavailable -> flagged for review"
+            )
+        elif adv.get("likely_affected") is True:
+            buckets[branch] = AFFECTED
+            decided_by[branch] = f"AI: likely affected ({adv.get('confidence')})"
+            summaries[branch] = adv.get("reasoning", "").strip()
+        elif adv.get("likely_affected") is False:
+            buckets[branch] = NOT_AFFECTED
+            decided_by[branch] = f"AI: likely not affected ({adv.get('confidence')})"
+            summaries[branch] = adv.get("reasoning", "").strip()
+        else:
+            buckets[branch] = AFFECTED
+            decided_by[branch] = (
+                f"AI: uncertain ({adv.get('confidence')}) -> flagged for review"
+            )
+            summaries[branch] = adv.get("reasoning", "").strip()
+    return buckets, decided_by, summaries
+
+
+# --------------------------------------------------------------------------
+# Resolution pass 2: review suspicious AFFECTED branches (advisory only)
+# --------------------------------------------------------------------------
+
+
+def commit_time(sha: str) -> int:
+    """Unix commit timestamp of *sha* (0 if it can't be resolved). Used to pick
+    the newest introducer."""
+    out = git("show", "-s", "--format=%ct", sha, check=False).stdout.strip()
+    return int(out) if out.isdigit() else 0
+
+
+def suspect_affected_branches(
+    introducers: Sequence[str], buckets: Dict[str, str]
+) -> "Dict[str, Tuple[int, int]]":
+    """AFFECTED branches that look like over-flags worth a second opinion.
+
+    A branch is bucketed AFFECTED as soon as one introducer reaches it. When the
+    fix also touches old, shared code (e.g. lines tracing back to the initial
+    import), that lone match can be ancient and present on branches that predate
+    the actual vulnerability -- the documented over-flag.
+
+    The signal: the branch is missing the NEWEST introducer (the commit most
+    likely to have written the actual bug) while still having some older lineage.
+    A genuinely affected branch has that newest commit; one that predates the
+    vulnerability does not. Returns ``{branch: (present_count, total)}`` for each
+    candidate. Deterministic, no AI.
+    """
+    intro = list(introducers)
+    suspects: "Dict[str, Tuple[int, int]]" = {}
+    if len(intro) < 2:
+        # A single introducer that reaches the branch is an unambiguous hit;
+        # there is no old-vs-new lineage split to be suspicious about.
+        return suspects
+    newest = max(intro, key=commit_time)
+    intro_set = set(intro)
+    for branch, state in buckets.items():
+        if state != AFFECTED:
+            continue
+        present = present_introducers(intro_set, branch)
+        if present and newest not in present:
+            suspects[branch] = (len(present), len(intro))
+    return suspects
+
+
+def review_suspect_affected(
+    fix_sha: str,
+    files: Sequence[str],
+    introducers: Sequence[str],
+    suspects: "Dict[str, Tuple[int, int]]",
+    decided_by: Dict[str, str],
+    summaries: Dict[str, str],
+    use_ai: bool = True,
+) -> None:
+    """Attach a false-positive review note to over-flag-candidate AFFECTED
+    branches (those from :func:`suspect_affected_branches`), consulting the AI
+    advisory when *use_ai*.
+
+    CRITICAL: this is advisory only and NEVER changes the verdict. The branch
+    stays AFFECTED even if the AI thinks it is a false positive -- we only
+    annotate it for human review. So widening AI coverage here can reduce noise
+    but can never turn a real hit into a silent miss (no false negatives).
+    """
+    intro = set(introducers)
+    for branch, (present, total) in suspects.items():
+        note = (
+            f"affected via {present}/{total} introducers; newer commit(s) absent "
+            "-> possible false positive, review"
+        )
+        if use_ai:
+            adv = ai_impact_analysis(fix_sha, branch, files, intro)
+            if adv is not None:
+                conf = adv.get("confidence")
+                if adv.get("likely_affected") is False:
+                    note = (
+                        "AFFECTED (deterministic) but AI suspects FALSE POSITIVE "
+                        f"({conf}) -> confirm before skipping"
+                    )
+                elif adv.get("likely_affected") is True:
+                    note = f"affected; AI confirms ({conf})"
+                else:
+                    note = f"affected; AI uncertain ({conf}) -> review"
+                summaries[branch] = adv.get("reasoning", "").strip()
+        decided_by[branch] = note
+
+
+def resolve_inconclusive(args, fix_sha, files, introducers, buckets):
+    """Decide the UNSURE branches via the AI advisory (unless --no-ai), then add a
+    review note to any suspicious AFFECTED branches.
+
+    Returns ``(buckets, decided_by, summaries)``, printing a one-line notice when
+    the AI is about to be consulted.
+    """
+    unsure = [b for b, s in buckets.items() if s == UNSURE]
+    use_ai = not args.no_ai
+    if unsure and use_ai and not args.json:
+        print(
+            f"{len(unsure)} branch(es) inconclusive by git history; "
+            f"consulting AI to decide...\n",
+            file=sys.stderr,
+        )
+    buckets, decided_by, summaries = resolve_unsure(
+        fix_sha, files, introducers, buckets, use_ai=use_ai
+    )
+
+    # Second pass: AFFECTED branches matched only by a partial introducer lineage
+    # are likely over-flags (old shared code present, newer vulnerable commit
+    # absent). Flag them for review -- consulting AI when enabled -- but never
+    # change the verdict, so this can only reduce noise, never cause a miss.
+    suspects = suspect_affected_branches(introducers, buckets)
+    if suspects:
+        if use_ai and not args.json:
+            print(
+                f"{len(suspects)} AFFECTED branch(es) match only part of the fix's "
+                "lineage (possible over-flag); consulting AI for a review note...\n",
+                file=sys.stderr,
+            )
+        review_suspect_affected(
+            fix_sha, files, introducers, suspects, decided_by, summaries, use_ai=use_ai
+        )
+    return buckets, decided_by, summaries

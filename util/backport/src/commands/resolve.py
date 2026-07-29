@@ -28,20 +28,22 @@ import os
 import re
 import sys
 
-import engine as bot
-from ci import assert_fork_remote, gh, plan_marker, summary_table
-from common import AFFECTED, BackportError
-from gitutil import (
+from engine.analysis import get_supported_branches, sort_branches
+from commands.ci import assert_fork_remote, gh, plan_marker, summary_table
+from util.config import AFFECTED, BackportError
+from util.git import (
     BOT_IDENTITY,
     enable_rerere,
     file_has_conflict_markers,
     git,
     ref_exists,
+    repo_path,
     resolve_commit,
     unmerged_files,
 )
-from render import ask_yn, print_section, print_summary
-from verdicts import analyze_branches, resolve_inconclusive
+from util.render import ask_yn, print_section, print_summary
+from engine.ai import resolve_inconclusive
+from engine.analysis import analyze_branches
 
 
 # --------------------------------------------------------------------------
@@ -447,9 +449,7 @@ def run_resolution(
                 "first."
             )
         original_ref = current_ref()
-        if os.path.abspath(__file__).startswith(
-            os.path.abspath(bot.REPO_PATH) + os.sep
-        ):
+        if os.path.abspath(__file__).startswith(os.path.abspath(repo_path()) + os.sep):
             print(
                 "note: the tool lives inside the target repo, so `util/backport/` is "
                 "briefly removed while a release branch is checked out (restored at "
@@ -464,7 +464,7 @@ def run_resolution(
 
         for branch in targets:
             print(f"\n── {branch} " + "─" * max(0, 50 - len(branch)))
-            status, detail = resolve_branch(fix_sha, branch, run_id, bot.REPO_PATH)
+            status, detail = resolve_branch(fix_sha, branch, run_id, repo_path())
             if status == "clean":
                 clean_skipped.append(branch)
             elif status == "ready":
@@ -550,7 +550,7 @@ def cmd_resolve(args) -> int:
         subject = plan.get("subject", "")
         branch_info = plan.get("branches", {})
         buckets = {b: info.get("impact", AFFECTED) for b, info in branch_info.items()}
-        targets = bot.sort_branches(
+        targets = sort_branches(
             b for b, info in branch_info.items() if info.get("outcome") == "conflict"
         )
         # Branches ci already opened clean PRs for -- carry them into the final
@@ -571,7 +571,7 @@ def cmd_resolve(args) -> int:
             return 0
     else:
         fix_sha, subject = resolve_fix_and_subject(args)
-        branches = bot.sort_branches(bot.get_supported_branches())
+        branches = sort_branches(get_supported_branches())
         if not branches:
             raise BackportError(
                 "no supported release branches found (is this an AWS-LC clone with "
@@ -582,7 +582,7 @@ def cmd_resolve(args) -> int:
             args, fix_sha, files, introducers, buckets
         )
         print_summary(fix_sha, files, introducers, buckets, decided_by)
-        targets = bot.sort_branches(b for b, s in buckets.items() if s == AFFECTED)
+        targets = sort_branches(b for b, s in buckets.items() if s == AFFECTED)
         preopened = []
         if not targets:
             print("\nNo AFFECTED branches; nothing to resolve.")

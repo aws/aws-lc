@@ -70,21 +70,27 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-# The engine lives in the src/ folder one directory up; import from there.
+# The tool's packages live in the src/ folder one directory up.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from ai import ai_client, ai_impact_analysis  # noqa: E402
-from common import AFFECTED, ALREADY, NOT_AFFECTED, UNSURE  # noqa: E402
-from engine import (  # noqa: E402
-    is_test_or_generated_file,
-    parse_eos_date,
-    patch_id_pathspec,
-    find_introducing_commit,
-    get_changed_files,
-    vulnerable_preimage_present,
-)
+from engine.ai import ai_client, ai_impact_analysis  # noqa: E402
 
 # The shipped per-branch classifier -- the bench grades this, not a private copy.
-from verdicts import classify_branch, source_files  # noqa: E402
+from engine.analysis import (  # noqa: E402
+    classify_branch,
+    find_introducing_commit,
+    get_changed_files,
+    parse_eos_date,
+    source_files,
+    vulnerable_preimage_present,
+)
+from util.config import (  # noqa: E402
+    AFFECTED,
+    ALREADY,
+    NOT_AFFECTED,
+    UNSURE,
+    is_test_or_generated_file,
+    patch_id_pathspec,
+)
 
 DEFAULT_REPO = os.environ.get("AWS_LC_REPO", "/Users/tianyiy/aws-lc")
 

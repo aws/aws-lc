@@ -13,13 +13,13 @@ import shutil
 import sys
 from typing import List, Sequence, Tuple
 
-import engine as bot
-from common import AFFECTED, BackportError
-from gitutil import cherry_pick_local, git, ref_exists, resolve_fix_commit
-from render import print_section
-from resolve import conflict_lines, run_resolution
-from runstate import load_run, run_dir
-from verdicts import analyze_branches
+from engine.analysis import get_supported_branches, sort_branches
+from util.config import AFFECTED, BackportError
+from util.git import cherry_pick_local, git, ref_exists, resolve_fix_commit
+from util.render import print_section
+from commands.resolve import conflict_lines, run_resolution
+from util.config import load_run, run_dir
+from engine.analysis import analyze_branches
 
 
 def resolve_apply_target(args) -> "Tuple[str, dict]":
@@ -82,9 +82,9 @@ def select_targets(args, buckets):
     (the caller turns that into a usage error).
     """
     if args.branches:
-        return bot.sort_branches(args.branches)
+        return sort_branches(args.branches)
     if args.all_affected:
-        return bot.sort_branches(b for b, s in buckets.items() if s == AFFECTED)
+        return sort_branches(b for b, s in buckets.items() if s == AFFECTED)
     return None
 
 
@@ -100,7 +100,7 @@ def cmd_apply(args) -> int:
     local branches for review.
     """
     fix_sha, run = resolve_apply_target(args)
-    branches = run.get("branches") or bot.get_supported_branches()
+    branches = run.get("branches") or get_supported_branches()
     buckets = run.get("buckets") or analyze_branches(fix_sha, branches)[2]
 
     targets = select_targets(args, buckets)
@@ -138,7 +138,7 @@ def cmd_apply(args) -> int:
             fix_sha,
             subject,
             buckets,
-            bot.sort_branches(conflict),
+            sort_branches(conflict),
             source_pr=None,
             clean_local=clean,
         )

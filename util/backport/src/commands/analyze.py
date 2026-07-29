@@ -12,11 +12,12 @@ run so ``apply`` can reuse it.
 
 import sys
 
-import engine as bot
-from gitutil import changed_files_with_status, resolve_fix_commit
-from render import confirm_test_file, emit_analysis
-from runstate import save_run
-from verdicts import analyze_branches, resolve_inconclusive
+from engine.analysis import get_supported_branches, sort_branches
+from util.git import changed_files_with_status, resolve_fix_commit
+from util.render import confirm_test_file, emit_analysis
+from util.config import save_run
+from engine.ai import resolve_inconclusive
+from engine.analysis import analyze_branches
 
 
 def cmd_analyze(args) -> int:
@@ -29,7 +30,7 @@ def cmd_analyze(args) -> int:
         print("Aborted. Re-run when your fix is ready.")
         return 0
 
-    branches = bot.sort_branches(args.branches or bot.get_supported_branches())
+    branches = sort_branches(args.branches or get_supported_branches())
     if not branches:
         print(
             "No supported branches found. Is this an AWS-LC clone with the "

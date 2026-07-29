@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for the pure (repo-independent) helpers in engine.py.
+Unit tests for the pure (repo-independent) helpers in engine/analysis.py.
 
 These run without an aws-lc checkout, credentials, or network -- they only
 exercise the string/date logic the impact analyzer relies on. For the
@@ -21,10 +21,10 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-# engine.py lives in the src/ folder one directory up.
+# The tool's packages live in the src/ folder one directory up.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-import engine  # noqa: E402
+from engine import analysis as engine  # noqa: E402
 
 
 class NormWhitespace(unittest.TestCase):

@@ -22,11 +22,11 @@ import sys
 import unittest
 from pathlib import Path
 
-# ci.py / resolve.py live in the src/ folder one directory up.
+# The command modules live in src/commands, one directory up.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-import ci  # noqa: E402
-import resolve  # noqa: E402
+from commands import ci  # noqa: E402
+from commands import resolve  # noqa: E402
 
 
 def sample():

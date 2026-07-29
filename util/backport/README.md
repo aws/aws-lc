@@ -72,8 +72,10 @@ python3 -m unittest discover -s testing -p 'test_*.py'   # 22 unit tests; no rep
 ```
 
 `testing/replay_real_cve.py` replays real CVE fixes in a throwaway sandbox (the real
-repo is only ever read) and scores the engine against `testing/answer_key.txt` —
-31 fixes / 186 fix-branch cells, 0 over-flags. See `testing/reliable_cves.txt` for
-how to run it.
+repo is only ever read) and grades `verdicts`' shipped classifier against
+`testing/answer_key.txt` — 31 fixes / 186 fix-branch cells. Deterministic-only
+(`--no-ai`): **0 false negatives**, at a 23.7% over-flag rate (44/186 cells flagged
+for review that did not need a backport). Cutting those down is what the AI
+advisory layer is for. See `testing/reliable_cves.txt` for how to run it.
 
 To wire up the post-merge bot, copy `backport-bot.yml` into `.github/workflows/`.

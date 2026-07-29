@@ -1,9 +1,8 @@
 """
 Rendering the analyze result.
 
-Layer: output. Builds on ``common`` only; used by ``analyze`` (and reused by
-``apply`` / ``ci`` / ``resolve``) to present verdicts and prompt the user. No git
-or analysis logic lives here.
+Layer: output. Builds on ``util.config`` only; used by the commands to present
+verdicts and prompt the user. No git or analysis logic lives here.
 
 Two output modes: a human-readable table (AFFECTED branches first, columns
 auto-sized to the widest value) followed by a copy-paste backport hint, or a
@@ -13,7 +12,7 @@ single JSON object for scripting.
 import json
 from typing import Dict, Sequence
 
-from common import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, UNSURE
+from util.config import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, TEST_SUFFIXES, UNSURE
 
 
 def print_summary(
@@ -75,9 +74,6 @@ def emit_analysis(
     else:
         print_summary(fix_sha, files, introducers, buckets, decided_by)
         print_backport_hint(buckets)
-
-
-TEST_SUFFIXES = ("_test.cc", "_test.cpp", "_test.c", "_test.cxx")
 
 
 def print_section(title, items) -> None:

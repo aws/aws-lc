@@ -11,21 +11,21 @@ commits since it forked from the mainline -- so a fix can be assessed, and
 backported to local branches, before it is merged. See README.md for what each
 subcommand does; every flag is documented in its ``--help``.
 
-Module map: gitutil = git plumbing + repo targeting + which commit(s) to analyze;
-runstate = analyze->apply cache; verdicts = deterministic bucketing + AI passes;
-render = output; engine + ai = the impact core.
+Module map: util/ = config + git plumbing + output; engine/analysis = the
+deterministic verdict; engine/ai = the advisory layer; commands/ = one module per
+subcommand.
 """
 
 import argparse
 import sys
 from typing import Optional, Sequence
 
-from analyze import cmd_analyze
-from apply import cmd_apply, cmd_clear
-from ci import cmd_ci
-from common import BackportError
-from gitutil import target_repo
-from resolve import cmd_resolve
+from commands.analyze import cmd_analyze
+from commands.apply import cmd_apply, cmd_clear
+from commands.ci import cmd_ci
+from commands.resolve import cmd_resolve
+from util.config import BackportError
+from util.git import target_repo
 
 
 # --------------------------------------------------------------------------

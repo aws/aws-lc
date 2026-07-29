@@ -1,13 +1,13 @@
 """
-Git plumbing and repository targeting.
+Git plumbing: repository targeting, command runners, and rename-aware reads.
 
-Layer: git plumbing. Builds on ``engine`` (for REPO_PATH) + ``common``; used by
-``verdicts`` and the command modules.
+Layer: git plumbing. Builds on ``util.config`` only; used by the analysis engine
+and every command.
 
-Everything that shells out to git lives here: the low-level ``run``/``git``
-wrappers, throwaway worktrees, the cherry-pick primitive shared by ``apply`` and
-``ci``, resolving which commit(s) a fix is, the two ``git diff-tree`` parsers, and
-the logic that points the engine at the right AWS-LC checkout.
+Everything that shells out to git lives here: which checkout we are pointed at,
+the low-level runners, throwaway worktrees, the cherry-pick primitive shared by
+``apply`` and ``ci``, resolving which commit(s) a fix is, the rename-aware file
+and diff reads, and the ``git diff-tree`` parsers.
 """
 
 import os
@@ -17,8 +17,56 @@ import tempfile
 from contextlib import contextmanager
 from typing import Iterator, List, Optional, Sequence, Set, Tuple
 
-import engine as bot
-from common import BackportError
+from util.config import (
+    MAINLINE_REF,
+    MAX_DIFF_BYTES,
+    MAX_FILE_BYTES,
+    BackportError,
+    is_test_or_generated_file,
+)
+
+
+# --------------------------------------------------------------------------
+# Repository targeting
+# --------------------------------------------------------------------------
+
+# Absolute path to the AWS-LC checkout every git command runs against. None means
+# "use the process working directory" (used by the replay test harness, which
+# chdirs into a sandbox).
+REPO_PATH = None
+
+
+def set_repo_path(path):
+    """Point the tool at an AWS-LC checkout; None restores the cwd fallback."""
+    global REPO_PATH
+    REPO_PATH = os.path.abspath(path) if path else None
+
+
+def repo_path():
+    """The active checkout path (or None for the cwd fallback).
+
+    An accessor rather than a direct read of :data:`REPO_PATH`, because
+    :func:`set_repo_path` rebinds that global at runtime -- importing it by value
+    would capture a stale ``None``.
+    """
+    return REPO_PATH
+
+
+def run_in_repo(cmd, **kwargs):
+    """Run a command against REPO_PATH (unless an explicit cwd is given).
+
+    Low-level and raw: returns the ``subprocess`` result and does NOT raise on a
+    non-zero exit. (Contrast with :func:`run`/:func:`git`, the CLI-facing wrappers
+    that raise :class:`BackportError` on failure.)
+    """
+    if REPO_PATH is not None and kwargs.get("cwd") is None:
+        kwargs["cwd"] = REPO_PATH
+    return subprocess.run(list(cmd), **kwargs)
+
+
+def git_in_repo(args, **kwargs):
+    """Run a git subcommand against REPO_PATH (raw; see :func:`run_in_repo`)."""
+    return run_in_repo(["git", *args], **kwargs)
 
 
 # --------------------------------------------------------------------------
@@ -39,7 +87,7 @@ def run(
     input -- used to pipe a patch into ``git apply``/``git am``.
     """
     if cwd is None:
-        cwd = bot.REPO_PATH
+        cwd = REPO_PATH
     p = subprocess.run(list(args), capture_output=True, text=True, cwd=cwd, input=stdin)
     if check and p.returncode != 0:
         raise BackportError(
@@ -216,7 +264,7 @@ def cherry_pick_local(
                 # counts as a clean backport instead of manual resolution.
                 if (
                     conflicts
-                    and all(bot.is_test_or_generated_file(c["path"]) for c in conflicts)
+                    and all(is_test_or_generated_file(c["path"]) for c in conflicts)
                     and drop_and_continue(wt, conflicts)
                 ):
                     dropped = conflicts
@@ -261,8 +309,6 @@ def drop_and_continue(wt: str, conflicts: List[dict]) -> bool:
 # --------------------------------------------------------------------------
 # Which commit(s) are we analyzing?
 # --------------------------------------------------------------------------
-
-MAINLINE_REF = os.environ.get("BACKPORT_MAINLINE_REF", "origin/main")
 
 
 def range_endpoints(spec: str) -> "Optional[Tuple[str, str]]":
@@ -354,7 +400,7 @@ def changed_files_with_status(commit: str) -> "Tuple[List[str], List[str]]":
       A brand-new file has no prior history, so there is no introducing commit to
       trace for it; we exclude it so introducer detection does not choke.
     """
-    output = bot.git_in_repo(
+    output = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],
         capture_output=True,
         text=True,
@@ -379,7 +425,7 @@ def branch_basenames(ref: str) -> Set[str]:
     A conservative anti-false-negative guard: a same-named file under a path our
     rename trace missed means the code may still be on the branch.
     """
-    out = bot.git_in_repo(
+    out = git_in_repo(
         ["ls-tree", "-r", "--name-only", ref],
         check=False,
         capture_output=True,
@@ -389,16 +435,16 @@ def branch_basenames(ref: str) -> Set[str]:
 
 
 # --------------------------------------------------------------------------
-# Repository targeting
+# Which checkout are we operating on?
 # --------------------------------------------------------------------------
 
 
 def target_repo(args) -> str:
     """Resolve + activate the AWS-LC checkout for this run.
 
-    Confirms it is a git repo, points the engine at its top level, and chdir's
-    there. Returns the top-level path; raises :class:`BackportError` if the path
-    is not inside a git repository.
+    Confirms it is a git repo, points this module's :data:`REPO_PATH` at its top
+    level, and chdir's there. Returns the top-level path; raises
+    :class:`BackportError` if the path is not inside a git repository.
     """
     # --repo, then $BACKPORT_REPO_PATH, then the cwd: the tool operates on
     # "the repo I'm standing in" unless told otherwise.
@@ -418,9 +464,92 @@ def target_repo(args) -> str:
             "(use --repo <path> or set BACKPORT_REPO_PATH)."
         )
     repo_top = top.stdout.strip()
-    bot.set_repo_path(repo_top)
-    # The engine's internal git calls use the process working directory, so point
-    # it at the repo. Throwaway worktrees always pass an explicit cwd, so they are
+    set_repo_path(repo_top)
+    # Our git calls default to the process working directory, so point it at the
+    # repo. Throwaway worktrees always pass an explicit cwd, so they are
     # unaffected.
     os.chdir(repo_top)
     return repo_top
+
+
+# --------------------------------------------------------------------------
+# Rename-aware file and diff reads
+# --------------------------------------------------------------------------
+
+
+def get_commit_diff(commit):
+    """Return the full diff for *commit* as a string (capped at MAX_DIFF_BYTES)."""
+    result = subprocess.run(
+        ["git", "show", "--stat", "-p", commit],
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout[:MAX_DIFF_BYTES]
+
+
+def show_file(ref, path):
+    """Raw contents of *path* at *ref*, or None if it doesn't exist there."""
+    result = subprocess.run(
+        ["git", "show", f"{ref}:{path}"],
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def historical_paths(commit, file_path, limit=6):
+    """Paths *file_path* has occupied over its history (current first, then older
+    names, following renames) as of *commit* -- so we can find the file on a
+    branch that forked before a rename."""
+    paths = [file_path]
+    result = subprocess.run(
+        [
+            "git",
+            "log",
+            "--follow",
+            "--name-status",
+            "--format=",
+            commit,
+            "--",
+            file_path,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return paths
+    seen = {file_path}
+    for line in result.stdout.splitlines():
+        parts = line.split("\t")
+        # Rename entries look like: R100<TAB>old/path<TAB>new/path
+        if parts and parts[0].startswith("R") and len(parts) >= 3:
+            old = parts[1].strip()
+            if old and old not in seen:
+                paths.append(old)
+                seen.add(old)
+                if len(paths) >= limit:
+                    break
+    return paths
+
+
+def get_file_on_branch(file_path, branch_ref, commit=None):
+    """(content, resolved_path) for *file_path* on *branch_ref*, capped at
+    MAX_FILE_BYTES. If absent at the current path and *commit* is given,
+    follows rename history to try earlier paths. (None, None) if not found."""
+    content = show_file(branch_ref, file_path)
+    if content is not None:
+        return content[:MAX_FILE_BYTES], file_path
+    if commit:
+        for older in historical_paths(commit, file_path):
+            if older == file_path:
+                continue
+            content = show_file(branch_ref, older)
+            if content is not None:
+                return content[:MAX_FILE_BYTES], older
+    return None, None

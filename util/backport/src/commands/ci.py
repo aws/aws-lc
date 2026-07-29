@@ -16,11 +16,13 @@ import os
 import re
 from typing import Optional
 
-import engine as bot
-from common import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, BackportError
-from gitutil import cherry_pick_local, git, resolve_commit, run
-from render import print_summary
-from verdicts import analyze_branches, resolve_inconclusive
+from engine.analysis import get_supported_branches, sort_branches
+from util.config import is_test_or_generated_file
+from util.config import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, BackportError
+from util.git import cherry_pick_local, git, resolve_commit, run
+from util.render import print_summary
+from engine.ai import resolve_inconclusive
+from engine.analysis import analyze_branches
 
 
 # --------------------------------------------------------------------------
@@ -54,7 +56,7 @@ def test_only(conflicts) -> bool:
     """True if every conflicting path is a test/generated file (not real source),
     which usually means the source fix applied cleanly and only a test hunk clashed."""
     return bool(conflicts) and all(
-        bot.is_test_or_generated_file(c["path"]) for c in conflicts
+        is_test_or_generated_file(c["path"]) for c in conflicts
     )
 
 
@@ -270,7 +272,7 @@ def cmd_ci(args) -> int:
     assert_fork_remote(args.remote)
     fix_sha, subject = resolve_commit(args.commit)
 
-    branches = bot.sort_branches(bot.get_supported_branches())
+    branches = sort_branches(get_supported_branches())
     if not branches:
         raise BackportError(
             "no supported release branches found (is this an AWS-LC clone with "
@@ -283,7 +285,7 @@ def cmd_ci(args) -> int:
     )
     print_summary(fix_sha, files, introducers, buckets, decided_by)
 
-    targets = bot.sort_branches(b for b, s in buckets.items() if s == AFFECTED)
+    targets = sort_branches(b for b, s in buckets.items() if s == AFFECTED)
     if not targets:
         print("\nNo AFFECTED branches; nothing to backport.")
         return 0
