@@ -2030,9 +2030,17 @@ int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
 
 static bool ssl_check_group_ids(Array<uint16_t> *out_group_ids,
                                 Span<const uint16_t> group_ids) {
-  for (uint16_t group_id : group_ids) {
-    if (ssl_group_id_to_nid(group_id) == NID_undef) {
+  for (size_t i = 0; i < group_ids.size(); i++) {
+    if (ssl_group_id_to_nid(group_ids[i]) == NID_undef) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
       return false;
+    }
+    // Reject duplicate group IDs
+    for (size_t j = 0; j < i; j++) {
+      if (group_ids[i] == group_ids[j]) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_KEY_SHARE);
+        return false;
+      }
     }
   }
   return out_group_ids->CopyFrom(group_ids);

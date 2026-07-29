@@ -605,6 +605,7 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   if (ssl->ctx->select_certificate_cb != NULL) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
       case ssl_select_cert_retry:
+        ERR_clear_error();
         return ssl_hs_certificate_selection_pending;
 
       case ssl_select_cert_error:
