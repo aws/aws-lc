@@ -1,0 +1,46 @@
+# Curated backport test bench: 31 real AWS-LC fixes with hand-verified ground truth.
+#
+# Each line is a fix to replay: the first token is the commit SHA, the rest is a
+# free-text label. Per-branch ground truth lives in answer_key.txt (pass it with
+# --answers); the per-case verification evidence and the record of cases we
+# dropped as unreliable live with the project docs, not in this file.
+#
+# Run (from util/backport):
+#   python3 testing/replay_real_cve.py --file testing/reliable_cves.txt \
+#       --answers testing/answer_key.txt [--no-ai]
+#
+# Expected: 0 false positives and 0 deterministic over-flags. Under --no-ai there
+# are 3 known false negatives -- reshaped backports (e.g. #1294) whose removed
+# lines no longer match, which the AI tie-breaker recovers; with AI on, 0.
+
+9545d9de6059   DH_check() excessive time with oversized modulus (CVE-2023-3446)
+1bb574f3f2e7   Excessive time checking DH q parameter value (#1121)
+e17506cdbde1   pkcs8: cap ciphertext length before allocating
+11b50d39cf23   BN_mod_sqrt infinite loop (CVE-2022-0778)
+4c37fba343     Kyber avoid compiler DIV (constant-time) (#1376)
+3b5856603682   Only update thread_states_list if freed state is head (UAF, #1294)
+17cd6574bdb8   Kyber avoid compiler division (constant-time) (#1360)
+2a184bd568ff   ML-DSA constant-time hardening (#2602)
+8a43348a53b0   reject zero-sized digests in HKDF EVP_PKEY
+4b07805bddc5   Prevent non-constant-time code in Kyber-R3 and ML-KEM (#1619)
+110f184623b5   Reject XOF digests in DH_compute_key_hashed
+dcd1690320a3   evp: disable EVP_PKEY_derive for KEM method
+37c2b5e8cf5a   Avoid mixing SSE and AVX in XTS-mode AVX512
+4e32cc53a81d   Don't use expired certificates if possible
+90d2a34ead8d   Remove retries on PCT failure in EC and RSA key generation
+cf2e09fb5d40   evp: fix DSA keygen error-path UAF/double-free
+507120cc3dba   Use constant curve-specific groups whenever possible
+8da095382457   Add a value barrier when checking for point doubling
+28be5302b592   Make asserts constant-time too
+b7917d9b83a4   Rand small fixes (#2664)
+3cc65bd333ee   Fix PKCS12 Error Code (#2538)
+9ad27ab683af   Add new verification error for mismatched signatures (#413)
+779d13f705c8   Consistently reject large p and large q in DH (CVE-2023-3817)
+32e73b358236   Fix theoretical overflow in BIO_printf (#2369)
+eb0c0c0d8e4e   OOB input read in AES-XTS Decrypt AVX-512 (#2227)
+921c6465918e   1-byte OOB read in EVP_PKEY_asn1_find_str
+a1aadda437e6   Handle ChaCha20 counter overflow consistently
+6c21187fbd56   Avoid conversion overflow from struct tm
+2f55cf36eda8   Plug a leak in ASN1_item_i2d()
+47389586f8aa   Fix CRL distribution point scope check in crl_crldp_check (#3105)
+df1f12559096   Fix SSL_OP_IGNORE_UNEXPECTED_EOF for socket BIOs (#3341)

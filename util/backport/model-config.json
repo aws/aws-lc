@@ -1,0 +1,7 @@
+{
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "aws_region": "us-east-1",
+  "max_tokens": 1024,
+  "max_diff_bytes": 40000,
+  "max_file_bytes": 45000
+}

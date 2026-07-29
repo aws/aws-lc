@@ -1,0 +1,6 @@
+# Runtime dependencies for the advisory AI layer (ai.py). The deterministic
+# engine and CLI need only the standard library + git; without these installed
+# (or without AWS credentials) the AI layer degrades to off and the tool runs
+# deterministically.
+anthropic>=0.39
+boto3>=1.34

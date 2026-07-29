@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Local AWS/OIDC setup reference (account id + policy docs; never checked in)
+.aws-setup/
+
+# Local replay/run artifacts (never checked in)
+*_results.txt
+.backport-runs/
