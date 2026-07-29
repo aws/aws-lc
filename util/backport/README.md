@@ -1,10 +1,10 @@
 # AWS-LC Backport Bot
 
 Decides which supported AWS-LC release branches a fix belongs on, then backports it.
-Given a fix as a patch, a commit, or your uncommitted diff, it gives every supported
-FIPS release branch a verdict (AFFECTED / not affected / already patched),
-cherry-picks onto local branches, and walks you through any conflicts. Nothing is
-ever auto-merged, and it never targets upstream `aws/aws-lc`.
+Point it at your fix -- a commit, a range of commits, or just your current branch --
+and it gives every supported FIPS release branch a verdict (AFFECTED / not affected /
+already patched), cherry-picks onto local branches, and walks you through any
+conflicts. Nothing is ever auto-merged, and it never targets upstream `aws/aws-lc`.
 
 ## Prerequisites
 
@@ -19,7 +19,8 @@ deterministic engine runs alone.
 cd <aws-lc>
 
 # 1. Which branches need this fix?
-util/backport/backport analyze --commit <sha>   # or a patch file, or nothing (uncommitted diff)
+#    Omit --commit to use your branch's commits since origin/main.
+util/backport/backport analyze --commit <sha>
 
 # 2. Cherry-pick onto local backport/<branch>/<id> branches (nothing is pushed)
 util/backport/backport apply --all-affected
@@ -36,7 +37,12 @@ util/backport/backport clear
 
 Useful flags: `--no-ai` (deterministic only), `--branches <a b c>` (limit the set),
 `--json` (machine-readable), `--repo <path>` (target another checkout),
-`--commit A..B` (a fix spread across several commits), `--dry-run` (`ci` only).
+`--commit A..B` (a fix spread across several commits, analyzed as its net change),
+`--dry-run` (`ci` only).
+
+`apply` and `resolve` check each release branch out in your own working tree (so
+your IDE shows the conflict live) and put you back on your original branch when
+they are done, so they need a clean tree to start.
 
 ## How it decides
 

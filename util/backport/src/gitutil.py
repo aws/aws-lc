@@ -2,12 +2,12 @@
 Git plumbing and repository targeting.
 
 Layer: git plumbing. Builds on ``engine`` (for REPO_PATH) + ``common``; used by
-``patches``, ``verdicts`` and the command modules.
+``verdicts`` and the command modules.
 
 Everything that shells out to git lives here: the low-level ``run``/``git``
 wrappers, throwaway worktrees, the cherry-pick primitive shared by ``apply`` and
-``ci``, the two ``git diff-tree`` parsers, and the logic that points the engine
-at the right AWS-LC checkout.
+``ci``, resolving which commit(s) a fix is, the two ``git diff-tree`` parsers, and
+the logic that points the engine at the right AWS-LC checkout.
 """
 
 import os
@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Iterator, List, Optional, Sequence, Set, Tuple
 
 import engine as bot
@@ -68,10 +67,10 @@ def ref_exists(ref: str) -> bool:
 def temp_worktree(base: str, prefix: str = "backport-") -> "Iterator[str]":
     """Check out *base* in a throwaway detached ``git worktree`` and yield its path.
 
-    This lets us apply a patch or cherry-pick into a clean tree without touching
-    the user's working copy. On exit the worktree and its temp parent dir are
-    removed; any commits made inside it survive in git's shared object store,
-    which is all the engine and the caller need.
+    This lets us cherry-pick into a clean tree without touching the user's working
+    copy. On exit the worktree and its temp parent dir are removed; any commits
+    made inside it survive in git's shared object store, which is all the engine
+    and the caller need.
     """
     scratch_dir = tempfile.mkdtemp(prefix=prefix)
     worktree = os.path.join(scratch_dir, "wt")
@@ -84,31 +83,20 @@ def temp_worktree(base: str, prefix: str = "backport-") -> "Iterator[str]":
         git("worktree", "prune", check=False)
 
 
-def add_worktree(ref: str, prefix: str = "backport-resolve-") -> str:
-    """Create a *persistent* detached worktree checked out at *ref* and return its
-    path.
-
-    Unlike :func:`temp_worktree` this is NOT auto-removed -- the interactive
-    ``resolve`` flow hands the path to the user so they can edit the conflicted
-    files there, then calls :func:`remove_worktree` once the branch is done.
-    """
-    scratch_dir = tempfile.mkdtemp(prefix=prefix)
-    worktree = os.path.join(scratch_dir, "wt")
-    git("worktree", "add", "--detach", "--quiet", worktree, ref)
-    return worktree
-
-
-def remove_worktree(path: str) -> None:
-    """Remove a worktree created by :func:`add_worktree` and its temp parent dir."""
-    git("worktree", "remove", "--force", path, check=False)
-    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
-    git("worktree", "prune", check=False)
-
-
 # --------------------------------------------------------------------------
 # Cherry-pick primitive (shared by `apply` and `ci`)
 # --------------------------------------------------------------------------
 
+
+# Identity for the commits the tool creates itself (a collapsed multi-commit span,
+# or completing a cherry-pick), so they are never attributed to the user. Passed as
+# `git -c ...` so nothing in the repo's config is modified.
+BOT_IDENTITY = (
+    "-c",
+    "user.name=backport-cli",
+    "-c",
+    "user.email=backport-cli@local",
+)
 
 # git status porcelain XY codes for unmerged paths -> git's long-format wording.
 _CONFLICT_KIND = {
@@ -259,10 +247,7 @@ def drop_and_continue(wt: str, conflicts: List[dict]) -> bool:
     if git("diff", "--cached", "--quiet", check=False, cwd=wt).returncode == 0:
         return False
     cont = git(
-        "-c",
-        "user.name=backport-cli",
-        "-c",
-        "user.email=backport-cli@local",
+        *BOT_IDENTITY,
         "-c",
         "core.editor=true",
         "cherry-pick",
@@ -271,6 +256,83 @@ def drop_and_continue(wt: str, conflicts: List[dict]) -> bool:
         cwd=wt,
     )
     return cont.returncode == 0
+
+
+# --------------------------------------------------------------------------
+# Which commit(s) are we analyzing?
+# --------------------------------------------------------------------------
+
+MAINLINE_REF = os.environ.get("BACKPORT_MAINLINE_REF", "origin/main")
+
+
+def range_endpoints(spec: str) -> "Optional[Tuple[str, str]]":
+    """If *spec* is a commit range, return ``(base, head)``, else None.
+
+    ``A..B`` -> ``(A, B)``. ``A...B`` -> ``(merge-base(A, B), B)`` -- the change on
+    B since it forked from A. An empty side defaults to HEAD.
+    """
+    for sep in ("...", ".."):
+        if sep in spec:
+            left, right = spec.split(sep, 1)
+            left, right = (left or "HEAD"), (right or "HEAD")
+            if sep == "...":
+                base = git("merge-base", left, right).stdout.strip()
+                if not base:
+                    raise BackportError(f"no merge base for range '{spec}'.")
+                return base, right
+            return left, right
+    return None
+
+
+def _rev(ref: str) -> str:
+    """Resolve *ref* to a commit SHA, or raise a user-facing error."""
+    r = git("rev-parse", "--verify", f"{ref}^{{commit}}", check=False)
+    if r.returncode != 0:
+        raise BackportError(f"'{ref}' is not a commit in this checkout.")
+    return r.stdout.strip()
+
+
+def resolve_fix_commit(args) -> "Tuple[str, str]":
+    """Resolve which real commit(s) to analyze, as ``(fix_sha, base)``.
+
+    - ``--commit <ref>``          the commit itself; base is its first parent.
+    - ``--commit A..B``/``A...B`` the span from A to B.
+    - (nothing)                   the current branch since it diverged from the
+      mainline, i.e. ``git merge-base <mainline> HEAD``.
+
+    The commits already exist, so nothing is extracted, applied, or checked out.
+    A span of more than one commit is collapsed into a single commit object with
+    ``git commit-tree`` -- pure plumbing, no worktree -- so the engine sees the
+    span's *net* change and a multi-commit fix analyzes like a squashed one.
+    """
+    spec = getattr(args, "commit", None) or f"{MAINLINE_REF}...HEAD"
+    endpoints = range_endpoints(spec)
+    if endpoints is None:
+        fix_sha = _rev(spec)
+        return fix_sha, f"{fix_sha}^"
+
+    base_sha, head_sha = _rev(endpoints[0]), _rev(endpoints[1])
+    n = int(git("rev-list", "--count", f"{base_sha}..{head_sha}").stdout.strip() or 0)
+    if n == 0:
+        raise BackportError(
+            f"no commits in '{spec}' -- nothing to analyze.\n"
+            "  Commit your fix, or name it explicitly with --commit <ref>."
+        )
+    if n == 1:
+        return head_sha, base_sha
+
+    tree = git("rev-parse", f"{head_sha}^{{tree}}").stdout.strip()
+    subject = git("log", "-1", "--format=%s", head_sha).stdout.strip()
+    synthetic = git(
+        *BOT_IDENTITY,
+        "commit-tree",
+        tree,
+        "-p",
+        base_sha,
+        "-m",
+        f"[net change of {n} commits] {subject}",
+    ).stdout.strip()
+    return synthetic, base_sha
 
 
 # --------------------------------------------------------------------------
@@ -362,21 +424,3 @@ def target_repo(args) -> str:
     # unaffected.
     os.chdir(repo_top)
     return repo_top
-
-
-def resolve_patch_path(args, repo_top) -> None:
-    """Resolve a given patch file relative to the caller's cwd first, then the
-    repo root (a common spot to drop a patch). Rewrites ``args.patch`` in place."""
-    patch = getattr(args, "patch", None)
-    if not patch:
-        return
-    given = Path(patch)
-    if given.exists():
-        args.patch = str(given.resolve())
-    elif (Path(repo_top) / patch).exists():
-        args.patch = str((Path(repo_top) / patch).resolve())
-    else:
-        raise BackportError(
-            f"patch file not found: {patch}\n"
-            f"  looked in the current directory and at the repo root ({repo_top})."
-        )

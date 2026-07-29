@@ -2,7 +2,8 @@
 Rendering the analyze result.
 
 Layer: output. Builds on ``common`` only; used by ``analyze`` (and reused by
-``ci`` / ``resolve``) to present verdicts. No git or analysis logic lives here.
+``apply`` / ``ci`` / ``resolve``) to present verdicts and prompt the user. No git
+or analysis logic lives here.
 
 Two output modes: a human-readable table (AFFECTED branches first, columns
 auto-sized to the widest value) followed by a copy-paste backport hint, or a
@@ -23,7 +24,7 @@ def print_summary(
     decided_by: Dict[str, str],
 ) -> None:
     """Print the per-branch verdict table."""
-    print(f"Fix commit (built from patch): {fix_sha[:10]}")
+    print(f"Fix commit: {fix_sha[:10]}")
     print(f"Changed files: {list(files)}")
     print(f"Introducer(s): {[s[:8] for s in introducers] or '(none / new file)'}")
     print()
@@ -74,3 +75,44 @@ def emit_analysis(
     else:
         print_summary(fix_sha, files, introducers, buckets, decided_by)
         print_backport_hint(buckets)
+
+
+TEST_SUFFIXES = ("_test.cc", "_test.cpp", "_test.c", "_test.cxx")
+
+
+def print_section(title, items) -> None:
+    """One titled, indented block of a run summary (``apply`` / ``resolve``)."""
+    print(f"  {title}:")
+    for item in items:
+        print(f"    - {item}")
+    print()
+
+
+def ask_yn(prompt: str) -> bool:
+    """Prompt until the user answers Y or N. Returns True for Y."""
+    while True:
+        try:
+            ans = input(f"{prompt} [Y/N] ").strip().lower()
+        except EOFError:
+            # no input available (e.g. stdin closed) -> treat as a safe abort
+            return False
+        if ans in ("y", "yes"):
+            return True
+        if ans in ("n", "no"):
+            return False
+        print("Please answer Y or N.")
+
+
+def confirm_test_file(changed_files) -> bool:
+    """Confirm the fix ships a test before analysing it. Returns True to proceed.
+
+    AWS-LC fixes usually carry their test alongside as a ``*_test.cc``. If one is
+    present, confirm it is the right test; if none is, confirm the user wants to
+    proceed anyway. Answering N aborts.
+    """
+    tests = sorted(f for f in changed_files if f.endswith(TEST_SUFFIXES))
+    if tests:
+        print(f"Test file in this fix: {', '.join(tests)}")
+        return ask_yn("Is this the test for your fix?")
+    print("No test file (e.g. *_test.cc) found in this fix.")
+    return ask_yn("Proceed without a test file?")
