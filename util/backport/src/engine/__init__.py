@@ -52,18 +52,12 @@ from .gitread import (
 )  # noqa: F401
 from .introducers import find_introducing_commit, find_line_origin  # noqa: F401
 from .impact import (
-    any_changed_file_present_exact,
     branch_cites_cherry_pick,
-    deterministic_impact,
-    fold_advisory,
     get_branch_patch_ids,
     introducer_reaches,
     is_already_patched,
-    is_branch_affected,
     patch_id_of,
     present_introducers,
-    run_ai_advisory,
-    source_files_present,
 )  # noqa: F401
 
 

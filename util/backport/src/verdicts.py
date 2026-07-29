@@ -27,69 +27,84 @@ from gitutil import branch_basenames, changed_files_with_status, git
 # --------------------------------------------------------------------------
 
 
+def classify_branch(
+    fix_sha: str, src_files: Sequence[str], introducers, branch: str
+) -> str:
+    """The single deterministic verdict for one branch: AFFECTED / NOT_AFFECTED /
+    UNSURE / ALREADY.
+
+    This is the ONE implementation of the decision tree -- the CLI reaches it via
+    :func:`analyze_branches`, and the replay bench calls it directly, so the
+    scorecard grades exactly the logic that ships.
+
+    Safety stance: a branch is only ever called NOT AFFECTED when we are confident
+    the changed code is absent. If ancestry/patch-id do not match but the file is
+    present (or a same-named file exists under a path we could not trace), the
+    branch is escalated to UNSURE rather than risk a silent false negative.
+    """
+    ref = f"origin/{branch}"
+    # Path 1 + Path 2: does an introducer reach the branch by SHA ancestry or
+    # patch-id equivalence?
+    affected = bot.introducer_reaches(introducers, ref)
+    # Corroborate ancestry/patch-id with the vulnerable pre-image. The
+    # oldest-introducer heuristic flags a branch as soon as ONE introducer
+    # reaches it, which over-flags when that introducer is old shared code the
+    # fix also touched. `vulnerable_preimage_present` is the tiebreaker:
+    #   True  -> the exact lines the fix removes are still here (real hit)
+    #   None  -> pure-addition fix, nothing to check (trust ancestry)
+    #   False -> those lines are provably absent (ancestry matched old shared
+    #            code) -> NOT a confident AFFECTED; fall through to UNSURE so
+    #            the AI decides (and it is flagged for review under --no-ai,
+    #            never a silent miss).
+    preimage = bot.vulnerable_preimage_present(fix_sha, src_files, ref)
+    if affected and preimage is not False:
+        return ALREADY if bot.is_already_patched(fix_sha, branch) else AFFECTED
+    # Path 2b: ancestry/patch-id missed (a branch-specific introducer), but the
+    # exact removed lines ARE present -> deterministically AFFECTED.
+    if not affected and preimage is True:
+        return AFFECTED
+    # Not confidently affected. Decide UNSURE vs a confident NOT AFFECTED,
+    # biasing hard toward UNSURE so a miss is never silent.
+    present = any(
+        bot.get_file_on_branch(f, ref, commit=fix_sha)[0] is not None for f in src_files
+    )
+    if not present:
+        # Conservative guard: if the rename-aware lookup found nothing but a
+        # file with the same name exists elsewhere on the branch, the code
+        # may be there under a path we could not trace. Escalate to UNSURE
+        # rather than declare a confident (and possibly false) NOT AFFECTED.
+        basenames = branch_basenames(ref)
+        if any(os.path.basename(f) in basenames for f in src_files):
+            present = True
+    return UNSURE if present else NOT_AFFECTED
+
+
+def source_files(files: Sequence[str]) -> "List[str]":
+    """The shipped-source subset of *files* that impact is judged on.
+
+    A co-changed *_test.cc / generated file must never make a branch affected (its
+    presence, or a stale line in it, is not the vulnerable code). Falls back to all
+    files only if the fix is test/generated-only.
+    """
+    return [f for f in files if not bot.is_test_or_generated_file(f)] or list(files)
+
+
 def analyze_branches(
     fix_sha: str, branches: Sequence[str]
 ) -> "Tuple[List[str], List[str], Dict[str, str]]":
     """Classify each branch deterministically (no AI).
 
     Returns ``(changed_files, sorted_introducers, buckets)``, where buckets maps
-    each branch to one of AFFECTED / NOT_AFFECTED / UNSURE / ALREADY.
-
-    Safety stance: a branch is only ever called NOT AFFECTED when we are
-    confident the changed code is absent. If ancestry/patch-id do not match but
-    the file is present (or a same-named file exists under a path we could not
-    trace), the branch is escalated to UNSURE rather than risk a silent false
-    negative. The only confident NOT AFFECTED is "the code is genuinely not here".
+    each branch to one of AFFECTED / NOT_AFFECTED / UNSURE / ALREADY. The per-branch
+    decision lives in :func:`classify_branch`.
     """
     files, introducer_files = changed_files_with_status(fix_sha)
     introducers = bot.find_introducing_commit(fix_sha, introducer_files)
-
-    # Impact is judged on shipped SOURCE only: a co-changed *_test.cc / generated
-    # file must never make a branch affected (its presence, or a stale line in it,
-    # is not the vulnerable code). Fall back to all files only if the fix is
-    # test/generated-only.
-    src_files = [f for f in files if not bot.is_test_or_generated_file(f)] or files
-
-    buckets: Dict[str, str] = {}
-    for branch in branches:
-        ref = f"origin/{branch}"
-        affected, _ = bot.is_branch_affected(introducers, branch)  # Path 1 + Path 2
-        # Corroborate ancestry/patch-id with the vulnerable pre-image. The
-        # oldest-introducer heuristic flags a branch as soon as ONE introducer
-        # reaches it, which over-flags when that introducer is old shared code the
-        # fix also touched. `vulnerable_preimage_present` is the tiebreaker:
-        #   True  -> the exact lines the fix removes are still here (real hit)
-        #   None  -> pure-addition fix, nothing to check (trust ancestry)
-        #   False -> those lines are provably absent (ancestry matched old shared
-        #            code) -> NOT a confident AFFECTED; fall through to UNSURE so
-        #            the AI decides (and it is flagged for review under --no-ai,
-        #            never a silent miss).
-        preimage = bot.vulnerable_preimage_present(fix_sha, src_files, ref)
-        if affected and preimage is not False:
-            buckets[branch] = (
-                ALREADY if bot.is_already_patched(fix_sha, branch) else AFFECTED
-            )
-            continue
-        # Path 2b: ancestry/patch-id missed (a branch-specific introducer), but the
-        # exact removed lines ARE present -> deterministically AFFECTED.
-        if not affected and preimage is True:
-            buckets[branch] = AFFECTED
-            continue
-        # Not confidently affected. Decide UNSURE vs a confident NOT AFFECTED,
-        # biasing hard toward UNSURE so a miss is never silent.
-        present = any(
-            bot.get_file_on_branch(f, ref, commit=fix_sha)[0] is not None
-            for f in src_files
-        )
-        if not present:
-            # Conservative guard: if the rename-aware lookup found nothing but a
-            # file with the same name exists elsewhere on the branch, the code
-            # may be there under a path we could not trace. Escalate to UNSURE
-            # rather than declare a confident (and possibly false) NOT AFFECTED.
-            basenames = branch_basenames(ref)
-            if any(os.path.basename(f) in basenames for f in src_files):
-                present = True
-        buckets[branch] = UNSURE if present else NOT_AFFECTED
+    src_files = source_files(files)
+    buckets = {
+        branch: classify_branch(fix_sha, src_files, introducers, branch)
+        for branch in branches
+    }
     return files, sorted(introducers), buckets
 
 

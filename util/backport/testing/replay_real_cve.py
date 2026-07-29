@@ -14,9 +14,9 @@ release branch this harness:
   2. Rolls the repo back to the state right before that hand-made backport landed
      (for affected branches, the branch is reset to the backport commit's parent),
      so the fix is genuinely absent again and the tool has to rediscover the need.
-  3. Runs the REAL deterministic engine (src/engine.py) against that rolled-back
-     world (get_changed_files -> find_introducing_commit -> is_branch_affected ->
-     is_already_patched, and optionally a cherry-pick apply).
+  3. Runs the REAL shipped classifier (verdicts.classify_branch) against that
+     rolled-back world (get_changed_files -> find_introducing_commit ->
+     classify_branch, and optionally a cherry-pick apply).
   4. Compares the tool's per-branch verdict to the ground truth and scores it
      (true/false positive/negative), printing a table + scorecard per fix.
 
@@ -72,17 +72,19 @@ from pathlib import Path
 
 # The engine lives in the src/ folder one directory up; import from there.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from ai import ai_client  # noqa: E402
+from ai import ai_client, ai_impact_analysis  # noqa: E402
+from common import AFFECTED, ALREADY, NOT_AFFECTED, UNSURE  # noqa: E402
 from engine import (  # noqa: E402
     is_test_or_generated_file,
     parse_eos_date,
     patch_id_pathspec,
     find_introducing_commit,
     get_changed_files,
-    is_already_patched,
-    is_branch_affected,
     vulnerable_preimage_present,
 )
+
+# The shipped per-branch classifier -- the bench grades this, not a private copy.
+from verdicts import classify_branch, source_files  # noqa: E402
 
 DEFAULT_REPO = os.environ.get("AWS_LC_REPO", "/Users/tianyiy/aws-lc")
 
@@ -600,47 +602,46 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
     with chdir(sandbox):
         files = get_changed_files(fix_sha)
         introducers = find_introducing_commit(fix_sha, files)
+        src = source_files(files)
 
         def analyze(b):
-            # Deterministic short-circuit FIRST (mirrors the real bot): if the fix
-            # is already present on the branch (forked after the fix -> direct
-            # ancestor, or a cherry-pick with a matching patch-id), no backport is
-            # needed. Deciding this before impact analysis / AI makes the verdict
-            # robust and independent of the AI auditor.
-            if is_already_patched(fix_sha, b):
-                return b, {
-                    "backport": False,
-                    "reason": "already_patched",
-                    "cherry_pick": "",
-                    "fix_already_ancestor": True,
-                    "ai": None,
-                    "preimage": vulnerable_preimage_present(
-                        fix_sha, files, f"origin/{b}"
-                    ),
-                }
+            # Route through the SHIPPED classifier so the scorecard grades exactly
+            # the code path the CLI runs (verdicts.classify_branch), rather than a
+            # second copy of the decision tree maintained only for this bench.
+            state = classify_branch(fix_sha, src, introducers, b)
 
-            affected, advisory = is_branch_affected(
-                introducers, b, commit=fix_sha, changed_files=files
-            )
-            overrode = bool(advisory and advisory.get("overrode_deterministic"))
-            reason, cp = "not_affected", ""
-            if affected:
-                if is_already_patched(fix_sha, b):
-                    affected, reason = False, "already_patched"
+            advisory = None
+            if state == UNSURE:
+                # Mirror verdicts.resolve_unsure: an inconclusive branch defaults to
+                # AFFECTED (flagged for review, never a silent miss); only a
+                # definite AI "not affected" clears it. Returns None when AI is off
+                # (--no-ai sets BACKPORT_DISABLE_AI), so the deterministic run
+                # resolves every UNSURE to AFFECTED, exactly like the CLI.
+                advisory = ai_impact_analysis(fix_sha, b, files, set(introducers))
+                if advisory is not None and advisory.get("likely_affected") is False:
+                    state = NOT_AFFECTED
+                    advisory["overrode_deterministic"] = True
                 else:
-                    reason = "ai_upgraded" if overrode else "needs_backport"
-                    if do_cherry_pick:
-                        with _WT_LOCK:  # worktree bookkeeping isn't concurrency-safe
-                            cp = simulate_cherry_pick(sandbox, fix_sha, b)
-                        if cp == "empty":
-                            # git itself reports the change is already present
-                            # (applied via a reshaped commit that ancestry and
-                            # patch-id missed). Authoritative and FN-safe.
-                            affected, reason = False, "already_patched(no-op)"
-            elif overrode:
-                reason = "ai_suppressed"
-            elif advisory is not None:
-                reason = "not_affected_ai"
+                    state = AFFECTED
+                    if advisory is not None:
+                        advisory["overrode_deterministic"] = False
+
+            affected = state == AFFECTED
+            cp = ""
+            if state == ALREADY:
+                reason = "already_patched"
+            elif affected:
+                reason = "needs_backport"
+                if do_cherry_pick:
+                    with _WT_LOCK:  # worktree bookkeeping isn't concurrency-safe
+                        cp = simulate_cherry_pick(sandbox, fix_sha, b)
+                    if cp == "empty":
+                        # git itself reports the change is already present
+                        # (applied via a reshaped commit that ancestry and
+                        # patch-id missed). Authoritative and FN-safe.
+                        affected, reason = False, "already_patched(no-op)"
+            else:
+                reason = "not_affected_ai" if advisory is not None else "not_affected"
 
             fix_ancestor = (
                 git(

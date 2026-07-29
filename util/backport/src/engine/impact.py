@@ -1,16 +1,17 @@
 """
-Impact verdict and already-patched / patch-id detection.
+Ancestry / patch-id reachability and already-patched detection.
 
-Layer: impact core (``engine`` package). Builds on ``config`` + ``preimage`` + ``gitread``.
+Layer: impact core (``engine`` package). Builds on ``config``.
+
+The per-branch VERDICT lives in ``verdicts.classify_branch`` (one implementation,
+shared by the CLI and the replay bench); this module supplies the primitives it
+asks about.
 """
 
 import os
 import subprocess
-import sys
 
 from .config import patch_id_pathspec
-from .gitread import get_file_on_branch
-from .preimage import is_test_or_generated_file, vulnerable_preimage_present
 
 # ---------------------------------------------------------------------------
 # 8. Impact verdict
@@ -41,139 +42,10 @@ def introducer_reaches(introducing_commits, ref):
     return False
 
 
-def source_files_present(changed_files, ref, commit):
-    """True if any non-test/-generated changed file exists on *ref* (rename-aware)."""
-    source = [
-        f for f in changed_files if not is_test_or_generated_file(f)
-    ] or changed_files
-    return any(get_file_on_branch(f, ref, commit=commit)[0] is not None for f in source)
-
-
-def deterministic_impact(introducing_commits, ref, commit, changed_files):
-    """Deterministic verdict before the AI layer: 'affected', 'not_affected', or
-    'inconclusive'. Implements Paths 1/2 (ancestry, patch-id), 2b (positive
-    pre-image), 3 (file absence), and 4 (pre-image downgrade)."""
-    has_context = bool(commit and changed_files)
-    affected = introducer_reaches(introducing_commits, ref)
-    # Path 2b: a branch-specific introducer that Paths 1/2 miss, caught by the
-    # exact removed lines still being present.
-    if not affected and has_context:
-        affected = vulnerable_preimage_present(commit, changed_files, ref) is True
-
-    if affected:
-        # Path 4: ancestry matched only old shared code -- if the removed lines are
-        # provably absent, downgrade to inconclusive (the AI tie-breaker re-flags a
-        # reshaped-but-vulnerable branch). Gated by BACKPORT_PREIMAGE_DOWNGRADE.
-        if (
-            has_context
-            and os.environ.get("BACKPORT_PREIMAGE_DOWNGRADE", "1") == "1"
-            and vulnerable_preimage_present(commit, changed_files, ref) is False
-        ):
-            return "inconclusive"
-        return "affected"
-
-    # Path 3: none of the fixed source files exist here -> confident not-affected.
-    if changed_files and not source_files_present(changed_files, ref, commit):
-        return "not_affected"
-    return "inconclusive"
-
-
-def run_ai_advisory(commit, branch, changed_files, introducing_commits, det_affected):
-    """Call the advisory AI in the role implied by the deterministic verdict, tag
-    the result, and log it. Returns the advisory dict or None."""
-    from ai import ai_impact_analysis  # local import avoids an ai<->engine cycle
-
-    det_verdict = "affected" if det_affected else "inconclusive"
-    advisory = ai_impact_analysis(
-        commit, branch, changed_files, introducing_commits, det_verdict=det_verdict
-    )
-    if advisory is not None:
-        advisory["role"] = "auditor" if det_affected else "tiebreaker"
-        advisory["overrode_deterministic"] = False
-        # Live progress line; off by default so it doesn't interleave with the
-        # replay's per-fix tables (the AI verdict is already in each fix's Notes).
-        # Set BACKPORT_VERBOSE=1 to see it.
-        if os.environ.get("BACKPORT_VERBOSE"):
-            print(
-                f"[ai] {advisory['role']} for {branch}: det={det_verdict}, "
-                f"likely_affected={advisory['likely_affected']}, "
-                f"confidence={advisory['confidence']}",
-                file=sys.stderr,
-            )
-    return advisory
-
-
-def fold_advisory(det_affected, advisory, commit, changed_files, ref):
-    """Combine the deterministic verdict with the advisory, gated by direction so
-    the AI never acts alone:
-      tie-breaker (inconclusive -> affected): safe, only ADDS a backport;
-      auditor (affected -> not affected): can MISS a backport, so suppress only on
-      HIGH-confidence "not affected", BACKPORT_AI_SUPPRESS on (default), AND the
-      removed lines provably absent.
-    """
-    if advisory is None:
-        return det_affected
-    likely = advisory.get("likely_affected")
-    conf = advisory.get("confidence")
-
-    if det_affected:
-        suppress = os.environ.get("BACKPORT_AI_SUPPRESS", "1") == "1"
-        if (
-            suppress
-            and likely is False
-            and conf == "high"
-            and vulnerable_preimage_present(commit, changed_files, ref) is False
-        ):
-            advisory["overrode_deterministic"] = True
-            return False
-        return True
-
-    # Inconclusive: a "likely affected" upgrades only if a fixed file is actually
-    # here at its exact path (else a backport would be an impossible cherry-pick).
-    if likely is True:
-        if any_changed_file_present_exact(changed_files, ref):
-            advisory["overrode_deterministic"] = True
-            return True
-        advisory["tiebreaker_blocked_no_file"] = True
-    return False
-
-
-def is_branch_affected(
-    introducing_commits, branch, commit=None, changed_files=None
-) -> "tuple[bool, dict | None]":
-    """Is *branch* affected by the fix? Returns (affected, ai_advisory).
-
-    The deterministic engine (see deterministic_impact) owns the verdict; the AI
-    layer only nudges it under strict gating (see fold_advisory). Called with
-    just (introducers, branch) it is a pure ancestry + patch-id check; called with
-    commit + changed_files it also runs the pre-image paths and the AI layer.
-    See the README's "How it decides" section for the rationale behind each path.
-    """
-    ref = f"origin/{branch}"
-    verdict = deterministic_impact(introducing_commits, ref, commit, changed_files)
-    if verdict == "not_affected":
-        return False, None
-    det_affected = verdict == "affected"
-
-    # No fix context (the 2-arg call from bucketing): return the deterministic verdict.
-    if not (commit and changed_files):
-        return det_affected, None
-
-    # Inconclusive AND the code isn't on this branch at all -> confident
-    # not-affected; an AI call here could only guess.
-    if not det_affected and not any_changed_file_present_exact(changed_files, ref):
-        return False, None
-
-    advisory = run_ai_advisory(
-        commit, branch, changed_files, introducing_commits, det_affected
-    )
-    return fold_advisory(det_affected, advisory, commit, changed_files, ref), advisory
-
-
 def present_introducers(introducing_commits, branch):
     """Subset of *introducing_commits* present on *branch*, by SHA ancestry OR
-    patch-id. Finer-grained than is_branch_affected (which stops at the first
-    match): lets a caller tell a FULL lineage (all introducers present ->
+    patch-id. Finer-grained than :func:`introducer_reaches` (which stops at the
+    first match): lets a caller tell a FULL lineage (all introducers present ->
     confidently affected) from a PARTIAL one (only old shared code present, the
     newer bug-introducing commit absent -> likely over-flag worth review)."""
     ref = f"origin/{branch}"
@@ -192,18 +64,6 @@ def present_introducers(introducing_commits, branch):
             if pid and pid in branch_pids:
                 present.add(sha)
     return present
-
-
-def any_changed_file_present_exact(changed_files, ref):
-    """True if any changed source file exists on *ref* at its EXACT path. Used to
-    stop the tie-breaker upgrading a branch where the fix's code isn't present
-    (rename-aware matching could falsely link unrelated same-named files)."""
-    source = [f for f in (changed_files or ()) if not is_test_or_generated_file(f)]
-    for f in source or (changed_files or ()):
-        r = subprocess.run(["git", "cat-file", "-e", f"{ref}:{f}"], capture_output=True)
-        if r.returncode == 0:
-            return True
-    return False
 
 
 # ---------------------------------------------------------------------------
