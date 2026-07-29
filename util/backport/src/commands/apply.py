@@ -1,7 +1,7 @@
 """
 The ``apply`` and ``clear`` commands.
 
-Layer: command. Builds on ``gitutil`` + ``verdicts``, and hands off to ``resolve``
+Layer: command. Builds on ``util.git`` + ``engine``, and hands off to ``resolve``
 when a cherry-pick conflicts; wired into the CLI by ``main``.
 
 ``apply`` cherry-picks the fix onto local ``backport/<branch>/<id>`` branches for

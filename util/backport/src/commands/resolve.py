@@ -1,7 +1,7 @@
 """
 The ``resolve`` command: interactive, local backport-conflict resolution.
 
-Layer: command. Builds on ``gitutil`` + ``verdicts`` and reuses ``ci``'s
+Layer: command. Builds on ``util.git`` + ``engine`` and reuses ``publish``'s
 PR/summary helpers; wired into the CLI by ``main``. Its ``run_resolution`` engine
 is also the on-conflict hand-off ``apply`` calls into.
 
@@ -17,10 +17,10 @@ one normal (non-draft) PR per resolved branch.
 
 The original branch is restored at the end -- unless the user bailed out mid-way,
 in which case the repo is deliberately left on the unfinished branch to finish by
-hand. Clean cherry-picks are **skipped** here on purpose: ``ci`` (and ``apply``)
+hand. Clean cherry-picks are **skipped** here on purpose: ``publish`` (and ``apply``)
 already open those, so re-opening them from ``resolve`` would clash on the same
-branch name. ``resolve`` owns exactly the branches ``ci`` reported as conflicts --
-it is the local, human-in-the-loop counterpart that finishes what ``ci`` could not.
+branch name. ``resolve`` owns exactly the branches ``publish`` reported as conflicts --
+it is the local, human-in-the-loop counterpart that finishes what ``publish`` could not.
 """
 
 import json
@@ -29,7 +29,7 @@ import re
 import sys
 
 from engine.analysis import get_supported_branches, sort_branches
-from commands.ci import assert_fork_remote, gh, plan_marker, summary_table
+from commands.publish import assert_fork_remote, gh, plan_marker, summary_table
 from util.config import AFFECTED, BackportError
 from util.git import (
     BOT_IDENTITY,
@@ -162,7 +162,7 @@ def resolve_branch(
 
     Returns ``(status, detail)``:
       - ``("clean", None)``          applied with no conflict; skipped (clean
-                                     backports are `ci`/`apply`'s job).
+                                     backports are `publish`/`apply`'s job).
       - ``("ready", local_branch)``  conflicts resolved and committed.
       - ``("blocked", branch)``      files left unresolved; the repo is left
                                      checked out on the branch to finish by hand.
@@ -178,9 +178,9 @@ def resolve_branch(
 
     pick = git("cherry-pick", fix_sha, check=False)
     if pick.returncode == 0:
-        # Clean -> ci/apply own it; skip. The commit sits on detached HEAD and is
+        # Clean -> publish/apply own it; skip. The commit sits on detached HEAD and is
         # discarded when we check out the next branch / restore the original.
-        print("  No conflicts — clean cherry-pick (CI opens this backport).")
+        print("  No conflicts — clean cherry-pick (publish opens this backport).")
         return "clean", None
 
     base_sha = git("rev-parse", ref).stdout.strip()
@@ -290,7 +290,7 @@ def open_pr(
 
 def find_open_pr_url(head: str) -> "str | None":
     """URL of the open PR whose head branch is *head*, or None. Used to relink the
-    clean backport PRs `ci` already opened when we rebuild the summary."""
+    clean backport PRs `publish` already opened when we rebuild the summary."""
     r = gh(
         "pr",
         "list",
@@ -318,9 +318,9 @@ def post_resolution_summary(
     errors,
     run_id,
 ) -> None:
-    """Post an updated, ci-style summary comment on the source PR after resolving.
+    """Post an updated, publish-style summary comment on the source PR after resolving.
 
-    Same table format as `ci`, but the previously-conflicting branches now show
+    Same table format as `publish`, but the previously-conflicting branches now show
     their freshly opened backport PR (✅) instead of a merge-conflict warning.
     """
     outcomes: dict = {}
@@ -345,7 +345,7 @@ def post_resolution_summary(
 
 
 # The plan is attached to the summary comment as a fenced ```json block``` (see
-# ci.plan_marker). Grab the contents of every such block; we then pick the last
+# publish.plan_marker). Grab the contents of every such block; we then pick the last
 # one carrying our sentinel key.
 _PLAN_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
 
@@ -357,7 +357,7 @@ def parse_plan(comments_text: str) -> "dict | None":
 
     Scans every fenced ``json`` block and returns the last one that parses and
     carries the ``backport_bot_plan`` sentinel -- so a later resolve-run summary
-    supersedes the original ci one, and an unrelated ``json`` block (or the
+    supersedes the original publish one, and an unrelated ``json`` block (or the
     ``bash`` command block) is ignored.
     """
     for blob in reversed(_PLAN_RE.findall(comments_text)):  # newest comment wins
@@ -372,12 +372,12 @@ def parse_plan(comments_text: str) -> "dict | None":
 
 def read_bot_plan(pr) -> "dict | None":
     """Read the backport bot's machine-readable plan from the summary comment(s)
-    on *pr*, so we can target exactly the branches `ci` flagged without re-running
+    on *pr*, so we can target exactly the branches `publish` flagged without re-running
     the impact analysis. Returns the parsed dict, or None if no plan is present
     (then the caller falls back to computing it locally).
 
     The plan is a fenced ``json`` block tagged with a ``backport_bot_plan``
-    sentinel key (``ci.plan_marker``); the actual selection is done by the pure
+    sentinel key (``publish.plan_marker``); the actual selection is done by the pure
     :func:`parse_plan`.
     """
     r = gh(
@@ -414,7 +414,7 @@ def run_resolution(
 
     Shared engine behind both entry points:
       - `cmd_resolve`: *targets* are the conflicting branches (from the PR plan or
-        a local analysis); *preopened* are branches CI already opened clean PRs for
+        a local analysis); *preopened* are branches publish already opened clean PRs for
         (summary only, not re-opened).
       - `apply`: *targets* are the branches that just conflicted, and *clean_local*
         are the branches apply cherry-picked cleanly (their `backport/<b>/<id>`
@@ -491,7 +491,7 @@ def run_resolution(
     print("Summary\n")
     print_section("Ready to open PRs", to_pr or ["(none)"])
     if clean_skipped:
-        print_section("Already opened by CI", clean_skipped)
+        print_section("Already opened by publish", clean_skipped)
     if left_on_branch:
         print_section("Left checked out to finish (re-run when done)", [left_on_branch])
     if errors:
@@ -516,7 +516,7 @@ def run_resolution(
         if not url.startswith("error:"):
             created[branch] = url
 
-    # Post an updated ci-style summary on the source PR: the previously-conflicting
+    # Post an updated publish-style summary on the source PR: the previously-conflicting
     # branches now show their opened backport PR instead of a conflict warning.
     still_conflicting = [left_on_branch] if left_on_branch else []
     if source_pr and created:
@@ -553,7 +553,7 @@ def cmd_resolve(args) -> int:
         targets = sort_branches(
             b for b, info in branch_info.items() if info.get("outcome") == "conflict"
         )
-        # Branches ci already opened clean PRs for -- carry them into the final
+        # Branches publish already opened clean PRs for -- carry them into the final
         # summary so it stays complete (relinked to their existing PRs).
         preopened = [
             b

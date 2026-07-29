@@ -1,8 +1,8 @@
 """
-The ``ci`` command: post-merge automation for GitHub Actions.
+The ``publish`` command: open backport PRs for a merged commit.
 
-Layer: command. Builds on ``gitutil`` + ``verdicts`` + ``render``; wired into the
-CLI by ``main``, and its PR/summary helpers are reused by ``resolve``.
+Layer: command. Builds on ``util.git`` + ``engine`` + ``util.render``; wired into
+the CLI by ``main``, and its PR/summary helpers are reused by ``resolve``.
 
 Given a merged commit, analyze every supported branch (AI layer on) and open a
 backport PR on the fork for each AFFECTED branch. Clean cherry-picks become PRs
@@ -73,7 +73,7 @@ def open_backport_pr(
 ) -> str:
     """Push a clean cherry-pick branch to the fork and open a normal PR into the
     release branch (never a draft, never auto-merged). Conflicted branches are not
-    handled here -- CI only reports them, and the user runs ``backport resolve``.
+    handled here -- publish only reports them, and the user runs ``backport resolve``.
     *dropped*, if set, lists test/generated files whose conflicting hunks were
     dropped (source fix applied); it's noted in the PR body.
     Returns the PR URL, ``"dry-run"``, or an ``"error: ..."`` string."""
@@ -248,7 +248,7 @@ def plan_marker(fix_sha: str, subject: str, buckets, outcomes) -> str:
     )
 
 
-def ci_report(args, fix_sha, subject, buckets, outcomes) -> None:
+def post_report(args, fix_sha, subject, buckets, outcomes) -> None:
     """Print the per-branch status table, post it as a comment on the source PR,
     and emit GitHub Actions warnings for branches that need manual backport."""
     table = summary_table(fix_sha, subject, buckets, outcomes, source_pr=args.pr)
@@ -266,7 +266,7 @@ def ci_report(args, fix_sha, subject, buckets, outcomes) -> None:
 # --------------------------------------------------------------------------
 
 
-def cmd_ci(args) -> int:
+def cmd_publish(args) -> int:
     """Analyze a merged commit and open a backport PR on the fork for every
     AFFECTED branch."""
     assert_fork_remote(args.remote)
@@ -331,5 +331,5 @@ def cmd_ci(args) -> int:
             )
             print(f"  [OK] {branch}: {url}{note}")
 
-    ci_report(args, fix_sha, subject, buckets, outcomes)
+    post_report(args, fix_sha, subject, buckets, outcomes)
     return 0

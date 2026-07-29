@@ -28,8 +28,8 @@ util/backport/backport apply --all-affected
 # 3. Resolve any conflicts interactively, then open one PR per branch
 util/backport/backport resolve --pr <number>
 
-# Post-merge automation (what CI runs)
-util/backport/backport ci --commit <merged-sha> --pr <number>
+# Post-merge automation (what CI runs): one backport PR per affected branch
+util/backport/backport publish --commit <merged-sha> --pr <number>
 
 # Drop the saved run state
 util/backport/backport clear
@@ -38,7 +38,7 @@ util/backport/backport clear
 Useful flags: `--no-ai` (deterministic only), `--branches <a b c>` (limit the set),
 `--json` (machine-readable), `--repo <path>` (target another checkout),
 `--commit A..B` (a fix spread across several commits, analyzed as its net change),
-`--dry-run` (`ci` only).
+`--dry-run` (`publish` only).
 
 `apply` and `resolve` check each release branch out in your own working tree (so
 your IDE shows the conflict live) and put you back on your original branch when

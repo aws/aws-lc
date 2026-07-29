@@ -1,8 +1,8 @@
 """
 The ``analyze`` command.
 
-Layer: command. Orchestrates ``gitutil`` -> ``verdicts`` -> ``render`` ->
-``runstate``; wired into the CLI by ``main``.
+Layer: command. Orchestrates ``util.git`` -> ``engine`` -> ``util.render`` ->
+``util.config``; wired into the CLI by ``main``.
 
 Give every supported branch a definite verdict for a fix. Pipeline: work out which
 commit(s) the fix is -> confirm the test file -> bucket each branch

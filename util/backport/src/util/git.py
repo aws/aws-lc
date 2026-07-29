@@ -6,7 +6,7 @@ and every command.
 
 Everything that shells out to git lives here: which checkout we are pointed at,
 the low-level runners, throwaway worktrees, the cherry-pick primitive shared by
-``apply`` and ``ci``, resolving which commit(s) a fix is, the rename-aware file
+``apply`` and ``publish``, resolving which commit(s) a fix is, the rename-aware file
 and diff reads, and the ``git diff-tree`` parsers.
 """
 
@@ -82,7 +82,7 @@ def run(
 ):
     """Run a command and capture its output.
 
-    Defaults to the engine's configured repo path; an explicit *cwd* (used by the
+    Defaults to the configured repo path; an explicit *cwd* (used by the
     throwaway worktrees) always wins. *stdin* is fed to the command's standard
     input -- used to pipe a patch into ``git apply``/``git am``.
     """
@@ -132,7 +132,7 @@ def temp_worktree(base: str, prefix: str = "backport-") -> "Iterator[str]":
 
 
 # --------------------------------------------------------------------------
-# Cherry-pick primitive (shared by `apply` and `ci`)
+# Cherry-pick primitive (shared by `apply` and `publish`)
 # --------------------------------------------------------------------------
 
 

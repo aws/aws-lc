@@ -14,7 +14,7 @@ release branch this harness:
   2. Rolls the repo back to the state right before that hand-made backport landed
      (for affected branches, the branch is reset to the backport commit's parent),
      so the fix is genuinely absent again and the tool has to rediscover the need.
-  3. Runs the REAL shipped classifier (verdicts.classify_branch) against that
+  3. Runs the REAL shipped classifier (engine.analysis.classify_branch) against that
      rolled-back world (get_changed_files -> find_introducing_commit ->
      classify_branch, and optionally a cherry-pick apply).
   4. Compares the tool's per-branch verdict to the ground truth and scores it
@@ -612,13 +612,13 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
 
         def analyze(b):
             # Route through the SHIPPED classifier so the scorecard grades exactly
-            # the code path the CLI runs (verdicts.classify_branch), rather than a
+            # the code path the CLI runs (engine.analysis.classify_branch), rather than a
             # second copy of the decision tree maintained only for this bench.
             state = classify_branch(fix_sha, src, introducers, b)
 
             advisory = None
             if state == UNSURE:
-                # Mirror verdicts.resolve_unsure: an inconclusive branch defaults to
+                # Mirror engine.ai.resolve_unsure: an inconclusive branch defaults to
                 # AFFECTED (flagged for review, never a silent miss); only a
                 # definite AI "not affected" clears it. Returns None when AI is off
                 # (--no-ai sets BACKPORT_DISABLE_AI), so the deterministic run

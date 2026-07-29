@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit tests for the ci <-> resolve plan hand-off.
+Unit tests for the publish <-> resolve plan hand-off.
 
-`ci` attaches a machine-readable plan to the summary comment it posts on a PR: a
-fenced ```json block carrying a `backport_bot_plan` sentinel key (ci.plan_marker).
+`publish` attaches a machine-readable plan to the summary comment it posts on a PR: a
+fenced ```json block carrying a `backport_bot_plan` sentinel key (publish.plan_marker).
 `resolve` scrapes that plan back (resolve.parse_plan) so it can target exactly
 the conflicting branches WITHOUT re-running the impact analysis.
 
@@ -25,7 +25,7 @@ from pathlib import Path
 # The command modules live in src/commands, one directory up.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from commands import ci  # noqa: E402
+from commands import publish  # noqa: E402
 from commands import resolve  # noqa: E402
 
 
@@ -52,14 +52,14 @@ def sample():
 class PlanRoundTrip(unittest.TestCase):
     def test_full_summary_comment_roundtrips(self):
         # Catches: the plan not surviving inside a REAL summary comment. The comment
-        # `ci` posts also contains a ```bash `backport resolve` block and a markdown
+        # `publish` posts also contains a ```bash `backport resolve` block and a markdown
         # table -- the scraper must still pull the fix SHA and conflict targets back
-        # out intact. If this breaks, resolve can't recover what ci decided.
+        # out intact. If this breaks, resolve can't recover what publish decided.
         fix, subject, buckets, outcomes = sample()
         comment = (
-            ci.summary_table(fix, subject, buckets, outcomes, source_pr=59)
+            publish.summary_table(fix, subject, buckets, outcomes, source_pr=59)
             + "\n\n"
-            + ci.plan_marker(fix, subject, buckets, outcomes)
+            + publish.plan_marker(fix, subject, buckets, outcomes)
         )
         plan = resolve.parse_plan(comment)
         self.assertIsNotNone(plan, "plan not found in the summary comment")
@@ -74,7 +74,7 @@ class PlanRoundTrip(unittest.TestCase):
         # resolve shows these paths to the user ("Conflicting files:"), so losing
         # them degrades the whole point of reading the plan.
         fix, subject, buckets, outcomes = sample()
-        plan = resolve.parse_plan(ci.plan_marker(fix, subject, buckets, outcomes))
+        plan = resolve.parse_plan(publish.plan_marker(fix, subject, buckets, outcomes))
         self.assertEqual(
             plan["branches"]["fips-2021-10-20"]["files"],
             ["crypto/dh/dh.c", "tls/t.c"],
@@ -85,20 +85,20 @@ class PlanRoundTrip(unittest.TestCase):
         # ```bash command block has no sentinel key, so parse_plan must skip it
         # and only accept the sentinel-bearing json block.
         fix, subject, buckets, outcomes = sample()
-        comment = ci.summary_table(fix, subject, buckets, outcomes, source_pr=59)
+        comment = publish.summary_table(fix, subject, buckets, outcomes, source_pr=59)
         # The table alone (with its ```bash block) carries NO plan -> None.
         self.assertIsNone(resolve.parse_plan(comment))
 
     def test_latest_plan_wins(self):
-        # Catches: picking a stale plan when a PR has several. ci posts one, then a
+        # Catches: picking a stale plan when a PR has several. publish posts one, then a
         # resolve run posts an updated summary; the reader must take the NEWEST,
         # else it would try to re-open branches already resolved.
         fix, subject, buckets, outcomes = sample()
-        old = ci.plan_marker("oldsha0000000", subject, buckets, outcomes)
+        old = publish.plan_marker("oldsha0000000", subject, buckets, outcomes)
         # Newer run: the previously-conflicting branch is now opened.
         new_outcomes = dict(outcomes)
         new_outcomes["fips-2021-10-20"] = ("done", "https://github.com/x/y/pull/101")
-        new = ci.plan_marker("newsha1111111", subject, buckets, new_outcomes)
+        new = publish.plan_marker("newsha1111111", subject, buckets, new_outcomes)
         plan = resolve.parse_plan(old + "\n\n---\n\n" + new)
         self.assertEqual(plan["fix"], "newsha1111111")
         self.assertEqual(plan["branches"]["fips-2021-10-20"]["outcome"], "done")

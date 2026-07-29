@@ -73,6 +73,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_REGION: us-east-1
         run: |
-          python3 util/backport/src/main.py ci \
+          python3 util/backport/src/main.py publish \
             --commit "${{ github.event.pull_request.merge_commit_sha }}" \
             --pr "${{ github.event.pull_request.number }}"

@@ -2,8 +2,8 @@
 """
 backport - local CLI for the AWS-LC backport bot.
 
-Layer: entrypoint. Wires the command modules (analyze / apply / ci / resolve /
-clear) into one argument parser and dispatches to them.
+Layer: entrypoint. Wires the command modules (analyze / apply / publish /
+resolve / clear) into one argument parser and dispatches to them.
 
 Works on real commits: name a fix with ``--commit <ref>`` (or a range for a fix
 split across several commits), or say nothing and it takes your current branch's
@@ -22,7 +22,7 @@ from typing import Optional, Sequence
 
 from commands.analyze import cmd_analyze
 from commands.apply import cmd_apply, cmd_clear
-from commands.ci import cmd_ci
+from commands.publish import cmd_publish
 from commands.resolve import cmd_resolve
 from util.config import BackportError
 from util.git import target_repo
@@ -87,10 +87,10 @@ def add_apply(sub) -> None:
     p.set_defaults(func=cmd_apply)
 
 
-def add_ci(sub) -> None:
+def add_publish(sub) -> None:
     p = sub.add_parser(
-        "ci",
-        help="post-merge: open backport PRs on the fork for a merged commit",
+        "publish",
+        help="open backport PRs on the fork for a merged commit (what CI runs)",
     )
     p.add_argument("--commit", required=True, help="merged commit SHA to back-port")
     p.add_argument("--pr", help="source PR number (for cross-linking / comments)")
@@ -110,7 +110,7 @@ def add_ci(sub) -> None:
         help="analyze and cherry-pick locally but do not push or open PRs",
     )
     add_common(p)
-    p.set_defaults(func=cmd_ci, json=False)
+    p.set_defaults(func=cmd_publish, json=False)
 
 
 def add_resolve(sub) -> None:
@@ -139,7 +139,7 @@ def add_clear(sub) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the ``backport`` argument parser (analyze / apply / ci / clear)."""
+    """Build the ``backport`` argument parser (analyze / apply / publish / clear)."""
     ap = argparse.ArgumentParser(
         prog="backport",
         description="Local AWS-LC backport impact analysis + apply.",
@@ -147,7 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="cmd", required=True)
     add_analyze(sub)
     add_apply(sub)
-    add_ci(sub)
+    add_publish(sub)
     add_resolve(sub)
     add_clear(sub)
     return ap
