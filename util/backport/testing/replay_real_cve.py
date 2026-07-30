@@ -72,7 +72,7 @@ from pathlib import Path
 
 # The tool's packages live in the src/ folder one directory up.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from engine.ai import ai_client, ai_impact_analysis  # noqa: E402
+from engine.ai import ai_client, ai_impact_analysis, call_model  # noqa: E402
 
 # The shipped per-branch classifier -- the bench grades this, not a private copy.
 from engine.analysis import (  # noqa: E402
@@ -1064,20 +1064,25 @@ def main():
     print("Read-only replay against", repo)
     print("(no pushes, no gh, no mutation of the real repo; throwaway sandbox only)")
     if with_ai:
-        # We never want to *think* AI ran when it silently didn't. If the SDK or
-        # credentials aren't available, ai_client() returns None and the engine
-        # falls back to deterministic-only — so say so, loudly, up front.
-        if ai_client() is None:
+        # We never want to *think* AI ran when it silently didn't. Constructing the
+        # client is NOT enough: an expired token builds a client fine and then
+        # fails every call, and a failed advisory returns None -- which the engine
+        # treats as "AI unavailable" and flags the branch for review. The run would
+        # then be deterministic-only while still labelled AI-on, quietly corrupting
+        # the over-flag number this bench exists to measure. So probe for real.
+        client = ai_client()
+        probe = call_model(client, "Reply with exactly: PONG") if client else None
+        if probe is None:
             print(
-                "\n[WARN] AI is ON but the Bedrock client could not initialize "
-                "(missing anthropic SDK or AWS creds). This run would fall back to "
-                "DETERMINISTIC-ONLY.\n        Fix creds (e.g. `mwinit -o`; "
-                "export AWS_PROFILE=... AWS_REGION=...) or pass --no-ai to "
+                "\n[error] AI is ON but a live Bedrock call failed, so this run "
+                "would silently be deterministic-only.\n        Refresh credentials "
+                "(e.g. `mwinit -o`; export AWS_PROFILE=... AWS_REGION=...), check "
+                "the model_id in model-config.json,\n        or pass --no-ai to "
                 "acknowledge a deterministic-only run.",
                 file=sys.stderr,
             )
-        else:
-            print("AI advisory layer: ON (auditor + tie-breaker)")
+            return 2
+        print("AI advisory layer: ON (auditor + tie-breaker)")
     else:
         print("AI advisory layer: OFF (--no-ai; deterministic engine only)")
 
