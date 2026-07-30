@@ -1328,7 +1328,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "vsId": 0,
         "algorithm": "KDA",
         "mode": "HKDF",
-        "revision": "Sp800-56Cr1",
+        "revision": "Sp800-56Cr2",
         "isSample": true,
         "fixedInfoPattern": "uPartyInfo||vPartyInfo||l",
         "encoding": [
@@ -1341,13 +1341,17 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "SHA2-384",
           "SHA2-512",
           "SHA2-512/224",
-          "SHA2-512/256"
+          "SHA2-512/256",
+          "SHA3-224",
+          "SHA3-256",
+          "SHA3-384",
+          "SHA3-512"
         ],
         "macSaltMethods": [
           "default",
           "random"
         ],
-        "l": 1024,
+        "l": 2048,
         "z": [
           {
             "min": 224,
@@ -1355,7 +1359,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "increment": 8
           }
         ],
-        "performMultiExpansionTests": false
+        "usesHybridSharedSecret": false,
+        "performMultiExpansionTests": true
       },
       {
         "algorithm": "KAS-ECC-SSC",
@@ -3246,15 +3251,9 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   return write_reply({out});
 }
 
-// TLS 1.3 KDF ACVP handlers. Ported from BoringSSL's
-// util/fipstools/acvp/modulewrapper/modulewrapper.cc |HKDFExtract| and
-// |HKDFExpandLabel|. Named with a TLS13_ prefix here because both are wired
-// to the TLS-v1.3 ACVP suite (RFC 8446) and, in the case of |TLS13_HKDFExtract|,
-// to distinguish it from the generic |HKDF| / |HKDF_expand| helpers already
-// defined in this translation unit for KDA/HKDF and KDF/Feedback.
 template <const EVP_MD *(MDFunc)()>
-static bool TLS13_HKDFExtract(const Span<const uint8_t> args[],
-                              ReplyCallback write_reply) {
+static bool HKDFExtract(const Span<const uint8_t> args[],
+                        ReplyCallback write_reply) {
   const Span<const uint8_t> ikm = args[0];
   const Span<const uint8_t> salt = args[1];
   const EVP_MD *md = MDFunc();
@@ -3269,6 +3268,9 @@ static bool TLS13_HKDFExtract(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(out_key, out_len)});
 }
 
+// |TLS13_HKDFExpandLabel| is ported from BoringSSL's
+// util/fipstools/acvp/modulewrapper/modulewrapper.cc and is TLS 1.3-specific
+// (RFC 8446 §7.1).
 template <const EVP_MD *(MDFunc)()>
 static bool TLS13_HKDFExpandLabel(const Span<const uint8_t> args[],
                                   ReplyCallback write_reply) {
@@ -3664,8 +3666,8 @@ static bool SSHKDF(const Span<const uint8_t> args[],
 }
 
 template <const EVP_MD *(MDFunc)()>
-static bool HKDF_expand(const Span<const uint8_t> args[],
-                        ReplyCallback write_reply) {
+static bool HKDFExpand(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
   const Span<const uint8_t> out_bytes = args[0];
   const Span<const uint8_t> key_in = args[1];
   const Span<const uint8_t> fixed_data = args[2];
@@ -4281,8 +4283,28 @@ static struct {
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
-    {"HKDFExtract/SHA2-256", 2, TLS13_HKDFExtract<EVP_sha256>},
-    {"HKDFExtract/SHA2-384", 2, TLS13_HKDFExtract<EVP_sha384>},
+    {"HKDF/SHA-1/extract", 2, HKDFExtract<EVP_sha1>},
+    {"HKDF/SHA2-224/extract", 2, HKDFExtract<EVP_sha224>},
+    {"HKDF/SHA2-256/extract", 2, HKDFExtract<EVP_sha256>},
+    {"HKDF/SHA2-384/extract", 2, HKDFExtract<EVP_sha384>},
+    {"HKDF/SHA2-512/extract", 2, HKDFExtract<EVP_sha512>},
+    {"HKDF/SHA2-512/224/extract", 2, HKDFExtract<EVP_sha512_224>},
+    {"HKDF/SHA2-512/256/extract", 2, HKDFExtract<EVP_sha512_256>},
+    {"HKDF/SHA3-224/extract", 2, HKDFExtract<EVP_sha3_224>},
+    {"HKDF/SHA3-256/extract", 2, HKDFExtract<EVP_sha3_256>},
+    {"HKDF/SHA3-384/extract", 2, HKDFExtract<EVP_sha3_384>},
+    {"HKDF/SHA3-512/extract", 2, HKDFExtract<EVP_sha3_512>},
+    {"HKDF/SHA-1/expand", 3, HKDFExpand<EVP_sha1>},
+    {"HKDF/SHA2-224/expand", 3, HKDFExpand<EVP_sha224>},
+    {"HKDF/SHA2-256/expand", 3, HKDFExpand<EVP_sha256>},
+    {"HKDF/SHA2-384/expand", 3, HKDFExpand<EVP_sha384>},
+    {"HKDF/SHA2-512/expand", 3, HKDFExpand<EVP_sha512>},
+    {"HKDF/SHA2-512/224/expand", 3, HKDFExpand<EVP_sha512_224>},
+    {"HKDF/SHA2-512/256/expand", 3, HKDFExpand<EVP_sha512_256>},
+    {"HKDF/SHA3-224/expand", 3, HKDFExpand<EVP_sha3_224>},
+    {"HKDF/SHA3-256/expand", 3, HKDFExpand<EVP_sha3_256>},
+    {"HKDF/SHA3-384/expand", 3, HKDFExpand<EVP_sha3_384>},
+    {"HKDF/SHA3-512/expand", 3, HKDFExpand<EVP_sha3_512>},
     {"HKDFExpandLabel/SHA2-256", 4, TLS13_HKDFExpandLabel<EVP_sha256>},
     {"HKDFExpandLabel/SHA2-384", 4, TLS13_HKDFExpandLabel<EVP_sha384>},
     {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
@@ -4302,6 +4324,10 @@ static struct {
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
     {"KDA/HKDF/SHA2-512/224", 4, HKDF<EVP_sha512_224>},
     {"KDA/HKDF/SHA2-512/256", 4, HKDF<EVP_sha512_256>},
+    {"KDA/HKDF/SHA3-224", 4, HKDF<EVP_sha3_224>},
+    {"KDA/HKDF/SHA3-256", 4, HKDF<EVP_sha3_256>},
+    {"KDA/HKDF/SHA3-384", 4, HKDF<EVP_sha3_384>},
+    {"KDA/HKDF/SHA3-512", 4, HKDF<EVP_sha3_512>},
     {"KDA/OneStep/SHA-1", 3, SSKDF_DIGEST<EVP_sha1>},
     {"KDA/OneStep/SHA2-224", 3, SSKDF_DIGEST<EVP_sha224>},
     {"KDA/OneStep/SHA2-256", 3, SSKDF_DIGEST<EVP_sha256>},
@@ -4390,13 +4416,13 @@ static struct {
      SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
     {"SSHKDF/SHA2-512/integServ", 4,
      SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
-    {"KDF/Feedback/HMAC-SHA-1", 3, HKDF_expand<EVP_sha1>},
-    {"KDF/Feedback/HMAC-SHA2-224", 3, HKDF_expand<EVP_sha224>},
-    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha256>},
-    {"KDF/Feedback/HMAC-SHA2-384", 3, HKDF_expand<EVP_sha384>},
-    {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
-    {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDF_expand<EVP_sha512_224>},
-    {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
+    {"KDF/Feedback/HMAC-SHA-1", 3, HKDFExpand<EVP_sha1>},
+    {"KDF/Feedback/HMAC-SHA2-224", 3, HKDFExpand<EVP_sha224>},
+    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDFExpand<EVP_sha256>},
+    {"KDF/Feedback/HMAC-SHA2-384", 3, HKDFExpand<EVP_sha384>},
+    {"KDF/Feedback/HMAC-SHA2-512", 3, HKDFExpand<EVP_sha512>},
+    {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDFExpand<EVP_sha512_224>},
+    {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDFExpand<EVP_sha512_256>},
     {"KDF/Counter/HMAC-SHA-1", 3, KBKDF_CTR_HMAC<EVP_sha1>},
     {"KDF/Counter/HMAC-SHA2-224", 3, KBKDF_CTR_HMAC<EVP_sha224>},
     {"KDF/Counter/HMAC-SHA2-256", 3, KBKDF_CTR_HMAC<EVP_sha256>},

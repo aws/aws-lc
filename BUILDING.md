@@ -232,6 +232,13 @@ and performance. For instance, BoringSSL's fastest P-256 implementation uses a
 148 KiB pre-computed table. To optimize instead for binary size, pass
 `-DOPENSSL_SMALL=1` to CMake or define the `OPENSSL_SMALL` preprocessor symbol.
 
+On x86_64, `OPENSSL_SMALL` excludes the AVX-512 assembly implementations (it
+implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX`) but keeps the ADX/AVX2/BMI2 fast
+paths for X25519, Ed25519, RSA, and DH, which cost roughly 370 KiB. Consumers
+who want the absolute minimum size and are willing to accept portable C
+fallbacks for those algorithms can additionally pass
+`-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2=1` to exclude that assembly as well.
+
 # Running Tests
 
 There are two sets of tests: the C/C++ tests and the blackbox tests. For former

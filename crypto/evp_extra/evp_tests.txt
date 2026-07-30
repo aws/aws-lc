@@ -719,6 +719,55 @@ Digest = SHA256
 Input = "0123456789ABCDEF0123456789ABCDEF"
 Output = 4065b284b0a6e98d4c41a8427007f878d8dd61599c87764fa79b8bf03f030c48127a4b1a5af5a6e0cf9055e57a1f47e5b0c0d8c600e78369cf1c39374899fac91a812692aa2216ba10900ce85a5cf7fddcafb726e4b83479c5bb7b3b84b08ffe183b4c2973aa3193ec7b7d4ea73bf1b579c6657b78ad7800e1975a4838c28ffe353fafef96be27b5c69677760a71b6f4df65ba6fe6b3565580a536f966928294c6e9ece807a90c1477779bcbfa3a250e98d685097c162c1c8c56ab02bd2e16eec7a019b51c067bdba7fa8cd5460796e22c607a8b6d12e1deb9be51c6943c46590f416800c48bb4cbb8c409d316573e59eadf7d3b9e6e5c2d0e570692e511e139
 
+# RSA-PSS with SHA-3 as both the message digest and the MGF1 hash. The salt
+# length matches the digest length (-1). Signing is non-deterministic with a
+# non-zero salt, so these are checked by round-tripping through verification.
+# The |Input| is the pre-computed message digest, so its length matches the
+# digest size (32, 48, and 64 bytes for SHA3-256/384/512 respectively).
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -1
+Digest = SHA3-256
+MGF1Digest = SHA3-256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -1
+Digest = SHA3-384
+MGF1Digest = SHA3-384
+Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -1
+Digest = SHA3-512
+MGF1Digest = SHA3-512
+Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
+# Zero salt length makes SHA-3 PSS deterministic; still checked by round-trip.
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = 0
+Digest = SHA3-256
+MGF1Digest = SHA3-256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
+# The message digest and the MGF1 digest are selected independently: SHA3-256
+# for the message hash and SHA3-512 for the mask. This proves the MGF1 hash is
+# not forced to equal the message digest.
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -1
+Digest = SHA3-256
+MGF1Digest = SHA3-512
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
 
 # RSA decrypt
 
