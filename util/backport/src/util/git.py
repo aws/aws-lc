@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 from contextlib import contextmanager
-from typing import Iterator, List, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 from util.config import (
     MAINLINE_REF,
@@ -419,11 +419,14 @@ def changed_files_with_status(commit: str) -> "Tuple[List[str], List[str]]":
     return changed_files, traceable_files
 
 
-def branch_basenames(ref: str) -> Set[str]:
-    """Set of file basenames present anywhere on *ref*.
+def branch_paths_by_basename(ref: str) -> "Dict[str, List[str]]":
+    """Every path on *ref*, grouped by basename.
 
-    A conservative anti-false-negative guard: a same-named file under a path our
-    rename trace missed means the code may still be on the branch.
+    Feeds the last-resort rename guard: a same-named file elsewhere on the branch
+    may be the fix's file moved somewhere git could not trace. Callers get the
+    full paths (not just the names) so they can verify the *content* actually
+    matches -- a bare name match is weak evidence, since basenames like
+    ``internal.h`` recur dozens of times in the tree.
     """
     out = git_in_repo(
         ["ls-tree", "-r", "--name-only", ref],
@@ -431,7 +434,12 @@ def branch_basenames(ref: str) -> Set[str]:
         capture_output=True,
         text=True,
     ).stdout
-    return {os.path.basename(p) for p in out.splitlines() if p.strip()}
+    grouped: "Dict[str, List[str]]" = {}
+    for path in out.splitlines():
+        path = path.strip()
+        if path:
+            grouped.setdefault(os.path.basename(path), []).append(path)
+    return grouped
 
 
 # --------------------------------------------------------------------------

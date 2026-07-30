@@ -35,7 +35,12 @@ from util.config import (
     is_test_or_generated_file,
     patch_id_pathspec,
 )
-from util.git import branch_basenames, changed_files_with_status, get_file_on_branch
+from util.git import (
+    branch_paths_by_basename,
+    changed_files_with_status,
+    get_file_on_branch,
+    show_file,
+)
 
 
 # --------------------------------------------------------------------------
@@ -607,6 +612,37 @@ def patch_id_of(commit):
 # --------------------------------------------------------------------------
 
 
+def same_named_file_carries_fix(fix_sha, src_files, ref) -> bool:
+    """Last-resort rename guard: does a same-named file elsewhere on *ref* actually
+    contain the code this fix touches?
+
+    :func:`get_file_on_branch` already follows git's rename history, so we only get
+    here when that came up empty. A file sharing the basename *might* be the fix's
+    file moved somewhere git could not trace -- but the bare name is weak evidence:
+    ``internal.h`` occurs ~41 times in the tree and ``README.md`` ~14, so matching
+    on the name alone escalated every fix touching one of those to review, on
+    branches where the code demonstrably never existed.
+
+    So we require content: some same-named file must hold one of the distinctive
+    lines the fix removes. A file the fix only ADDS to contributes no pre-image to
+    look for, so it cannot support the guard either -- it is skipped rather than
+    allowed to veto, which is what made this guard fire on doc/header churn.
+    """
+    by_basename = branch_paths_by_basename(ref)
+    for f in src_files:
+        same_named = by_basename.get(os.path.basename(f))
+        if not same_named:
+            continue
+        removed = [norm_ws(line) for line in fix_removed_lines(fix_sha, f)]
+        if not removed:
+            continue  # nothing distinctive to look for in this file
+        for path in same_named:
+            content = show_file(ref, path)
+            if content and any(line in norm_ws(content) for line in removed):
+                return True
+    return False
+
+
 def classify_branch(
     fix_sha: str, src_files: Sequence[str], introducers, branch: str
 ) -> str:
@@ -660,13 +696,10 @@ def classify_branch(
         get_file_on_branch(f, ref, commit=fix_sha)[0] is not None for f in src_files
     )
     if not present:
-        # Conservative guard: if the rename-aware lookup found nothing but a
-        # file with the same name exists elsewhere on the branch, the code
-        # may be there under a path we could not trace. Escalate to UNSURE
-        # rather than declare a confident (and possibly false) NOT AFFECTED.
-        basenames = branch_basenames(ref)
-        if any(os.path.basename(f) in basenames for f in src_files):
-            present = True
+        # The rename-aware lookup found nothing. Before declaring a confident (and
+        # possibly false) NOT AFFECTED, check whether the fix's code turns up in a
+        # same-named file elsewhere -- verified by content, not just by name.
+        present = same_named_file_carries_fix(fix_sha, src_files, ref)
     return UNSURE if present else NOT_AFFECTED
 
 
