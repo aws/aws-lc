@@ -8,7 +8,7 @@ never depends on a model being reachable.
 `ai_impact_analysis` asks Claude (via Amazon Bedrock) whether a branch is
 affected, in one of two roles: AUDITOR (deterministic said affected -> look for a
 false positive) or TIE-BREAKER (deterministic inconclusive -> second opinion).
-`resolve_inconclusive` is the entry point the commands call: it turns every UNSURE
+`refine_with_ai` is the entry point the commands call: it turns every UNSURE
 branch into a definite verdict and annotates suspicious AFFECTED ones.
 
 Output is ADVISORY ONLY: it never cherry-picks, opens PRs, or resolves conflicts,
@@ -29,11 +29,11 @@ except ImportError:
     _anthropic_module = None
 
 from engine.analysis import (
-    fix_removed_lines,
-    is_noise_line,
-    norm_ws,
-    present_introducers,
-    vulnerable_preimage_present,
+    deleted_lines,
+    is_comment_or_blank,
+    normalize_spaces,
+    bug_commits_present,
+    buggy_lines_still_present,
 )
 from util.config import (
     AFFECTED,
@@ -113,7 +113,7 @@ _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{4,}")
 # ---------------------------------------------------------------------------
 
 
-def distinctive_symbols(commit, file):
+def key_symbols(commit, file):
     """Identifiers the fix touches in *file*: enclosing-function names from hunk
     headers plus notable identifiers on changed lines, minus common C tokens.
     These are the things whose presence on a branch signals real applicability."""
@@ -139,7 +139,7 @@ def distinctive_symbols(commit, file):
                 "+++",
                 "---",
             ):
-                if is_noise_line(
+                if is_comment_or_blank(
                     line[1:], file
                 ):  # don't pull identifiers from comments
                     continue
@@ -154,9 +154,9 @@ def region_around(content, needles, window=60):
     (excerpt, (start_line, end_line)) or None if nothing matches — which lets the
     model see the *relevant* code instead of a head-truncated file."""
     lines = content.splitlines()
-    norm = [norm_ws(x) for x in lines]
+    norm = [normalize_spaces(x) for x in lines]
     for nd in needles:
-        n = norm_ws(nd)
+        n = normalize_spaces(nd)
         if not n:
             continue
         for i, ln in enumerate(norm):
@@ -175,7 +175,7 @@ def symbol_presence(commit, changed_files, branch_ref):
         content = show_file(branch_ref, f)
         if content is None:
             continue
-        for sym in distinctive_symbols(commit, f):
+        for sym in key_symbols(commit, f):
             present = re.search(rf"\b{re.escape(sym)}\b", content) is not None
             rows.append(f"- `{sym}` ({f}): {'present' if present else 'ABSENT'}")
     if not rows:
@@ -220,8 +220,8 @@ _SYSTEM_PROMPT = (
 _AUDITOR_TASK = (
     "---\n"
     "The deterministic engine flagged `{branch}` as AFFECTED: the "
-    "introducing commit(s) for the patched lines are in its history (or "
-    "match by patch-id). That heuristic takes the OLDEST commit to touch "
+    "bug commit(s) for the patched lines are in its history (or "
+    "match by fingerprint). That heuristic takes the OLDEST commit to touch "
     "those lines, which OVER-FLAGS when the lines originate from "
     "vendored/imported third-party code (e.g. a bulk BoringSSL import) "
     "that predates every release branch and was never actually vulnerable "
@@ -249,7 +249,7 @@ _AUDITOR_TASK = (
 
 _TIEBREAKER_TASK = (
     "---\n"
-    "Deterministic ancestry checks (SHA ancestry and patch-id matching) were "
+    "Deterministic ancestry checks (SHA ancestry and fingerprint matching) were "
     "inconclusive for this branch. Please assess:\n\n"
     "1. Does the branch likely contain the vulnerable code shown in the diff?\n"
     "2. If so, does the fix apply cleanly in spirit (even if a cherry-pick "
@@ -276,7 +276,7 @@ _SOME_ABSENT_NOTE = (
 )
 
 _PREIMAGE_ABSENT_NOTE = (
-    "\n\n### Deterministic signal: the vulnerable pre-image is ABSENT here\n"
+    "\n\n### Deterministic signal: the deleted lines are ABSENT here\n"
     "The exact code lines this fix changes or removes are NOT present on this "
     "branch (matched ignoring whitespace and comments). That is strong "
     "evidence the vulnerable code path does not exist on this branch. Treat "
@@ -305,7 +305,7 @@ def branch_file_context(commit, branch, branch_ref, changed_files):
         label = f if resolved == f else f"{resolved} (pre-rename path of {f})"
         # Center the excerpt on the changed code rather than head-truncating.
         full = show_file(branch_ref, resolved) or content
-        region = region_around(full, fix_removed_lines(commit, f))
+        region = region_around(full, deleted_lines(commit, f))
         if region:
             excerpt, (lo, hi) = region
             parts.append(
@@ -335,26 +335,26 @@ def absence_note(absent_files, any_present):
     return note + (_SOME_ABSENT_NOTE if any_present else _ALL_ABSENT_NOTE)
 
 
-def preimage_note(det_verdict, commit, changed_files, branch_ref):
+def buggy_lines_note(det_verdict, commit, changed_files, branch_ref):
     """For the auditor, add the decisive 'removed lines provably absent' signal
     when it applies, so the model commits to a verdict instead of hedging."""
     if (
         det_verdict == "affected"
-        and vulnerable_preimage_present(commit, changed_files, branch_ref) is False
+        and buggy_lines_still_present(commit, changed_files, branch_ref) is False
     ):
         return _PREIMAGE_ABSENT_NOTE
     return ""
 
 
 def build_user_prompt(
-    commit, branch, branch_ref, changed_files, introducing_commits, det_verdict
+    commit, branch, branch_ref, changed_files, bug_commits, det_verdict
 ):
     """Assemble the user message: fix diff + branch file context + absence /
-    symbol / pre-image signals + the role-specific task block."""
+    symbol / deleted-line signals + the role-specific task block."""
     file_context, absent_files, any_present = branch_file_context(
         commit, branch, branch_ref, changed_files
     )
-    introducer_list = ", ".join(list(introducing_commits)[:5]) or "(none found)"
+    commit_list = ", ".join(list(bug_commits)[:5]) or "(none found)"
     task = (
         _AUDITOR_TASK.format(branch=branch)
         if det_verdict == "affected"
@@ -364,14 +364,14 @@ def build_user_prompt(
         f"## Impact Analysis Request\n\n"
         f"**Fix commit:** `{commit}`\n"
         f"**Target branch:** `{branch}`\n"
-        f"**Introducing commit(s):** {introducer_list}\n\n"
+        f"**Commit(s) that wrote these lines:** {commit_list}\n\n"
         f"### Patch diff (what the fix changes on main)\n"
         f"```diff\n{get_commit_diff(commit)}\n```\n\n"
         f"### Relevant files on the target branch\n"
         f"{file_context}"
         f"{absence_note(absent_files, any_present)}"
         f"{symbol_presence(commit, changed_files, branch_ref)}"
-        f"{preimage_note(det_verdict, commit, changed_files, branch_ref)}\n\n"
+        f"{buggy_lines_note(det_verdict, commit, changed_files, branch_ref)}\n\n"
         f"{task}"
     )
 
@@ -414,12 +414,12 @@ def parse_verdict(raw):
 
 
 def ai_impact_analysis(
-    commit, branch, changed_files, introducing_commits, det_verdict="inconclusive"
+    commit, branch, changed_files, bug_commits, det_verdict="inconclusive"
 ):
     """Advisory: ask Claude whether *branch* is affected by the fix in *commit*.
 
     Role is selected by *det_verdict*: "affected" -> AUDITOR (look for an
-    oldest-introducer false positive), "inconclusive" -> TIE-BREAKER (second
+    oldest-commit false positive), "inconclusive" -> TIE-BREAKER (second
     opinion). ADVISORY ONLY -- never auto-applied. Returns a dict with keys
     likely_affected (True/False/None), confidence, reasoning, raw_advisory; or
     None if the SDK/credentials or the API call are unavailable.
@@ -429,7 +429,7 @@ def ai_impact_analysis(
         return None
     branch_ref = f"origin/{branch}"
     user = build_user_prompt(
-        commit, branch, branch_ref, changed_files, introducing_commits, det_verdict
+        commit, branch, branch_ref, changed_files, bug_commits, det_verdict
     )
     raw = call_model(client, user)
     if raw is None:
@@ -448,17 +448,17 @@ def ai_impact_analysis(
 # --------------------------------------------------------------------------
 
 
-def resolve_unsure(
+def decide_unsure_branches(
     fix_sha: str,
     files: Sequence[str],
-    introducers: Sequence[str],
+    bug_commits: Sequence[str],
     buckets: Dict[str, str],
     use_ai: bool = True,
 ) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]":
     """Turn every UNSURE branch into a definite AFFECTED / NOT_AFFECTED verdict.
 
     The deterministic pass leaves a branch UNSURE when the fixed code is present
-    but ancestry/patch-id can't confirm the introducer reached it. Rather than
+    but ancestry/fingerprint can't confirm the bug commit reached it. Rather than
     show that to the user, consult the AI advisory to decide.
 
     Safety: if the AI is uncertain, returns no answer, or is unavailable, the
@@ -473,7 +473,7 @@ def resolve_unsure(
     unsure = [b for b, s in buckets.items() if s == UNSURE]
     for branch in unsure:
         adv = (
-            ai_impact_analysis(fix_sha, branch, files, set(introducers))
+            ai_impact_analysis(fix_sha, branch, files, set(bug_commits))
             if use_ai
             else None
         )
@@ -508,31 +508,31 @@ def resolve_unsure(
 
 def commit_time(sha: str) -> int:
     """Unix commit timestamp of *sha* (0 if it can't be resolved). Used to pick
-    the newest introducer."""
+    the newest bug commit."""
     out = git("show", "-s", "--format=%ct", sha, check=False).stdout.strip()
     return int(out) if out.isdigit() else 0
 
 
-def suspect_affected_branches(
-    introducers: Sequence[str], buckets: Dict[str, str]
+def likely_over_flagged(
+    bug_commits: Sequence[str], buckets: Dict[str, str]
 ) -> "Dict[str, Tuple[int, int]]":
     """AFFECTED branches that look like over-flags worth a second opinion.
 
-    A branch is bucketed AFFECTED as soon as one introducer reaches it. When the
+    A branch is bucketed AFFECTED as soon as one bug commit reaches it. When the
     fix also touches old, shared code (e.g. lines tracing back to the initial
     import), that lone match can be ancient and present on branches that predate
     the actual vulnerability -- the documented over-flag.
 
-    The signal: the branch is missing the NEWEST introducer (the commit most
+    The signal: the branch is missing the NEWEST bug commit (the commit most
     likely to have written the actual bug) while still having some older lineage.
     A genuinely affected branch has that newest commit; one that predates the
     vulnerability does not. Returns ``{branch: (present_count, total)}`` for each
     candidate. Deterministic, no AI.
     """
-    intro = list(introducers)
+    intro = list(bug_commits)
     suspects: "Dict[str, Tuple[int, int]]" = {}
     if len(intro) < 2:
-        # A single introducer that reaches the branch is an unambiguous hit;
+        # A single bug commit that reaches the branch is an unambiguous hit;
         # there is no old-vs-new lineage split to be suspicious about.
         return suspects
     newest = max(intro, key=commit_time)
@@ -540,23 +540,23 @@ def suspect_affected_branches(
     for branch, state in buckets.items():
         if state != AFFECTED:
             continue
-        present = present_introducers(intro_set, branch)
+        present = bug_commits_present(intro_set, branch)
         if present and newest not in present:
             suspects[branch] = (len(present), len(intro))
     return suspects
 
 
-def review_suspect_affected(
+def add_over_flag_notes(
     fix_sha: str,
     files: Sequence[str],
-    introducers: Sequence[str],
+    bug_commits: Sequence[str],
     suspects: "Dict[str, Tuple[int, int]]",
     decided_by: Dict[str, str],
     summaries: Dict[str, str],
     use_ai: bool = True,
 ) -> None:
     """Attach a false-positive review note to over-flag-candidate AFFECTED
-    branches (those from :func:`suspect_affected_branches`), consulting the AI
+    branches (those from :func:`likely_over_flagged`), consulting the AI
     advisory when *use_ai*.
 
     CRITICAL: this is advisory only and NEVER changes the verdict. The branch
@@ -564,10 +564,10 @@ def review_suspect_affected(
     annotate it for human review. So widening AI coverage here can reduce noise
     but can never turn a real hit into a silent miss (no false negatives).
     """
-    intro = set(introducers)
+    intro = set(bug_commits)
     for branch, (present, total) in suspects.items():
         note = (
-            f"affected via {present}/{total} introducers; newer commit(s) absent "
+            f"matched {present}/{total} commits that wrote these lines; newest absent "
             "-> possible false positive, review"
         )
         if use_ai:
@@ -587,7 +587,7 @@ def review_suspect_affected(
         decided_by[branch] = note
 
 
-def resolve_inconclusive(args, fix_sha, files, introducers, buckets):
+def refine_with_ai(args, fix_sha, files, bug_commits, buckets):
     """Decide the UNSURE branches via the AI advisory (unless --no-ai), then add a
     review note to any suspicious AFFECTED branches.
 
@@ -602,15 +602,15 @@ def resolve_inconclusive(args, fix_sha, files, introducers, buckets):
             f"consulting AI to decide...\n",
             file=sys.stderr,
         )
-    buckets, decided_by, summaries = resolve_unsure(
-        fix_sha, files, introducers, buckets, use_ai=use_ai
+    buckets, decided_by, summaries = decide_unsure_branches(
+        fix_sha, files, bug_commits, buckets, use_ai=use_ai
     )
 
-    # Second pass: AFFECTED branches matched only by a partial introducer lineage
+    # Second pass: AFFECTED branches matched only by a partial bug commit lineage
     # are likely over-flags (old shared code present, newer vulnerable commit
     # absent). Flag them for review -- consulting AI when enabled -- but never
     # change the verdict, so this can only reduce noise, never cause a miss.
-    suspects = suspect_affected_branches(introducers, buckets)
+    suspects = likely_over_flagged(bug_commits, buckets)
     if suspects:
         if use_ai and not args.json:
             print(
@@ -618,7 +618,7 @@ def resolve_inconclusive(args, fix_sha, files, introducers, buckets):
                 "lineage (possible over-flag); consulting AI for a review note...\n",
                 file=sys.stderr,
             )
-        review_suspect_affected(
-            fix_sha, files, introducers, suspects, decided_by, summaries, use_ai=use_ai
+        add_over_flag_notes(
+            fix_sha, files, bug_commits, suspects, decided_by, summaries, use_ai=use_ai
         )
     return buckets, decided_by, summaries

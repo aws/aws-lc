@@ -42,7 +42,7 @@ from util.git import (
     unmerged_files,
 )
 from util.render import ask_yn, print_section, print_summary
-from engine.ai import resolve_inconclusive
+from engine.ai import refine_with_ai
 from engine.analysis import analyze_branches
 
 
@@ -577,11 +577,11 @@ def cmd_resolve(args) -> int:
                 "no supported release branches found (is this an AWS-LC clone with "
                 "the release branches fetched? `git fetch origin`)."
             )
-        files, introducers, buckets = analyze_branches(fix_sha, branches)
-        buckets, decided_by, _ = resolve_inconclusive(
-            args, fix_sha, files, introducers, buckets
+        files, bug_commits, buckets = analyze_branches(fix_sha, branches)
+        buckets, decided_by, _ = refine_with_ai(
+            args, fix_sha, files, bug_commits, buckets
         )
-        print_summary(fix_sha, files, introducers, buckets, decided_by)
+        print_summary(fix_sha, files, bug_commits, buckets, decided_by)
         targets = sort_branches(b for b, s in buckets.items() if s == AFFECTED)
         preopened = []
         if not targets:

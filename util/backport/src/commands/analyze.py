@@ -16,7 +16,7 @@ from engine.analysis import get_supported_branches, sort_branches
 from util.git import changed_files_with_status, resolve_fix_commit
 from util.render import confirm_test_file, emit_analysis
 from util.config import save_run
-from engine.ai import resolve_inconclusive
+from engine.ai import refine_with_ai
 from engine.analysis import analyze_branches
 
 
@@ -39,12 +39,12 @@ def cmd_analyze(args) -> int:
         )
         return 1
 
-    files, introducers, buckets = analyze_branches(fix_sha, branches)
-    buckets, decided_by, summaries = resolve_inconclusive(
-        args, fix_sha, files, introducers, buckets
+    files, bug_commits, buckets = analyze_branches(fix_sha, branches)
+    buckets, decided_by, summaries = refine_with_ai(
+        args, fix_sha, files, bug_commits, buckets
     )
     emit_analysis(
-        args.json, fix_sha, base, files, introducers, buckets, decided_by, summaries
+        args.json, fix_sha, base, files, bug_commits, buckets, decided_by, summaries
     )
     save_run(fix_sha, base, branches, buckets)
     return 0

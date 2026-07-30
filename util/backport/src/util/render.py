@@ -18,14 +18,14 @@ from util.config import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, TEST_SUFFIXES, U
 def print_summary(
     fix_sha: str,
     files: Sequence[str],
-    introducers: Sequence[str],
+    bug_commits: Sequence[str],
     buckets: Dict[str, str],
     decided_by: Dict[str, str],
 ) -> None:
     """Print the per-branch verdict table."""
     print(f"Fix commit: {fix_sha[:10]}")
     print(f"Changed files: {list(files)}")
-    print(f"Introducer(s): {[s[:8] for s in introducers] or '(none / new file)'}")
+    print(f"Wrote these lines: {[s[:8] for s in bug_commits] or '(none / new file)'}")
     print()
     # Size the branch/status columns to the widest value so long names (e.g. a
     # "-snapshot" branch) never break the alignment.
@@ -53,7 +53,7 @@ def print_backport_hint(buckets: Dict[str, str]) -> None:
 
 
 def emit_analysis(
-    as_json, fix_sha, base, files, introducers, buckets, decided_by, summaries
+    as_json, fix_sha, base, files, bug_commits, buckets, decided_by, summaries
 ) -> None:
     """Print the analysis result, as JSON or as the human-readable table + hint."""
     if as_json:
@@ -63,7 +63,7 @@ def emit_analysis(
                     "fix_commit": fix_sha,
                     "base": base,
                     "changed_files": files,
-                    "introducers": introducers,
+                    "bug_commits": bug_commits,
                     "buckets": buckets,
                     "decided_by": decided_by,
                     "summaries": summaries,
@@ -72,7 +72,7 @@ def emit_analysis(
             )
         )
     else:
-        print_summary(fix_sha, files, introducers, buckets, decided_by)
+        print_summary(fix_sha, files, bug_commits, buckets, decided_by)
         print_backport_hint(buckets)
 
 

@@ -397,8 +397,8 @@ def changed_files_with_status(commit: str) -> "Tuple[List[str], List[str]]":
 
     - ``changed_files``: every path the fix touches.
     - ``traceable_files``: the same, minus files this fix *added* (status ``A``).
-      A brand-new file has no prior history, so there is no introducing commit to
-      trace for it; we exclude it so introducer detection does not choke.
+      A brand-new file has no prior history, so there is no bug commit to
+      trace for it; we exclude it so bug commit detection does not choke.
     """
     output = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],

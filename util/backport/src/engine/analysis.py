@@ -7,10 +7,10 @@ the commands decide when to consult ``engine.ai``.
 
 Reading order, roughly the order a run uses them:
   1. text/line normalizers -- what counts as a distinctive line
-  2. the vulnerable pre-image -- are the lines the fix removes still on a branch?
+  2. are the lines the fix deleted still on a branch?
   3. supported-branch resolution -- which release branches exist, and their order
-  4. introducer tracing -- which commit(s) wrote the lines the fix changes
-  5. ancestry / patch-id reachability and already-patched detection
+  4. bug commit tracing -- which commit(s) wrote the lines the fix changes
+  5. ancestry / fingerprint reachability and already-patched detection
   6. the verdict -- `classify_branch`, the single per-branch decision tree
 """
 
@@ -27,13 +27,13 @@ from util.config import (
     ALREADY,
     MAINLINE_REF,
     NOT_AFFECTED,
-    PREIMAGE_CACHE,
-    REMOVED_LINES_CACHE,
+    STILL_PRESENT_CACHE,
+    DELETED_LINES_CACHE,
     SUPPORTED_BRANCH_PREFIXES,
     UNSURE,
     VERSIONS_MANIFEST_PATH,
     is_test_or_generated_file,
-    patch_id_pathspec,
+    fingerprint_pathspec,
 )
 from util.git import (
     branch_paths_by_basename,
@@ -48,7 +48,7 @@ from util.git import (
 # --------------------------------------------------------------------------
 
 
-def norm_ws(s):
+def normalize_spaces(s):
     """Collapse runs of whitespace so a reformatted line still matches."""
     return re.sub(r"\s+", " ", s).strip()
 
@@ -62,7 +62,7 @@ def is_c_file(file):
     return file is not None and file.lower().endswith(_C_FAMILY_EXT)
 
 
-def is_noise_line(s, file=None):
+def is_comment_or_blank(s, file=None):
     """True for lines with no vulnerable-code signal: comments, blanks, pure
     punctuation/braces. '#' is a comment only in non-C files; in C/C++ it is a
     preprocessor directive (real code) and is kept."""
@@ -78,9 +78,9 @@ def is_noise_line(s, file=None):
     return False
 
 
-def is_boilerplate_line(s):
+def is_too_common_to_match(s):
     """True for real-but-undistinctive lines (bare control-flow, #include, a lone
-    string literal) that match too many files to be a reliable pre-image. Skipping
+    string literal) that match too many files to be a reliable signal. Skipping
     them only weakens a match, so it is false-negative safe."""
     s = s.strip()
     if re.match(r"^(return|break|continue|goto)\b[^;{}]*;?$", s):
@@ -96,60 +96,60 @@ def is_boilerplate_line(s):
 
 
 # --------------------------------------------------------------------------
-# 2. Vulnerable pre-image (are the fix's removed lines still on a branch?)
+# 2. Are the lines the fix deleted still on a branch?
 # --------------------------------------------------------------------------
 
 
-def fix_removed_lines(commit, file):
+def deleted_lines(commit, file):
     """The distinctive lines the fix removes/changes for *file* (the vulnerable
-    pre-image), skipping comments, blanks, punctuation, and boilerplate."""
+    still there), skipping comments, blanks, punctuation, and common lines."""
     cache_key = (commit, file)
-    if cache_key in REMOVED_LINES_CACHE:
-        return REMOVED_LINES_CACHE[cache_key]
+    if cache_key in DELETED_LINES_CACHE:
+        return DELETED_LINES_CACHE[cache_key]
     diff = subprocess.run(
         ["git", "diff", f"{commit}^", commit, "--", file],
         capture_output=True,
         text=True,
     )
     if diff.returncode != 0:
-        REMOVED_LINES_CACHE[cache_key] = []
+        DELETED_LINES_CACHE[cache_key] = []
         return []
     removed = []
     for line in diff.stdout.splitlines():
         if line.startswith("-") and not line.startswith("---"):
             s = line[1:].strip()
-            if is_noise_line(s, file):
+            if is_comment_or_blank(s, file):
                 continue
-            if is_boilerplate_line(s):
+            if is_too_common_to_match(s):
                 continue
             if len(re.sub(r"\W", "", s)) >= 6:  # enough alnum to be distinctive
                 removed.append(s)
-    REMOVED_LINES_CACHE[cache_key] = removed
+    DELETED_LINES_CACHE[cache_key] = removed
     return removed
 
 
-def vulnerable_preimage_present(commit, changed_files, ref):
+def buggy_lines_still_present(commit, changed_files, ref):
     """Whether the exact lines the fix removes/changes are still on *ref*:
     True  -> present (branch still vulnerable);
     False -> provably absent (code diverged or not here);
     None  -> the fix removes nothing distinctive (pure addition), can't tell.
     """
     cache_key = (commit, tuple(changed_files), ref)
-    if cache_key in PREIMAGE_CACHE:
-        return PREIMAGE_CACHE[cache_key]
-    result = vulnerable_preimage_present_uncached(commit, changed_files, ref)
-    PREIMAGE_CACHE[cache_key] = result
+    if cache_key in STILL_PRESENT_CACHE:
+        return STILL_PRESENT_CACHE[cache_key]
+    result = _check_buggy_lines(commit, changed_files, ref)
+    STILL_PRESENT_CACHE[cache_key] = result
     return result
 
 
-def vulnerable_preimage_present_uncached(commit, changed_files, ref):
+def _check_buggy_lines(commit, changed_files, ref):
     saw_removed = False
     for file in changed_files:
         # Skip test/generated files: a match there isn't the shipped vulnerable
         # code, and counting it produced false 'still present' (affected) results.
         if is_test_or_generated_file(file):
             continue
-        removed = fix_removed_lines(commit, file)
+        removed = deleted_lines(commit, file)
         if not removed:
             continue
         saw_removed = True
@@ -158,9 +158,9 @@ def vulnerable_preimage_present_uncached(commit, changed_files, ref):
         )
         if show.returncode != 0:
             continue
-        content = norm_ws(show.stdout)
+        content = normalize_spaces(show.stdout)
         for rl in removed:
-            if norm_ws(rl) in content:
+            if normalize_spaces(rl) in content:
                 return True
     if not saw_removed:
         return None
@@ -223,7 +223,7 @@ def load_versions_manifest():
         return None
 
 
-def parse_eos_date(value):
+def parse_support_end_date(value):
     """Parse an end-of-support date (`YYYY-MM-DD` or `YYYY-MM`). Returns None if
     missing/unparseable, which callers treat as "no known EOS" (still supported)."""
     for fmt in ("%Y-%m-%d", "%Y-%m"):
@@ -254,7 +254,7 @@ def branch_support_status(today=None):
         name = entry.get("branch")
         if not name:
             continue
-        eos = parse_eos_date(entry.get("end_of_support"))
+        eos = parse_support_end_date(entry.get("end_of_support"))
         within_window = eos is None or eos >= today
         maintained = entry.get("actively_maintained", True)
         record = dict(entry)
@@ -330,16 +330,16 @@ def get_changed_files(commit):
 # --------------------------------------------------------------------------
 
 
-def find_introducing_commit(commit, files):
+def find_bug_commits(commit, files):
     """Commit(s) that introduced the code the fix changes. For each touched line
     range, `git log -L --reverse` gives the oldest commit to write those lines
-    (the introducer), falling back to `git blame -w -M -C`. Comment/blank/
+    (the bug commit), falling back to `git blame -w -M -C`. Comment/blank/
     punctuation-only hunks are skipped so a stale comment can't trace to an
     ancient import. Returns a set of SHAs."""
     introducing = set()
 
     for file in files:
-        # Test/generated files aren't the vulnerable source, and their introducer
+        # Test/generated files aren't the vulnerable source, and their bug commit
         # would over-flag branches that lack the fixed module.
         if is_test_or_generated_file(file):
             continue
@@ -374,7 +374,7 @@ def find_introducing_commit(commit, files):
                 cur["changed"].append(line[1:])
 
         for h in hunks:
-            if h["changed"] and all(is_noise_line(c, file) for c in h["changed"]):
+            if h["changed"] and all(is_comment_or_blank(c, file) for c in h["changed"]):
                 continue  # comment/blank/punctuation-only change: not impact-relevant
             old_start, old_count = h["start"], h["count"]
             if old_count == 0:
@@ -386,14 +386,14 @@ def find_introducing_commit(commit, files):
                 blame_start = old_start
                 blame_end = old_start + old_count - 1
 
-            origin_sha = find_line_origin(file, blame_start, blame_end, f"{commit}^")
+            origin_sha = blame_lines(file, blame_start, blame_end, f"{commit}^")
             if origin_sha:
                 introducing.add(origin_sha)
 
     return introducing
 
 
-def find_line_origin(file, line_start, line_end, ref):
+def blame_lines(file, line_start, line_end, ref):
     """SHA of the oldest commit to touch lines [line_start, line_end] of *file* as
     of *ref* (via `git log -L --reverse`), falling back to `git blame -w -M -C`."""
     log_result = subprocess.run(
@@ -417,7 +417,7 @@ def find_line_origin(file, line_start, line_end, ref):
                 return log_line
 
     # Fallback: use blame (with whitespace/move-aware flags). Less accurate for
-    # finding the original introducer, but works on edge cases log -L can't.
+    # finding the original bug commit, but works on edge cases log -L can't.
     blame_result = subprocess.run(
         [
             "git",
@@ -436,9 +436,9 @@ def find_line_origin(file, line_start, line_end, ref):
     )
     if blame_result.returncode != 0:
         # Both failed -- usually a pure addition whose post-insertion line is at/past
-        # EOF in the parent (newly-added lines have no pre-image). Skip this hunk.
+        # EOF in the parent (newly-added lines had nothing before them). Skip it.
         print(
-            f"[introducer] no pre-image for {file}:{line_start}-{line_end} on "
+            f"[bug commit] nothing deleted for {file}:{line_start}-{line_end} on "
             f"{ref} (likely newly-added lines); skipping this hunk.",
             file=sys.stderr,
         )
@@ -451,14 +451,14 @@ def find_line_origin(file, line_start, line_end, ref):
 
 
 # --------------------------------------------------------------------------
-# 5. Ancestry / patch-id reachability and already-patched detection
+# 5. Ancestry / fingerprint reachability and already-patched detection
 # --------------------------------------------------------------------------
 
 
-def introducer_reaches(introducing_commits, ref):
-    """True if any introducer reaches *ref* by SHA ancestry (Path 1) or patch-id
+def any_bug_commit_present(bug_commits, ref):
+    """True if any bug commit reaches *ref* by SHA ancestry (Path 1) or fingerprint
     equivalence (Path 2 -- a cherry-pick that got a new SHA)."""
-    for sha in introducing_commits:
+    for sha in bug_commits:
         r = subprocess.run(
             ["git", "merge-base", "--is-ancestor", sha, ref],
             capture_output=True,
@@ -471,33 +471,33 @@ def introducer_reaches(introducing_commits, ref):
                 f"git merge-base failed (code {r.returncode}) checking {sha} "
                 f"against {ref}: {r.stderr}"
             )
-    branch_pids = get_branch_patch_ids(ref)
-    for sha in introducing_commits:
-        pid = patch_id_of(sha)
+    branch_pids = branch_fingerprints(ref)
+    for sha in bug_commits:
+        pid = change_fingerprint(sha)
         if pid and pid in branch_pids:
             return True
     return False
 
 
-def present_introducers(introducing_commits, branch):
-    """Subset of *introducing_commits* present on *branch*, by SHA ancestry OR
-    patch-id. Finer-grained than :func:`introducer_reaches` (which stops at the
-    first match): lets a caller tell a FULL lineage (all introducers present ->
+def bug_commits_present(bug_commits, branch):
+    """Subset of *bug_commits* present on *branch*, by SHA ancestry OR
+    fingerprint. Finer-grained than :func:`any_bug_commit_present` (which stops at the
+    first match): lets a caller tell a FULL lineage (all bug_commits present ->
     confidently affected) from a PARTIAL one (only old shared code present, the
-    newer bug-introducing commit absent -> likely over-flag worth review)."""
+    newer bug-bug commit absent -> likely over-flag worth review)."""
     ref = f"origin/{branch}"
     present = set()
-    for sha in introducing_commits:
+    for sha in bug_commits:
         result = subprocess.run(
             ["git", "merge-base", "--is-ancestor", sha, ref], capture_output=True
         )
         if result.returncode == 0:
             present.add(sha)
-    remaining = set(introducing_commits) - present
+    remaining = set(bug_commits) - present
     if remaining:
-        branch_pids = get_branch_patch_ids(ref)
+        branch_pids = branch_fingerprints(ref)
         for sha in remaining:
-            pid = patch_id_of(sha)
+            pid = change_fingerprint(sha)
             if pid and pid in branch_pids:
                 present.add(sha)
     return present
@@ -508,9 +508,9 @@ def present_introducers(introducing_commits, branch):
 # --------------------------------------------------------------------------
 
 
-def branch_cites_cherry_pick(commit, ref):
+def branch_mentions_cherry_pick(commit, ref):
     """True if a divergent commit on *ref* records `cherry picked from commit
-    <full-sha>` for *commit*. Catches bundled/reshaped -x backports whose patch-id
+    <full-sha>` for *commit*. Catches bundled/reshaped -x backports whose fingerprint
     differs; the exact-SHA match means it never false-negatives. Mainline ref via
     BACKPORT_MAINLINE_REF (default origin/main)."""
     full = subprocess.run(
@@ -532,7 +532,7 @@ def branch_cites_cherry_pick(commit, ref):
     return f"cherry picked from commit {full_sha}" in log.stdout
 
 
-def get_branch_patch_ids(ref):
+def branch_fingerprints(ref):
     """Patch-ids of the branch's DIVERGENT commits (on *ref* but not mainline),
     where cherry-picked backports live. Output read as bytes to tolerate binary
     diffs. Mainline ref via BACKPORT_MAINLINE_REF (default origin/main)."""
@@ -545,7 +545,7 @@ def get_branch_patch_ids(ref):
             "--no-merges",
             "--format=%H",
             rev_range,
-            *patch_id_pathspec(),
+            *fingerprint_pathspec(),
         ],
         capture_output=True,  # bytes, not text: diffs may contain binary content
     )
@@ -564,12 +564,12 @@ def get_branch_patch_ids(ref):
 
 def is_already_patched(commit, branch):
     """Whether *commit*'s change is already on *branch* -- as a direct ancestor
-    (forked after the fix), a `-x` cherry-pick annotation, or a matching patch-id
+    (forked after the fix), a `-x` cherry-pick annotation, or a matching fingerprint
     (manual cherry-pick under a new SHA). Patch-ids exclude generated files."""
     ref = f"origin/{branch}"
 
     # Fast path: the exact commit is an ancestor (branch forked after the fix).
-    # The divergent-only patch-id scan below would otherwise miss this.
+    # The divergent-only fingerprint scan below would otherwise miss this.
     anc = subprocess.run(
         ["git", "merge-base", "--is-ancestor", commit, ref], capture_output=True
     )
@@ -577,22 +577,22 @@ def is_already_patched(commit, branch):
         return True
 
     # A `-x` annotation proves a cherry-pick even when a reshaped/bundled backport
-    # has a different patch-id.
-    if branch_cites_cherry_pick(commit, ref):
+    # has a different fingerprint.
+    if branch_mentions_cherry_pick(commit, ref):
         return True
 
-    target_pid = patch_id_of(commit)
+    target_pid = change_fingerprint(commit)
     if not target_pid:
         return False
 
-    branch_pids = get_branch_patch_ids(ref)
+    branch_pids = branch_fingerprints(ref)
     return target_pid in branch_pids
 
 
-def patch_id_of(commit):
-    """Return the patch-id (content hash) of a single commit, or None on failure."""
+def change_fingerprint(commit):
+    """Return the fingerprint (content hash) of a single commit, or None on failure."""
     show = subprocess.run(
-        ["git", "show", commit, *patch_id_pathspec()],
+        ["git", "show", commit, *fingerprint_pathspec()],
         capture_output=True,  # bytes: the commit may touch binary files
     )
     if show.returncode != 0:
@@ -613,92 +613,72 @@ def patch_id_of(commit):
 
 
 def same_named_file_carries_fix(fix_sha, src_files, ref) -> bool:
-    """Last-resort rename guard: does a same-named file elsewhere on *ref* actually
-    contain the code this fix touches?
+    """Last resort: is the fix's code in a same-named file somewhere else on *ref*?
 
-    :func:`get_file_on_branch` already follows git's rename history, so we only get
-    here when that came up empty. A file sharing the basename *might* be the fix's
-    file moved somewhere git could not trace -- but the bare name is weak evidence:
-    ``internal.h`` occurs ~41 times in the tree and ``README.md`` ~14, so matching
-    on the name alone escalated every fix touching one of those to review, on
-    branches where the code demonstrably never existed.
+    get_file_on_branch already follows renames, so we only get here when that found
+    nothing. A matching filename alone means little -- `internal.h` appears ~41
+    times in the tree, `README.md` ~14 -- so we check the contents: some same-named
+    file has to hold one of the lines the fix deletes.
 
-    So we require content: some same-named file must hold one of the distinctive
-    lines the fix removes. A file the fix only ADDS to contributes no pre-image to
-    look for, so it cannot support the guard either -- it is skipped rather than
-    allowed to veto, which is what made this guard fire on doc/header churn.
+    Files the fix only adds to are skipped, since they give us no line to search for.
     """
     by_basename = branch_paths_by_basename(ref)
     for f in src_files:
         same_named = by_basename.get(os.path.basename(f))
         if not same_named:
             continue
-        removed = [norm_ws(line) for line in fix_removed_lines(fix_sha, f)]
+        removed = [normalize_spaces(line) for line in deleted_lines(fix_sha, f)]
         if not removed:
-            continue  # nothing distinctive to look for in this file
+            continue
         for path in same_named:
             content = show_file(ref, path)
-            if content and any(line in norm_ws(content) for line in removed):
+            if content and any(line in normalize_spaces(content) for line in removed):
                 return True
     return False
 
 
 def classify_branch(
-    fix_sha: str, src_files: Sequence[str], introducers, branch: str
+    fix_sha: str, src_files: Sequence[str], bug_commits, branch: str
 ) -> str:
-    """The single deterministic verdict for one branch: AFFECTED / NOT_AFFECTED /
-    UNSURE / ALREADY.
+    """Decide one branch: AFFECTED / NOT_AFFECTED / UNSURE / ALREADY.
 
-    This is the ONE implementation of the decision tree -- the CLI reaches it via
-    :func:`analyze_branches`, and the replay bench calls it directly, so the
-    scorecard grades exactly the logic that ships.
+    The only copy of this decision tree. Both the CLI and the replay bench call it,
+    so the bench grades what actually ships.
 
-    Safety stance: a branch is only ever called NOT AFFECTED when we are confident
-    the changed code is absent. If ancestry/patch-id do not match but the file is
-    present (or a same-named file exists under a path we could not trace), the
-    branch is escalated to UNSURE rather than risk a silent false negative.
+    When unsure, return UNSURE rather than NOT_AFFECTED -- a wrong "not affected"
+    means a missed security backport.
     """
     ref = f"origin/{branch}"
-    # The fix is ALREADY on this branch -- as a direct ancestor (the branch forked
-    # after the fix landed), a `-x` cherry-pick annotation naming its exact SHA, or
-    # a matching patch-id. Nothing to backport, whatever the pre-image says.
-    #
-    # This has to come first: an applied fix REMOVES the vulnerable lines, so the
-    # pre-image is provably absent on precisely these branches. Checking it further
-    # down (gated on `preimage is not False`) meant the check could never fire when
-    # it mattered, and every already-patched branch fell through to UNSURE -- i.e.
-    # got re-flagged for a backport it already has.
+
+    # Already backported here, so there's nothing to do. Checked first because
+    # applying a fix deletes the vulnerable lines, which makes `still_present` below
+    # False on exactly these branches and would send them to UNSURE.
     if is_already_patched(fix_sha, branch):
         return ALREADY
-    # Path 1 + Path 2: does an introducer reach the branch by SHA ancestry or
-    # patch-id equivalence?
-    affected = introducer_reaches(introducers, ref)
-    # Corroborate ancestry/patch-id with the vulnerable pre-image. The
-    # oldest-introducer heuristic flags a branch as soon as ONE introducer
-    # reaches it, which over-flags when that introducer is old shared code the
-    # fix also touched. `vulnerable_preimage_present` is the tiebreaker:
-    #   True  -> the exact lines the fix removes are still here (real hit)
-    #   None  -> pure-addition fix, nothing to check (trust ancestry)
-    #   False -> those lines are provably absent (ancestry matched old shared
-    #            code) -> NOT a confident AFFECTED; fall through to UNSURE so
-    #            the AI decides (and it is flagged for review under --no-ai,
-    #            never a silent miss).
-    preimage = vulnerable_preimage_present(fix_sha, src_files, ref)
-    if affected and preimage is not False:
+
+    # Is a commit that wrote these lines in the branch's history? (Either the same
+    # SHA, or a cherry-pick of it with the same content.)
+    affected = any_bug_commit_present(bug_commits, ref)
+
+    # Are the lines the fix deletes still on the branch?
+    #   True  -> yes, still vulnerable
+    #   False -> no, so `affected` matched old shared code, not the bug itself
+    #   None  -> the fix only adds lines, so there's nothing to look for
+    still_present = buggy_lines_still_present(fix_sha, src_files, ref)
+
+    if affected and still_present is not False:
         return AFFECTED
-    # Path 2b: ancestry/patch-id missed (a branch-specific introducer), but the
-    # exact removed lines ARE present -> deterministically AFFECTED.
-    if not affected and preimage is True:
+    # History missed it (a branch-specific commit wrote the bug), but the
+    # vulnerable lines are right there.
+    if not affected and still_present is True:
         return AFFECTED
-    # Not confidently affected. Decide UNSURE vs a confident NOT AFFECTED,
-    # biasing hard toward UNSURE so a miss is never silent.
+
+    # Not clearly affected. Is the code even here? If not, this is a real
+    # not-affected; otherwise stay cautious and say UNSURE.
     present = any(
         get_file_on_branch(f, ref, commit=fix_sha)[0] is not None for f in src_files
     )
     if not present:
-        # The rename-aware lookup found nothing. Before declaring a confident (and
-        # possibly false) NOT AFFECTED, check whether the fix's code turns up in a
-        # same-named file elsewhere -- verified by content, not just by name.
         present = same_named_file_carries_fix(fix_sha, src_files, ref)
     return UNSURE if present else NOT_AFFECTED
 
@@ -718,15 +698,15 @@ def analyze_branches(
 ) -> "Tuple[List[str], List[str], Dict[str, str]]":
     """Classify each branch deterministically (no AI).
 
-    Returns ``(changed_files, sorted_introducers, buckets)``, where buckets maps
+    Returns ``(changed_files, sorted bug commits, buckets)``, where buckets maps
     each branch to one of AFFECTED / NOT_AFFECTED / UNSURE / ALREADY. The per-branch
     decision lives in :func:`classify_branch`.
     """
-    files, introducer_files = changed_files_with_status(fix_sha)
-    introducers = find_introducing_commit(fix_sha, introducer_files)
+    files, traceable_files = changed_files_with_status(fix_sha)
+    bug_commits = find_bug_commits(fix_sha, traceable_files)
     src_files = source_files(files)
     buckets = {
-        branch: classify_branch(fix_sha, src_files, introducers, branch)
+        branch: classify_branch(fix_sha, src_files, bug_commits, branch)
         for branch in branches
     }
-    return files, sorted(introducers), buckets
+    return files, sorted(bug_commits), buckets

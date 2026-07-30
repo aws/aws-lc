@@ -21,7 +21,7 @@ from util.config import is_test_or_generated_file
 from util.config import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, BackportError
 from util.git import cherry_pick_local, git, resolve_commit, run
 from util.render import print_summary
-from engine.ai import resolve_inconclusive
+from engine.ai import refine_with_ai
 from engine.analysis import analyze_branches
 
 
@@ -279,11 +279,9 @@ def cmd_publish(args) -> int:
             "the release branches fetched? `git fetch origin`)."
         )
 
-    files, introducers, buckets = analyze_branches(fix_sha, branches)
-    buckets, decided_by, _ = resolve_inconclusive(
-        args, fix_sha, files, introducers, buckets
-    )
-    print_summary(fix_sha, files, introducers, buckets, decided_by)
+    files, bug_commits, buckets = analyze_branches(fix_sha, branches)
+    buckets, decided_by, _ = refine_with_ai(args, fix_sha, files, bug_commits, buckets)
+    print_summary(fix_sha, files, bug_commits, buckets, decided_by)
 
     targets = sort_branches(b for b, s in buckets.items() if s == AFFECTED)
     if not targets:

@@ -10,12 +10,12 @@ release branch this harness:
   1. Discovers the GROUND TRUTH (which branches the humans actually backported the
      fix to) directly from the real repo, using two independent signals:
        - `git cherry-pick -x` annotations ("cherry picked from commit <sha>")
-       - patch-id equivalence of a divergent commit on the branch
+       - fingerprint equivalence of a divergent commit on the branch
   2. Rolls the repo back to the state right before that hand-made backport landed
      (for affected branches, the branch is reset to the backport commit's parent),
      so the fix is genuinely absent again and the tool has to rediscover the need.
   3. Runs the REAL shipped classifier (engine.analysis.classify_branch) against that
-     rolled-back world (get_changed_files -> find_introducing_commit ->
+     rolled-back world (get_changed_files -> find_bug_commits ->
      classify_branch, and optionally a cherry-pick apply).
   4. Compares the tool's per-branch verdict to the ground truth and scores it
      (true/false positive/negative), printing a table + scorecard per fix.
@@ -77,11 +77,11 @@ from engine.ai import ai_client, ai_impact_analysis, call_model  # noqa: E402
 # The shipped per-branch classifier -- the bench grades this, not a private copy.
 from engine.analysis import (  # noqa: E402
     classify_branch,
-    find_introducing_commit,
+    find_bug_commits,
     get_changed_files,
-    parse_eos_date,
+    parse_support_end_date,
     source_files,
-    vulnerable_preimage_present,
+    buggy_lines_still_present,
 )
 from util.config import (  # noqa: E402
     AFFECTED,
@@ -89,7 +89,7 @@ from util.config import (  # noqa: E402
     NOT_AFFECTED,
     UNSURE,
     is_test_or_generated_file,
-    patch_id_pathspec,
+    fingerprint_pathspec,
 )
 
 DEFAULT_REPO = os.environ.get("AWS_LC_REPO", "/Users/tianyiy/aws-lc")
@@ -126,13 +126,13 @@ _CHERRY_X = re.compile(r"cherry picked from commit ([0-9a-f]{7,40})", re.I)
 # reference the ORIGINAL PR in their own subject/body (e.g.
 # "[CHERRYPICK FIPS 3.x] ... (#3270) (#3273)" or "Cherrypick of #3270 onto ...")
 # while carrying NO `cherry picked from commit <sha>` line and, because the older
-# branch context differs, no matching patch-id. Signals 1 and 2 miss those; the
+# branch context differs, no matching fingerprint. Signals 1 and 2 miss those; the
 # PR-reference signal below catches them.
 _PR_RE = re.compile(r"#(\d{2,6})")
 _BACKPORT_KW = re.compile(r"cherry.?pick|backport", re.I)
 
 # CVE identifiers, used to link a mainline fix to a REIMPLEMENTED backport that
-# shares no patch-id and doesn't -x-reference the mainline commit (a hand-rewrite
+# shares no fingerprint and doesn't -x-reference the mainline commit (a hand-rewrite
 # for older branch code). Both the mainline commit message and the branch's
 # backport commit usually name the same CVE, so it's a reliable cross-branch key.
 # Ground-truth measurement only — a message-string match is deliberately NOT used
@@ -306,7 +306,7 @@ def filter_by_support_window(manifest, branches, as_of):
         if not e.get("actively_maintained", True):
             dropped.append((b, "not actively maintained"))
             continue
-        eos = parse_eos_date(e.get("end_of_support"))
+        eos = parse_support_end_date(e.get("end_of_support"))
         if eos is not None and eos < as_of:
             dropped.append((b, f"end of support {e.get('end_of_support')} < fix date"))
             continue
@@ -344,7 +344,7 @@ def patch_id_map(repo, rev_range):
             "--no-merges",
             "--format=%H",
             rev_range,
-            *patch_id_pathspec(),
+            *fingerprint_pathspec(),
         ],
         cwd=repo,
         capture_output=True,
@@ -352,7 +352,10 @@ def patch_id_map(repo, rev_range):
     if log.returncode != 0:
         return {}
     pid = subprocess.run(
-        ["git", "patch-id", "--stable"], input=log.stdout, cwd=repo, capture_output=True
+        ["git", "patch-id", "--stable"],
+        input=log.stdout,
+        cwd=repo,
+        capture_output=True,
     )
     out = pid.stdout.decode("ascii", errors="replace")
     mapping = {}
@@ -367,12 +370,12 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
     """
     Determine, per branch, whether the fix was hand-backported and if so to which
     commit (used as the rollback point). Combines cherry-pick -x annotations and
-    patch-id equivalence; either signal is sufficient.
+    fingerprint equivalence; either signal is sufficient.
 
     Returns {branch: {"affected": bool, "backport": sha|None, "via": str}}.
     """
     fix_pid_map = patch_id_map(repo, f"{fix_sha}^..{fix_sha}")
-    fix_pid = next(iter(fix_pid_map), None)  # patch-id of the fix itself
+    fix_pid = next(iter(fix_pid_map), None)  # fingerprint of the fix itself
     fix_short = fix_sha[:12]
 
     # CVE ids the fix addresses, taken from the commit message AND the test-file
@@ -386,7 +389,7 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
     fix_prs = set(_PR_RE.findall(fix_subject))
     fix_title = norm_subject(fix_subject)
 
-    # Changed source files, used by the pre-image presence check (Signal 4). Its
+    # Changed source files, used by the still-present check (Signal 4). Its
     # git queries are cwd-relative, so run them in the target repo.
     with chdir(repo):
         changed_files = get_changed_files(fix_sha)
@@ -430,20 +433,20 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
                         via.append("-x")
                     break
 
-        # Signal 2: a divergent commit with the same patch-id as the fix.
+        # Signal 2: a divergent commit with the same fingerprint as the fix.
         if fix_pid:
             branch_pids = patch_id_map(repo, rng)
             if fix_pid in branch_pids:
                 if backport is None:
                     backport = branch_pids[fix_pid]
-                via.append("patch-id")
+                via.append("fingerprint")
 
         # Signal 1b: a divergent commit that cites the fix's ORIGINAL PR number
         # together with a cherry-pick/backport keyword (e.g.
         # "[CHERRYPICK FIPS 3.x] ... (#3270) (#3273)" or "Cherrypick of #3270").
         # These hand-backports frequently carry NO `cherry picked from commit`
         # line and, because the older branch context differs, NO matching
-        # patch-id -- so Signals 1 and 2 miss them. It is a real backport and a
+        # fingerprint -- so Signals 1 and 2 miss them. It is a real backport and a
         # clean rollback point (a single cherry-pick commit we can reset before).
         if backport is None and fix_prs:
             for h, text in entries:
@@ -460,7 +463,7 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
         # the exact mainline title with only a new PR number -- e.g.
         # "Fix CN fallback handling in name constraints checking (#3108)" backports
         # "... (#3107)" -- so they cite a DIFFERENT PR (Signal 1b misses it) and,
-        # with older branch context, carry no matching patch-id (Signal 2 misses
+        # with older branch context, carry no matching fingerprint (Signal 2 misses
         # it). This is a real backport and a clean rollback point.
         if backport is None and fix_title:
             for h, text in entries:
@@ -472,8 +475,8 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
 
         # Signal 3: a divergent commit names the same CVE id(s). Catches
         # REIMPLEMENTED backports (hand-rewritten for older code) that share no
-        # patch-id and don't -x-reference the mainline commit — the exact case
-        # patch-id and -x miss. Recorded as "already present" (the fix is there,
+        # fingerprint and don't -x-reference the mainline commit — the exact case
+        # fingerprint and -x miss. Recorded as "already present" (the fix is there,
         # so no PR is needed) rather than a rollback point, because a reimplemented
         # or bundled commit is not a clean parent to reset to.
         cve_hit = False
@@ -495,21 +498,21 @@ def discover_ground_truth(repo, fix_sha, branches, label=None):
         # backport: "affected" means the vulnerable code is present, not merely
         # that a backport was cut. There is no clean single-commit rollback point
         # (nothing was applied here), so the branch's real tip is analyzed as-is.
-        preimage_affected = False
+        buggy_lines_affected = False
         if backport is None and not already_present and changed_files:
             with chdir(repo):
-                if vulnerable_preimage_present(fix_sha, changed_files, ref) is True:
-                    preimage_affected = True
-                    if "preimage" not in via:
-                        via.append("preimage")
+                if buggy_lines_still_present(fix_sha, changed_files, ref) is True:
+                    buggy_lines_affected = True
+                    if "buggy_lines" not in via:
+                        via.append("buggy_lines")
 
         result[b] = {
             # "affected" = the branch should be flagged after rollback: EITHER a
-            # hand-backport of this commit was found (-x / patch-id / PR-ref /
-            # same-title) OR the vulnerable pre-image is still present (Signal 4).
+            # hand-backport of this commit was found (-x / fingerprint / PR-ref /
+            # same-title) OR the buggy lines are still present (Signal 4).
             # Branches that merely already contain the fix (forked-after, or a
             # reimplementation matched by CVE id) set already_present instead.
-            "affected": backport is not None or preimage_affected,
+            "affected": backport is not None or buggy_lines_affected,
             "backport": backport,
             "already_present": already_present,
             "via": "+".join(dict.fromkeys(via)) if via else "",
@@ -607,23 +610,23 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
     """
     with chdir(sandbox):
         files = get_changed_files(fix_sha)
-        introducers = find_introducing_commit(fix_sha, files)
+        bug_commits = find_bug_commits(fix_sha, files)
         src = source_files(files)
 
         def analyze(b):
             # Route through the SHIPPED classifier so the scorecard grades exactly
             # the code path the CLI runs (engine.analysis.classify_branch), rather than a
             # second copy of the decision tree maintained only for this bench.
-            state = classify_branch(fix_sha, src, introducers, b)
+            state = classify_branch(fix_sha, src, bug_commits, b)
 
             advisory = None
             if state == UNSURE:
-                # Mirror engine.ai.resolve_unsure: an inconclusive branch defaults to
+                # Mirror engine.ai.decide_unsure_branches: an inconclusive branch defaults to
                 # AFFECTED (flagged for review, never a silent miss); only a
                 # definite AI "not affected" clears it. Returns None when AI is off
                 # (--no-ai sets BACKPORT_DISABLE_AI), so the deterministic run
                 # resolves every UNSURE to AFFECTED, exactly like the CLI.
-                advisory = ai_impact_analysis(fix_sha, b, files, set(introducers))
+                advisory = ai_impact_analysis(fix_sha, b, files, set(bug_commits))
                 if advisory is not None and advisory.get("likely_affected") is False:
                     state = NOT_AFFECTED
                     advisory["overrode_deterministic"] = True
@@ -644,7 +647,7 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
                     if cp == "empty":
                         # git itself reports the change is already present
                         # (applied via a reshaped commit that ancestry and
-                        # patch-id missed). Authoritative and FN-safe.
+                        # fingerprint missed). Authoritative and FN-safe.
                         affected, reason = False, "already_patched(no-op)"
             else:
                 reason = "not_affected_ai" if advisory is not None else "not_affected"
@@ -666,11 +669,11 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
                 "cherry_pick": cp,
                 "fix_already_ancestor": fix_ancestor,
                 "ai": advisory,
-                # For classifying false positives: is the vulnerable pre-image
+                # For classifying false positives: are the buggy lines
                 # actually on the branch? True = genuinely affected (not shipped),
                 # False = provably absent (a true over-flag / tool error),
-                # None = pure addition, can't tell from the pre-image.
-                "preimage": vulnerable_preimage_present(fix_sha, files, f"origin/{b}"),
+                # None = pure addition, can't tell.
+                "buggy_lines": buggy_lines_still_present(fix_sha, files, f"origin/{b}"),
             }
 
         verdicts = {}
@@ -679,7 +682,7 @@ def run_engine(sandbox, fix_sha, branches, do_cherry_pick, jobs=6):
         ) as ex:
             for b, v in ex.map(analyze, branches):
                 verdicts[b] = v
-        return files, introducers, verdicts
+        return files, bug_commits, verdicts
 
 
 def classify(bot_backport, truth_affected):
@@ -697,7 +700,7 @@ def format_scenario(
     fix_sha,
     label,
     files,
-    introducers,
+    bug_commits,
     gt,
     rollbacks,
     verdicts,
@@ -730,7 +733,7 @@ def format_scenario(
     out.append(f'  fix commit: {fix_sha[:12]}   "{subject(repo, fix_sha)}"')
     out.append(f"{'=' * 104}")
     out.append(f"  changed files: {files}")
-    out.append(f"  introducer(s): {sorted(s[:10] for s in introducers)}")
+    out.append(f"  bug commit(s): {sorted(s[:10] for s in bug_commits)}")
     out.append("")
     out.append(
         f"  {'branch':<24} {'bot verdict':<12} {'reason':<16} {'cherry':<8} "
@@ -751,7 +754,7 @@ def format_scenario(
             _ai.get("overrode_deterministic") and _ai.get("likely_affected") is True
         )
         reimpl = bool(gt[b].get("already_present") and "cve-id" in gt[b].get("via", ""))
-        labels.append((lbl, v.get("preimage"), ai_upgraded, reimpl, recent))
+        labels.append((lbl, v.get("buggy_lines"), ai_upgraded, reimpl, recent))
 
         bot_str = "BACKPORT" if v["backport"] else "skip"
         gvia = gt[b].get("via", "")
@@ -760,10 +763,10 @@ def format_scenario(
             # affected = should be flagged after rollback. In answer-key mode this is
             # our hand-verified call; in auto mode it means the code is vulnerable
             # here -- either the team shipped a backport, or the vulnerable
-            # pre-image is still present (Signal 4).
+            # buggy lines are still present (Signal 4).
             if manual_key:
                 manual = "AFFECTED"
-            elif any(s in gvia for s in ("-x", "patch-id", "pr-ref", "same-title")):
+            elif any(s in gvia for s in ("-x", "fingerprint", "pr-ref", "same-title")):
                 manual = "AFFECTED (backport)"
             else:
                 manual = "AFFECTED (code)"
@@ -786,15 +789,15 @@ def format_scenario(
             # tool false positives:
             if gt[b].get("already_present") and "cve-id" in gvia:
                 ok = "redundant"  # already patched via a reimplementation
-            elif v.get("preimage") is True:
+            elif v.get("buggy_lines") is True:
                 ok = "AFFECTED*"  # vulnerable code present, team hasn't backported yet
-            elif v.get("preimage") is False:
+            elif v.get("buggy_lines") is False:
                 _ai2 = v.get("ai") or {}
                 ok = (
                     "ai-flag?" if _ai2.get("overrode_deterministic") else "OVER-FLAG <-"
                 )
             else:
-                ok = "addn?"  # pure-addition, can't judge from pre-image
+                ok = "addn?"  # pure-addition, nothing deleted to judge
         out.append(
             f"  {b:<24} {bot_str:<12} {v['reason']:<16} {v['cherry_pick']:<8} "
             f"{manual:<16} {gt[b]['via']:<10} {ok}"
@@ -802,22 +805,22 @@ def format_scenario(
         if lbl == "FP" and gt[b].get("already_present") and "cve-id" in gvia:
             notes.append(
                 f"    - {b}: redundant over-flag — the fix is already present as a "
-                f"REIMPLEMENTED backport (matched by CVE id, shares no patch-id, so "
+                f"REIMPLEMENTED backport (matched by CVE id, shares no fingerprint, so "
                 f"the bot can't detect it). The bot would open a redundant PR a human "
                 f"closes; NOT a missed backport."
             )
-        elif lbl == "FP" and v.get("preimage") is False:
+        elif lbl == "FP" and v.get("buggy_lines") is False:
             ai = v.get("ai") or {}
             if ai.get("overrode_deterministic") and ai.get("likely_affected") is True:
                 notes.append(
-                    f"    - {b}: pre-image ABSENT (exact patched lines are not on this "
+                    f"    - {b}: buggy lines ABSENT (exact patched lines are not on this "
                     f"branch, so deterministic said INCONCLUSIVE) but the AI tie-breaker "
                     f"UPGRADED to affected -> NOT a deterministic error: verify the AI's "
                     f"call (older code may still be vulnerable via different lines)."
                 )
             else:
                 notes.append(
-                    f"    - {b}: *** TRUE OVER-FLAG *** vulnerable pre-image provably "
+                    f"    - {b}: *** TRUE OVER-FLAG *** buggy lines provably "
                     f"ABSENT and AI did not upgrade -> likely a genuine tool error "
                     f"worth double-checking."
                 )
@@ -827,7 +830,7 @@ def format_scenario(
                 f"this branch (already patched via shared history; is_already_patched's "
                 f"divergent-only scan missed it)."
             )
-        elif lbl == "FP" and v.get("preimage") is True:
+        elif lbl == "FP" and v.get("buggy_lines") is True:
             notes.append(
                 f"    - {b}: FP (not a tool error): vulnerable code IS present, but the "
                 f"team hasn't shipped this backport (recency / severity / product call)."
@@ -835,7 +838,7 @@ def format_scenario(
         elif lbl == "FP":
             notes.append(
                 f"    - {b}: FP (undetermined): pure-addition fix (nothing removed to "
-                f"check), so pre-image presence can't be judged deterministically."
+                f"check), so their presence can't be judged deterministically."
             )
         elif lbl == "FN":
             notes.append(
@@ -868,7 +871,7 @@ def replay_one_fix(job):
     string and returned rather than printed, so the caller can emit each fix's
     report atomically and in submission order even when fixes run concurrently.
 
-    Returns a dict: {"text": str, "labels": [(lbl, preimage), ...], "counted": bool}
+    Returns a dict: {"text": str, "labels": [(lbl, buggy_lines), ...], "counted": bool}
     where `counted` is False for a fix that was skipped (unresolved / no diff) and
     therefore should not count toward the "fixes replayed" tally.
     """
@@ -933,7 +936,7 @@ def replay_one_fix(job):
 
     sandbox, rollbacks = build_sandbox(repo, fix_sha, gt, scoped)
     try:
-        files, introducers, verdicts = run_engine(
+        files, bug_commits, verdicts = run_engine(
             sandbox, fix_sha, scoped, job["cherry_pick"], jobs=job["jobs"]
         )
         text, labels = format_scenario(
@@ -941,7 +944,7 @@ def replay_one_fix(job):
             fix_sha,
             label,
             files,
-            introducers,
+            bug_commits,
             gt,
             rollbacks,
             verdicts,
@@ -1184,14 +1187,14 @@ def main():
     # but not shipped" means the code is there and the team chose not to (or
     # hasn't yet) backported — not an analysis error. Over-flags are further split
     # by WHO made the call: the deterministic engine, or an AI tie-breaker upgrade
-    # (pre-image absent but the AI judged the older code still vulnerable). Only
+    # (buggy lines absent but the AI judged the older code still vulnerable). Only
     # the deterministic ones are true engine errors; AI upgrades are the AI's call
     # to verify separately.
     fp_not_shipped = fp_unknown = 0
     fp_overflag_det = fp_overflag_ai = 0
     fp_reimpl = 0
     fp_pending = 0  # affected, but the fix is too recent to expect a backport yet
-    for lbl, preimage, ai_upgraded, reimpl, recent in all_labels:
+    for lbl, buggy_lines, ai_upgraded, reimpl, recent in all_labels:
         summary[lbl] += 1
         if lbl == "FP":
             if reimpl:
@@ -1199,19 +1202,19 @@ def main():
                 # can't detect it, so it over-flags a redundant PR. Not a tool
                 # analysis error and not "unshipped" — the branch IS protected.
                 fp_reimpl += 1
-            elif preimage is False:
+            elif buggy_lines is False:
                 if ai_upgraded:
                     fp_overflag_ai += 1
                 else:
                     fp_overflag_det += 1
-            elif preimage is True and recent:
+            elif buggy_lines is True and recent:
                 # affected AND the fix is inside the backport SLA window: the
                 # team simply hasn't shipped it yet. The bot's flag is correct;
                 # reclassify out of FP into 'pending' so recency isn't scored as
                 # an error.
                 fp_pending += 1
                 summary["FP"] -= 1
-            elif preimage is True:
+            elif buggy_lines is True:
                 fp_not_shipped += 1
             else:
                 fp_unknown += 1
