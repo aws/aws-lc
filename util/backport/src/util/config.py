@@ -18,9 +18,7 @@ import os
 import time
 from pathlib import Path
 
-# --------------------------------------------------------------------------
-# 1. Verdict states and errors
-# --------------------------------------------------------------------------
+# --- 1. Verdict states and errors -----------------------------------------
 
 # Every branch ends up in exactly one of these. NOT_AFFECTED is only used when the
 # code is provably absent; anything unclear becomes UNSURE and goes to the AI (or
@@ -48,9 +46,7 @@ class BackportError(Exception):
     """
 
 
-# --------------------------------------------------------------------------
-# 2. Model settings
-# --------------------------------------------------------------------------
+# --- 2. Model settings ----------------------------------------------------
 
 # Read from model-config.json at the tool root. Precedence: env var > that file >
 # the defaults below. To change the model, edit the file.
@@ -89,9 +85,7 @@ MAX_DIFF_BYTES = int(_CFG["max_diff_bytes"])
 MAX_FILE_BYTES = int(_CFG["max_file_bytes"])
 
 
-# --------------------------------------------------------------------------
-# 3. Analysis knobs
-# --------------------------------------------------------------------------
+# --- 3. Analysis knobs ----------------------------------------------------
 
 # One analysis repeats the same git calls a lot, so cache them. Keys start with the
 # fix SHA, so entries never collide across fixes.
@@ -153,9 +147,7 @@ def is_test_or_generated_file(f):
     )
 
 
-# --------------------------------------------------------------------------
-# 4. The saved run (analyze -> apply)
-# --------------------------------------------------------------------------
+# --- 4. The saved run (analyze -> apply) ----------------------------------
 
 # `analyze` saves its result so `apply` can reuse it. Stored next to the tool, so
 # we never write into the repo being analyzed.

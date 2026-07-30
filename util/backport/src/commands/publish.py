@@ -1,14 +1,13 @@
 """
-The ``publish`` command: open backport PRs for a merged commit.
+The `publish` command: open backport PRs for a merged commit.
 
-Layer: command. Builds on ``util.git`` + ``engine`` + ``util.render``; wired into
-the CLI by ``main``, and its PR/summary helpers are reused by ``resolve``.
+This is what CI runs after a PR merges. It classifies every supported branch (with
+the AI on) and opens a PR into each affected release branch. Nothing is ever
+auto-merged. Conflicts and errors are reported instead, and noted on the source PR
+when `--pr` is given, for someone to finish with `backport resolve`.
 
-Given a merged commit, analyze every supported branch (AI layer on) and open a
-backport PR on the fork for each AFFECTED branch. Clean cherry-picks become PRs
-into the release branch (never auto-merged); conflicts/errors are reported and,
-if ``--pr`` is given, flagged in a comment on the source PR. Refuses to target
-upstream aws/aws-lc -- fork remotes only.
+Refuses to push anywhere but a fork. Its PR and summary helpers are reused by
+`resolve`.
 """
 
 import json
@@ -25,9 +24,7 @@ from engine.ai import refine_with_ai
 from engine.analysis import analyze_branches
 
 
-# --------------------------------------------------------------------------
-# GitHub CLI + safety guard
-# --------------------------------------------------------------------------
+# --- GitHub CLI + safety guard --------------------------------------------
 
 
 def gh(*args: str, check: bool = True):
@@ -47,9 +44,7 @@ def assert_fork_remote(remote: str) -> None:
         )
 
 
-# --------------------------------------------------------------------------
-# Publishing a backport PR
-# --------------------------------------------------------------------------
+# --- Publishing a backport PR ---------------------------------------------
 
 
 def test_only(conflicts) -> bool:
@@ -202,14 +197,12 @@ PLAN_SCHEMA_VERSION = 1
 
 def plan_marker(fix_sha: str, subject: str, buckets, outcomes) -> str:
     """A machine-readable snapshot of the run, attached to the summary comment as a
-    fenced ``json`` block inside a collapsed ``<details>`` section.
+    fenced ``json`` block.
 
-    ``resolve`` reads this back from the PR (see ``resolve.read_bot_plan``) so it
-    can target exactly the branches this run flagged -- without re-running the
-    impact analysis. A fenced JSON block is more reliable to scrape than a hidden
-    HTML comment (it can't be stripped as a comment, can't be broken by a ``-->``
-    in the data, and stays human-inspectable if a resolve run misbehaves). The
-    ``backport_bot_plan`` key is the sentinel the reader keys off.
+    `resolve` reads it back off the PR so it can target exactly the branches this run
+    flagged, without re-running the analysis. A fenced JSON block survives scraping
+    better than a hidden HTML comment and stays readable if something goes wrong.
+    The ``backport_bot_plan`` key is how the reader spots it.
 
     Schema::
 
@@ -220,7 +213,7 @@ def plan_marker(fix_sha: str, subject: str, buckets, outcomes) -> str:
             "<branch>": {
               "impact": "affected|not_affected|already_patched",
               "outcome": "opened|done|conflict|error|dry-run|null",
-              "files": ["..."]            # present only when outcome == conflict
+              "files": ["..."]            # only when outcome == conflict
             }, ...
           }
         }
@@ -261,9 +254,7 @@ def post_report(args, fix_sha, subject, buckets, outcomes) -> None:
             print(f"::warning::backport to {branch} needs manual resolution")
 
 
-# --------------------------------------------------------------------------
-# Command
-# --------------------------------------------------------------------------
+# --- Command --------------------------------------------------------------
 
 
 def cmd_publish(args) -> int:

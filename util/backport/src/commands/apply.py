@@ -1,12 +1,11 @@
 """
-The ``apply`` and ``clear`` commands.
+The `apply` and `clear` commands.
 
-Layer: command. Builds on ``util.git`` + ``engine``, and hands off to ``resolve``
-when a cherry-pick conflicts; wired into the CLI by ``main``.
+`apply` cherry-picks the fix onto local `backport/<branch>/<id>` branches so you can
+review them. It never pushes, opens a PR, or merges anything. If a cherry-pick
+conflicts it hands off to `resolve`.
 
-``apply`` cherry-picks the fix onto local ``backport/<branch>/<id>`` branches for
-review -- it never pushes, opens a PR, or auto-merges. ``clear`` drops the saved
-run state.
+`clear` deletes the saved run.
 """
 
 import shutil
@@ -23,11 +22,10 @@ from engine.analysis import analyze_branches
 
 
 def resolve_apply_target(args) -> "Tuple[str, dict]":
-    """Return ``(fix_sha, run)``: which fix to apply, and the saved run if reused.
+    """Which fix to apply, as ``(sha, saved_run)``.
 
-    An explicit ``--commit`` wins and skips the cache; otherwise reuse whatever
-    the last ``analyze`` looked at, so the usual flow is ``analyze`` then a bare
-    ``apply --all-affected``.
+    `--commit` wins and ignores the cache. Otherwise reuse the last `analyze`, so
+    the normal flow is `analyze` then a bare `apply --all-affected`.
     """
     if getattr(args, "commit", None):
         return resolve_fix_commit(args)[0], {}

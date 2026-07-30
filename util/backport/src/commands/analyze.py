@@ -1,13 +1,9 @@
 """
-The ``analyze`` command.
+The `analyze` command: give every supported branch a verdict.
 
-Layer: command. Orchestrates ``util.git`` -> ``engine`` -> ``util.render`` ->
-``util.config``; wired into the CLI by ``main``.
-
-Give every supported branch a definite verdict for a fix. Pipeline: work out which
-commit(s) the fix is -> confirm the test file -> bucket each branch
-deterministically -> let the AI decide the inconclusive ones -> print -> save the
-run so ``apply`` can reuse it.
+Work out which commit(s) the fix is -> confirm the test file -> classify each
+branch -> let the AI settle the unclear ones -> print -> save the run so `apply`
+can reuse it.
 """
 
 import sys

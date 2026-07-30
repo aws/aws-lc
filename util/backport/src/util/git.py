@@ -1,13 +1,11 @@
 """
-Git plumbing: repository targeting, command runners, and rename-aware reads.
+Everything that shells out to git.
 
-Layer: git plumbing. Builds on ``util.config`` only; used by the analysis engine
-and every command.
+Which checkout we're pointed at, the command runners, throwaway worktrees, the
+cherry-pick used by `apply` and `publish`, working out which commit(s) a fix is,
+and the file/diff reads that follow renames.
 
-Everything that shells out to git lives here: which checkout we are pointed at,
-the low-level runners, throwaway worktrees, the cherry-pick primitive shared by
-``apply`` and ``publish``, resolving which commit(s) a fix is, the rename-aware file
-and diff reads, and the ``git diff-tree`` parsers.
+Only imports util.config, so it can't cause import cycles.
 """
 
 import os
@@ -26,38 +24,32 @@ from util.config import (
 )
 
 
-# --------------------------------------------------------------------------
-# Repository targeting
-# --------------------------------------------------------------------------
+# --- Repository targeting -------------------------------------------------
 
-# Absolute path to the AWS-LC checkout every git command runs against. None means
-# "use the process working directory" (used by the replay test harness, which
-# chdirs into a sandbox).
+# The checkout every git command runs in. None means "use the current directory"
+# (the replay bench relies on that -- it chdirs into a sandbox).
 REPO_PATH = None
 
 
 def set_repo_path(path):
-    """Point the tool at an AWS-LC checkout; None restores the cwd fallback."""
+    """Point the tool at a checkout; None goes back to using the current directory."""
     global REPO_PATH
     REPO_PATH = os.path.abspath(path) if path else None
 
 
 def repo_path():
-    """The active checkout path (or None for the cwd fallback).
+    """The active checkout, or None.
 
-    An accessor rather than a direct read of :data:`REPO_PATH`, because
-    :func:`set_repo_path` rebinds that global at runtime -- importing it by value
-    would capture a stale ``None``.
+    Call this instead of importing REPO_PATH -- set_repo_path() reassigns it, so an
+    imported copy would still be None.
     """
     return REPO_PATH
 
 
 def run_in_repo(cmd, **kwargs):
-    """Run a command against REPO_PATH (unless an explicit cwd is given).
+    """Run a command in REPO_PATH. Returns the result; never raises.
 
-    Low-level and raw: returns the ``subprocess`` result and does NOT raise on a
-    non-zero exit. (Contrast with :func:`run`/:func:`git`, the CLI-facing wrappers
-    that raise :class:`BackportError` on failure.)
+    Compare run()/git() below, which raise BackportError when a command fails.
     """
     if REPO_PATH is not None and kwargs.get("cwd") is None:
         kwargs["cwd"] = REPO_PATH
@@ -65,13 +57,11 @@ def run_in_repo(cmd, **kwargs):
 
 
 def git_in_repo(args, **kwargs):
-    """Run a git subcommand against REPO_PATH (raw; see :func:`run_in_repo`)."""
+    """Run a git command in REPO_PATH. Never raises; see run_in_repo()."""
     return run_in_repo(["git", *args], **kwargs)
 
 
-# --------------------------------------------------------------------------
-# Low-level command runners
-# --------------------------------------------------------------------------
+# --- Low-level command runners --------------------------------------------
 
 
 def run(
@@ -80,11 +70,9 @@ def run(
     cwd: Optional[str] = None,
     stdin: Optional[str] = None,
 ):
-    """Run a command and capture its output.
+    """Run a command and capture its output. Raises BackportError if it fails.
 
-    Defaults to the configured repo path; an explicit *cwd* (used by the
-    throwaway worktrees) always wins. *stdin* is fed to the command's standard
-    input -- used to pipe a patch into ``git apply``/``git am``.
+    Runs in REPO_PATH unless *cwd* says otherwise (worktrees pass their own).
     """
     if cwd is None:
         cwd = REPO_PATH
@@ -102,7 +90,7 @@ def git(
     cwd: Optional[str] = None,
     stdin: Optional[str] = None,
 ):
-    """Run a git subcommand (thin wrapper over :func:`run`)."""
+    """Run a git command. Raises BackportError if it fails; see run()."""
     return run(["git", *args], check=check, cwd=cwd, stdin=stdin)
 
 
@@ -113,12 +101,11 @@ def ref_exists(ref: str) -> bool:
 
 @contextmanager
 def temp_worktree(base: str, prefix: str = "backport-") -> "Iterator[str]":
-    """Check out *base* in a throwaway detached ``git worktree`` and yield its path.
+    """Check *base* out in a throwaway worktree and yield its path.
 
-    This lets us cherry-pick into a clean tree without touching the user's working
-    copy. On exit the worktree and its temp parent dir are removed; any commits
-    made inside it survive in git's shared object store, which is all the engine
-    and the caller need.
+    Lets us cherry-pick without touching the user's files. The worktree is deleted
+    afterwards, but any commits made in it stay in the repo's object store, which
+    is all we need.
     """
     scratch_dir = tempfile.mkdtemp(prefix=prefix)
     worktree = os.path.join(scratch_dir, "wt")
@@ -131,14 +118,11 @@ def temp_worktree(base: str, prefix: str = "backport-") -> "Iterator[str]":
         git("worktree", "prune", check=False)
 
 
-# --------------------------------------------------------------------------
-# Cherry-pick primitive (shared by `apply` and `publish`)
-# --------------------------------------------------------------------------
+# --- Cherry-pick primitive (shared by `apply` and `publish`) --------------
 
 
-# Identity for the commits the tool creates itself (a collapsed multi-commit span,
-# or completing a cherry-pick), so they are never attributed to the user. Passed as
-# `git -c ...` so nothing in the repo's config is modified.
+# Author for commits the tool makes itself, so they're never attributed to the
+# user. Passed with `git -c`, so the repo's config is left alone.
 BOT_IDENTITY = (
     "-c",
     "user.name=backport-cli",
@@ -159,14 +143,10 @@ _CONFLICT_KIND = {
 
 
 def unmerged_files(wt: str) -> List[dict]:
-    """List the still-unmerged files in *wt* (a conflicted cherry-pick), each as
-    ``{"path", "kind"}`` where *kind* is git's own conflict wording (``both
-    modified`` / ``both added`` / ``deleted by us`` / ...), and *path* is the
-    repo-relative path.
+    """Files still conflicted in *wt*, as ``{"path", "kind"}``.
 
-    Uses ``git status --porcelain`` (the U/AA/DD codes). Call before staging, and
-    re-call after each ``git add`` to see what remains -- this is how ``resolve``
-    tracks progress.
+    *kind* is git's own wording ("both modified", "deleted by us", ...). Re-call it
+    after each `git add` to see what's left -- that's how `resolve` tracks progress.
     """
     out = git("status", "--porcelain", cwd=wt).stdout
     files: List[dict] = []
@@ -178,10 +158,10 @@ def unmerged_files(wt: str) -> List[dict]:
 
 
 def file_has_conflict_markers(path: str) -> bool:
-    """True if *path* still contains git conflict markers.
+    """True if *path* still has conflict markers in it.
 
-    ``resolve`` calls this before staging a file the user *claims* is resolved, so
-    a half-edited file with leftover markers is never committed.
+    Checked before staging a file the user says is resolved, so a half-edited file
+    never gets committed.
     """
     try:
         with open(path, errors="replace") as fh:
@@ -194,24 +174,21 @@ def file_has_conflict_markers(path: str) -> bool:
 
 
 def enable_rerere() -> None:
-    """Turn on git rerere ("reuse recorded resolution") for this repo.
+    """Turn on git rerere, so resolving a conflict once reuses it next time.
 
-    With rerere on, resolving a conflict once records the resolution; an identical
-    conflict later (e.g. on a FIPS twin branch) is auto-applied to the working
-    tree. autoupdate is deliberately left OFF: the auto-applied file stays
-    *unmerged* (marker-free) so ``resolve`` can still surface it for the user to
-    verify before it is staged, rather than silently committing it.
+    Handy for the FIPS twin branches, which usually conflict identically. rerere's
+    autoupdate is left OFF on purpose: the reused resolution stays unstaged so
+    `resolve` can still show it to the user instead of committing it silently.
     """
     git("config", "rerere.enabled", "true", check=False)
 
 
 def resolve_commit(commit_ish: str) -> "Tuple[str, str]":
-    """Resolve *commit_ish* to ``(fix_sha, subject)``.
+    """Resolve *commit_ish* to ``(sha, subject)``.
 
-    A merge commit's own diff-tree is empty (the real change is on the merged-in
-    side), so when handed one we transparently re-point to its second parent (the
-    PR head) and print a note. Squash/normal single-parent commits pass through
-    unchanged. Raises :class:`BackportError` if the commit is not in the checkout.
+    A merge commit's own diff is empty -- the change is on the side that got merged
+    in -- so we switch to its second parent and say so. Raises BackportError if the
+    commit isn't here.
     """
     fix = git("rev-parse", "--verify", f"{commit_ish}^{{commit}}", check=False)
     if fix.returncode != 0:
@@ -234,19 +211,12 @@ def cherry_pick_local(
 ) -> "Tuple[str, Optional[str], List[dict]]":
     """Cherry-pick *fix_sha* onto ``origin/<branch>`` in a throwaway worktree.
 
-    Returns ``(status, detail, extra)``:
-      - ``("clean", local_branch, dropped)`` -- applied; the local branch
-        ``backport/<branch>/<run_id>`` is created. *dropped* is normally ``[]``;
-        if the pick conflicted **only** in test/generated files, those hunks are
-        dropped (the branch keeps its own tests, the source fix applies) and the
-        pick is completed -- *dropped* then lists those files so the caller can
-        note them.
-      - ``("conflict", None, [{path, kind}, ...])`` -- a real (source) conflict;
-        the attempt is ABORTED. Nothing is committed and no branch is left behind.
-        Use the interactive ``resolve`` command to fix it live in a worktree.
-      - ``("error", message, [])`` -- the branch/ref was missing or git failed.
-
-    Never pushes or opens a PR.
+    Never pushes or opens a PR. Returns ``(status, detail, extra)``:
+      clean    -> branch `backport/<branch>/<run_id>` created. *extra* lists any
+                  test/generated files whose conflicting hunks we dropped.
+      conflict -> a real source conflict; aborted, nothing left behind. *extra* is
+                  the conflicting files. Use `resolve` to fix it by hand.
+      error    -> missing branch, or git failed.
     """
     ref = f"origin/{branch}"
     if not ref_exists(ref):
@@ -258,10 +228,9 @@ def cherry_pick_local(
             dropped: List[dict] = []
             if pick.returncode != 0:
                 conflicts = unmerged_files(wt)
-                # Test/generated-only conflict: the source fix applied cleanly and
-                # only a test/generated file clashed. Drop those hunks (keep the
-                # branch's version) and finish the pick, so a trivial test clash
-                # counts as a clean backport instead of manual resolution.
+                # Only tests/generated files clashed, so the actual fix applied.
+                # Keep the branch's versions of those and finish the pick -- a test
+                # clash shouldn't force manual resolution.
                 if (
                     conflicts
                     and all(is_test_or_generated_file(c["path"]) for c in conflicts)
@@ -279,19 +248,17 @@ def cherry_pick_local(
 
 
 def drop_and_continue(wt: str, conflicts: List[dict]) -> bool:
-    """Resolve a test/generated-only conflict by restoring the branch's version of
-    each conflicting file (dropping the fix's test churn), then completing the
-    cherry-pick. Returns True on success, False if it could not finish cleanly
-    (leaving the caller to abort and treat it as a real conflict)."""
+    """Finish a cherry-pick that only clashed on tests/generated files, by keeping
+    the branch's version of each. False if it couldn't finish, so the caller aborts
+    and treats it as a real conflict."""
     for c in conflicts:
         path = c["path"]
-        # Restore HEAD's (the target branch's) version; if the branch deleted the
-        # file, drop it entirely.
+        # Take the target branch's version; if the branch deleted the file, drop it.
         if git("checkout", "HEAD", "--", path, check=False, cwd=wt).returncode != 0:
             git("rm", "--force", "--quiet", "--", path, check=False, cwd=wt)
         else:
             git("add", "--", path, cwd=wt)
-    # If nothing of the source fix remains staged, there is nothing to backport.
+    # Nothing of the fix left staged means there's nothing to backport.
     if git("diff", "--cached", "--quiet", check=False, cwd=wt).returncode == 0:
         return False
     cont = git(
@@ -306,9 +273,7 @@ def drop_and_continue(wt: str, conflicts: List[dict]) -> bool:
     return cont.returncode == 0
 
 
-# --------------------------------------------------------------------------
-# Which commit(s) are we analyzing?
-# --------------------------------------------------------------------------
+# --- Which commit(s) are we analyzing? ------------------------------------
 
 
 def range_endpoints(spec: str) -> "Optional[Tuple[str, str]]":
@@ -339,17 +304,15 @@ def _rev(ref: str) -> str:
 
 
 def resolve_fix_commit(args) -> "Tuple[str, str]":
-    """Resolve which real commit(s) to analyze, as ``(fix_sha, base)``.
+    """Which commit(s) to analyze, as ``(sha, base)``.
 
-    - ``--commit <ref>``          the commit itself; base is its first parent.
-    - ``--commit A..B``/``A...B`` the span from A to B.
-    - (nothing)                   the current branch since it diverged from the
-      mainline, i.e. ``git merge-base <mainline> HEAD``.
+      --commit <ref>       that commit; base is its parent
+      --commit A..B/A...B  the span from A to B
+      (nothing)            your branch's commits since it left the mainline
 
-    The commits already exist, so nothing is extracted, applied, or checked out.
-    A span of more than one commit is collapsed into a single commit object with
-    ``git commit-tree`` -- pure plumbing, no worktree -- so the engine sees the
-    span's *net* change and a multi-commit fix analyzes like a squashed one.
+    The commits already exist, so nothing is extracted or checked out. A span of
+    several commits is squashed into one commit object with `git commit-tree`, so a
+    fix split across commits is analyzed as its net change.
     """
     spec = getattr(args, "commit", None) or f"{MAINLINE_REF}...HEAD"
     endpoints = range_endpoints(spec)
@@ -381,24 +344,20 @@ def resolve_fix_commit(args) -> "Tuple[str, str]":
     return synthetic, base_sha
 
 
-# --------------------------------------------------------------------------
-# git diff-tree parsers
-# --------------------------------------------------------------------------
+# --- git diff-tree parsers ------------------------------------------------
 
 
 def changed_files_with_status(commit: str) -> "Tuple[List[str], List[str]]":
-    """Return ``(changed_files, traceable_files)`` for *commit*.
+    """Files *commit* touches, as ``(all_files, traceable_files)``.
 
-    ``git diff-tree --name-status`` prints one line per changed file, e.g.::
+    traceable_files leaves out files the fix ADDED -- a brand-new file has no
+    history, so there's no earlier commit to blame for it.
+
+    Parses `git diff-tree --name-status`, one line per file::
 
         M\tcrypto/aead.c          modified
         A\ttls/new_feature.c      added
-        R100\told.c\tnew.c        renamed (the new path is the last column)
-
-    - ``changed_files``: every path the fix touches.
-    - ``traceable_files``: the same, minus files this fix *added* (status ``A``).
-      A brand-new file has no prior history, so there is no bug commit to
-      trace for it; we exclude it so bug commit detection does not choke.
+        R100\told.c\tnew.c        renamed (new path is last)
     """
     output = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],
@@ -412,21 +371,19 @@ def changed_files_with_status(commit: str) -> "Tuple[List[str], List[str]]":
         if not line.strip():
             continue
         columns = line.split("\t")
-        status, path = columns[0], columns[-1]  # last column = the (new) path
+        status, path = columns[0], columns[-1]  # last column is the (new) path
         changed_files.append(path)
-        if not status.startswith("A"):  # skip files added by this fix
+        if not status.startswith("A"):  # "A" = added by this fix
             traceable_files.append(path)
     return changed_files, traceable_files
 
 
 def branch_paths_by_basename(ref: str) -> "Dict[str, List[str]]":
-    """Every path on *ref*, grouped by basename.
+    """Every path on *ref*, grouped by filename.
 
-    Feeds the last-resort rename guard: a same-named file elsewhere on the branch
-    may be the fix's file moved somewhere git could not trace. Callers get the
-    full paths (not just the names) so they can verify the *content* actually
-    matches -- a bare name match is weak evidence, since basenames like
-    ``internal.h`` recur dozens of times in the tree.
+    Used to look for a file the fix touched that moved somewhere git couldn't
+    trace. Returns full paths, not just names, so the caller can check the contents
+    -- a filename match alone means little when `internal.h` appears 41 times.
     """
     out = git_in_repo(
         ["ls-tree", "-r", "--name-only", ref],
@@ -442,20 +399,16 @@ def branch_paths_by_basename(ref: str) -> "Dict[str, List[str]]":
     return grouped
 
 
-# --------------------------------------------------------------------------
-# Which checkout are we operating on?
-# --------------------------------------------------------------------------
+# --- Which checkout are we operating on? ----------------------------------
 
 
 def target_repo(args) -> str:
-    """Resolve + activate the AWS-LC checkout for this run.
+    """Work out which checkout to use, point REPO_PATH at it, and chdir there.
 
-    Confirms it is a git repo, points this module's :data:`REPO_PATH` at its top
-    level, and chdir's there. Returns the top-level path; raises
-    :class:`BackportError` if the path is not inside a git repository.
+    Order: --repo, then $BACKPORT_REPO_PATH, then the current directory -- so the
+    tool works on "the repo I'm standing in" unless told otherwise. Returns the
+    top-level path; raises BackportError if it isn't a git repo.
     """
-    # --repo, then $BACKPORT_REPO_PATH, then the cwd: the tool operates on
-    # "the repo I'm standing in" unless told otherwise.
     repo = (
         getattr(args, "repo", None)
         or os.environ.get("BACKPORT_REPO_PATH")
@@ -473,16 +426,13 @@ def target_repo(args) -> str:
         )
     repo_top = top.stdout.strip()
     set_repo_path(repo_top)
-    # Our git calls default to the process working directory, so point it at the
-    # repo. Throwaway worktrees always pass an explicit cwd, so they are
-    # unaffected.
+    # Our git calls default to the current directory, so move there too. Worktrees
+    # always pass an explicit cwd, so they're unaffected.
     os.chdir(repo_top)
     return repo_top
 
 
-# --------------------------------------------------------------------------
-# Rename-aware file and diff reads
-# --------------------------------------------------------------------------
+# --- Rename-aware file and diff reads -------------------------------------
 
 
 def get_commit_diff(commit):

@@ -1,12 +1,8 @@
 """
-Rendering the analyze result.
+Printing the analyze result, and the yes/no prompts.
 
-Layer: output. Builds on ``util.config`` only; used by the commands to present
-verdicts and prompt the user. No git or analysis logic lives here.
-
-Two output modes: a human-readable table (AFFECTED branches first, columns
-auto-sized to the widest value) followed by a copy-paste backport hint, or a
-single JSON object for scripting.
+No git or analysis logic here. Two output modes: a table with the affected branches
+first, or a single JSON object for scripting.
 """
 
 import json

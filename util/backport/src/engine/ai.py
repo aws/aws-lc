@@ -1,20 +1,18 @@
 """
 The AI advisory layer.
 
-Layer: advisory. Builds on ``util.config`` + ``util.git`` + ``engine.analysis``;
-consulted by the commands, never by the deterministic engine -- so the verdict
-never depends on a model being reachable.
+Only the commands call this, never the deterministic engine -- so a verdict never
+depends on a model being reachable.
 
-`ai_impact_analysis` asks Claude (via Amazon Bedrock) whether a branch is
-affected, in one of two roles: AUDITOR (deterministic said affected -> look for a
-false positive) or TIE-BREAKER (deterministic inconclusive -> second opinion).
-`refine_with_ai` is the entry point the commands call: it turns every UNSURE
-branch into a definite verdict and annotates suspicious AFFECTED ones.
+`ai_impact_analysis` asks Claude (through Amazon Bedrock) whether a branch is
+affected, in one of two roles: AUDITOR (we think it's affected -- look for a false
+positive) or TIE-BREAKER (we can't tell -- give a second opinion).
+`refine_with_ai` is what the commands call: it settles every UNSURE branch and
+adds notes to AFFECTED ones that look like over-flags.
 
-Output is ADVISORY ONLY: it never cherry-picks, opens PRs, or resolves conflicts,
-and the gating is directional -- it can add review noise but never cause a silent
-miss. If the SDK or AWS credentials are unavailable, every entry point here
-degrades to `None` and the deterministic engine runs alone.
+Advisory only. It never cherry-picks, pushes, or resolves conflicts, and it can
+only ever add review noise, never hide a needed backport. With no SDK or
+credentials every entry point returns None and the deterministic engine runs alone.
 """
 
 import os
@@ -443,9 +441,7 @@ def ai_impact_analysis(
     }
 
 
-# --------------------------------------------------------------------------
-# Resolution pass 1: decide the UNSURE branches
-# --------------------------------------------------------------------------
+# --- Resolution pass 1: decide the UNSURE branches ------------------------
 
 
 def decide_unsure_branches(
@@ -455,18 +451,16 @@ def decide_unsure_branches(
     buckets: Dict[str, str],
     use_ai: bool = True,
 ) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]":
-    """Turn every UNSURE branch into a definite AFFECTED / NOT_AFFECTED verdict.
+    """Settle every UNSURE branch into AFFECTED or NOT_AFFECTED.
 
-    The deterministic pass leaves a branch UNSURE when the fixed code is present
-    but ancestry/fingerprint can't confirm the bug commit reached it. Rather than
-    show that to the user, consult the AI advisory to decide.
+    A branch is UNSURE when the code is there but we can't confirm a bug commit
+    reached it. Rather than show that to the user, ask the AI.
 
-    Safety: if the AI is uncertain, returns no answer, or is unavailable, the
-    branch resolves to AFFECTED (flagged for review), never NOT_AFFECTED. So the
-    automatic resolution can only over-flag, never create a silent miss.
+    If the AI is unsure, gives no answer, or isn't available, the branch becomes
+    AFFECTED -- so this can only over-flag, never hide a needed backport.
 
-    Returns ``(buckets, decided_by, summaries)``. ``decided_by[branch]`` is a
-    one-line basis; ``summaries[branch]`` is the AI's reasoning where it judged.
+    Returns ``(buckets, decided_by, summaries)``: decided_by is a one-line reason
+    per branch, summaries holds the AI's reasoning where it gave one.
     """
     decided_by: Dict[str, str] = {b: "deterministic" for b in buckets}
     summaries: Dict[str, str] = {}
@@ -501,14 +495,11 @@ def decide_unsure_branches(
     return buckets, decided_by, summaries
 
 
-# --------------------------------------------------------------------------
-# Resolution pass 2: review suspicious AFFECTED branches (advisory only)
-# --------------------------------------------------------------------------
+# --- Resolution pass 2: review suspicious AFFECTED branches (advisory only)
 
 
 def commit_time(sha: str) -> int:
-    """Unix commit timestamp of *sha* (0 if it can't be resolved). Used to pick
-    the newest bug commit."""
+    """Commit timestamp of *sha*, or 0. Used to find the newest bug commit."""
     out = git("show", "-s", "--format=%ct", sha, check=False).stdout.strip()
     return int(out) if out.isdigit() else 0
 
@@ -516,18 +507,15 @@ def commit_time(sha: str) -> int:
 def likely_over_flagged(
     bug_commits: Sequence[str], buckets: Dict[str, str]
 ) -> "Dict[str, Tuple[int, int]]":
-    """AFFECTED branches that look like over-flags worth a second opinion.
+    """AFFECTED branches that are probably wrong. No AI involved.
 
-    A branch is bucketed AFFECTED as soon as one bug commit reaches it. When the
-    fix also touches old, shared code (e.g. lines tracing back to the initial
-    import), that lone match can be ancient and present on branches that predate
-    the actual vulnerability -- the documented over-flag.
+    A branch is called AFFECTED as soon as ONE commit that wrote those lines is in
+    its history. If the fix also touched old shared code -- lines going back to the
+    original import -- that single match can be ancient and present on branches
+    that predate the actual bug.
 
-    The signal: the branch is missing the NEWEST bug commit (the commit most
-    likely to have written the actual bug) while still having some older lineage.
-    A genuinely affected branch has that newest commit; one that predates the
-    vulnerability does not. Returns ``{branch: (present_count, total)}`` for each
-    candidate. Deterministic, no AI.
+    The tell: the branch is missing the NEWEST of those commits (most likely the one
+    that wrote the bug) but has some older ones. Returns ``{branch: (found, total)}``.
     """
     intro = list(bug_commits)
     suspects: "Dict[str, Tuple[int, int]]" = {}
@@ -555,14 +543,11 @@ def add_over_flag_notes(
     summaries: Dict[str, str],
     use_ai: bool = True,
 ) -> None:
-    """Attach a false-positive review note to over-flag-candidate AFFECTED
-    branches (those from :func:`likely_over_flagged`), consulting the AI
-    advisory when *use_ai*.
+    """Add a "might be a false positive" note to the branches likely_over_flagged()
+    picked out, asking the AI when *use_ai*.
 
-    CRITICAL: this is advisory only and NEVER changes the verdict. The branch
-    stays AFFECTED even if the AI thinks it is a false positive -- we only
-    annotate it for human review. So widening AI coverage here can reduce noise
-    but can never turn a real hit into a silent miss (no false negatives).
+    Never changes a verdict. The branch stays AFFECTED even if the AI disagrees --
+    we only annotate it, so this can reduce noise but can never hide a real backport.
     """
     intro = set(bug_commits)
     for branch, (present, total) in suspects.items():
@@ -588,11 +573,9 @@ def add_over_flag_notes(
 
 
 def refine_with_ai(args, fix_sha, files, bug_commits, buckets):
-    """Decide the UNSURE branches via the AI advisory (unless --no-ai), then add a
-    review note to any suspicious AFFECTED branches.
+    """Settle the UNSURE branches, then note any AFFECTED ones that look wrong.
 
-    Returns ``(buckets, decided_by, summaries)``, printing a one-line notice when
-    the AI is about to be consulted.
+    Skips the AI under --no-ai. Returns ``(buckets, decided_by, summaries)``.
     """
     unsure = [b for b, s in buckets.items() if s == UNSURE]
     use_ai = not args.no_ai

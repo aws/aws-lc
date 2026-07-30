@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """
-backport - local CLI for the AWS-LC backport bot.
+backport - decide which AWS-LC release branches a fix belongs on, then back-port it.
 
-Layer: entrypoint. Wires the command modules (analyze / apply / publish /
-resolve / clear) into one argument parser and dispatches to them.
+Builds the argument parser and hands off to the command modules.
 
-Works on real commits: name a fix with ``--commit <ref>`` (or a range for a fix
-split across several commits), or say nothing and it takes your current branch's
-commits since it forked from the mainline -- so a fix can be assessed, and
-backported to local branches, before it is merged. See README.md for what each
-subcommand does; every flag is documented in its ``--help``.
+Works on real commits: name a fix with `--commit <ref>` (or a range, for a fix split
+across several commits), or say nothing and it uses your branch's commits since it
+left the mainline -- so you can check a fix before it merges. See README.md for what
+each subcommand does, and `--help` for the flags.
 
-Module map: util/ = config + git plumbing + output; engine/analysis = the
-deterministic verdict; engine/ai = the advisory layer; commands/ = one module per
-subcommand.
+Where things live: util/ = constants, git, output. engine/analysis = the verdict.
+engine/ai = the advisory layer. commands/ = one file per subcommand.
 """
 
 import argparse
@@ -28,9 +25,7 @@ from util.config import BackportError
 from util.git import target_repo
 
 
-# --------------------------------------------------------------------------
-# Argument parser
-# --------------------------------------------------------------------------
+# --- Argument parser ------------------------------------------------------
 
 # --commit accepts a single ref or a range; documented once and shared, since
 # analyze / apply / resolve all take the same thing.
@@ -153,9 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
-# --------------------------------------------------------------------------
-# Entrypoint
-# --------------------------------------------------------------------------
+# --- Entrypoint -----------------------------------------------------------
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

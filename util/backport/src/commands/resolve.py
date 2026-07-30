@@ -1,26 +1,20 @@
 """
-The ``resolve`` command: interactive, local backport-conflict resolution.
+The `resolve` command: fix backport conflicts by hand, one branch at a time.
 
-Layer: command. Builds on ``util.git`` + ``engine`` and reuses ``publish``'s
-PR/summary helpers; wired into the CLI by ``main``. Its ``run_resolution`` engine
-is also the on-conflict hand-off ``apply`` calls into.
+Given a fix (`--commit` or `--pr`), find the affected release branches and, for each
+one whose cherry-pick conflicts, check that branch out in your own repo with the
+conflict live so you can edit it in your IDE. Files you clean up get staged for you;
+anything still holding conflict markers is reported. `git rerere` is on, so fixing a
+conflict once reuses it on sibling branches like the FIPS twins. At the end it can
+push and open one PR per resolved branch.
 
-Given a fix (``--commit <sha>`` or ``--pr <number>``), find the AFFECTED release
-branches (AI on unless ``--no-ai``) and, for each one whose cherry-pick
-**conflicts**, check that branch out in the user's own repo with the conflict live,
-so they edit the files in their own IDE and confirm to continue to the next branch.
-Files they've cleaned up are staged automatically; anything still holding conflict
-markers is reported and they can keep going. ``git rerere`` is enabled, so
-resolving a conflict once auto-applies to identical conflicts on sibling branches
-(e.g. the FIPS twins). When the conflicts are resolved, optionally push and open
-one normal (non-draft) PR per resolved branch.
+Your original branch is restored afterwards -- unless you bailed out partway, in
+which case the repo is left on the unfinished branch so you can finish by hand.
 
-The original branch is restored at the end -- unless the user bailed out mid-way,
-in which case the repo is deliberately left on the unfinished branch to finish by
-hand. Clean cherry-picks are **skipped** here on purpose: ``publish`` (and ``apply``)
-already open those, so re-opening them from ``resolve`` would clash on the same
-branch name. ``resolve`` owns exactly the branches ``publish`` reported as conflicts --
-it is the local, human-in-the-loop counterpart that finishes what ``publish`` could not.
+Clean cherry-picks are skipped here on purpose: `publish` and `apply` already open
+those, and re-opening them would clash on the branch name. `resolve` handles exactly
+the branches they reported as conflicts. `run_resolution` is also what `apply` calls
+when a cherry-pick conflicts.
 """
 
 import json
@@ -46,9 +40,7 @@ from engine.ai import refine_with_ai
 from engine.analysis import analyze_branches
 
 
-# --------------------------------------------------------------------------
-# Resolving which fix to backport
-# --------------------------------------------------------------------------
+# --- Resolving which fix to backport --------------------------------------
 
 
 def pr_commit(pr: str, remote: str) -> str:
@@ -88,9 +80,7 @@ def resolve_fix_and_subject(args) -> "tuple[str, str]":
     raise BackportError("resolve needs --commit <sha> or --pr <number>.")
 
 
-# --------------------------------------------------------------------------
-# Interactive per-branch conflict walk
-# --------------------------------------------------------------------------
+# --- Interactive per-branch conflict walk ---------------------------------
 
 
 def cherry_pick_in_progress(wt: str) -> bool:
@@ -153,20 +143,16 @@ def current_ref() -> str:
 def resolve_branch(
     fix_sha: str, branch: str, run_id: str, repo: str
 ) -> "tuple[str, str]":
-    """Cherry-pick *fix_sha* onto ``origin/<branch>``, resolving conflicts
-    interactively.
+    """Cherry-pick *fix_sha* onto ``origin/<branch>``, letting the user fix conflicts.
 
-    The branch is checked out (detached) in the user's own working repo so their
-    open IDE reflects the conflict live; the caller restores the original branch
-    afterwards.
+    The branch is checked out in the user's own repo so their IDE shows the conflict;
+    the caller puts them back on their original branch afterwards.
 
     Returns ``(status, detail)``:
-      - ``("clean", None)``          applied with no conflict; skipped (clean
-                                     backports are `publish`/`apply`'s job).
-      - ``("ready", local_branch)``  conflicts resolved and committed.
-      - ``("blocked", branch)``      files left unresolved; the repo is left
-                                     checked out on the branch to finish by hand.
-      - ``("error", message)``
+      clean   -> no conflict, so `publish`/`apply` own it; skipped here
+      ready   -> conflicts resolved and committed, on *detail*
+      blocked -> left unresolved; the repo stays on the branch to finish by hand
+      error   -> *detail* is the message
     """
     ref = f"origin/{branch}"
     if not ref_exists(ref):
@@ -241,9 +227,7 @@ def resolve_branch(
     return "ready", local_branch
 
 
-# --------------------------------------------------------------------------
-# Opening a PR for a ready branch
-# --------------------------------------------------------------------------
+# --- Opening a PR for a ready branch --------------------------------------
 
 
 def open_pr(
@@ -395,9 +379,7 @@ def read_bot_plan(pr) -> "dict | None":
     return parse_plan(r.stdout)
 
 
-# --------------------------------------------------------------------------
-# Command
-# --------------------------------------------------------------------------
+# --- Command --------------------------------------------------------------
 
 
 def run_resolution(
@@ -410,18 +392,15 @@ def run_resolution(
     preopened=(),
     clean_local=(),
 ) -> int:
-    """Resolve *targets* for *fix_sha*, then open one PR per ready branch.
+    """Resolve *targets*, then open one PR per branch that's ready.
 
-    Shared engine behind both entry points:
-      - `cmd_resolve`: *targets* are the conflicting branches (from the PR plan or
-        a local analysis); *preopened* are branches publish already opened clean PRs for
-        (summary only, not re-opened).
-      - `apply`: *targets* are the branches that just conflicted, and *clean_local*
-        are the branches apply cherry-picked cleanly (their `backport/<b>/<id>`
-        branch exists) -- these get PRs too, so the whole backport lands in PRs.
+    Used by both entry points:
+      cmd_resolve -- *targets* are the conflicting branches; *preopened* are ones
+                     `publish` already opened PRs for (listed in the summary only).
+      apply       -- *targets* are the branches that just conflicted, and
+                     *clean_local* the ones it picked cleanly. Both get PRs.
 
-    Branches to PR = freshly resolved conflicts + *clean_local*. *source_pr*, when
-    set, gets the updated summary comment.
+    *source_pr*, if given, gets the updated summary comment.
     """
     if not sys.stdin.isatty():
         print(
