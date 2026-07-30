@@ -17,7 +17,6 @@ credentials every entry point returns None and the deterministic engine runs alo
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, Sequence, Tuple
 
@@ -42,7 +41,7 @@ from util.config import (
     NOT_AFFECTED,
     UNSURE,
 )
-from util.git import get_commit_diff, get_file_on_branch, git, show_file
+from util.git import get_commit_diff, get_file_on_branch, git, git_in_repo, show_file
 
 # ---------------------------------------------------------------------------
 # Bedrock client
@@ -115,8 +114,8 @@ def key_symbols(commit, file):
     """Identifiers the fix touches in *file*: enclosing-function names from hunk
     headers plus notable identifiers on changed lines, minus common C tokens.
     These are the things whose presence on a branch signals real applicability."""
-    diff = subprocess.run(
-        ["git", "diff", "-U0", f"{commit}^", commit, "--", file],
+    diff = git_in_repo(
+        ["diff", "-U0", f"{commit}^", commit, "--", file],
         capture_output=True,
         text=True,
         errors="replace",

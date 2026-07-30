@@ -16,7 +16,6 @@ Roughly the order a run uses these:
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import date, datetime
 from typing import Dict, List, Sequence, Tuple
@@ -38,6 +37,7 @@ from util.git import (
     branch_paths_by_basename,
     changed_files_with_status,
     get_file_on_branch,
+    git_in_repo,
     show_file,
 )
 
@@ -103,8 +103,8 @@ def deleted_lines(commit, file):
     cache_key = (commit, file)
     if cache_key in DELETED_LINES_CACHE:
         return DELETED_LINES_CACHE[cache_key]
-    diff = subprocess.run(
-        ["git", "diff", f"{commit}^", commit, "--", file],
+    diff = git_in_repo(
+        ["diff", f"{commit}^", commit, "--", file],
         capture_output=True,
         text=True,
     )
@@ -151,9 +151,7 @@ def _check_buggy_lines(commit, changed_files, ref):
         if not removed:
             continue
         saw_removed = True
-        show = subprocess.run(
-            ["git", "show", f"{ref}:{file}"], capture_output=True, text=True
-        )
+        show = git_in_repo(["show", f"{ref}:{file}"], capture_output=True, text=True)
         if show.returncode != 0:
             continue
         content = normalize_spaces(show.stdout)
@@ -170,7 +168,7 @@ def _check_buggy_lines(commit, changed_files, ref):
 
 def remote_branch_names():
     """Branch names from `git branch -r`, minus the `origin/` prefix."""
-    result = subprocess.run(["git", "branch", "-r"], capture_output=True, text=True)
+    result = git_in_repo(["branch", "-r"], capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"git branch -r failed: {result.stderr}")
     names = []
@@ -198,8 +196,8 @@ def load_versions_manifest():
         except OSError:
             text = None
     if text is None:
-        show = subprocess.run(
-            ["git", "show", f"{MAINLINE_REF}:{VERSIONS_MANIFEST_PATH}"],
+        show = git_in_repo(
+            ["show", f"{MAINLINE_REF}:{VERSIONS_MANIFEST_PATH}"],
             capture_output=True,
             text=True,
         )
@@ -301,8 +299,8 @@ def get_supported_branches(today=None):
 
 def get_changed_files(commit):
     """Files changed by the fix commit (vs. its parent)."""
-    result = subprocess.run(
-        ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", commit],
+    result = git_in_repo(
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", commit],
         capture_output=True,
         text=True,
     )
@@ -338,8 +336,8 @@ def find_bug_commits(commit, files):
         # flag branches that don't even have the module being fixed.
         if is_test_or_generated_file(file):
             continue
-        result = subprocess.run(
-            ["git", "diff", "-U0", f"{commit}^", commit, "--", file],
+        result = git_in_repo(
+            ["diff", "-U0", f"{commit}^", commit, "--", file],
             capture_output=True,
             text=True,
         )
@@ -393,9 +391,8 @@ def blame_lines(file, line_start, line_end, ref):
 
     Uses `git log -L --reverse`, falling back to `git blame`.
     """
-    log_result = subprocess.run(
+    log_result = git_in_repo(
         [
-            "git",
             "log",
             f"-L{line_start},{line_end}:{file}",
             "--format=%H",
@@ -415,9 +412,8 @@ def blame_lines(file, line_start, line_end, ref):
 
     # Fallback: use blame (with whitespace/move-aware flags). Less accurate for
     # finding the original bug commit, but works on edge cases log -L can't.
-    blame_result = subprocess.run(
+    blame_result = git_in_repo(
         [
-            "git",
             "blame",
             "-w",
             "-M",
@@ -454,8 +450,8 @@ def any_bug_commit_present(bug_commits, ref):
     """True if any of *bug_commits* is on *ref* -- same SHA, or a cherry-pick of it
     with matching contents."""
     for sha in bug_commits:
-        r = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", sha, ref],
+        r = git_in_repo(
+            ["merge-base", "--is-ancestor", sha, ref],
             capture_output=True,
             text=True,
         )
@@ -484,8 +480,8 @@ def bug_commits_present(bug_commits, branch):
     ref = f"origin/{branch}"
     present = set()
     for sha in bug_commits:
-        result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", sha, ref], capture_output=True
+        result = git_in_repo(
+            ["merge-base", "--is-ancestor", sha, ref], capture_output=True
         )
         if result.returncode == 0:
             present.add(sha)
@@ -509,16 +505,16 @@ def branch_mentions_cherry_pick(commit, ref):
     Catches reshaped or bundled backports whose contents no longer match. The exact
     SHA is named, so this never gives a false positive.
     """
-    full = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}"],
+    full = git_in_repo(
+        ["rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}"],
         capture_output=True,
         text=True,
     )
     if full.returncode != 0 or not full.stdout.strip():
         return False
     full_sha = full.stdout.strip()
-    log = subprocess.run(
-        ["git", "log", "--format=%B%x00", f"{MAINLINE_REF}..{ref}"],
+    log = git_in_repo(
+        ["log", "--format=%B%x00", f"{MAINLINE_REF}..{ref}"],
         capture_output=True,
         text=True,
         errors="replace",
@@ -535,9 +531,8 @@ def branch_fingerprints(ref):
     Read as bytes, since diffs can contain binary data.
     """
     rev_range = f"{MAINLINE_REF}..{ref}"
-    log = subprocess.run(
+    log = git_in_repo(
         [
-            "git",
             "log",
             "-p",
             "--no-merges",
@@ -549,8 +544,8 @@ def branch_fingerprints(ref):
     )
     if log.returncode != 0:
         return set()
-    pid_proc = subprocess.run(
-        ["git", "patch-id", "--stable"],
+    pid_proc = git_in_repo(
+        ["patch-id", "--stable"],
         input=log.stdout,
         capture_output=True,
     )
@@ -571,9 +566,7 @@ def is_already_patched(commit, branch):
 
     # The branch forked after the fix landed, so it has it through shared history.
     # The scan below only looks at the branch's own commits and would miss this.
-    anc = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", commit, ref], capture_output=True
-    )
+    anc = git_in_repo(["merge-base", "--is-ancestor", commit, ref], capture_output=True)
     if anc.returncode == 0:
         return True
 
@@ -595,14 +588,14 @@ def change_fingerprint(commit):
     This is `git patch-id`, with generated files excluded (see
     util.config.fingerprint_pathspec).
     """
-    show = subprocess.run(
-        ["git", "show", commit, *fingerprint_pathspec()],
+    show = git_in_repo(
+        ["show", commit, *fingerprint_pathspec()],
         capture_output=True,  # bytes: the commit may touch binary files
     )
     if show.returncode != 0:
         return None
-    pid = subprocess.run(
-        ["git", "patch-id", "--stable"],
+    pid = git_in_repo(
+        ["patch-id", "--stable"],
         input=show.stdout,
         capture_output=True,
     )

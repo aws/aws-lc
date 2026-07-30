@@ -409,6 +409,16 @@ def target_repo(args) -> str:
     tool works on "the repo I'm standing in" unless told otherwise. Returns the
     top-level path; raises BackportError if it isn't a git repo.
     """
+    """Work out which checkout to use and point REPO_PATH at it.
+
+    Order: --repo, then $BACKPORT_REPO_PATH, then the current directory -- so running
+    `./util/backport/backport` from the top of a checkout just works. Returns the
+    top-level path; raises BackportError if it isn't a git repo.
+
+    Deliberately does NOT chdir. Every git call goes through run_in_repo/git_in_repo
+    or passes an explicit cwd, so the tool never depends on -- or changes -- the
+    process working directory.
+    """
     repo = (
         getattr(args, "repo", None)
         or os.environ.get("BACKPORT_REPO_PATH")
@@ -421,14 +431,11 @@ def target_repo(args) -> str:
     )
     if top.returncode != 0:
         raise BackportError(
-            f"'{repo}' is not inside a git repository "
-            "(use --repo <path> or set BACKPORT_REPO_PATH)."
+            f"'{repo}' is not inside a git repository.\n"
+            "  Run this from the top of an AWS-LC checkout, or pass --repo <path>."
         )
     repo_top = top.stdout.strip()
     set_repo_path(repo_top)
-    # Our git calls default to the current directory, so move there too. Worktrees
-    # always pass an explicit cwd, so they're unaffected.
-    os.chdir(repo_top)
     return repo_top
 
 
@@ -437,8 +444,8 @@ def target_repo(args) -> str:
 
 def get_commit_diff(commit):
     """Return the full diff for *commit* as a string (capped at MAX_DIFF_BYTES)."""
-    result = subprocess.run(
-        ["git", "show", "--stat", "-p", commit],
+    result = git_in_repo(
+        ["show", "--stat", "-p", commit],
         capture_output=True,
         text=True,
         errors="replace",
@@ -450,8 +457,8 @@ def get_commit_diff(commit):
 
 def show_file(ref, path):
     """Raw contents of *path* at *ref*, or None if it doesn't exist there."""
-    result = subprocess.run(
-        ["git", "show", f"{ref}:{path}"],
+    result = git_in_repo(
+        ["show", f"{ref}:{path}"],
         capture_output=True,
         text=True,
         errors="replace",
@@ -466,9 +473,8 @@ def historical_paths(commit, file_path, limit=6):
     names, following renames) as of *commit* -- so we can find the file on a
     branch that forked before a rename."""
     paths = [file_path]
-    result = subprocess.run(
+    result = git_in_repo(
         [
-            "git",
             "log",
             "--follow",
             "--name-status",

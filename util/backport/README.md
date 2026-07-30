@@ -8,15 +8,16 @@ conflicts. Nothing is ever auto-merged, and it never targets upstream `aws/aws-l
 
 ## Prerequisites
 
-Run from an AWS-LC checkout with the release branches fetched (`git fetch origin`).
-Python 3.9+. The optional AI layer needs `anthropic` + `boto3`
-(`pip install -r requirements.txt`) and AWS credentials; without them the
-deterministic engine runs alone.
+Python 3.9+. Run the commands **from the top of an AWS-LC checkout** with the release
+branches fetched (`git fetch origin`) -- the tool operates on the repo you're
+standing in, so there is nothing to configure. The optional AI layer needs
+`anthropic` + `boto3` (`pip install -r requirements.txt`) and AWS credentials;
+without them the deterministic engine runs alone.
 
 ## Commands
 
 ```bash
-cd <aws-lc>
+cd <aws-lc>            # all commands are run from the repo top
 
 # 1. Which branches need this fix?
 #    Omit --commit to use your branch's commits since origin/main.
@@ -36,9 +37,13 @@ util/backport/backport clear
 ```
 
 Useful flags: `--no-ai` (deterministic only), `--branches <a b c>` (limit the set),
-`--json` (machine-readable), `--repo <path>` (target another checkout),
-`--commit A..B` (a fix spread across several commits, analyzed as its net change),
-`--dry-run` (`publish` only).
+`--json` (machine-readable), `--repo <path>` (target a different checkout, e.g. to
+run from a separate clone), `--commit A..B` (a fix spread across several commits,
+analyzed as its net change), `--dry-run` (`publish` only).
+
+The tool never changes your working directory: every git call is scoped to the
+resolved checkout, so it behaves the same whether you run it from the repo top, a
+subdirectory, or elsewhere with `--repo`.
 
 `apply` and `resolve` check each release branch out in your own working tree (so
 your IDE shows the conflict live) and put you back on your original branch when
@@ -67,8 +72,7 @@ overrides: `BACKPORT_REPO_PATH`, `BEDROCK_MODEL_ID`, `AWS_REGION`,
 ## Tests
 
 ```bash
-cd util/backport
-python3 -m unittest discover -s testing -p 'test_*.py'   # 22 unit tests; no repo/creds needed
+python3 -m unittest discover -s util/backport/testing -p 'test_*.py'   # 22 tests; no repo/creds needed
 ```
 
 `testing/replay_real_cve.py` replays real CVE fixes in a throwaway sandbox (the real
