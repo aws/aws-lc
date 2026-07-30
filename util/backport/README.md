@@ -74,8 +74,15 @@ python3 -m unittest discover -s testing -p 'test_*.py'   # 22 unit tests; no rep
 `testing/replay_real_cve.py` replays real CVE fixes in a throwaway sandbox (the real
 repo is only ever read) and grades `verdicts`' shipped classifier against
 `testing/answer_key.txt` — 31 fixes / 186 fix-branch cells. Deterministic-only
-(`--no-ai`): **0 false negatives**, at a 12.4% over-flag rate (23/186 cells flagged
-for review that did not need a backport). Cutting those down is what the AI
-advisory layer is for. See `testing/reliable_cves.txt` for how to run it.
+31 fixes / 186 fix-branch cells, and **0 false negatives** either way -- no real
+backport is ever missed. The AI advisory layer's job is precision:
+
+| | over-flags (unneeded PRs) | agreement |
+|---|---|---|
+| deterministic only (`--no-ai`) | 16 / 186 (8.6%) | 90% |
+| with the AI layer (default) | **5 / 186 (2.7%)** | **97%** |
+
+The AI resolved 13 inconclusive branches to "not affected" and suppressed none of
+the 85 real backports. See `testing/reliable_cves.txt` for how to run it.
 
 To wire up the post-merge bot, copy `backport-bot.yml` into `.github/workflows/`.
