@@ -21,8 +21,8 @@ from pathlib import Path
 # --- 1. Verdict states and errors -----------------------------------------
 
 # Every branch ends up in exactly one of these. NOT_AFFECTED is only used when the
-# code is provably absent; anything unclear becomes UNSURE and goes to the AI (or
-# is flagged AFFECTED under --no-ai). A needed backport is never dropped silently.
+# code is provably absent; anything unclear becomes UNSURE and goes to the AI. If
+# the AI can't answer, it becomes AFFECTED -- a needed backport is never dropped.
 
 AFFECTED = "affected"
 NOT_AFFECTED = "not_affected"

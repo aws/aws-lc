@@ -36,10 +36,14 @@ util/backport/backport publish --commit <merged-sha> --pr <number>
 util/backport/backport clear
 ```
 
-Useful flags: `--no-ai` (deterministic only), `--branches <a b c>` (limit the set),
-`--json` (machine-readable), `--repo <path>` (target a different checkout, e.g. to
-run from a separate clone), `--commit A..B` (a fix spread across several commits,
-analyzed as its net change), `--dry-run` (`publish` only).
+Useful flags: `--branches <a b c>` (limit the set), `--json` (machine-readable),
+`--repo <path>` (target a different checkout, e.g. to run from a separate clone),
+`--commit A..B` (a fix spread across several commits, analyzed as its net change),
+`--dry-run` (`publish` only).
+
+The AI layer always runs -- it is what keeps the over-flag rate low (see Tests).
+If it can't be reached the run says so loudly and every branch it could not judge
+is flagged AFFECTED for review, so nothing is missed; you just get more flags.
 
 The tool never changes your working directory: every git call is scoped to the
 resolved checkout, so it behaves the same whether you run it from the repo top, a
@@ -83,8 +87,8 @@ backport is ever missed. The AI advisory layer's job is precision:
 
 | | over-flags (unneeded PRs) | agreement |
 |---|---|---|
-| deterministic only (`--no-ai`) | 16 / 186 (8.6%) | 90% |
-| with the AI layer (default) | **5 / 186 (2.7%)** | **97%** |
+| deterministic engine alone | 16 / 186 (8.6%) | 90% |
+| with the AI layer (what ships) | **5 / 186 (2.7%)** | **97%** |
 
 The AI resolved 13 inconclusive branches to "not affected" and suppressed none of
 the 85 real backports. See `testing/reliable_cves.txt` for how to run it.

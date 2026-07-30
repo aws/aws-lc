@@ -59,12 +59,6 @@ def add_analyze(sub) -> None:
         help="skip the interactive test-file confirmation (for scripted/CI runs)",
     )
     p.add_argument("--branches", nargs="+", help="limit to these branches")
-    p.add_argument(
-        "--no-ai",
-        action="store_true",
-        help="deterministic only; do not consult the AI on inconclusive branches "
-        "(they are flagged AFFECTED for review instead)",
-    )
     p.add_argument("--json", action="store_true", help="emit JSON")
     add_common(p)
     p.set_defaults(func=cmd_analyze)
@@ -95,11 +89,6 @@ def add_publish(sub) -> None:
         help="fork remote to push branches / open PRs on (default origin)",
     )
     p.add_argument(
-        "--no-ai",
-        action="store_true",
-        help="deterministic only; do not consult the AI (default: AI on)",
-    )
-    p.add_argument(
         "--dry-run",
         action="store_true",
         help="analyze and cherry-pick locally but do not push or open PRs",
@@ -121,7 +110,7 @@ def add_resolve(sub) -> None:
         help="fork remote to push branches / open PRs on (default origin)",
     )
     add_common(p)
-    p.set_defaults(func=cmd_resolve, json=False, no_ai=True)
+    p.set_defaults(func=cmd_resolve, json=False)
 
 
 def add_clear(sub) -> None:

@@ -448,35 +448,30 @@ def decide_unsure_branches(
     files: Sequence[str],
     bug_commits: Sequence[str],
     buckets: Dict[str, str],
-    use_ai: bool = True,
-) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]":
+) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str], int, int]":
     """Settle every UNSURE branch into AFFECTED or NOT_AFFECTED.
 
     A branch is UNSURE when the code is there but we can't confirm a bug commit
     reached it. Rather than show that to the user, ask the AI.
 
-    If the AI is unsure, gives no answer, or isn't available, the branch becomes
+    If the AI is unsure, gives no answer, or can't be reached, the branch becomes
     AFFECTED -- so this can only over-flag, never hide a needed backport.
 
-    Returns ``(buckets, decided_by, summaries)``: decided_by is a one-line reason
-    per branch, summaries holds the AI's reasoning where it gave one.
+    Returns ``(buckets, decided_by, summaries, asked, failed)``. decided_by is a
+    one-line reason per branch; *asked*/*failed* let the caller warn if the AI was
+    unreachable for all of them.
     """
     decided_by: Dict[str, str] = {b: "deterministic" for b in buckets}
     summaries: Dict[str, str] = {}
     unsure = [b for b, s in buckets.items() if s == UNSURE]
+    asked = failed = 0
     for branch in unsure:
-        adv = (
-            ai_impact_analysis(fix_sha, branch, files, set(bug_commits))
-            if use_ai
-            else None
-        )
+        asked += 1
+        adv = ai_impact_analysis(fix_sha, branch, files, set(bug_commits))
         if adv is None:
+            failed += 1
             buckets[branch] = AFFECTED
-            decided_by[branch] = (
-                "inconclusive, --no-ai -> flagged for review"
-                if not use_ai
-                else "inconclusive, AI unavailable -> flagged for review"
-            )
+            decided_by[branch] = "inconclusive, AI unavailable -> flagged for review"
         elif adv.get("likely_affected") is True:
             buckets[branch] = AFFECTED
             decided_by[branch] = f"AI: likely affected ({adv.get('confidence')})"
@@ -491,7 +486,7 @@ def decide_unsure_branches(
                 f"AI: uncertain ({adv.get('confidence')}) -> flagged for review"
             )
             summaries[branch] = adv.get("reasoning", "").strip()
-    return buckets, decided_by, summaries
+    return buckets, decided_by, summaries, asked, failed
 
 
 # --- Resolution pass 2: review suspicious AFFECTED branches (advisory only)
@@ -540,67 +535,95 @@ def add_over_flag_notes(
     suspects: "Dict[str, Tuple[int, int]]",
     decided_by: Dict[str, str],
     summaries: Dict[str, str],
-    use_ai: bool = True,
-) -> None:
+) -> "Tuple[int, int]":
     """Add a "might be a false positive" note to the branches likely_over_flagged()
-    picked out, asking the AI when *use_ai*.
+    picked out, asking the AI about each.
 
     Never changes a verdict. The branch stays AFFECTED even if the AI disagrees --
     we only annotate it, so this can reduce noise but can never hide a real backport.
+
+    Returns ``(asked, failed)`` so the caller can warn if the AI was unreachable.
     """
     intro = set(bug_commits)
+    asked = failed = 0
     for branch, (present, total) in suspects.items():
         note = (
             f"matched {present}/{total} commits that wrote these lines; newest absent "
             "-> possible false positive, review"
         )
-        if use_ai:
-            adv = ai_impact_analysis(fix_sha, branch, files, intro)
-            if adv is not None:
-                conf = adv.get("confidence")
-                if adv.get("likely_affected") is False:
-                    note = (
-                        "AFFECTED (deterministic) but AI suspects FALSE POSITIVE "
-                        f"({conf}) -> confirm before skipping"
-                    )
-                elif adv.get("likely_affected") is True:
-                    note = f"affected; AI confirms ({conf})"
-                else:
-                    note = f"affected; AI uncertain ({conf}) -> review"
-                summaries[branch] = adv.get("reasoning", "").strip()
+        asked += 1
+        adv = ai_impact_analysis(fix_sha, branch, files, intro)
+        if adv is None:
+            failed += 1
+        else:
+            conf = adv.get("confidence")
+            if adv.get("likely_affected") is False:
+                note = (
+                    "AFFECTED (deterministic) but AI suspects FALSE POSITIVE "
+                    f"({conf}) -> confirm before skipping"
+                )
+            elif adv.get("likely_affected") is True:
+                note = f"affected; AI confirms ({conf})"
+            else:
+                note = f"affected; AI uncertain ({conf}) -> review"
+            summaries[branch] = adv.get("reasoning", "").strip()
         decided_by[branch] = note
+    return asked, failed
+
+
+def _warn_ai_unreachable(asked: int, failed: int) -> None:
+    """Say so loudly if every AI call failed.
+
+    The AI layer is not optional, and a failed call just leaves the branch flagged
+    for review -- which looks like a normal (if noisy) result. Without this the run
+    would quietly be deterministic-only, and the user would never know the verdicts
+    are less precise than the tool is capable of.
+    """
+    if not asked or failed < asked:
+        return
+    print(
+        f"\nwarning: the AI layer was unreachable for all {asked} branch(es) that "
+        "needed it.\n"
+        "         Those branches are flagged AFFECTED for review, so nothing is "
+        "missed, but\n"
+        "         expect more flags than usual. Check your AWS credentials and "
+        "region\n"
+        "         (e.g. `mwinit -o`; export AWS_PROFILE=..., AWS_REGION=...).",
+        file=sys.stderr,
+    )
 
 
 def refine_with_ai(args, fix_sha, files, bug_commits, buckets):
     """Settle the UNSURE branches, then note any AFFECTED ones that look wrong.
 
-    Skips the AI under --no-ai. Returns ``(buckets, decided_by, summaries)``.
+    Returns ``(buckets, decided_by, summaries)``.
     """
     unsure = [b for b, s in buckets.items() if s == UNSURE]
-    use_ai = not args.no_ai
-    if unsure and use_ai and not args.json:
+    if unsure and not args.json:
         print(
             f"{len(unsure)} branch(es) inconclusive by git history; "
             f"consulting AI to decide...\n",
             file=sys.stderr,
         )
-    buckets, decided_by, summaries = decide_unsure_branches(
-        fix_sha, files, bug_commits, buckets, use_ai=use_ai
+    buckets, decided_by, summaries, asked, failed = decide_unsure_branches(
+        fix_sha, files, bug_commits, buckets
     )
 
-    # Second pass: AFFECTED branches matched only by a partial bug commit lineage
-    # are likely over-flags (old shared code present, newer vulnerable commit
-    # absent). Flag them for review -- consulting AI when enabled -- but never
-    # change the verdict, so this can only reduce noise, never cause a miss.
+    # Second pass: AFFECTED branches matched only by part of the lineage are likely
+    # over-flags (old shared code present, the newer buggy commit absent). Note them
+    # for review, but never change the verdict -- this can only reduce noise.
     suspects = likely_over_flagged(bug_commits, buckets)
     if suspects:
-        if use_ai and not args.json:
+        if not args.json:
             print(
                 f"{len(suspects)} AFFECTED branch(es) match only part of the fix's "
                 "lineage (possible over-flag); consulting AI for a review note...\n",
                 file=sys.stderr,
             )
-        add_over_flag_notes(
-            fix_sha, files, bug_commits, suspects, decided_by, summaries, use_ai=use_ai
+        a, f = add_over_flag_notes(
+            fix_sha, files, bug_commits, suspects, decided_by, summaries
         )
+        asked += a
+        failed += f
+    _warn_ai_unreachable(asked, failed)
     return buckets, decided_by, summaries
