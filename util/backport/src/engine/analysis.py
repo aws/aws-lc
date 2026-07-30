@@ -18,7 +18,7 @@ import os
 import re
 import sys
 from datetime import date, datetime
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from util.config import (
     AFFECTED,
@@ -45,7 +45,7 @@ from util.git import (
 # --- 1. Line checks -------------------------------------------
 
 
-def normalize_spaces(s):
+def normalize_spaces(s: str) -> str:
     """Collapse runs of whitespace so a reformatted line still matches."""
     return re.sub(r"\s+", " ", s).strip()
 
@@ -53,13 +53,13 @@ def normalize_spaces(s):
 _C_FAMILY_EXT = (".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".hh", ".hxx")
 
 
-def is_c_file(file):
+def is_c_file(file: Optional[str]) -> bool:
     """True for C/C++ source/headers, where '#' is a preprocessor directive
     (real code), not a comment."""
     return file is not None and file.lower().endswith(_C_FAMILY_EXT)
 
 
-def is_comment_or_blank(s, file=None):
+def is_comment_or_blank(s: str, file: Optional[str] = None) -> bool:
     """True for lines with no vulnerable-code signal: comments, blanks, pure
     punctuation/braces. '#' is a comment only in non-C files; in C/C++ it is a
     preprocessor directive (real code) and is kept."""
@@ -75,7 +75,7 @@ def is_comment_or_blank(s, file=None):
     return False
 
 
-def is_too_common_to_match(s):
+def is_too_common_to_match(s: str) -> bool:
     """True for real-but-undistinctive lines (bare control-flow, #include, a lone
     string literal) that match too many files to be a reliable signal. Skipping
     them only weakens a match, so it is false-negative safe."""
@@ -95,7 +95,7 @@ def is_too_common_to_match(s):
 # --- 2. Are the lines the fix deleted still on a branch? ------------------
 
 
-def deleted_lines(commit, file):
+def deleted_lines(commit: str, file: str) -> List[str]:
     """The distinctive lines *commit* deletes from *file*.
 
     Skips comments, blanks, punctuation, and lines too common to identify anything.
@@ -125,7 +125,9 @@ def deleted_lines(commit, file):
     return removed
 
 
-def buggy_lines_still_present(commit, changed_files, ref):
+def buggy_lines_still_present(
+    commit: str, changed_files: Sequence[str], ref: str
+) -> Optional[bool]:
     """Are the lines the fix deleted still on *ref*?
 
     True  -> yes, so the branch still has the bug
@@ -140,7 +142,10 @@ def buggy_lines_still_present(commit, changed_files, ref):
     return result
 
 
-def _check_buggy_lines(commit, changed_files, ref):
+def _check_buggy_lines(
+    commit: str, changed_files: Sequence[str], ref: str
+) -> Optional[bool]:
+    """The uncached body of buggy_lines_still_present()."""
     saw_removed = False
     for file in changed_files:
         # A match in a test or generated file isn't the shipped code, and counting
@@ -166,7 +171,7 @@ def _check_buggy_lines(commit, changed_files, ref):
 # --- 3. Which release branches exist ---------------------------------------
 
 
-def remote_branch_names():
+def remote_branch_names() -> List[str]:
     """Branch names from `git branch -r`, minus the `origin/` prefix."""
     result = git_in_repo(["branch", "-r"], capture_output=True, text=True)
     if result.returncode != 0:
@@ -180,7 +185,7 @@ def remote_branch_names():
     return names
 
 
-def load_versions_manifest():
+def load_versions_manifest() -> Optional[dict]:
     """Load the FIPS branch manifest, or None if it isn't there.
 
     Checks the working tree first, then the mainline copy, so it still works from a
@@ -216,7 +221,7 @@ def load_versions_manifest():
         return None
 
 
-def parse_support_end_date(value):
+def parse_support_end_date(value: Optional[str]) -> Optional[date]:
     """Parse `YYYY-MM-DD` or `YYYY-MM`. None if missing or unparseable, which
     callers read as "no known end date", i.e. still supported."""
     for fmt in ("%Y-%m-%d", "%Y-%m"):
@@ -227,7 +232,7 @@ def parse_support_end_date(value):
     return None
 
 
-def branch_support_status(today=None):
+def branch_support_status(today: Optional[date] = None) -> Optional[List[dict]]:
     """Per-branch support records derived from the manifest.
 
     Each record is the manifest entry plus `end_of_support_date`, `exists`
@@ -258,13 +263,13 @@ def branch_support_status(today=None):
     return records
 
 
-def branch_date_key(name):
+def branch_date_key(name: str) -> str:
     """The YYYY-MM-DD embedded in *name*, or '' if none. Used to order branches."""
     m = re.search(r"\d{4}-\d{2}-\d{2}", name)
     return m.group(0) if m else ""
 
 
-def sort_branches(names):
+def sort_branches(names: Iterable[str]) -> List[str]:
     """Order branches newest -> oldest by the date in their name (undated last).
     The single source of truth for branch ordering, so every listing matches."""
     return sorted(
@@ -274,7 +279,7 @@ def sort_branches(names):
     )
 
 
-def get_supported_branches(today=None):
+def get_supported_branches(today: Optional[date] = None) -> List[str]:
     """Branch names (without `origin/`) to consider for backport, newest -> oldest.
     From the manifest when present (supported = exists as a ref, actively
     maintained, not past end-of-support), else branch-name prefix matching."""
@@ -297,7 +302,7 @@ def get_supported_branches(today=None):
     return sort_branches(supported)
 
 
-def get_changed_files(commit):
+def get_changed_files(commit: str) -> List[str]:
     """Files changed by the fix commit (vs. its parent)."""
     result = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-only", "-r", commit],
@@ -321,7 +326,7 @@ def get_changed_files(commit):
 # --- 4. Which commit(s) wrote the lines the fix changed -------------------
 
 
-def find_bug_commits(commit, files):
+def find_bug_commits(commit: str, files: Sequence[str]) -> Set[str]:
     """The commit(s) that wrote the lines this fix changes. Returns a set of SHAs.
 
     For each changed line range, `git log -L --reverse` gives the oldest commit to
@@ -386,7 +391,7 @@ def find_bug_commits(commit, files):
     return introducing
 
 
-def blame_lines(file, line_start, line_end, ref):
+def blame_lines(file: str, line_start: int, line_end: int, ref: str) -> Optional[str]:
     """SHA of the oldest commit to touch those lines of *file* at *ref*.
 
     Uses `git log -L --reverse`, falling back to `git blame`.
@@ -446,7 +451,7 @@ def blame_lines(file, line_start, line_end, ref):
 # --- 5. Is a commit in a branch's history? ------------------------
 
 
-def any_bug_commit_present(bug_commits, ref):
+def any_bug_commit_present(bug_commits: Iterable[str], ref: str) -> bool:
     """True if any of *bug_commits* is on *ref* -- same SHA, or a cherry-pick of it
     with matching contents."""
     for sha in bug_commits:
@@ -470,7 +475,7 @@ def any_bug_commit_present(bug_commits, ref):
     return False
 
 
-def bug_commits_present(bug_commits, branch):
+def bug_commits_present(bug_commits: Iterable[str], branch: str) -> Set[str]:
     """Which of *bug_commits* are on *branch* (same SHA or matching contents).
 
     any_bug_commit_present() stops at the first hit; this returns the whole set, so
@@ -498,7 +503,7 @@ def bug_commits_present(bug_commits, branch):
 # --- 5b. Is the fix already backported? ----------------------------------------
 
 
-def branch_mentions_cherry_pick(commit, ref):
+def branch_mentions_cherry_pick(commit: str, ref: str) -> bool:
     """True if a commit on *ref* says `cherry picked from commit <sha>` for
     *commit*.
 
@@ -524,7 +529,7 @@ def branch_mentions_cherry_pick(commit, ref):
     return f"cherry picked from commit {full_sha}" in log.stdout
 
 
-def branch_fingerprints(ref):
+def branch_fingerprints(ref: str) -> Set[str]:
     """Content fingerprints of the commits *ref* has that the mainline doesn't --
     where backports live.
 
@@ -555,7 +560,7 @@ def branch_fingerprints(ref):
     return {line.split()[0] for line in out.splitlines() if line.split()}
 
 
-def is_already_patched(commit, branch):
+def is_already_patched(commit: str, branch: str) -> bool:
     """Is *commit*'s change already on *branch*?
 
     Three ways to be sure: the commit is in the branch's history, a commit there
@@ -582,7 +587,7 @@ def is_already_patched(commit, branch):
     return target_pid in branch_pids
 
 
-def change_fingerprint(commit):
+def change_fingerprint(commit: str) -> Optional[str]:
     """Fingerprint of one commit's contents, or None if git failed.
 
     This is `git patch-id`, with generated files excluded (see
@@ -607,7 +612,9 @@ def change_fingerprint(commit):
 # --- 6. The per-branch verdict --------------------------------------------
 
 
-def same_named_file_carries_fix(fix_sha, src_files, ref) -> bool:
+def same_named_file_carries_fix(
+    fix_sha: str, src_files: Sequence[str], ref: str
+) -> bool:
     """Last resort: is the fix's code in a same-named file somewhere else on *ref*?
 
     get_file_on_branch already follows renames, so we only get here when that found

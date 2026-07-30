@@ -46,6 +46,7 @@ def add_common(p: argparse.ArgumentParser) -> None:
 
 
 def add_analyze(sub) -> None:
+    """analyze: give every supported branch a verdict."""
     p = sub.add_parser(
         "analyze", help="give an affected / not affected verdict for every branch"
     )
@@ -65,6 +66,7 @@ def add_analyze(sub) -> None:
 
 
 def add_apply(sub) -> None:
+    """apply: cherry-pick onto local branches for review."""
     p = sub.add_parser("apply", help="cherry-pick the fix onto local branches")
     p.add_argument("--branches", nargs="+", help="branches to apply to")
     p.add_argument(
@@ -77,6 +79,7 @@ def add_apply(sub) -> None:
 
 
 def add_publish(sub) -> None:
+    """publish: open a backport PR per affected branch (what CI runs)."""
     p = sub.add_parser(
         "publish",
         help="open backport PRs on the fork for a merged commit (what CI runs)",
@@ -98,6 +101,7 @@ def add_publish(sub) -> None:
 
 
 def add_resolve(sub) -> None:
+    """resolve: fix conflicting backports by hand, one branch at a time."""
     p = sub.add_parser(
         "resolve",
         help="interactively resolve backport conflicts locally, one PR per branch",
@@ -114,6 +118,7 @@ def add_resolve(sub) -> None:
 
 
 def add_clear(sub) -> None:
+    """clear: delete the saved run."""
     p = sub.add_parser(
         "clear",
         help="remove the saved run state (.backport-runs/) from the tool folder",
@@ -141,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Parse arguments, pick the checkout, and run the subcommand."""
     args = build_parser().parse_args(argv)
     try:
         target_repo(args)

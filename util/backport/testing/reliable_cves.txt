@@ -5,13 +5,14 @@
 # --answers); the per-case verification evidence and the record of cases we
 # dropped as unreliable live with the project docs, not in this file.
 #
-# Run (from util/backport):
-#   python3 testing/replay_real_cve.py --file testing/reliable_cves.txt \
-#       --answers testing/answer_key.txt [--no-ai]
+# Run (from the top of an AWS-LC checkout):
+#   python3 util/backport/testing/replay_real_cve.py \
+#       --file util/backport/testing/reliable_cves.txt \
+#       --answers util/backport/testing/answer_key.txt [--no-ai] --repo .
 #
-# Expected: 0 false positives and 0 deterministic over-flags. Under --no-ai there
-# are 3 known false negatives -- reshaped backports (e.g. #1294) whose removed
-# lines no longer match, which the AI tie-breaker recovers; with AI on, 0.
+# Expected, over 186 (fix x branch) cells: 0 false negatives either way -- no real
+# backport is missed. Unneeded flags: 16 with --no-ai (deterministic only), 5 with
+# the AI layer on, which is how the tool actually runs.
 
 9545d9de6059   DH_check() excessive time with oversized modulus (CVE-2023-3446)
 1bb574f3f2e7   Excessive time checking DH q parameter value (#1121)

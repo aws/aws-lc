@@ -17,6 +17,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Dict, List, Sequence
 
 # --- 1. Verdict states and errors -----------------------------------------
 
@@ -124,7 +125,7 @@ MAINLINE_REF = os.environ.get("BACKPORT_MAINLINE_REF", "origin/main")
 TEST_SUFFIXES = ("_test.cc", "_test.cpp", "_test.c", "_test.cxx")
 
 
-def fingerprint_pathspec():
+def fingerprint_pathspec() -> List[str]:
     """Git pathspec that skips generated files, so a fingerprint covers only
     human-written code. Empty list if nothing is excluded."""
     if not GENERATED_PATHSPECS:
@@ -132,7 +133,7 @@ def fingerprint_pathspec():
     return ["--", "."] + [f":(exclude){p}" for p in GENERATED_PATHSPECS]
 
 
-def is_test_or_generated_file(f):
+def is_test_or_generated_file(f: str) -> bool:
     """True for test and machine-generated files. They aren't the shipped
     vulnerable code, so finding a match in one proves nothing."""
     if any(f == p or f.startswith(p.rstrip("/") + "/") for p in GENERATED_PATHSPECS):
@@ -166,7 +167,9 @@ def run_file() -> Path:
     return run_dir() / _RUN_FILE_NAME
 
 
-def save_run(fix, base, branches, buckets) -> None:
+def save_run(
+    fix: str, base: str, branches: Sequence[str], buckets: Dict[str, str]
+) -> None:
     """Save this analyze run for `apply` to pick up."""
     directory = run_dir()
     directory.mkdir(parents=True, exist_ok=True)

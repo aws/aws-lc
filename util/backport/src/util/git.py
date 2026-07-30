@@ -31,13 +31,13 @@ from util.config import (
 REPO_PATH = None
 
 
-def set_repo_path(path):
+def set_repo_path(path: Optional[str]) -> None:
     """Point the tool at a checkout; None goes back to using the current directory."""
     global REPO_PATH
     REPO_PATH = os.path.abspath(path) if path else None
 
 
-def repo_path():
+def repo_path() -> Optional[str]:
     """The active checkout, or None.
 
     Call this instead of importing REPO_PATH -- set_repo_path() reassigns it, so an
@@ -46,7 +46,7 @@ def repo_path():
     return REPO_PATH
 
 
-def run_in_repo(cmd, **kwargs):
+def run_in_repo(cmd: Sequence[str], **kwargs):
     """Run a command in REPO_PATH. Returns the result; never raises.
 
     Compare run()/git() below, which raise BackportError when a command fails.
@@ -56,7 +56,7 @@ def run_in_repo(cmd, **kwargs):
     return subprocess.run(list(cmd), **kwargs)
 
 
-def git_in_repo(args, **kwargs):
+def git_in_repo(args: Sequence[str], **kwargs):
     """Run a git command in REPO_PATH. Never raises; see run_in_repo()."""
     return run_in_repo(["git", *args], **kwargs)
 
@@ -442,7 +442,7 @@ def target_repo(args) -> str:
 # --- Rename-aware file and diff reads -------------------------------------
 
 
-def get_commit_diff(commit):
+def get_commit_diff(commit: str) -> str:
     """Return the full diff for *commit* as a string (capped at MAX_DIFF_BYTES)."""
     result = git_in_repo(
         ["show", "--stat", "-p", commit],
@@ -455,7 +455,7 @@ def get_commit_diff(commit):
     return result.stdout[:MAX_DIFF_BYTES]
 
 
-def show_file(ref, path):
+def show_file(ref: str, path: str) -> Optional[str]:
     """Raw contents of *path* at *ref*, or None if it doesn't exist there."""
     result = git_in_repo(
         ["show", f"{ref}:{path}"],
@@ -468,7 +468,7 @@ def show_file(ref, path):
     return result.stdout
 
 
-def historical_paths(commit, file_path, limit=6):
+def historical_paths(commit: str, file_path: str, limit: int = 6) -> List[str]:
     """Paths *file_path* has occupied over its history (current first, then older
     names, following renames) as of *commit* -- so we can find the file on a
     branch that forked before a rename."""
@@ -502,7 +502,9 @@ def historical_paths(commit, file_path, limit=6):
     return paths
 
 
-def get_file_on_branch(file_path, branch_ref, commit=None):
+def get_file_on_branch(
+    file_path: str, branch_ref: str, commit: Optional[str] = None
+) -> "Tuple[Optional[str], Optional[str]]":
     """(content, resolved_path) for *file_path* on *branch_ref*, capped at
     MAX_FILE_BYTES. If absent at the current path and *commit* is given,
     follows rename history to try earlier paths. (None, None) if not found."""

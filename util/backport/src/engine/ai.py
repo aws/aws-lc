@@ -18,7 +18,7 @@ credentials every entry point returns None and the deterministic engine runs alo
 import os
 import re
 import sys
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
     import anthropic as _anthropic_module
@@ -49,8 +49,11 @@ from util.git import get_commit_diff, get_file_on_branch, git, git_in_repo, show
 
 
 def ai_client():
-    """An AnthropicBedrock client if the SDK and AWS credentials are available,
-    else None (BACKPORT_DISABLE_AI=1 also forces None)."""
+    """An AnthropicBedrock client, or None if the SDK or AWS credentials are missing.
+
+    Deliberately unannotated: the return type comes from the optional `anthropic`
+    SDK, which may not be installed. BACKPORT_DISABLE_AI=1 also forces None.
+    """
     if _anthropic_module is None:
         return None
     if os.environ.get("BACKPORT_DISABLE_AI") == "1":
@@ -110,7 +113,7 @@ _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{4,}")
 # ---------------------------------------------------------------------------
 
 
-def key_symbols(commit, file):
+def key_symbols(commit: str, file: str) -> List[str]:
     """Identifiers the fix touches in *file*: enclosing-function names from hunk
     headers plus notable identifiers on changed lines, minus common C tokens.
     These are the things whose presence on a branch signals real applicability."""
@@ -145,7 +148,9 @@ def key_symbols(commit, file):
     return syms[:10]
 
 
-def region_around(content, needles, window=60):
+def region_around(
+    content: str, needles: Iterable[str], window: int = 60
+) -> Optional[Tuple[str, Tuple[int, int]]]:
     """Slice of *content* centered on the first line matching any of *needles*
     (whitespace-normalized), with +/- *window* lines of context. Returns
     (excerpt, (start_line, end_line)) or None if nothing matches — which lets the
@@ -164,7 +169,7 @@ def region_around(content, needles, window=60):
     return None
 
 
-def symbol_presence(commit, changed_files, branch_ref):
+def symbol_presence(commit: str, changed_files: Sequence[str], branch_ref: str) -> str:
     """Factual table of whether the symbols the fix touches exist on the branch.
     Returns a markdown snippet, or '' if nothing distinctive was found."""
     rows = []
@@ -289,7 +294,9 @@ _ADVISORY_WRAP = (
 )
 
 
-def branch_file_context(commit, branch, branch_ref, changed_files):
+def branch_file_context(
+    commit: str, branch: str, branch_ref: str, changed_files: Sequence[str]
+) -> Tuple[str, List[str], bool]:
     """Snapshots of the fixed files as they exist on the branch (excerpted around
     the change), plus the list of files that are absent under any name. Returns
     (file_context_markdown, absent_files, any_present)."""
@@ -319,7 +326,7 @@ def branch_file_context(commit, branch, branch_ref, changed_files):
     return context, absent, bool(parts)
 
 
-def absence_note(absent_files, any_present):
+def absence_note(absent_files: Sequence[str], any_present: bool) -> str:
     """Explicit 'verified not present' signal for the files absent on the branch,
     so the model reads absence as evidence, not missing information."""
     if not absent_files:
@@ -332,7 +339,9 @@ def absence_note(absent_files, any_present):
     return note + (_SOME_ABSENT_NOTE if any_present else _ALL_ABSENT_NOTE)
 
 
-def buggy_lines_note(det_verdict, commit, changed_files, branch_ref):
+def buggy_lines_note(
+    det_verdict: str, commit: str, changed_files: Sequence[str], branch_ref: str
+) -> str:
     """For the auditor, add the decisive 'removed lines provably absent' signal
     when it applies, so the model commits to a verdict instead of hedging."""
     if (
@@ -344,8 +353,13 @@ def buggy_lines_note(det_verdict, commit, changed_files, branch_ref):
 
 
 def build_user_prompt(
-    commit, branch, branch_ref, changed_files, bug_commits, det_verdict
-):
+    commit: str,
+    branch: str,
+    branch_ref: str,
+    changed_files: Sequence[str],
+    bug_commits: Iterable[str],
+    det_verdict: str,
+) -> str:
     """Assemble the user message: fix diff + branch file context + absence /
     symbol / deleted-line signals + the role-specific task block."""
     file_context, absent_files, any_present = branch_file_context(
@@ -373,7 +387,7 @@ def build_user_prompt(
     )
 
 
-def call_model(client, user):
+def call_model(client, user: str) -> Optional[str]:
     """Stream the model and return the final text, or None on API failure."""
     try:
         with client.messages.stream(
@@ -392,7 +406,7 @@ def call_model(client, user):
     ).strip()
 
 
-def parse_verdict(raw):
+def parse_verdict(raw: str) -> Tuple[Optional[bool], str]:
     """Pull (likely_affected, confidence) from the model's structured reply."""
     likely, confidence = None, "low"
     for line in raw.splitlines():
@@ -411,8 +425,12 @@ def parse_verdict(raw):
 
 
 def ai_impact_analysis(
-    commit, branch, changed_files, bug_commits, det_verdict="inconclusive"
-):
+    commit: str,
+    branch: str,
+    changed_files: Sequence[str],
+    bug_commits: Iterable[str],
+    det_verdict: str = "inconclusive",
+) -> Optional[dict]:
     """Advisory: ask Claude whether *branch* is affected by the fix in *commit*.
 
     Role is selected by *det_verdict*: "affected" -> AUDITOR (look for an
@@ -593,7 +611,13 @@ def _warn_ai_unreachable(asked: int, failed: int) -> None:
     )
 
 
-def refine_with_ai(args, fix_sha, files, bug_commits, buckets):
+def refine_with_ai(
+    args,
+    fix_sha: str,
+    files: Sequence[str],
+    bug_commits: Sequence[str],
+    buckets: Dict[str, str],
+) -> "Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]":
     """Settle the UNSURE branches, then note any AFFECTED ones that look wrong.
 
     Returns ``(buckets, decided_by, summaries)``.

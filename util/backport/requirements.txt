@@ -1,6 +1,8 @@
-# Runtime dependencies for the advisory AI layer (ai.py). The deterministic
-# engine and CLI need only the standard library + git; without these installed
-# (or without AWS credentials) the AI layer degrades to off and the tool runs
-# deterministically.
+# Runtime dependencies for the AI layer (engine/ai.py), which always runs and needs
+# AWS credentials. Everything else needs only the standard library + git.
+#
+# Without these installed, or without credentials, the tool still works and still
+# misses nothing -- it warns loudly and flags every branch it could not judge for
+# review, so you just get more flags than usual.
 anthropic>=0.39
 boto3>=1.34

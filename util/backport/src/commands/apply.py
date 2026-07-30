@@ -10,7 +10,7 @@ conflicts it hands off to `resolve`.
 
 import shutil
 import sys
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from engine.analysis import get_supported_branches, sort_branches
 from util.config import AFFECTED, BackportError
@@ -73,7 +73,7 @@ def run_cherry_picks(
     return clean, conflict, errors
 
 
-def select_targets(args, buckets):
+def select_targets(args, buckets: Dict[str, str]) -> Optional[List[str]]:
     """Which branches to cherry-pick onto: --branches, or --all-affected.
 
     Returns a chronologically sorted list, or None if neither flag was given
