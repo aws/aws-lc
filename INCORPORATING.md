@@ -39,6 +39,125 @@ complete build script, just file and test lists, which change often.
 Periodically an engineer will update the AWS-LC revision, regenerate
 these files and check in the updated result.
 
+## Building applications against AWS-LC
+
+Once AWS-LC is built and installed (see [BUILDING.md](./BUILDING.md)), you can
+compile and link your application against it. AWS-LC installs the
+OpenSSL-compatible headers, the `libcrypto` and `libssl` libraries, and
+pkg-config metadata under the prefix you choose.
+
+### Install layout
+
+Configure the install prefix with `CMAKE_INSTALL_PREFIX` and install:
+
+```bash
+cmake -GNinja -B aws-lc-build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="${AWS_LC_INSTALL}" \
+  -DCMAKE_INSTALL_LIBDIR=lib
+cmake --build aws-lc-build --target install
+```
+
+This produces, under `${AWS_LC_INSTALL}`:
+
+* `include/openssl/*.h` -- the public headers.
+* `lib/libcrypto.*` and `lib/libssl.*` -- static (`.a`) and/or shared
+  (`.so`/`.dylib`) libraries, depending on `BUILD_SHARED_LIBS`.
+* `lib/pkgconfig/{libcrypto,libssl,aws-lc}.pc` -- pkg-config files.
+
+`-DCMAKE_INSTALL_LIBDIR=lib` is optional but keeps the library directory named
+`lib` on distributions that would otherwise use `lib64`; adjust the paths below
+if you omit it. Pass `-DBUILD_SHARED_LIBS=1` for shared libraries, or leave it
+unset (the default) for static libraries.
+
+### Compiler flags
+
+Point your compiler at the installed headers:
+
+```bash
+cc -I"${AWS_LC_INSTALL}/include" -c app.c -o app.o
+```
+
+### Linker flags
+
+Link against `libssl` and `libcrypto`. `libssl` depends on `libcrypto`, so it
+must appear first on the link line:
+
+```bash
+cc app.o -L"${AWS_LC_INSTALL}/lib" -lssl -lcrypto -lpthread -o app
+```
+
+If you only use libcrypto APIs, drop `-lssl`. When linking the static libraries
+(`.a`) you also need the system threading library (`-lpthread`); with a shared
+build the transitive dependencies are resolved for you and `-lpthread` is not
+required.
+
+For a shared-library build, the dynamic loader must be able to find the
+libraries at runtime. Either set `LD_LIBRARY_PATH="${AWS_LC_INSTALL}/lib"`
+(macOS: `DYLD_LIBRARY_PATH`), add an rpath at link time
+(`-Wl,-rpath,"${AWS_LC_INSTALL}/lib"`), or install the libraries into a
+directory already on the loader's search path (e.g. via `ldconfig`).
+
+### Using pkg-config
+
+The installed `.pc` files let pkg-config emit the correct compiler and linker
+flags:
+
+```bash
+export PKG_CONFIG_PATH="${AWS_LC_INSTALL}/lib/pkgconfig"
+cc $(pkg-config --cflags libssl) app.c \
+   $(pkg-config --libs libssl libcrypto) -o app
+```
+
+When linking against the static libraries, pass `--static` so pkg-config also
+emits the private dependencies (e.g. `-lpthread`) that a static link requires:
+
+```bash
+cc $(pkg-config --cflags libssl) app.c \
+   $(pkg-config --libs --static libssl libcrypto) -o app
+```
+
+### Integrating with autotools / configure scripts
+
+Most projects that use an autotools `./configure` script expose one of a few
+conventions for locating an OpenSSL-compatible library. The AWS-LC integration
+tests under [`tests/ci/integration`](./tests/ci/integration) exercise these
+patterns against real applications. The following are working examples, each
+linking to the relevant build configuration:
+
+* A single `--with-openssl=<prefix>` flag pointing at the install prefix, as
+  with curl:
+  [`run_curl_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_curl_integration.sh#L33-L38).
+* Separate include and library directory flags (`--with-openssl-incdir` /
+  `--with-openssl-libdir`), as with ntp:
+  [`run_ntp_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_ntp_integration.sh#L46-L49).
+* A `--with-ssl-dir=<prefix>` flag, as with OpenSSH:
+  [`run_openssh_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_openssh_integration.sh#L53-L61).
+* Setting `CPPFLAGS`/`LDFLAGS` in the environment before `./configure` when the
+  project has no dedicated flag (here linking the static archives directly), as
+  with OpenLDAP:
+  [`run_openldap_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_openldap_integration.sh#L38-L50).
+* Combining `--with-openssl=<prefix>` with `CFLAGS`/`CPPFLAGS`/`LDFLAGS`
+  environment overrides, as with Cyrus SASL:
+  [`run_cyrus_sasl_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_cyrus_sasl_integration.sh#L31-L40).
+
+### Integrating with CMake
+
+If your project uses CMake's `find_package(OpenSSL)`, point it at AWS-LC by
+setting `OPENSSL_ROOT_DIR` to the install prefix:
+
+```bash
+cmake -B build -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL}" ...
+```
+
+The gRPC integration does this (and also selects its packaged-SSL provider):
+[`run_grpc_integration.sh`](https://github.com/aws/aws-lc/blob/ea70f681ce48c3996b7584be573355c2ebdc56e3/tests/ci/integration/run_grpc_integration.sh#L49-L51).
+
+AWS-LC identifies itself with the `OPENSSL_IS_AWSLC` preprocessor macro (rather
+than OpenSSL's version macros or BoringSSL's `OPENSSL_IS_BORINGSSL`). Projects
+with BoringSSL- or OpenSSL-specific code paths may need to account for this; see
+the note in the gRPC example above.
+
 ## Defines
 
 AWS-LC does not present a lot of configurability in order to reduce the
