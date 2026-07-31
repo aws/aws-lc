@@ -2686,9 +2686,6 @@ func main() {
 
 		// -E requests only preprocessing.
 		cppCommand = append(cppCommand, "-E")
-
-		// Output ‘#include’ directives in addition to the result of preprocessing.
-		cppCommand = append(cppCommand, "-dI")
 	}
 
 	if err := parseInputs(inputs, cppCommand); err != nil {
