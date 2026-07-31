@@ -197,9 +197,10 @@ cc $(pkg-config --cflags libssl-awslc) app.c \
 #### Symbol versioning
 
 Distribution packaging mode also enables ELF symbol versioning for the shared
-libraries: every exported symbol is bound to a version node (`AWS_LC_1.0` for
-the current series) and the SONAME encodes the ABI version
-(`libcrypto-awslc.so.1`). See
+libraries: every exported symbol is bound to a version node (e.g. `AWS_LC_1.0`
+for the current series) and the SONAME encodes the ABI version (e.g.
+`libcrypto-awslc.so.1`). The exact node name and SONAME depend on the AWS-LC
+version you build; the values shown here are illustrative. See
 [docs/SymbolVersioning.md](./docs/SymbolVersioning.md) for the full details.
 
 This is transparent to consumers: you do not pass any extra compiler or linker
