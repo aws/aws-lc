@@ -158,6 +158,60 @@ than OpenSSL's version macros or BoringSSL's `OPENSSL_IS_BORINGSSL`). Projects
 with BoringSSL- or OpenSSL-specific code paths may need to account for this; see
 the note in the gRPC example above.
 
+### Building against a distribution-packaging install
+
+For a system-wide install on Linux/BSD you will typically build AWS-LC in
+distribution packaging mode (`-DENABLE_DIST_PKG=ON`, see
+[BUILDING.md](./BUILDING.md#distribution-packaging-mode)). This mode is designed
+so AWS-LC can coexist with other crypto libraries (including a system OpenSSL)
+on the same machine, so the artifacts are named and laid out differently from
+the plain build described above. The differences that affect consumers are:
+
+* **Library names carry an `-awslc` suffix**: the libraries are
+  `libcrypto-awslc` and `libssl-awslc` (e.g. `libcrypto-awslc.so.1`), not
+  `libcrypto`/`libssl`. Link with `-lcrypto-awslc -lssl-awslc`.
+* **Headers move under an `aws-lc/` subdirectory**: they install to
+  `<prefix>/include/aws-lc/openssl/` rather than `<prefix>/include/openssl/`.
+  Add `-I<prefix>/include/aws-lc` so that `#include <openssl/ssl.h>` resolves.
+* **pkg-config modules are renamed to match**: use `libcrypto-awslc` and
+  `libssl-awslc` (there is also an `aws-lc` module). The unsuffixed `libcrypto`,
+  `libssl`, and `openssl` modules are *not* installed unless you also enable the
+  OpenSSL compatibility shim (`-DENABLE_DIST_PKG_OPENSSL_SHIM=ON`), which adds
+  unsuffixed `libcrypto.so`/`libssl.so` symlinks, an `openssl.pc`, and an
+  `include/<...>/openssl` symlink.
+
+Putting the first three together, a manual build against a dist-package install
+looks like:
+
+```bash
+# Manual flags
+cc -I"${AWS_LC_INSTALL}/include/aws-lc" app.c \
+   -L"${AWS_LC_INSTALL}/lib" -lssl-awslc -lcrypto-awslc -o app
+
+# Or via pkg-config
+export PKG_CONFIG_PATH="${AWS_LC_INSTALL}/lib/pkgconfig"
+cc $(pkg-config --cflags libssl-awslc) app.c \
+   $(pkg-config --libs libssl-awslc libcrypto-awslc) -o app
+```
+
+#### Symbol versioning
+
+Distribution packaging mode also enables ELF symbol versioning for the shared
+libraries: every exported symbol is bound to a version node (`AWS_LC_1.0` for
+the current series) and the SONAME encodes the ABI version
+(`libcrypto-awslc.so.1`). See
+[docs/SymbolVersioning.md](./docs/SymbolVersioning.md) for the full details.
+
+This is transparent to consumers: you do not pass any extra compiler or linker
+flags for it. When you link against the versioned libraries, the linker
+automatically records the versions your application references (visible in the
+binary's `Verneed` table, e.g. via `readelf -V app`), and at runtime the dynamic
+loader checks that the installed library provides them. Version nodes inherit
+from their predecessors, so a binary built against `AWS_LC_1.0` keeps working
+against later libraries in the same series; the only consumer-visible effect is
+a runtime error such as `symbol version 'AWS_LC_1.1' not found` if you deploy
+against an *older* AWS-LC than the one you built against.
+
 ## Defines
 
 AWS-LC does not present a lot of configurability in order to reduce the
