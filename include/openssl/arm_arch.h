@@ -38,17 +38,18 @@
 // "Test algorithm dispatch without CPU indicator or Neon extension capability bits"
 // in util/all_tests.json
 
-// The Neoverse N1, V1, V2, and Apple M1 micro-architectures are detected to
-// allow selecting the fasted implementations for SHA3/SHAKE and AES-GCM.
-// Combination of all CPU indicator bits: 0x7080
+// The Neoverse N1, N2, V1, V2, and Apple M micro-architectures are detected to
+// allow selecting optimized implementations for BN, SHA3/SHAKE, and AES-GCM.
+// Combination of all CPU indicator bits: 0x47080
 // NOTE: If you add further CPU indicator bits, adjust
 // "Test algorithm dispatch without CPU indicator bits" in util/all_tests.json.
 #define ARMV8_NEOVERSE_N1 (1 << 7)
 #define ARMV8_NEOVERSE_V1 (1 << 12)
 #define ARMV8_APPLE_M (1 << 13)
 #define ARMV8_NEOVERSE_V2 (1 << 14)
+#define ARMV8_NEOVERSE_N2 (1 << 18)
 
-// Combination of CPU indicator bits and Armv8 Neon extension bits: 0x78fc
+// Combination of CPU indicator bits and Armv8 Neon extension bits: 0x478fc
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
 #define ARMV8_DIT (1 << 15)
@@ -72,11 +73,14 @@
 //
 
 # define ARM_CPU_IMP_ARM           0x41
+# define ARM_CPU_IMP_MICROSOFT     0x6D
 
 # define ARM_CPU_PART_CORTEX_A72   0xD08
 # define ARM_CPU_PART_N1           0xD0C
+# define ARM_CPU_PART_N2           0xD49
 # define ARM_CPU_PART_V1           0xD40
 # define ARM_CPU_PART_V2           0xD4F
+# define MICROSOFT_CPU_PART_AZURE_COBALT_100 0xD49
 
 # define MIDR_PARTNUM_SHIFT       4
 # define MIDR_PARTNUM_MASK        (0xfffUL << MIDR_PARTNUM_SHIFT)
@@ -105,6 +109,11 @@
 
 # define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
            (((midr) & MIDR_CPU_MODEL_MASK) == MIDR_CPU_MODEL(imp, partnum))
+
+# define MIDR_IS_NEOVERSE_N2(midr) \
+           (MIDR_IS_CPU_MODEL((midr), ARM_CPU_IMP_ARM, ARM_CPU_PART_N2) || \
+            MIDR_IS_CPU_MODEL((midr), ARM_CPU_IMP_MICROSOFT, \
+                              MICROSOFT_CPU_PART_AZURE_COBALT_100))
 
 #endif  // ARM || AARCH64
 
