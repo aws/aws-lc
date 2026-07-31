@@ -74,14 +74,19 @@ jobs:
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
       CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip Anthropic creds from all subprocesses
-      AWS_REGION: us-west-2
-      ANTHROPIC_DEFAULT_OPUS_MODEL: us.anthropic.claude-opus-4-8
-      ANTHROPIC_DEFAULT_SONNET_MODEL: us.anthropic.claude-sonnet-4-6
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - name: Load shared Bedrock settings
+        # .github/workflows/ai-config.json is where configurations for both autofix and backport are located
+        # needs to run before configure-aws-credentials
+        run: |
+          jq -r '"AWS_REGION=\(.aws_region)",
+                 "ANTHROPIC_DEFAULT_OPUS_MODEL=\(.opus)",
+                 "ANTHROPIC_DEFAULT_SONNET_MODEL=\(.sonnet)",
+                 "ANTHROPIC_DEFAULT_HAIKU_MODEL=\(.haiku)"' \
+            .github/workflows/ai-config.json >> "$GITHUB_ENV"
       - uses: ./.github/actions/configure-aws-credentials
         with:
           oidcRole: AwsLcGitHubActionsAutofixOidcRole
