@@ -1093,16 +1093,7 @@ endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
-  # OPENSSL_SMALL implies disabling AVX-512 optimizations on x86_64 for size.
-  # This intentionally sets only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
-  # MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2/BMI2 code stays
-  # available under OPENSSL_SMALL (#3355). This is also enforced in
-  # include/openssl/target.h for non-CMake builds.
-  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
-    add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing AVX512 optimisations")
-  endif()
+  # The MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication is applied below, after ARCH.
 endif()
 
 if(CONSTANT_TIME_VALIDATION)
@@ -1185,6 +1176,16 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+# On x86_64, OPENSSL_SMALL implies disabling the AVX-512 assembly for size. It
+# intentionally does not imply MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2
+# code stays available (#3355). Mirrored in include/openssl/target.h for builds
+# that define OPENSSL_SMALL via CFLAGS. Placed here because it needs ARCH.
+if(OPENSSL_SMALL AND ARCH STREQUAL "x86_64" AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing AVX512 optimisations")
 endif()
 
 if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
