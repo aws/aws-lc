@@ -10,6 +10,8 @@ NIST has awarded the FIPS module of AWS-LC its validation certificate as a Feder
 * AWS-LC Cryptographic Module (dynamic library, NetOS): certificate [#5146](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5146) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5146.pdf)
 * AWS-LC-FIPS v2.0 (dynamic library): certificate [#5429](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5429) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5429.pdf)
 * AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf)
+* AWS-LC-FIPS v3.1 (dynamic library): certificate [#5298](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5298) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5298.pdf)
+* AWS-LC-FIPS v3.1 (static library): certificate [#5314](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5314) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5314.pdf)
 
 NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
 
@@ -36,8 +38,6 @@ When building AWS-LC in FIPS mode, please be aware of the following platform lim
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
-* AWS-LC-FIPS v3.0 (static): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-static.pdf)
-* AWS-LC-FIPS v3.0 (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-dynamic.pdf)
 
 ## Randomness generation design AWS-LC-FIPS v4.0
 
