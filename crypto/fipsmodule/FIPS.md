@@ -13,9 +13,10 @@ NIST has awarded the FIPS module of AWS-LC its validation certificate as a Feder
 * AWS-LC-FIPS v3.1 (dynamic library): certificate [#5298](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5298) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5298.pdf)
 * AWS-LC-FIPS v3.1 (static library): certificate [#5314](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5314) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5314.pdf)
 
-NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
+NIST has also awarded SP 800-90B validation certificates for our CPU Jitter Entropy Source.
 
-1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
+1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf) - CPU Jitter RNG 3.4.0
+1. 2025-08-25: entropy certificate [#E280](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/280), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E280_PublicUse.pdf) - CPU Jitter RNG 3.6.3
 
 ## FIPS version number
 
