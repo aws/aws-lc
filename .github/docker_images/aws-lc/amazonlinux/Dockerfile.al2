@@ -86,14 +86,25 @@ setup_script="/tmp/setup-go-compiler.sh"
 ${setup_script}
 EOF
 
+# Install Rust
+ENV RUSTUP_HOME="/.rustup"
+ENV CARGO_HOME="/.cargo"
+ENV PATH="${CARGO_HOME}/bin:$PATH"
+
+COPY --from=scripts setup-rust.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-rust.sh"
+${setup_script}
+EOF
+
 RUN rm -rf /tmp/*
 
 FROM tools AS al2
 
 FROM al2 AS al2_sde
 
-ARG SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
-ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/${SDE_VERSION_TAG}.tar.xz"
+ARG SDE_VERSION_TAG=sde-external-9.58.0-2025-06-16-lin
+ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/859732/${SDE_VERSION_TAG}.tar.xz"
 
 RUN <<EOF
 set -ex 
