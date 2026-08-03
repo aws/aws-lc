@@ -2264,6 +2264,13 @@ ___
 }
 aes256gcmsiv_kdf();
 
-if ($avx) { print $code; }
+# This file is entirely AVX, so emit a section directive even when the body is
+# suppressed: some NASM versions reject an object with no sections (nasm.us
+# 3392738).
+if ($avx) {
+  print $code;
+} else {
+  print ".text\n";
+}
 
 close STDOUT or die "error closing STDOUT: $!";

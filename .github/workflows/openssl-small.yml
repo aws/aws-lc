@@ -214,6 +214,10 @@ jobs:
     # guards in generated-src. When Perl is available, perlasm regenerates the
     # .asm with the flag and the scripts emit non-empty ud2/ret stubs instead,
     # so that leg exercises the regeneration path. Cover both.
+    #
+    # aes128gcmsiv-x86_64.pl and p256_beeu-x86_64-asm.pl need the same
+    # treatment for MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, which no CI leg pairs with
+    # Windows/NASM.
     name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
     runs-on: windows-latest
     strategy:
