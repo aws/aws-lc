@@ -68,6 +68,7 @@ jobs:
             run: ./tests/ci/integration/run_libgit2_integration.sh main
 
           # OpenSSH Integration Tests
+          # openssh-master runs nightly only — see integrations-nightly job below.
           - name: openssh-10.4p1
             arch: x86_64
             size: small
@@ -80,13 +81,6 @@ jobs:
             image: amazonlinux:2023
             compiler: clang-15
             run: ./tests/ci/integration/run_openssh_integration.sh V_8_9
-          - name: openssh-master
-            arch: x86_64
-            size: small
-            image: amazonlinux:2023
-            compiler: clang-15
-            allow_failure: true
-            run: ./tests/ci/integration/run_openssh_integration.sh master
           - name: openssh-10.4p1
             arch: aarch64
             size: 2xlarge
@@ -99,13 +93,6 @@ jobs:
             image: amazonlinux:2023
             compiler: clang-15
             run: ./tests/ci/integration/run_openssh_integration.sh V_8_9
-          - name: openssh-master
-            arch: aarch64
-            size: 2xlarge
-            image: amazonlinux:2023
-            compiler: clang-15
-            allow_failure: true
-            run: ./tests/ci/integration/run_openssh_integration.sh master
 
           # PostgreSQL Integration Tests
           - name: postgresql
@@ -367,15 +354,7 @@ jobs:
             ipv6: true
             allow_failure: false
             run: ./tests/ci/integration/run_grpc_integration.sh v1.72.2
-          # GRPC (tracking upstream master - informational, allowed to fail)
-          - name: grpc-master
-            arch: x86_64
-            size: 2xlarge
-            image: ubuntu:22.04
-            compiler: gcc-12
-            ipv6: true
-            allow_failure: true
-            run: ./tests/ci/integration/run_grpc_integration.sh master
+          # grpc-master runs nightly only — see integrations-nightly job below.
 
           # Bind9 Integration Tests
           - name: bind9
@@ -484,6 +463,75 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
+        with:
+          name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
+          path: integration-failure.txt
+
+  # Upstream-tracking jobs expected to fail due to upstream drift.
+  # Run nightly only so PRs see a clean check list.
+  # Failures still emit the integration-failure artifact and trigger the
+  # IntegrationOmnibusFailure CloudWatch alarm via the report-failures job.
+  integrations-nightly:
+    if: github.event_name == 'schedule'
+    name: ${{ matrix.name }}-${{ matrix.arch }}
+    continue-on-error: true
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:${{ matrix.size }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: openssh-master
+            arch: x86_64
+            size: small
+            image: amazonlinux:2023
+            compiler: clang-15
+            run: ./tests/ci/integration/run_openssh_integration.sh master
+          - name: openssh-master
+            arch: aarch64
+            size: 2xlarge
+            image: amazonlinux:2023
+            compiler: clang-15
+            run: ./tests/ci/integration/run_openssh_integration.sh master
+          - name: grpc-master
+            arch: x86_64
+            size: 2xlarge
+            image: ubuntu:22.04
+            compiler: gcc-12
+            ipv6: true
+            run: ./tests/ci/integration/run_grpc_integration.sh master
+    steps:
+      - uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        id: integration-test
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          options: ${{ matrix.options || '' }}
+          ipv6: ${{ matrix.ipv6 || false }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ${{ matrix.run }}
+      - name: Mark integration failure
+        if: always() && steps.integration-test.outcome == 'failure'
+        env:
+          INTEGRATION_RUNNER_COMMAND: ${{ matrix.run }}
+        run: |
+          while read -r script_path version _; do
+            [[ "$script_path" == *_integration.sh ]] && break
+          done <<< "$INTEGRATION_RUNNER_COMMAND"
+          integration=${script_path##*/}
+          integration=${integration#run_}
+          integration=${integration%_integration.sh}
+          version=${version//[\'\"]/}
+          echo -e "${integration}\t${version}" > integration-failure.txt
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.integration-test.outcome == 'failure'
         with:
           name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
           path: integration-failure.txt

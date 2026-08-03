@@ -4,6 +4,8 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+  schedule:
+    - cron: "0 0 * * *"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -30,11 +32,11 @@ jobs:
       - name: Run libssh2 integration tests
         run: |
           ./tests/ci/integration/run_libssh2_integration.sh 'libssh2-1.11.1'
-  # Tracks libssh2 main to catch upstream breakages early. Non-blocking: main
-  # can break against AWS-LC for reasons outside our control (e.g. upstream
-  # -Werror changes), so this job is allowed to fail without failing CI.
+  # Tracks libssh2 main to catch upstream breakages early. Runs nightly only
+  # so PRs see a clean check list. Non-blocking: main can break against AWS-LC
+  # for reasons outside our control (e.g. upstream -Werror changes).
   libssh2-main:
-    if: github.repository_owner == 'aws'
+    if: github.repository_owner == 'aws' && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
