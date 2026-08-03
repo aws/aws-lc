@@ -634,7 +634,7 @@ jobs:
 
   report-failures:
     name: report-failures
-    needs: [integrations, python, ruby]
+    needs: [integrations, integrations-nightly, python, ruby]
     if: ${{ always() && github.event_name == 'schedule' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
