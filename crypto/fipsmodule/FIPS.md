@@ -39,6 +39,8 @@ When building AWS-LC in FIPS mode, please be aware of the following platform lim
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
+* AWS-LC-FIPS v4.0 (static): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+* AWS-LC-FIPS v4.0 (dynamic): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
 
 ## Randomness generation design AWS-LC-FIPS v4.0
 
