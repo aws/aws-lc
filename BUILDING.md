@@ -233,11 +233,31 @@ and performance. For instance, BoringSSL's fastest P-256 implementation uses a
 `-DOPENSSL_SMALL=1` to CMake or define the `OPENSSL_SMALL` preprocessor symbol.
 
 On x86_64, `OPENSSL_SMALL` excludes the AVX-512 assembly implementations (it
-implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX`) but keeps the ADX/AVX2/BMI2 fast
+implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX`) but keeps the ADX/AVX2 fast
 paths for X25519, Ed25519, RSA, and DH, which cost roughly 370 KiB. Consumers
 who want the absolute minimum size and are willing to accept portable C
 fallbacks for those algorithms can additionally pass
 `-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2=1` to exclude that assembly as well.
+
+## Excluding x86_64 assembly by instruction set
+
+Three CMake options exclude x86_64 assembly an older assembler cannot encode.
+`MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX` implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2`,
+which implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX`. The reverse does not hold,
+which is what lets `OPENSSL_SMALL` shed AVX-512 while keeping ADX/AVX2.
+
+| Option | Excludes | Effective without Perl? |
+|---|---|---|
+| `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX` | AVX-512 (zmm/EVEX/VAES): AES-GCM, AES-XTS, RSAZ IFMA | Yes |
+| `MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2` | ADX (`adcx`/`adox`) and the AVX2 bundled with it: s2n-bignum x86_64, `bn_mulx4x_mont`/`bn_sqr8x_mont`, the P-256 nistz ADX paths, x4-batched Keccak | Yes |
+| `MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX` | AVX and AVX2 generally, plus everything above | Only with Perl |
+
+Note that `MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2` excludes neither all AVX2 nor
+BMI1/BMI2: `mulx`, `rorx` and `andn` travel with the AVX tier.
+
+The first two options are also expressed as `#ifndef` guards in the pre-generated
+assembly under `generated-src/`, so they apply with `-DDISABLE_PERL=ON`. The AVX
+tier is not, so an assembler that genuinely cannot encode AVX needs Perl.
 
 # Running Tests
 

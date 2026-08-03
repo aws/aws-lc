@@ -607,17 +607,20 @@ endmacro()
 # Some ancient assemblers don't know about AVX instructions, which is an
 # assumption we make for some of the assembly implementations. This flag
 # can be set to handle such cases.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+#
+# Only fully effective when Perl is available: unlike the two flags below, the
+# AVX tier has no #ifndef guard in generated-src. See BUILDING.md.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build (needs Perl to be fully effective)" OFF)
 
 # Some assemblers know about AVX and AVX2 but not ADX instructions. This flag
-# gates the ADX/AVX2/BMI2 code paths: s2n-bignum's x86_64 implementations
-# (P-256/P-384/P-521/curve25519), RSA/DH's ADX/BMI2 Montgomery multiplication
-# (bn_mulx4x_mont/bn_sqr8x_mont), the ADX paths in p256-x86_64-asm.pl, and
-# SHA3's x4-batched Keccak (which needs AVX2, not AVX-512). It does NOT gate
-# every AVX2 implementation: ChaCha20, RSAZ-1024, and SHA-1/256/512's AVX2
-# paths depend only on MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX. This flag implies
+# gates the assembly using ADX (adcx/adox), plus the AVX2 code bundled into the
+# same files: s2n-bignum's x86_64 implementations (P-256/P-384/P-521/curve25519),
+# RSA/DH's ADX Montgomery multiplication (bn_mulx4x_mont/bn_sqr8x_mont), the ADX
+# paths in p256-x86_64-asm.pl, and SHA3's x4-batched Keccak (which needs AVX2,
+# not AVX-512). It gates neither all AVX2 nor BMI1/BMI2: mulx, rorx and andn
+# travel with the AVX tier above. This flag implies
 # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX below, but not the reverse.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX/BMI2 code paths and the AVX2 code bundled with them (not all AVX2; see comment)" OFF)
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX (adcx/adox) code paths and the AVX2 code bundled with them (not all AVX2, not BMI1/BMI2)" OFF)
 
 # Some assemblers know about AVX, AVX2 and ADX but not AVX512 instructions.
 # This flag can be set to handle such cases, or to opt out of AVX-512 code
@@ -648,6 +651,12 @@ endif()
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
+endif()
+
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX AND NOT PERL_EXECUTABLE)
+  message(WARNING "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX is only partially effective "
+                  "without Perl: the AVX/AVX2 code in generated-src/ has no "
+                  "#ifndef guard and is retained.")
 endif()
 
 if (GCC)

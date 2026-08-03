@@ -65,6 +65,8 @@ die "can't locate x86_64-xlate.pl";
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
+# $avx is never set above 2, so upstream's $avx>2 AVX-512 blocks are dead code;
+# enabling them would need a MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX gate.
 $avx = 2;
 for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
