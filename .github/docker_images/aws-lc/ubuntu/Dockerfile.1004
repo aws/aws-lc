@@ -46,4 +46,22 @@ setup_script="/tmp/create-compiler-env.sh"
 ${setup_script}
 EOF
 
+# Install Rust
+#
+# This image is pinned to Rust 1.63.0, the last release whose binaries run
+# against glibc older than 2.17 (1.64.0 raised the tier-1 *-unknown-linux-gnu
+# baseline). It also cannot use rustup, since rustup-init itself requires
+# glibc 2.17. The tarball is fetched on the runner and supplied through the
+# dependencies build context because this image's TLS stack is too old to reach
+# static.rust-lang.org, the same reason CMake is sourced that way above.
+ENV CARGO_HOME="/.cargo"
+
+COPY --from=dependencies rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz /tmp/rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz
+COPY --from=scripts setup-rust-standalone.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-rust-standalone.sh"
+${setup_script} /tmp/rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz
+EOF
+
 RUN rm -rf /tmp/*

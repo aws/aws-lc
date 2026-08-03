@@ -5,8 +5,8 @@ FROM ubuntu-22.04:base
 
 SHELL ["/bin/bash", "-c"]
 
-ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-lin.tar.xz"
+ENV SDE_VERSION_TAG=sde-external-9.58.0-2025-06-16-lin
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/859732/sde-external-9.58.0-2025-06-16-lin.tar.xz"
 
 RUN set -ex && \
     apt-get update && \

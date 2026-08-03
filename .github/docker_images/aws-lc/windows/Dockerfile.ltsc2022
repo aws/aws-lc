@@ -64,8 +64,8 @@ CMD [ "cmd.exe" ]
 
 FROM base AS vs2017
 
-ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-win
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
+ENV SDE_VERSION_TAG=sde-external-9.58.0-2025-06-16-win
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/859732/sde-external-9.58.0-2025-06-16-win.tar.xz"
 
 SHELL ["cmd", "/S", "/C"]
 RUN `
@@ -150,8 +150,8 @@ CMD [ "cmd.exe" ]
 
 FROM vs2022 AS ltsc2022_sde
 
-ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-win
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
+ENV SDE_VERSION_TAG=sde-external-9.58.0-2025-06-16-win
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/859732/sde-external-9.58.0-2025-06-16-win.tar.xz"
 
 RUN `
     # Install Windows Intel SDE.

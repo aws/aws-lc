@@ -47,12 +47,22 @@ jobs:
         id: images
         run: |
           echo ubuntu1004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
-      - name: Get CMake v3.9.6 Source
+      - name: Get CMake v3.9.6 and Rust 1.63.0 Sources
         id: dependencies
         run: |
           temp_dir="$(mktemp -d)"
           curl -L -o cmake-3.9.6.tar.gz --output-dir "${temp_dir}" \
             https://github.com/Kitware/CMake/releases/download/v3.9.6/cmake-3.9.6.tar.gz
+          # Rust 1.63.0 is the last release that runs on this image's glibc 2.11,
+          # and it has to be fetched here because the image's TLS stack is too old
+          # to reach static.rust-lang.org itself.
+          rust_tarball="rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L -o "${rust_tarball}" --output-dir "${temp_dir}" \
+            "https://static.rust-lang.org/dist/${rust_tarball}"
+          # Expected digest is from the release's companion .sha256 file:
+          # https://static.rust-lang.org/dist/rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz.sha256
+          echo "536bcf16807a4ff49b7b29af6e573a2f1821055bfad72c275c60e56edc693984  ${temp_dir}/${rust_tarball}" \
+            | sha256sum -c -
           echo directory=${temp_dir} >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -79,6 +89,11 @@ jobs:
           run: |
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.9
             ./.github/docker_images/scripts/verify-perl-version.sh 5.10
+            # Rust is pinned here: 1.63.0 is the last release supporting glibc < 2.17
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc 1.63
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo 1.63
+            # rustfmt versions independently of rustc (1.63 ships rustfmt 1.5.x), so no pin
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC 4.1 Compilers
             source /opt/compiler-env/setup-gcc-4.1.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 4.1
