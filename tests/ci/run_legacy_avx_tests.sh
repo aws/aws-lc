@@ -11,7 +11,7 @@ AVX_FLAG="${1}"
 # Validate AVX_FLAG is provided
 if [[ -z "${AVX_FLAG}" ]]; then
   echo "Usage: $0 <AVX_FLAG>"
-  echo "Valid values: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX"
+  echo "Valid values: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX"
   exit 1
 fi
 
