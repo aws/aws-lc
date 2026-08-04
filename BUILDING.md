@@ -242,7 +242,8 @@ fallbacks for those algorithms can additionally pass
 ### Discarding unused code when linking statically
 
 Non-FIPS GCC and Clang builds use `-ffunction-sections -fdata-sections` by
-default. Static consumers can discard unused code at link time:
+default, except when Clang uses the MSVC-compatible clang-cl driver. Static
+consumers can discard unused code at link time:
 
     cc main.c libcrypto.a -Wl,--gc-sections     # GNU ld, LLD
     cc main.c libcrypto.a -Wl,-dead_strip       # Apple ld64

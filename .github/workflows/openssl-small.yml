@@ -172,18 +172,18 @@ jobs:
     if: github.repository_owner == 'aws'
     # Test generated and pre-generated assembly because NASM rejects objects
     # without sections (bugzilla.nasm.us/show_bug.cgi?id=3392738).
-    # OPENSSL_SMALL can empty AVX-512-only sources; gas accepts these objects,
-    # so this requires Windows coverage (#3355). The AVX-only AES-GCM-SIV and
-    # P-256 generators have the same requirement under
-    # MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, which this job does not exercise.
+    # OPENSSL_SMALL can empty AVX-512-only sources. The AVX-disabled perlasm leg
+    # covers the same failure mode in AES-GCM-SIV and P-256. gas accepts these
+    # objects, so both require Windows coverage (#3355).
     name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: "perlasm",       disable_perl: "OFF" }
-          - { name: "pre-generated", disable_perl: "ON" }
+          - { name: "perlasm",              disable_perl: "OFF", disable_avx: "OFF" }
+          - { name: "pre-generated",        disable_perl: "ON",  disable_avx: "OFF" }
+          - { name: "perlasm, AVX disabled", disable_perl: "OFF", disable_avx: "ON" }
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
@@ -211,6 +211,7 @@ jobs:
             CMAKE_BUILD_TYPE=Release
             OPENSSL_SMALL=ON
             DISABLE_PERL=${{ matrix.disable_perl }}
+            MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=${{ matrix.disable_avx }}
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests

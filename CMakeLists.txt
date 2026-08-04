@@ -1092,8 +1092,9 @@ if(ENABLE_FUNCTION_SECTIONS AND (GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
 endif()
 
 # FIPS_SHARED's linker script does not collect per-symbol sections, which causes
-# `ld -r` to fail. Disable them even when inherited from a toolchain or CFLAGS.
-if(FIPS_SHARED)
+# `ld -r` to fail. Disable GNU-style section flags even when inherited from a
+# toolchain or CFLAGS.
+if(FIPS_SHARED AND (GCC OR CLANG) AND NOT MSVC)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS
