@@ -235,7 +235,7 @@ TEST_F(ECTest, PrivateKeyFilePermissions) {
   ASSERT_EQ(0, stat(out_path, &st));
   // File should be owner-only (0600 mask applied via umask 0077)
   mode_t perms = st.st_mode & 0777;
-  EXPECT_EQ(perms & 0077, 0u)
+  EXPECT_EQ(static_cast<mode_t>(perms & 0077), static_cast<mode_t>(0))
       << "Private key file should not be group/world accessible, got: 0"
       << std::oct << perms;
 }
