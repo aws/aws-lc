@@ -85,7 +85,7 @@ jobs:
       - uses: ./.github/actions/configure-aws-credentials
         with:
           oidcRole: AwsLcGitHubActionsAutofixOidcRole
-          roleName: AwsLcGitHubActionAutofixReasoningRole
+          roleName: AwsLcGitHubActionsBedrockRole
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2
       - name: Install Bash sandbox deps
