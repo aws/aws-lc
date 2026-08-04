@@ -239,6 +239,28 @@ who want the absolute minimum size and are willing to accept portable C
 fallbacks for those algorithms can additionally pass
 `-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2=1` to exclude that assembly as well.
 
+### Discarding unused code when linking statically
+
+AWS-LC compiles with `-ffunction-sections -fdata-sections` by default on
+non-FIPS builds with GCC or Clang, so a consumer that links `libcrypto.a`
+statically can discard the code it never calls:
+
+    cc main.c libcrypto.a -Wl,--gc-sections     # GNU ld, LLD
+    cc main.c libcrypto.a -Wl,-dead_strip       # Apple ld64
+
+This is worth doing: it can more than halve the linked result. Note that it
+makes `libcrypto.a` itself larger, since it gains many more section headers, so
+the archive's size is a misleading thing to measure. Pass
+`-DENABLE_FUNCTION_SECTIONS=0` to turn the flags off.
+
+Be aware that some APIs retain far more code than they appear to. Anything that
+parses a key or certificate (`EVP_parse_public_key`, `d2i_X509`) goes through a
+table of every supported key type, and so retains every key type's
+implementation, ML-KEM and ML-DSA included. Likewise `EVP_get_cipherbyname`,
+`EVP_get_digestbyname`, `OBJ_nid2sn` and `ERR_reason_error_string` each retain
+their whole lookup table. Prefer the direct accessors, such as
+`EVP_aes_256_gcm()` over a lookup by name, where you can.
+
 ## Excluding x86_64 assembly by instruction set
 
 Three CMake options exclude x86_64 assembly an older assembler cannot encode.

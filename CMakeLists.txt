@@ -1091,9 +1091,29 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# The Android CMake files set -ffunction-sections and -fdata-sections, which
-# is incompatible with FIPS_SHARED.
-if(FIPS_SHARED AND ANDROID)
+# Place each function and data object in its own section, so a consumer that
+# links libcrypto statically can discard the code it never calls by passing
+# `-Wl,--gc-sections` (or `-Wl,-dead_strip` on Apple platforms). This matters
+# most for the FIPS module, which is a single translation unit: without
+# per-function sections, any reference into it retains nearly all of it.
+#
+# Not enabled for FIPS builds. FIPS_DELOCATE gains nothing, since delocate
+# merges the module back into one contiguous section for the integrity check;
+# FIPS_SHARED is incompatible outright, see below.
+option(ENABLE_FUNCTION_SECTIONS "Compile with -ffunction-sections/-fdata-sections so statically-linked consumers can discard unused code with --gc-sections" ON)
+
+if(ENABLE_FUNCTION_SECTIONS AND (GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
+endif()
+
+# crypto/fipsmodule/gcc_fips_shared.lds collects the module with `*(.text)` and
+# discards everything else matching `*(*.text.*)`/`*(*.data.*)`, so per-symbol
+# sections are dropped while .init_array/.fini_array and per-symbol .rodata
+# still reference them and `ld -r` fails. Neutralise the flags whatever their
+# source: Android's toolchain files add them on our behalf, and a consumer's
+# CFLAGS can too.
+if(FIPS_SHARED)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS

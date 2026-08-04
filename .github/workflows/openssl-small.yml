@@ -38,18 +38,18 @@ jobs:
         # are set conservatively below the measured values to allow for
         # compiler/runner variance:
         #
-        # - x86_64: measured 43.7% (clang -O2, x86_64 Linux). OPENSSL_SMALL
+        # - x86_64: measured 66.9% (clang -O2, x86_64 Linux). OPENSSL_SMALL
         #   implies only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
         #   MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so the ADX/AVX2/BMI2 code
         #   (curve25519 s2n-bignum, RSA/DH mulx Montgomery, x4-batched Keccak)
         #   remains in the build (#3355).
-        # - aarch64: measured 31%. The default build links both variants of
+        # - aarch64: measured 62.4%. The default build links both variants of
         #   every s2n-bignum EC operation (~500 KB), the nistz256 table
         #   (~150 KB), and the P-384/P-521 implementations and tables; the
         #   OPENSSL_SMALL build has none of these.
         include:
-          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 35 }
-          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 20 }
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 50 }
+          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 45 }
     steps:
       - name: Install dependencies
         run: |
@@ -68,19 +68,6 @@ jobs:
           cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF -DOPENSSL_SMALL=ON
           cmake --build build-small --target crypto
-      - name: Build libcrypto.a (OPENSSL_SMALL, section-GC)
-        # Same as build-small but compiled with -ffunction-sections
-        # -fdata-sections, so --gc-sections can strip at function granularity
-        # inside bcm.c.o. This mirrors how aws-lc-rs (CcBuilder) compiles the
-        # library, and is the configuration where anchor-driven retention is
-        # measurable: without it, any reference into bcm.c.o retains the whole
-        # object and masks what the anchors actually pin.
-        run: |
-          cmake -GNinja -B build-small-gc -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF -DOPENSSL_SMALL=ON \
-            -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" \
-            -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections"
-          cmake --build build-small-gc --target crypto
       - name: Link consumer against each libcrypto and compare
         env:
           EXPECTED_REDUCTION_PERCENT: ${{ matrix.expected_reduction_percent }}
@@ -116,43 +103,49 @@ jobs:
             exit 1
           fi
           echo "PASS: ${reduction}% reduction meets the ${EXPECTED_REDUCTION_PERCENT}% threshold"
-      - name: Measure GC-enabled consumer and EVP key-parsing anchor
+      - name: Measure key-parsing and certificate-parsing anchors
         # Intentionally single-toolchain (clang + GNU ld on Linux, like the
         # whole job): the matrix legs vary only by architecture, so the
         # reported numbers are per-arch, not a gcc cross-check. The anchor
         # cost is a reachability property and ~compiler-independent anyway.
         run: |
           set -euo pipefail
-          # Link against the section-GC library build (the aws-lc-rs-like
-          # configuration). The EVP-parse variant adds one
-          # EVP_parse_public_key call, which anchors asn1_evp_pkey_methods[]
-          # (crypto/evp_extra/p_methods.c) and with it every key type's ASN.1
-          # machinery -- currently including all of ML-KEM/ML-DSA -- even
-          # under full section GC. The delta between the two binaries
-          # quantifies what key-parsing consumers inherit. Advisory only; not
+          # The EVP-parse variant adds one EVP_parse_public_key call, which
+          # anchors asn1_evp_pkey_methods[] (crypto/evp_extra/p_methods.c) and
+          # with it every key type's ASN.1 machinery -- currently including all
+          # of ML-KEM/ML-DSA -- even under full section GC. The d2i_X509
+          # variant reaches the same table through a certificate's
+          # SubjectPublicKeyInfo and additionally pulls the X.509/ASN.1
+          # template graph; it is the case real TLS consumers hit. The deltas
+          # quantify what parsing consumers inherit. Advisory only; not
           # thresholded (yet).
           common="-O2 -I include -ffunction-sections -fdata-sections"
           libs="-lpthread -ldl -lm -Wl,--gc-sections"
-          clang $common tests/binary-size/main.c build-small-gc/crypto/libcrypto.a $libs -o consumer-gc
+          clang $common tests/binary-size/main.c build-small/crypto/libcrypto.a $libs -o consumer-gc
           clang $common -DAWSLC_SIZE_CHECK_EVP_PARSE tests/binary-size/main.c \
-            build-small-gc/crypto/libcrypto.a $libs -o consumer-gc-evp
+            build-small/crypto/libcrypto.a $libs -o consumer-gc-evp
+          clang $common -DAWSLC_SIZE_CHECK_D2I_X509 tests/binary-size/main.c \
+            build-small/crypto/libcrypto.a $libs -o consumer-gc-x509
           echo "Sanity: run the GC-enabled consumers"
           ./consumer-gc
           ./consumer-gc-evp
+          ./consumer-gc-x509
           size_gc=$(stat -c %s consumer-gc)
           size_gc_evp=$(stat -c %s consumer-gc-evp)
+          size_gc_x509=$(stat -c %s consumer-gc-x509)
           evp_overhead=$(( size_gc_evp - size_gc ))
+          x509_overhead=$(( size_gc_x509 - size_gc ))
           {
-            echo "### GC-enabled consumer (OPENSSL_SMALL + section GC, ${{ matrix.name }})"
+            echo "### Parsing anchors (OPENSSL_SMALL + section GC, ${{ matrix.name }})"
             echo ""
-            echo "| Consumer | Binary size |"
-            echo "|----------|-------------|"
-            echo "| base | $(numfmt --to=iec "$size_gc") (${size_gc} B) |"
-            echo "| base + \`EVP_parse_public_key\` | $(numfmt --to=iec "$size_gc_evp") (${size_gc_evp} B) |"
-            echo "| **EVP key-parsing anchor cost** | **$(numfmt --to=iec "$evp_overhead") (${evp_overhead} B)** |"
+            echo "| Consumer | Binary size | Anchor cost |"
+            echo "|----------|-------------|-------------|"
+            echo "| base | $(numfmt --to=iec "$size_gc") (${size_gc} B) | |"
+            echo "| base + \`EVP_parse_public_key\` | $(numfmt --to=iec "$size_gc_evp") (${size_gc_evp} B) | **$(numfmt --to=iec "$evp_overhead") (${evp_overhead} B)** |"
+            echo "| base + \`d2i_X509\` | $(numfmt --to=iec "$size_gc_x509") (${size_gc_x509} B) | **$(numfmt --to=iec "$x509_overhead") (${x509_overhead} B)** |"
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "gc=${size_gc} gc_evp=${size_gc_evp} evp_overhead=${evp_overhead}"
-          for bin in consumer-gc consumer-gc-evp; do
+          echo "gc=${size_gc} gc_evp=${size_gc_evp} gc_x509=${size_gc_x509}"
+          for bin in consumer-gc consumer-gc-evp consumer-gc-x509; do
             {
               echo "<details><summary>Largest retained symbols: ${bin}</summary>"
               echo ""
