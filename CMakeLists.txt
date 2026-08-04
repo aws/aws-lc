@@ -1081,12 +1081,7 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# Allow static consumers to discard unused code with --gc-sections or
-# -dead_strip. FIPS_DELOCATE merges these sections, and FIPS_SHARED is
-# incompatible with them.
-option(ENABLE_FUNCTION_SECTIONS "Compile each function and data object into its own section" ON)
-
-if(ENABLE_FUNCTION_SECTIONS AND (GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
+if((GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 endif()
