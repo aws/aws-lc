@@ -54,14 +54,19 @@ EOF
 # glibc 2.17. The tarball is fetched on the runner and supplied through the
 # dependencies build context because this image's TLS stack is too old to reach
 # static.rust-lang.org, the same reason CMake is sourced that way above.
+#
+# The pin itself (tarball name, URL, checksum) lives in
+# .github/docker_images/dependencies.env; the workflow downloads and verifies
+# the tarball and passes its name through this build arg.
+ARG RUST_STANDALONE_TARBALL
 ENV CARGO_HOME="/.cargo"
 
-COPY --from=dependencies rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz /tmp/rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz
+COPY --from=dependencies ${RUST_STANDALONE_TARBALL} /tmp/${RUST_STANDALONE_TARBALL}
 COPY --from=scripts setup-rust-standalone.sh /tmp
 RUN <<EOF
 set -ex
 setup_script="/tmp/setup-rust-standalone.sh"
-${setup_script} /tmp/rust-1.63.0-x86_64-unknown-linux-gnu.tar.gz
+${setup_script} "/tmp/${RUST_STANDALONE_TARBALL}"
 EOF
 
 RUN rm -rf /tmp/*

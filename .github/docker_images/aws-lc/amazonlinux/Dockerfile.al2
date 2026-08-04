@@ -103,15 +103,24 @@ FROM tools AS al2
 
 FROM al2 AS al2_sde
 
-ARG SDE_VERSION_TAG=sde-external-9.58.0-2025-06-16-lin
-ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/859732/${SDE_VERSION_TAG}.tar.xz"
+# SDE pins come from .github/docker_images/dependencies.env, passed through as
+# --build-arg by the image-build workflow. No defaults: a build that does not
+# provide them fails below rather than drifting from the pinned versions.
+ARG SDE_VERSION_TAG
+ARG SDE_MIRROR_URL
+ARG SDE_SHA256
 
 RUN <<EOF
-set -ex 
+set -ex
 if [[ "$(uname -m)" != "x86_64" ]]; then
     false
-fi 
+fi
+if [ -z "${SDE_VERSION_TAG}" ] || [ -z "${SDE_MIRROR_URL}" ] || [ -z "${SDE_SHA256}" ]; then
+    echo "Error: SDE build args missing; pass them from .github/docker_images/dependencies.env" >&2
+    exit 1
+fi
 wget ${SDE_MIRROR_URL}
+echo "${SDE_SHA256}  ${SDE_VERSION_TAG}.tar.xz" | sha256sum -c -
 tar -xf "${SDE_VERSION_TAG}.tar.xz"
 rm "${SDE_VERSION_TAG}.tar.xz"
 EOF

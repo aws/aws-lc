@@ -11,11 +11,13 @@ on:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
   pull_request:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
 concurrency:
   group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
@@ -37,6 +39,8 @@ jobs:
       al2_sde: ${{ steps.images.outputs.al2_sde }}
     steps:
       - uses: actions/checkout@v7
+      - name: Load dependency pins
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .github/docker_images/dependencies.env >> "$GITHUB_ENV"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -66,6 +70,10 @@ jobs:
           context: ./.github/docker_images/aws-lc/amazonlinux
           build-contexts: |
             scripts=./.github/docker_images/scripts
+          build-args: |
+            SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_LIN }}
+            SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_LIN }}
+            SDE_SHA256=${{ env.SDE_SHA256_LIN }}
           target: al2_sde
           tags: ${{ steps.images.outputs.al2_sde }}
           push: true
@@ -127,7 +135,8 @@ jobs:
             source /opt/compiler-env/setup-clang-11.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
-            sde --version | grep 9.44
+            # Expected SDE version comes from .github/docker_images/dependencies.env
+            sde --version | grep -F "${{ env.SDE_VERSION_PREFIX }}"
 
   aarch64_build:
     runs-on:
