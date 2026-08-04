@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Wrapper so the tool runs as `util/backport/backport <command>` from the repo top.
+# Finds its own location, so it works from a subfolder too. AWS_REGION is bridged
+# to AWS_DEFAULT_REGION because boto3 reads the latter.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -n "${AWS_REGION:-}" ] && [ -z "${AWS_DEFAULT_REGION:-}" ]; then
+  export AWS_DEFAULT_REGION="$AWS_REGION"
+fi
+
+exec python3 "$here/src/main.py" "$@"
