@@ -37,7 +37,9 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     )
     .await?;
 
-    let github = octocrab::initialise(octocrab::Octocrab::builder().personal_token(github_token))
+    let github = octocrab::Octocrab::builder()
+        .personal_token(github_token)
+        .build()
         .map_err(|e| format!("failed to build github client: {e}"))?;
 
     let codebuild_client = aws_sdk_codebuild::Client::new(&config);
