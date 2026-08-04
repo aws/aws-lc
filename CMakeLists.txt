@@ -604,23 +604,13 @@ macro(check_run file_to_test flag_to_set compile_flags)
   endif()
 endmacro()
 
-# Some ancient assemblers don't know about AVX instructions, which is an
-# assumption we make for some of the assembly implementations. This flag
-# can be set to handle such cases.
-#
-# Only fully effective when Perl is available: unlike the two flags below, the
-# AVX tier has no #ifndef guard in generated-src. See BUILDING.md.
+# Without Perl, generated-src retains AVX code because it lacks corresponding
+# preprocessor guards. See BUILDING.md.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build (needs Perl to be fully effective)" OFF)
 
-# Some assemblers know about AVX and AVX2 but not ADX instructions. This flag
-# gates the assembly using ADX (adcx/adox), plus the AVX2 code bundled into the
-# same files: s2n-bignum's x86_64 implementations (P-256/P-384/P-521/curve25519),
-# RSA/DH's ADX Montgomery multiplication (bn_mulx4x_mont/bn_sqr8x_mont), the ADX
-# paths in p256-x86_64-asm.pl, and SHA3's x4-batched Keccak (which needs AVX2,
-# not AVX-512). It gates neither all AVX2 nor BMI1/BMI2: mulx, rorx and andn
-# travel with the AVX tier above. This flag implies
-# MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX below, but not the reverse.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX (adcx/adox) code paths and the AVX2 code bundled with them (not all AVX2, not BMI1/BMI2)" OFF)
+# Excludes ADX assembly and AVX2 code in the same sources, but not all AVX2 or
+# BMI1/BMI2. Implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, but not the reverse.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX assembly and bundled AVX2 code (not all AVX2 or BMI1/BMI2)" OFF)
 
 # Some assemblers know about AVX, AVX2 and ADX but not AVX512 instructions.
 # This flag can be set to handle such cases, or to opt out of AVX-512 code
@@ -1091,28 +1081,18 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# Place each function and data object in its own section, so a consumer that
-# links libcrypto statically can discard the code it never calls by passing
-# `-Wl,--gc-sections` (or `-Wl,-dead_strip` on Apple platforms). This matters
-# most for the FIPS module, which is a single translation unit: without
-# per-function sections, any reference into it retains nearly all of it.
-#
-# Not enabled for FIPS builds. FIPS_DELOCATE gains nothing, since delocate
-# merges the module back into one contiguous section for the integrity check;
-# FIPS_SHARED is incompatible outright, see below.
-option(ENABLE_FUNCTION_SECTIONS "Compile with -ffunction-sections/-fdata-sections so statically-linked consumers can discard unused code with --gc-sections" ON)
+# Allow static consumers to discard unused code with --gc-sections or
+# -dead_strip. FIPS_DELOCATE merges these sections, and FIPS_SHARED is
+# incompatible with them.
+option(ENABLE_FUNCTION_SECTIONS "Compile each function and data object into its own section" ON)
 
 if(ENABLE_FUNCTION_SECTIONS AND (GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 endif()
 
-# crypto/fipsmodule/gcc_fips_shared.lds collects the module with `*(.text)` and
-# discards everything else matching `*(*.text.*)`/`*(*.data.*)`, so per-symbol
-# sections are dropped while .init_array/.fini_array and per-symbol .rodata
-# still reference them and `ld -r` fails. Neutralise the flags whatever their
-# source: Android's toolchain files add them on our behalf, and a consumer's
-# CFLAGS can too.
+# FIPS_SHARED's linker script does not collect per-symbol sections, which causes
+# `ld -r` to fail. Disable them even when inherited from a toolchain or CFLAGS.
 if(FIPS_SHARED)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
@@ -1122,7 +1102,7 @@ endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
-  # The MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX implication is applied below, after ARCH.
+  # Apply its x86_64 AVX-512 implication after ARCH is detected.
 endif()
 
 if(CONSTANT_TIME_VALIDATION)
@@ -1207,10 +1187,8 @@ else()
   set(ARCH "generic")
 endif()
 
-# On x86_64, OPENSSL_SMALL implies disabling the AVX-512 assembly for size. It
-# intentionally does not imply MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2
-# code stays available (#3355). Mirrored in include/openssl/target.h for builds
-# that define OPENSSL_SMALL via CFLAGS. Placed here because it needs ARCH.
+# On x86_64, OPENSSL_SMALL disables AVX-512 but keeps ADX/AVX2 (#3355). This
+# mirrors include/openssl/target.h for non-CMake builds.
 if(OPENSSL_SMALL AND ARCH STREQUAL "x86_64" AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)

@@ -141,8 +141,8 @@ sub SHIFT256 {
 ___
 }
 
-# .text is emitted outside the $avx guard because this file is entirely AVX:
-# some NASM versions reject an object with no sections (nasm.us 3392738).
+# Emit .text when AVX is disabled; NASM rejects objects with no sections
+# (nasm.us 3392738).
 $code.=<<___;
 .text
 ___

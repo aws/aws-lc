@@ -2264,9 +2264,8 @@ ___
 }
 aes256gcmsiv_kdf();
 
-# This file is entirely AVX, so emit a section directive even when the body is
-# suppressed: some NASM versions reject an object with no sections (nasm.us
-# 3392738).
+# Emit .text when AVX is disabled; NASM rejects objects with no sections
+# (nasm.us 3392738).
 if ($avx) {
   print $code;
 } else {

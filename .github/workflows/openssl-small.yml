@@ -33,20 +33,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Minimum static-link size reduction expected from OPENSSL_SMALL vs the
-        # default build, measured on the tests/binary-size consumer. Thresholds
-        # are set conservatively below the measured values to allow for
-        # compiler/runner variance:
-        #
-        # - x86_64: measured 66.9% (clang -O2, x86_64 Linux). OPENSSL_SMALL
-        #   implies only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
-        #   MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so the ADX/AVX2/BMI2 code
-        #   (curve25519 s2n-bignum, RSA/DH mulx Montgomery, x4-batched Keccak)
-        #   remains in the build (#3355).
-        # - aarch64: measured 62.4%. The default build links both variants of
-        #   every s2n-bignum EC operation (~500 KB), the nistz256 table
-        #   (~150 KB), and the P-384/P-521 implementations and tables; the
-        #   OPENSSL_SMALL build has none of these.
+        # Thresholds are below the clang -O2 measurements (66.9% on x86_64 and
+        # 62.4% on aarch64) to allow for compiler and runner variance.
         include:
           - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 50 }
           - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 45 }
@@ -104,21 +92,10 @@ jobs:
           fi
           echo "PASS: ${reduction}% reduction meets the ${EXPECTED_REDUCTION_PERCENT}% threshold"
       - name: Measure key-parsing and certificate-parsing anchors
-        # Intentionally single-toolchain (clang + GNU ld on Linux, like the
-        # whole job): the matrix legs vary only by architecture, so the
-        # reported numbers are per-arch, not a gcc cross-check. The anchor
-        # cost is a reachability property and ~compiler-independent anyway.
+        # These advisory deltas measure code retained by key and certificate
+        # parsing; they are not thresholded.
         run: |
           set -euo pipefail
-          # The EVP-parse variant adds one EVP_parse_public_key call, which
-          # anchors asn1_evp_pkey_methods[] (crypto/evp_extra/p_methods.c) and
-          # with it every key type's ASN.1 machinery -- currently including all
-          # of ML-KEM/ML-DSA -- even under full section GC. The d2i_X509
-          # variant reaches the same table through a certificate's
-          # SubjectPublicKeyInfo and additionally pulls the X.509/ASN.1
-          # template graph; it is the case real TLS consumers hit. The deltas
-          # quantify what parsing consumers inherit. Advisory only; not
-          # thresholded (yet).
           common="-O2 -I include -ffunction-sections -fdata-sections"
           libs="-lpthread -ldl -lm -Wl,--gc-sections"
           clang $common tests/binary-size/main.c build-small/crypto/libcrypto.a $libs -o consumer-gc
@@ -142,7 +119,7 @@ jobs:
             echo "|----------|-------------|-------------|"
             echo "| base | $(numfmt --to=iec "$size_gc") (${size_gc} B) | |"
             echo "| base + \`EVP_parse_public_key\` | $(numfmt --to=iec "$size_gc_evp") (${size_gc_evp} B) | **$(numfmt --to=iec "$evp_overhead") (${evp_overhead} B)** |"
-            echo "| base + \`d2i_X509\` | $(numfmt --to=iec "$size_gc_x509") (${size_gc_x509} B) | **$(numfmt --to=iec "$x509_overhead") (${x509_overhead} B)** |"
+            echo "| base + X.509 public-key parse | $(numfmt --to=iec "$size_gc_x509") (${size_gc_x509} B) | **$(numfmt --to=iec "$x509_overhead") (${x509_overhead} B)** |"
           } >> "$GITHUB_STEP_SUMMARY"
           echo "gc=${size_gc} gc_evp=${size_gc_evp} gc_x509=${size_gc_x509}"
           for bin in consumer-gc consumer-gc-evp consumer-gc-x509; do
@@ -193,24 +170,12 @@ jobs:
 
   small-tests-windows:
     if: github.repository_owner == 'aws'
-    # Windows/x86_64 assembles the .asm sources through NASM. OPENSSL_SMALL
-    # implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, which compiles out the whole
-    # body of the AVX-512-only .asm files; NASM errors on an object with no
-    # output (bugzilla.nasm.us/show_bug.cgi?id=3392738). To prevent this, the
-    # five avx512 perlasm scripts emit the .text directive outside the #ifndef
-    # guard so the object is never empty. The Linux legs use gas, which
-    # tolerates empty objects, so they cannot catch a regression here -- hence
-    # dedicated Windows legs (#3355).
-    #
-    # The empty-object hazard is only reachable through the pre-generated
-    # sources (DISABLE_PERL=ON), where NASM itself evaluates the %ifndef
-    # guards in generated-src. When Perl is available, perlasm regenerates the
-    # .asm with the flag and the scripts emit non-empty ud2/ret stubs instead,
-    # so that leg exercises the regeneration path. Cover both.
-    #
-    # aes128gcmsiv-x86_64.pl and p256_beeu-x86_64-asm.pl need the same
-    # treatment for MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, which no CI leg pairs with
-    # Windows/NASM.
+    # Test generated and pre-generated assembly because NASM rejects objects
+    # without sections (bugzilla.nasm.us/show_bug.cgi?id=3392738).
+    # OPENSSL_SMALL can empty AVX-512-only sources; gas accepts these objects,
+    # so this requires Windows coverage (#3355). The AVX-only AES-GCM-SIV and
+    # P-256 generators have the same requirement under
+    # MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, which this job does not exercise.
     name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
     runs-on: windows-latest
     strategy:

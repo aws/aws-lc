@@ -1,29 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 //
-// Minimal AWS-LC consumer used by the OPENSSL_SMALL binary-size CI check
-// (.github/workflows/openssl-small.yml). It links libcrypto statically and
-// exercises a representative TLS-ish crypto surface (SHA-256, AES-256-GCM,
-// ECDSA P-256, X25519, Ed25519) so the linker pulls in real code paths. The
-// workflow builds this twice -- against a default libcrypto and against one
-// built with OPENSSL_SMALL -- and compares the resulting binary sizes.
-//
-// When AWSLC_SIZE_CHECK_EVP_PARSE is defined, the consumer additionally
-// marshals and parses an EVP public key. Parsing any EVP key references the
-// asn1_evp_pkey_methods[] table (crypto/evp_extra/p_methods.c), which
-// transitively retains every linked-in key type's ASN.1 machinery --
-// including, at present, all of ML-KEM and ML-DSA -- even under
-// --gc-sections. The workflow builds this variant too and reports the size
-// delta, quantifying what key-parsing consumers inherit.
-//
-// When AWSLC_SIZE_CHECK_D2I_X509 is defined, the consumer parses a DER
-// certificate instead. That reaches the same key-type table through the
-// certificate's SubjectPublicKeyInfo, plus the X.509/ASN.1 template graph, and
-// is the case that matters most in practice: every TLS client parses
-// certificates.
-//
-// It is intentionally small and standalone (compiled directly by the workflow,
-// not part of the main CMake build).
+// Static consumer used by the OPENSSL_SMALL binary-size CI check. The default
+// build exercises common TLS algorithms. AWSLC_SIZE_CHECK_EVP_PARSE measures
+// the code retained by EVP key parsing, including every key type's ASN.1
+// implementation. AWSLC_SIZE_CHECK_D2I_X509 additionally measures certificate
+// parsing and public-key extraction. This file is compiled directly by
+// .github/workflows/openssl-small.yml.
 
 #include <stdint.h>
 #include <stdio.h>
@@ -105,9 +88,7 @@ static int do_evp_parse(void) {
   if (pkey == NULL) {
     return 0;
   }
-  // Marshal to a DER SubjectPublicKeyInfo and parse it back.
-  // |EVP_parse_public_key| is the call that anchors the full EVP method
-  // table (see the file comment).
+  // EVP_parse_public_key anchors the full EVP method table.
   int ok = 0;
   uint8_t *der = NULL;
   size_t der_len;
@@ -171,8 +152,7 @@ static int do_d2i_x509(void) {
   if (cert == NULL) {
     return 0;
   }
-  // |d2i_X509| itself does not decode the SubjectPublicKeyInfo; asking for the
-  // public key is what reaches the EVP key-type table.
+  // X509_get_pubkey decodes the SubjectPublicKeyInfo and reaches the EVP table.
   EVP_PKEY *pkey = X509_get_pubkey(cert);
   int ok = ptr == kCertDER + sizeof(kCertDER) && pkey != NULL;
   EVP_PKEY_free(pkey);
