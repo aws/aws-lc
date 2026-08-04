@@ -117,6 +117,52 @@ cc $(pkg-config --cflags libssl) app.c \
    $(pkg-config --libs --static libssl libcrypto) -o app
 ```
 
+### Verifying the link
+
+After building, confirm your application actually resolved against AWS-LC (and
+not, say, a system OpenSSL that happened to be on the search path). Which tool
+to use depends on whether you linked the shared or static libraries.
+
+For a **shared** build, `ldd` shows which `libcrypto`/`libssl` the loader
+resolves for the binary:
+
+```bash
+ldd ./app | grep -E 'libssl|libcrypto'
+# libssl.so => /path/to/aws-lc-install/lib/libssl.so (0x...)
+# libcrypto.so => /path/to/aws-lc-install/lib/libcrypto.so (0x...)
+```
+
+Each line should point at your AWS-LC install prefix. If a path instead points
+at a system location (e.g. `/lib64/libcrypto.so.10`), the binary is not using
+AWS-LC -- revisit your `-L`/rpath flags or `LD_LIBRARY_PATH`. `readelf -d` shows
+the same information statically, without running the loader, plus any embedded
+rpath:
+
+```bash
+readelf -d ./app | grep -E 'libssl|libcrypto|R(UN)?PATH'
+# 0x...(NEEDED)  Shared library: [libssl.so]
+# 0x...(NEEDED)  Shared library: [libcrypto.so]
+# 0x...(RPATH)   Library rpath: [/path/to/aws-lc-install/lib]
+```
+
+For a **static** build the crypto code is baked into your binary, so neither
+`ldd` nor the `NEEDED` entries mention `libcrypto`/`libssl`. Instead, look for an
+AWS-LC-specific symbol such as `awslc_version_string`, which is present only in
+AWS-LC (not OpenSSL). This works for either link mode:
+
+```bash
+readelf -sW ./app | grep awslc_version_string   # or: nm ./app | grep awslc_version_string
+# ...  FUNC  GLOBAL DEFAULT  ...  awslc_version_string
+```
+
+The most direct check is to have the application print the library version at
+runtime; against AWS-LC, `OpenSSL_version(OPENSSL_VERSION)` returns a string that
+starts with `AWS-LC`:
+
+```c
+printf("%s\n", OpenSSL_version(OPENSSL_VERSION));  /* -> "AWS-LC X.Y.Z" */
+```
+
 ### Integrating with autotools / configure scripts
 
 Most projects that use an autotools `./configure` script expose one of a few
@@ -169,16 +215,18 @@ the plain build described above. The differences that affect consumers are:
 
 * **Library names carry an `-awslc` suffix**: the libraries are
   `libcrypto-awslc` and `libssl-awslc` (e.g. `libcrypto-awslc.so.1`), not
-  `libcrypto`/`libssl`. Link with `-lcrypto-awslc -lssl-awslc`.
+  `libcrypto`/`libssl`. Link with `-lssl-awslc -lcrypto-awslc` (ssl before
+  crypto, as above).
 * **Headers move under an `aws-lc/` subdirectory**: they install to
   `<prefix>/include/aws-lc/openssl/` rather than `<prefix>/include/openssl/`.
   Add `-I<prefix>/include/aws-lc` so that `#include <openssl/ssl.h>` resolves.
 * **pkg-config modules are renamed to match**: use `libcrypto-awslc` and
-  `libssl-awslc` (there is also an `aws-lc` module). The unsuffixed `libcrypto`,
-  `libssl`, and `openssl` modules are *not* installed unless you also enable the
-  OpenSSL compatibility shim (`-DENABLE_DIST_PKG_OPENSSL_SHIM=ON`), which adds
-  unsuffixed `libcrypto.so`/`libssl.so` symlinks, an `openssl.pc`, and an
-  `include/<...>/openssl` symlink.
+  `libssl-awslc` (there is also an `aws-lc` module). The unsuffixed `libcrypto`
+  and `libssl` pkg-config modules are *never* installed in this mode -- only the
+  `-awslc`-suffixed ones. Enabling the OpenSSL compatibility shim
+  (`-DENABLE_DIST_PKG_OPENSSL_SHIM=ON`) adds an `openssl` pkg-config module (and
+  unsuffixed `libcrypto.so`/`libssl.so` and `include/<...>/openssl` symlinks),
+  but it does not add unsuffixed `libcrypto`/`libssl` pkg-config modules.
 
 Putting the first three together, a manual build against a dist-package install
 looks like:
