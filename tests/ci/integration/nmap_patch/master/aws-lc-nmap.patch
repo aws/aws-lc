@@ -1,0 +1,36 @@
+diff --git a/nsock/src/nsock_ssl.c b/nsock/src/nsock_ssl.c
+--- a/nsock/src/nsock_ssl.c
++++ b/nsock/src/nsock_ssl.c
+@@ -130,7 +130,7 @@ static SSL_CTX *ssl_init_helper(const SSL_METHOD *method) {
+   if (nsock_ssl_state == NSOCK_SSL_STATE_UNINITIALIZED)
+   {
+     nsock_ssl_state = NSOCK_SSL_STATE_INITIALIZED;
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
++#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER || defined OPENSSL_IS_AWSLC
+     SSL_load_error_strings();
+     SSL_library_init();
+ #else
+@@ -191,7 +191,10 @@
+    * RAND_add is 0). We rely on OpenSSL's entropy gathering, called implicitly
+    * by RAND_status, to give us what we need, or else bail out if it fails. */
+   get_random_bytes(rndbuf, sizeof(rndbuf));
++  /* AWS-LC handles entropy internally, RAND_add is a deprecated no-op */
++#if !defined(OPENSSL_IS_AWSLC)
+   RAND_add(rndbuf, sizeof(rndbuf), 0);
++#endif
+
+   if (!(flags & NSOCK_SSL_MAX_SPEED)) {
+     if (!RAND_status())
+diff --git a/nse_ssl_cert.cc b/nse_ssl_cert.cc
+--- a/nse_ssl_cert.cc
++++ b/nse_ssl_cert.cc
+@@ -485,7 +485,7 @@ int lua_push_ecdhparams(lua_State *L, EVP_PKEY *pubkey) {
+     lua_setfield(L, -2, "curve");
+     lua_pushstring(L, "namedcurve");
+   }
+   else {
+-#if defined(LIBRESSL_VERSION_NUMBER)
++#if defined(LIBRESSL_VERSION_NUMBER) || defined(OPENSSL_IS_AWSLC)
+     /* LibreSSL doesn't have EC_GROUP_get_field_type, and explicit curves are rare.
+      * Just mark as UNKNOWN. */
+     lua_pushstring(L, "UNKNOWN");

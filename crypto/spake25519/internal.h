@@ -1,3 +1,6 @@
+// Copyright (c) 2016 Google Inc.
+// SPDX-License-Identifier: ISC
+
 #ifndef OPENSSL_HEADER_SPAKE25519_INTERNAL_H
 #define OPENSSL_HEADER_SPAKE25519_INTERNAL_H
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/katemitter"
+	"github.com/aws/aws-lc/util/fipstools/acvp/acvptool/katemitter"
 )
 
 // NIST ACVP EDDSA Schema: https://pages.nist.gov/ACVP/draft-celi-acvp-eddsa.html

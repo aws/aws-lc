@@ -19,17 +19,17 @@ void UI_free(UI *ui) {
 
 int UI_add_input_string(UI *ui, const char *prompt, int flags,
         char *result_buf, int minsize, int maxsize) {
-  return 0;
+  return -1;
 }
 int UI_add_verify_string(UI *ui, const char *prompt, int flags,
         char *result_buf, int minsize, int maxsize, const char *test_buf) {
-  return 0;
+  return -1;
 }
 
 int UI_add_info_string(UI *ui, const char *text) {
-  return 0;
+  return -1;
 }
 
 int UI_process(UI *ui) {
-  return 0;
+  return -1;
 }

@@ -15,6 +15,8 @@
 
 typedef struct {
   const PQDSA *pqdsa;
+  uint8_t context[255];
+  size_t context_len;
 } PQDSA_PKEY_CTX;
 
 static int pkey_pqdsa_init(EVP_PKEY_CTX *ctx) {
@@ -31,6 +33,65 @@ static int pkey_pqdsa_init(EVP_PKEY_CTX *ctx) {
 
 static void pkey_pqdsa_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(ctx->data);
+}
+
+static int pkey_pqdsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
+  if (!pkey_pqdsa_init(dst)) {
+    return 0;
+  }
+
+  PQDSA_PKEY_CTX *dctx = dst->data;
+  PQDSA_PKEY_CTX *sctx = src->data;
+  GUARD_PTR(dctx);
+  GUARD_PTR(sctx);
+
+  // Shallow copy is safe here because |pqdsa| points to a static-storage
+  // object returned by |PQDSA_find_dsa_by_nid|.
+  dctx->pqdsa = sctx->pqdsa;
+  OPENSSL_memcpy(dctx->context, sctx->context, sizeof(sctx->context));
+  dctx->context_len = sctx->context_len;
+
+  return 1;
+}
+
+static int pkey_pqdsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
+  GUARD_PTR(ctx);
+  PQDSA_PKEY_CTX *dctx = (PQDSA_PKEY_CTX *)ctx->data;
+  switch (type) {
+    case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
+      EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
+      if (!params || !dctx ||
+          params->context_len > sizeof(dctx->context) ||
+          (params->context_len > 0 && !params->context)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+        return 0;
+      }
+      OPENSSL_cleanse(dctx->context, sizeof(dctx->context));
+      if (params->context_len > 0) {
+        OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      }
+      dctx->context_len = params->context_len;
+      break;
+    }
+    case EVP_PKEY_CTRL_GET_SIGNING_CONTEXT: {
+      EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
+      if (!params || !dctx) {
+        return 0;
+      }
+      if (dctx->context_len == 0) {
+        params->context = NULL;
+        params->context_len = 0;
+      } else {
+        params->context = dctx->context;
+        params->context_len = dctx->context_len;
+      }
+      return 1;
+    }
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
+      return 0;
+  }
+  return 1;
 }
 
 static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
@@ -78,7 +139,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 1;
   }
 
-  if (*sig_len != pqdsa->signature_len) {
+  if (*sig_len < pqdsa->signature_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -92,7 +153,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
-  if (!key->private_key) {
+  if (!key || !key->private_key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
@@ -108,13 +169,29 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // RAW sign mode
   if (!sign_digest) {
-    if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+    if (!pqdsa->method->pqdsa_sign_message(
+            key->private_key, sig, sig_len, message, message_len,
+            dctx->context_len > 0 ? dctx->context : NULL,
+            dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
     }
   }
   // DIGEST sign mode
   else {
+    // For ML-DSA, the digest-sign path (|EVP_PKEY_sign|) takes a pre-hashed
+    // |mu| input which already encodes the context string per FIPS 204
+    // section 5.3. Applying a separately-configured context here would be
+    // silently ignored and produce a signature inconsistent with the
+    // caller's intent, so reject the combination explicitly.
+    if (dctx->context_len > 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
+    if (message_len != pqdsa->digest_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
     if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
@@ -166,6 +243,10 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
+  if (!key || !key->public_key) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
 
   // |verify_digest| is a flag we use to indicate that the message to be verified has
   // already been pre-processed and hashed into a message digest.
@@ -179,13 +260,29 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   // RAW verify mode
   if(!verify_digest) {
     if (sig_len != pqdsa->signature_len ||
-    !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
+        !pqdsa->method->pqdsa_verify_message(
+            key->public_key, sig, sig_len, message, message_len,
+            dctx->context_len > 0 ? dctx->context : NULL,
+            dctx->context_len)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
       return 0;
     }
   }
   // DIGEST verify mode
   else {
+    // For ML-DSA, the digest-verify path (|EVP_PKEY_verify|) takes a
+    // pre-hashed |mu| input which already encodes the context string per
+    // FIPS 204 section 5.3. Applying a separately-configured context here
+    // would be silently ignored and produce a verification inconsistent
+    // with the caller's intent, so reject the combination explicitly.
+    if (dctx->context_len > 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
+    if (message_len != pqdsa->digest_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
     if (sig_len != pqdsa->signature_len ||
     !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
@@ -221,8 +318,6 @@ int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid) {
     return 0;
   }
 
-  evp_pkey_set_method(pkey, &pqdsa_asn1_meth);
-
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL) {
     // PQDSA_KEY_new sets the appropriate error.
@@ -230,7 +325,7 @@ int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid) {
   }
 
   key->pqdsa = pqdsa;
-  pkey->pkey.pqdsa_key = key;
+  evp_pkey_set0(pkey, &pqdsa_asn1_meth, key);
 
   return 1;
 }
@@ -345,7 +440,7 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
   out->pkey_id = EVP_PKEY_PQDSA;
   out->init = pkey_pqdsa_init;
-  out->copy = NULL;
+  out->copy = pkey_pqdsa_copy;
   out->cleanup = pkey_pqdsa_cleanup;
   out->keygen = pkey_pqdsa_keygen;
   out->sign_init = NULL;
@@ -359,7 +454,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
   out->decrypt = NULL;
   out->derive = NULL;
   out->paramgen = NULL;
-  out->ctrl = NULL;
+  out->ctrl = pkey_pqdsa_ctrl;
   out->ctrl_str = NULL;
   out->keygen_deterministic = NULL;
   out->encapsulate_deterministic = NULL;

@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_CIPHER_INTERNAL_H
 #define OPENSSL_HEADER_CIPHER_INTERNAL_H
@@ -154,6 +101,17 @@ struct evp_aead_st {
   int (*serialize_state)(const EVP_AEAD_CTX *ctx, CBB *cbb);
 
   int (*deserialize_state)(const EVP_AEAD_CTX *ctx, CBS *cbs);
+
+  // copy, if non-NULL, duplicates the post-init state of |in| into |out| and
+  // is invoked by |EVP_AEAD_CTX_copy|. When it is called, the generic layer
+  // has already set |out->aead| and |out->tag_len| and has zeroed the rest of
+  // |out|. The callback is responsible for populating |out->state| (and
+  // |out->state_offset| where the layout depends on alignment). It must fully
+  // duplicate any state and must not leave |out| aliasing a heap resource
+  // owned by |in|. It returns one on success and zero on error. A NULL |copy|
+  // means the AEAD does not support |EVP_AEAD_CTX_copy|; this is the safe
+  // default for AEADs whose state owns heap resources.
+  int (*copy)(EVP_AEAD_CTX *out, const EVP_AEAD_CTX *in);
 };
 
 struct evp_cipher_st {
@@ -201,6 +159,15 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes);
 
+// aead_ctx_copy_state_trivial is a ready-made |copy| callback (see
+// |evp_aead_st|) for AEADs whose per-key state is fully self-contained within
+// |ctx->state| and owns no heap resources reachable through |state.ptr|. It
+// duplicates |state| verbatim and preserves |state_offset|. It MUST NOT be used
+// by AEADs whose live state depends on the runtime address of |ctx->state|
+// (i.e. those that consult |state_offset| to locate an over-aligned
+// sub-context); such AEADs must supply a bespoke |copy| that relocates the
+// state to the destination's alignment.
+int aead_ctx_copy_state_trivial(EVP_AEAD_CTX *out, const EVP_AEAD_CTX *in);
 
 // EXPERIMENTAL functions for use in the TLS Transfer function. See
 // |SSL_to_bytes| for more details.

@@ -1,16 +1,5 @@
-/* Copyright (c) 2023, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2023, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_ASM_BASE_H
 #define OPENSSL_HEADER_ASM_BASE_H
@@ -69,6 +58,15 @@
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
+#if defined(__aarch64__) && !defined(__ARM_ARCH)
+// Support for GCC v4.8+. GCC 4.8 was the first version to support aarch64
+// but it doesn't define __ARM_ARCH for aarch64 targets.
+#if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8))
+  #error "GCC 4.8 or later is required for aarch64 support"
+#endif
+  #define __ARM_ARCH 8
+#endif
 
 // We require the ARM assembler provide |__ARM_ARCH| from Arm C Language
 // Extensions (ACLE). This is supported in GCC 4.8+ and Clang 3.2+. MSVC does

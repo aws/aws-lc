@@ -1,21 +1,9 @@
 // Copyright (c) 2021, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// SPDX-License-Identifier: ISC
 
 package subprocess
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -112,7 +100,7 @@ func (h *xts) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				// Sector numbers (or "sequence numbers", as NIST calls them) are turned
 				// into tweak values by encoding them in little-endian form. See IEEE
 				// 1619-2007, section 5.1.
-				binary.LittleEndian.PutUint64(tweak[:8], *test.SectorNum)
+				NativeEndian.PutUint64(tweak[:8], *test.SectorNum)
 			} else {
 				return nil, fmt.Errorf("neither sector number nor explicit tweak in test case %d/%d", group.ID, test.ID)
 			}

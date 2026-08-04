@@ -20,6 +20,14 @@ int is_fips_build(void) {
 
 #if defined(AWSLC_FIPS)
 
+// Trampoline function to avoid ARM64 ADR range issues in large FIPS module.
+// This function is intentionally not inlined to ensure the __FILE__ string
+// literal reference stays close to the call site, avoiding the ±1MB PC-relative
+// addressing limit of the ARM64 ADR instruction.
+static OPENSSL_NOINLINE void put_set_thread_local_error(void) {
+  OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+}
+
 #define STATE_UNLOCKED 0
 #define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
 #define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE 22
@@ -56,7 +64,7 @@ static struct fips_service_indicator_state *service_indicator_get(void) {
 
     if (!CRYPTO_set_thread_local(
             AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, free)) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      put_set_thread_local_error();
       return NULL;
     }
   }
@@ -583,6 +591,20 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
                  TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE) == 0) {
         FIPS_service_indicator_update_state();
       }
+      break;
+    default:
+      break;
+  }
+}
+
+void TLS13_KDF_verify_service_indicator(const EVP_MD *dgst) {
+  // Per RFC 8446 and the corresponding FIPS validation, the TLS 1.3 KDF
+  // (HKDF-Expand-Label) is approved with SHA2-256 and SHA2-384 as the
+  // underlying HMAC hash.
+  switch (dgst->type) {
+    case NID_sha256:
+    case NID_sha384:
+      FIPS_service_indicator_update_state();
       break;
     default:
       break;

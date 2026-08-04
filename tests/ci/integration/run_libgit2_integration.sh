@@ -6,6 +6,14 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Required first argument: libgit2 git ref (release tag, branch, or commit SHA).
+if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
+  echo "Usage: $0 <libgit2-git-ref>" >&2
+  echo "  ref may be a release tag (e.g. 'v1.9.4'), branch (e.g. 'main'), or commit SHA." >&2
+  exit 1
+fi
+LIBGIT2_REF="$1"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -45,23 +53,49 @@ function libgit2_patch_build() {
 }
 
 function libgit2_build_shared() {
-  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=ON -DLINK_WITH_STATIC_LIBRARIES=OFF -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_SSH=exec -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DUSE_AUTH_NTLM=builtin
+  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=ON -DLINK_WITH_STATIC_LIBRARIES=OFF -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_SSH=exec -DUSE_HTTPS=OpenSSL -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DUSE_AUTH_NTLM=builtin
   cmake --build "${LIBGIT2_BUILD_FOLDER}" --target install
   ${SCRATCH_FOLDER}/check-linkage.sh "${LIBGIT2_INSTALL_FOLDER}/bin/git2" crypto || exit 1
 }
 
 function libgit2_build_static() {
-  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=OFF -DLINK_WITH_STATIC_LIBRARIES=ON -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_SSH=exec -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DUSE_AUTH_NTLM=builtin
+  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=OFF -DLINK_WITH_STATIC_LIBRARIES=ON -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_SSH=exec -DUSE_HTTPS=OpenSSL -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DUSE_AUTH_NTLM=builtin
   cmake --build "${LIBGIT2_BUILD_FOLDER}" --target install
   nm --defined-only "${LIBGIT2_INSTALL_FOLDER}/bin/git2" | grep awslc_version_string || exit 1
 }
 
 function libgit2_run_tests() {
-  ctest --extra-verbose
+  # Local suites (git plumbing; exercises AWS-LC libcrypto). 'offline' is the
+  # full libgit2_tests suite with -xonline.
+  ctest --extra-verbose -R 'offline|invasive'
+
+  # Online suite: the only coverage of AWS-LC libssl (TLS via streams/openssl.c).
+  # Run libgit2_tests directly so we can exclude:
+  #   online::badssl     - *.badssl.com resets before cert validation from our
+  #                        networks (server-side, not AWS-LC; cert rejection is
+  #                        still covered by online::clone::certificate_invalid).
+  #   online::customcert - clones test.libgit2.org with no timeout, and that host
+  #                        is unreachable from our CI and dev networks, so it hangs.
+  # The bitbucket-specific clone tests clone
+  # bitbucket.org/libgit2-test/testgitrepository.git, which Bitbucket has
+  # removed (the endpoint now returns HTTP 410 Gone). These are dead upstream
+  # fixtures unrelated to AWS-LC, so exclude them individually:
+  #   online::clone::credentials_via_custom_headers
+  #   online::clone::bitbucket_style
+  #   online::clone::bitbucket_uses_creds_in_url
+  # 'timeout' is a backstop so a future unresponsive endpoint fails fast instead
+  # of hanging indefinitely.
+  timeout --kill-after=60s 1200s \
+    "${LIBGIT2_BUILD_FOLDER}/libgit2_tests" -v -sonline -xonline::customcert -xonline::badssl \
+      -xonline::clone::credentials_via_custom_headers \
+      -xonline::clone::bitbucket_style \
+      -xonline::clone::bitbucket_uses_creds_in_url
 }
 
-# Get latest libgit2 version.
-git clone https://github.com/libgit2/libgit2.git "${LIBGIT2_SRC_FOLDER}"
+# Fetch the requested libgit2 ref (tag, branch, or commit).
+git init "${LIBGIT2_SRC_FOLDER}"
+git -C "${LIBGIT2_SRC_FOLDER}" fetch --depth 1 https://github.com/libgit2/libgit2.git "${LIBGIT2_REF}"
+git -C "${LIBGIT2_SRC_FOLDER}" checkout FETCH_HEAD
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBGIT2_BUILD_FOLDER}" "${LIBGIT2_INSTALL_FOLDER}"
 ls
 
@@ -91,5 +125,3 @@ libgit2_run_tests
 popd
 
 popd
-
-

@@ -14,7 +14,8 @@
 
 #include <cstdio>
 
-#if defined(GTEST_HAS_DEATH_TEST)
+// Use `#if GTEST_HAS_DEATH_TEST` (not `defined()`); some toolchains define it to 0.
+#if GTEST_HAS_DEATH_TEST
 
 #define TEST_IN_FORK_ASSERT_TRUE(condition) if (!condition) { std::cerr << __FILE__ << ":" << __LINE__ << ": Assertion failed: " << #condition << std::endl;; exit(1);}
 #define TEST_IN_FORK_ASSERT_FALSE(condition) if (condition) { std::cerr << __FILE__ << ":" << __LINE__ << ": Assertion failed: " << #condition << std::endl;; exit(1);}

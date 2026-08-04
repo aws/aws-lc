@@ -1,16 +1,5 @@
-/* Copyright (c) 2015, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2015, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/ssl.h>
 
@@ -590,6 +579,17 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
                        static_cast<int>(read_amount));
     if (ret <= 0) {
+      // If the peer closed the transport without a close_notify and the caller
+      // enabled SSL_OP_IGNORE_UNEXPECTED_EOF, report a clean shutdown with
+      // SSL_ERROR_ZERO_RETURN.
+      if (ret == 0  && (ssl->options & SSL_OP_IGNORE_UNEXPECTED_EOF) &&
+          ssl->s3->read_shutdown == ssl_shutdown_none &&
+          !SSL_in_init(ssl)) {
+        ssl->s3->read_shutdown = ssl_shutdown_close_notify;
+        ssl->s3->rwstate = SSL_ERROR_ZERO_RETURN;
+        return ret;
+      }
+      
       ssl->s3->rwstate = SSL_ERROR_WANT_READ;
       return ret;
     }

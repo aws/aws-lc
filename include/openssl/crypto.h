@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_CRYPTO_H
 #define OPENSSL_HEADER_CRYPTO_H
@@ -121,23 +110,10 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
-// fips_counter_t denotes specific APIs/algorithms. A counter is maintained for
-// each in FIPS mode so that tests can be written to assert that the expected,
-// FIPS functions are being called by a certain peice of code.
-enum fips_counter_t {
-  fips_counter_evp_aes_128_gcm = 0,
-  fips_counter_evp_aes_256_gcm = 1,
-  fips_counter_evp_aes_128_ctr = 2,
-  fips_counter_evp_aes_256_ctr = 3,
-
-  fips_counter_max = 3
-};
-
-// FIPS_read_counter returns a counter of the number of times the specific
-// function denoted by |counter| has been used. This always returns zero unless
-// BoringSSL was built with BORINGSSL_FIPS_COUNTERS defined.
-OPENSSL_EXPORT size_t FIPS_read_counter(enum fips_counter_t counter);
-
+// FIPS_version returns the FIPS version number of the current build,
+// independent of the AWS-LC version number. It returns 0 when AWS-LC is not
+// built in FIPS mode.
+OPENSSL_EXPORT uint32_t FIPS_version(void);
 
 // Deprecated functions.
 
@@ -208,6 +184,8 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
 #define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
+#define OPENSSL_INIT_ATFORK 0
+#define OPENSSL_INIT_NO_ATEXIT 0
 
 // OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
@@ -230,24 +208,6 @@ OPENSSL_EXPORT int FIPS_mode_set(int on);
 OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
 
 #define CRYPTO_MEM_CHECK_ON 0
-
-#if defined(BORINGSSL_FIPS_140_3)
-
-// FIPS_module_name returns the name of the FIPS module.
-OPENSSL_EXPORT const char *FIPS_module_name(void);
-
-// FIPS_version returns the version of the FIPS module, or zero if the build
-// isn't exactly at a verified version. The version, expressed in base 10, will
-// be a date in the form yyyymmddXX where XX is often "00", but can be
-// incremented if multiple versions are defined on a single day.
-//
-// (This format exceeds a |uint32_t| in the year 4294.)
-OPENSSL_EXPORT uint32_t FIPS_version(void);
-
-// FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
-// the current BoringSSL and zero otherwise.
-OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
-#endif //BORINGSSL_FIPS_140_3
 
 
 #if defined(__cplusplus)

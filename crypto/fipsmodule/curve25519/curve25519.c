@@ -1,16 +1,5 @@
-/* Copyright (c) 2020, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2020, Google Inc.
+// SPDX-License-Identifier: ISC
 
 // Some of this code is taken from the ref10 version of Ed25519 in SUPERCOP
 // 20141124 (http://bench.cr.yp.to/supercop.html). That code is released as
@@ -31,12 +20,6 @@
 #include "../../internal.h"
 #include "../cpucap/internal.h"
 #include "internal.h"
-
-#if defined(NDEBUG)
-#define CHECK(x) (void) (x)
-#else
-#define CHECK(x) assert(x)
-#endif
 
 const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
     'S', 'i', 'g', 'E', 'd', '2', '5', '5', '1', '9', ' ',
@@ -116,6 +99,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
     ED25519_PUBLIC_KEY_LEN);
+
+  OPENSSL_cleanse(az, sizeof(az));
 }
 
 static int ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
@@ -151,7 +136,7 @@ int ED25519_keypair_internal(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // Ed25519 key generation: rfc8032 5.1.5
   // Private key is 32 octets of random data.
   uint8_t seed[ED25519_SEED_LEN];
-  RAND_bytes(seed, ED25519_SEED_LEN);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(seed, ED25519_SEED_LEN));
 
   // Public key generation is handled in a separate function. See function
   // description why this is useful.
@@ -172,7 +157,7 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // The existing public function is void, ED25519_keypair_internal can only
   // fail if the PWCT fails and we're in a callback build where AWS_LC_FIPS_failure
   // doesn't abort on FIPS failure.
-  CHECK(ED25519_keypair_internal(out_public_key, out_private_key));
+  AWSLC_ASSERT(ED25519_keypair_internal(out_public_key, out_private_key));
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
@@ -281,6 +266,7 @@ int ed25519_sign_internal(
 
   if (!dom2(alg, dom2_buffer, &dom2_buffer_len, ctx, ctx_len)) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    OPENSSL_cleanse(az, sizeof(az));
     return 0;
   }
 
@@ -309,6 +295,9 @@ int ed25519_sign_internal(
 
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
+
+  OPENSSL_cleanse(az, sizeof(az));
+  OPENSSL_cleanse(r, sizeof(r));
 
   return 1;
 }
@@ -583,7 +572,7 @@ void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
   uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]) {
   SET_DIT_AUTO_RESET;
 
-  RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN);
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN));
 
   // All X25519 implementations should decode scalars correctly (see
   // https://tools.ietf.org/html/rfc7748#section-5). However, if an
@@ -615,7 +604,7 @@ int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   x25519_scalar_mult_generic_s2n_bignum(out_shared_key, private_key, peer_public_value);
 #else
-    x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
+  x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
 #endif
 
   // The all-zero output results when the input is a point of small order.

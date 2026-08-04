@@ -15,12 +15,16 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 17> kTools = {{
+static const std::array<Tool, 22> kTools = {{
+    {"asn1parse", asn1parseTool},
+    {"ca", caTool},
     {"crl", CRLTool},
     {"dgst", dgstTool},
     {"dhparam", dhparamTool},
     {"ec", ecTool},
     {"ecparam", ecparamTool},
+    {"enc", encTool},
+    {"genpkey", genpkeyTool},
     {"genrsa", genrsaTool},
     {"md5", md5Tool},
     {"pkcs8", pkcs8Tool},
@@ -29,6 +33,7 @@ static const std::array<Tool, 17> kTools = {{
     {"rehash", RehashTool},
     {"req", reqTool},
     {"rsa", rsaTool},
+    {"sha1", sha1Tool},
     {"s_client", SClientTool},
     {"verify", VerifyTool},
     {"version", VersionTool},

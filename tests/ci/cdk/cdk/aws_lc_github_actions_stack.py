@@ -19,6 +19,7 @@ from util.iam_policies import (
 )
 from util.metadata import ECR_REPOS, IMAGE_STAGING_REPO, LINUX_AARCH_ECR_REPO, LINUX_X86_ECR_REPO, WINDOWS_X86_ECR_REPO
 
+
 class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
     """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners."""
 
@@ -32,7 +33,8 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
         super().__init__(scope, id, env=env, timeout=180, **kwargs)
 
         # TODO: First 3 indices ordering is important for now as they are referenced directly for now.
-        repo_names = [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO]
+        repo_names = [LINUX_X86_ECR_REPO,
+                      LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO]
         repo_names.extend(ECR_REPOS)
         ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
                      for x in repo_names]
@@ -43,10 +45,11 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                                            lifecycle_rules=[ecr.LifecycleRule(
                                                max_image_age=Duration.days(1),
                                            )])
-        
+
         ecr_repos.append(self.staging_repo)
 
-        pull_through_caches = [ecr.Repository.from_repository_name(self, "quay-io", "quay.io/*")]
+        pull_through_caches = [ecr.Repository.from_repository_name(
+            self, "quay-io", "quay.io/*")]
 
         # Define a IAM role for this stack.
         metrics_policy = iam.PolicyDocument.from_json(
@@ -151,4 +154,5 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
         )
 
         cfn_project = project.node.default_child
-        cfn_project.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)
+        cfn_project.add_property_override(
+            "Triggers.PullRequestBuildPolicy", self.pull_request_policy)

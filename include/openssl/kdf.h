@@ -1,16 +1,5 @@
-/* Copyright (c) 2022, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2022, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_KDF_H
 #define OPENSSL_HEADER_KDF_H
@@ -20,6 +9,10 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+
+// Key derivation functions.
+
 
 // CRYPTO_tls1_prf calculates |out_len| bytes of the TLS PRF, using |digest|,
 // and writes them to |out|. It returns one on success and zero on error.
@@ -31,6 +24,27 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
                                    const char *label, size_t label_len,
                                    const uint8_t *seed1, size_t seed1_len,
                                    const uint8_t *seed2, size_t seed2_len);
+
+// CRYPTO_tls13_hkdf_expand_label computes the TLS 1.3 HKDF-Expand-Label
+// function as defined in RFC 8446, Section 7.1. It derives |out_len| bytes of
+// output into |out| using |digest| as the underlying HMAC hash, |secret| as
+// the HKDF pseudorandom key, |label| (which is prefixed with "tls13 "
+// internally) and |hash| (the context/transcript hash). |out_len| must be at
+// most 65535 for the TLS 1.3 HkdfLabel length field and must also fit the RFC
+// 5869 HKDF-Expand limit of |255 * EVP_MD_size(digest)|. |label_len| must be
+// at most 249 so that the "tls13 "-prefixed label fits in the RFC 8446
+// |opaque label<...255>| bound, and |hash_len| must be at most 255; a request
+// that exceeds any of these upper bounds fails and returns zero. An empty
+// |label| (|label_len == 0|) is permitted to support
+// |SSL_export_keying_material| callers; this matches the long-standing
+// behavior of the equivalent BoringSSL function. Under FIPS, the operation is
+// approved when |digest| is SHA2-256 or SHA2-384. It returns one on success
+// and zero on error.
+OPENSSL_EXPORT int CRYPTO_tls13_hkdf_expand_label(
+    uint8_t *out, size_t out_len, const EVP_MD *digest,
+    const uint8_t *secret, size_t secret_len,
+    const uint8_t *label, size_t label_len,
+    const uint8_t *hash, size_t hash_len);
 
 // SSKDF_digest computes the One-step key derivation using the
 // provided digest algorithm as the backing PRF. This algorithm

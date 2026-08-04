@@ -338,11 +338,20 @@ static size_t GetClientHelloLen(uint16_t max_version, uint16_t session_version,
     return 0;
   }
 
-  // Set a one-element cipher list so the baseline ClientHello is unpadded.
+  // Pin the sigalg list and the supported_groups list so this helper produces
+  // a small, predictable baseline ClientHello regardless of the library's
+  // current default sigalgs / curves. Without this, future changes to those
+  // defaults silently push the baseline past the 0xff padding threshold and
+  // skip this test for some |PaddingVersions| entries.
+  static const uint16_t kBaselineSigalgs[] = {SSL_SIGN_ECDSA_SECP256R1_SHA256};
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl || !SSL_set_session(ssl.get(), session.get()) ||
       !SSL_set_strict_cipher_list(ssl.get(), "ECDHE-RSA-AES128-GCM-SHA256") ||
-      !SSL_set1_curves_list(ssl.get(), "x25519:P-256:P-384") ||
+      !SSL_set1_curves_list(ssl.get(), "x25519") ||
+      !SSL_set_signing_algorithm_prefs(ssl.get(), kBaselineSigalgs,
+                                       OPENSSL_ARRAY_SIZE(kBaselineSigalgs)) ||
+      !SSL_set_verify_algorithm_prefs(ssl.get(), kBaselineSigalgs,
+                                      OPENSSL_ARRAY_SIZE(kBaselineSigalgs)) ||
       !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return 0;
   }

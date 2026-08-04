@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <algorithm>
 #include <functional>
@@ -789,7 +778,8 @@ static bool SpeedAEADSeal(const EVP_AEAD *aead, const std::string &name,
                           size_t ad_len, const std::string &selected) {
   return SpeedAEAD(aead, name, ad_len, selected, evp_aead_seal);
 }
-#if AWSLC_API_VERSION > 16
+
+#if AWSLC_API_VERSION >= 30
 static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -863,16 +853,12 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
 }
 
 static bool SpeedKEM(std::string selected) {
-  return
-#if AWSLC_API_VERSION >= 30
-         SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
-         SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
-         SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected) &&
-#endif
-         SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
-         SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
-         SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
+  return SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
+          SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
+          SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected);
 }
+
+#endif // AWSLC_API_VERSION >= 30
 
 #if AWSLC_API_VERSION > 31
 
@@ -944,11 +930,9 @@ static bool SpeedDigestSign(const std::string &selected) {
          SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected) &&
          SpeedDigestSignNID("MLDSA87", NID_MLDSA87, selected);
 }
+#endif // AWSLC_API_VERSION > 31
 
-#endif
-
-#endif
-#endif
+#endif // !defined(OPENSSL_BENCHMARK)
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
                           const std::string &selected) {
@@ -3052,7 +3036,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
        ||
-#if AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION >= 30
        !SpeedKEM(selected) ||
 #endif
 #if AWSLC_API_VERSION > 34

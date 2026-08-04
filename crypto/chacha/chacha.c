@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 // Adapted from the public domain, estream code by D. Bernstein.
 
@@ -92,7 +81,10 @@ static void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
     return;
   }
 #endif
-#if defined(CHACHA20_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+// chacha-x86_64.pl only emits ChaCha20_ctr32_avx2 when the assembler
+// supports AVX (it has no MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX preprocessor
+// fallback in the generated output), so the call must be compiled out too.
+#if defined(CHACHA20_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   if (ChaCha20_ctr32_avx2_capable(in_len)) {
     ChaCha20_ctr32_avx2(out, in, in_len, key, counter);
     return;

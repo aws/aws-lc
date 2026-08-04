@@ -1,3 +1,6 @@
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #include <sys/types.h>
 #include <stdint.h>
 #include <openssl/err.h>
@@ -11,12 +14,8 @@
 #define WARM_UP_NUM_ITER    60
 #define DEFAULT_USEC_RUN    100000  /* 100 ms */
 
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 extern BIO *bio_err;
 extern BIO *bio_out;

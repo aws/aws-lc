@@ -1,50 +1,5 @@
-/* ====================================================================
- * Copyright (c) 2001-2011 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ==================================================================== */
+// Copyright (c) 2001-2011 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <assert.h>
 #include <limits.h>
@@ -152,18 +107,6 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   int ret;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
   const int mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
-
-  if (mode == EVP_CIPH_CTR_MODE) {
-    switch (ctx->key_len) {
-      case 16:
-        boringssl_fips_inc_counter(fips_counter_evp_aes_128_ctr);
-        break;
-
-      case 32:
-        boringssl_fips_inc_counter(fips_counter_evp_aes_256_ctr);
-        break;
-    }
-  }
 
   if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
     if (hwaes_capable()) {
@@ -305,27 +248,27 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt, 1);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt_wrapper, 1);
     }
     if (out_block) {
-      *out_block = aes_hw_encrypt;
+      *out_block = aes_hw_encrypt_wrapper;
     }
-    return aes_hw_ctr32_encrypt_blocks;
+    return aes_hw_ctr32_encrypt_blocks_wrapper;
   }
 
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (out_block) {
-      *out_block = vpaes_encrypt;
+      *out_block = vpaes_encrypt_wrapper;
     }
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt, 0);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt_wrapper, 0);
     }
 #if defined(BSAES)
     assert(bsaes_capable());
     return vpaes_ctr32_encrypt_blocks_with_bsaes;
 #elif defined(VPAES_CTR32)
-    return vpaes_ctr32_encrypt_blocks;
+    return vpaes_ctr32_encrypt_blocks_wrapper;
 #else
     return NULL;
 #endif
@@ -333,12 +276,12 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 
   aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
   if (gcm_key != NULL) {
-    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
+    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt_wrapper, 0);
   }
   if (out_block) {
-    *out_block = aes_nohw_encrypt;
+    *out_block = aes_nohw_encrypt_wrapper;
   }
-  return aes_nohw_ctr32_encrypt_blocks;
+  return aes_nohw_ctr32_encrypt_blocks_wrapper;
 }
 
 #if defined(OPENSSL_32_BIT)
@@ -419,16 +362,6 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
   if (!iv && !key) {
     return 1;
-  }
-
-  switch (ctx->key_len) {
-    case 16:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_128_gcm);
-      break;
-
-    case 32:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
-      break;
   }
 
   if (key) {
@@ -531,9 +464,8 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       // lock functions to avoid updating the service indicator with the DRBG
       // functions.
       FIPS_service_indicator_lock_state();
-      if (c->encrypt && !RAND_bytes(gctx->iv + arg, gctx->ivlen - arg)) {
-        FIPS_service_indicator_unlock_state();
-        return 0;
+      if (c->encrypt) {
+        AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(gctx->iv + arg, gctx->ivlen - arg));
       }
       FIPS_service_indicator_unlock_state();
       gctx->iv_gen = 1;
@@ -558,6 +490,9 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 
     case EVP_CTRL_GCM_SET_IV_INV:
       if (gctx->iv_gen == 0 || gctx->key_set == 0 || c->encrypt) {
+        return 0;
+      }
+      if (arg <= 0 || arg > gctx->ivlen) {
         return 0;
       }
       OPENSSL_memcpy(gctx->iv + gctx->ivlen - arg, ptr, arg);
@@ -678,7 +613,7 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     //
     // key_len is two AES keys
 
-    if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
+    if (CRYPTO_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DUPLICATED_KEYS);
       return 0;
     }
@@ -1129,16 +1064,6 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
                                   size_t key_len, size_t tag_len) {
   const size_t key_bits = key_len * 8;
 
-  switch (key_bits) {
-    case 128:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_128_gcm);
-      break;
-
-    case 256:
-      boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
-      break;
-  }
-
   if (key_bits != 128 && key_bits != 192 && key_bits != 256) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0;  // EVP_AEAD_CTX_init should catch this.
@@ -1332,6 +1257,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_192_gcm) {
@@ -1348,6 +1274,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_192_gcm) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm) {
@@ -1364,6 +1291,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 static int aead_aes_gcm_init_randnonce(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -1404,7 +1332,7 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
-  RAND_bytes(nonce, sizeof(nonce));
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(nonce, sizeof(nonce)));
   FIPS_service_indicator_unlock_state();
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
@@ -1468,6 +1396,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_randnonce) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_seal_scatter_randnonce;
   out->open_gather = aead_aes_gcm_open_gather_randnonce;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_randnonce) {
@@ -1484,6 +1413,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_randnonce) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_seal_scatter_randnonce;
   out->open_gather = aead_aes_gcm_open_gather_randnonce;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 struct aead_aes_gcm_tls12_ctx {

@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
+
+#if !defined(OPENSSL_NO_SOCK)
 
 #include <algorithm>
 #include <string>
@@ -127,7 +130,7 @@ struct SockaddrStorage {
         if (1 !=
             BIO_ADDR_rawmake(
                 bap, AF_UNIX, &sock->sun_path,
-                OPENSSL_strnlen(sock->sun_path, sizeof(sock->sun_path)) + 1,
+                OPENSSL_strnlen(sock->sun_path, sizeof(sock->sun_path)),
                 0)) {
           BIO_ADDR_free(bap);
           bap = nullptr;
@@ -960,6 +963,24 @@ TEST_F(BIOAddrTest, CopySpecifiedAddressUnix) {
   EXPECT_EQ(BIO_ADDR_copy(addr1, addr2), 1);
   EXPECT_EQ(BIO_ADDR_cmp(addr1, addr2), 0);
 }
+
+// |BIO_ADDR_rawaddress| writes a NUL terminator after the AF_UNIX path. The
+// reported |*l| must include that NUL so that callers using the standard
+// probe-then-allocate-exactly-|*l| pattern allocate a buffer large enough to
+// hold both the path and the terminator.
+TEST_F(BIOAddrTest, RawAddressUnixLengthIncludesNul) {
+  const char *path = "/tmp/test.sock";
+  const size_t path_len = strlen(path);
+  ASSERT_EQ(BIO_ADDR_rawmake(addr1, AF_UNIX, path, path_len, 0), 1);
+
+  size_t len = 0;
+  ASSERT_EQ(BIO_ADDR_rawaddress(addr1, nullptr, &len), 1);
+  EXPECT_EQ(len, path_len + 1);
+
+  char buf[sizeof(sockaddr_un::sun_path)] = {};
+  ASSERT_EQ(BIO_ADDR_rawaddress(addr1, buf, &len), 1);
+  EXPECT_STREQ(buf, path);
+}
 #endif
 
 // Tests for BIO_ADDR_dup
@@ -1025,3 +1046,5 @@ TEST_F(BIOAddrTest, ClearAddress) {
 
   BIO_ADDR_free(before_clear);
 }
+
+#endif  // !OPENSSL_NO_SOCK

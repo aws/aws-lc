@@ -1,11 +1,6 @@
 # Copyright 2020-2023 The OpenSSL Project Authors. All Rights Reserved.
 # Copyright (c) 2020, Intel Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License 2.0 (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
-#
+# SPDX-License-Identifier: Apache-2.0
 #
 # Originally written by Sergey Kirillov and Andrey Matyukov.
 # Special thanks to Ilya Albrekht for his valuable hints.
@@ -286,9 +281,13 @@ $code.=<<___;
 ___
 }
 
+# The .text directive is deliberately emitted outside the #ifndef guard:
+# when MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX elides the body, some NASM
+# versions reject an object with no sections (nasm.us bug 3392738), which
+# would otherwise break win64 builds that assemble this file (#3355).
 $code.=<<___;
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 .globl  rsaz_amm52x20_x1_ifma256
 .type   rsaz_amm52x20_x1_ifma256,\@function,5

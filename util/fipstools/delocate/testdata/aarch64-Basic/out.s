@@ -217,6 +217,15 @@ foo:
 	movi v1.2d, #0x42, msl #16
 	movi v2.2d, #0x1, msl #0
 
+	// Floating-point immediate moves must not be misinterpreted as
+	// symbol references (regression test for GCC 15 -O3 on aarch64).
+	fmov v8.4s, #2.0e+0
+	fmov v4.4s, #2.0
+	fmov v0.4s, #-1.0e+0
+	fmov v1.4s, #0.5
+	fmov d0, #2.0e+0
+	fmov d1, x0
+
 .Llocal_function_local_target:
 local_function:
 

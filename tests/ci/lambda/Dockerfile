@@ -7,7 +7,7 @@ ENV CARGO_UNSTABLE_SPARSE_REGISTRY=true
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
-RUN yum install -y openssl openssl-devel clang pkgconfig
+RUN yum install -y clang pkgconfig
 
 ENV PATH /root/.cargo/bin:$PATH
 

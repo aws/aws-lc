@@ -1,1 +1,1 @@
-__all__ = ["utils"]
+__all__ = ["utils", "convert_vector", "generate_spec"]

@@ -1,0 +1,69 @@
+name: API Documentation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'include/openssl/**'
+      - 'util/doc.go'
+      - 'util/doc.config'
+      - 'util/doc.css'
+      - '.github/workflows/api-docs.yml'
+  pull_request:
+    paths:
+      - 'include/openssl/**'
+      - 'util/doc.go'
+      - 'util/doc.config'
+      - 'util/doc.css'
+      - '.github/workflows/api-docs.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  validate-api-docs:
+    concurrency:
+      group: api-docs-validate-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ">=1.22"
+      - name: Generate API documentation
+        run: go run util/doc.go
+
+  publish-api-docs:
+    if: github.event_name == 'push'
+    needs: validate-api-docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ">=1.22"
+      - name: Generate API documentation
+        run: go run util/doc.go
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./pages-output
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

@@ -1,6 +1,5 @@
 // Copyright 2010 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-License-Identifier: BSD-3-Clause
 
 // TLS low level connection and record layer
 
@@ -1206,7 +1205,7 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		}
 
 		if typ != recordTypeHandshake && c.config.Bugs.MaxRecordSize > 0 && c.config.Bugs.MaxRecordSize < m {
-		    m = c.config.Bugs.MaxRecordSize
+			m = c.config.Bugs.MaxRecordSize
 		}
 
 		explicitIVLen := 0

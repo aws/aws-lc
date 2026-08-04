@@ -1,17 +1,11 @@
 #! /usr/bin/env perl
 # Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
-#
-# Licensed under the OpenSSL license (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
+# SPDX-License-Identifier: Apache-2.0
 
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-# project. The module is, however, dual licensed under OpenSSL and
-# CRYPTOGAMS licenses depending on where you obtain it. For further
-# details see http://www.openssl.org/~appro/cryptogams/.
+# project.
 # ====================================================================
 
 # October 2005.
@@ -67,7 +61,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $addx = 1;
-for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
+for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2/); }
 
 # int bn_mul_mont_nohw(
 $rp="%rdi";	# BN_ULONG *rp,
@@ -798,7 +792,7 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___	if ($addx);
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 .extern	bn_sqrx8x_internal		# see x86_64-mont5 module
 #endif
 ___
@@ -890,7 +884,7 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 	test	$mulx_adx_capable,$mulx_adx_capable
 	jz	.Lsqr8x_nox
 
@@ -1005,7 +999,7 @@ if ($addx) {{{
 my $bp="%rdx";	# original value
 
 $code.=<<___;
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 .globl	bn_mulx4x_mont
 .type	bn_mulx4x_mont,\@function,6
 .align	32
@@ -1532,7 +1526,7 @@ sqr_handler:
 	.rva	.LSEH_info_bn_sqr8x_mont
 ___
 $code.=<<___ if ($addx);
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 	.rva	.LSEH_begin_bn_mulx4x_mont
 	.rva	.LSEH_end_bn_mulx4x_mont
 	.rva	.LSEH_info_bn_mulx4x_mont
@@ -1558,7 +1552,7 @@ $code.=<<___;
 .align	4
 ___
 $code.=<<___ if ($addx);
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 .LSEH_info_bn_mulx4x_mont:
 	.byte	9,0,0,0
 	.rva	sqr_handler

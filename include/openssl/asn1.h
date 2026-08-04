@@ -1,59 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.]
- */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_ASN1_H
 #define OPENSSL_HEADER_ASN1_H
@@ -328,6 +274,10 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 // ASN1_VALUE_st (aka |ASN1_VALUE|) is an opaque type used as a placeholder for
 // the C type corresponding to an |ASN1_ITEM|.
 typedef struct ASN1_VALUE_st ASN1_VALUE;
+
+// ASN1_parse performs an ASN.1 dump of the contents pointed to by |pp| of length |len|,
+// and writes it to |bp|. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int ASN1_parse(BIO *bp, const unsigned char *pp, long len, int indent);
 
 // ASN1_item_new allocates a new value of the C type corresponding to |it|, or
 // NULL on error. On success, the caller must release the value with
@@ -1810,6 +1760,17 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 // |FILE| rather than a |BIO|.
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
+
+// a2i_ASN1_INTEGER reads a hexadecimal string from |bp| and converts it to an
+// INTEGER, writing the result to |bs|. |buf| is a caller-provided temporary
+// buffer of |size| bytes that the function uses for reading lines from |bp|.
+// It returns one on success and zero on error.
+//
+// The input should consist of hexadecimal digits, optionally with a leading
+// "00" (which is skipped). Lines can be continued with a trailing backslash
+// (\). The hexadecimal string must have an even number of digits.
+OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf,
+                                    int size);
 
 // i2a_ASN1_INTEGER writes a human-readable representation of |a| to |bp|. It
 // returns the number of bytes written on success, or a negative number on

@@ -1,6 +1,5 @@
 // Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-License-Identifier: BSD-3-Clause
 
 package runner
 
@@ -20,7 +19,7 @@ import (
 	"net"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"github.com/aws/aws-lc/ssl/test/runner/hpke"
 	"golang.org/x/crypto/cryptobyte"
 )
 

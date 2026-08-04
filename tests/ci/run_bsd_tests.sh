@@ -6,10 +6,9 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
-# Our NetBSD CI environment gives a "No route to host" error when connecting to `ocsp.sectigo.com:80`.
-if [[ "$KERNEL_NAME" == "NetBSD" ]]; then
-  export GTEST_FILTER="-*.AmazonTrustServices*"
-fi
+# AWS_LC_NO_SLOW_TESTS: when set to "1", reduces test scope on all platforms.
+# - ARM64: skips disabled (slow) tests
+# - x86-64: skips FIPS build configurations
 
 if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     # ARM64 platforms are tested via emulation.
@@ -20,7 +19,11 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
 
     run_build all
 
-    shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+    if [[ "${AWS_LC_NO_SLOW_TESTS:-0}" == "0" ]]; then
+        shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+    else
+        shard_gtest ${BUILD_ROOT}/crypto/crypto_test
+    fi
     shard_gtest ${BUILD_ROOT}/crypto/urandom_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_test
     shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
@@ -28,7 +31,6 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test
 
     shard_gtest ${BUILD_ROOT}/ssl/ssl_test
-    shard_gtest ${BUILD_ROOT}/ssl/integration_test
 
     # Does not use GoogleTest
     ${BUILD_ROOT}/crypto/rwlock_static_init
@@ -45,6 +47,11 @@ build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 echo "Testing AWS-LC static library in release mode."
 build_and_test -DCMAKE_BUILD_TYPE=Release
+
+if [[ "${AWS_LC_NO_SLOW_TESTS:-0}" != "0" ]]; then
+    echo "AWS_LC_NO_SLOW_TESTS is set, skipping FIPS builds."
+    exit 0
+fi
 
 # The FIPS builds fail on NetBSD
 if [[ "$KERNEL_NAME" != "NetBSD" ]]; then

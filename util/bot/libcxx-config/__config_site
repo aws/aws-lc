@@ -1,6 +1,47 @@
 #ifndef BORINGSSL_LIBCXX_CONFIG_SITE_
 #define BORINGSSL_LIBCXX_CONFIG_SITE_
 
+// We only use our custom libc++ for sanitizer testing, so enable all hardening
+// checks. This is required for LLVM 16+ which mandates that
+// _LIBCPP_HARDENING_MODE is set to a valid value.
+#define _LIBCPP_HARDENING_MODE _LIBCPP_HARDENING_MODE_DEBUG
+
+// libc++ headers disable std::string ASan annotations if this is not defined.
+// This is to avoid false positives when libc++'s runtime components are
+// uninstrumented. When building our custom libc++, libc++ will be as
+// instrumented as the caller, so we can safely enable this.
+#define _LIBCPP_INSTRUMENTED_WITH_ASAN 1
+
+// New-style feature macros (LLVM 19+). Older versions use
+// _LIBCPP_HAS_NO_<feature> negated macros which are auto-detected, so these
+// definitions are only consumed by the versions that require them.
+#define _LIBCPP_HAS_FILESYSTEM 1
+#define _LIBCPP_HAS_LOCALIZATION 1
+#define _LIBCPP_HAS_MONOTONIC_CLOCK 1
+#define _LIBCPP_HAS_RANDOM_DEVICE 1
+#define _LIBCPP_HAS_THREADS 1
+#define _LIBCPP_HAS_UNICODE 1
+#define _LIBCPP_HAS_WIDE_CHARACTERS 1
+
+// LLVM 19+ replaced _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS with a
+// positive-sense macro.
+#define _LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS 0
+// Keep the old macro for LLVM <= 18 compatibility.
 #define _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS
+
+#if defined(__APPLE__)
+#define _LIBCPP_PSTL_BACKEND_LIBDISPATCH 1
+#else
+#define _LIBCPP_PSTL_BACKEND_STD_THREAD 1
+#endif
+
+// Thread API macros use defined() checks in LLVM 19+, so only define the one
+// that applies. Defining the others to 0 would still satisfy defined() and
+// break the include logic.
+#ifdef _WIN32
+#define _LIBCPP_HAS_THREAD_API_WIN32 1
+#else
+#define _LIBCPP_HAS_THREAD_API_PTHREAD 1
+#endif
 
 #endif  // BORINGSSL_LIBCXX_CONFIG_SITE_

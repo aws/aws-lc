@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/rand.h>
 
@@ -26,16 +15,26 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 
 #include <windows.h>
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
-    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+// ProcessPrng (from `bcryptprimitives.dll`) is only available on Windows 8+.
+// Fall back to BCryptGenRandom when targeting Windows 7 or earlier. This applies
+// to both MSVC and MinGW-w64 toolchains; MinGW-w64 ships `bcrypt.h` and can link
+// against `libbcrypt.a` / `bcrypt.dll`.
+#if defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
+#define AWSLC_WINDOWS_7_COMPAT
+#endif
+
+#if defined(AWSLC_WINDOWS_7_COMPAT) || \
+    (WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
+    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
 #include <bcrypt.h>
 OPENSSL_MSVC_PRAGMA(comment(lib, "bcrypt.lib"))
-#endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
+#endif // AWSLC_WINDOWS_7_COMPAT || (WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP)
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
-    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+#if defined(AWSLC_WINDOWS_7_COMPAT) || \
+    (WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
+    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
 
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   while (requested > 0) {
@@ -83,5 +82,5 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-#endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
+#endif  // AWSLC_WINDOWS_7_COMPAT || (WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP)
 #endif  // OPENSSL_RAND_WINDOWS

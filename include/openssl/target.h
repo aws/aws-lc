@@ -1,16 +1,5 @@
-/* Copyright (c) 2023, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2023, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_TARGET_H
 #define OPENSSL_HEADER_TARGET_H
@@ -22,64 +11,80 @@
 // <openssl/base.h> and <openssl/asm_base.h>. Prefer to include those headers
 // instead.
 
-#if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#  if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#    define OPENSSL_BIG_ENDIAN
+#  endif
+#elif !defined(_MSC_VER) && defined(__has_include)
+#  if __has_include(<endian.h>)
+#    include <endian.h>
+#  elif __has_include(<sys/param.h>)
+#    include <sys/param.h>
+#  endif
+#  if (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN) || \
+      (defined(_BYTE_ORDER) && defined(_BIG_ENDIAN) && _BYTE_ORDER == _BIG_ENDIAN) || \
+      (defined(BYTE_ORDER)  && defined(BIG_ENDIAN)  && BYTE_ORDER == BIG_ENDIAN)
+#    define OPENSSL_BIG_ENDIAN
+#  endif
+#elif defined(_M_PPC)
+#  define OPENSSL_BIG_ENDIAN
+#endif
+
+#if (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8) || defined(__LP64__) || defined(_WIN64)
 #define OPENSSL_64_BIT
+#else
+#define OPENSSL_32_BIT
+#endif
+
+#if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_X86_64
 #elif defined(__x86) || defined(__i386) || defined(__i386__) || defined(_M_IX86)
-#define OPENSSL_32_BIT
 #define OPENSSL_X86
 #elif defined(__AARCH64EL__) || defined(_M_ARM64)
-#define OPENSSL_64_BIT
 #define OPENSSL_AARCH64
 #elif defined(__ARMEL__) || defined(_M_ARM)
-#define OPENSSL_32_BIT
 #define OPENSSL_ARM
-#elif (defined(__PPC64__) || defined(__powerpc64__)) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define OPENSSL_64_BIT
-#define OPENSSL_PPC64LE
-#elif (defined(__PPC64__) || defined(__powerpc64__)) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define OPENSSL_64_BIT
-#define OPENSSL_PPC64BE
-#define OPENSSL_BIG_ENDIAN
-#elif (defined(__PPC__) || defined(__powerpc__)) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define OPENSSL_32_BIT
-#define OPENSSL_PPC32BE
-#define OPENSSL_BIG_ENDIAN
+#elif defined(OPENSSL_64_BIT) && (defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || \
+    defined(__PPC__) || defined(__ppc64__) || defined(__PPC64__) || defined(_ARCH_PPC64)  || \
+    defined(__ppc64le__) || defined(__powerpc64__) || defined(_M_PPC))
+#  if defined(OPENSSL_BIG_ENDIAN)
+#    define OPENSSL_PPC64BE
+#  else
+#    define OPENSSL_PPC64LE
+#  endif
+#elif defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || defined(__PPC__) || defined(_M_PPC)
+#  if defined(OPENSSL_BIG_ENDIAN)
+#    define OPENSSL_PPC32BE
+#  else
+#   define OPENSSL_PPC32LE
+#  endif
 #elif defined(__s390x__)
-#define OPENSSL_64_BIT
 #define OPENSSL_S390X
-#define OPENSSL_BIG_ENDIAN
-#elif defined(__sparc__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define OPENSSL_64_BIT
+#elif defined(__sparc__)
 #define OPENSSL_SPARCV9
-#define OPENSSL_BIG_ENDIAN
-#elif defined(__MIPSEL__) && !defined(__LP64__)
-#define OPENSSL_32_BIT
-#define OPENSSL_MIPS
-#elif defined(__MIPSEL__) && defined(__LP64__)
-#define OPENSSL_64_BIT
-#define OPENSSL_MIPS64
-#elif defined(__MIPSEB__) && !defined(__LP64__)
-#define OPENSSL_32_BIT
-#define OPENSSL_MIPS
-#define OPENSSL_BIG_ENDIAN
-#elif defined(__riscv) && __SIZEOF_POINTER__ == 8
-#define OPENSSL_64_BIT
-#define OPENSSL_RISCV64
-#elif defined(__riscv) && __SIZEOF_POINTER__ == 4
-#define OPENSSL_32_BIT
-#elif defined(__loongarch_lp64)
-#define OPENSSL_64_BIT
+#elif defined(__MIPSEL__) || defined(__MIPSEB__)
+#  if defined(OPENSSL_64_BIT)
+#    define OPENSSL_MIPS64
+#  else
+#    define OPENSSL_MIPS
+#  endif
+#elif defined(__riscv)
+#  if defined(OPENSSL_64_BIT)
+#    define OPENSSL_RISCV64
+#  endif
+#elif defined(__loongarch_lp64) || \
+      (defined(__loongarch__) && defined(OPENSSL_64_BIT))
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
-#define OPENSSL_32_BIT
 #define OPENSSL_PNACL
 #elif defined(__wasm__)
-#define OPENSSL_32_BIT
-#elif defined(__asmjs__)
-#define OPENSSL_32_BIT
-#elif defined(__myriad2__)
-#define OPENSSL_32_BIT
+#define OPENSSL_WASM
+#  if defined(__wasi__)
+#    define OPENSSL_WASM_WASI
+#  endif
+#elif defined(__asmjs__) // Allowed but no macro defined
+#elif defined(__myriad2__) // Allowed but no macro defined
+#elif defined(__e2k__) // Allowed but no macro defined
 #else
 // Run the crypto_test binary, notably crypto/compiler_test.cc, before adding
 // a new architecture.
@@ -125,6 +130,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -135,6 +141,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -147,6 +154,7 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -159,6 +167,20 @@
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// OPENSSL_WASM_WASI is set when building for WASI (WebAssembly System Interface).
+// WASI provides a standardized system interface for WebAssembly modules.
+// WASI Preview 2 does not support pthreads, BSD sockets, or terminal I/O,
+// so we disable threading, socket, and TTY support. WASI does provide
+// filesystem access and getentropy() for randomness.
+//
+// https://wasi.dev/
+#if defined(OPENSSL_WASM_WASI)
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_TTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
@@ -232,5 +254,35 @@
 #define OPENSSL_NO_ASM
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
+
+// Assembler-capability flag implications.
+//
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX implies MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2,
+// which in turn implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. The reverse does
+// not hold: an assembler can support ADX/AVX2 while lacking AVX-512, which is
+// the case OPENSSL_SMALL relies on below. CMakeLists.txt enforces this for
+// CMake builds, but it must also be enforced here for builds that pass
+// defines directly via CFLAGS (e.g., the aws-lc-sys CcBuilder path).
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+#endif
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
+
+// OPENSSL_SMALL implies disabling AVX-512 code paths on x86_64. The AVX-512
+// assembly (AES-GCM, XTS, RSAZ) is the largest single contributor to binary
+// size on x86_64 (~912 KB of object code). The performance cost is borne only
+// on AVX-512-capable CPUs (Ice Lake+, Zen 4+) for bulk symmetric operations.
+// This intentionally defines only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2/BMI2 code stays
+// available under OPENSSL_SMALL (#3355).
+#if defined(OPENSSL_SMALL) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#  define MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif
 
 #endif  // OPENSSL_HEADER_TARGET_H

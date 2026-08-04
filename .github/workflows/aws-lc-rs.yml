@@ -9,55 +9,205 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
-  AWS_LC_SYS_CMAKE_BUILDER: 1
-  RUST_NIGHTLY_TOOLCHAIN: nightly
-  RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly
+  RUST_BACKTRACE: 1
 permissions:
   contents: read
 
 jobs:
-  aws-lc-rs-bindgen:
+  # Full bindings pre-generation test on Linux (x86_64-unknown-linux-gnu)
+  aws-lc-rs-linux:
     if: github.repository_owner == 'aws'
-    runs-on: ${{ matrix.os }}
-    name: aws-lc-rs bindgen on ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
-          submodules: false
+          submodules: 'recursive'
       - name: Remove aws-lc submodule from crate directory
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
-        run: |
-          rm -rf aws-lc
-      - uses: actions/checkout@v3
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v7
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_SCRIPT_NIGHTLY_TOOLCHAIN }}
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-go@v4
+        with:
+          components: 'rustfmt'
+      - uses: actions/setup-go@v6
         with:
           go-version: '>=1.20'
-      - name: Install current Bash on macOS
-        if: runner.os == 'macOS'
-        run: brew install bash coreutils
-      - uses: ilammy/setup-nasm@v1
-        if: runner.os == 'Windows'
-      - name: No-prefix build for ${{ matrix.os }}
+      - name: Install ripgrep
+        run: cargo install --force --locked ripgrep --features pcre2
+      - name: No-prefix build
+        working-directory: ./aws-lc-rs
         env:
           AWS_LC_SYS_NO_PREFIX: "1"
-          # Ensure that we collect symbols unique to C99 builds
           AWS_LC_SYS_C_STD: "99"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Collect symbols
         working-directory: ./aws-lc-rs
         run: |
-          cargo test -p aws-lc-sys --features bindgen
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys
+      - name: Generate prefix headers
+        working-directory: ./aws-lc-rs
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/linux_x86_64.sh
+      - name: Clean
+        working-directory: ./aws-lc-rs
+        run: cargo clean
+      - name: Generate bindings
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Test with cc-builder
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys
+          cargo test -p aws-lc-rs
+
+  # Full bindings pre-generation test on macOS (aarch64-apple-darwin)
+  aws-lc-rs-macos:
+    if: github.repository_owner == 'aws'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v7
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: 'rustfmt'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.20'
+      - name: Install Bash and ripgrep
+        run: brew install bash ripgrep
+      - name: No-prefix build
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+          AWS_LC_SYS_C_STD: "99"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Collect symbols
+        working-directory: ./aws-lc-rs
+        run: |
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys
+      - name: Generate prefix headers
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/apple_aarch64.sh
+      - name: Clean
+        working-directory: ./aws-lc-rs
+        run: cargo clean
+      - name: Generate bindings
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Test with cc-builder
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys
+          cargo test -p aws-lc-rs
+
+  # iOS cross-compilation build test (aarch64-apple-ios)
+  aws-lc-rs-ios-aarch64:
+    if: github.repository_owner == 'aws'
+    name: aws-lc-rs iOS aarch64 cross-compilation
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v7
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - run: brew install llvm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: aarch64-apple-ios
+      - name: Build for aarch64-apple-ios
+        working-directory: ./aws-lc-rs
+        env:
+          CC: /opt/homebrew/opt/llvm/bin/clang
+          CXX: /opt/homebrew/opt/llvm/bin/clang++
+        run: cargo build -p aws-lc-rs --target aarch64-apple-ios --features bindgen
+
+  # Full bindings pre-generation test on Windows (x86_64-pc-windows-msvc)
+  aws-lc-rs-windows:
+    if: github.repository_owner == 'aws'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v7
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          components: 'rustfmt'
+      - uses: ilammy/setup-nasm@v1
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.20'
+      - name: No-prefix build
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+          AWS_LC_SYS_C_STD: "99"
+        working-directory: ./aws-lc-rs
+        run: cargo test -p aws-lc-sys --features bindgen --target x86_64-pc-windows-msvc
       - name: Delete current symbol files and headers
         working-directory: ./aws-lc-rs
         shell: bash
@@ -67,9 +217,8 @@ jobs:
       - name: Collect symbols
         working-directory: ./aws-lc-rs
         shell: bash
-        run: |
-          ./scripts/build/collect_symbols.sh -c aws-lc-sys
-      - name: Generate Prefix Headers
+        run: ./scripts/build/collect_symbols.sh -c aws-lc-sys -t x86_64-pc-windows-msvc
+      - name: Generate prefix headers
         working-directory: ./aws-lc-rs
         shell: bash
         run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
@@ -77,17 +226,313 @@ jobs:
         working-directory: ./aws-lc-rs
         shell: bash
         run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Install ripgrep
+        run: cargo install --force --locked ripgrep --features pcre2
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/win_x86_64.sh
       - name: Clean
         working-directory: ./aws-lc-rs
-        run: |
-          cargo clean
-      - name: Generate bindings for ${{ matrix.os }}
+        run: cargo clean
+      - name: Generate bindings
         env:
           AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
         working-directory: ./aws-lc-rs
-        run: |
-          cargo test -p aws-lc-sys --features bindgen
-      - name: Collect source from ${{ matrix.os }}
-        if: runner.os != 'Windows'
+        run: cargo test -p aws-lc-sys --features bindgen --target x86_64-pc-windows-msvc
+      - name: Test with cc-builder
         working-directory: ./aws-lc-rs
-        run: ./scripts/build/collect_build_src.sh
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys --target x86_64-pc-windows-msvc
+          cargo test -p aws-lc-rs --target x86_64-pc-windows-msvc
+
+  # Cross-compile to Windows from Linux using cargo-xwin (clang-cl + lld-link)
+  aws-lc-rs-windows-cross:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-24.04
+    name: aws-lc-rs-windows-cross (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64
+            target: x86_64-pc-windows-msvc
+          - name: x86_64-fips
+            target: x86_64-pc-windows-msvc
+            fips: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directories
+        shell: bash
+        run: |
+          rm -rf ./aws-lc-rs/aws-lc-sys/aws-lc
+          rm -rf ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: actions/checkout@v7
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: actions/checkout@v7
+        with:
+          path: ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.20'
+      - name: Install dependencies
+        run: |
+          set -ex
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --no-install-recommends \
+            cmake ninja-build nasm \
+            wget lsb-release software-properties-common gnupg
+          # Install Clang 19 from LLVM apt repository
+          # (xwin's MSVC STL headers require Clang 19+; Ubuntu 24.04 ships Clang 18)
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+          sudo ln -sf /usr/bin/clang-19 /usr/local/bin/clang-cl
+          sudo ln -sf /usr/bin/lld-19 /usr/local/bin/lld-link
+          sudo ln -sf /usr/bin/llvm-ar-19 /usr/local/bin/llvm-lib
+          cargo install cargo-xwin --locked
+      - name: Setup Wine binfmt
+        if: matrix.fips
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          set -ex
+          # Wine binfmt allows the kernel to transparently run .exe files through
+          # Wine. The FIPS build itself no longer needs Wine (inject_hash.go
+          # patches the integrity hash directly into crypto.dll using the
+          # linker map), but we still need Wine to run the FIPS sanity test
+          # below, which loads the cross-built DLL so the .CRT$XCU initializer
+          # can trigger the power-on self-test.
+          #
+          # Ubuntu 24.04's wine64 (9.0) does not properly execute .CRT$XCU
+          # initializers in cross-compiled DLLs, which prevents the FIPS
+          # power-on self-test from running. WineHQ stable (11.0+) handles
+          # this correctly.
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get install --assume-yes --install-recommends winehq-stable binfmt-support
+          # Register Wine as the interpreter for Windows PE executables
+          if [ ! -f /proc/sys/fs/binfmt_misc/wine ]; then
+            echo ':wine:M::MZ::/usr/bin/wine:' | sudo tee /proc/sys/fs/binfmt_misc/register
+          fi
+          wineboot --init
+      - name: Build
+        working-directory: ./aws-lc-rs
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: cargo xwin build -p aws-lc-rs --target ${{ matrix.target }} ${{ matrix.fips && '--features fips' || '' }}
+      - name: FIPS sanity test (via Wine)
+        if: matrix.fips
+        working-directory: ./aws-lc-rs
+        env:
+          WINEDEBUG: "-all"
+          DISPLAY: ""
+        run: |
+          # The FIPS crypto DLL has a version prefix (e.g.,
+          # aws_lc_fips_0_13_13_crypto.dll) and lives in the cargo build
+          # artifacts directory — not next to the test binary. Set WINEPATH
+          # so Wine can find it at runtime.
+          CRYPTO_DLL=$(find target -name '*crypto.dll' -path '*/aws-lc-fips-sys*' | head -1)
+          if [ -z "${CRYPTO_DLL}" ]; then
+            echo "ERROR: Could not find FIPS crypto DLL"
+            exit 1
+          fi
+          echo "Found FIPS DLL: ${CRYPTO_DLL}"
+          export WINEPATH="$(winepath -w "$(dirname "${CRYPTO_DLL}")")"
+          # Any test that loads the FIPS crypto library triggers the power-on
+          # self-test; if the integrity hash is wrong the process aborts.
+          cargo xwin test -p aws-lc-rs --target ${{ matrix.target }} --features fips
+
+  # CMake Rust bindings generation tests
+  cmake-rust-bindings:
+    if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: ubuntu-latest
+            name: linux-prefix
+            prefix: AWSLC_PREFIX
+          - os: macos-latest
+            name: macos
+          - os: macos-latest
+            name: macos-prefix
+            prefix: AWSLC_PREFIX
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux-no-ssl
+            build_libssl: OFF
+    runs-on: ${{ matrix.os }}
+    name: cmake-rust-bindings (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: 'rustfmt'
+      - uses: ilammy/setup-nasm@v1
+        if: runner.os == 'Windows'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.20'
+      - name: Install bindgen-cli
+        run: cargo install --force --locked bindgen-cli
+
+      # Prefix builds need a non-prefixed build first to collect symbols
+      - name: Generate prefix symbols file
+        if: matrix.prefix
+        shell: bash
+        run: |
+          cmake -B build-noprefix -DBUILD_TESTING=OFF
+          cmake --build build-noprefix
+          go run ./util/read_symbols.go build-noprefix/crypto/libcrypto.a > symbols.txt
+          go run ./util/read_symbols.go build-noprefix/ssl/libssl.a >> symbols.txt
+          echo "Collected $(wc -l < symbols.txt) symbols"
+
+      - name: Configure with Rust bindings generation
+        shell: bash
+        run: |
+          cmake_args="-DGENERATE_RUST_BINDINGS=ON -DBUILD_TESTING=OFF"
+          if [ -n "${{ matrix.prefix }}" ]; then
+            cmake_args="$cmake_args -DBORINGSSL_PREFIX=${{ matrix.prefix }}"
+            cmake_args="$cmake_args -DBORINGSSL_PREFIX_SYMBOLS=$(pwd)/symbols.txt"
+          fi
+          if [ "${{ matrix.build_libssl }}" = "OFF" ]; then
+            cmake_args="$cmake_args -DBUILD_LIBSSL=OFF"
+          fi
+          cmake -B build $cmake_args
+
+      - name: Build libraries
+        run: cmake --build build --config Release
+
+      - name: Generate bindings
+        run: cmake --build build --target rust_bindings --config Release --verbose
+
+      - name: Verify bindings file exists
+        shell: bash
+        run: |
+          if [ ! -f build/rust/aws_lc_bindings.rs ]; then
+            echo "ERROR: Rust bindings file was not generated"
+            exit 1
+          fi
+          echo "Generated bindings file size: $(wc -c < build/rust/aws_lc_bindings.rs) bytes"
+          echo "Generated bindings line count: $(wc -l < build/rust/aws_lc_bindings.rs) lines"
+
+      - name: Verify bindings content
+        shell: bash
+        run: |
+          # Verify SSL bindings based on BUILD_LIBSSL setting (defaults to ON)
+          if [ "${{ matrix.build_libssl }}" != "OFF" ]; then
+            if ! grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Expected SSL_new function not found"
+              exit 1
+            fi
+          else
+            if grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Unexpected SSL_new found in BUILD_LIBSSL=OFF build"
+              exit 1
+            fi
+            echo "Confirmed: SSL bindings correctly excluded"
+          fi
+          if [ -n "${{ matrix.prefix }}" ]; then
+            # Prefix builds: link_name attributes should contain the prefix.
+            # The exact format varies by platform (e.g., _PREFIX_ on macOS vs PREFIX_ on Linux).
+            if ! grep -q 'link_name.*${{ matrix.prefix }}_' build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Expected prefixed link_name attributes not found"
+              exit 1
+            fi
+            if ! grep -B1 "pub fn SSL_new" build/rust/aws_lc_bindings.rs | grep -q 'link_name.*${{ matrix.prefix }}_'; then
+              echo "ERROR: SSL_new should have ${{ matrix.prefix }}_ prefixed link_name"
+              exit 1
+            fi
+          else
+            # Non-prefix builds should not have link_name attributes
+            if grep -q '#\[link_name' build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Unexpected link_name attributes found in no-prefix build"
+              exit 1
+            fi
+          fi
+          echo "Bindings content verification passed"
+
+
+      - name: Verify bindings build and link
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/test-bindings/src"
+          cat > "${RUNNER_TEMP}/test-bindings/Cargo.toml" << 'EOF'
+          [package]
+          name = "test-bindings"
+          version = "0.1.0"
+          edition = "2021"
+
+          [[bin]]
+          name = "test-bindings"
+          path = "src/main.rs"
+          EOF
+          cat > "${RUNNER_TEMP}/test-bindings/build.rs" << 'EOF'
+          use std::env;
+          fn main() {
+              let build_dir = env::var("CMAKE_BUILD_DIR").expect("CMAKE_BUILD_DIR must be set");
+              // Library search paths for single-config generators (Unix Makefiles, Ninja)
+              println!("cargo:rustc-link-search=native={}/crypto", build_dir);
+              println!("cargo:rustc-link-search=native={}/ssl", build_dir);
+              // Library search paths for multi-config generators (Visual Studio)
+              println!("cargo:rustc-link-search=native={}/crypto/Release", build_dir);
+              println!("cargo:rustc-link-search=native={}/ssl/Release", build_dir);
+              println!("cargo:rustc-link-lib=static=crypto");
+              if env::var("INCLUDE_SSL").unwrap_or_default() == "1" {
+                  println!("cargo:rustc-link-lib=static=ssl");
+              }
+              // Platform-specific system library dependencies required by aws-lc
+              let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
+              let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+              if target_family == "unix" {
+                  println!("cargo:rustc-link-lib=dylib=pthread");
+              }
+              if target_os == "windows" {
+                  println!("cargo:rustc-link-lib=dylib=ws2_32");
+              }
+          }
+          EOF
+          cat > "${RUNNER_TEMP}/test-bindings/src/main.rs" << 'EOF'
+          #![allow(clippy::all)]
+          #![allow(non_upper_case_globals)]
+          #![allow(non_camel_case_types)]
+          #![allow(non_snake_case)]
+          #![allow(dead_code)]
+          #![allow(improper_ctypes)]
+          #![allow(unpredictable_function_pointer_comparisons)]
+          include!(concat!(env!("BINDINGS_PATH"), "/aws_lc_bindings.rs"));
+          fn main() {
+              unsafe { CRYPTO_library_init(); }
+              println!("Bindings link test passed");
+          }
+          EOF
+          cd "${RUNNER_TEMP}/test-bindings"
+          include_ssl="0"
+          if [ "${{ matrix.build_libssl }}" != "OFF" ]; then
+            include_ssl="1"
+          fi
+          export CMAKE_BUILD_DIR="${GITHUB_WORKSPACE}/build"
+          export BINDINGS_PATH="${GITHUB_WORKSPACE}/build/rust"
+          export INCLUDE_SSL="${include_ssl}"
+          cargo run
+          echo "Bindings build, link, and run test passed"

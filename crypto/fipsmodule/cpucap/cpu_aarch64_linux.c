@@ -1,23 +1,12 @@
-/* Copyright (c) 2016, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2016, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include "internal.h"
 
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 
-#include <sys/auxv.h>
+#include "cpu_getauxval_linux.h"
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -95,6 +84,11 @@ void OPENSSL_cpuid_setup(void) {
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V2;
       // CPU capabilities of N1 are a subset of CPU capabilities of V2
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+    if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V3)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_V3;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V3
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
     }
   }

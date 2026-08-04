@@ -18,6 +18,7 @@
 #include "../fipsmodule/pqdsa/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "../test/wycheproof_util.h"
 
 // mldsa44kPublicKey is an example ML-DSA-44 public key
 static const uint8_t mldsa44kPublicKey[] = {
@@ -1695,6 +1696,7 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
   ASSERT_TRUE(raw);
+  ASSERT_EQ(EVP_PKEY_pqdsa_get_type(raw), nid);
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
 
   // ---- 2. Test key generation with PKEY as a template ----
@@ -2059,6 +2061,177 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   md_ctx_verify.Reset();
 }
 
+TEST_P(PQDSAParameterTest, ContextString) {
+  // ---- 1. Setup: generate key pair ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+  ASSERT_TRUE(pkey);
+
+  std::vector<uint8_t> msg = {0x48, 0x65, 0x6c, 0x6c, 0x6f};  // "Hello"
+  uint8_t ctx_bytes[] = {0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74};  // "Context"
+
+  // ---- 2. Sign with context, verify with same context ----
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+
+  // Verify the context can be read back correctly.
+  const uint8_t *read_ctx = nullptr;
+  size_t read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_NE(read_ctx, ctx_bytes);  // Must be an internal copy.
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
+
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
+                             msg.size()));
+  std::vector<uint8_t> sig(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
+                             msg.size()));
+
+  bssl::ScopedEVP_MD_CTX md_ctx_verify;
+  EVP_PKEY_CTX *verify_pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  // Exercise the backward-compatible |EVP_PKEY_CTX_set_signature_context|
+  // wrapper on the verify side to ensure both setter names stay functional.
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(verify_pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                               msg.data(), msg.size()));
+
+  // ---- 3. Mismatched context string causes verification failure ----
+  md_ctx_verify.Reset();
+  verify_pkey_ctx = nullptr;
+  uint8_t wrong_ctx[] = {0x57, 0x72, 0x6f, 0x6e, 0x67};  // "Wrong"
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx, wrong_ctx,
+                                                  sizeof(wrong_ctx)));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                                msg.data(), msg.size()));
+
+  // ---- 4. Verify with no context fails for signature made with context ----
+  md_ctx_verify.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr,
+                                   nullptr, pkey.get()));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig.data(), sig_len,
+                                msg.data(), msg.size()));
+
+  // ---- 5. Default (empty context) remains unchanged ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+
+  // Verify default context is empty (NULL with length 0).
+  read_ctx = nullptr;
+  read_ctx_len = 1;  // Non-zero to confirm it gets set to 0.
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pkey_ctx, &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_EQ(read_ctx, nullptr);
+  ASSERT_EQ(read_ctx_len, (size_t)0);
+  std::vector<uint8_t> sig_no_ctx(sig_len);
+  size_t sig_no_ctx_len = sig_len;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_no_ctx.data(), &sig_no_ctx_len,
+                             msg.data(), msg.size()));
+
+  md_ctx_verify.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr,
+                                   nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig_no_ctx.data(),
+                               sig_no_ctx_len, msg.data(), msg.size()));
+
+  // ---- 6. Context string > 255 bytes is rejected ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  uint8_t long_ctx[256];
+  OPENSSL_memset(long_ctx, 0x41, sizeof(long_ctx));
+  ASSERT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, long_ctx,
+                                                   sizeof(long_ctx)));
+
+  // ---- 7. Max length context (255 bytes) round-trip sign + verify ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  uint8_t max_ctx[255];
+  OPENSSL_memset(max_ctx, 0x42, sizeof(max_ctx));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, max_ctx,
+                                                  sizeof(max_ctx)));
+  sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg.data(),
+                             msg.size()));
+  std::vector<uint8_t> sig_max_ctx(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig_max_ctx.data(), &sig_len,
+                             msg.data(), msg.size()));
+
+  md_ctx_verify.Reset();
+  verify_pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), &verify_pkey_ctx,
+                                   nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(verify_pkey_ctx,
+                                                  max_ctx, sizeof(max_ctx)));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig_max_ctx.data(),
+                               sig_len, msg.data(), msg.size()));
+
+  // ---- 8. EVP_PKEY_CTX_dup preserves the context ----
+  md_ctx.Reset();
+  pkey_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, ctx_bytes,
+                                                  sizeof(ctx_bytes)));
+  bssl::UniquePtr<EVP_PKEY_CTX> dup_ctx(EVP_PKEY_CTX_dup(pkey_ctx));
+  ASSERT_TRUE(dup_ctx);
+
+  read_ctx = nullptr;
+  read_ctx_len = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(dup_ctx.get(), &read_ctx,
+                                                   &read_ctx_len));
+  ASSERT_TRUE(read_ctx);
+  ASSERT_EQ(Bytes(ctx_bytes, sizeof(ctx_bytes)), Bytes(read_ctx, read_ctx_len));
+
+  // ---- 9. Context is rejected on the EVP_PKEY_sign/verify digest path ----
+  // For ML-DSA, the pre-hashed |mu| input already encodes the context per
+  // FIPS 204 section 5.3, so combining a configured context with the digest
+  // path must fail rather than be silently ignored.
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_sign_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_sign_ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(raw_sign_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_sign_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+
+  // |mu| is the 64-byte SHAKE256 output expected by the digest path; the
+  // context guard fires before any cryptographic check, so the contents
+  // don't need to be a valid mu for this test.
+  uint8_t mu[64] = {0};
+  size_t raw_sig_len = 0;
+  // Query the signature size (|sig == NULL| short-circuits before the guard).
+  ASSERT_TRUE(EVP_PKEY_sign(raw_sign_ctx.get(), nullptr, &raw_sig_len, mu,
+                            sizeof(mu)));
+  std::vector<uint8_t> raw_sig(raw_sig_len);
+  ASSERT_FALSE(EVP_PKEY_sign(raw_sign_ctx.get(), raw_sig.data(), &raw_sig_len,
+                             mu, sizeof(mu)));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> raw_verify_ctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(raw_verify_ctx);
+  ASSERT_TRUE(EVP_PKEY_verify_init(raw_verify_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set1_signature_context_string(
+      raw_verify_ctx.get(), ctx_bytes, sizeof(ctx_bytes)));
+  std::vector<uint8_t> dummy_sig(raw_sig_len, 0);
+  ASSERT_FALSE(EVP_PKEY_verify(raw_verify_ctx.get(), dummy_sig.data(),
+                               dummy_sig.size(), mu, sizeof(mu)));
+}
+
 TEST_P(PQDSAParameterTest, ParsePublicKey) {
   // Test the example public key kPublicKey encodes correctly as kPublicKeySPKI
   // Public key version of d2i_PrivateKey as part of the EVPExtraTest Gtest
@@ -2209,6 +2382,90 @@ TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
 
   // ---- 4. Test that the calculated pk is equal to original pkey ----
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
+}
+
+TEST_P(PQDSAParameterTest, GetPrivateSeed) {
+  const int nid = GetParam().nid;
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.pqdsa_key->seed);
+  const size_t expected_seed_len =
+      pkey->pkey.pqdsa_key->pqdsa->keygen_seed_len;
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = expected_seed_len + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = expected_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &priv_der,
+                         &priv_der_len));
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  OPENSSL_free(priv_der);
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.pqdsa_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, expected_seed_len);
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.pqdsa_key->seed, expected_seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  const size_t sk_len = GetParam().private_key_len;
+  std::vector<uint8_t> sk(sk_len);
+  size_t sk_len_out = sk_len;
+  ASSERT_TRUE(
+      EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len_out));
+  bssl::UniquePtr<EVP_PKEY> expanded_pkey(
+      EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
+  ASSERT_TRUE(expanded_pkey);
+  ASSERT_EQ(expanded_pkey->pkey.pqdsa_key->seed, nullptr);
+
+  seed_len = expected_seed_len;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(expanded_pkey.get(), unused.data(),
+                                         &seed_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  // Sanity NULL argument checks.
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
 }
 
 // ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
@@ -2505,6 +2762,260 @@ TEST_P(PerMLDSATest, ACVPSigVer) {
     }
     else {
       ASSERT_TRUE(strcmp(result.data(), "True") == 0);
+    }
+  });
+}
+
+// Wycheproof test vector mapping for ML-DSA variants
+struct WycheproofMLDSA {
+  const char name[20];
+  const int nid;
+  const char *verify_test;
+  const char *sign_seed_test;
+  const char *sign_noseed_test;
+};
+
+static constexpr const char kWycheproofMLDSAPath[] =
+    "third_party/vectors/converted/wycheproof/testvectors_v1/";
+
+//= third_party/vectors/vectors_spec.md#wycheproof
+//= type=test
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
+static const struct WycheproofMLDSA kWycheproofMLDSAs[] = {
+    {"MLDSA44", NID_MLDSA44, "mldsa_44_verify_test.txt",
+     "mldsa_44_sign_seed_test.txt", "mldsa_44_sign_noseed_test.txt"},
+    {"MLDSA65", NID_MLDSA65, "mldsa_65_verify_test.txt",
+     "mldsa_65_sign_seed_test.txt", "mldsa_65_sign_noseed_test.txt"},
+    {"MLDSA87", NID_MLDSA87, "mldsa_87_verify_test.txt",
+     "mldsa_87_sign_seed_test.txt", "mldsa_87_sign_noseed_test.txt"},
+};
+
+class WycheproofMLDSATest : public testing::TestWithParam<WycheproofMLDSA> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All, WycheproofMLDSATest, testing::ValuesIn(kWycheproofMLDSAs),
+    [](const testing::TestParamInfo<WycheproofMLDSA> &params) -> std::string {
+      return params.param.name;
+    });
+
+// VerifyMLDSAWithContext verifies that |sig| is a valid signature for |msg|
+// with context |msg_ctx| using the EVP_DigestVerify path with
+// EVP_PKEY_CTX_set1_signature_context_string.
+//
+// It returns one on success and zero on error.
+static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
+                                  const std::vector<uint8_t> &sig,
+                                  const std::vector<uint8_t> &msg,
+                                  const std::vector<uint8_t> &msg_ctx) {
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  if (!EVP_DigestVerifyInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr, pkey)) {
+    return 0;
+  }
+  if (!msg_ctx.empty() &&
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
+                                          msg_ctx.size())) {
+    return 0;
+  }
+  return EVP_DigestVerify(md_ctx.get(), sig.data(), sig.size(), msg.data(),
+                          msg.size());
+}
+
+// SignMLDSAWithContext produces a signature |sig| for message |msg| with
+// context |msg_ctx| using the EVP_DigestSign path with
+// EVP_PKEY_CTX_set1_signature_context_string.
+//
+// It returns one on success and zero on error.
+static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
+                                const std::vector<uint8_t> &msg,
+                                const std::vector<uint8_t> &msg_ctx) {
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  if (!EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, nullptr, nullptr, pkey)) {
+    return 0;
+  }
+  if (!msg_ctx.empty() &&
+      !EVP_PKEY_CTX_set1_signature_context_string(pkey_ctx, msg_ctx.data(),
+                                          msg_ctx.size())) {
+    return 0;
+  }
+  size_t sig_len = sig.size();
+  return EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
+                        msg.size());
+}
+
+TEST_P(WycheproofMLDSATest, Verify) {
+  std::string test_path =
+      std::string(kWycheproofMLDSAPath) + GetParam().verify_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> msg, pk, pk_der, sig;
+    // This is the ML-DSA context string, not to be confused with AWS-LC's |ctx|
+    // objects
+    // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#algorithm.2
+    std::vector<uint8_t> msg_ctx;
+    std::string flags;
+
+    ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    ASSERT_TRUE(t->GetInstructionBytes(&pk_der, "publicKeyDer"));
+
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetBytes(&sig, "sig"));
+    ASSERT_TRUE(t->GetAttribute(&flags, "flags"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    if (t->HasAttribute("ctx")) {
+      ASSERT_TRUE(t->GetBytes(&msg_ctx, "ctx"));
+    } else {
+      ASSERT_TRUE(msg_ctx.empty());
+    }
+
+    bssl::UniquePtr<EVP_PKEY> pub_pkey_from_raw(
+        EVP_PKEY_pqdsa_new_raw_public_key(GetParam().nid, pk.data(),
+                                          pk.size()));
+
+    CBS cbs;
+    CBS_init(&cbs, pk_der.data(), pk_der.size());
+    bssl::UniquePtr<EVP_PKEY> pub_pkey_from_der(EVP_parse_public_key(&cbs));
+
+    bool expect_invalid_public_key =
+        (!result.IsValid() && result.HasFlag("IncorrectPublicKeyLength"));
+    if (expect_invalid_public_key) {
+      EXPECT_FALSE(pub_pkey_from_der.get());
+      EXPECT_FALSE(pub_pkey_from_raw.get());
+      return;
+    }
+    ASSERT_TRUE(pub_pkey_from_der.get());
+    ASSERT_TRUE(pub_pkey_from_raw.get());
+    ASSERT_TRUE(EVP_PKEY_cmp(pub_pkey_from_raw.get(), pub_pkey_from_der.get()));
+
+    int verify_result =
+        VerifyMLDSAWithContext(pub_pkey_from_der.get(), sig, msg, msg_ctx);
+    if (result.IsValid()) {
+      EXPECT_TRUE(verify_result)
+          << "Signature verification failed for valid test case";
+    } else {
+      EXPECT_FALSE(verify_result)
+          << "Signature verification succeeded for invalid test case";
+    }
+  });
+}
+
+TEST_P(WycheproofMLDSATest, SignWithSeed) {
+  std::string test_path =
+      std::string(kWycheproofMLDSAPath) + GetParam().sign_seed_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> msg, pk, sk_pkcs8, sk_seed, expected_sig;
+    std::vector<uint8_t> msg_ctx;
+
+    ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    // privateKeyPkcs8 is optional - some test groups only have privateSeed
+    bool has_pkcs8 = t->HasInstruction("privateKeyPkcs8");
+    if (has_pkcs8) {
+      ASSERT_TRUE(t->GetInstructionBytes(&sk_pkcs8, "privateKeyPkcs8"));
+    }
+    ASSERT_TRUE(t->GetInstructionBytes(&sk_seed, "privateSeed"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    if (t->HasAttribute("ctx")) {
+      ASSERT_TRUE(t->GetBytes(&msg_ctx, "ctx"));
+    }
+
+    bssl::UniquePtr<EVP_PKEY> sec_pkey_from_raw(
+        EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, sk_seed.data(),
+                                           sk_seed.size()));
+
+    bssl::UniquePtr<EVP_PKEY> sec_pkey_from_der;
+    if (has_pkcs8) {
+      CBS cbs;
+      CBS_init(&cbs, sk_pkcs8.data(), sk_pkcs8.size());
+      sec_pkey_from_der.reset(EVP_parse_private_key(&cbs));
+    }
+
+    bool expect_invalid_public_key =
+        (!result.IsValid() && (result.HasFlag("IncorrectPublicKeyLength") ||
+                               result.HasFlag("InvalidPrivateKey")));
+    if (expect_invalid_public_key) {
+      if (has_pkcs8) {
+        EXPECT_FALSE(sec_pkey_from_der.get());
+      }
+      EXPECT_FALSE(sec_pkey_from_raw.get());
+      return;
+    }
+    if (has_pkcs8) {
+      ASSERT_TRUE(sec_pkey_from_der.get());
+      ASSERT_TRUE(EVP_PKEY_cmp(sec_pkey_from_der.get(), sec_pkey_from_raw.get()));
+    }
+    ASSERT_TRUE(sec_pkey_from_raw.get());
+
+    std::vector<uint8_t> sig(expected_sig.size());
+    EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
+    int sign_result =
+        SignMLDSAWithContext(signing_key, sig, msg, msg_ctx);
+    if (result.IsValid()) {
+      EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
+    } else {
+      EXPECT_FALSE(sign_result) << "Signing succeeded for invalid test case";
+    }
+  });
+}
+
+TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
+  std::string test_path =
+      std::string(kWycheproofMLDSAPath) + GetParam().sign_noseed_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> msg, pk, sk_expanded, expected_sig;
+    std::vector<uint8_t> msg_ctx;
+
+    // publicKey is optional - it's omitted for some invalid test cases
+    bool has_pk = t->HasInstruction("publicKey");
+    if (has_pk) {
+      ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    }
+    ASSERT_TRUE(t->GetInstructionBytes(&sk_expanded, "privateKey"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    if (t->HasAttribute("ctx")) {
+      ASSERT_TRUE(t->GetBytes(&msg_ctx, "ctx"));
+    }
+
+    bssl::UniquePtr<EVP_PKEY> sec_pkey_from_expanded(
+        EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, sk_expanded.data(),
+                                           sk_expanded.size()));
+
+    bool expect_invalid_private_key =
+        (!result.IsValid() && (result.HasFlag("IncorrectPrivateKeyLength") ||
+                               result.HasFlag("InvalidPrivateKey")));
+    if (expect_invalid_private_key) {
+      EXPECT_FALSE(sec_pkey_from_expanded.get());
+      return;
+    }
+    ASSERT_TRUE(sec_pkey_from_expanded.get());
+
+    std::vector<uint8_t> sig(expected_sig.size());
+    int sign_result = SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig,
+                                           msg, msg_ctx);
+    if (result.IsValid()) {
+      EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
+    } else {
+      EXPECT_FALSE(sign_result) << "Signing succeeded for invalid test case";
     }
   });
 }

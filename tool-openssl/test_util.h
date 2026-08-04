@@ -114,5 +114,22 @@ EVP_PKEY *DecryptPrivateKey(const char *path, const char *password);
 bool CompareKeyEquality(EVP_PKEY *key1, EVP_PKEY *key2);
 bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
                                 unsigned int expected_bits);
+bool ValidateCertificateKeyPair(X509 *cert, EVP_PKEY *private_key);
+
+
+// Additional PEM format boundary markers used by PKCS8
+const std::string PRIVATE_KEY_BEGIN = "-----BEGIN PRIVATE KEY-----";
+const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
+const std::string ENCRYPTED_PRIVATE_KEY_BEGIN =
+    "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+const std::string ENCRYPTED_PRIVATE_KEY_END =
+    "-----END ENCRYPTED PRIVATE KEY-----";
+
+// CheckKeyBoundaries checks the PEM boundary markers of |content|
+bool CheckKeyBoundaries(const std::string &content,
+                        const std::string &begin1,
+                        const std::string &end1,
+                        const std::string &begin2,
+                        const std::string &end2);
 
 #endif  // TEST_UTIL_H

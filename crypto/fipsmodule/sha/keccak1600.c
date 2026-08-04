@@ -1,11 +1,5 @@
-/*
- * Copyright 2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2016 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <assert.h>
 #include "internal.h"
@@ -38,6 +32,18 @@ static const uint64_t iotas[] = {
     0x0000000080000001ULL,
     0x8000000080008008ULL
 };
+
+#if defined(OPENSSL_X86_64)
+static const uint64_t keccak_rho8[4] = {
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL,
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL
+};
+
+static const uint64_t keccak_rho56[4] = {
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL,
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL
+};
+#endif
 
 #if !defined(KECCAK1600_ASM)
 
@@ -321,7 +327,7 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
-#if defined(OPENSSL_AARCH64)
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86_64)
 static void keccak_log_dispatch(size_t id) {
 #if BORINGSSL_DISPATCH_TEST
     BORINGSSL_function_hit[id] = 1;
@@ -334,7 +340,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //
     // 1. If ASM is disabled, we use the C implementation.
     // 2. If ASM is enabled:
-    //   - For Neoverse N1, V1, V2, we use scalar Keccak assembly from s2n-bignum
+    //   - For Neoverse N1, V1, V2, V3, we use scalar Keccak assembly from s2n-bignum
     //     (`sha3_keccak_f1600()`)
     //     leveraging lazy rotations from https://eprint.iacr.org/2022/1243.
     //   - Otherwise, if the Neon SHA3 extension is supported, we use the Neon
@@ -344,7 +350,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //     (`Keccak1600_hw()`), not using lazy rotations.
     //
     // Lazy rotations improve performance by up to 10% on CPUs with free
-    // Barrel shifting, which includes Neoverse N1, V1, and V2. Not all
+    // Barrel shifting, which includes Neoverse N1, V1, V2, and V3. Not all
     // CPUs have free Barrel shifting (e.g. Apple M1 or Cortex-A72), so we
     // don't use it by default.
     //
@@ -353,7 +359,8 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // implementation.
 #if defined(OPENSSL_AARCH64)
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
-    if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+    if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() ||
+        CRYPTO_is_Neoverse_V3()) {
         keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
         sha3_keccak_f1600((uint64_t *)A, iotas);
         return;
@@ -372,6 +379,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     KeccakF1600_hw((uint64_t *) A);
 
 #elif defined(OPENSSL_X86_64)
+    keccak_log_dispatch(9); // kFlag_sha3_keccak_f1600
     sha3_keccak_f1600((uint64_t *)A, iotas);
 #endif
 }
@@ -417,9 +425,11 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
     //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
     //   lazy rotations.
-    // - For Neoverse V1, V2, we use SIMD batched hybrid Keccak assembly from s2n-bignum
+    // - For Neoverse V1, V2, V3, we use SIMD batched hybrid Keccak assembly from s2n-bignum
     //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
-    //   and scalar assembly with lazy rotations.
+    //   and scalar assembly with lazy rotations. On V3 the SHA3-extension-only
+    //   path (`sha3_keccak2_f1600()`, below) is much faster than on V1/V2, but
+    //   this SIMD path is still measurably faster, so V3 is grouped here.
     // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
     //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600()`) twice,
     //   which is a straightforward implementation using the SHA3 extension.
@@ -433,7 +443,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() || CRYPTO_is_Neoverse_V3()) {
         keccak_log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
         sha3_keccak4_f1600_alt2((uint64_t *)A, iotas);
         return;
@@ -447,6 +457,14 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
         return;
     }
 #endif
+#endif
+
+#if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_X86_64)
+    if (CRYPTO_is_AVX2_capable()) {
+        keccak_log_dispatch(10); // kFlag_sha3_keccak4_f1600_alt
+        sha3_keccak4_f1600_alt((uint64_t *)A, iotas, keccak_rho8, keccak_rho56);
+        return;
+    }
 #endif
 
     // Fallback: 4x individual KeccakF1600 calls (each with their own dispatch)

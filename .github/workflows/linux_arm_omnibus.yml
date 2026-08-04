@@ -29,7 +29,7 @@ jobs:
           - name: fips-tests
             run: ./tests/ci/run_fips_tests.sh
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -41,7 +41,7 @@ jobs:
           env: |
             AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ${{ matrix.run }}
 
   graviton4:
@@ -60,7 +60,7 @@ jobs:
           - name: fips-tests
             run: ./tests/ci/run_fips_tests.sh
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -72,7 +72,38 @@ jobs:
           env: |
             AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
+            ${{ matrix.run }}
+
+  graviton5:
+    name: graviton5-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton5-c9g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
+          run: |
+            source /opt/compiler-env/setup-clang-19.sh
             ${{ matrix.run }}
 
 
@@ -89,7 +120,7 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_END_INDEX: 3500
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -101,7 +132,7 @@ jobs:
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part2:
@@ -114,7 +145,7 @@ jobs:
       AWS_LC_SSL_RUNNER_START_INDEX: 3501
       AWS_LC_SSL_RUNNER_END_INDEX: 5500
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -127,7 +158,7 @@ jobs:
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part3:
@@ -140,7 +171,7 @@ jobs:
       AWS_LC_SSL_RUNNER_START_INDEX: 5501
       AWS_LC_SSL_RUNNER_END_INDEX: 7000
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -153,7 +184,7 @@ jobs:
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part4:
@@ -165,7 +196,7 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_START_INDEX: 7001
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -177,7 +208,7 @@ jobs:
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
           run: |
-            source /opt/compiler-env/setup-clang-15.sh
+            source /opt/compiler-env/setup-clang-19.sh
             ./tests/ci/run_ssl_asan_tests.sh
 
   # Build and test aws-lc without Perl/Go.
@@ -188,7 +219,7 @@ jobs:
         image:arm-3.0
         instance-size:large
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

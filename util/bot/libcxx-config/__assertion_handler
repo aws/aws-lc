@@ -1,0 +1,10 @@
+#ifndef BORINGSSL_LIBCXX_ASSERTION_HANDLER_
+#define BORINGSSL_LIBCXX_ASSERTION_HANDLER_
+
+#include <__verbose_abort>
+
+// We only use our custom libc++ for sanitizer testing, so we can use verbose
+// aborts for assertion failures.
+#define _LIBCPP_ASSERTION_HANDLER(message) _LIBCPP_VERBOSE_ABORT("%s", message)
+
+#endif  // BORINGSSL_LIBCXX_ASSERTION_HANDLER_

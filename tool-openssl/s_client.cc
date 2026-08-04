@@ -34,6 +34,12 @@ static const argument_t kArguments[] = {
                 "Use TLS version 1.2 only." },
         { "-tls1_3", kBooleanArgument,
                 "Use TLS version 1.3 only." },
+        { "-msg", kBooleanArgument,
+                "Show protocol messages" },
+        { "-servername", kOptionalArgument,
+                "Server name for SNI extension." },
+        { "-noservername", kBooleanArgument,
+                "Do not send the server name (SNI) extension in the ClientHello" },
         { "", kOptionalArgument, "" },
 };
 
@@ -65,6 +71,18 @@ bool SClientTool(const args_list_t &args) {
   std::map<std::string, std::string> args_map;
   for (const auto &arg_pair : parsed_args) {
     args_map[arg_pair.first] = arg_pair.second;
+  }
+
+  // Map OpenSSL-style -servername to DoClient's -server-name
+  if (args_map.count("-servername")) {
+    args_map["-server-name"] = args_map["-servername"];
+    args_map.erase("-servername");
+  }
+
+  if (args_map.count("-noservername") && args_map.count("-server-name")) {
+    fprintf(stderr,
+            "s_client: Can't use -servername and -noservername together\n");
+    return false;
   }
 
   return DoClient(args_map, true);

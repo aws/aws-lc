@@ -1,16 +1,5 @@
-/* Copyright (c) 2017, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2017, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/aead.h>
 
@@ -111,6 +100,24 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static void aead_aes_gcm_siv_asm_cleanup(EVP_AEAD_CTX *ctx) {}
+
+static int aead_aes_gcm_siv_asm_copy(EVP_AEAD_CTX *out,
+                                     const EVP_AEAD_CTX *in) {
+  // The asm context is over-aligned within |state| and is located via
+  // |state_offset|, which is derived from the runtime address of |state|.
+  // A verbatim copy of |state| would misplace it whenever |out| and |in| have
+  // different alignment, so re-derive the offset for |out| and relocate the
+  // sub-context to the destination's aligned slot.
+  out->state_offset = (uint8_t)(((uintptr_t)&out->state) & 8);
+  struct aead_aes_gcm_siv_asm_ctx *out_ctx = asm_ctx_from_ctx(out);
+  const struct aead_aes_gcm_siv_asm_ctx *in_ctx = asm_ctx_from_ctx(in);
+  if (in_ctx == NULL) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
+    return 0;
+  }
+  OPENSSL_memcpy(out_ctx, in_ctx, sizeof(*out_ctx));
+  return 1;
+}
 
 // aesgcmsiv_polyval_horner updates the POLYVAL value in |in_out_poly| to
 // include a number (|in_blocks|) of 16-byte blocks of data from |in|, given
@@ -527,6 +534,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     NULL /* tag_len */,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    aead_aes_gcm_siv_asm_copy /* copy */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
@@ -547,6 +555,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     NULL /* tag_len */,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    aead_aes_gcm_siv_asm_copy /* copy */,
 };
 
 #endif  // X86_64 && !NO_ASM && !WINDOWS
@@ -816,6 +825,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     NULL /* tag_len */,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    aead_ctx_copy_state_trivial /* copy */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv = {
@@ -836,6 +846,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     NULL /* tag_len */,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    aead_ctx_copy_state_trivial /* copy */,
 };
 
 #if defined(AES_GCM_SIV_ASM)

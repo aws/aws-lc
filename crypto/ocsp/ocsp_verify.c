@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <limits.h>
 #include <string.h>
 #include "../internal.h"
 #include "internal.h"
@@ -35,7 +36,7 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     cert = sk_X509_value(certs, i);
     if (X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
-      if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
+      if (OPENSSL_memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
         return cert;
       }
     }
@@ -142,6 +143,18 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
     goto end;
   }
+  // RFC 6960 section 4.2.2.2.1: if the responder certificate has the
+  // id-pkix-ocsp-nocheck extension, the CA has indicated that the client
+  // should trust the responder for its lifetime without revocation checking.
+  // Locally disable CRL-based revocation checking in this case.
+  if (X509_get_ext_by_NID(signer, NID_id_pkix_OCSP_noCheck, -1) >= 0) {
+    X509_VERIFY_PARAM *vp = X509_STORE_CTX_get0_param(ctx);
+    if (vp == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
+      goto end;
+    }
+    X509_VERIFY_PARAM_clear_flags(vp, X509_V_FLAG_CRL_CHECK);
+  }
   if (!X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
     goto end;
@@ -201,6 +214,8 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
   return 1;
 }
 
+// Returns -1 on fatal error, 0 if there is no match and 1 if there is a
+// match.
 static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
                                STACK_OF(OCSP_SINGLERESP) *sresp) {
   if (cert == NULL) {
@@ -232,13 +247,14 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
         return 0;
       }
     }
-    if (memcmp(md, cid->issuerNameHash->data, mdlen) != 0) {
+    if (0 != OPENSSL_memcmp(md, cid->issuerNameHash->data, mdlen)) {
       return 0;
     }
-    if (0 <= X509_pubkey_digest(cert, dgst, md, NULL)) {
-      if (memcmp(md, cid->issuerKeyHash->data, mdlen) != 0) {
-        return 0;
-      }
+    if (1 != X509_pubkey_digest(cert, dgst, md, NULL)) {
+      return -1;
+    }
+    if (0 != OPENSSL_memcmp(md, cid->issuerKeyHash->data, mdlen)) {
+      return 0;
     }
     return 1;
 
@@ -328,6 +344,11 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
                       unsigned long flags) {
   if (bs == NULL || st == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
+  if (sk_X509_num(certs) > SHRT_MAX || sk_X509_num(bs->certs) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_OVERFLOW);
     return -1;
   }
 
@@ -473,8 +494,8 @@ int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
   int ret = 0;
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY)) {
     // Initialize and set purpose of |ctx| for verification.
-    if (!X509_STORE_CTX_init(ctx, store, signer, NULL) &&
-        !X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
+    if (1 != X509_STORE_CTX_init(ctx, store, signer, NULL) ||
+        1 != X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
       OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
       goto end;
     }

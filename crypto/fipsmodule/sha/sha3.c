@@ -1,11 +1,5 @@
-/*
- * Copyright 2017-2020 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+ // Copyright 2017-2020 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "internal.h"
 #include <string.h>
@@ -515,6 +509,12 @@ int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1, const uint8_t *data2
       OPENSSL_memcpy(out2, tmp2, out_len);
       OPENSSL_memcpy(out3, tmp3, out_len);
   }
+
+  OPENSSL_cleanse(tmp0, sizeof(tmp0));
+  OPENSSL_cleanse(tmp1, sizeof(tmp1));
+  OPENSSL_cleanse(tmp2, sizeof(tmp2));
+  OPENSSL_cleanse(tmp3, sizeof(tmp3));
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
 
   return 1;
 }

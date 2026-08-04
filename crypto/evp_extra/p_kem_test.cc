@@ -1,21 +1,24 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <algorithm>
 #include <gtest/gtest.h>
 #include <openssl/base.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
 #include <openssl/ssl.h>
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/kem/internal.h"
+#include "../test/file_test.h"
 #include "../test/test_util.h"
-#include <openssl/experimental/kem_deterministic_api.h>
+#include "../test/wycheproof_util.h"
 
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // All example keys are from Appendix C in the above standard
 // Example ML-KEM-512 public key
 const char *mlkem_512_pub_pem_str =
@@ -40,7 +43,7 @@ const char *mlkem_512_pub_pem_str =
     "WhttY7Js\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // Example ML-KEM-768 public key
 const char *mlkem_768_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
@@ -72,7 +75,7 @@ const char *mlkem_768_pub_pem_str =
     "QvpN6gV4\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // Example ML-KEM-1024 public key
 const char *mlkem_1024_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
@@ -112,7 +115,7 @@ const char *mlkem_1024_pub_pem_str =
     "uYOILhF1\n"
     "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// https://datatracker.ietf.org/doc/rfc9935/
 // C.1.1.1. ML-KEM-512 Private Key Examples: Seed Format
 const char *mlkem_512_seed_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
@@ -481,17 +484,17 @@ struct KEMTestVector {
 
 static const KEMTestVector kemParameters[] = {
     {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str,
-     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_seed_pem_str, 800, 1632},
     {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str,
-     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_seed_pem_str, 1184, 2400},
     {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
-     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
+     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_seed_pem_str, 1568, 3168},
     {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
      bouncy_castle_mlkem_512_priv_expanded_pem_str, bouncy_castle_ml_kem_512_seed_pem_str,
-     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+     mlkem_512_pub_pem_str, mlkem_512_seed_pem_str, 800, 1632},
     {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
      bouncy_castle_mlkem_768_priv_expanded_str, bouncy_castle_ml_kem_768_seed_pem_str,
-     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_pub_pem_str, mlkem_768_seed_pem_str, 1184, 2400},
 };
 
 
@@ -551,29 +554,31 @@ TEST_P(KEMTest, MarshalParse) {
             Bytes(pkey->pkey.kem_key->secret_key, GetParam().secret_key_len));
 }
 
-// Test that the private key is encoded in expandedKey format
-TEST_P(KEMTest, PrivateKeyExpandedFormat) {
+// Test that the private key is encoded in seed format
+TEST_P(KEMTest, PrivateKeySeedFormat) {
   const KEMTestVector &test = GetParam();
 
   // Generate a key pair
   bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
   ASSERT_TRUE(pkey);
 
+  // Verify the seed is present
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
   // Encode the private key
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
 
-  uint8_t *der;
-  size_t der_len;
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   bssl::UniquePtr<uint8_t> free_der(der);
 
   // Parse the PKCS#8 structure to verify the privateKey field contains
-  // the expandedKey format - AWS-LC currently only supports expandedKey
-  // encoding
+  // the seed format ([0] IMPLICIT OCTET STRING)
   CBS pkcs8, algorithm, private_key;
-  uint64_t version;
+  uint64_t version = 0;
   CBS_init(&pkcs8, der, der_len);
 
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
@@ -582,14 +587,14 @@ TEST_P(KEMTest, PrivateKeyExpandedFormat) {
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
 
-  // The privateKey field should contain the expandedKey as an OCTET STRING
-  CBS expanded_key;
-  ASSERT_TRUE(CBS_get_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING));
-  ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
+  // The privateKey field should contain the seed as [0] context-specific tag
+  CBS seed;
+  ASSERT_TRUE(CBS_get_asn1(&private_key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0));
+  ASSERT_EQ(CBS_len(&seed), 64u);
 
-  // Verify it matches the original secret key
-  EXPECT_EQ(Bytes(CBS_data(&expanded_key), CBS_len(&expanded_key)),
-            Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len));
+  // Verify it matches the seed stored in the key
+  EXPECT_EQ(Bytes(CBS_data(&seed), CBS_len(&seed)),
+            Bytes(pkey->pkey.kem_key->seed, 64));
 }
 
 TEST_P(KEMTest, ParsePublicKey) {
@@ -615,9 +620,9 @@ TEST_P(KEMTest, ParsePublicKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 }
@@ -645,14 +650,110 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_EQ(EVP_PKEY_id(pkey_from_der.get()), EVP_PKEY_KEM);
 
   // ---- 3. Verify key parameters ----
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey_from_der.get()), nid);
   KEM_KEY *kem_key = pkey_from_der->pkey.kem_key;
   ASSERT_TRUE(kem_key);
-  ASSERT_EQ(kem_key->kem->nid, nid);
   ASSERT_EQ(kem_key->kem->public_key_len, public_key_len);
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 
   // ---- 4. Verify private key is present ----
   ASSERT_TRUE(kem_key->secret_key);
+}
+
+// When a private key is parsed from the RFC 9935 section 6
+// Case-2 "expandedKey" form, only |secret_key| is populated and |public_key|
+// stays NULL. Comparing that private key against a public key (as
+// |X509_check_private_key| does during |PKCS12_parse|) must return -2 instead
+// of dereferencing NULL.
+TEST_P(KEMTest, PubCmpExpandedPrivateKeyNullPublic) {
+  const KEMTestVector &test = GetParam();
+
+  uint8_t *pub_der = nullptr;
+  long pub_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.public_pem_str, &pub_der, &pub_der_len));
+  bssl::UniquePtr<uint8_t> free_pub_der(pub_der);
+  CBS pub_cbs;
+  CBS_init(&pub_cbs, pub_der, pub_der_len);
+  bssl::UniquePtr<EVP_PKEY> pub_pkey(EVP_parse_public_key(&pub_cbs));
+  ASSERT_TRUE(pub_pkey);
+
+  // Parse the expanded-form private key. Case 2 in |kem_priv_decode| only
+  // sets |secret_key|, so |public_key| is NULL.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(
+      PEM_to_DER(test.private_pem_expanded_str, &priv_der, &priv_der_len));
+  bssl::UniquePtr<uint8_t> free_priv_der(priv_der);
+  CBS priv_cbs;
+  CBS_init(&priv_cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> priv_pkey(EVP_parse_private_key(&priv_cbs));
+  ASSERT_TRUE(priv_pkey);
+  ASSERT_EQ(priv_pkey->pkey.kem_key->public_key, nullptr);
+
+  // |EVP_PKEY_cmp| must not dereference the NULL |public_key|. It should
+  // return -2 to signal that the comparison could not be performed.
+  EXPECT_EQ(EVP_PKEY_cmp(pub_pkey.get(), priv_pkey.get()), -2);
+  // Same check with arguments swapped, exercising the other NULL branch.
+  EXPECT_EQ(EVP_PKEY_cmp(priv_pkey.get(), pub_pkey.get()), -2);
+}
+
+TEST_P(KEMTest, GetType) {
+  int nid = GetParam().nid;
+
+  // ---- 1. Generate a key pair and verify the NID ----
+  bssl::UniquePtr<EVP_PKEY> pkey = generate_kem_key_pair(nid);
+  ASSERT_TRUE(pkey);
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), nid);
+}
+
+TEST(KEMTest, GetTypeWrongKeyType) {
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_EXPECTING_A_KEM_KEY
+  // when called on an EVP_PKEY whose type is not EVP_PKEY_KEM. Check both a
+  // classical (EC) key and a post-quantum (PQDSA) key, to ensure that
+  // adjacent post-quantum types do not slip past the type check.
+
+  // ---- EC key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ec_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ec_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(
+      ec_ctx.get(), NID_X9_62_prime256v1));
+  EVP_PKEY *raw_ec = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ec_ctx.get(), &raw_ec));
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw_ec);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(ec_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+
+  // ---- PQDSA key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> pqdsa_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+  ASSERT_TRUE(pqdsa_ctx);
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(pqdsa_ctx.get(), NID_MLDSA44));
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pqdsa_ctx.get()));
+  EVP_PKEY *raw_pqdsa = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pqdsa_ctx.get(), &raw_pqdsa));
+  bssl::UniquePtr<EVP_PKEY> pqdsa_pkey(raw_pqdsa);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pqdsa_pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_EXPECTING_A_KEM_KEY);
+}
+
+TEST(KEMTest, GetTypeUninitializedKey) {
+  // EVP_PKEY_kem_get_type must return 0 and set EVP_R_NO_PARAMETERS_SET when
+  // called on an EVP_PKEY whose type is EVP_PKEY_KEM but which has no
+  // underlying KEM_KEY attached.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_KEM));
+  ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_KEM);
+
+  ERR_clear_error();
+  ASSERT_EQ(EVP_PKEY_kem_get_type(pkey.get()), 0);
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_NO_PARAMETERS_SET);
 }
 
 // Invalid length test vectors - truncated DER structures
@@ -687,7 +788,7 @@ TEST(KEMTest, ParsePrivateKeyInvalidLength) {
 // Verifies that deterministic ML-KEM key generation with the fixed seed from the IETF standard produces keys that exactly
 // match the expected PEM strings from the standard. 
 // The expected PEM strings from the given seed are fields at the top (mlkem_XXX_pub/priv_pem_str)
-// See Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/ for the seed value
+// See Appendix C.1 in https://datatracker.ietf.org/doc/rfc9935/ for the seed value
 TEST_P(KEMTest, DeterministicKeyMarshaling) {
   const KEMTestVector& test = GetParam();
   
@@ -698,7 +799,7 @@ TEST_P(KEMTest, DeterministicKeyMarshaling) {
   ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), test.nid));
 
   // ---- 2. Create deterministic seed: 00 01 02 ... 3f (64 consecutive bytes) ----
-  // Seed is specified in Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // Seed is specified in Appendix C.1 in https://datatracker.ietf.org/doc/rfc9935/
   std::vector<uint8_t> keygen_seed(64);
   for (size_t i = 0; i < 64; i++) {
     keygen_seed[i] = static_cast<uint8_t>(i);  // seed is a sequence - 00, 01, 02, ... 3f (from above standard)
@@ -758,8 +859,8 @@ TEST_P(KEMTest, DeterministicKeyMarshaling) {
             Bytes(expected_priv_der, expected_priv_der_len))
       << "Private key DER content mismatch";
 
-  // ---- 10. Verify private key DER is larger than public key DER ----
-  EXPECT_GT(generated_priv_der_len, generated_pub_der_len);
+  // ---- 10. Verify seed-format private key DER is smaller than public key DER ----
+  EXPECT_LT(generated_priv_der_len, generated_pub_der_len);
 }
 
 // Test KEM public key round-trip serialization using i2d_PUBKEY and d2i_PUBKEY functions.
@@ -926,4 +1027,478 @@ TEST(KEMTest, InvalidSeedLength) {
   EXPECT_EQ(ERR_GET_REASON(err), EVP_R_INVALID_BUFFER_SIZE);
   
   OPENSSL_free(der_priv);
+}
+
+// Test that parsing a seed-format PKCS#8 and re-serializing produces seed
+// format (round-trip preservation).
+TEST_P(KEMTest, SeedFormatRoundTrip) {
+  const KEMTestVector &test = GetParam();
+
+  // Parse seed-format private key
+  uint8_t *der = nullptr;
+  long der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.private_pem_seed_str, &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
+  // Re-serialize — should produce seed format
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+
+  uint8_t *der2 = nullptr;
+  size_t der2_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der2, &der2_len));
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+
+  // Round-trip: output should match input
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
+
+  // Parse again and verify key material matches
+  CBS cbs2;
+  CBS_init(&cbs2, der2, der2_len);
+  bssl::UniquePtr<EVP_PKEY> pkey2(EVP_parse_private_key(&cbs2));
+  ASSERT_TRUE(pkey2);
+  EXPECT_EQ(Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(pkey2->pkey.kem_key->secret_key, test.secret_key_len));
+}
+
+// Test that keys created via raw import (no seed) encode in expanded format.
+TEST_P(KEMTest, RawImportExpandedFormat) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate a key to get valid raw key material
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // Extract raw secret key
+  size_t sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  std::vector<uint8_t> sk(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+
+  // Create a new key from raw secret key — no seed available
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(test.nid, sk.data(), sk_len));
+  ASSERT_TRUE(raw_pkey);
+  ASSERT_TRUE(raw_pkey->pkey.kem_key->seed == nullptr);
+
+  // Encode — should produce expanded format
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), raw_pkey.get()));
+
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // Verify expanded format: parse PKCS#8 and check for OCTET STRING tag
+  CBS pkcs8, algorithm, private_key, expanded_key;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der, der_len);
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1_uint64(&pkcs8, &version));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_TRUE(CBS_get_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_EQ(CBS_len(&expanded_key), test.secret_key_len);
+}
+
+// Test EVP_PKEY_get_private_seed for ML-KEM keys.
+TEST_P(KEMTest, GetPrivateSeed) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate key and check it has a seed configured.
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey->pkey.kem_key->seed);
+
+  // Check size works.
+  size_t seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+
+  // Check correct seed is returned.
+  std::vector<uint8_t> seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(seed), Bytes(pkey->pkey.kem_key->seed, seed_len));
+
+  // Oversized buffer is accepted; the function reports the actual length
+  // written.
+  seed_len = seed.size() + 16;
+  std::vector<uint8_t> big_seed(seed_len);
+  ASSERT_TRUE(
+      EVP_PKEY_get_private_seed(pkey.get(), big_seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, pkey->pkey.kem_key->kem->keygen_seed_len);
+  EXPECT_EQ(Bytes(big_seed.data(), seed_len), Bytes(seed));
+
+  // Short buffer must fail with EVP_R_BUFFER_TOO_SMALL.
+  seed_len = pkey->pkey.kem_key->kem->keygen_seed_len - 1;
+  std::vector<uint8_t> short_seed(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(pkey.get(), short_seed.data(), &seed_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_BUFFER_TOO_SMALL);
+
+  // A key parsed from seed-format PKCS#8 exposes its seed.
+  uint8_t *priv_der = nullptr;
+  long priv_der_len = 0;
+  ASSERT_TRUE(
+      PEM_to_DER(test.private_pem_seed_str, &priv_der, &priv_der_len));
+  bssl::UniquePtr<uint8_t> free_priv_der(priv_der);
+  CBS cbs;
+  CBS_init(&cbs, priv_der, priv_der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed);
+  ASSERT_TRUE(parsed->pkey.kem_key->seed);
+
+  seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), nullptr, &seed_len));
+  std::vector<uint8_t> parsed_seed(seed_len);
+  ASSERT_TRUE(EVP_PKEY_get_private_seed(parsed.get(), parsed_seed.data(),
+                                        &seed_len));
+  EXPECT_EQ(Bytes(parsed_seed),
+            Bytes(parsed->pkey.kem_key->seed, seed_len));
+
+  // Raw expanded private key has no seed and the operation must return
+  // EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+  size_t sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  std::vector<uint8_t> sk(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(test.nid, sk.data(), sk_len));
+  ASSERT_TRUE(raw_pkey);
+  ASSERT_EQ(raw_pkey->pkey.kem_key->seed, nullptr);
+
+  seed_len = raw_pkey->pkey.kem_key->kem->keygen_seed_len;
+  std::vector<uint8_t> unused(seed_len);
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_get_private_seed(raw_pkey.get(), unused.data(), &seed_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err),
+            EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+}
+
+// EVP_PKEY_get_private_seed should reject NULL |key| and NULL |out_len|.
+TEST(KEMTest, GetPrivateSeedNullArguments) {
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(NID_MLKEM512));
+  ASSERT_TRUE(pkey);
+
+  size_t seed_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(nullptr, nullptr, &seed_len));
+  EXPECT_FALSE(EVP_PKEY_get_private_seed(pkey.get(), nullptr, nullptr));
+}
+
+// Test that a generated key (seed format) can perform encaps/decaps correctly
+// after a serialize → parse round-trip.
+TEST_P(KEMTest, SeedFormatEncapsDecapsRoundTrip) {
+  const KEMTestVector &test = GetParam();
+
+  // Generate a key pair
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // Serialize (seed format) and parse back
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed_pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed_pkey);
+
+  // Encapsulate with the original key's public key
+  bssl::UniquePtr<EVP_PKEY_CTX> enc_ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(enc_ctx);
+  size_t ct_len = 0, ss_len = 0;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(enc_ctx.get(), nullptr, &ct_len,
+                                   nullptr, &ss_len));
+  std::vector<uint8_t> ct(ct_len), ss_enc(ss_len);
+  ASSERT_TRUE(EVP_PKEY_encapsulate(enc_ctx.get(), ct.data(), &ct_len,
+                                   ss_enc.data(), &ss_len));
+
+  // Decapsulate with the parsed key
+  bssl::UniquePtr<EVP_PKEY_CTX> dec_ctx(
+      EVP_PKEY_CTX_new(parsed_pkey.get(), nullptr));
+  ASSERT_TRUE(dec_ctx);
+  std::vector<uint8_t> ss_dec(ss_len);
+  ASSERT_TRUE(EVP_PKEY_decapsulate(dec_ctx.get(), ss_dec.data(), &ss_len,
+                                   ct.data(), ct_len));
+
+  EXPECT_EQ(Bytes(ss_enc), Bytes(ss_dec));
+}
+
+
+// Wycheproof test vector mapping for KEMs
+struct WycheproofKEM {
+  const char name[20];
+  const int nid;
+  size_t ciphertext_len;
+  size_t shared_secret_len;
+  const char *encaps_test;
+  const char *decaps_seed_test;
+  const char *decaps_noseed_test;
+};
+
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_1024_encaps_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_512_encaps_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_768_encaps_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt`.
+static const struct WycheproofKEM kWycheproofKEMs[] = {
+    {
+        "ML-KEM-512",
+        NID_MLKEM512,
+        768,
+        32,
+        "mlkem_512_encaps_test.txt",
+        "mlkem_512_test.txt",
+        "mlkem_512_semi_expanded_decaps_test.txt",
+    },
+    {
+        "ML-KEM-768",
+        NID_MLKEM768,
+        1088,
+        32,
+        "mlkem_768_encaps_test.txt",
+        "mlkem_768_test.txt",
+        "mlkem_768_semi_expanded_decaps_test.txt",
+    },
+    {
+        "ML-KEM-1024",
+        NID_MLKEM1024,
+        1568,
+        32,
+        "mlkem_1024_encaps_test.txt",
+        "mlkem_1024_test.txt",
+        "mlkem_1024_semi_expanded_decaps_test.txt",
+    },
+};
+
+class WycheproofKEMTest : public testing::TestWithParam<WycheproofKEM> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All, WycheproofKEMTest, testing::ValuesIn(kWycheproofKEMs),
+    [](const testing::TestParamInfo<WycheproofKEM> &params) -> std::string {
+      std::string name = params.param.name;
+      // Replace dashes with underscores for valid C++ test names
+      std::replace(name.begin(), name.end(), '-', '_');
+      return name;
+    });
+
+TEST_P(WycheproofKEMTest, Encaps) {
+  std::string test_path =
+      std::string(kWycheproofV1Path) + GetParam().encaps_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> ek, m, expected_k, expected_c;
+    std::string param_set;
+
+    ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
+    ASSERT_EQ(param_set, GetParam().name);
+
+    ASSERT_TRUE(t->GetBytes(&ek, "ek"));
+    ASSERT_TRUE(t->GetBytes(&m, "m"));
+    ASSERT_TRUE(t->GetBytes(&expected_k, "K"));
+    ASSERT_TRUE(t->GetBytes(&expected_c, "c"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    bssl::UniquePtr<EVP_PKEY> pkey(
+        EVP_PKEY_kem_new_raw_public_key(GetParam().nid, ek.data(), ek.size()));
+
+    if (!result.IsValid() && result.HasFlag("ModulusOverflow")) {
+      if (pkey) {
+        // FIPS 203 only requires doing this check before encapsulation.
+        fprintf(stderr,
+                "WARNING: Successfully imported %s encapsulation key with "
+                "ModulusOverflow. This is allowed by FIPS 203.\n",
+                param_set.c_str());
+      }
+    }
+    if (pkey) {
+      bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+      ASSERT_TRUE(ctx);
+
+      // Perform deterministic encapsulation using the m field as seed
+      // see https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf#algorithm.17
+      std::vector<uint8_t> ciphertext(GetParam().ciphertext_len);
+      std::vector<uint8_t> shared_secret(GetParam().shared_secret_len);
+      size_t ciphertext_len = ciphertext.size();
+      size_t shared_secret_len = shared_secret.size();
+      size_t seed_len = m.size();
+      int encaps_result =
+          EVP_PKEY_encapsulate_deterministic(ctx.get(), ciphertext.data(), &ciphertext_len,
+                               shared_secret.data(), &shared_secret_len, m.data(), &seed_len);
+
+      if (result.IsValid()) {
+        EXPECT_TRUE(encaps_result);
+        EXPECT_EQ(Bytes(ciphertext.data(), ciphertext_len), Bytes(expected_c));
+        EXPECT_EQ(Bytes(shared_secret.data(), shared_secret_len),
+                  Bytes(expected_k));
+      } else {
+        EXPECT_FALSE(encaps_result)
+            << "Expected encapsulation to fail for flags: "
+            << result.StringifyFlags();
+      }
+    }
+  });
+}
+
+TEST_P(WycheproofKEMTest, DecapsSeed) {
+  std::string test_path =
+      std::string(kWycheproofV1Path) + GetParam().decaps_seed_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> ek, seed, expected_k, ciphertext;
+    std::string param_set;
+
+    ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
+    ASSERT_EQ(param_set, GetParam().name);
+
+    ASSERT_TRUE(t->GetBytes(&expected_k, "K"));
+    ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
+    
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+
+    // Initialize using provided seed
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+    EVP_PKEY *raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    size_t seed_len = seed.size();
+    int keygen_result = EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len);
+    
+    // For invalid test cases, key generation might fail
+    if (!result.IsValid() && !keygen_result) {
+      // Expected failure in key generation for invalid cases
+      return;
+    }
+    
+    ASSERT_TRUE(keygen_result);
+    ASSERT_TRUE(raw);
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+    // Verify the generated public key matches the expected public key (if provided)
+    if (t->HasAttribute("ek")) {
+      ASSERT_TRUE(t->GetBytes(&ek, "ek"));
+      size_t actual_ek_len = 0;
+      ASSERT_TRUE(
+          EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &actual_ek_len));
+      ASSERT_EQ(actual_ek_len, ek.size());
+      std::vector<uint8_t> actual_ek(actual_ek_len);
+      ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), actual_ek.data(),
+                                              &actual_ek_len));
+      EXPECT_EQ(Bytes(actual_ek), Bytes(ek));
+    }
+
+    // Perform decapsulation
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    std::vector<uint8_t> shared_secret(GetParam().shared_secret_len);
+    size_t shared_secret_len = shared_secret.size();
+    int decaps_result = EVP_PKEY_decapsulate(
+        ctx.get(), shared_secret.data(), &shared_secret_len, ciphertext.data(),
+        ciphertext.size());
+
+    if (result.IsValid()) {
+      EXPECT_TRUE(decaps_result);
+      EXPECT_EQ(Bytes(shared_secret.data(), shared_secret_len),
+                Bytes(expected_k));
+    } else {
+      EXPECT_FALSE(decaps_result)
+          << "Expected decapsulation to fail for flags: "
+          << result.StringifyFlags();
+    }
+  });
+}
+
+// Test decapsulation with expanded decaps keys
+TEST_P(WycheproofKEMTest, DecapsNoSeed) {
+  std::string test_path =
+      std::string(kWycheproofV1Path) + GetParam().decaps_noseed_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> dk, ciphertext;
+    std::string param_set;
+
+    ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
+    ASSERT_EQ(param_set, GetParam().name);
+
+    ASSERT_TRUE(t->GetBytes(&dk, "dk"));
+    ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    // Create key from raw private key bytes
+    bssl::UniquePtr<EVP_PKEY> pkey(
+        EVP_PKEY_kem_new_raw_secret_key(GetParam().nid, dk.data(), dk.size()));
+
+    // Key creation should fail for incorrect key length
+    if (result.HasFlag("IncorrectDecapsulationKeyLength")) {
+      EXPECT_FALSE(pkey)
+          << "Expected key creation to fail for incorrect key length";
+      return;
+    }
+
+    // Warn if we successfully imported an invalid private key
+    if (pkey && result.HasFlag("InvalidDecapsulationKey")) {
+      fprintf(stderr,
+              "WARNING: Successfully imported correct-length-but-invalid %s "
+              "decapsulation key. This is allowed by FIPS 203.\n",
+              param_set.c_str());
+    }
+
+    // For valid test cases, key creation should succeed
+    if (result.IsValid()) {
+      ASSERT_TRUE(pkey) << "Key creation failed unexpectedly for flags: "
+                        << result.StringifyFlags();
+    }
+
+    // Perform decapsulation
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+
+    std::vector<uint8_t> shared_secret(GetParam().shared_secret_len);
+    size_t shared_secret_len = shared_secret.size();
+    int decaps_result = EVP_PKEY_decapsulate(
+        ctx.get(), shared_secret.data(), &shared_secret_len, ciphertext.data(),
+        ciphertext.size());
+
+    if (result.IsValid()) {
+      EXPECT_TRUE(decaps_result)
+          << "Expected decapsulation to succeed for valid test case";
+    } else {
+      EXPECT_FALSE(decaps_result)
+          << "Expected decapsulation to fail for flags: "
+          << result.StringifyFlags();
+    }
+  });
 }

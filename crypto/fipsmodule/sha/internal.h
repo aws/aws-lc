@@ -1,16 +1,5 @@
-/* Copyright (c) 2018, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2018, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_SHA_INTERNAL_H
 #define OPENSSL_HEADER_SHA_INTERNAL_H
@@ -350,7 +339,10 @@ void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
 #include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 #endif
 #endif
-#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+// sha3_keccak4_f1600_alt (the x4-batched Keccak variant) needs AVX2, not
+// AVX-512, so this is gated on MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather
+// than MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX.
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
 #if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
 #define KECCAK1600_ASM
 #define KECCAK1600_S2N_BIGNUM_ASM

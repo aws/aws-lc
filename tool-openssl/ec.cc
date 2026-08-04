@@ -8,11 +8,6 @@
 #include <string>
 #include "internal.h"
 
-enum Format {
-  FORMAT_PEM = 1,
-  FORMAT_DER = 2
-};
-
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display this summary"},
     {"-inform", kOptionalArgument, "Input format (PEM or DER), default PEM"},

@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <limits.h>
 #include <stdio.h>
@@ -43,8 +32,8 @@
 #include <openssl/x509.h>
 
 #include "../crypto/fipsmodule/ec/internal.h"
+#include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "../crypto/internal.h"
-#include "../crypto/kyber/kem_kyber.h"
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
@@ -443,6 +432,7 @@ TEST(SSLTest, SessionDuplication) {
   EXPECT_EQ(Bytes(s0_bytes, s0_len), Bytes(s1_bytes, s1_len));
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
   EXPECT_EQ(rfd, SSL_get_fd(ssl));
   EXPECT_EQ(rfd, SSL_get_rfd(ssl));
@@ -517,6 +507,7 @@ TEST(SSLTest, SetFD) {
   // ASan builds will implicitly test that the internal |BIO| reference-counting
   // is correct.
 }
+#endif  // !OPENSSL_NO_SOCK
 
 TEST(SSLTest, SetBIO) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -602,20 +593,21 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_2_VERSION,
-       {0x16, 0x03, 0x01, 0x00, 0x88, 0x01, 0x00, 0x00, 0x84, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x8e, 0x01, 0x00, 0x00, 0x8a, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0xcc, 0xa9,
         0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
         0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0xc0, 0x28, 0x00, 0x9c,
-        0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x39,
+        0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x3f,
         0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00,
         0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00,
-        0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x16, 0x00,
-        0x14, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
-        0x01, 0x06, 0x03, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01}},
+        0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x1c, 0x00,
+        0x1a, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
+        0x01, 0x06, 0x03, 0x08, 0x06, 0x06, 0x01, 0x09, 0x04, 0x09, 0x05, 0x09,
+        0x06, 0x02, 0x01}},
       {TLS1_3_VERSION,
-       {0x16, 0x03, 0x01, 0x00, 0xeb, 0x01, 0x00, 0x00, 0xe7, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x05, 0xbb, 0x01, 0x00, 0x05, 0xb7, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -625,16 +617,119 @@ TEST(SSLTest, ClientHello) {
         0xcc, 0xa9, 0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30,
         0xc0, 0x09, 0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0xc0, 0x28,
         0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00,
-        0x00, 0x76, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00,
-        0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
-        0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00,
-        0x16, 0x00, 0x14, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08,
-        0x05, 0x05, 0x01, 0x06, 0x03, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01, 0x00,
-        0x33, 0x00, 0x26, 0x00, 0x24, 0x00, 0x1d, 0x00, 0x20, 0x00, 0x00, 0x00,
+        0x05, 0x46, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00,
+        0x0a, 0x00, 0x0e, 0x00, 0x0c, 0x11, 0xec, 0x11, 0xeb, 0x11, 0xed, 0x00,
+        0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00,
+        0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x1c, 0x00, 0x1a, 0x04, 0x03, 0x08,
+        0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05, 0x01, 0x06, 0x03, 0x08,
+        0x06, 0x06, 0x01, 0x09, 0x04, 0x09, 0x05, 0x09, 0x06, 0x02, 0x01, 0x00,
+        0x33, 0x04, 0xea, 0x04, 0xe8, 0x11, 0xec, 0x04, 0xc0, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2d, 0x00, 0x02, 0x01, 0x01, 0x00,
-        0x2b, 0x00, 0x09, 0x08, 0x03, 0x04, 0x03, 0x03, 0x03, 0x02, 0x03, 0x01}},
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x1d, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x2d, 0x00, 0x02, 0x01, 0x01, 0x00, 0x2b, 0x00, 0x09, 0x08,
+        0x03, 0x04, 0x03, 0x03, 0x03, 0x02, 0x03, 0x01}},
   };
 
   for (const auto &t : kTests) {
@@ -663,6 +758,13 @@ TEST(SSLTest, ClientHello) {
                                      1 + 3 +      // handshake message header
                                      2;           // client_version
 
+    constexpr size_t kKeyShare1Offset = 201;
+    constexpr size_t kKeyShare1Size = 32 + MLKEM768_PUBLIC_KEY_BYTES;
+    constexpr size_t kKeyShare2Offset = kKeyShare1Offset + kKeyShare1Size
+                        + 2     // KeyShare 2 IANA ID
+                        + 2;    // KeyShare 2 Length
+    constexpr size_t kKeyShare2Size = 32;
+
     int pre = client_hello.size();
     if (t.max_version == TLS1_3_VERSION) {
       ASSERT_GE(client_hello.size(),
@@ -670,7 +772,8 @@ TEST(SSLTest, ClientHello) {
       OPENSSL_memset(client_hello.data() + kRandomOffset, 0,
                      SSL3_RANDOM_SIZE + 1 + SSL3_SESSION_ID_SIZE);
       // Jump to key share extension and zero out the key
-      OPENSSL_memset(client_hello.data() + 189, 0, 32);
+      OPENSSL_memset(client_hello.data() + kKeyShare1Offset, 0, kKeyShare1Size);
+      OPENSSL_memset(client_hello.data() + kKeyShare2Offset, 0, kKeyShare2Size);
     } else {
       ASSERT_GE(client_hello.size(), kRandomOffset + SSL3_RANDOM_SIZE);
       OPENSSL_memset(client_hello.data() + kRandomOffset, 0, SSL3_RANDOM_SIZE);
@@ -1110,6 +1213,111 @@ TEST(SSLTest, SetChainAndKey) {
                                      server_ctx.get()));
 }
 
+// Verify that SSL_CTX_set_chain_and_key invalidates the X509 leaf and chain
+// caches so that SSL_CTX_get0_certificate and SSL_CTX_get0_chain_certs reflect
+// the newly-configured certificate chain rather than stale cached values.
+TEST(SSLTest, SetChainAndKeyCacheInvalidation) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Configure an RSA leaf + intermediate and warm up both the x509_leaf and
+  // x509_chain caches.
+  bssl::UniquePtr<EVP_PKEY> key1 = GetChainTestKey();
+  ASSERT_TRUE(key1);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf1 = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf1);
+  bssl::UniquePtr<CRYPTO_BUFFER> intermediate1 = GetChainTestIntermediateBuffer();
+  ASSERT_TRUE(intermediate1);
+  {
+    std::vector<CRYPTO_BUFFER *> chain = {leaf1.get(), intermediate1.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), chain.data(),
+                                          chain.size(), key1.get(), nullptr));
+  }
+
+  bssl::UniquePtr<X509> cert1 = GetChainTestCertificate();
+  ASSERT_TRUE(cert1);
+  bssl::UniquePtr<X509> intermediate_x509_1 = GetChainTestIntermediate();
+  ASSERT_TRUE(intermediate_x509_1);
+
+  // Calling SSL_CTX_get0_certificate populates the internal X509 leaf cache.
+  ASSERT_EQ(0, X509_cmp(SSL_CTX_get0_certificate(ctx.get()), cert1.get()));
+
+  // Calling SSL_CTX_get0_chain_certs populates the internal X509 chain cache.
+  STACK_OF(X509) *chain_out = nullptr;
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain_out));
+  ASSERT_EQ(1u, sk_X509_num(chain_out));
+  ASSERT_EQ(0, X509_cmp(sk_X509_value(chain_out, 0), intermediate_x509_1.get()));
+
+  // Replace with a different RSA certificate and key pair. The new chain has no
+  // intermediate, so the x509_chain cache (if not invalidated) would still hold
+  // the old intermediate.
+  bssl::UniquePtr<X509> cert2 = GetTestCertificate();
+  ASSERT_TRUE(cert2);
+  uint8_t *der = nullptr;
+  size_t der_len = i2d_X509(cert2.get(), &der);
+  ASSERT_GT(der_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf2(
+      CRYPTO_BUFFER_new(der, der_len, nullptr));
+  ASSERT_TRUE(leaf2);
+  bssl::UniquePtr<EVP_PKEY> key2 = GetTestKey();
+  ASSERT_TRUE(key2);
+  {
+    std::vector<CRYPTO_BUFFER *> chain = {leaf2.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), chain.data(),
+                                          chain.size(), key2.get(), nullptr));
+  }
+
+  // The x509_leaf cache must reflect the new leaf certificate.
+  X509 *got = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(got);
+  EXPECT_EQ(0, X509_cmp(got, cert2.get()));
+  EXPECT_NE(0, X509_cmp(got, cert1.get()));
+
+  // The x509_chain cache must be invalidated. The new chain has no
+  // intermediates, so SSL_CTX_get0_chain_certs must return null rather than
+  // the previously-cached intermediate.
+  chain_out = nullptr;
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain_out));
+  EXPECT_EQ(nullptr, chain_out);
+}
+
+// Verify that SSL_CTX_use_certificate_ASN1 (which routes through ssl_set_cert)
+// invalidates the X509 leaf cache so that SSL_CTX_get0_certificate reflects the
+// newly-configured certificate rather than a stale cached value.
+TEST(SSLTest, UseCertificateASN1CacheInvalidation) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Configure an initial RSA certificate and warm up the X509 leaf cache.
+  bssl::UniquePtr<X509> cert1 = GetTestCertificate();
+  ASSERT_TRUE(cert1);
+  uint8_t *der1 = nullptr;
+  size_t der1_len = i2d_X509(cert1.get(), &der1);
+  ASSERT_GT(der1_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der1(der1);
+  ASSERT_TRUE(SSL_CTX_use_certificate_ASN1(ctx.get(), der1_len, der1));
+
+  // Calling SSL_CTX_get0_certificate populates the internal X509 leaf cache.
+  ASSERT_EQ(0, X509_cmp(SSL_CTX_get0_certificate(ctx.get()), cert1.get()));
+
+  // Replace with a different RSA certificate via the same API path.
+  bssl::UniquePtr<X509> cert2 = GetChainTestCertificate();
+  ASSERT_TRUE(cert2);
+  uint8_t *der2 = nullptr;
+  size_t der2_len = i2d_X509(cert2.get(), &der2);
+  ASSERT_GT(der2_len, 0u);
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+  ASSERT_TRUE(SSL_CTX_use_certificate_ASN1(ctx.get(), der2_len, der2));
+
+  // The stale cache must have been invalidated. SSL_CTX_get0_certificate must
+  // return the newly-configured certificate, not the previously-cached one.
+  X509 *got = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(got);
+  EXPECT_EQ(0, X509_cmp(got, cert2.get()));
+  EXPECT_NE(0, X509_cmp(got, cert1.get()));
+}
+
 TEST(SSLTest, SetLeafChainAndKey) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
@@ -1144,6 +1352,49 @@ TEST(SSLTest, SetLeafChainAndKey) {
   ASSERT_FALSE(SSL_CTX_use_cert_and_key(server_ctx.get(), leaf.get(), key.get(),
                                         chain.get(), 0));
   ERR_clear_error();
+}
+
+TEST(SSLTest, SSLUseCertAndKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  ASSERT_TRUE(chain);
+  ASSERT_TRUE(PushToStack(chain.get(), std::move(intermediate)));
+
+  bssl::UniquePtr<SSL> server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server);
+
+  // Setting cert and key on the SSL object should succeed.
+  ASSERT_TRUE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                   chain.get(), 1));
+
+  // Without override, setting again should fail.
+  ASSERT_FALSE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                    chain.get(), 0));
+  ERR_clear_error();
+
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client;
+  // Reset server SSL for the connection test using CreateClientAndServer.
+  server.reset();
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+  ASSERT_TRUE(SSL_use_cert_and_key(server.get(), leaf.get(), key.get(),
+                                   chain.get(), 1));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 }
 
 TEST(SSLTest, BuffersFailWithoutCustomVerify) {
@@ -1285,6 +1536,104 @@ TEST(SSLTest, ClientCABuffers) {
   EXPECT_TRUE(cert_cb_called);
 }
 
+// Test that |SSL_get_client_CA_list| returns the server's CA list on the
+// client both during the cert callback and after the handshake completes.
+TEST(SSLTest, PeerCANamesX509DuringAndAfterHandshake) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(version);
+
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+
+    bssl::UniquePtr<X509> cert = GetChainTestCertificate();
+    bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+    bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+    ASSERT_TRUE(cert && intermediate && key);
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+    ASSERT_TRUE(
+        SSL_CTX_add1_chain_cert(server_ctx.get(), intermediate.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+    // Configure the server's CA list using X509_NAMEs.
+    bssl::UniquePtr<X509_NAME> ca_name(X509_NAME_new());
+    ASSERT_TRUE(ca_name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        ca_name.get(), "CN", MBSTRING_ASC,
+        reinterpret_cast<const unsigned char *>("Test CA"), -1, -1, 0));
+
+    bssl::UniquePtr<X509_NAME> ca_name_copy(X509_NAME_dup(ca_name.get()));
+    ASSERT_TRUE(ca_name_copy);
+    bssl::UniquePtr<STACK_OF(X509_NAME)> ca_list(sk_X509_NAME_new_null());
+    ASSERT_TRUE(ca_list);
+    ASSERT_TRUE(PushToStack(ca_list.get(), std::move(ca_name_copy)));
+    // SSL_CTX_set_client_CA_list takes ownership.
+    SSL_CTX_set_client_CA_list(server_ctx.get(), ca_list.release());
+
+    // The server must request client certificates.
+    SSL_CTX_set_verify(server_ctx.get(), SSL_VERIFY_PEER, nullptr);
+
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+    // Accept any server certificate.
+    SSL_CTX_set_custom_verify(
+        client_ctx.get(), SSL_VERIFY_PEER,
+        [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+          return ssl_verify_ok;
+        });
+
+    // Use a cert callback to verify CA names are available during the
+    // handshake via the X509-based API.
+    bool cert_cb_called = false;
+    SSL_CTX_set_cert_cb(
+        client_ctx.get(),
+        [](SSL *ssl, void *arg) -> int {
+          STACK_OF(X509_NAME) *ca_list = SSL_get_client_CA_list(ssl);
+          EXPECT_TRUE(ca_list);
+          EXPECT_EQ(1u, sk_X509_NAME_num(ca_list));
+          *reinterpret_cast<bool *>(arg) = true;
+          return 1;
+        },
+        &cert_cb_called);
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+    EXPECT_TRUE(cert_cb_called);
+
+    // After the handshake, verify the same CA list is still available.
+    // The handshake config has been shed by default, so ssl->config is NULL,
+    // but the client-side peer CA names are persisted in ssl->s3.
+    STACK_OF(X509_NAME) *client_ca_list =
+        SSL_get_client_CA_list(client.get());
+    ASSERT_TRUE(client_ca_list);
+    ASSERT_EQ(1u, sk_X509_NAME_num(client_ca_list));
+    EXPECT_EQ(0,
+              X509_NAME_cmp(sk_X509_NAME_value(client_ca_list, 0),
+                            ca_name.get()));
+
+    // Now do a second handshake with the same client context but a server
+    // that does NOT request client certificates (no CertificateRequest).
+    // The client should see no peer CA names after this handshake.
+    bssl::UniquePtr<SSL_CTX> server_ctx2(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx2);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx2.get(), cert.get()));
+    ASSERT_TRUE(
+        SSL_CTX_add1_chain_cert(server_ctx2.get(), intermediate.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx2.get(), key.get()));
+
+    bssl::UniquePtr<SSL> client2, server2;
+    ASSERT_TRUE(ConnectClientAndServer(&client2, &server2, client_ctx.get(),
+                                       server_ctx2.get()));
+    EXPECT_FALSE(SSL_get_client_CA_list(client2.get()));
+  }
+}
+
 // Configuring the empty cipher list, though an error, should still modify the
 // configuration.
 TEST(SSLTest, EmptyCipherList) {
@@ -1340,6 +1689,8 @@ const CertificateKeyTestParams kCertificateKeyTests[] = {
      "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:", SSL_SIGN_ECDSA_SECP256R1_SHA256},
     {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519,
      "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", SSL_SIGN_ED25519},
+    {GetMLDSA65TestCertificate, GetMLDSA65TestKey, SSL_PKEY_PQDSA, "",
+     SSL_SIGN_MLDSA65},
 };
 
 class MultipleCertificateSlotTest
@@ -1411,6 +1762,10 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
     // ED25519 is not supported in versions prior to TLS1.2.
     GTEST_SKIP();
   }
+  if (version < TLS1_3_VERSION && slot_index == SSL_PKEY_PQDSA) {
+    // ML-DSA is only defined for TLS 1.3.
+    GTEST_SKIP();
+  }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
       TLS_method(), certificate_key_param().certificate(),
@@ -1419,7 +1774,7 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+       SSL_SIGN_RSA_PSS_RSAE_SHA256, SSL_SIGN_MLDSA65},
       slot_index, true);
 }
 
@@ -1427,6 +1782,10 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
 TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
+  }
+  if (version < TLS1_3_VERSION && slot_index == SSL_PKEY_PQDSA) {
+    // ML-DSA is only defined for TLS 1.3.
     GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -1448,13 +1807,18 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+       SSL_SIGN_RSA_PSS_RSAE_SHA256, SSL_SIGN_MLDSA65},
       slot_index, true);
 }
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
+  }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519
+    // credentials, so ML-DSA cannot be selected here.
     GTEST_SKIP();
   }
 
@@ -1488,9 +1852,10 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelectionCipherAuth) {
   if ((version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) ||
-      version >= TLS1_3_VERSION) {
+      version >= TLS1_3_VERSION || slot_index == SSL_PKEY_PQDSA) {
     // ED25519 is not supported in versions prior to TLS1.2.
     // TLS 1.3 not have cipher-based authentication configuration.
+    // ML-DSA is TLS 1.3 only and is not selectable via cipher-auth.
     GTEST_SKIP();
   }
 
@@ -1535,6 +1900,10 @@ TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
     // ED25519 is not supported in versions prior to TLS1.2.
     GTEST_SKIP();
   }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519 keys.
+    GTEST_SKIP();
+  }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -1562,6 +1931,10 @@ TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
     // ED25519 is not supported in versions prior to TLS1.2.
     GTEST_SKIP();
   }
+  if (slot_index == SSL_PKEY_PQDSA) {
+    // The server in this test only configures RSA, ECDSA and ED25519 certs.
+    GTEST_SKIP();
+  }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -1583,6 +1956,379 @@ TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {certificate_key_param().corresponding_sigalg}, -1, false);
+}
+
+// SSL_CTX_add_extra_chain_cert routes the intermediate to the current
+// certificate's slot when one is configured, and falls back to the slot
+// matching the intermediate's own key type when no leaf is set yet. The
+// fallback fixes the Ruby + AWS-LC ordering, where
+// |Net::HTTP#extra_chain_cert=| appends before any leaf is configured.
+
+// Leaf-first, cross-type: an RSA intermediate added after an ECDSA leaf must
+// join the ECDSA leaf's slot, not the RSA slot. This is the common case of an
+// RSA intermediate for an ECDSA leaf, which key-type routing would misplace.
+TEST(SSLTest, ExtraChainCertCrossTypeLeafFirst) {
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
+  ASSERT_TRUE(ctx);
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  // The intermediate joins the ECDSA leaf's slot (leaf at index 0,
+  // intermediate at index 1); the RSA slot stays empty.
+  const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(ecc_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 2u);
+  EXPECT_FALSE(rsa_chain);
+}
+
+// No leaf configured yet: routing falls back to the intermediate's own key
+// type. Append the RSA intermediate to a fresh ctx, then set the matching
+// RSA leaf + key; both must end up in the RSA slot.
+TEST(SSLTest, ExtraChainCertAppendedBeforeLeaf) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add_extra_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetChainTestKey().get()));
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
+
+  // The RSA slot holds the leaf at index 0 and the intermediate at index 1.
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(rsa_chain);
+  ASSERT_EQ(sk_CRYPTO_BUFFER_num(rsa_chain.get()), 2u);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 0) != nullptr);
+  EXPECT_TRUE(sk_CRYPTO_BUFFER_value(rsa_chain.get(), 1) != nullptr);
+}
+
+// End-to-end Ruby ordering: append the intermediate before the leaf, then
+// complete a TLS 1.2 handshake. The server must send leaf + intermediate.
+TEST(SSLTest, ExtraChainCertSentDuringHandshake) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(client_ctx);
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  // Append the intermediate first (no leaf yet, so routing falls back to the
+  // intermediate's key type), then set the matching leaf + key.
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(SSL_CTX_add_extra_chain_cert(server_ctx.get(),
+                                            rsa_intermediate.release()));
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetChainTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetChainTestKey().get()));
+
+  // We are asserting what the server sends, not what the client validates.
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  const STACK_OF(CRYPTO_BUFFER) *peer_chain =
+      SSL_get0_peer_certificates(client.get());
+  ASSERT_TRUE(peer_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(peer_chain), 2u);
+}
+
+// Regression guard: SSL_CTX_add0_chain_cert still routes by
+// |cert_private_key_idx|, unchanged by the fix.
+TEST(SSLTest, Add0ChainCertCrossTypeRoutingUnchanged) {
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithCertificate(
+      TLS_method(), GetECDSATestCertificate(), GetECDSATestKey()));
+  ASSERT_TRUE(ctx);
+  ASSERT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(rsa_intermediate);
+  ASSERT_TRUE(
+      SSL_CTX_add0_chain_cert(ctx.get(), rsa_intermediate.release()));
+
+  // RSA intermediate lands in the ECC slot because |cert_private_key_idx|
+  // points there.
+  const auto &ecc_chain = ctx->cert->cert_private_keys[SSL_PKEY_ECC].chain;
+  const auto &rsa_chain = ctx->cert->cert_private_keys[SSL_PKEY_RSA].chain;
+  ASSERT_TRUE(ecc_chain);
+  EXPECT_EQ(sk_CRYPTO_BUFFER_num(ecc_chain.get()), 2u);
+  EXPECT_FALSE(rsa_chain);
+}
+
+
+// ML-DSA TLS 1.3 signature-scheme tests (draft-ietf-tls-mldsa). These
+// exercise the plumbing in ssl_privkey.cc / ssl_cipher.cc that wires
+// EVP_PKEY_PQDSA into TLS 1.3 handshake signing and verification.
+
+struct MLDSATestParams {
+  const char name[16];
+  uint16_t sigalg;
+  bssl::UniquePtr<X509> (*certificate)();
+  bssl::UniquePtr<EVP_PKEY> (*key)();
+};
+
+static const MLDSATestParams kMLDSATests[] = {
+    {"MLDSA44", SSL_SIGN_MLDSA44, GetMLDSA44TestCertificate,
+     GetMLDSA44TestKey},
+    {"MLDSA65", SSL_SIGN_MLDSA65, GetMLDSA65TestCertificate,
+     GetMLDSA65TestKey},
+    {"MLDSA87", SSL_SIGN_MLDSA87, GetMLDSA87TestCertificate,
+     GetMLDSA87TestKey},
+};
+
+class MLDSAHandshakeTest : public testing::TestWithParam<MLDSATestParams> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    MLDSA, MLDSAHandshakeTest, testing::ValuesIn(kMLDSATests),
+    [](const testing::TestParamInfo<MLDSATestParams> &info) {
+      return info.param.name;
+    });
+
+TEST_P(MLDSAHandshakeTest, HandshakeSucceeds) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithCertificate(TLS_method(), GetParam().certificate(),
+                                   GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()), GetParam().sigalg);
+}
+
+TEST_P(MLDSAHandshakeTest, RejectedInTLS12) {
+  // When both sides are pinned to TLS 1.2 and ML-DSA is the only sigalg in
+  // play, the handshake must not succeed: the server has nothing to sign
+  // with after the version filter excludes ML-DSA.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithCertificate(TLS_method(), GetParam().certificate(),
+                                   GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+}
+
+TEST(MLDSAHandshakeTest, CrossVariantMismatchFails) {
+  // Server has an MLDSA-44 cert/key, but the client only advertises
+  // MLDSA-65 / MLDSA-87 for verification. No common sigalg => handshake
+  // must fail.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetMLDSA44TestCertificate(), GetMLDSA44TestKey()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t server_sigalgs[] = {SSL_SIGN_MLDSA44};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
+      server_ctx.get(), server_sigalgs, OPENSSL_ARRAY_SIZE(server_sigalgs)));
+
+  const uint16_t client_sigalgs[] = {SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87};
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+      client_ctx.get(), client_sigalgs, OPENSSL_ARRAY_SIZE(client_sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+}
+
+TEST_P(MLDSAHandshakeTest, ClientAuth) {
+  // Test ML-DSA for client certificate authentication (mutual TLS).
+  bssl::UniquePtr<SSL_CTX> client_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  // Server requests client certificate.
+  SSL_CTX_set_custom_verify(
+      server_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(server.get()), GetParam().sigalg);
+}
+
+TEST_P(MLDSAHandshakeTest, FilteredFromTLS12) {
+  // ML-DSA is only defined for TLS 1.3 (draft-ietf-tls-mldsa §3.3). Confirm
+  // that even when the local sigalg prefs include ML-DSA, the negotiation
+  // does not pick it once the version is forced to TLS 1.2 -- the peer must
+  // fall back to a different sigalg, not fail.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetParam().certificate(), GetParam().key()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  // Give the server an RSA cert/key as a fallback usable in TLS 1.2.
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+
+  // Force TLS 1.2 from the client side; server allows 1.2..1.3.
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  const uint16_t sigalgs[] = {GetParam().sigalg, SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(server_ctx.get(), sigalgs,
+                                                  OPENSSL_ARRAY_SIZE(sigalgs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), sigalgs,
+                                                 OPENSSL_ARRAY_SIZE(sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_EQ(SSL_version(client.get()), TLS1_2_VERSION);
+  EXPECT_NE(SSL_get_peer_signature_algorithm(client.get()), GetParam().sigalg);
+}
+
+TEST(MLDSAHandshakeTest, RejectedByPeerSigalgCheckInTLS12) {
+  // Even if a peer's local verify list contains ML-DSA (we advertise the
+  // codepoints in TLS 1.2 ClientHellos so a higher-version negotiation can
+  // pick them up), |tls12_check_peer_sigalg| must reject ML-DSA arriving in
+  // a TLS 1.2 ServerKeyExchange / CertificateVerify with illegal_parameter,
+  // per draft-ietf-tls-mldsa §3.3. Without this check, the handshake would
+  // only fail later with a non-spec WRONG_SIGNATURE_TYPE.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetTestCertificate(), GetTestKey()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), ClientConfig(),
+                                     /*shed_handshake_config=*/false));
+  ASSERT_EQ(SSL_version(client.get()), TLS1_2_VERSION);
+
+  // Synthesize a fresh handshake state and seed its verify list with ML-DSA.
+  // |tls12_check_peer_sigalg| must still reject because the negotiated
+  // version is TLS 1.2.
+  bssl::UniquePtr<SSL_HANDSHAKE> hs = ssl_handshake_new(client.get());
+  ASSERT_TRUE(hs);
+  static const uint16_t kSeedSigalgs[] = {
+      SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87,
+      SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  ASSERT_TRUE(hs->config->verify_sigalgs.CopyFrom(kSeedSigalgs));
+
+  for (uint16_t sigalg :
+       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
+    uint8_t alert = 0;
+    EXPECT_FALSE(tls12_check_peer_sigalg(hs.get(), &alert, sigalg));
+    EXPECT_EQ(alert, SSL_AD_ILLEGAL_PARAMETER);
+    ERR_clear_error();
+  }
+
+  // Sanity check: a valid TLS 1.2 sigalg from the same list still passes.
+  uint8_t alert = 0;
+  EXPECT_TRUE(
+      tls12_check_peer_sigalg(hs.get(), &alert, SSL_SIGN_RSA_PSS_RSAE_SHA256));
+}
+
+TEST(MLDSAHandshakeTest, ParamNidFilterSelectsMatchingVariant) {
+  // Server has an MLDSA-44 cert/key but advertises [MLDSA-65, MLDSA-87,
+  // MLDSA-44] in its signing prefs (so MLDSA-44 is *not* the first
+  // preference). |pkey_supports_algorithm| should reject MLDSA-65 and
+  // MLDSA-87 against the MLDSA-44 key (param_nid mismatch) and fall
+  // through to MLDSA-44, which both peers offer.
+  //
+  // This positively exercises the
+  //     EVP_PKEY_pqdsa_get_type(pkey) != alg->param_nid
+  // filter that this PR adds.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), GetMLDSA44TestCertificate(), GetMLDSA44TestKey()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  const uint16_t server_sigalgs[] = {SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87,
+                                     SSL_SIGN_MLDSA44};
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
+      server_ctx.get(), server_sigalgs, OPENSSL_ARRAY_SIZE(server_sigalgs)));
+
+  const uint16_t client_sigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                                     SSL_SIGN_MLDSA87};
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+      client_ctx.get(), client_sigalgs, OPENSSL_ARRAY_SIZE(client_sigalgs)));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  // Despite MLDSA-65 being the server's first signing preference, the param
+  // filter must have skipped it because the cert is MLDSA-44.
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()), SSL_SIGN_MLDSA44);
 }
 
 
@@ -1822,6 +2568,7 @@ TEST(SSLTest, BIO) {
   }
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 TEST(SSLTest, BIO_2) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(
@@ -1855,6 +2602,7 @@ TEST(SSLTest, BIO_2) {
   SSL_set_bio(server_ssl_ptr, bio2, bio2);
   ASSERT_TRUE(CompleteHandshakes(client_ssl_ptr, server_ssl_ptr));
 }
+#endif  // !OPENSSL_NO_SOCK
 
 TEST(SSLTest, ALPNConfig) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -2032,6 +2780,67 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   EXPECT_TRUE(write_failed);
   write_failed = false;
 }
+
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+static int test_security_callback(const SSL *ssl, const SSL_CTX *ctx, int op,
+                                  int bits, int nid, void *other, void *ex) {
+  return 1;
+}
+
+TEST(SSLTest, SecurityCallback) {
+  SSL_security_callback cb = test_security_callback;
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Initially no callback is set.
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), nullptr);
+
+  // Set and retrieve the callback on SSL_CTX.
+  SSL_CTX_set_security_callback(ctx.get(), cb);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), cb);
+
+  // Set and retrieve ex_data on SSL_CTX.
+  int dummy_data = 42;
+  SSL_CTX_set0_security_ex_data(ctx.get(), &dummy_data);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(ctx.get()), &dummy_data);
+
+  // SSL_new propagates the callback and ex_data from SSL_CTX.
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &dummy_data);
+
+  // Per-SSL overrides.
+  SSL_set_security_callback(ssl.get(), nullptr);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+  SSL_set_security_callback(ssl.get(), cb);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), cb);
+
+  // Set and retrieve ex_data on SSL.
+  int ssl_dummy_data = 99;
+  SSL_set0_security_ex_data(ssl.get(), &ssl_dummy_data);
+  EXPECT_EQ(SSL_get0_security_ex_data(ssl.get()), &ssl_dummy_data);
+
+  // Setting NULL callback is allowed.
+  SSL_CTX_set_security_callback(ctx.get(), nullptr);
+  EXPECT_EQ(SSL_CTX_get_security_callback(ctx.get()), nullptr);
+  SSL_set_security_callback(ssl.get(), nullptr);
+  EXPECT_EQ(SSL_get_security_callback(ssl.get()), nullptr);
+
+  // NULL SSL_CTX is handled gracefully.
+  SSL_CTX_set_security_callback(nullptr, cb);
+  EXPECT_EQ(SSL_CTX_get_security_callback(nullptr), nullptr);
+  SSL_CTX_set0_security_ex_data(nullptr, &dummy_data);
+  EXPECT_EQ(SSL_CTX_get0_security_ex_data(nullptr), nullptr);
+
+  // NULL SSL is handled gracefully.
+  SSL_set_security_callback(nullptr, cb);
+  EXPECT_EQ(SSL_get_security_callback(nullptr), nullptr);
+  SSL_set0_security_ex_data(nullptr, &ssl_dummy_data);
+  EXPECT_EQ(SSL_get0_security_ex_data(nullptr), nullptr);
+}
+OPENSSL_END_ALLOW_DEPRECATED
 
 }  // namespace
 BSSL_NAMESPACE_END

@@ -1,6 +1,5 @@
 // Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-License-Identifier: BSD-3-Clause
 
 package runner
 
@@ -20,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"github.com/aws/aws-lc/ssl/test/runner/hpke"
 )
 
 const (
@@ -152,11 +151,11 @@ var tls13HelloRetryRequest = []uint8{
 type CurveID uint16
 
 const (
-	CurveP224           CurveID = 21
-	CurveP256           CurveID = 23
-	CurveP384           CurveID = 24
-	CurveP521           CurveID = 25
-	CurveX25519         CurveID = 29
+	CurveP224   CurveID = 21
+	CurveP256   CurveID = 23
+	CurveP384   CurveID = 24
+	CurveP521   CurveID = 25
+	CurveX25519 CurveID = 29
 )
 
 // TLS Elliptic Curve Point Formats
@@ -1304,6 +1303,12 @@ type ProtocolBugs struct {
 	// SendEmptyFragments, if true, causes handshakes to include empty
 	// fragments in DTLS.
 	SendEmptyFragments bool
+
+	// SendExtraFutureHandshakeFragment, if non-zero, causes each outgoing
+	// DTLS handshake message to be preceded by an extra fragment carrying
+	// message_seq equal to the current sequence number plus this value.
+	// The peer is expected to silently ignore the extra fragment.
+	SendExtraFutureHandshakeFragment int
 
 	// SendSplitAlert, if true, causes an alert to be sent with the header
 	// and record body split across multiple packets. The peer should

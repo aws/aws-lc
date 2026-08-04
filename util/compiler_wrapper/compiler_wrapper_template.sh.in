@@ -8,8 +8,10 @@
 # Real compiler: @REAL_COMPILER@
 # Generated on: @CURRENT_TIMESTAMP@
 #
-# Purpose: Filter out conflicting -c flags when -S flag is present
-# to avoid issues with newer Clang versions (20+)
+# Purpose: Filter out conflicting -c flags when -S flag is present.
+# CMake always emits -c for static library targets, but the bcm_c_generated_asm
+# target uses -S to produce textual assembly. The two flags are contradictory;
+# this wrapper ensures -S wins regardless of compiler.
 
 set -e
 

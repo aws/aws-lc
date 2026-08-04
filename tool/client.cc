@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/base.h>
 
@@ -36,6 +25,94 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "internal.h"
 #include "transport_common.h"
 
+
+// Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Ported verbatim from OpenSSL 3.x apps/s_client.c (is_dNS_name).
+/*
+ * Host dNS Name verifier: used for checking that the hostname is in dNS format
+ * before setting it as SNI
+ */
+static int is_dNS_name(const char *host)
+{
+    const size_t MAX_LABEL_LENGTH = 63;
+    int isdnsname = 0;
+    size_t length = strlen(host);
+    size_t label_length = 0;
+    int all_numeric = 1;
+
+    /*
+     * Deviation from strict DNS name syntax, also check names with '_'
+     * Check DNS name syntax, any '-' or '.' must be internal,
+     * and on either side of each '.' we can't have a '-' or '.'.
+     *
+     * If the name has just one label, we don't consider it a DNS name.
+     */
+    for (size_t i = 0; i < length && label_length < MAX_LABEL_LENGTH; ++i) {
+        char c = host[i];
+
+        if ((c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || c == '_') {
+            label_length += 1;
+            all_numeric = 0;
+            continue;
+        }
+
+        if (c >= '0' && c <= '9') {
+            label_length += 1;
+            continue;
+        }
+
+        /* Dot and hyphen cannot be first or last. */
+        if (i > 0 && i < length - 1) {
+            if (c == '-') {
+                label_length += 1;
+                continue;
+            }
+            /*
+             * Next to a dot the preceding and following characters must not be
+             * another dot or a hyphen.  Otherwise, record that the name is
+             * plausible, since it has two or more labels.
+             */
+            if (c == '.'
+                && host[i + 1] != '.'
+                && host[i - 1] != '-'
+                && host[i + 1] != '-') {
+                label_length = 0;
+                isdnsname = 1;
+                continue;
+            }
+        }
+        isdnsname = 0;
+        break;
+    }
+
+    /* dNS name must not be all numeric and labels must be shorter than 64 characters. */
+    isdnsname &= !all_numeric && !(label_length == MAX_LABEL_LENGTH);
+
+    return isdnsname;
+}
+
+static std::string DefaultSNIFromConnect(
+    const std::string &hostname_and_port) {
+  if (hostname_and_port.empty()) {
+    return std::string();
+  }
+  std::string host = hostname_and_port;
+  size_t colon = hostname_and_port.find_last_of(':');
+  if (colon != std::string::npos) {
+    host = hostname_and_port.substr(0, colon);
+  }
+  if (host.size() >= 2 && host.front() == '[' && host.back() == ']') {
+    return std::string();
+  }
+  if (!is_dNS_name(host.c_str())) {
+    return std::string();
+  }
+  return host;
+}
 
 static const argument_t kArguments[] = {
     {
@@ -321,6 +398,94 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
   print_verify_details(ssl);
 }
 
+static const char *MsgVersionStr(int version) {
+  switch (version) {
+    case TLS1_3_VERSION:
+      return "TLS 1.3";
+    case TLS1_2_VERSION:
+      return "TLS 1.2";
+    case TLS1_1_VERSION:
+      return "TLS 1.1";
+    case TLS1_VERSION:
+      return "TLS 1.0";
+    case SSL3_VERSION:
+      return "SSL 3.0";
+    default:
+      return "Unknown";
+  }
+}
+
+static const char *MsgContentTypeStr(int content_type) {
+  switch (content_type) {
+    case SSL3_RT_HEADER:
+      return "RecordHeader";
+    case SSL3_RT_HANDSHAKE:
+      return "Handshake";
+    case SSL3_RT_CHANGE_CIPHER_SPEC:
+      return "ChangeCipherSpec";
+    case SSL3_RT_ALERT:
+      return "Alert";
+    case SSL3_RT_APPLICATION_DATA:
+      return "ApplicationData";
+    default:
+      return "Unknown";
+  }
+}
+
+static const char *MsgHandshakeTypeStr(uint8_t type) {
+  switch (type) {
+    case SSL3_MT_CLIENT_HELLO:
+      return "ClientHello";
+    case SSL3_MT_SERVER_HELLO:
+      return "ServerHello";
+    case SSL3_MT_CERTIFICATE:
+      return "Certificate";
+    case SSL3_MT_CERTIFICATE_REQUEST:
+      return "CertificateRequest";
+    case SSL3_MT_CERTIFICATE_VERIFY:
+      return "CertificateVerify";
+    case SSL3_MT_FINISHED:
+      return "Finished";
+    case SSL3_MT_ENCRYPTED_EXTENSIONS:
+      return "EncryptedExtensions";
+    case SSL3_MT_NEW_SESSION_TICKET:
+      return "NewSessionTicket";
+    default:
+      return nullptr;
+  }
+}
+
+static const char *MsgAdditionalContextStr(int content_type, const void *buf,
+                                           size_t len) {
+  if (len == 0) {
+    return nullptr;
+  }
+  switch (content_type) {
+    case SSL3_RT_HANDSHAKE:
+      return MsgHandshakeTypeStr(reinterpret_cast<const uint8_t *>(buf)[0]);
+    default:
+      return nullptr;
+  }
+}
+
+static void MsgCallback(int is_write, int version, int content_type,
+                        const void *buf, size_t len, SSL *ssl, void *arg) {
+  const char *extra = MsgAdditionalContextStr(content_type, buf, len);
+  if (extra) {
+    fprintf(stderr, "%s %s, %s [length %04x], %s\n",
+            is_write ? ">>>" : "<<<",
+            MsgVersionStr(version ? version : TLS1_2_VERSION),
+            MsgContentTypeStr(content_type),
+            (unsigned)len, extra);
+  } else {
+    fprintf(stderr, "%s %s, %s [length %04x]\n",
+            is_write ? ">>>" : "<<<",
+            MsgVersionStr(version ? version : TLS1_2_VERSION),
+            MsgContentTypeStr(content_type),
+            (unsigned)len);
+  }
+}
+
 static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
                          bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
@@ -360,9 +525,20 @@ static bool DoConnection(SSL_CTX *ctx,
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
 
+  if (is_openssl_s_client && args_map.count("-msg") != 0) {
+    SSL_set_msg_callback(ssl.get(), MsgCallback);
+  }
+
   if (args_map.count("-server-name") != 0) {
     if (!SSL_set_tlsext_host_name(ssl.get(),
                                   args_map["-server-name"].c_str())) {
+      return false;
+    }
+  } else if (is_openssl_s_client && args_map.count("-noservername") == 0) {
+    // Default SNI to the -connect hostname, matching OpenSSL 1.1+ s_client.
+    std::string default_sni = DefaultSNIFromConnect(args_map["-connect"]);
+    if (!default_sni.empty() &&
+        !SSL_set_tlsext_host_name(ssl.get(), default_sni.c_str())) {
       return false;
     }
   }
@@ -723,6 +899,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
 
   std::string certPathFlag;
   int verify = SSL_VERIFY_NONE;
+  bool loaded_verify_locations = false;
   if (args_map.count("-root-certs") != 0) {
     certPathFlag = "-root-certs";
     verify = SSL_VERIFY_PEER;
@@ -738,6 +915,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       ERR_print_errors_fp(stderr);
       return false;
     }
+    loaded_verify_locations = true;
   }
 
   certPathFlag = "";
@@ -757,6 +935,7 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       ERR_print_errors_fp(stderr);
       return false;
     }
+    loaded_verify_locations = true;
   }
 
   if (args_map.count("-verify") != 0) {
@@ -766,7 +945,19 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       return false;
     }
     fprintf(stdout, "verify depth is %d\n", (int)depth);
+    SSL_CTX_set_verify_depth(ctx.get(), (int)depth);
     verify = SSL_VERIFY_PEER;
+    // If no explicit CA source was provided (via -CAfile, -CApath, -root-certs,
+    // or -root-cert-dir), fall back to the platform default CA store. This
+    // mirrors the behaviour of OpenSSL's s_client -verify, which enables peer
+    // verification against whatever trust store the system provides when no
+    // explicit CA source is given.
+    if (!loaded_verify_locations) {
+      if (!SSL_CTX_set_default_verify_paths(ctx.get())) {
+        fprintf(stderr, "Warning: failed to load default verify paths.\n");
+        ERR_print_errors_fp(stderr);
+      }
+    }
   }
 
   if (is_openssl_s_client) { // openssl tool

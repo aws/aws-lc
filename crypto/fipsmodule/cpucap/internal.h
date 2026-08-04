@@ -1,3 +1,6 @@
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #ifndef OPENSSL_HEADER_CPUCAP_INTERNAL_H
 #define OPENSSL_HEADER_CPUCAP_INTERNAL_H
 
@@ -240,12 +243,14 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
   return (CRYPTO_is_ARMv8_SHA3_capable() &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_NEOVERSE_V3) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0));
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_NEOVERSE_V3) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
 }
 
@@ -260,9 +265,10 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_RNDR_capable(void) {
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_N1(void) {
   // It is Neoverse N1 if only ARMV8_NEOVERSE_N1 = 1 and
-  // ARMV8_NEOVERSE_<V1|V2> = 0.
+  // ARMV8_NEOVERSE_<V1|V2|V3> = 0.
   return ((OPENSSL_armcap_P & ARMV8_NEOVERSE_N1) != 0 &&
-          (OPENSSL_armcap_P & (ARMV8_NEOVERSE_V1 | ARMV8_NEOVERSE_V2)) == 0);
+          (OPENSSL_armcap_P &
+           (ARMV8_NEOVERSE_V1 | ARMV8_NEOVERSE_V2 | ARMV8_NEOVERSE_V3)) == 0);
 }
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_V1(void) {
@@ -271,6 +277,10 @@ OPENSSL_INLINE int CRYPTO_is_Neoverse_V1(void) {
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_V2(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_V3(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V3) != 0;
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_Apple_M(void) {

@@ -54,7 +54,7 @@ function run_build {
   mkdir -p "$BUILD_ROOT"
   cd "$BUILD_ROOT" || exit 1
 
-  if [[ "${AWSLC_32BIT}" == "1" ]]; then
+  if [[ "${AWSLC_32BIT:-0}" == "1" ]]; then
     cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
   fi
 
@@ -140,17 +140,29 @@ function fips_build_and_test {
   run_build "$@" -DFIPS=1
   # Upon completion of the build process. The module’s status can be verified by 'tool/bssl isfips'.
   # https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp3678.pdf
-  # FIPS mode is enabled when 'defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)'.
-  # https://github.com/aws/aws-lc/blob/220e266d4e415cf0101388b89a2bd855e0e4e203/crypto/fipsmodule/is_fips.c#L22
+  # FIPS mode is enabled when 'defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)'.
   expect_fips_mode=1
   for build_flag in "$@"
   do
-    if [[ "${build_flag}" == '-DASAN=1' ]]; then
+    if [[ "${build_flag}" == '-DASAN=1' || "${build_flag}" == '-DMSAN=1' ]]; then
       expect_fips_mode=0
       break
     fi
   done
-  module_status=$("${BUILD_ROOT}/tool/bssl" isfips)
+  # Locate the bssl tool. ENABLE_DIST_PKG builds set COHABITANT_BINARIES, which
+  # prefixes the tool name (e.g. aws-lc-bssl), so check both names.
+  bssl_tool=""
+  for candidate in "${BUILD_ROOT}/tool/bssl" "${BUILD_ROOT}/tool/aws-lc-bssl"; do
+    if [[ -x "${candidate}" ]]; then
+      bssl_tool="${candidate}"
+      break
+    fi
+  done
+  if [[ -z "${bssl_tool}" ]]; then
+    echo >&2 "bssl tool not found under ${BUILD_ROOT}/tool (looked for bssl and aws-lc-bssl)."
+    exit 1
+  fi
+  module_status=$("${bssl_tool}" isfips)
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'

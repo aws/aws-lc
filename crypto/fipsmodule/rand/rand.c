@@ -15,7 +15,7 @@
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_local_state {
-  // Thread-local CTR-DRBG state. UBE volatile state.
+  // Thread-local CTR-DRBG state. UBE unique state.
   CTR_DRBG_STATE drbg;
 
   // generate_calls_since_seed is the number of generate calls made on |drbg|
@@ -31,7 +31,7 @@ struct rand_thread_local_state {
   // generation_number caches the UBE generation number.
   uint64_t generation_number;
 
-  // Entropy source. UBE volatile state.
+  // Entropy source. UBE unique state.
   struct entropy_source_t *entropy_source;
 
   // Backward and forward references to nodes in a doubly-linked list.
@@ -46,6 +46,16 @@ OPENSSL_STATIC_ASSERT((sizeof((struct rand_thread_local_state*)0)->generate_call
 
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
 DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
+
+// thread_local_drbg_shutdown_started is set to a non-zero value during process
+// exit by |rand_thread_local_state_clear_all|, while the linked-list lock is
+// held. All reads and writes occur under |thread_local_states_list_lock|, so
+// no atomic accessors are needed; doing the check under the lock also avoids
+// the otherwise-racy window where a TLS destructor could observe the flag as
+// unset, then block on the lock while shutdown zeroization runs, and then
+// free a state whose |state_clear_lock| has been intentionally write-locked
+// forever.
+DEFINE_BSS_GET(int, thread_local_drbg_shutdown_started)
 
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
@@ -67,19 +77,42 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 // randomness from a non-valid state. The linked application should obviously
 // arrange that all threads are gracefully exited before exiting the process.
 // Yet, in cases where such graceful exit does not happen we ensure that no
-// output can be returned by locking all thread-local states and deliberately
-// not releasing the lock. A synchronization step in the core randomness
-// generation routine |RAND_bytes_core| then ensures that no randomness
-// generation can occur after a thread-local state has been locked. It also
-// ensures |rand_thread_local_state_free| cannot free any thread state while we
-// own the lock.
+// output can be returned by locking each thread-local state's
+// |state_clear_lock| and deliberately not releasing it. A synchronization step
+// in the core randomness generation routine |RAND_bytes_core| then ensures
+// that no randomness generation can occur after a thread-local state has been
+// locked.
 //
-// When a thread-local DRBGs is gated from returning output, we can invoke the
+// We additionally set |thread_local_drbg_shutdown_started| under the
+// linked-list lock so that any thread which has not yet registered a
+// thread-local state cannot do so after this routine has begun zeroization;
+// without this, a fresh thread could allocate a state and bypass zeroization.
+// The linked-list lock itself is released at the end of this function. If we
+// instead held it forever, |thread_local_list_delete_node| (called from a
+// thread's TLS destructor in |rand_thread_local_state_free|) would block
+// indefinitely. On Windows, TLS destructors run under the loader lock, so
+// blocking there causes |ExitProcess| to hang waiting for the loader lock.
+// See https://github.com/aws/aws-lc/issues/3197.
+//
+// When a thread-local DRBG is gated from returning output, we can invoke the
 // entropy source zeroization from |state->entropy_source|. The entropy source
 // implementation can assume that any returned seed is never used to generate
 // any randomness that is later returned to a consumer.
 static void rand_thread_local_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+
+  // Idempotency guard. Under normal operation this routine runs exactly once
+  // (via |atexit|), but it is also exposed for testing via
+  // |rand_thread_local_state_clear_all_FOR_TESTING|, and re-running would
+  // attempt to write-lock per-state |state_clear_lock|s that are already held
+  // write-locked by the first invocation -- which is UB for a non-recursive
+  // rwlock.
+  if (*thread_local_drbg_shutdown_started_bss_get() != 0) {
+    CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+    return;
+  }
+  *thread_local_drbg_shutdown_started_bss_get() = 1;
+
   for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
     state != NULL; state = state->next) {
     CRYPTO_MUTEX_lock_write(&state->state_clear_lock);
@@ -90,13 +123,34 @@ static void rand_thread_local_state_clear_all(void) {
     state != NULL; state = state->next) {
     state->entropy_source->methods->zeroize_thread(state->entropy_source);
   }
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
 }
 
-static void thread_local_list_delete_node(
+void rand_thread_local_state_clear_all_FOR_TESTING(void) {
+  rand_thread_local_state_clear_all();
+}
+
+// thread_local_list_delete_node removes |node_delete| from the global
+// linked list and returns 1. If process-wide shutdown zeroization has already
+// begun, the node is left in place and 0 is returned -- the caller must not
+// free the node in that case because |rand_thread_local_state_clear_all| has
+// write-locked its |state_clear_lock| and intentionally never releases it.
+static int thread_local_list_delete_node(
   struct rand_thread_local_state *node_delete) {
 
   // Mutating the global linked list. Need to synchronize over all threads.
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+
+  // Re-check the shutdown flag under the lock. This makes the
+  // "free vs. shutdown-zeroize" decision atomic with respect to
+  // |rand_thread_local_state_clear_all|: either we delete and free before
+  // shutdown begins, or shutdown wins and we leak the node deliberately.
+  if (*thread_local_drbg_shutdown_started_bss_get() != 0) {
+    CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+    return 0;
+  }
+
   struct rand_thread_local_state *node_head = *thread_states_list_head_bss_get();
 
   // We have [node_delete->previous] <--> [node_delete] <--> [node_delete->next]
@@ -127,6 +181,7 @@ static void thread_local_list_delete_node(
   }
 
   CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+  return 1;
 }
 
 // thread_local_list_add adds the state |node_add| to the linked list. Note that
@@ -140,6 +195,19 @@ static void thread_local_list_add_node(
 
   // Mutating the global linked list. Need to synchronize over all threads.
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+
+  // If process-wide zeroization has already started, do not add a new state to
+  // the list -- it would not have been zeroized by
+  // |rand_thread_local_state_clear_all|. Instead, write-lock the state's
+  // |state_clear_lock| and never release it. This causes any subsequent
+  // |RAND_bytes_core| call on this thread to block forever on the read lock,
+  // matching the FIPS-derived guarantee that no output is returned after
+  // shutdown zeroization.
+  if (*thread_local_drbg_shutdown_started_bss_get() != 0) {
+    CRYPTO_MUTEX_lock_write(&node_add->state_clear_lock);
+    CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+    return;
+  }
 
   // First get a reference to the pointer of the head of the linked list.
   // That is, the pointer to the head node node_head is *thread_states_head.
@@ -171,7 +239,16 @@ static void rand_thread_local_state_free(void *state_in) {
     return;
   }
 
-  thread_local_list_delete_node(state);
+  // If process-wide shutdown zeroization has begun, the per-state
+  // |state_clear_lock| has been write-locked and is intentionally never
+  // released (so any in-flight |RAND_bytes| call cannot return output from a
+  // zeroized state). |thread_local_list_delete_node| therefore detects this
+  // case under the linked-list lock and refuses to delete; we must then leak
+  // the node, since freeing it would destroy a held mutex. The OS reclaims
+  // the memory at process exit. See issue #3197.
+  if (thread_local_list_delete_node(state) == 0) {
+    return;
+  }
 
   // Potentially, something could kill the thread before an entropy source has
   // been associated to the thread-local randomness generator object.
@@ -473,8 +550,8 @@ static void rand_bytes_core(
   CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 }
 
-static void rand_bytes_private(uint8_t *out, size_t out_len,
-  const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
+static void rand_bytes_impl(thread_local_data_t tls_key, uint8_t *out,
+  size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
   int use_user_pred_resistance) {
 
   if (out_len == 0) {
@@ -482,18 +559,18 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
   }
 
   // Lock state here because CTR-DRBG-generate can be invoked multiple times
-  // and every successful invocation increments updates service indicator.
+  // and every successful invocation increments the service indicator.
   FIPS_service_indicator_lock_state();
 
   struct rand_thread_local_state *state =
-      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+      CRYPTO_get_thread_local(tls_key);
 
   int ctr_drbg_state_is_fresh = 0;
 
   if (state == NULL) {
     state = OPENSSL_zalloc(sizeof(struct rand_thread_local_state));
     if (state == NULL ||
-        CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, state,
+        CRYPTO_set_thread_local(tls_key, state,
                                    rand_thread_local_state_free) != 1) {
       abort();
     }
@@ -516,16 +593,16 @@ int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
 
   GUARD_PTR_ABORT(user_pred_resistance);
 
-  rand_bytes_private(out, out_len, user_pred_resistance,
-    RAND_USE_USER_PRED_RESISTANCE);
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+    user_pred_resistance, RAND_USE_USER_PRED_RESISTANCE);
   return 1;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
 
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_bytes_private(out, out_len, kZeroPredResistance,
-    RAND_NO_USER_PRED_RESISTANCE);
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+    kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
   return 1;
 }
 
@@ -533,13 +610,21 @@ int RAND_priv_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
+int RAND_public_bytes(uint8_t *out, size_t out_len) {
+  static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
+  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PUBLIC_RAND, out, out_len,
+    kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
+  return 1;
+}
+
 int RAND_pseudo_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
-// Returns the number of generate calls made on the thread-local state since
-// last seed/reseed. Returns 0 if thread-local state has not been initialized.
-uint64_t get_thread_generate_calls_since_seed(void) {
+// Returns the number of generate calls made on the private thread-local state
+// since last seed/reseed. Returns 0 if private thread-local state has not been
+// initialized.
+uint64_t get_private_thread_generate_calls_since_seed(void) {
 
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
@@ -550,12 +635,41 @@ uint64_t get_thread_generate_calls_since_seed(void) {
   return state->generate_calls_since_seed;
 }
 
-// Returns the number of reseed calls made on the thread-local state since
-// initialization. Returns 0 if thread-local state has not been initialized.
-uint64_t get_thread_reseed_calls_since_initialization(void) {
+// Returns the number of reseed calls made on the private thread-local state
+// since initialization. Returns 0 if private thread-local state has not been
+// initialized.
+uint64_t get_private_thread_reseed_calls_since_initialization(void) {
 
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->reseed_calls_since_initialization;
+}
+
+// Returns the number of generate calls made on the public thread-local state
+// since last seed/reseed. Returns 0 if public thread-local state has not been
+// initialized.
+uint64_t get_public_thread_generate_calls_since_seed(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PUBLIC_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->generate_calls_since_seed;
+}
+
+// Returns the number of reseed calls made on the public thread-local state
+// since initialization. Returns 0 if public thread-local state has not been
+// initialized.
+uint64_t get_public_thread_reseed_calls_since_initialization(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PUBLIC_RAND);
   if (state == NULL) {
     return 0;
   }

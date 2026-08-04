@@ -1,143 +1,16 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.]
- */
-/* ====================================================================
- * Copyright (c) 1998-2007 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com).
- *
- */
-/* ====================================================================
- * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
- * ECC cipher suite support in OpenSSL originally developed by
- * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project.
- */
-/* ====================================================================
- * Copyright 2005 Nokia. All rights reserved.
- *
- * The portions of the attached software ("Contribution") is developed by
- * Nokia Corporation and is licensed pursuant to the OpenSSL open source
- * license.
- *
- * The Contribution, originally written by Mika Kousa and Pasi Eronen of
- * Nokia Corporation, consists of the "PSK" (Pre-Shared Key) ciphersuites
- * support (see RFC 4279) to OpenSSL.
- *
- * No patent licenses or other rights except those expressly stated in
- * the OpenSSL open source license shall be deemed granted or received
- * expressly, by implication, estoppel, or otherwise.
- *
- * No assurances are provided by Nokia that the Contribution does not
- * infringe the patent or other intellectual property rights of any third
- * party or that the license provides you with all the necessary rights
- * to make use of the Contribution.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. IN
- * ADDITION TO THE DISCLAIMERS INCLUDED IN THE LICENSE, NOKIA
- * SPECIFICALLY DISCLAIMS ANY LIABILITY FOR CLAIMS BROUGHT BY YOU OR ANY
- * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
- * OTHERWISE.
- */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+// Copyright (c) 1998-2007 The OpenSSL Project.  All rights reserved.
+// Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
+// Copyright 2005 Nokia. All rights reserved.
+//
+// ECC cipher suite support in OpenSSL originally developed by
+// SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project.
+//
+// The Contribution, originally written by Mika Kousa and Pasi Eronen of
+// Nokia Corporation, consists of the "PSK" (Pre-Shared Key) ciphersuites
+// support (see RFC 4279) to OpenSSL.
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_SSL_INTERNAL_H
 #define OPENSSL_HEADER_SSL_INTERNAL_H
@@ -668,7 +541,9 @@ BSSL_NAMESPACE_BEGIN
 // picks the cipher and groups cannot be expressed on the wire. However, for
 // servers, the equal-preference groups allow the client's preferences to be
 // partially respected. (This only has an effect with
-// SSL_OP_CIPHER_SERVER_PREFERENCE).
+// SSL_OP_CIPHER_SERVER_PREFERENCE). Note that the method used to compute the
+// negotiated cipher suite in TLS 1.3 does not use the equal-preference
+// data structure described below.
 //
 // The equal-preference groups are expressed by grouping SSL_CIPHERs together.
 // All elements of a group have the same priority: no ordering is expressed
@@ -1305,8 +1180,7 @@ OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
 
 // PQGroups returns all supported post-quantum groups. A post-quantum
 // group may be a hybrid group containing at least one PQ
-// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
-// (e.g. KYBER768_R3).
+// component or a standalone PQ group.
 Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
@@ -1968,8 +1842,8 @@ struct SSL_HANDSHAKE_HINTS {
 };
 
 struct SSL_HANDSHAKE {
-  explicit SSL_HANDSHAKE(SSL *ssl);
-  ~SSL_HANDSHAKE();
+  OPENSSL_EXPORT explicit SSL_HANDSHAKE(SSL *ssl);
+  OPENSSL_EXPORT ~SSL_HANDSHAKE();
   static constexpr bool kAllowUniquePtr = true;
 
   // ssl is a non-owning pointer to the parent |SSL| object.
@@ -2165,11 +2039,6 @@ struct SSL_HANDSHAKE {
   // CertificateRequest message.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
-  // cached_x509_ca_names contains a cache of parsed versions of the elements of
-  // |ca_names|. This pointer is left non-owning so only
-  // |ssl_crypto_x509_method| needs to link against crypto/x509.
-  STACK_OF(X509_NAME) *cached_x509_ca_names = nullptr;
-
   // certificate_types, on the client, contains the set of certificate types
   // received in a CertificateRequest message.
   Array<uint8_t> certificate_types;
@@ -2334,7 +2203,7 @@ struct SSL_HANDSHAKE {
 // so many tickets.
 constexpr size_t kMaxTickets = 16;
 
-UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
+OPENSSL_EXPORT UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
 // one. Otherwise, it sends an alert and returns zero.
@@ -2617,8 +2486,9 @@ bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out);
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
 // signature. It returns true on success and false on error, setting
 // |*out_alert| to an alert to send.
-bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                             uint16_t sigalg);
+OPENSSL_EXPORT bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs,
+                                            uint8_t *out_alert,
+                                            uint16_t sigalg);
 
 
 // Underdocumented functions.
@@ -2635,7 +2505,8 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 #define SSL_PKEY_RSA 0
 #define SSL_PKEY_ECC 1
 #define SSL_PKEY_ED25519 2
-#define SSL_PKEY_SIZE 3
+#define SSL_PKEY_PQDSA 3
+#define SSL_PKEY_SIZE 4
 
 struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;
@@ -2666,6 +2537,19 @@ struct CERT {
 
   explicit CERT(const SSL_X509_METHOD *x509_method);
   ~CERT();
+
+  // SetKeyMethod sets |key_method| for private key callback operations and
+  // clears any software private key in slot |slot_idx| to maintain mutual
+  // exclusivity between |key_method| and per-slot |privatekey|. It returns
+  // true on success. If |slot_idx| is out of range and |method| is non-NULL,
+  // it returns false because the mutual exclusivity invariant cannot be
+  // enforced.
+  bool SetKeyMethod(const SSL_PRIVATE_KEY_METHOD *method, int slot_idx);
+
+  // SetSlotPrivateKey sets the software private key for |slot_idx| and clears
+  // |key_method| to maintain mutual exclusivity between per-slot |privatekey|
+  // and |key_method|. It returns false if |slot_idx| is out of range.
+  bool SetSlotPrivateKey(int slot_idx, EVP_PKEY *pkey);
 
   // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
   // array. OpenSSL implements this as a pointer, but an index is more
@@ -2853,7 +2737,8 @@ struct SSL_X509_METHOD {
   bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
                                     uint8_t *out_alert);
 
-  // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
+  // hs_flush_cached_ca_names drops any cached peer CA |X509_NAME|s from
+  // |hs->ssl->s3|. Called when |hs->ca_names| is reparsed.
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
   // ssl_new does any necessary initialisation of |hs|. It returns true on
   // success or false on error.
@@ -3102,6 +2987,12 @@ struct SSL3_STATE {
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
+
+  // cached_x509_peer_ca_names, on the client, contains the list of CAs
+  // received in a CertificateRequest message, as X509_NAMEs. This is eagerly
+  // populated from |hs->ca_names| before the handshake object is destroyed, so
+  // that |SSL_get_client_CA_list| can return it after the handshake.
+  STACK_OF(X509_NAME) *cached_x509_peer_ca_names = nullptr;
 
   // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
   // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
@@ -3776,6 +3667,13 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 
 BSSL_NAMESPACE_END
 
+// ssl_x509_persist_peer_ca_names eagerly converts the peer CA names from
+// |hs->ca_names| to X509_NAMEs and stores them in
+// |ssl->s3->cached_x509_peer_ca_names|, so they remain available via
+// |SSL_get_client_CA_list| after the handshake object is destroyed. It returns
+// true on success and false on allocation failure.
+bool ssl_x509_persist_peer_ca_names(SSL *ssl);
+
 
 // Opaque C types.
 //
@@ -3958,6 +3856,9 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
+
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
 
   int verify_mode = SSL_VERIFY_NONE;
   int (*default_verify_callback)(int ok, X509_STORE_CTX *ctx) =
@@ -4212,6 +4113,9 @@ struct ssl_st {
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
+
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
 
   // session info
 

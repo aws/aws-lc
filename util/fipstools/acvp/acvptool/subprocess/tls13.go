@@ -1,16 +1,5 @@
 // Copyright (c) 2023, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// SPDX-License-Identifier: ISC
 
 package subprocess
 
@@ -135,9 +124,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			}
 
 			zeros := make([]byte, hashLen)
-			earlySecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, psk, zeros)
+			earlySecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, psk, zeros)
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			hashedToClientHello, err := m.Transact(group.HashFunc, 1, clientHello)
@@ -174,9 +163,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("HKDFExpandLabel operation failed: %s", err)
 			}
 
-			handshakeSecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, dhe, derivedSecret[0])
+			handshakeSecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, dhe, derivedSecret[0])
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			clientHandshakeTrafficSecret, err := m.Transact("HKDFExpandLabel/"+group.HashFunc, 1, hashLenBytes, handshakeSecret[0], []byte("c hs traffic"), hashedToServerHello[0])
@@ -196,9 +185,9 @@ func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("HKDFExpandLabel operation failed: %s", err)
 			}
 
-			masterSecret, err := m.Transact("HKDFExtract/"+group.HashFunc, 1, zeros, derivedSecret[0])
+			masterSecret, err := m.Transact("HKDF/"+group.HashFunc+"/extract", 1, zeros, derivedSecret[0])
 			if err != nil {
-				return nil, fmt.Errorf("HKDFExtract operation failed: %s", err)
+				return nil, fmt.Errorf("HKDF extract operation failed: %s", err)
 			}
 
 			clientAppTrafficSecret, err := m.Transact("HKDFExpandLabel/"+group.HashFunc, 1, hashLenBytes, masterSecret[0], []byte("c ap traffic"), hashedToServerFinished[0])

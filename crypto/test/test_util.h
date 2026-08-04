@@ -1,16 +1,5 @@
-/* Copyright (c) 2015, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2015, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
 #define OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
@@ -124,6 +113,15 @@ FILE* createRawTempFILE();
 TempFILE createTempFILE();
 size_t createTempDirPath(char buffer[PATH_MAX]);
 
+#if defined(OPENSSL_WINDOWS)
+// On Windows, antivirus software (e.g. Windows Defender), file indexing
+// services, or other background processes can briefly lock files after they are
+// created or modified. This causes transient ERROR_SHARING_VIOLATION failures
+// when a test immediately tries to reopen the file. This helper retries
+// opening the file for reading in a loop to wait out the lock.
+testing::AssertionResult WaitForFileAccessible(const char *path);
+#endif
+
 // Returns true if operating system is Amazon Linux and false otherwise.
 // Determined at run-time and requires read-permissions to /etc.
 bool osIsAmazonLinux(void);
@@ -151,6 +149,13 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // ErrorEquals asserts that |err| is an error with library |lib| and reason
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
+
+// HexToBIGNUM decodes |hex| as a hexadecimal, big-endian, unsigned integer and
+// returns it as a |BIGNUM|, or nullptr on error.
+bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex);
+
+// BIGNUMToHex returns |bn| as a hexadecimal, big-endian, unsigned integer.
+std::string BIGNUMToHex(const BIGNUM *bn);
 
 // ExpectParse does a d2i parse using the corresponding template and function
 // pointer.

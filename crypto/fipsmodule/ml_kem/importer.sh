@@ -102,9 +102,9 @@ cp $TMP/.clang-format $SRC
 # The static simplification is not necessary, but improves readability
 # by removing directives related to the FIPS-202 backend and the x86_64
 # arithmetic backend that are not yet imported.
-# Moreover, exclude POLY_COMPRESS/DECOMPRESS functions from the x86 backend.
 unifdef -DMLK_CONFIG_FIPS202_CUSTOM_HEADER                             \
         -UMLK_CONFIG_USE_NATIVE_BACKEND_FIPS202                        \
+        -UMLK_SYS_RISCV64                                              \
         $TMP/mlkem/mlkem_native.c                                      \
         > $SRC/mlkem_native_bcm.c
 
@@ -113,17 +113,6 @@ if [[ "$(uname)" == "Darwin" ]]; then
 else
   SED_I=(-i)
 fi
-
-# Exclude POLY_COMPRESS/DECOMPRESS functions from the x86 backend for now.
-sed "${SED_I[@]}" '/compress_avx2.c/d' $SRC/mlkem_native_bcm.c
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D4/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D5/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D10/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D11/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D4/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D5/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D10/d' $SRC/native/x86_64/meta.h
-sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D11/d' $SRC/native/x86_64/meta.h
 
 # Copy mlkem-native header
 # This is only needed for access to the various macros defining key sizes.
@@ -151,12 +140,14 @@ for file in $SRC/native/aarch64/src/*.S $SRC/native/x86_64/src/*.S; do
   mv "$tmp_file" "$file"
 
   # Replace common.h include and assembly macros
-  sed "${SED_I[@]}" 's/#include "\.\.\/\.\.\/\.\.\/common\.h"/#include "_internal_s2n_bignum.h"/' "$file"
+  s2n_header=$(if [[ "$file" == *"aarch64"* ]]; then echo "_internal_s2n_bignum_arm.h"; else echo "_internal_s2n_bignum_x86_att.h"; fi)
+  sed "${SED_I[@]}" "s/#include \"\.\.\/\.\.\/\.\.\/common\.h\"/#include \"$s2n_header\"/" "$file"
 
   func_name=$(grep -o '\.global MLK_ASM_NAMESPACE(\([^)]*\))' "$file" | sed 's/\.global MLK_ASM_NAMESPACE(\([^)]*\))/\1/')
   if [ -n "$func_name" ]; then
     sed "${SED_I[@]}" "s/\.global MLK_ASM_NAMESPACE($func_name)/        S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_$func_name)\n        S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_$func_name)/" "$file"
     sed "${SED_I[@]}" "s/MLK_ASM_FN_SYMBOL($func_name)/S2N_BN_SYMBOL(mlkem_$func_name):/" "$file"
+    sed "${SED_I[@]}" "s/MLK_ASM_FN_SIZE($func_name)/S2N_BN_SIZE_DIRECTIVE(mlkem_$func_name)/" "$file"
   fi
 done
 

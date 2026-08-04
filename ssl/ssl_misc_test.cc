@@ -6,6 +6,7 @@
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
+#include "openssl/ssl.h"
 #include "ssl_common_test.h"
 
 BSSL_NAMESPACE_BEGIN
@@ -334,6 +335,61 @@ TEST(SSLTest, QuietShutdown) {
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
+
+// Test that |SSL_OP_IGNORE_UNEXPECTED_EOF| causes an unexpected transport EOF
+// (the peer closing without a close_notify) to be reported as a clean shutdown,
+// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SYSCALL|, for both the client
+// and the server.
+TEST(SSLTest, IgnoreUnexpectedEOF) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  SSL_CTX_set_options(client_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+  SSL_CTX_set_options(server_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+
+  // Create a fake read BIO that mimics a socket: it returns 0 on read to
+  // signal a transport EOF.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(),
+                                [](BIO *, char *, int) -> int { return 0; }));
+  ASSERT_TRUE(BIO_meth_set_ctrl(
+      method.get(), [](BIO *, int, long, void *) -> long { return 0; }));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  BIO *eof_bio_client = BIO_new(method.get());
+  BIO *eof_bio_server = BIO_new(method.get());
+  ASSERT_TRUE(eof_bio_client);
+  ASSERT_TRUE(eof_bio_server);
+
+  // Dummy BIOs must mimic a socket BIO (BIO_eof == 0)
+  EXPECT_EQ(BIO_eof(eof_bio_client), 0);
+  EXPECT_EQ(BIO_eof(eof_bio_server), 0);
+
+  SSL_set0_rbio(client.get(), eof_bio_client);
+  SSL_set0_rbio(server.get(), eof_bio_server);
+
+  // With the option set, an unexpected transport EOF is reported as a clean
+  // shutdown, |SSL_ERROR_ZERO_RETURN|, rather than |SSL_ERROR_SYSCALL|.
+  char buf[1];
+  int ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
+  ret = SSL_read(server.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
+}
+
 
 TEST(SSLTest, InvalidSignatureAlgorithm) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -722,6 +778,208 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
     // during the handshake and that key_method was not set.
     ASSERT_EQ(server->config->cert->cert_private_key_idx, SSL_PKEY_ED25519);
     ASSERT_EQ(server->config->cert->key_method, nullptr);
+  }
+}
+
+// Test that |key_method| and per-slot |privatekey| maintain mutual exclusivity
+// across all mutation paths. Setting one must clear the other so that stale
+// values never silently take effect.
+TEST(SSLTest, KeyMethodPrivateKeyMutualExclusivity) {
+  // Test 1: SSL_CTX_set_private_key_method clears the active slot's
+  // privatekey.
+  {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Set a real private key first.
+    ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+    EXPECT_EQ(ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+    EXPECT_NE(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+    EXPECT_EQ(ctx->cert->key_method, nullptr);
+
+    // Switch to key_method. The per-slot privatekey must be cleared.
+    SSL_CTX_set_private_key_method(ctx.get(), &test_ecc_private_key_method);
+    EXPECT_EQ(ctx->cert->key_method, &test_ecc_private_key_method);
+    EXPECT_EQ(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+  }
+
+  // Test 2: SSL_use_PrivateKey clears key_method.
+  {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Set key_method first via set_chain_and_key.
+    bssl::UniquePtr<CRYPTO_BUFFER> leaf = x509_to_buffer(cert.get());
+    ASSERT_TRUE(leaf);
+    std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
+                                          nullptr,
+                                          &test_ecc_private_key_method));
+    EXPECT_EQ(ctx->cert->key_method, &test_ecc_private_key_method);
+    EXPECT_EQ(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+
+    // Now create an SSL and switch to a real private key. key_method must be
+    // cleared.
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
+    ASSERT_TRUE(SSL_use_PrivateKey(ssl.get(), key.get()));
+    EXPECT_EQ(ssl->config->cert->key_method, nullptr);
+    EXPECT_NE(
+        ssl->config->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+        nullptr);
+  }
+
+  // Test 3: SSL_CTX_set_chain_and_key with a real privkey clears a
+  // pre-existing key_method.
+  {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Set key_method first.
+    SSL_CTX_set_private_key_method(ctx.get(), &test_ecc_private_key_method);
+    EXPECT_EQ(ctx->cert->key_method, &test_ecc_private_key_method);
+
+    // Now set chain and key with a real privkey. key_method must be cleared.
+    bssl::UniquePtr<CRYPTO_BUFFER> leaf = x509_to_buffer(cert.get());
+    ASSERT_TRUE(leaf);
+    std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
+                                          key.get(), nullptr));
+    EXPECT_EQ(ctx->cert->key_method, nullptr);
+    EXPECT_NE(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+  }
+
+  // Test 4: SSL_CTX_set_chain_and_key with key_method clears a pre-existing
+  // per-slot privatekey.
+  {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Set a real private key first.
+    ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+    EXPECT_NE(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+    EXPECT_EQ(ctx->cert->key_method, nullptr);
+
+    // Now set chain and key with key_method. The per-slot privatekey must be
+    // cleared.
+    bssl::UniquePtr<CRYPTO_BUFFER> leaf = x509_to_buffer(cert.get());
+    ASSERT_TRUE(leaf);
+    std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
+                                          nullptr,
+                                          &test_ecc_private_key_method));
+    EXPECT_EQ(ctx->cert->key_method, &test_ecc_private_key_method);
+    EXPECT_EQ(ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+              nullptr);
+  }
+
+  // Test 5: Handshake succeeds after switching from key_method to a real
+  // private key. Verifies the stale key_method does not interfere.
+  {
+    size_t calls_before = test_ecc_privkey_calls;
+
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Configure with key_method first.
+    bssl::UniquePtr<CRYPTO_BUFFER> leaf = x509_to_buffer(cert.get());
+    ASSERT_TRUE(leaf);
+    std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+                                          chain.size(), nullptr,
+                                          &test_ecc_private_key_method));
+    ASSERT_EQ(server_ctx->cert->key_method, &test_ecc_private_key_method);
+
+    // Switch to a real private key. key_method must be cleared.
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+    ASSERT_EQ(server_ctx->cert->key_method, nullptr);
+    ASSERT_NE(
+        server_ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+        nullptr);
+
+    // Handshake must succeed using the real key, not the old key_method.
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get(), ClientConfig(),
+                                       false));
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    // The key_method callbacks must not have been invoked.
+    ASSERT_EQ(test_ecc_privkey_calls, calls_before);
+  }
+
+  // Test 6: Handshake succeeds after switching from a real private key to
+  // key_method. Verifies the key_method callbacks are used, not the stale
+  // per-slot privatekey.
+  {
+    size_t calls_before = test_ecc_privkey_calls;
+
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+
+    bssl::UniquePtr<X509> cert(GetECDSATestCertificate());
+    bssl::UniquePtr<EVP_PKEY> key(GetECDSATestKey());
+    ASSERT_TRUE(cert);
+    ASSERT_TRUE(key);
+
+    // Configure with a real private key first.
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+    ASSERT_EQ(server_ctx->cert->key_method, nullptr);
+
+    // Switch to key_method. The per-slot privatekey must be cleared.
+    SSL_CTX_set_private_key_method(server_ctx.get(),
+                                   &test_ecc_private_key_method);
+    ASSERT_EQ(server_ctx->cert->key_method, &test_ecc_private_key_method);
+    ASSERT_EQ(
+        server_ctx->cert->cert_private_keys[SSL_PKEY_ECC].privatekey.get(),
+        nullptr);
+
+    // Handshake must succeed using the key_method callbacks.
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get(), ClientConfig(),
+                                       false));
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    // The key_method callbacks must have been invoked.
+    ASSERT_GT(test_ecc_privkey_calls, calls_before);
   }
 }
 

@@ -1,55 +1,6 @@
-/*
- * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project.
- */
-/* ====================================================================
- * Copyright (c) 2015 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- */
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project.
+// Copyright (c) 2015 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <limits.h>
 #include <stdlib.h>
@@ -70,6 +21,7 @@
 #include <openssl/span.h>
 #include <openssl/digest.h>
 
+#include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -1794,4 +1746,294 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
     test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 32);
     // Test truncated key commitment
     test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 16);
+}
+
+// Mock cipher whose |EVP_CTRL_INIT| handler always fails. It's needed to
+// exercise the error paths in |EVP_CipherInit_ex| and |EVP_CIPHER_CTX_copy|.
+// In addition, the mock needs |ctx_size| != 0, otherwise |cipher_data| is
+// not allocated before the ctrl callback runs. This is needed below for
+// InitErrorPathReleasesCipherData, to test |cipher_data| is free'd.
+static int mock_failing_init(EVP_CIPHER_CTX *, const uint8_t *, const uint8_t *,
+                             int) {
+  return 1;
+}
+
+static int mock_failing_cipher(EVP_CIPHER_CTX *, uint8_t *, const uint8_t *,
+                               size_t) {
+  return 1;
+}
+
+static int mock_failing_ctrl(EVP_CIPHER_CTX *, int type, int, void *) {
+  if (type == EVP_CTRL_INIT) {
+    return 0;
+  }
+  return -1;
+}
+
+static int mock_failing_copy_ctrl(EVP_CIPHER_CTX *, int type, int, void *) {
+  if (type == EVP_CTRL_INIT) {
+    return 1;
+  }
+  if (type == EVP_CTRL_COPY) {
+    return 0;
+  }
+  return -1;
+}
+
+static const EVP_CIPHER kFailingInitCipher = {
+  NID_undef,
+  1,
+  16,
+  0,
+  128,
+  EVP_CIPH_STREAM_CIPHER | EVP_CIPH_CTRL_INIT,
+  mock_failing_init,
+  mock_failing_cipher,
+  nullptr,
+  mock_failing_ctrl,
+};
+
+static const EVP_CIPHER kFailingCopyCipher = {
+  NID_undef,
+  1,
+  16,
+  0,
+  128,
+  EVP_CIPH_STREAM_CIPHER | EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY,
+  mock_failing_init,
+  mock_failing_cipher,
+  nullptr,
+  mock_failing_copy_ctrl,
+};
+
+// On |EVP_CipherInit_ex| error path at |EVP_CTRL_INIT|, the context must not be
+// left with an orphaned |cipher_data|. Otherwise a subsequent
+// |EVP_CipherInit_ex| call on the same context would overwrite and leak it. Not
+// exactly how one would probably use this API, but who knows.
+TEST(CipherTest, InitErrorPathReleasesCipherData) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  std::vector<uint8_t> key(16, 0);
+  EXPECT_FALSE(EVP_CipherInit_ex(ctx.get(), &kFailingInitCipher, nullptr,
+                                 key.data(), nullptr, 1));
+  EXPECT_EQ(ctx->cipher, nullptr);
+  EXPECT_EQ(ctx->cipher_data, nullptr);
+
+  // A follow-up init with a real cipher must still work and must not depend on
+  // leaked state from the failed attempt.
+  EXPECT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_128_ecb(), nullptr,
+                                key.data(), nullptr, 1));
+}
+
+// |EVP_CIPHER_CTX_copy| shares the same shape of error path for
+// |EVP_CTRL_COPY| failures as |EVP_CTRL_INIT| above. The destination's
+// |cipher_data| must not be orphaned when the custom copy callback fails.
+TEST(CipherTest, CopyErrorPathReleasesCipherData) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> src(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  std::vector<uint8_t> key(16, 0);
+  ASSERT_TRUE(EVP_CipherInit_ex(src.get(), &kFailingCopyCipher, nullptr,
+                                key.data(), nullptr, 1));
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> dst(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(dst);
+  EXPECT_FALSE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  EXPECT_EQ(dst->cipher, nullptr);
+  EXPECT_EQ(dst->cipher_data, nullptr);
+
+  // A follow-up init with a real cipher on |dst| must still work and must not
+  // depend on leaked state from the failed copy.
+  EXPECT_TRUE(EVP_CipherInit_ex(dst.get(), EVP_aes_128_ecb(), nullptr,
+                                key.data(), nullptr, 1));
+}
+
+struct CipherInfo {
+  const char *name;
+  const EVP_CIPHER *(*func)(void);
+};
+
+static const CipherInfo kAllCiphers[] = {
+    {"AES-128-ECB", EVP_aes_128_ecb},
+    {"AES-128-CBC", EVP_aes_128_cbc},
+    {"AES-128-CTR", EVP_aes_128_ctr},
+    {"AES-128-OFB", EVP_aes_128_ofb},
+    {"AES-128-GCM", EVP_aes_128_gcm},
+    {"AES-128-CCM", EVP_aes_128_ccm},
+    {"AES-192-ECB", EVP_aes_192_ecb},
+    {"AES-192-CBC", EVP_aes_192_cbc},
+    {"AES-192-CTR", EVP_aes_192_ctr},
+    {"AES-192-OFB", EVP_aes_192_ofb},
+    {"AES-192-GCM", EVP_aes_192_gcm},
+    {"AES-192-CCM", EVP_aes_192_ccm},
+    {"AES-256-ECB", EVP_aes_256_ecb},
+    {"AES-256-CBC", EVP_aes_256_cbc},
+    {"AES-256-CTR", EVP_aes_256_ctr},
+    {"AES-256-OFB", EVP_aes_256_ofb},
+    {"AES-256-GCM", EVP_aes_256_gcm},
+    {"AES-256-CCM", EVP_aes_256_ccm},
+    {"AES-256-XTS", EVP_aes_256_xts},
+    {"DES-CBC", EVP_des_cbc},
+    {"DES-ECB", EVP_des_ecb},
+    {"DES-EDE", EVP_des_ede},
+    {"DES-EDE3", EVP_des_ede3},
+    {"DES-EDE-CBC", EVP_des_ede_cbc},
+    {"DES-EDE3-CBC", EVP_des_ede3_cbc},
+    {"ChaCha20-Poly1305", EVP_chacha20_poly1305},
+};
+
+class RandomizedCipherTest : public testing::TestWithParam<CipherInfo> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All, RandomizedCipherTest, testing::ValuesIn(kAllCiphers),
+    [](const testing::TestParamInfo<CipherInfo> &info) -> std::string {
+      std::string name = info.param.name;
+      std::replace(name.begin(), name.end(), '-', '_');
+      return name;
+    });
+
+TEST_P(RandomizedCipherTest, EncryptDecrypt) {
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  // This is an arbitrary max input size that I chose such that
+  // the test runs for about 2 seconds.
+  const size_t max_input_size = 1601;
+  const size_t num_tests_per_input_size = 10;
+
+  const EVP_CIPHER *cipher = GetParam().func();
+  ASSERT_TRUE(cipher);
+
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+  const size_t block_size = EVP_CIPHER_block_size(cipher);
+  const uint32_t mode = EVP_CIPHER_mode(cipher);
+  const bool is_aead = EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER;
+  const bool is_ccm = mode == EVP_CIPH_CCM_MODE;
+  const bool is_xts = mode == EVP_CIPH_XTS_MODE;
+
+  for (size_t pt_len = 0; pt_len <= max_input_size; pt_len++) {
+    // Filter based on cipher mode constraints.
+    if (is_xts && pt_len < 16) {
+      continue;  // XTS requires at least 16 bytes
+    }
+    if (is_ccm && pt_len == 0) {
+      continue;  // CCM requires non-empty plaintext for tag
+    }
+    if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) &&
+        pt_len % block_size != 0) {
+      continue;  // Block modes without padding require aligned input
+    }
+
+    for (size_t i = 0; i < num_tests_per_input_size; i++) {
+
+      // Generate random key, IV, plaintext, aad.
+      std::vector<uint8_t> key(key_len);
+      std::vector<uint8_t> iv(iv_len);
+      std::vector<uint8_t> plaintext(pt_len);
+      std::vector<uint8_t> aad;
+
+      RAND_bytes(key.data(), key_len);
+      if (iv_len > 0) {
+        RAND_bytes(iv.data(), iv_len);
+      }
+      if (pt_len > 0) {
+        RAND_bytes(plaintext.data(), pt_len);
+      }
+      if (is_aead) {
+        aad.resize(16);
+        RAND_bytes(aad.data(), aad.size());
+      }
+
+      // Encrypt
+      bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+      ASSERT_TRUE(ctx);
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr));
+      if (!is_xts) {
+        ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+      }
+
+      if (is_ccm) {
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG, 16, nullptr));
+      }
+
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key.data(),
+                                     iv_len > 0 ? iv.data() : nullptr));
+
+      if (is_ccm) {
+        int len = 0;
+        ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr, pt_len));
+      }
+
+      if (!aad.empty()) {
+        int len = 0;
+        ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad.size()));
+      }
+
+      size_t max_ct_len = pt_len + block_size;
+      std::vector<uint8_t> ciphertext(max_ct_len);
+      int out_len = 0;
+      if (pt_len > 0) {
+        ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ciphertext.data(), &out_len,
+                                      plaintext.data(), pt_len));
+      }
+      size_t ct_len = out_len;
+
+      int final_len = 0;
+      ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), ciphertext.data() + ct_len, &final_len));
+      ct_len += final_len;
+      ciphertext.resize(ct_len);
+
+      std::vector<uint8_t> tag;
+      if (is_aead) {
+        tag.resize(16);
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                        tag.size(), tag.data()));
+      }
+
+      // Decrypt
+      ctx.reset(EVP_CIPHER_CTX_new());
+      ASSERT_TRUE(ctx);
+      ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr));
+      if (!is_xts) {
+        ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+      }
+
+      if (is_aead) {
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                        tag.size(), tag.data()));
+      }
+
+      ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, key.data(),
+                                     iv_len > 0 ? iv.data() : nullptr));
+
+      if (is_ccm) {
+        int len = 0;
+        ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr, ct_len));
+      }
+
+      if (!aad.empty()) {
+        int len = 0;
+        ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad.size()));
+      }
+
+      std::vector<uint8_t> decrypted(ct_len + block_size);
+      out_len = 0;
+      if (ct_len > 0) {
+        int ret = EVP_DecryptUpdate(ctx.get(), decrypted.data(), &out_len,
+                                    ciphertext.data(), ct_len);
+        ASSERT_TRUE(ret);
+      }
+      size_t dec_len = out_len;
+
+      final_len = 0;
+      ASSERT_TRUE(EVP_DecryptFinal_ex(ctx.get(), decrypted.data() + dec_len, &final_len));
+      dec_len += final_len;
+      decrypted.resize(dec_len);
+
+      // Verify the original plaintext is the same as the decrypted one.
+      EXPECT_EQ(Bytes(plaintext), Bytes(decrypted));
+    }
+  }
 }

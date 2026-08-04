@@ -17,7 +17,8 @@ IncludeBlocks: Preserve
 # as "attributes" so they don't get increasingly indented line after line
 BreakBeforeBraces: Allman
 InsertBraces: true
-WhitespaceSensitiveMacros: ['__contract__', '__loop__' ]
+IndentExternBlock: NoIndent
+WhitespaceSensitiveMacros: ['__contract__', '__loop__', 'MLK_RV64V_ABS_BOUNDS16' ]
 Macros:
  # Make this artifically long to avoid function bodies after short contracts
  - __contract__(x)={ void a; void b; void c; void d; void e; void f; } void abcdefghijklmnopqrstuvw()

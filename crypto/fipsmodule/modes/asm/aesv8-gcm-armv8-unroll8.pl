@@ -1,20 +1,12 @@
 #! /usr/bin/env perl
 # Copyright 2020-2022 The OpenSSL Project Authors. All Rights Reserved.
 #
-# Licensed under the Apache License 2.0 (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
-
-#
-#========================================================================
 # Written by Xiaokang Qian <xiaokang.qian@arm.com> for the OpenSSL project,
 # derived from https://github.com/ARM-software/AArch64cryptolib, original
-# author Samuel Lee <Samuel.Lee@arm.com>. The module is, however, dual
-# licensed under OpenSSL and SPDX BSD-3-Clause licenses depending on where you
-# obtain it.
-#========================================================================
+# author Samuel Lee <Samuel.Lee@arm.com>. 
 #
+# SPDX-License-Identifier: Apache-2.0
+
 # Approach - We want to reload constants as we have plenty of spare ASIMD slots around crypto units for loading
 # Unroll x8 in main loop, main loop to act on 8 16B blocks per iteration, and then do modulo of the accumulated
 # intermediate hashesfrom the 8 blocks.

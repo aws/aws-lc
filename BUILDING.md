@@ -20,7 +20,7 @@ If in doubt, use the most recent stable version of each build tool.
     `PERL_EXECUTABLE`.
     * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
 
-  * [Go](https://golang.org/dl/) 1.17.13 or later is required. If not found by
+  * [Go](https://golang.org/dl/) 1.20 or later is required. If not found by
     CMake, the go executable may be configured explicitly by setting
     `GO_EXECUTABLE`.
     * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
@@ -82,6 +82,34 @@ the BoringSSL headers.
 In order to serve environments where code-size is important as well as those
 where performance is the overriding concern, `OPENSSL_SMALL` can be defined to
 remove some code that is especially large.
+
+### Distribution Packaging Mode
+
+For system-wide installation on Linux and BSD systems, AWS-LC supports distribution
+packaging mode. Enable it by passing `-DENABLE_DIST_PKG=1` to CMake:
+
+```bash
+cmake -GNinja -B build \
+  -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_DIST_PKG=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local
+ninja -C build
+sudo ninja -C build install
+```
+
+This mode enables:
+
+- **SONAME versioning**: Shared libraries use standard SONAME (e.g., `libcrypto-awslc.so.1`)
+- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_1.0`)
+- **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other
+  crypto libraries without conflicts
+
+Symbol versioning ensures backward compatibility and enables multiple AWS-LC versions to
+coexist on the same system. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md) for
+detailed information about symbol versioning, version evolution, and CI integration.
+
+### Other Build Options
 
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
 for other variables which may be used to configure the build.
@@ -203,6 +231,13 @@ The implementations of some algorithms require a trade-off between binary size
 and performance. For instance, BoringSSL's fastest P-256 implementation uses a
 148 KiB pre-computed table. To optimize instead for binary size, pass
 `-DOPENSSL_SMALL=1` to CMake or define the `OPENSSL_SMALL` preprocessor symbol.
+
+On x86_64, `OPENSSL_SMALL` excludes the AVX-512 assembly implementations (it
+implies `MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX`) but keeps the ADX/AVX2/BMI2 fast
+paths for X25519, Ed25519, RSA, and DH, which cost roughly 370 KiB. Consumers
+who want the absolute minimum size and are willing to accept portable C
+fallbacks for those algorithms can additionally pass
+`-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2=1` to exclude that assembly as well.
 
 # Running Tests
 

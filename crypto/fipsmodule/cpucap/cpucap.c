@@ -1,9 +1,5 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // The contents of this file were copied from crypto/crypto.c to this file
 // as part of the change that moves the CPU capability logic inside the FIPS
@@ -80,6 +76,9 @@ HIDDEN uint32_t OPENSSL_armcap_P =
 #endif
 #if defined(OPENSSL_STATIC_ARMCAP_NEOVERSE_V2) || defined(__ARM_FEATURE_NEOVERSE_V2)
     ARMV8_NEOVERSE_V2 |
+#endif
+#if defined(OPENSSL_STATIC_ARMCAP_NEOVERSE_V3) || defined(__ARM_FEATURE_NEOVERSE_V3)
+    ARMV8_NEOVERSE_V3 |
 #endif
     0;
 

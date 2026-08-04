@@ -1,16 +1,5 @@
-/* Copyright (c) 2023, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2023, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include "file_util.h"
 
@@ -119,6 +108,15 @@ bool TemporaryFile::Init(bssl::Span<const uint8_t> content) {
     return false;
   }
   path_ = path;
+#elif defined(OPENSSL_WASM_WASI)
+  // WASI doesn't have mkstemp or umask. Use a counter with random suffix.
+  static int temp_file_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  char filename[64];
+  snprintf(filename, sizeof(filename), "bssl_tmp_%d_%08x.tmp",
+           temp_file_counter++, random_val);
+  path_ = temp_dir + filename;
 #else
   std::string path = temp_dir + "bssl_tmp_file.XXXXXX";
   // TODO(davidben): Use |path.data()| when we require C++17.

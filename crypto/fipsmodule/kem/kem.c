@@ -3,7 +3,6 @@
 
 #include <openssl/base.h>
 
-#include "../../kyber/kem_kyber.h"
 #include "../delocate.h"
 #include "../ml_kem/ml_kem.h"
 #include "internal.h"
@@ -24,13 +23,6 @@ static int ml_kem_1024_keygen_deterministic(uint8_t *public_key,
                                             size_t *secret_len,
                                             const uint8_t *seed) {
   return ml_kem_1024_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
-}
-
-static int ml_kem_1024_keygen(uint8_t *public_key,
-                              size_t *public_len,
-                              uint8_t *secret_key,
-                              size_t *secret_len) {
-  return ml_kem_1024_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_1024_encaps_deterministic(uint8_t *ciphertext,
@@ -59,7 +51,6 @@ static int ml_kem_1024_decaps(uint8_t *shared_secret,
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_1024_method) {
   out->keygen_deterministic = ml_kem_1024_keygen_deterministic;
-  out->keygen = ml_kem_1024_keygen;
   out->encaps_deterministic = ml_kem_1024_encaps_deterministic;
   out->encaps = ml_kem_1024_encaps;
   out->decaps = ml_kem_1024_decaps;
@@ -71,13 +62,6 @@ static int ml_kem_768_keygen_deterministic(uint8_t *public_key,
                                            size_t *secret_len,
                                            const uint8_t *seed) {
   return ml_kem_768_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
-}
-
-static int ml_kem_768_keygen(uint8_t *public_key,
-                             size_t *public_len,
-                             uint8_t *secret_key,
-                             size_t *secret_len) {
-  return ml_kem_768_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_768_encaps_deterministic(uint8_t *ciphertext,
@@ -106,7 +90,6 @@ static int ml_kem_768_decaps(uint8_t *shared_secret,
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_768_method) {
   out->keygen_deterministic = ml_kem_768_keygen_deterministic;
-  out->keygen = ml_kem_768_keygen;
   out->encaps_deterministic = ml_kem_768_encaps_deterministic;
   out->encaps = ml_kem_768_encaps;
   out->decaps = ml_kem_768_decaps;
@@ -118,13 +101,6 @@ static int ml_kem_512_keygen_deterministic(uint8_t *public_key,
                                            size_t *secret_len,
                                            const uint8_t *seed) {
   return ml_kem_512_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
-}
-
-static int ml_kem_512_keygen(uint8_t *public_key,
-                             size_t *public_len,
-                             uint8_t *secret_key,
-                             size_t *secret_len) {
-  return ml_kem_512_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_512_encaps_deterministic(uint8_t *ciphertext,
@@ -153,7 +129,6 @@ static int ml_kem_512_decaps(uint8_t *shared_secret,
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_512_method) {
   out->keygen_deterministic = ml_kem_512_keygen_deterministic;
-  out->keygen = ml_kem_512_keygen;
   out->encaps_deterministic = ml_kem_512_encaps_deterministic;
   out->encaps = ml_kem_512_encaps;
   out->decaps = ml_kem_512_decaps;
@@ -209,13 +184,6 @@ const KEM *KEM_find_kem_by_nid(int nid) {
       return KEM_ml_kem_768();
     case NID_MLKEM1024:
       return KEM_ml_kem_1024();
-    // Try legacy KEMs.
-    case NID_KYBER512_R3:
-      return get_legacy_kem_kyber512_r3();
-    case NID_KYBER768_R3:
-      return get_legacy_kem_kyber768_r3();
-    case NID_KYBER1024_R3:
-      return get_legacy_kem_kyber1024_r3();
     default:
       return NULL;
   }
@@ -234,8 +202,10 @@ static void KEM_KEY_clear(KEM_KEY *key) {
   key->kem = NULL;
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->secret_key);
+  OPENSSL_free(key->seed);
   key->public_key = NULL;
   key->secret_key = NULL;
+  key->seed = NULL;
 }
 
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
@@ -280,6 +250,7 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
 }
 
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
+  OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
   if (key->public_key == NULL) {
     return 0;
@@ -289,6 +260,7 @@ int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
 }
 
 int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
+  OPENSSL_free(key->secret_key);
   key->secret_key = OPENSSL_memdup(in, key->kem->secret_key_len);
   if (key->secret_key == NULL) {
     return 0;
@@ -299,6 +271,8 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
 
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret) {
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->secret_key);
   key->public_key = OPENSSL_memdup(in_public, key->kem->public_key_len);
   key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
   if (key->public_key == NULL || key->secret_key == NULL) {
@@ -353,6 +327,13 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   // Set public and secret key
   key->public_key = public_key;
   key->secret_key = secret_key;
+
+  // Save a copy of the seed for seed-format encoding
+  key->seed = OPENSSL_memdup(CBS_data(seed), key->kem->keygen_seed_len);
+  if (key->seed == NULL) {
+    KEM_KEY_clear(key);
+    return 0;
+  }
 
   return 1;
 }

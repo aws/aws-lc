@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <algorithm>
 #include <string>
@@ -442,6 +431,77 @@ TEST(BIOTest, MemWritable) {
   EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
   EXPECT_TRUE(BIO_should_read(bio.get()));
   EXPECT_EQ(BIO_eof(bio.get()), 1);
+}
+
+TEST(BIOTest, BioGetMemLeak) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<BUF_MEM> bufmem;
+  BUF_MEM *buf_mem = nullptr;
+  ASSERT_TRUE(bio);
+  ASSERT_EQ(BIO_puts(bio.get(), "Hello World\n"), 12);
+  ASSERT_TRUE(BIO_get_mem_ptr(bio.get(), &buf_mem));
+  // Take ownership of the pointer so it will free on function exit
+  bufmem.reset(buf_mem);
+  ASSERT_GT(BIO_set_close(bio.get(), BIO_NOCLOSE), 0);
+  bio.reset();
+  ASSERT_EQ(Bytes(buf_mem->data, buf_mem->length), Bytes("Hello World\n"));
+}
+
+// SetMemBufNoClose, SetMemBufClose, and SetMemBufReplacesState exercise
+// a number of code-paths to ensure |BIO_set_mem_buf| functions correctly.
+TEST(BIOTest, SetMemBufNoClose) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  BUF_MEM *m = BUF_MEM_new();
+  ASSERT_TRUE(m);
+  ASSERT_TRUE(BUF_MEM_grow(m, 5));
+  OPENSSL_memcpy(m->data, "hello", 5);
+
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m, BIO_NOCLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(5, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 5), Bytes("hello", 5));
+
+  // Exercise to surface memory violations. 
+  bio.reset();
+  BUF_MEM_free(m);
+}
+
+TEST(BIOTest, SetMemBufClose) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  BUF_MEM *m = BUF_MEM_new();
+  ASSERT_TRUE(m);
+  ASSERT_TRUE(BUF_MEM_grow(m, 5));
+  OPENSSL_memcpy(m->data, "world", 5);
+
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m, BIO_CLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(5, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 5), Bytes("world", 5));
+
+  // Exercise to surface memory violations. 
+  bio.reset();
+}
+
+TEST(BIOTest, SetMemBufReplacesState) {
+  // After BIO_set_mem_buf, reads must see the new buffer, not the
+  // zero-initialized BUF_MEM allocated by mem_new().
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_EQ(BIO_puts(bio.get(), "initial"), 7);
+
+  bssl::UniquePtr<BUF_MEM> m(BUF_MEM_new());
+  ASSERT_TRUE(BUF_MEM_grow(m.get(), 3));
+  OPENSSL_memcpy(m->data, "abc", 3);
+  ASSERT_TRUE(BIO_set_mem_buf(bio.get(), m.get(), BIO_NOCLOSE));
+
+  char out[8] = {0};
+  EXPECT_EQ(3, BIO_read(bio.get(), out, sizeof(out)));
+  EXPECT_EQ(Bytes(out, 3), Bytes("abc", 3));
 }
 
 TEST(BIOTest, Gets) {
@@ -987,6 +1047,7 @@ TEST_P(BIOPairTest, TestCallbacks) {
 }
 
 namespace {
+#if !defined(OPENSSL_NO_SOCK)
 static int callback_invoked = 0;
 
 static long callback(BIO *b, int state, int res) {
@@ -1014,6 +1075,7 @@ TEST(BIOTest, InvokeConnectCallback) {
 
   ASSERT_TRUE(BIO_free(bio));
 }
+#endif  // !OPENSSL_NO_SOCK
 }  // namespace
 
 
