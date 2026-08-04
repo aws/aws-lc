@@ -1,11 +1,5 @@
-/*
- * Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
@@ -184,11 +178,21 @@ int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp, unsigned long flags) {
   rid = rd->responderId;
   switch (rid->type) {
     case V_OCSP_RESPID_NAME:
-      X509_NAME_print_ex(bp, rid->value.byName, 0, XN_FLAG_ONELINE);
+      if (rid->value.byName == NULL) {
+        goto err;
+      }
+      if (X509_NAME_print_ex(bp, rid->value.byName, 0, XN_FLAG_ONELINE) < 0) {
+        goto err;
+      }
       break;
     case V_OCSP_RESPID_KEY:
+      if (rid->value.byKey == NULL) {
+        goto err;
+      }
       i2a_ASN1_STRING(bp, rid->value.byKey, 0);
       break;
+    default:
+      goto err;
   }
 
   if (BIO_printf(bp, "\n    Produced At: ") <= 0) {

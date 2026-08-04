@@ -3,16 +3,18 @@
 
 // This script is used to generate the ECDH test vectors for secp256k1 curve.
 
+//go:build ignore
+
 package main
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"math/big"
 	"strconv"
-	"fmt"
-)
 
-import "github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
 
 // Number of test vectors to be generated
 const numOfTests = 25
@@ -45,8 +47,8 @@ func main() {
 
 	curve := secp256k1.S256()
 
-  fmt.Printf("\n# Test vectors for secp256k1 curve were produced by")
-  fmt.Printf("\n# the |make_secp256k1_test_vectors.go| script.\n\n")
+	fmt.Printf("\n# Test vectors for secp256k1 curve were produced by")
+	fmt.Printf("\n# the |make_secp256k1_test_vectors.go| script.\n\n")
 
 	for i := 0; i < numOfTests; i++ {
 		// Generate a private key for Alice and for Bob
@@ -77,4 +79,3 @@ func main() {
 		fmt.Printf("\n")
 	}
 }
-

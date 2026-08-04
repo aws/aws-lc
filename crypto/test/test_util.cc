@@ -1,16 +1,5 @@
-/* Copyright (c) 2015, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2015, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include "test_util.h"
 
@@ -18,10 +7,11 @@
 #include <ostream>
 #include <inttypes.h>
 
+#include <openssl/bn.h>
 #include <openssl/err.h>
 
 #include <thread>
-#if !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_WASM_WASI)
  #include <sys/wait.h>
 #endif
 
@@ -191,14 +181,90 @@ bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len) {
 }
 
 #if defined(OPENSSL_WINDOWS)
+// GetTempPathA falls back to the Windows directory (e.g. C:\Windows\) when the
+// TMP, TEMP, and USERPROFILE environment variables are all unset. This commonly
+// happens when running as SYSTEM in Docker containers or CI agents. The Windows
+// directory has special protections that cause file rename operations to fail
+// intermittently. Detect this case and redirect to C:\Windows\Temp\ instead.
+static DWORD GetSafeTempPathA(DWORD nBufferLength, LPSTR lpBuffer) {
+  DWORD ret = GetTempPathA(nBufferLength, lpBuffer);
+  if (ret == 0 || ret >= nBufferLength) {
+    return ret;
+  }
+  char win_dir[PATH_MAX];
+  UINT win_len = GetWindowsDirectoryA(win_dir, sizeof(win_dir));
+  if (win_len == 0 || win_len >= sizeof(win_dir)) {
+    return ret;
+  }
+  // Append trailing backslash to match GetTempPathA's format for comparison.
+  if (win_len + 1 >= sizeof(win_dir)) {
+    return ret;
+  }
+  win_dir[win_len] = '\\';
+  win_dir[win_len + 1] = '\0';
+  if (_stricmp(lpBuffer, win_dir) == 0) {
+    int written = snprintf(lpBuffer, nBufferLength, "%sTemp\\", win_dir);
+    if (written < 0 || (DWORD)written >= nBufferLength) {
+      return 0;
+    }
+    ret = (DWORD)written;
+  }
+  return ret;
+}
+
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-  // On Windows, tmpfile() may attempt to create temp files in the root directory
-  // of the drive, which requires Admin privileges, resulting in test failure.
-  char pathname[PATH_MAX];
-  if(0 == GetTempPathA(PATH_MAX, pathname)) {
+  // On Windows, tmpfile() may attempt to create temp files in the root
+  // directory of the drive, which requires Admin privileges, resulting in test
+  // failure.
+  //
+  // We deliberately avoid GetTempFileNameA for unique-name generation: it
+  // silently truncates the name prefix to 3 characters and, when uUnique is 0,
+  // combines that prefix with a 16-bit time-derived value. That gives only
+  // 65,536 possible filenames, and the empty stub file it creates on disk
+  // persists. In long CI runs (e.g. the Windows SDE job, which executes the
+  // full gtest binary multiple times) many tests accumulate "aws????.tmp"
+  // files in the shared temp directory. Once the namespace is crowded, the
+  // internal collision-retry loop inside GetTempFileNameA can fail to find a
+  // free name and return 0, producing intermittent test failures.
+  //
+  // Instead, mirror createTempDirPath: generate a 64-bit random suffix with
+  // RAND_bytes and create the file atomically with CREATE_NEW so that any
+  // collision with a concurrent caller is detected and retried.
+  char temp_path[PATH_MAX];
+  if (0 == GetSafeTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
-  return GetTempFileNameA(pathname, "awslctest", 0, buffer);
+
+  static const int kMaxAttempts = 10;
+  for (int attempt = 0; attempt < kMaxAttempts; attempt++) {
+    union {
+      uint8_t bytes[8];
+      uint64_t value;
+    } random_bytes;
+    if (!RAND_bytes(random_bytes.bytes, sizeof(random_bytes.bytes))) {
+      return 0;
+    }
+
+    int written = snprintf(buffer, PATH_MAX, "%sawslctest_%" PRIX64 ".tmp",
+                           temp_path, random_bytes.value);
+    // Check for truncation of the path.
+    if (written < 0 || written >= PATH_MAX) {
+      return 0;
+    }
+
+    // CREATE_NEW atomically fails with ERROR_FILE_EXISTS if the file already
+    // exists, so we never race with another caller that picked the same name.
+    HANDLE h = CreateFileA(buffer, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h != INVALID_HANDLE_VALUE) {
+      CloseHandle(h);
+      return (size_t)written;
+    }
+    if (GetLastError() != ERROR_FILE_EXISTS) {
+      return 0;
+    }
+  }
+  return 0;
 }
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
@@ -209,7 +275,7 @@ size_t createTempDirPath(char buffer[PATH_MAX]) {
   } random_bytes;
 
   // Get the temporary path
-  if (0 == GetTempPathA(PATH_MAX, temp_path)) {
+  if (0 == GetSafeTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
@@ -239,6 +305,96 @@ FILE* createRawTempFILE() {
   return fopen(filename, "w+b");
 }
 
+testing::AssertionResult WaitForFileAccessible(const char *path) {
+  // On Windows, antivirus software, file indexing services, or other
+  // background processes can briefly lock files after they are written,
+  // causing transient ERROR_SHARING_VIOLATION failures when callers
+  // immediately try to reopen the file for reading. Retry opening the file
+  // with a short delay to wait out the lock. These values mirror the retry
+  // strategy used by WIN32_rename in tool-openssl/ca.cc.
+  //
+  // We use CreateFileA with GENERIC_READ rather than fopen(): GetLastError()
+  // is only contractually reliable after a direct Win32 API call, and the
+  // MSVC CRT may clobber it during fopen()'s internal cleanup path. The
+  // FILE_SHARE flags ensure the probe does not itself introduce a lock that
+  // would interfere with the caller's subsequent open.
+  static const int kMaxRetries = 10;
+  static const DWORD kRetryDelayMs = 200;
+  for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
+    if (attempt > 0) {
+      Sleep(kRetryDelayMs);
+    }
+    HANDLE h = CreateFileA(path, GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE |
+                               FILE_SHARE_DELETE,
+                           NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h != INVALID_HANDLE_VALUE) {
+      CloseHandle(h);
+      return testing::AssertionSuccess();
+    }
+    DWORD err = GetLastError();
+    // ERROR_ACCESS_DENIED is deliberately retried alongside the obvious
+    // sharing/lock violations: on Windows it can manifest transiently from
+    // pending-deletion state, AV scans, or the Search Indexer briefly holding
+    // the file. If the permission failure is genuine, the retries will all
+    // fail identically and the test fails correctly after the retry budget.
+    if (err != ERROR_ACCESS_DENIED && err != ERROR_SHARING_VIOLATION &&
+        err != ERROR_LOCK_VIOLATION) {
+      break;
+    }
+  }
+  return testing::AssertionFailure()
+         << "File not accessible after retries: " << path;
+}
+
+#elif defined(OPENSSL_WASM_WASI)
+// WASI doesn't have mkstemp, mkdtemp, or tmpfile. Use counter-based naming
+// with random suffix for uniqueness.
+#include <cstdlib>
+#include <unistd.h>
+#include <openssl/rand.h>
+
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  static int temp_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_%d_%08x.tmp",
+                         temp_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // Create the file
+  FILE *f = fopen(buffer, "w");
+  if (f == NULL) {
+    return 0;
+  }
+  fclose(f);
+  return strnlen(buffer, PATH_MAX);
+}
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  static int dir_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_dir_%d_%08x",
+                         dir_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // WASI supports mkdir
+  if (mkdir(buffer, 0700) != 0) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
+FILE* createRawTempFILE() {
+  char buffer[PATH_MAX];
+  if (createTempFILEpath(buffer) == 0) {
+    return nullptr;
+  }
+  return fopen(buffer, "w+b");
+}
 #else
 #include <cstdlib>
 #include <unistd.h>
@@ -348,9 +504,8 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func) {
 
-#if defined(OPENSSL_WINDOWS)
-  // fork() is not supported on Windows. We could potentially add support for
-  // the CreateProcess API at some point.
+#if defined(OPENSSL_WINDOWS) || defined(OPENSSL_WASM_WASI)
+  // fork() is not supported on Windows or WASI.
   return false;
 #else
   pid_t pid = fork();
@@ -389,4 +544,18 @@ bool addressSanitizerIsEnabled(void) {
 #else
   return false;
 #endif
+}
+
+bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
+  BIGNUM *bn = nullptr;
+  BN_hex2bn(&bn, hex);
+  return bssl::UniquePtr<BIGNUM>(bn);
+}
+
+std::string BIGNUMToHex(const BIGNUM *bn) {
+  bssl::UniquePtr<char> hex(BN_bn2hex(bn));
+  if (hex == nullptr) {
+    return "error";
+  }
+  return hex.get();
 }

@@ -149,8 +149,6 @@ Lbignum_mod_p384_writeback:
 
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_p384)
-
 // Short case: just copy the input with zero-padding
 
 Lbignum_mod_p384_short:
@@ -176,6 +174,8 @@ Lbignum_mod_p384_short:
         beq     Lbignum_mod_p384_writeback
         ldr     m4, [x, #32]
         b       Lbignum_mod_p384_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -369,6 +369,20 @@ TEST_P(SSLVersionTest, GetPeerCertificate) {
   ASSERT_TRUE(peer);
   ASSERT_EQ(X509_cmp(cert_.get(), peer.get()), 0);
 
+  // |SSL_get0_peer_certificate| returns the same certificate without taking a
+  // reference (the caller must not free it).
+  X509 *peer0 = SSL_get0_peer_certificate(client_.get());
+  ASSERT_TRUE(peer0);
+  ASSERT_EQ(X509_cmp(cert_.get(), peer0), 0);
+  // Calling it again returns the same object, confirming no ownership transfer.
+  ASSERT_EQ(peer0, SSL_get0_peer_certificate(client_.get()));
+
+  // |SSL_get1_peer_certificate| returns the same certificate and takes a
+  // reference the caller must release.
+  bssl::UniquePtr<X509> peer1(SSL_get1_peer_certificate(client_.get()));
+  ASSERT_TRUE(peer1);
+  ASSERT_EQ(peer0, peer1.get());
+
   // However, for historical reasons, the X509 chain includes the leaf on the
   // client, but does not on the server.
   EXPECT_EQ(sk_X509_num(SSL_get_peer_cert_chain(client_.get())), 1u);
@@ -390,6 +404,8 @@ TEST_P(SSLVersionTest, NoPeerCertificate) {
   // Server should not see a peer certificate.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server_.get()));
   ASSERT_FALSE(peer);
+  ASSERT_FALSE(SSL_get0_peer_certificate(server_.get()));
+  ASSERT_FALSE(SSL_get1_peer_certificate(server_.get()));
   ASSERT_FALSE(SSL_get0_peer_certificates(server_.get()));
 }
 
@@ -1829,6 +1845,7 @@ TEST_P(SSLVersionTest, FakeIDsForTickets) {
 }
 
 
+#if defined(OPENSSL_THREADS)
 // Functions which access properties on the negotiated session are thread-safe
 // where needed. Prior to TLS 1.3, clients resuming sessions and servers
 // performing stateful resumption will share an underlying SSL_SESSION object,
@@ -1894,6 +1911,7 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
   EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
+#endif  // OPENSSL_THREADS
 
 
 TEST_P(SSLVersionTest, SimpleVerifiedChain) {
@@ -2332,8 +2350,7 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
   for (SSL *ssl : {client_.get(), server_.get()}) {
     SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
     EVP_PKEY *key = nullptr;
-    uint16_t preferred_group = tls1_get_default_grouplist()[0];
-    if (getVersionParam().version == TLS1_3_VERSION && preferred_group == SSL_GROUP_X25519_MLKEM768) {
+    if (getVersionParam().version == TLS1_3_VERSION) {
       // TLS 1.3 default should be using X25519MLKEM768 as the key exchange.
       // We expect SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE because there is no EVP_PKEY type
       // for hybrid keys, only individual X25519 or MLKEM768 keys.
@@ -2341,8 +2358,6 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
       EXPECT_FALSE(SSL_get_peer_tmp_key(ssl, &key));
       ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
     } else {
-      // Otherwise x25519 should be used
-      EXPECT_TRUE(preferred_group == SSL_GROUP_X25519);
       EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
       EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_X25519);
       bssl::UniquePtr<EVP_PKEY> pkey(key);

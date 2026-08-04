@@ -1,19 +1,9 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/pkcs7.h>
 
+#include <limits.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -209,10 +199,39 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
     return 0;
   }
 
+  // Free any previously-installed content using the current |p7->type| so the
+  // correct destructor runs on the existing union member, instead of the new
+  // type's destructor running on type-confused memory.
+  if (p7->d.ptr != NULL) {
+    switch (OBJ_obj2nid(p7->type)) {
+      case NID_pkcs7_signed:
+        PKCS7_SIGNED_free(p7->d.sign);
+        break;
+      case NID_pkcs7_digest:
+        PKCS7_DIGEST_free(p7->d.digest);
+        break;
+      case NID_pkcs7_data:
+        ASN1_OCTET_STRING_free(p7->d.data);
+        break;
+      case NID_pkcs7_signedAndEnveloped:
+        PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
+        break;
+      case NID_pkcs7_enveloped:
+        PKCS7_ENVELOPE_free(p7->d.enveloped);
+        break;
+      case NID_pkcs7_encrypted:
+        PKCS7_ENCRYPT_free(p7->d.encrypted);
+        break;
+      default:
+        ASN1_TYPE_free(p7->d.other);
+        break;
+    }
+    p7->d.ptr = NULL;
+  }
+
   switch (type) {
     case NID_pkcs7_signed:
       p7->type = obj;
-      PKCS7_SIGNED_free(p7->d.sign);
       p7->d.sign = PKCS7_SIGNED_new();
       if (p7->d.sign == NULL) {
         return 0;
@@ -225,7 +244,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_digest:
       p7->type = obj;
-      PKCS7_DIGEST_free(p7->d.digest);
       p7->d.digest = PKCS7_DIGEST_new();
       if (p7->d.digest == NULL) {
         return 0;
@@ -238,7 +256,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_data:
       p7->type = obj;
-      ASN1_OCTET_STRING_free(p7->d.data);
       p7->d.data = ASN1_OCTET_STRING_new();
       if (p7->d.data == NULL) {
         return 0;
@@ -246,7 +263,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_signedAndEnveloped:
       p7->type = obj;
-      PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
       p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
       if (p7->d.signed_and_enveloped == NULL) {
         return 0;
@@ -261,7 +277,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_enveloped:
       p7->type = obj;
-      PKCS7_ENVELOPE_free(p7->d.enveloped);
       p7->d.enveloped = PKCS7_ENVELOPE_new();
       if (p7->d.enveloped == NULL) {
         return 0;
@@ -275,7 +290,6 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
       break;
     case NID_pkcs7_encrypted:
       p7->type = obj;
-      PKCS7_ENCRYPT_free(p7->d.encrypted);
       p7->d.encrypted = PKCS7_ENCRYPT_new();
       if (p7->d.encrypted == NULL) {
         return 0;
@@ -472,7 +486,7 @@ static ASN1_OCTET_STRING *PKCS7_digest_from_attributes(
     return NULL;
   }
   ASN1_TYPE *astype = get_attribute(sk, NID_pkcs9_messageDigest);
-  if (astype == NULL) {
+  if (astype == NULL || astype->type != V_ASN1_OCTET_STRING) {
     return NULL;
   }
   return astype->value.octet_string;
@@ -759,6 +773,10 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
 
+  if (md_sk != NULL && sk_X509_ALGOR_num(md_sk) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
+    goto err;
+  }
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
     if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
       goto err;
@@ -784,13 +802,14 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     ASN1_OBJECT_free(xalg->algorithm);
     xalg->algorithm = OBJ_nid2obj(EVP_CIPHER_nid(evp_cipher));
     if (ivlen > 0) {
-      RAND_bytes(iv, ivlen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, ivlen));
     }
     if (keylen > 0) {
-      RAND_bytes(key, keylen);
+      AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(key, keylen));
     }
 
     if (EVP_CipherInit_ex(ctx, evp_cipher, NULL, key, iv, /*enc*/ 1) <= 0) {
+      OPENSSL_cleanse(key, keylen);
       goto err;
     }
 
@@ -802,6 +821,9 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       }
       xalg->parameter->type = V_ASN1_OCTET_STRING;
       xalg->parameter->value.octet_string = ASN1_OCTET_STRING_new();
+      if (xalg->parameter->value.octet_string == NULL) {
+        goto err;
+      }
       // Set |p7|'s parameter value to the IV
       if (!ASN1_OCTET_STRING_set(xalg->parameter->value.octet_string, iv,
                                  ivlen)) {
@@ -812,6 +834,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     for (size_t i = 0; i < sk_PKCS7_RECIP_INFO_num(rsk); i++) {
       ri = sk_PKCS7_RECIP_INFO_value(rsk, i);
       if (pkcs7_encode_rinfo(ri, key, keylen) <= 0) {
+        OPENSSL_cleanse(key, keylen);
         goto err;
       }
     }
@@ -832,9 +855,10 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      // |bio |needs a copy of |os->data| instead of a pointer because the data
-      // will be used after |os |has been freed
+      // |bio| needs a copy of |content->data| instead of a pointer because the
+      // data may be used after |content| has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
+        BIO_free(bio);
         goto err;
       }
     }
@@ -876,7 +900,7 @@ int PKCS7_set_detached(PKCS7 *p7, int detach) {
       ASN1_OCTET_STRING_free(p7->d.sign->contents->d.data);
       p7->d.sign->contents->d.data = NULL;
     }
-    return detach;
+    return 1;
   } else {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_OPERATION_NOT_SUPPORTED_ON_THIS_TYPE);
     return 0;
@@ -1082,7 +1106,8 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       goto err;
     }
     // Mark the BIO read only then we can use its copy of the data instead of
-    // making an extra copy.
+    // making an extra copy. |content| will intentionally point directly into
+    // the relevant BIO's buffer, as the BIO's lifetime is owned by |p7|.
     BIO_set_flags(bio_tmp, BIO_FLAGS_MEM_RDONLY);
     BIO_set_mem_eof_return(bio_tmp, /*eof_value*/ 0);
     ASN1_STRING_set0(content, (unsigned char *)cont, contlen);
@@ -1251,6 +1276,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       rsk = p7->d.enveloped->recipientinfo;
       enc_alg = p7->d.enveloped->enc_data->algorithm;
       if (enc_alg == NULL || enc_alg->parameter == NULL ||
+          enc_alg->parameter->type != V_ASN1_OCTET_STRING ||
           enc_alg->parameter->value.octet_string == NULL ||
           enc_alg->algorithm == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
@@ -1272,6 +1298,11 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   // envelopedData must have data content to decrypt
   if (data_body == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
+    goto err;
+  }
+
+  if (sk_PKCS7_RECIP_INFO_num(rsk) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto err;
   }
 
@@ -1361,7 +1392,10 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   }
   // Always generate random bytes for the dummy key, regardless of |cek| decrypt
   dummy_key = OPENSSL_malloc(len);
-  RAND_bytes(dummy_key, len);
+  if (dummy_key == NULL) {
+    goto err;
+  }
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(dummy_key, len));
   // At this point, null |cek| indicates that no content encryption key was
   // successfully decrypted. We don't want to return early due to MMA. So, swap
   // in the dummy key and proceed. Content decryption result will be gibberish.
@@ -1379,6 +1413,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   cek = NULL;
   dummy_key = NULL;
   out = cipher_bio;
+  cipher_bio = NULL;
 
   // We verify data_body != NULL above
   if (data_body->length > 0) {
@@ -1597,7 +1632,7 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
       goto out;
     }
     if (message_digest->length != (int)md_len ||
-        OPENSSL_memcmp(message_digest->data, md_data, md_len) != 0) {
+        CRYPTO_memcmp(message_digest->data, md_data, md_len) != 0) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_DIGEST_FAILURE);
       goto out;
     }
@@ -1611,7 +1646,6 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
                              ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
     if (alen <= 0 || abuf == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
-      ret = -1;
       goto out;
     }
     if (!EVP_VerifyUpdate(mdc_tmp, abuf, alen)) {
@@ -1670,6 +1704,10 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_SIGNATURES_ON_DATA);
     goto out;
   }
+  if (sk_PKCS7_SIGNER_INFO_num(sinfos) > SHRT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
+    goto out;
+  }
 
   if ((signers = PKCS7_get0_signers(p7, certs, flags)) == NULL) {
     goto out;
@@ -1694,14 +1732,14 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
         goto out;
       }
       X509_STORE_CTX_set0_crls(cert_ctx, p7->d.sign->crl);
-    }
-    // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
-    if (X509_verify_cert(cert_ctx) <= 0) {
+      // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
+      if (X509_verify_cert(cert_ctx) <= 0) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-      // For fuzz testing, we do not want to bail out early.
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
-      goto out;
+        // For fuzz testing, we do not want to bail out early.
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
+        goto out;
 #endif
+      }
     }
   }
 
@@ -1716,7 +1754,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   for (size_t ii = 0; ii < sk_PKCS7_SIGNER_INFO_num(sinfos); ii++) {
     PKCS7_SIGNER_INFO *si = sk_PKCS7_SIGNER_INFO_value(sinfos, ii);
     X509 *signer = sk_X509_value(signers, ii);
-    if (!pkcs7_signature_verify(p7bio, p7, si, signer)) {
+    if (pkcs7_signature_verify(p7bio, p7, si, signer) != 1) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
       // For fuzz testing, we do not want to bail out early.
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);
@@ -1730,11 +1768,13 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
 out:
   X509_STORE_CTX_free(cert_ctx);
   // If |indata| was passed for detached signature, |PKCS7_dataInit| has pushed
-  // it onto |p7bio|. Pop the reference so caller retains ownership of |indata|.
-  if (indata) {
-    BIO_pop(p7bio);
+  // it onto the end of |p7bio|'s chain. Walk the chain freeing BIOs until we
+  // find |indata| so the caller retains ownership
+  while (p7bio != NULL && p7bio != indata) {
+    BIO *b = BIO_pop(p7bio);
+    BIO_free(p7bio);
+    p7bio = b;
   }
-  BIO_free_all(p7bio);
   sk_X509_free(signers);
   sk_X509_free(untrusted);
   return ret;

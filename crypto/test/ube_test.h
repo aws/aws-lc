@@ -1,3 +1,5 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_UBE_TEST_H
 #define OPENSSL_HEADER_CRYPTO_TEST_UBE_TEST_H

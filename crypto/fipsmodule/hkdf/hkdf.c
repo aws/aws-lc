@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <assert.h>
 #include <string.h>
@@ -28,6 +17,14 @@
 int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
          const uint8_t *secret, size_t secret_len, const uint8_t *salt,
          size_t salt_len, const uint8_t *info, size_t info_len) {
+
+  // HKDF is built on HMAC
+  // HMAC does not support SHAKE (XOF) algorithms
+  if (EVP_MD_flags(digest) & EVP_MD_FLAG_XOF) {
+    OPENSSL_PUT_ERROR(HKDF, HKDF_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
   // https://tools.ietf.org/html/rfc5869#section-2
   uint8_t prk[EVP_MAX_MD_SIZE];
   size_t prk_len = 0;
@@ -59,6 +56,14 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
                  const uint8_t *secret, size_t secret_len, const uint8_t *salt,
                  size_t salt_len) {
   SET_DIT_AUTO_RESET;
+
+  // HKDF is built on HMAC
+  // HMAC does not support SHAKE (XOF) algorithms
+  if (EVP_MD_flags(digest) & EVP_MD_FLAG_XOF) {
+    OPENSSL_PUT_ERROR(HKDF, HKDF_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
   // https://tools.ietf.org/html/rfc5869#section-2.2
   int ret = 0;
 
@@ -86,6 +91,14 @@ out:
 int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                 const uint8_t *prk, size_t prk_len, const uint8_t *info,
                 size_t info_len) {
+
+  // HKDF is built on HMAC
+  // HMAC does not support SHAKE (XOF) algorithms
+  if (EVP_MD_flags(digest) & EVP_MD_FLAG_XOF) {
+    OPENSSL_PUT_ERROR(HKDF, HKDF_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
   // https://tools.ietf.org/html/rfc5869#section-2.3
   SET_DIT_AUTO_RESET;
   const size_t digest_len = EVP_MD_size(digest);

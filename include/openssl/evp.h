@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_EVP_H
 #define OPENSSL_HEADER_EVP_H
@@ -80,7 +27,7 @@ extern "C" {
 // EVP abstracts over public/private key algorithms.
 
 
-// Public key objects.
+// Public/private key objects.
 //
 // An |EVP_PKEY| object represents a public or private key. A given object may
 // be used concurrently on multiple threads by non-mutating functions, provided
@@ -137,6 +84,10 @@ OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 // values.
 OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 
+// EVP_PKEY_pqdsa_get_type returns the |nid| of the configured PQDSA key. |pkey|
+// must not be NULL.
+OPENSSL_EXPORT int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey);
+
 // EVP_MD_get0_name returns the short name of |md|
 OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 
@@ -166,9 +117,9 @@ OPENSSL_EXPORT int EVP_read_pw_string_min(char *buf, int min_length, int length,
                                           const char *prompt, int verify);
 
 
-// Getting and setting concrete public key types.
+// Getting and setting concrete key types.
 //
-// The following functions get and set the underlying public key in an
+// The following functions get and set the underlying key representation in an
 // |EVP_PKEY| object. The |set1| functions take an additional reference to the
 // underlying key and return one on success or zero if |key| is NULL. The
 // |assign| functions adopt the caller's reference and return one on success or
@@ -877,15 +828,29 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
                                                  const EVP_MD **out_md);
 
 
-// EVP_PKEY_CTX_set_signature_context sets |context| of length |context_len| to
+// EVP_PKEY_CTX_set1_signature_context_string sets |context| of length |context_len| to
 // be used as the context octet string for the signing operation. |context| will
 // be copied to an internal buffer allowing for the caller to free it
 // afterwards.
 //
-// EVP_PKEY_ED25519PH is the only key type that currently supports setting a
-// a signature context that is used in computing the HashEdDSA signature.
+// EVP_PKEY_ED25519PH and EVP_PKEY_PQDSA are the key types that currently
+// support setting a signature context. For Ed25519ph, the context is used in
+// computing the HashEdDSA signature. For ML-DSA (PQDSA), the context string is
+// used per FIPS 204 sections 5.2-5.3. The maximum context length is 255 bytes.
+// Note: for ML-DSA, the context string is only used with
+// |EVP_DigestSign|/|EVP_DigestVerify| (message signing). It is not permitted
+// and will return an error when using |EVP_PKEY_sign|/|EVP_PKEY_verify|
+// (digest signing), because the pre-hashed |mu| input already encodes the
+// context per FIPS 204 section 5.3.
 //
 // It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);
+
+// EVP_PKEY_CTX_set_signature_context is the previous name for
+// |EVP_PKEY_CTX_set1_signature_context_string|. It is retained for backward
+// compatibility.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
                                                       const uint8_t *context,
                                                       size_t context_len);
@@ -894,8 +859,8 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
 // buffer containing the signing context octet string (which may be NULL) and
 // writes the length to |*context_len|.
 //
-// EVP_PKEY_ED25519PH is the only key type that currently supports retrieving a
-// a signature context that is used in computing the HashEdDSA signature.
+// EVP_PKEY_ED25519PH and EVP_PKEY_PQDSA are the key types that currently
+// support retrieving a signature context.
 //
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
@@ -1039,6 +1004,14 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+// EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key in |pkey|.
+// If |pkey| is not of type |EVP_PKEY_KEM|, it returns 0 and pushes
+// |EVP_R_EXPECTING_A_KEM_KEY| onto the error queue. If |pkey| is of type
+// |EVP_PKEY_KEM| but has no underlying KEM key attached, it returns 0 and
+// pushes |EVP_R_NO_PARAMETERS_SET| onto the error queue. |pkey| must not be
+// NULL.
+OPENSSL_EXPORT int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey);
+
 // PQDSA specific functions.
 
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
@@ -1112,6 +1085,18 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            int *ppkey_flags, const char **pinfo,
                                            const char **ppem_str,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
+
+// EVP_PKEY_get_private_seed returns the seed representation of the private key
+// for the key type configured in |key|. If |out| is NULL, it sets |*out_len| to
+// the size of the seed. Otherwise, it writes at most |*out_len| bytes to |out|
+// and sets |*out_len| to the number of bytes written.
+//
+// Return 1 on success and 0 otherwise.
+//
+// Note, the private key might not have a seed representation configured. In
+// this case, the operation is unsupported and 0 is returned.
+OPENSSL_EXPORT int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len);
 
 
 // EVP_PKEY_CTX keygen/paramgen functions.

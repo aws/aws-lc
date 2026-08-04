@@ -1,10 +1,6 @@
 #! /usr/bin/env perl
 # Copyright (C) 2023 Intel Corporation
-#
-# Licensed under the OpenSSL license (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
+# SPDX-License-Identifier: Apache-2.0
 
 # This implementation is based on the AES-XTS code (AVX512VAES + VPCLMULQDQ)
 # from Intel(R) Intelligent Storage Acceleration Library Crypto Version
@@ -1460,9 +1456,13 @@ ___
 
   my $rndsuffix = &random_string();
 
+  # The .text directive is deliberately emitted outside the #ifndef guard:
+  # when MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX elides the body, some NASM
+  # versions reject an object with no sections (nasm.us bug 3392738), which
+  # would otherwise break win64 builds that assemble this file (#3355).
   $code .= <<___;
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 ___
 
   {

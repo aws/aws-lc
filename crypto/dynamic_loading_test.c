@@ -89,14 +89,9 @@ static void *load_unload(void *ctx) {
 }
 
 
-#define xstr(s) str(s)
-#define str(s) #s
-#define DYNAMIC_LIBRARY_PATH xstr(LIBCRYPTO_PATH)
-
-
 int main(int argc, char *argv[]) {
   pthread_t thread_id;
-  if (pthread_create(&thread_id, NULL, load_unload, (void*)DYNAMIC_LIBRARY_PATH)) {
+  if (pthread_create(&thread_id, NULL, load_unload, (void*)LIBCRYPTO_PATH)) {
     fprintf(stderr, "Call to pthread_create in main failed.");
     exit(1);
   }

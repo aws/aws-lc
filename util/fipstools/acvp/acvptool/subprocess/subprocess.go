@@ -1,16 +1,5 @@
 // Copyright (c) 2019, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// SPDX-License-Identifier: ISC
 
 // Package subprocess contains functionality to talk to a modulewrapper for
 // testing of various algorithm implementations.
@@ -26,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unsafe"
 )
 
 // Transactable provides an interface to allow test injection of transactions
@@ -50,6 +40,19 @@ type Subprocess struct {
 	pendingReads chan pendingRead
 	// readerFinished is a channel that is closed if `readerRoutine` has finished (e.g. because of a read error).
 	readerFinished chan struct{}
+}
+
+// TODO: Migrate to directly use binary.NativeEndian when we can upgrade to go1.21+.
+// represents the platform's Endian type.
+var NativeEndian binary.ByteOrder
+
+func init() {
+	var i uint16 = 0x0001
+	if *(*byte)(unsafe.Pointer(&i)) == 0x01 {
+		NativeEndian = binary.LittleEndian
+	} else {
+		NativeEndian = binary.BigEndian
+	}
 }
 
 // pendingRead represents an expected response from the modulewrapper.
@@ -111,11 +114,14 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"SHA3-384":     &hashPrimitive{"SHA3-384", 48},
 		"SHA3-512":     &hashPrimitive{"SHA3-512", 64},
 		// NOTE: SHAKE does not have a predifined digest output size
-		"SHAKE-128":         &hashPrimitive{"SHAKE-128", -1},
-		"SHAKE-256":         &hashPrimitive{"SHAKE-256", -1},
-		"ACVP-AES-ECB":      &blockCipher{"AES", 16, 2, true, false, iterateAES},
-		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
-		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
+		"SHAKE-128":        &hashPrimitive{"SHAKE-128", -1},
+		"SHAKE-256":        &hashPrimitive{"SHAKE-256", -1},
+		"ACVP-AES-ECB":     &blockCipher{"AES", 16, 2, true, false, iterateAES},
+		"ACVP-AES-CBC":     &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
+		"ACVP-AES-CBC-CS3": &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
+		// NOTE: AES CFB128's ACVP MCT outer loop is the same as AES CBC's
+		// https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/aes/AESAVS.pdf
+		"ACVP-AES-CFB128":   &blockCipher{"AES-CFB128", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CTR":      &blockCipher{"AES-CTR", 16, 1, false, true, nil},
 		"ACVP-TDES-ECB":     &blockCipher{"3DES-ECB", 8, 3, true, false, iterate3DES},
 		"ACVP-TDES-CBC":     &blockCipher{"3DES-CBC", 8, 3, true, true, iterate3DESCBC},
@@ -138,6 +144,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA3-512":     &hmacPrimitive{"HMAC-SHA3-512", 64},
 		"ctrDRBG":           &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
 		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
+		"KAS-ECC":           &kasEcc{},
 		"KDF":               &kdfPrimitive{},
 		"KDA": &kdaPrimitive{
 			modes: map[string]kdaModePrimitive{
@@ -145,6 +152,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 				"OneStep": &kdaOneStepMode{},
 			},
 		},
+		"KTS-IFC":        &kts{},
 		"TLS-v1.3":       &tls13{},
 		"CMAC-AES":       &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":            &rsa{},
@@ -179,8 +187,8 @@ func (m *Subprocess) flush() error {
 
 	const cmd = "flush"
 	buf := make([]byte, 8, 8+len(cmd))
-	binary.LittleEndian.PutUint32(buf, 1)
-	binary.LittleEndian.PutUint32(buf[4:], uint32(len(cmd)))
+	NativeEndian.PutUint32(buf, 1)
+	NativeEndian.PutUint32(buf[4:], uint32(len(cmd)))
 	buf = append(buf, []byte(cmd)...)
 
 	if _, err := m.stdin.Write(buf); err != nil {
@@ -230,10 +238,10 @@ func (m *Subprocess) TransactAsync(cmd string, expectedNumResults int, args [][]
 	}
 
 	buf := make([]byte, 4*(2+len(args)), 4*(2+len(args))+argLength)
-	binary.LittleEndian.PutUint32(buf, uint32(1+len(args)))
-	binary.LittleEndian.PutUint32(buf[4:], uint32(len(cmd)))
+	NativeEndian.PutUint32(buf, uint32(1+len(args)))
+	NativeEndian.PutUint32(buf[4:], uint32(len(cmd)))
 	for i, arg := range args {
-		binary.LittleEndian.PutUint32(buf[4*(i+2):], uint32(len(arg)))
+		NativeEndian.PutUint32(buf[4*(i+2):], uint32(len(arg)))
 	}
 	buf = append(buf, []byte(cmd)...)
 	for _, arg := range args {
@@ -320,7 +328,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 		return nil, err
 	}
 
-	numResults := binary.LittleEndian.Uint32(buf)
+	numResults := NativeEndian.Uint32(buf)
 	if int(numResults) != expectedNumResults {
 		return nil, fmt.Errorf("expected %d results from %q but got %d", expectedNumResults, cmd, numResults)
 	}
@@ -332,7 +340,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 
 	var resultsLength uint64
 	for i := uint32(0); i < numResults; i++ {
-		resultsLength += uint64(binary.LittleEndian.Uint32(buf[4*i:]))
+		resultsLength += uint64(NativeEndian.Uint32(buf[4*i:]))
 	}
 
 	if resultsLength > (1 << 30) {
@@ -347,7 +355,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 	ret := make([][]byte, 0, numResults)
 	var offset int
 	for i := uint32(0); i < numResults; i++ {
-		length := binary.LittleEndian.Uint32(buf[4*i:])
+		length := NativeEndian.Uint32(buf[4*i:])
 		ret = append(ret, results[offset:offset+int(length)])
 		offset += int(length)
 	}
@@ -405,7 +413,7 @@ type primitive interface {
 
 func uint32le(n uint32) []byte {
 	var ret [4]byte
-	binary.LittleEndian.PutUint32(ret[:], n)
+	NativeEndian.PutUint32(ret[:], n)
 	return ret[:]
 }
 

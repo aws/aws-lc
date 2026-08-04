@@ -15,11 +15,11 @@ if(ANDROID)
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
   string(FIND ${CMAKE_CXX_FLAGS} "noexecstack" CXX_EXTRA_WA)
   string(FIND ${CMAKE_C_FLAGS} "noexecstack" C_EXTRA_WA)
-  if(NOT ${CXX_EXTRA_WA} EQUAL '-1')
-    string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+  if(NOT CXX_EXTRA_WA EQUAL -1)
+    string(REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   endif()
-  if(NOT ${C_EXTRA_WA} EQUAL '-1')
-    string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  if(NOT C_EXTRA_WA EQUAL -1)
+    string(REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   endif()
 endif()
 
@@ -117,6 +117,26 @@ if(ARCH STREQUAL "ppc64le")
   )
 endif()
 
+# Under OPENSSL_SMALL, the P-256 nistz implementation (p256-nistz.c) is
+# compiled out entirely -- ec.c dispatches P-256 to the fiat-crypto
+# implementation (p256.c) instead -- leaving the nistz assembly fully
+# unreferenced on both x86_64 and aarch64. Drop it from the build. (The
+# large precomputed base-point table is in p256-nistz-table.h, included
+# from C code that is already gated, not in the assembly.)
+if(OPENSSL_SMALL)
+  if(ARCH STREQUAL "x86_64")
+    list(REMOVE_ITEM BCM_ASM_SOURCES
+      p256-x86_64-asm.${ASM_EXT}
+      p256_beeu-x86_64-asm.${ASM_EXT}
+    )
+  elseif(ARCH STREQUAL "aarch64")
+    list(REMOVE_ITEM BCM_ASM_SOURCES
+      p256-armv8-asm.${ASM_EXT}
+      p256_beeu-armv8-asm.${ASM_EXT}
+    )
+  endif()
+endif()
+
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
   perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
@@ -189,7 +209,11 @@ if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCH
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms for x86_64 and arm64 only.
-if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
+# x86_64 s2n-bignum needs BMI2/ADX, not AVX-512, so it is gated on
+# MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather than
+# MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. OPENSSL_SMALL implies only the latter,
+# so s2n-bignum stays available under OPENSSL_SMALL on x86_64 (#3355).
+if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
       ARCH STREQUAL "aarch64") AND UNIX)
 
   # Set the source directory for s2n-bignum assembly files
@@ -250,6 +274,9 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase_alt.S
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble.S
     ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble_alt.S
+
+    ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
+    ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
   )
 
   if(ARCH STREQUAL "x86_64")
@@ -264,7 +291,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_alt.S
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
     )
   elseif(ARCH STREQUAL "aarch64")
     # byte-level interface for aarch64 s2n-bignum x25519 are in
@@ -303,14 +329,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     # (gcc supports it since gcc8, clang supports it since clang7)
     check_compiler("neon_sha3_check.c" MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION "-march=armv8.4-a+sha3")
 
-    list(APPEND BCM_ASM_SOURCES
-                # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
-
-                # Batched Keccak-x4 assembly from s2n-bignum
-                # Scalar version for Neoverse N1
-                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
-    )
+    # Note: Scalar Keccak-x1 and Batched Neoverse N1 Keccak-x4 assembly from s2n-bignum
+    # are included in the common s2n-bignum block above
 
     if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
         list(APPEND BCM_ASM_SOURCES
@@ -327,6 +347,102 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                                     PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
         set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt2.S
                                     PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+    endif()
+  endif()
+
+  # Under OPENSSL_SMALL, drop the s2n-bignum code that becomes unreachable:
+  #
+  # - P-256/P-384/P-521 (both arches): the callers (p256-nistz.c, p384.c,
+  #   p521.c) are compiled out entirely under OPENSSL_SMALL.
+  # - aarch64 also: the curve25519 _alt variants, since curve25519 is pinned
+  #   to the non-_alt variant there (safe on every ARMv8 CPU).
+  #
+  # Everything else stays reachable: aarch64's fastmul/generic files (BN
+  # Montgomery), x86_64's curve25519 (both variants -- the non-_alt one needs
+  # BMI2/ADX, so x86_64 keeps the runtime dispatch in s2n-bignum_aws-lc.h
+  # rather than aarch64's compile-time pin), and the sha3 files (used by
+  # keccak1600.c).
+  if(OPENSSL_SMALL)
+    if(ARCH STREQUAL "aarch64")
+      list(REMOVE_ITEM BCM_ASM_SOURCES
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul.S
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p256/bignum_montinv_p256.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_add_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_sub_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_neg_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_nonzero_6.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_littleendian_6.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montinv_p384.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_add_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sub_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_neg_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_tolebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_fromlebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_inv_p521.S
+        ${S2N_BIGNUM_DIR}/curve25519/bignum_madd_n25519_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_decode_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmulbase_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/edwards25519_scalarmuldouble_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_byte_alt.S
+        ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte_alt.S
+      )
+    elseif(ARCH STREQUAL "x86_64")
+      list(REMOVE_ITEM BCM_ASM_SOURCES
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul.S
+        ${S2N_BIGNUM_DIR}/p256/p256_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p256/bignum_montinv_p256.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_add_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_sub_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_neg_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_nonzero_6.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_littleendian_6.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul.S
+        ${S2N_BIGNUM_DIR}/p384/p384_montjscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p384/bignum_montinv_p384.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_add_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sub_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_neg_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_tolebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_fromlebytes_p521.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jdouble_alt.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul.S
+        ${S2N_BIGNUM_DIR}/p521/p521_jscalarmul_alt.S
+        ${S2N_BIGNUM_DIR}/p521/bignum_inv_p521.S
+      )
     endif()
   endif()
 
@@ -385,9 +501,41 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
     ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/rej_uniform_asm.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d10.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d11.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d4.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_compress_d5.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d10.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d11.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d4.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/poly_decompress_d5.S
   )
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_X86_64_ASM_SOURCES})
+
+  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
+
+endif()
+
+# mldsa-native assembly files can be compiled on Unix platforms for x86_64
+# and aarch64.
+if(UNIX AND ((ARCH STREQUAL "x86_64" AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR (ARCH STREQUAL "aarch64")))
+
+  set(MLDSA_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_dsa")
+
+  # Every .S file in this directory is imported by importer.sh and must be
+  # compiled; glob so that refreshes which add/remove files don't need a
+  # matching edit here. CONFIGURE_DEPENDS makes CMake re-run when the set of
+  # matching files changes.
+  if(ARCH STREQUAL "x86_64")
+    file(GLOB MLDSA_NATIVE_ASM_SOURCES CONFIGURE_DEPENDS
+      "${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/*.S")
+  else()
+    file(GLOB MLDSA_NATIVE_ASM_SOURCES CONFIGURE_DEPENDS
+      "${MLDSA_NATIVE_DIR}/mldsa/native/aarch64/src/*.S")
+  endif()
+
+  list(APPEND BCM_ASM_SOURCES ${MLDSA_NATIVE_ASM_SOURCES})
 
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
@@ -442,7 +590,7 @@ if(FIPS_DELOCATE)
     set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
   endif()
 
-  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+  go_executable(delocate github.com/aws/aws-lc/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
     COMMAND
@@ -491,7 +639,7 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+                github.com/aws/aws-lc/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
@@ -551,6 +699,18 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
   target_add_awslc_include_paths(TARGET bcm_library SCOPE PRIVATE)
   target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
+
+  # On GCC 14+ the Superword Level Parallelism (SLP) vectorizer causes the
+  # compiler to aggressively store static function pointer addresses in the
+  # .data.rel.ro.local section which is discarded by our linker script and
+  # results in undefined references when linking libcrypto.
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
+     CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
+     CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+     ARCH STREQUAL "x86_64")
+    target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -595,31 +755,39 @@ elseif(FIPS_SHARED)
     # contain pragmas that instruct the compiler to put the code in specific FIPS sections. These sections have a
     # specific suffix $a through $c that controls the order of the FIPS sections when it is linked together into a
     # Grouped Section.
+    #
+    # These custom commands invoke the compiler directly (outside CMake's normal
+    # target compilation), so we must forward CMAKE_C_FLAGS manually. This is
+    # necessary for cross-compilation where the flags contain --target and
+    # system include paths (e.g. clang-cl + xwin on Linux).
+    separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
     add_custom_command(
       OUTPUT fips_msvc_start.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_START /Fofips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_msvc_end.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w /nologo /c /DAWSLC_FIPS_SHARED_END /Fofips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
-    if(CMAKE_AR)
-      set(MSVC_LIB "${CMAKE_AR}")
-    else()
-      get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
-      set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+    find_program(MSVC_LIB NAMES lib lib.exe llvm-lib llvm-lib.exe
+                 HINTS ${MSVC_BIN} NO_DEFAULT_PATH)
+    if(NOT MSVC_LIB)
+      find_program(MSVC_LIB NAMES lib lib.exe llvm-lib llvm-lib.exe)
+    endif()
+    if(NOT MSVC_LIB)
+      message(FATAL_ERROR "Could not find lib.exe or llvm-lib for creating bcm.lib")
     endif()
 
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/bcm_objects.rsp"
+         CONTENT "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\"\n\">\"")
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
-      # The archiver does not handle the CMake list which uses semicolons between items, this generator expression
-      # converts it to a list of quoted strings, it also needs to be itself string escaped
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
-      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()

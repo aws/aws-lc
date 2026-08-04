@@ -1,3 +1,6 @@
+// Copyright (c) 2019 Google Inc.
+// SPDX-License-Identifier: ISC
+
 #include <openssl/ssl.h>
 
 int BORINGSSL_enum_c_type_test(void);

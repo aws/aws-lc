@@ -156,8 +156,6 @@ Lbignum_mod_n256_writeback:
         stp     m2, m3, [z, #16]
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_n256)
-
 // Short case: just copy the input with zero-padding
 
 Lbignum_mod_n256_short:
@@ -175,6 +173,8 @@ Lbignum_mod_n256_short:
         beq     Lbignum_mod_n256_writeback
         ldr     m2, [x, #16]
         b       Lbignum_mod_n256_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n256)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

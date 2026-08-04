@@ -79,7 +79,7 @@ uint64_t armv8_set_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t original_dit = armv8_get_dit();
     // Encoding of "msr dit, #1"
-    __asm__ volatile(".long 0xd503415f");
+    __asm__ volatile(".inst 0xd503415f");
     return original_dit;
   } else {
     return 0;
@@ -89,7 +89,7 @@ uint64_t armv8_set_dit(void) {
 void armv8_restore_dit(volatile uint64_t *original_dit) {
   if (*original_dit != 1 && CRYPTO_is_ARMv8_DIT_capable()) {
     // Encoding of "msr dit, #0"
-    __asm__ volatile(".long 0xd503405f");
+    __asm__ volatile(".inst 0xd503405f");
   }
 }
 

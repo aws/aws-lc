@@ -1,54 +1,5 @@
-/* ====================================================================
- * Copyright (c) 1998-2011 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+// Copyright (c) 1998-2011 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_ARM_ARCH_H
 #define OPENSSL_HEADER_ARM_ARCH_H
@@ -87,17 +38,18 @@
 // "Test algorithm dispatch without CPU indicator or Neon extension capability bits"
 // in util/all_tests.json
 
-// The Neoverse N1, V1, V2, and Apple M1 micro-architectures are detected to
+// The Neoverse N1, V1, V2, V3, and Apple M1 micro-architectures are detected to
 // allow selecting the fasted implementations for SHA3/SHAKE and AES-GCM.
-// Combination of all CPU indicator bits: 0x7080
+// Combination of all CPU indicator bits: 0x47080
 // NOTE: If you add further CPU indicator bits, adjust
 // "Test algorithm dispatch without CPU indicator bits" in util/all_tests.json.
 #define ARMV8_NEOVERSE_N1 (1 << 7)
 #define ARMV8_NEOVERSE_V1 (1 << 12)
 #define ARMV8_APPLE_M (1 << 13)
 #define ARMV8_NEOVERSE_V2 (1 << 14)
+#define ARMV8_NEOVERSE_V3 (1 << 18)
 
-// Combination of CPU indicator bits and Armv8 Neon extension bits: 0x78fc
+// Combination of CPU indicator bits and Armv8 Neon extension bits: 0x478fc
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
 #define ARMV8_DIT (1 << 15)
@@ -126,6 +78,7 @@
 # define ARM_CPU_PART_N1           0xD0C
 # define ARM_CPU_PART_V1           0xD40
 # define ARM_CPU_PART_V2           0xD4F
+# define ARM_CPU_PART_V3           0xD84
 
 # define MIDR_PARTNUM_SHIFT       4
 # define MIDR_PARTNUM_MASK        (0xfffUL << MIDR_PARTNUM_SHIFT)

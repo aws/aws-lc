@@ -1,16 +1,5 @@
-/* Copyright (c) 2019, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2019, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <signal.h>
 #include <algorithm>
@@ -58,7 +47,7 @@
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
-#include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
+#include "../../../../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "modulewrapper.h"
 
 
@@ -341,6 +330,12 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [128, 192, 256]
       },
       {
+        "algorithm": "ACVP-AES-CFB128",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256]
+      },
+      {
         "algorithm": "ACVP-AES-GCM",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -487,6 +482,46 @@ static bool GetConfig(const Span<const uint8_t> args[],
         }]
       },
       {
+        "algorithm": "HMAC-SHA3-224",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 224, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-256",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 256, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-384",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 384, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-512",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 512, "increment": 8
+        }]
+      },
+      {
         "vsId": 0,
         "algorithm": "PBKDF",
         "revision": "1.0",
@@ -601,6 +636,32 @@ static bool GetConfig(const Span<const uint8_t> args[],
       },
       {
         "algorithm": "ECDSA",
+        "mode": "sigGen",
+        "revision": "FIPS186-5",
+        "componentTest": true,
+        "capabilities": [{
+          "curve": [
+            "P-224",
+            "P-256",
+            "P-384",
+            "P-521"
+          ],
+          "hashAlg": [
+            "SHA2-224",
+            "SHA2-256",
+            "SHA2-384",
+            "SHA2-512",
+            "SHA2-512/224",
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
+          ]
+        }]
+      },
+      {
+        "algorithm": "ECDSA",
         "mode": "sigVer",
         "revision": "1.0",
         "capabilities": [{
@@ -672,8 +733,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "qMod8": 0
           }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigGen",
         "revision": "FIPS186-5",
@@ -855,8 +916,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-4",
@@ -940,8 +1001,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
-      },)"
-      R"({
+      },
+      {
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-5",
@@ -1125,6 +1186,23 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 }]
             }]
         }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "signaturePrimitive",
+        "revision": "2.0",
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "keyFormat": ["standard"],
+        "modulo": [2048, 3072, 4096]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "decryptionPrimitive",
+        "revision": "Sp800-56Br2",
+        "pubExpMode": "random",
+        "keyFormat": ["standard", "crt"],
+        "modulo": [2048, 3072, 4096]
       },)"
       R"({
         "algorithm": "CMAC-AES",
@@ -1233,10 +1311,24 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ]
       },
       {
+        "algorithm": "TLS-v1.3",
+        "revision": "RFC8446",
+        "mode": "KDF",
+        "hmacAlg": [
+          "SHA2-256",
+          "SHA2-384"
+        ],
+        "runningMode": [
+          "PSK",
+          "DHE",
+          "PSK-DHE"
+        ]
+      },
+      {
         "vsId": 0,
         "algorithm": "KDA",
         "mode": "HKDF",
-        "revision": "Sp800-56Cr1",
+        "revision": "Sp800-56Cr2",
         "isSample": true,
         "fixedInfoPattern": "uPartyInfo||vPartyInfo||l",
         "encoding": [
@@ -1249,13 +1341,17 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "SHA2-384",
           "SHA2-512",
           "SHA2-512/224",
-          "SHA2-512/256"
+          "SHA2-512/256",
+          "SHA3-224",
+          "SHA3-256",
+          "SHA3-384",
+          "SHA3-512"
         ],
         "macSaltMethods": [
           "default",
           "random"
         ],
-        "l": 1024,
+        "l": 2048,
         "z": [
           {
             "min": 224,
@@ -1263,7 +1359,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "increment": 8
           }
         ],
-        "performMultiExpansionTests": false
+        "usesHybridSharedSecret": false,
+        "performMultiExpansionTests": true
       },
       {
         "algorithm": "KAS-ECC-SSC",
@@ -1280,6 +1377,12 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "initiator",
               "responder"
             ]
+          },
+          "onePassDh": {
+              "kasRole": [
+                "initiator",
+                "responder"
+            ]
           }
         },
         "domainParameterGenerationMethods": [
@@ -1288,6 +1391,76 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "P-384",
           "P-521"
         ]
+      },
+      {
+        "algorithm": "KAS-ECC",
+        "revision": "Sp800-56Ar3",
+        "function": ["keyPairGen", "fullVal"],
+        "iutId": "123456ABCD",
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 256
+          },
+          "onePassDh": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 256
+          }
+        },
+        "domainParameterGenerationMethods": ["P-384"]
+      },
+      {
+        "algorithm": "KAS-ECC",
+        "revision": "Sp800-56Ar3",
+        "function": ["keyPairGen", "fullVal"],
+        "iutId": "123456ABCD",
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": ["responder", "initiator"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 512
+          },
+          "onePassDh": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-384"}
+                ],
+                "fixedInfoPattern": "algorithmId||l||uPartyInfo||vPartyInfo",
+                "encoding": ["concatenation"]
+              }
+            },
+            "l": 512
+          }
+        },
+        "domainParameterGenerationMethods": ["P-224"]
       },
       {
         "algorithm": "KAS-FFC-SSC",
@@ -1346,7 +1519,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "mode": "encapDecap",
         "revision": "FIPS203",
         "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"],
-        "functions": ["encapsulation", "decapsulation"]
+        "functions": ["encapsulation", "decapsulation", "encapsulationKeyCheck", "decapsulationKeyCheck"]
       },)"
       R"({
         "algorithm": "EDDSA",
@@ -1405,7 +1578,10 @@ static bool GetConfig(const Span<const uint8_t> args[],
           true,
           false
         ],
-        "signatureInterfaces": ["internal"]
+        "signatureInterfaces": [
+          "internal", 
+          "external"
+        ]
       },{
         "algorithm": "ML-DSA",
         "mode": "sigVer",
@@ -1431,7 +1607,29 @@ static bool GetConfig(const Span<const uint8_t> args[],
           true,
           false
         ],
-        "signatureInterfaces": ["internal"]
+        "signatureInterfaces": [
+          "internal", 
+          "external"
+        ]
+      },)"
+      R"({
+        "algorithm": "KTS-IFC",
+        "revision": "Sp800-56Br2",
+        "iutId": "ABCD",
+        "function": ["keyPairGen", "partialVal"],
+        "keyGenerationMethods": ["rsakpg1-basic"],
+        "modulo": [2048, 3072, 4096],
+        "fixedPubExp": "010001",
+        "scheme": {
+          "KTS-OAEP-basic": {
+            "kasRole": ["initiator", "responder"],
+            "ktsMethod": {
+              "hashAlgs": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
+              "supportsNullAssociatedData": true
+            },
+            "l": 1024
+          }
+        }
       }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
@@ -1744,6 +1942,58 @@ static bool AES_CBC(const Span<const uint8_t> args[],
     memcpy(iv_copy, iv.data(), sizeof(iv_copy));
     AES_cbc_encrypt(input.data(), result.data(), input.size(), &key, iv_copy,
                     Direction);
+
+    if (Direction == AES_DECRYPT) {
+      prev_input = input;
+    }
+
+    if (j == 0) {
+      input = iv;
+    } else {
+      input = prev_result;
+    }
+  }
+
+  return write_reply(
+      {Span<const uint8_t>(result), Span<const uint8_t>(prev_result)});
+}
+
+template <void (*CipherOp)(const uint8_t *in, uint8_t *out,
+                          size_t bits, const AES_KEY *key,
+                          uint8_t *ivec, int *num, int enc),
+          int Direction>
+static bool AES_CFB(const Span<const uint8_t> args[],
+                    ReplyCallback write_reply) {
+  AES_KEY key;
+  if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
+    return false;
+  }
+  if (args[1].empty() || args[2].size() != AES_BLOCK_SIZE) {
+    return false;
+  }
+  std::vector<uint8_t> input(args[1].begin(), args[1].end());
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+  const uint32_t iterations = GetIterations(args[3]);
+
+  std::vector<uint8_t> result(input.size());
+  std::vector<uint8_t> prev_result, prev_input;
+
+  for (uint32_t j = 0; j < iterations; j++) {
+    prev_result = result;
+    if (j > 0) {
+      if (Direction == AES_ENCRYPT) {
+        iv = result;
+      } else {
+        iv = prev_input;
+      }
+    }
+
+    // CipherOp will mutate the given IV, but we need it later.
+    uint8_t iv_copy[AES_BLOCK_SIZE];
+    memcpy(iv_copy, iv.data(), sizeof(iv_copy));
+    int num = 0;
+    CipherOp(input.data(), result.data(), input.size(), &key, iv_copy,
+            &num, Direction);
 
     if (Direction == AES_DECRYPT) {
       prev_input = input;
@@ -2217,21 +2467,25 @@ static bool HMAC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
     return false;
   }
 
-  // HMAC computation with precomputed keys
-  // The purpose of this call is to test |HMAC_set_precomputed_key_export| and
-  // |HMAC_get_precomputed_key|, which are called by |HMAC_with_precompute|.
-  uint8_t digest_with_precompute[EVP_MAX_MD_SIZE];
-  unsigned digest_with_precompute_len;
-  if (::HMAC_with_precompute(md, args[1].data(), args[1].size(), args[0].data(),
-                             args[0].size(), digest_with_precompute,
-                             &digest_with_precompute_len) == nullptr) {
-    return false;
-  }
+  // SHA3 does not support pre-computed keys. See aws/aws-lc@80f986b.
+  if (md != EVP_sha3_224() && md != EVP_sha3_256() && md != EVP_sha3_384() &&
+    md != EVP_sha3_512()) {
+    // HMAC computation with precomputed keys
+    // The purpose of this call is to test |HMAC_set_precomputed_key_export| and
+    // |HMAC_get_precomputed_key|, which are called by |HMAC_with_precompute|.
+    uint8_t digest_with_precompute[EVP_MAX_MD_SIZE];
+    unsigned digest_with_precompute_len;
+    if (::HMAC_with_precompute(md, args[1].data(), args[1].size(), args[0].data(),
+                               args[0].size(), digest_with_precompute,
+                               &digest_with_precompute_len) == nullptr) {
+      return false;
+    }
 
-  // The two HMAC computations must yield exactly the same results
-  if (digest_len != digest_with_precompute_len ||
-      memcmp(digest, digest_with_precompute, digest_len) != 0) {
-    return false;
+    // The two HMAC computations must yield exactly the same results
+    if (digest_len != digest_with_precompute_len ||
+        memcmp(digest, digest_with_precompute, digest_len) != 0) {
+      return false;
+    }
   }
 
   return write_reply({Span<const uint8_t>(digest, digest_len)});
@@ -2451,6 +2705,28 @@ static bool ECDSASigGen(const Span<const uint8_t> args[],
       {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
 }
 
+static bool ECDSASigGenComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  bssl::UniquePtr<BIGNUM> d = BytesToBIGNUM(args[1]);
+  auto digest = args[3];
+  if (!key || !EC_KEY_set_private_key(key.get(), d.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<ECDSA_SIG> sig(
+      ECDSA_do_sign(digest.data(), digest.size(), key.get()));
+  if (!sig) {
+    return false;
+  }
+
+  std::vector<uint8_t> r_bytes(BIGNUMBytes(sig->r));
+  std::vector<uint8_t> s_bytes(BIGNUMBytes(sig->s));
+
+  return write_reply(
+      {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
+}
+
 static bool ECDSASigVer(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
   bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
@@ -2487,6 +2763,41 @@ static bool ECDSASigVer(const Span<const uint8_t> args[],
   uint8_t reply[1];
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, hash, nullptr, evp_pkey.get()) ||
       !EVP_DigestVerify(ctx.get(), der, der_len, msg.data(), msg.size())) {
+    reply[0] = 0;
+  } else {
+    reply[0] = 1;
+  }
+  ERR_clear_error();
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
+static bool ECDSASigVerComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  auto digest = args[2];
+  bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[3]));
+  bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[4]));
+  bssl::UniquePtr<BIGNUM> r(BytesToBIGNUM(args[5]));
+  bssl::UniquePtr<BIGNUM> s(BytesToBIGNUM(args[6]));
+  ECDSA_SIG sig;
+  sig.r = r.get();
+  sig.s = s.get();
+
+  if (!key) {
+    return false;
+  }
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
+  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           point.get(), x.get(), y.get(),
+                                           /*ctx=*/nullptr) ||
+      !EC_KEY_set_public_key(key.get(), point.get()) ||
+      !EC_KEY_check_fips(key.get())) {
+    return false;
+  }
+
+  uint8_t reply[1];
+  if (ECDSA_do_verify(digest.data(), digest.size(), &sig, key.get()) != 1) {
     reply[0] = 0;
   } else {
     reply[0] = 1;
@@ -2671,6 +2982,248 @@ static bool RSASigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(&ok, 1)});
 }
 
+static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
+  const Span<const uint8_t> d_bytes = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+  const Span<const uint8_t> msg = args[3];
+
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !RSA_set0_key(key.get(), n.get(), e.get(), d.get())) {
+    return false;
+  }
+  // RSA_set0_key took ownership of n, e, d.
+  n.release();
+  e.release();
+  d.release();
+
+  std::vector<uint8_t> sig(RSA_size(key.get()));
+  size_t sig_len = 0;
+  uint8_t success_flag[1] = {0};
+  if (!RSA_sign_raw(key.get(), &sig_len, sig.data(), sig.size(), msg.data(),
+                    msg.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+  sig.resize(sig_len);
+  success_flag[0] = 1;
+
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(sig)});
+}
+
+static bool RSADecryptionPrimitive(const Span<const uint8_t> args[],
+                                   ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> n_bytes = args[2];
+  const Span<const uint8_t> e_bytes = args[3];
+
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<RSA> key(RSA_new());
+
+  uint8_t success_flag[1] = {0};
+  RSA_set_flags(key.get(), RSA_FLAG_LARGE_PUBLIC_EXPONENT);
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !RSA_set0_key(key.get(), n.get(), e.get(), d.get())) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+  // RSA_set0_key took ownership of n, e, d.
+  n.release();
+  e.release();
+  d.release();
+
+  if (!RSA_check_key(key.get())) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len = 0;
+
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
+}
+
+static bool RSADecryptionPrimitiveCRT(const Span<const uint8_t> args[],
+                                      ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> dmp1_bytes = args[2];
+  const Span<const uint8_t> dmq1_bytes = args[3];
+  const Span<const uint8_t> iqmp_bytes = args[4];
+  const Span<const uint8_t> p_bytes = args[5];
+  const Span<const uint8_t> q_bytes = args[6];
+  const Span<const uint8_t> n_bytes = args[7];
+  const Span<const uint8_t> e_bytes = args[8];
+
+  bssl::UniquePtr<BIGNUM> d(BN_new());
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  bssl::UniquePtr<BIGNUM> dmp1(BN_new());
+  bssl::UniquePtr<BIGNUM> dmq1(BN_new());
+  bssl::UniquePtr<BIGNUM> iqmp(BN_new());
+
+  uint8_t success_flag[1] = {0};
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n.get()) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e.get()) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d.get()) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p.get()) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q.get()) ||
+      !BN_bin2bn(dmp1_bytes.data(), dmp1_bytes.size(), dmp1.get()) ||
+      !BN_bin2bn(dmq1_bytes.data(), dmq1_bytes.size(), dmq1.get()) ||
+      !BN_bin2bn(iqmp_bytes.data(), iqmp_bytes.size(), iqmp.get())) {
+    return false;
+  }
+  bssl::UniquePtr<RSA> key(RSA_new_private_key_large_e(
+      n.get(), e.get(), d.get(), p.get(), q.get(), dmp1.get(), dmq1.get(),
+      iqmp.get()));
+
+  if (key == NULL) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len = 0;
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool RSAOAEPEncrypt(const Span<const uint8_t> args[],
+                           ReplyCallback write_reply) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+
+  uint32_t out_len = 0;
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !RSA_set0_key(rsa.get(), n, e, nullptr)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_encrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
+    return false;
+  }
+
+  // Randomly generate the keying material to encrypt
+  std::vector<uint8_t> out(out_len);
+  RAND_bytes(out.data(), out.size());
+
+  size_t ct_len = 0;
+  if (!EVP_PKEY_encrypt(ctx.get(), nullptr, &ct_len, out.data(), out.size())) {
+    return false;
+  }
+  std::vector<uint8_t> ct(ct_len);
+  if (!EVP_PKEY_encrypt(ctx.get(), ct.data(), &ct_len, out.data(),
+                        out.size())) {
+    return false;
+  }
+  return write_reply({Span<const uint8_t>(ct), Span<const uint8_t>(out)});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool RSAOAEPDecrypt(const Span<const uint8_t> args[],
+                           ReplyCallback write_reply) {
+  const Span<const uint8_t> input = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+  const Span<const uint8_t> q_bytes = args[3];
+  const Span<const uint8_t> p_bytes = args[4];
+  const Span<const uint8_t> d_bytes = args[5];
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  BIGNUM *p = BN_new();
+  BIGNUM *q = BN_new();
+  BIGNUM *d = BN_new();
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
+      !RSA_set0_key(rsa.get(), n, e, d) || !RSA_set0_factors(rsa.get(), p, q)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!ctx || !EVP_PKEY_decrypt_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), MDFunc())) {
+    return false;
+  }
+
+  size_t out_len = 0;
+  if (!EVP_PKEY_decrypt(ctx.get(), nullptr, &out_len, input.data(),
+                        input.size())) {
+    return false;
+  }
+  std::vector<uint8_t> out(out_len);
+  if (!EVP_PKEY_decrypt(ctx.get(), out.data(), &out_len, input.data(),
+                        input.size())) {
+    return false;
+  }
+  out.resize(out_len);
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 template <const EVP_MD *(MDFunc)()>
 static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
@@ -2696,6 +3249,63 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   }
 
   return write_reply({out});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool HKDFExtract(const Span<const uint8_t> args[],
+                        ReplyCallback write_reply) {
+  const Span<const uint8_t> ikm = args[0];
+  const Span<const uint8_t> salt = args[1];
+  const EVP_MD *md = MDFunc();
+
+  uint8_t out_key[EVP_MAX_MD_SIZE];
+  size_t out_len;
+  if (!HKDF_extract(out_key, &out_len, md, ikm.data(), ikm.size(), salt.data(),
+                    salt.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out_key, out_len)});
+}
+
+// |TLS13_HKDFExpandLabel| is ported from BoringSSL's
+// util/fipstools/acvp/modulewrapper/modulewrapper.cc and is TLS 1.3-specific
+// (RFC 8446 §7.1).
+template <const EVP_MD *(MDFunc)()>
+static bool TLS13_HKDFExpandLabel(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> secret = args[1];
+  const Span<const uint8_t> label = args[2];
+  const Span<const uint8_t> transcript_hash = args[3];
+  const EVP_MD *md = MDFunc();
+
+  uint32_t out_len;
+  if (out_len_bytes.size() != sizeof(out_len)) {
+    return false;
+  }
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  // RFC 8446 Section 7.1 caps HkdfLabel.length at a uint16_t; reject oversized
+  // requests up front so we don't attempt a multi-GiB |std::vector| allocation
+  // only to have CRYPTO_tls13_hkdf_expand_label reject the size internally.
+  if (out_len > 0xFFFF) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(out_len);
+  // Delegate the "tls13 " prefix + HkdfLabel construction (RFC 8446 §7.1)
+  // and the RFC-mandated length-bound enforcement to the FIPS-module-internal
+  // CRYPTO_tls13_hkdf_expand_label so ACVP exercises the same code path used
+  // by ssl/tls13_enc.cc.
+  if (!CRYPTO_tls13_hkdf_expand_label(out.data(), out_len, md, secret.data(),
+                                      secret.size(), label.data(),
+                                      label.size(), transcript_hash.data(),
+                                      transcript_hash.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
 }
 
 template <int Nid>
@@ -2755,6 +3365,139 @@ static bool ECDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
                                            ctx.get())) {
     LOG_ERROR("EC_POINT_get_affine_coordinates_GFp failed.\n");
+    return false;
+  }
+
+  return write_reply({BIGNUMBytes(x.get()), BIGNUMBytes(y.get()), output});
+}
+
+static bool BuildFixedInfo(std::unique_ptr<uint8_t[]> &fixed_info,
+                           size_t &fixed_info_size,
+                           const Span<const uint8_t> &fixed_info_prefix,
+                           const Span<const uint8_t> &party_u_info,
+                           const Span<const uint8_t> &party_v_info,
+                           const std::vector<uint8_t> &x,
+                           const std::vector<uint8_t> &y) {
+  // Build fixedInfo: fixed_info_prefix || partyUInfo || partyVInfo
+  fixed_info_size = fixed_info_prefix.size() + party_u_info.size() +
+                    party_v_info.size() + x.size() + y.size();
+
+  fixed_info.reset(new uint8_t[fixed_info_size]);
+
+  if (!fixed_info) {
+    return false;
+  }
+
+  uint32_t p = 0;
+  memcpy(fixed_info.get(), fixed_info_prefix.data(), fixed_info_prefix.size());
+  p += fixed_info_prefix.size();
+
+  memcpy(fixed_info.get() + p, party_u_info.data(), party_u_info.size());
+  p += party_u_info.size();
+
+  if (party_u_info.size() < party_v_info.size()) {
+    memcpy(fixed_info.get() + p, x.data(), x.size());
+    p += x.size();
+
+    memcpy(fixed_info.get() + p, y.data(), y.size());
+    p += y.size();
+  }
+
+  memcpy(fixed_info.get() + p, party_v_info.data(), party_v_info.size());
+  p += party_v_info.size();
+
+  if (party_v_info.size() < party_u_info.size()) {
+    memcpy(fixed_info.get() + p, x.data(), x.size());
+    p += x.size();
+
+    memcpy(fixed_info.get() + p, y.data(), y.size());
+    p += y.size();
+  }
+
+  return true;
+}
+
+template <int Nid, const EVP_MD *(MDFunc)()>
+static bool ECDH_SSKDF(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
+  bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> their_y(BytesToBIGNUM(args[1]));
+  const Span<const uint8_t> private_key = args[2];
+  const Span<const uint8_t> fixed_info_prefix = args[3];
+  const Span<const uint8_t> party_u_info = args[4];
+  const Span<const uint8_t> party_v_info = args[5];
+  const Span<const uint8_t> out_len_bytes = args[6];
+  const Span<const uint8_t> add_pub_keys = args[7];
+
+  uint32_t out_len = 0;
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  bool should_add_pub_keys = add_pub_keys.size() > 0 && add_pub_keys[0] != 0;
+
+  // Step 1: ECDH - compute shared secret Z
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  const EC_GROUP *group = EC_KEY_get0_group(ec_key.get());
+
+  bssl::UniquePtr<EC_POINT> their_point(EC_POINT_new(group));
+  if (!EC_POINT_set_affine_coordinates_GFp(
+          group, their_point.get(), their_x.get(), their_y.get(), ctx.get())) {
+    LOG_ERROR("Invalid peer point for KAS-ECC.\n");
+    return false;
+  }
+
+  if (!private_key.empty()) {
+    bssl::UniquePtr<BIGNUM> our_k(BytesToBIGNUM(private_key));
+    if (!EC_KEY_set_private_key(ec_key.get(), our_k.get())) {
+      return false;
+    }
+    bssl::UniquePtr<EC_POINT> our_pub(EC_POINT_new(group));
+    if (!EC_POINT_mul(group, our_pub.get(), our_k.get(), nullptr, nullptr,
+                      ctx.get()) ||
+        !EC_KEY_set_public_key(ec_key.get(), our_pub.get())) {
+      return false;
+    }
+  } else if (!EC_KEY_generate_key_fips(ec_key.get())) {
+    return false;
+  }
+
+  std::vector<uint8_t> z(EC_MAX_BYTES + 1);
+  int z_len = ECDH_compute_key(z.data(), z.size(), their_point.get(),
+                               ec_key.get(), nullptr);
+  if (z_len < 0 || static_cast<size_t>(z_len) == z.size()) {
+    return false;
+  }
+  z.resize(z_len);
+
+  // Get generated public key
+  const EC_POINT *pub = EC_KEY_get0_public_key(ec_key.get());
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
+                                           ctx.get())) {
+    return false;
+  }
+
+  // Determine if IUT is party V: in AFT mode, if party_v_info is shorter than
+  // party_u_info, it means IUT is party V (only has ID, no public key yet)
+  std::unique_ptr<uint8_t[]> fixed_info;
+  size_t fixed_info_size = 0;
+  std::vector<uint8_t> x_bytes, y_bytes;
+
+  if (should_add_pub_keys) {
+    x_bytes = BIGNUMBytes(x.get());
+    y_bytes = BIGNUMBytes(y.get());
+  }
+
+  if (!BuildFixedInfo(fixed_info, fixed_info_size, fixed_info_prefix,
+                      party_u_info, party_v_info, x_bytes, y_bytes)) {
+    return false;
+  }
+
+  // Step 2: One-Step KDF (SSKDF with digest)
+  std::vector<uint8_t> output(out_len);
+  if (!::SSKDF_digest(output.data(), out_len, MDFunc(), z.data(), z.size(),
+                      fixed_info.get(), fixed_info_size)) {
     return false;
   }
 
@@ -2923,8 +3666,8 @@ static bool SSHKDF(const Span<const uint8_t> args[],
 }
 
 template <const EVP_MD *(MDFunc)()>
-static bool HKDF_expand(const Span<const uint8_t> args[],
-                        ReplyCallback write_reply) {
+static bool HKDFExpand(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
   const Span<const uint8_t> out_bytes = args[0];
   const Span<const uint8_t> key_in = args[1];
   const Span<const uint8_t> fixed_data = args[2];
@@ -3068,6 +3811,58 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+template <int nid>
+static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> ek = args[0];
+
+  int (*check_fn)(const uint8_t*, size_t) = nullptr;
+  if(nid == NID_MLKEM512) {
+    check_fn = ml_kem_512_check_pk;
+  } else if(nid == NID_MLKEM768) {
+    check_fn = ml_kem_768_check_pk;
+  } else if(nid == NID_MLKEM1024) {
+    check_fn = ml_kem_1024_check_pk;
+  } else {
+    return false;
+  }
+
+  // The check_sk function validates mandated by FIPS 203 Section 7.2.
+  uint8_t success_flag[1] = {0};
+  if(check_fn(ek.data(), ek.size()) != 0) {
+    return write_reply({Span<const uint8_t>(success_flag)});
+  }
+
+  success_flag[0] = 1;
+  return write_reply({Span<const uint8_t>(success_flag)});
+}
+
+template <int nid>
+static bool MLKEM_DECAP_CHECK(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> dk = args[0];
+
+  int (*check_fn)(const uint8_t*, size_t) = nullptr;
+  if(nid == NID_MLKEM512) {
+    check_fn = ml_kem_512_check_sk;
+  } else if(nid == NID_MLKEM768) {
+    check_fn = ml_kem_768_check_sk;
+  } else if(nid == NID_MLKEM1024) {
+    check_fn = ml_kem_1024_check_sk;
+  } else {
+    return false;
+  }
+
+  // The check_sk function validates mandated by FIPS 203 Section 7.3.
+  uint8_t success_flag[1] = {0};
+  if(check_fn(dk.data(), dk.size()) != 0) {
+    return write_reply({Span<const uint8_t>(success_flag)});
+  }
+
+  success_flag[0] = 1;
+  return write_reply({Span<const uint8_t>(success_flag)});
+}
+
 static bool ED25519KeyGen(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
@@ -3172,34 +3967,35 @@ static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> seed = args[0];
 
-  //init params of the correct size based on provided nid
-  ml_dsa_params params;
+  // Determine key sizes based on NID
+  size_t public_key_bytes, private_key_bytes;
   if (nid == NID_MLDSA44) {
-    ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
-    ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
-    ml_dsa_87_params_init(&params);
+    public_key_bytes = MLDSA44_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA44_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA65) {
+    public_key_bytes = MLDSA65_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA65_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA87) {
+    public_key_bytes = MLDSA87_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA87_PRIVATE_KEY_BYTES;
+  } else {
+    return false;
   }
 
   // create public and private key buffers
-  std::vector<uint8_t> public_key(params.public_key_bytes);
-  std::vector<uint8_t> private_key(params.secret_key_bytes);
+  std::vector<uint8_t> public_key(public_key_bytes);
+  std::vector<uint8_t> private_key(private_key_bytes);
 
   // generate the keys
   if (nid == NID_MLDSA44) {
     if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA65) {
+  } else if (nid == NID_MLDSA65) {
     if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA87) {
+  } else if (nid == NID_MLDSA87) {
     if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
@@ -3215,62 +4011,67 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   const Span<const uint8_t> msg = args[1];
   const Span<const uint8_t> mu = args[2];
   const Span<const uint8_t> rnd = args[3];
-  const Span<const uint8_t> extmu = args[4];
+  const Span<const uint8_t> context = args[4];
+  const Span<const uint8_t> extmu = args[5];
 
-  ml_dsa_params params;
+  using SignInternalFunc = int (*)(const uint8_t*, uint8_t*, size_t*,
+                                   const uint8_t*, size_t,
+                                   const uint8_t*, size_t, const uint8_t*);
+
+  // Group all related functions for each variant
+  struct MLDSA_functions {
+    size_t signature_bytes;
+    SignInternalFunc sign_internal;
+    SignInternalFunc extmu_sign_internal;
+  };
+
+  // Select function set based on NID. We must use |ml_dsa_*_sign_internal| here,
+  // to account for the random inputs (rnd).
+  MLDSA_functions mldsa_funcs;
   if (nid == NID_MLDSA44) {
-    ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
-    ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
-    ml_dsa_87_params_init(&params);
+    mldsa_funcs = {MLDSA44_SIGNATURE_BYTES, ml_dsa_44_sign_internal,
+                   ml_dsa_extmu_44_sign_internal};
+  } else if (nid == NID_MLDSA65) {
+    mldsa_funcs = {MLDSA65_SIGNATURE_BYTES, ml_dsa_65_sign_internal,
+                   ml_dsa_extmu_65_sign_internal};
+  } else if (nid == NID_MLDSA87) {
+    mldsa_funcs = {MLDSA87_SIGNATURE_BYTES, ml_dsa_87_sign_internal,
+                   ml_dsa_extmu_87_sign_internal};
+  } else {
+    return false;
   }
 
-  size_t signature_len = params.bytes;
+  size_t signature_len = mldsa_funcs.signature_bytes;
   std::vector<uint8_t> signature(signature_len);
 
-  // generate the signatures raw sign mode
-  if (extmu.data()[0] == 0) {
-    if (nid == NID_MLDSA44) {
-      if (!ml_dsa_44_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+  if (!extmu.empty()) {
+    // Only signatureInterface: internal contains the externalMu field.
+    if (extmu.data()[0] == 0) {
+      // generate the signatures raw sign mode
+      if (!mldsa_funcs.sign_internal(sk.data(), signature.data(), &signature_len,
+                                      msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    } else {
+      // generate the signatures digest sign mode (externalmu)
+      if (!mldsa_funcs.extmu_sign_internal(sk.data(), signature.data(), &signature_len,
+                                            mu.data(), mu.size(), nullptr, 0, rnd.data())) {
         return false;
       }
     }
-    else if (nid == NID_MLDSA65) {
-      if (!ml_dsa_65_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
-        return false;
-      }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (!ml_dsa_87_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
-        return false;
-      }
-    }
-  }
-  // generate the signatures digest sign mode (externalmu)
-  else {
-    if (nid == NID_MLDSA44) {
-      if (!ml_dsa_extmu_44_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
-        return false;
-      }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (!ml_dsa_extmu_65_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
-        return false;
-      }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (!ml_dsa_extmu_87_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
-        return false;
-      }
+  } else {
+    // |context| is unique to signatureInterface: external.
+    //
+    // Prepare |pre| exactly how |ml_dsa_sign| is doing. The maximum |context| size
+    // for ML-DSA is 255 bytes. We append a 0 and the size as two additional bytes
+    // before |context| to become the prefix string.
+    uint8_t pre[257];
+    pre[0] = 0;
+    pre[1] = context.size();
+    OPENSSL_memcpy(pre + 2 , context.data(), context.size());
+    if (!mldsa_funcs.sign_internal(sk.data(), signature.data(), &signature_len,
+                        msg.data(), msg.size(), pre, 2 + context.size(), rnd.data())) {
+      return false;
     }
   }
 
@@ -3283,52 +4084,60 @@ static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_
   const Span<const uint8_t> pk = args[1];
   const Span<const uint8_t> msg = args[2];
   const Span<const uint8_t> mu = args[3];
-  const Span<const uint8_t> extmu = args[4];
+  const Span<const uint8_t> context = args[4];
+  const Span<const uint8_t> extmu = args[5];
+
+  using VerifyFunc = int (*)(const uint8_t*, const uint8_t*, size_t,
+                             const uint8_t*, size_t, const uint8_t*, size_t);
+  using VerifyInternalFunc = int (*)(const uint8_t*, const uint8_t*, size_t,
+                                     const uint8_t*, size_t, const uint8_t*, size_t);
+
+  // Group all related functions for each variant
+  struct MLDSA_functions {
+    VerifyFunc verify;
+    VerifyInternalFunc verify_internal;
+    VerifyInternalFunc extmu_verify_internal;
+  };
+
+  // Select function set based on NID
+  MLDSA_functions mldsa_funcs;
+  if (nid == NID_MLDSA44) {
+    mldsa_funcs = {ml_dsa_44_verify, ml_dsa_44_verify_internal,
+                   ml_dsa_extmu_44_verify_internal};
+  } else if (nid == NID_MLDSA65) {
+    mldsa_funcs = {ml_dsa_65_verify, ml_dsa_65_verify_internal,
+                   ml_dsa_extmu_65_verify_internal};
+  } else if (nid == NID_MLDSA87) {
+    mldsa_funcs = {ml_dsa_87_verify, ml_dsa_87_verify_internal,
+                   ml_dsa_extmu_87_verify_internal};
+  } else {
+    return false;
+  }
 
   uint8_t reply[1] = {0};
+  if (!extmu.empty()) {
+    // Only signatureInterface: internal contains the externalMu field.
+    if (extmu.data()[0] == 0) {
+      // verify the signatures raw sign mode
+      if (mldsa_funcs.verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+                                      msg.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    } else {
+      // verify the signatures digest sign mode (externalmu)
+      if (mldsa_funcs.extmu_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
+                                            mu.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+  } else {
+    // |context| is unique to signatureInterface: external.
+    if (mldsa_funcs.verify(pk.data(), sig.data(), sig.size(), msg.data(),
+                          msg.size(), context.data(), context.size())) {
+      reply[0] = 1;
+    }
+  }
 
-  // verify the signatures raw sign mode
-  if (extmu.data()[0] == 0) {
-    if (nid == NID_MLDSA44) {
-      if (ml_dsa_44_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
-        reply[0] = 1;
-      }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
-        reply[0] = 1;
-      }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
-        reply[0] = 1;
-      }
-    }
-  }
-  // verify the signatures digest sign mode (externalmu)
-  else{
-    if (nid == NID_MLDSA44) {
-      if (ml_dsa_extmu_44_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
-        reply[0] = 1;
-      }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (ml_dsa_extmu_65_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
-        reply[0] = 1;
-      }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (ml_dsa_extmu_87_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
-        reply[0] = 1;
-       }
-    }
-  }
   return write_reply({Span<const uint8_t>(reply)});
 }
 
@@ -3381,6 +4190,8 @@ static struct {
     {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
+    {"AES-CFB128/encrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_ENCRYPT>},
+    {"AES-CFB128/decrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
@@ -3402,12 +4213,18 @@ static struct {
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
     {"HMAC-SHA2-512/224", 2, HMAC<EVP_sha512_224>},
     {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
+    {"HMAC-SHA3-224", 2, HMAC<EVP_sha3_224>},
+    {"HMAC-SHA3-256", 2, HMAC<EVP_sha3_256>},
+    {"HMAC-SHA3-384", 2, HMAC<EVP_sha3_384>},
+    {"HMAC-SHA3-512", 2, HMAC<EVP_sha3_512>},
     {"ctrDRBG/AES-256", 6, DRBG<false>},
     {"ctrDRBG-reseed/AES-256", 8, DRBG<true>},
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
     {"ECDSA/keyVer", 3, ECDSAKeyVer},
     {"ECDSA/sigGen", 4, ECDSASigGen},
+    {"ECDSA/sigGen/componentTest", 4, ECDSASigGenComponentTest},
     {"ECDSA/sigVer", 7, ECDSASigVer},
+    {"ECDSA/sigVer/componentTest", 7, ECDSASigVerComponentTest},
     {"CMAC-AES", 3, CMAC_AES},
     {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},
@@ -3459,14 +4276,45 @@ static struct {
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
     {"RSA/sigVer/SHAKE-128/pss", 4, RSASigVer<EVP_shake128, true>},
     {"RSA/sigVer/SHAKE-256/pss", 4, RSASigVer<EVP_shake256, true>},
+    {"RSA/signaturePrimitive", 4, RSASignaturePrimitive},
+    {"RSA/decryptionPrimitive", 4, RSADecryptionPrimitive},
+    {"RSA/decryptionPrimitive/crt", 9, RSADecryptionPrimitiveCRT},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
+    {"HKDF/SHA-1/extract", 2, HKDFExtract<EVP_sha1>},
+    {"HKDF/SHA2-224/extract", 2, HKDFExtract<EVP_sha224>},
+    {"HKDF/SHA2-256/extract", 2, HKDFExtract<EVP_sha256>},
+    {"HKDF/SHA2-384/extract", 2, HKDFExtract<EVP_sha384>},
+    {"HKDF/SHA2-512/extract", 2, HKDFExtract<EVP_sha512>},
+    {"HKDF/SHA2-512/224/extract", 2, HKDFExtract<EVP_sha512_224>},
+    {"HKDF/SHA2-512/256/extract", 2, HKDFExtract<EVP_sha512_256>},
+    {"HKDF/SHA3-224/extract", 2, HKDFExtract<EVP_sha3_224>},
+    {"HKDF/SHA3-256/extract", 2, HKDFExtract<EVP_sha3_256>},
+    {"HKDF/SHA3-384/extract", 2, HKDFExtract<EVP_sha3_384>},
+    {"HKDF/SHA3-512/extract", 2, HKDFExtract<EVP_sha3_512>},
+    {"HKDF/SHA-1/expand", 3, HKDFExpand<EVP_sha1>},
+    {"HKDF/SHA2-224/expand", 3, HKDFExpand<EVP_sha224>},
+    {"HKDF/SHA2-256/expand", 3, HKDFExpand<EVP_sha256>},
+    {"HKDF/SHA2-384/expand", 3, HKDFExpand<EVP_sha384>},
+    {"HKDF/SHA2-512/expand", 3, HKDFExpand<EVP_sha512>},
+    {"HKDF/SHA2-512/224/expand", 3, HKDFExpand<EVP_sha512_224>},
+    {"HKDF/SHA2-512/256/expand", 3, HKDFExpand<EVP_sha512_256>},
+    {"HKDF/SHA3-224/expand", 3, HKDFExpand<EVP_sha3_224>},
+    {"HKDF/SHA3-256/expand", 3, HKDFExpand<EVP_sha3_256>},
+    {"HKDF/SHA3-384/expand", 3, HKDFExpand<EVP_sha3_384>},
+    {"HKDF/SHA3-512/expand", 3, HKDFExpand<EVP_sha3_512>},
+    {"HKDFExpandLabel/SHA2-256", 4, TLS13_HKDFExpandLabel<EVP_sha256>},
+    {"HKDFExpandLabel/SHA2-384", 4, TLS13_HKDFExpandLabel<EVP_sha384>},
     {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
+    {"KAS-ECC/OneStep/P-224/SHA2-384", 8,
+     ECDH_SSKDF<NID_secp224r1, EVP_sha384>},
+    {"KAS-ECC/OneStep/P-384/SHA2-384", 8,
+     ECDH_SSKDF<NID_secp384r1, EVP_sha384>},
     {"FFDH", 6, FFDH},
     {"PBKDF", 5, PBKDF},
     {"KDA/HKDF/SHA-1", 4, HKDF<EVP_sha1>},
@@ -3476,6 +4324,10 @@ static struct {
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
     {"KDA/HKDF/SHA2-512/224", 4, HKDF<EVP_sha512_224>},
     {"KDA/HKDF/SHA2-512/256", 4, HKDF<EVP_sha512_256>},
+    {"KDA/HKDF/SHA3-224", 4, HKDF<EVP_sha3_224>},
+    {"KDA/HKDF/SHA3-256", 4, HKDF<EVP_sha3_256>},
+    {"KDA/HKDF/SHA3-384", 4, HKDF<EVP_sha3_384>},
+    {"KDA/HKDF/SHA3-512", 4, HKDF<EVP_sha3_512>},
     {"KDA/OneStep/SHA-1", 3, SSKDF_DIGEST<EVP_sha1>},
     {"KDA/OneStep/SHA2-224", 3, SSKDF_DIGEST<EVP_sha224>},
     {"KDA/OneStep/SHA2-256", 3, SSKDF_DIGEST<EVP_sha256>},
@@ -3494,6 +4346,16 @@ static struct {
     {"KDA/OneStep/HMAC-SHA2-512", 4, SSKDF_HMAC<EVP_sha512>},
     {"KDA/OneStep/HMAC-SHA2-512/224", 4, SSKDF_HMAC<EVP_sha512_224>},
     {"KDA/OneStep/HMAC-SHA2-512/256", 4, SSKDF_HMAC<EVP_sha512_256>},
+    {"KTS/OAEP/SHA-1/initiate", 3, RSAOAEPEncrypt<EVP_sha1>},
+    {"KTS/OAEP/SHA2-224/initiate", 3, RSAOAEPEncrypt<EVP_sha224>},
+    {"KTS/OAEP/SHA2-256/initiate", 3, RSAOAEPEncrypt<EVP_sha256>},
+    {"KTS/OAEP/SHA2-384/initiate", 3, RSAOAEPEncrypt<EVP_sha384>},
+    {"KTS/OAEP/SHA2-512/initiate", 3, RSAOAEPEncrypt<EVP_sha512>},
+    {"KTS/OAEP/SHA-1/respond", 6, RSAOAEPDecrypt<EVP_sha1>},
+    {"KTS/OAEP/SHA2-224/respond", 6, RSAOAEPDecrypt<EVP_sha224>},
+    {"KTS/OAEP/SHA2-256/respond", 6, RSAOAEPDecrypt<EVP_sha256>},
+    {"KTS/OAEP/SHA2-384/respond", 6, RSAOAEPDecrypt<EVP_sha384>},
+    {"KTS/OAEP/SHA2-512/respond", 6, RSAOAEPDecrypt<EVP_sha512>},
     {"SSHKDF/SHA-1/ivCli", 4,
      SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
     {"SSHKDF/SHA2-224/ivCli", 4,
@@ -3554,13 +4416,13 @@ static struct {
      SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
     {"SSHKDF/SHA2-512/integServ", 4,
      SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
-    {"KDF/Feedback/HMAC-SHA-1", 3, HKDF_expand<EVP_sha1>},
-    {"KDF/Feedback/HMAC-SHA2-224", 3, HKDF_expand<EVP_sha224>},
-    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha256>},
-    {"KDF/Feedback/HMAC-SHA2-384", 3, HKDF_expand<EVP_sha384>},
-    {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
-    {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDF_expand<EVP_sha512_224>},
-    {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
+    {"KDF/Feedback/HMAC-SHA-1", 3, HKDFExpand<EVP_sha1>},
+    {"KDF/Feedback/HMAC-SHA2-224", 3, HKDFExpand<EVP_sha224>},
+    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDFExpand<EVP_sha256>},
+    {"KDF/Feedback/HMAC-SHA2-384", 3, HKDFExpand<EVP_sha384>},
+    {"KDF/Feedback/HMAC-SHA2-512", 3, HKDFExpand<EVP_sha512>},
+    {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDFExpand<EVP_sha512_224>},
+    {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDFExpand<EVP_sha512_256>},
     {"KDF/Counter/HMAC-SHA-1", 3, KBKDF_CTR_HMAC<EVP_sha1>},
     {"KDF/Counter/HMAC-SHA2-224", 3, KBKDF_CTR_HMAC<EVP_sha224>},
     {"KDF/Counter/HMAC-SHA2-256", 3, KBKDF_CTR_HMAC<EVP_sha256>},
@@ -3577,6 +4439,12 @@ static struct {
     {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
     {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
     {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM1024>},
     {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
     {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
     {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
@@ -3586,12 +4454,12 @@ static struct {
     {"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
     {"ML-DSA/ML-DSA-65/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA65>},
     {"ML-DSA/ML-DSA-87/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA87>},
-    {"ML-DSA/ML-DSA-44/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA44>},
-    {"ML-DSA/ML-DSA-65/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA65>},
-    {"ML-DSA/ML-DSA-87/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA87>},
-    {"ML-DSA/ML-DSA-44/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA44>},
-    {"ML-DSA/ML-DSA-65/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA65>},
-    {"ML-DSA/ML-DSA-87/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA87>}};
+    {"ML-DSA/ML-DSA-44/sigGen", 6, ML_DSA_SIGGEN<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigGen", 6, ML_DSA_SIGGEN<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigGen", 6, ML_DSA_SIGGEN<NID_MLDSA87>},
+    {"ML-DSA/ML-DSA-44/sigVer", 6, ML_DSA_SIGVER<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigVer", 6, ML_DSA_SIGVER<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigVer", 6, ML_DSA_SIGVER<NID_MLDSA87>}};
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
   const bssl::Span<const uint8_t> algorithm = args[0];

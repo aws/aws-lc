@@ -3,7 +3,8 @@ cmake-build-debug/
 build/
 build32/
 build64/
-build-fips/
+build-*/
+build_*/
 *_BUILD_ROOT/
 ssl/test/runner/runner
 *.pyc
@@ -11,7 +12,7 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
-
+docs/api/html/
 util/bot/android_ndk
 util/bot/android_sdk/public
 util/bot/cmake
@@ -45,3 +46,4 @@ symbols.txt
 /compile_commands.json
 /scratch
 awslcTestTmpFile*
+/pages-output

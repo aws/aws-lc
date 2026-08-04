@@ -1,58 +1,6 @@
-/*
- * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project.
- */
-/* ====================================================================
- * Copyright (c) 2003 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project.
+// Copyright (c) 2003 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <stdio.h>
 #include <string.h>
@@ -80,10 +28,13 @@ static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
 static int print_nc_ipadd(BIO *bp, const ASN1_OCTET_STRING *ip);
 
 static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc);
-static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen);
+static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen,
+                           int excluding);
 static int nc_dn(X509_NAME *sub, X509_NAME *nm);
-static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns);
-static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
+static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns,
+                  int excluding);
+static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml,
+                    int excluding);
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base);
 static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base);
 
@@ -347,15 +298,32 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   }
 
   int isdnsname = 0;
+  int has_non_dns_char = 0;
+
+  // Per RFC 6125 Section 6.4.3, a wildcard DNS-ID uses a leading "*." covering
+  // the first label. Skip past it for validation, but return the full value so
+  // |nc_dns| can match it against name constraints.
+  int check_start = 0;
+  if (utf8_length > 2 && utf8_value[0] == '*' && utf8_value[1] == '.') {
+    check_start = 2;
+  }
   
-  // XXX: Deviation from strict DNS name syntax, also check names with '_'
-  // Check DNS name syntax, any '-' or '.' must be internal,
-  // and on either side of each '.' we can't have a '-' or '.'.
+  // Check DNS name syntax. Any '-' or '.' must be internal, and on either side
+  // of each '.' we can't have a '-' or '.'. Names with '_' are also accepted
+  // as a deviation from strict DNS syntax.
   //
-  // If the name has just one label, we don't consider it a DNS name.  This
+  // If the name has just one label, we don't consider it a DNS name. This
   // means that "CN=sometld" cannot be precluded by DNS name constraints, but
-  // that is not a problem.
-  for (int i = 0; i < utf8_length; ++i) {
+  // that is not a problem. Single-label CNs may contain non-ASCII characters
+  // (e.g. "CN=Ünternehmen") and are silently skipped.
+  //
+  // Multi-label CNs that resemble DNS names must be ASCII-only. Per RFC 6125
+  // Section 6.4.2, internationalized domain names should appear in A-label
+  // (punycode) form. A multi-label CN containing non-ASCII bytes or control
+  // characters is rejected with |X509_V_ERR_UNSUPPORTED_NAME_SYNTAX| to
+  // prevent it from bypassing name constraints while still being accepted by
+  // hostname verification.
+  for (int i = check_start; i < utf8_length; ++i) {
     const unsigned char c = utf8_value[i];
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -363,8 +331,13 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
       continue;
     }
 
+    if (c >= 0x80 || c <= 0x20 || c == 0x7F) {
+      has_non_dns_char = 1;
+      continue;
+    }
+
     // Dot and hyphen cannot be first or last.
-    if (i > 0 && i < utf8_length - 1) {
+    if (i > check_start && i < utf8_length - 1) {
       if (c == '-') {
         continue;
       }
@@ -380,6 +353,13 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
     }
     isdnsname = 0;
     break;
+  }
+
+  if (isdnsname && has_non_dns_char) {
+    // Multi-label CN with non-ASCII bytes or control characters. This
+    // resembles a DNS name but contains characters not permitted in DNS.
+    OPENSSL_free(utf8_value);
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
   if (isdnsname) {
@@ -454,7 +434,7 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
     if (match == 0) {
       match = 1;
     }
-    r = nc_match_single(gen, sub->base);
+    r = nc_match_single(gen, sub->base, /*excluding=*/0);
     if (r == X509_V_OK) {
       match = 2;
     } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
@@ -477,7 +457,7 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
       return X509_V_ERR_SUBTREE_MINMAX;
     }
 
-    r = nc_match_single(gen, sub->base);
+    r = nc_match_single(gen, sub->base, /*excluding=*/1);
     if (r == X509_V_OK) {
       return X509_V_ERR_EXCLUDED_VIOLATION;
     } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
@@ -488,16 +468,17 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
-static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base) {
+static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
+                           int excluding) {
   switch (base->type) {
     case GEN_DIRNAME:
       return nc_dn(gen->d.directoryName, base->d.directoryName);
 
     case GEN_DNS:
-      return nc_dns(gen->d.dNSName, base->d.dNSName);
+      return nc_dns(gen->d.dNSName, base->d.dNSName, excluding);
 
     case GEN_EMAIL:
-      return nc_email(gen->d.rfc822Name, base->d.rfc822Name);
+      return nc_email(gen->d.rfc822Name, base->d.rfc822Name, excluding);
 
     case GEN_URI:
       return nc_uri(gen->d.uniformResourceIdentifier,
@@ -536,6 +517,15 @@ static int starts_with(const CBS *cbs, uint8_t c) {
   return CBS_len(cbs) > 0 && CBS_data(cbs)[0] == c;
 }
 
+static int starts_with_str(const CBS *cbs, const char *str, size_t str_len) {
+  return CBS_len(cbs) >= str_len &&
+         !OPENSSL_memcmp(CBS_data(cbs), str, str_len);
+}
+
+static int ends_with_byte(const CBS *cbs, uint8_t c) {
+  return CBS_len(cbs) > 0 && CBS_data(cbs)[CBS_len(cbs) - 1] == c;
+}
+
 static int equal_case(const CBS *a, const CBS *b) {
   if (CBS_len(a) != CBS_len(b)) {
     return 0;
@@ -560,7 +550,8 @@ static int has_suffix_case(const CBS *a, const CBS *b) {
   return equal_case(&copy, b);
 }
 
-static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
+static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
+                  int excluding) {
   CBS dns_cbs, base_cbs;
   CBS_init(&dns_cbs, dns->data, dns->length);
   CBS_init(&base_cbs, base->data, base->length);
@@ -568,6 +559,34 @@ static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
   // Empty matches everything
   if (CBS_len(&base_cbs) == 0) {
     return X509_V_OK;
+  }
+
+  // Normalize absolute DNS names by removing the trailing dot, if any.
+  if (ends_with_byte(&dns_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&dns_cbs, &unused);
+  }
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&base_cbs, &unused);
+  }
+
+  // Wildcard partial-match handling ("*.bar.com" matching name constraint
+  // "foo.bar.com"). This only handles the case where the dnsname and the
+  // constraint match after removing the leftmost label, otherwise it is handled
+  // by falling through to the check of whether the dnsname is fully within or
+  // fully outside of the constraint.
+  if (excluding && starts_with_str(&dns_cbs, "*.", 2)) {
+    CBS unused;
+    CBS base_parent_cbs = base_cbs;
+    CBS dns_parent_cbs = dns_cbs;
+    CBS_skip(&dns_parent_cbs, 2);
+    if (CBS_get_until_first(&base_parent_cbs, &unused, '.') &&
+        CBS_skip(&base_parent_cbs, 1)) {
+      if (equal_case(&dns_parent_cbs, &base_parent_cbs)) {
+        return X509_V_OK;
+      }
+    }
   }
 
   // If |base_cbs| begins with a '.', do a simple suffix comparison. This is
@@ -596,48 +615,120 @@ static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
   return X509_V_OK;
 }
 
-static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
+// Returns 1 if |cbs| contains only characters valid in an RFC 5321 Sec.4.1.2
+// local-part atom (atext per RFC 5322 Sec.3.2.3). RFC 5322 allows quoted
+// local-parts which may contain '@' characters. Rather than parsing
+// quoted-strings, we reject local-parts containing non-atext characters.
+static int is_valid_rfc822_local_part(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;
+  }
+  for (size_t i = 0; i < CBS_len(cbs); i++) {
+    uint8_t c = CBS_data(cbs)[i];
+    if (!(OPENSSL_isalnum(c) || c == '!' || c == '#' || c == '$' ||
+          c == '%' || c == '&' || c == '\'' || c == '*' || c == '+' ||
+          c == '-' || c == '/' || c == '=' || c == '?' || c == '^' ||
+          c == '_' || c == '`' || c == '{' || c == '|' || c == '}' ||
+          c == '~' || c == '.')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+// Returns 1 if |cbs| contains only characters valid in a DNS domain label
+// per RFC 1034 Sec.3.5 (alphanumeric, hyphen, dot).
+static int is_valid_rfc822_domain(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;
+  }
+  for (size_t i = 0; i < CBS_len(cbs); i++) {
+    uint8_t c = CBS_data(cbs)[i];
+    if (!(OPENSSL_isalnum(c) || c == '-' || c == '.')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
+                    int excluding) {
   CBS eml_cbs, base_cbs;
   CBS_init(&eml_cbs, eml->data, eml->length);
   CBS_init(&base_cbs, base->data, base->length);
 
-  // TODO(davidben): In OpenSSL 1.1.1, this switched from the first '@' to the
-  // last one. Match them here, or perhaps do an actual parse. Looks like
-  // multiple '@'s may be allowed in quoted strings.
-  CBS eml_local, base_local;
-  if (!CBS_get_until_first(&eml_cbs, &eml_local, '@')) {
+  CBS eml_local;
+  if (!CBS_get_until_first(&eml_cbs, &eml_local, '@') ||
+      !CBS_skip(&eml_cbs, 1)) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
+  CBS eml_domain = eml_cbs;
+
+  // Reject subject emails with multiple '@'. This catches both
+  // "a@b"@evil.example and a@b@evil.example.
+  CBS unused;
+  if (CBS_get_until_first(&eml_cbs, &unused, '@')) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // Reject subject emails with characters outside RFC 5321 atext in the
+  // local-part (rejects quoted local-parts like "user"@example.com) or
+  // invalid domain characters.
+  if (!is_valid_rfc822_local_part(&eml_local) ||
+      !is_valid_rfc822_domain(&eml_domain)) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  CBS base_local;
   int base_has_at = CBS_get_until_first(&base_cbs, &base_local, '@');
 
+  if (base_has_at) {
+    // "@example.com" is not a valid constraint per RFC 5280 Sec.4.2.1.10.
+    if (CBS_len(&base_local) == 0) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+    CBS_skip(&base_cbs, 1);  // skip past '@'
+    CBS base_domain = base_cbs;
+
+    // Reject constraints with multiple '@'.
+    if (CBS_get_until_first(&base_cbs, &unused, '@')) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+    if (!is_valid_rfc822_local_part(&base_local) ||
+        !is_valid_rfc822_domain(&base_domain)) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+
+    // For excluded subtrees, compare the local-part case-insensitively.
+    // RFC 5321 and RFC 5322 conflict on case sensitivity; for security we
+    // err on being more strict when checking exclusions.
+    int local_match = excluding
+        ? equal_case(&base_local, &eml_local)
+        : CBS_mem_equal(&base_local, CBS_data(&eml_local),
+                        CBS_len(&eml_local));
+    if (!local_match) {
+      return X509_V_ERR_PERMITTED_VIOLATION;
+    }
+    if (!equal_case(&base_domain, &eml_domain)) {
+      return X509_V_ERR_PERMITTED_VIOLATION;
+    }
+    return X509_V_OK;
+  }
+
+  if (!is_valid_rfc822_domain(&base_cbs)) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
   // Special case: initial '.' is RHS match
-  if (!base_has_at && starts_with(&base_cbs, '.')) {
-    if (has_suffix_case(&eml_cbs, &base_cbs)) {
+  if (starts_with(&base_cbs, '.')) {
+    if (has_suffix_case(&eml_domain, &base_cbs)) {
       return X509_V_OK;
     }
     return X509_V_ERR_PERMITTED_VIOLATION;
   }
 
-  // If we have anything before '@' match local part
-  if (base_has_at) {
-    // TODO(davidben): This interprets a constraint of "@example.com" as
-    // "example.com", which is not part of RFC5280.
-    if (CBS_len(&base_local) > 0) {
-      // Case sensitive match of local part
-      if (!CBS_mem_equal(&base_local, CBS_data(&eml_local),
-                         CBS_len(&eml_local))) {
-        return X509_V_ERR_PERMITTED_VIOLATION;
-      }
-    }
-    // Position base after '@'
-    assert(starts_with(&base_cbs, '@'));
-    CBS_skip(&base_cbs, 1);
-  }
-
-  // Just have hostname left to match: case insensitive
-  assert(starts_with(&eml_cbs, '@'));
-  CBS_skip(&eml_cbs, 1);
-  if (!equal_case(&base_cbs, &eml_cbs)) {
+  // Domain-only constraint: case insensitive match
+  if (!equal_case(&base_cbs, &eml_domain)) {
     return X509_V_ERR_PERMITTED_VIOLATION;
   }
 
@@ -659,10 +750,32 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // RFC 5280 §4.2.1.10 specifies that URI name constraints "MUST be specified
+  // as a fully qualified domain name". IPv6 literal URIs (e.g.
+  // "https://[2001:db8::1]/") are not domain names, and matching them by string
+  // comparison would be unreliable because IPv6 addresses have many equivalent
+  // textual representations. Reject them as unsupported.
+  if (starts_with(&uri_cbs, '[')) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // RFC 3986 §3.2 defines authority = [userinfo "@"] host [":" port].
+  // Certificate SAN URIs have no standards-defined use for userinfo. If present,
+  // the '@' delimiter would cause the host extraction below to parse the
+  // userinfo as the host, matching against attacker-chosen bytes instead of
+  // the URI's actual host.
+  for (size_t i = 0; i < CBS_len(&uri_cbs); i++) {
+    uint8_t c = CBS_data(&uri_cbs)[i];
+    if (c == '/' || c == '?' || c == '#') {
+      break;
+    }
+    if (c == '@') {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+  }
+
   // Look for a port indicator as end of hostname first. Otherwise look for
   // trailing slash, or the end of the string.
-  // TODO(davidben): This is not a correct URI parser and mishandles IPv6
-  // literals.
   CBS host;
   if (!CBS_get_until_first(&uri_cbs, &host, ':') &&
       !CBS_get_until_first(&uri_cbs, &host, '/')) {
@@ -671,6 +784,35 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
 
   if (CBS_len(&host) == 0) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // Normalize absolute DNS names by removing the trailing dot, if any.
+  // RFC 1034 §3.1 defines that a trailing dot denotes the DNS root; names with
+  // and without it refer to the same host. This matches the normalization in
+  // nc_dns().
+  if (ends_with_byte(&host, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&host, &unused);
+  }
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t unused;
+    CBS_get_last_u8(&base_cbs, &unused);
+  }
+
+  // RFC 5280 §4.2.1.10 requires the host to be a fully qualified domain name.
+  // Validate that the host contains only characters valid in a DNS name
+  // (RFC 1034 §3.5): letters, digits, hyphens, and dots. This rejects
+  // percent-encoded hosts and any other non-FQDN syntax, preventing
+  // equivalence bypasses (e.g., "b%61d.com" evading ".bad.com").
+  if (CBS_len(&host) == 0) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+  for (size_t i = 0; i < CBS_len(&host); i++) {
+    uint8_t c = CBS_data(&host)[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c == '-' || c == '.')) {
+      return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
   }
 
   // Special case: initial '.' is RHS match

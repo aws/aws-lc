@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/evp.h>
 
@@ -72,13 +19,14 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../fipsmodule/kem/internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
 // specific key type implementations like PQDSA.
 // The OID is then searched against ASN.1 methods for a method with that OID.
 // As the |OID| is read from |cbs| the buffer is advanced.
-// For the case of |NID_rsa| the method |rsa_asn1_meth| is returned.
+// For the case of |NID_rsa| or |NID_rsaesOaep| the method |rsa_asn1_meth| is returned.
 // For the case of |EVP_PKEY_PQDSA| the method |pqdsa_asn1.meth| is returned.
 // For the case of |EVP_PKEY_KEM| the method |kem_asn1.meth| is returned.
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
@@ -99,20 +47,25 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
     }
   }
 
-  // Special logic to handle the rarer |NID_rsa|.
+  // Special logic to handle the rarer |NID_rsa| and |NID_rsaesOaep|.
+  // NID_rsa:
   // https://www.itu.int/ITU-T/formal-language/itu-t/x/x509/2008/AlgorithmObjectIdentifiers.html
-  if (OBJ_cbs2nid(&oid) == NID_rsa) {
+  // NID_rsaesOaep: underlying key is the same as |NID_rsa|. Used by
+  // TPM 1.2 Endorsement Key certificates per TCG Credential Profiles
+  // V1.2, section 3.2.7.
+  int nid = OBJ_cbs2nid(&oid);
+  if (nid == NID_rsa || nid == NID_rsaesOaep) {
     return &rsa_asn1_meth;
   }
 
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(nid);
   if (pqdsa_method != NULL) {
     return pqdsa_method;
   }
-  return KEM_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  return KEM_find_asn1_by_nid(nid);
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
@@ -130,31 +83,25 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   CBS oid;
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm, &oid);
-  if (method == NULL) {
+  if (method == NULL || method->pub_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
-  if (// Every key type defined encodes the key as a byte string with the same
-      // conversion to BIT STRING.
-      !CBS_get_u8(&key, &padding) ||
+  // Every key type defined encodes the key as a byte string with the same
+  // conversion to BIT STRING, so perform that common conversion ahead of time.
+  if (!CBS_get_u8(&key, &padding) ||
       padding != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
 
-  // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  // Call into the type-specific SPKI decoding function.
-  if (ret->ameth->pub_decode == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    goto err;
-  }
-  if (!ret->ameth->pub_decode(ret, &oid, &algorithm, &key)) {
+  if (!method->pub_decode(ret, &oid, &algorithm, &key)) {
     goto err;
   }
 
@@ -177,7 +124,7 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
 }
 
 static const unsigned kAttributesTag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0;
 
 static const unsigned kPublicKeyTag =
     CBS_ASN1_CONTEXT_SPECIFIC | 1;
@@ -198,7 +145,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   CBS oid;
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm, &oid);
-  if (method == NULL) {
+  if (method == NULL || method->priv_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
@@ -206,7 +153,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
   // we ignore.
   if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
-    if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
+    if (!CBS_get_asn1(&pkcs8, NULL, kAttributesTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
@@ -225,21 +172,21 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     has_pub = 1;
   }
 
+  // Reject trailing data within the SEQUENCE.
+  if (CBS_len(&pkcs8) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+
   // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  // Call into the type-specific PrivateKeyInfo decoding function.
-  if (ret->ameth->priv_decode == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    goto err;
-  }
-
-  if (!ret->ameth->priv_decode(ret, &oid, &algorithm, &key,
-                               has_pub ? &public_key : NULL)) {
+  if (!method->priv_decode(ret, &oid, &algorithm, &key,
+                           has_pub ? &public_key : NULL)) {
     goto err;
   }
 
@@ -482,9 +429,18 @@ int i2d_PublicKey(const EVP_PKEY *key, uint8_t **outp) {
       return i2d_DSAPublicKey(key->pkey.dsa, outp);
     case EVP_PKEY_EC:
       return i2o_ECPublicKey(key->pkey.ec, outp);
-    default:
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-      return -1;
+    default: {
+      // Fall back to SubjectPublicKeyInfo for key types without legacy
+      // formats (e.g. Ed25519).
+      CBB cbb;
+      if (!CBB_init(&cbb, 128) ||
+          !EVP_marshal_public_key(&cbb, key)) {
+        CBB_cleanup(&cbb);
+        OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+        return -1;
+      }
+      return CBB_finish_i2d(&cbb, outp);
+    }
   }
 }
 
@@ -512,9 +468,23 @@ EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out, const uint8_t **inp,
     // this function with |EVP_PKEY_EC| and setting |out| to NULL does not work.
     // It requires |*out| to include a partially-initialized |EVP_PKEY| to
     // extract the group.
-    default:
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-      goto err;
+    default: {
+      // Fall back to SubjectPublicKeyInfo for key types without legacy
+      // formats (e.g. Ed25519).
+      EVP_PKEY_free(ret);
+      ret = NULL;
+      ERR_clear_error();
+      ret = EVP_parse_public_key(&cbs);
+      if (ret == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+        goto err;
+      }
+      if (ret->type != type) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
+        goto err;
+      }
+      break;
+    }
   }
 
   *inp = CBS_data(&cbs);
@@ -717,15 +687,14 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **_pe,
   for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
     const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
 
-    const size_t longest_pem_str_len = 10;  // "DILITHIUM3"
-
     const size_t pem_str_len =
-        OPENSSL_strnlen(ameth->pem_str, longest_pem_str_len);
+        OPENSSL_strnlen(ameth->pem_str, MAX_PEM_STR_LEN);
 
     // OPENSSL_strncasecmp(a, b, n) compares up to index n-1
-    const size_t cmp_len =
-        1 + ((name_len < pem_str_len) ? name_len : pem_str_len);
-    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, cmp_len)) {
+    if (name_len != pem_str_len) {
+      continue;
+    }
+    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, name_len)) {
       return ameth;
     }
   }
@@ -755,4 +724,18 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
     *ppem_str = ameth->pem_str;
   }
   return 1;
+}
+
+int EVP_PKEY_get_private_seed(const EVP_PKEY *key, uint8_t *out,
+  size_t *out_len) {
+  SET_DIT_AUTO_RESET;
+  GUARD_PTR(key);
+  GUARD_PTR(out_len);
+
+  if (key->ameth == NULL || key->ameth->get_priv_seed == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return key->ameth->get_priv_seed(key, out, out_len);
 }

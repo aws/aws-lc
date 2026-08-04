@@ -1,0 +1,68 @@
+{
+  "permissions": {
+    "_comment": [
+      "This allow list is the main Bash boundary because autofix.sh runs with defaultMode dontAsk and no bare Bash in --allowedTools.",
+      "Any command not listed here or built-in read-only is denied, and each part of a piped or chained command is checked on its own.",
+      "The sandbox block is the final safety net because it scrubs credentials, limits network egress to allowedDomains, and limits reads."
+    ],
+    "defaultMode": "dontAsk",
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash)",
+      "Bash(git stash:*)",
+      "Bash(git hash-object:*)",
+      "Bash(patch:*)",
+      "Bash(sed:*)",
+      "Bash(cut:*)",
+      "Bash(tar:*)",
+      "Bash(mkdir:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ],
+    "deny": [
+      "Bash(git config *)",
+      "Bash(git -c *)",
+      "Read(**/.env*)",
+      "Read(**/secrets/**)",
+      "Read(**/.aws/**)",
+      "Read(**/.ssh/**)",
+      "Read(**/.netrc)",
+      "Read(**/.git-credentials)",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "credentials": {
+      "envVars": [
+        { "name": "AWS_ACCESS_KEY_ID", "mode": "deny" },
+        { "name": "AWS_SECRET_ACCESS_KEY", "mode": "deny" },
+        { "name": "AWS_SESSION_TOKEN", "mode": "deny" },
+        { "name": "GH_TOKEN", "mode": "deny" },
+        { "name": "GITHUB_TOKEN", "mode": "deny" },
+        { "name": "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "mode": "deny" },
+        { "name": "ACTIONS_ID_TOKEN_REQUEST_URL", "mode": "deny" }
+      ]
+    },
+    "network": {
+      "_comment": "downloads.nwtime.org is needed by the ntp integration. It fetches the NTP source tarball from there to build it. See run_ntp_integration.sh.",
+      "allowedDomains": [
+        "downloads.nwtime.org"
+      ]
+    },
+    "filesystem": {
+      "denyRead": ["~/"],
+      "allowRead": ["."]
+    }
+  }
+}

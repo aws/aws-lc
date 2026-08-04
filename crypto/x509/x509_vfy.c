@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <ctype.h>
 #include <limits.h>
@@ -74,20 +21,42 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
 // CRL score values
+//
+// The bit layout below is carefully chosen so that a numerical comparison
+// against |CRL_SCORE_VALID| is equivalent to "NOCRITICAL, SCOPE, and TIME
+// are all set." For that to hold, the sum of every bit strictly below TIME
+// (ISSUER_NAME | ISSUER_CERT | SAME_PATH | AKID) must be less than TIME,
+// TIME must be less than SCOPE, and SCOPE less than NOCRITICAL. Preserve
+// this invariant when adjusting these values.
 
 // No unhandled critical extensions
-#define CRL_SCORE_NOCRITICAL 0x100
+#define CRL_SCORE_NOCRITICAL 0x200
 
 // certificate is within CRL scope
-#define CRL_SCORE_SCOPE 0x080
+#define CRL_SCORE_SCOPE 0x100
 
 // CRL times valid
-#define CRL_SCORE_TIME 0x040
+#define CRL_SCORE_TIME 0x080
+
+// CRL's IDP specifically matches the certificate's CRLDP. Always set
+// alongside CRL_SCORE_SCOPE; refines a broad in-scope match into a
+// specific one so a specific-IDP CRL outranks a broad no-IDP CRL of
+// equal freshness. 
+//
+// This bit is placed strictly below CRL_SCORE_TIME 
+// so that an invalid specific-IDP CRL cannot win over a valid broad CRL. 
+// A specific-IDP CRL must still be fresh (TIME) and free of unhandled critical 
+// extensions (NOCRITICAL) to qualify as valid.
+#define CRL_SCORE_IDP_MATCH 0x040
 
 // Issuer name matches certificate
 #define CRL_SCORE_ISSUER_NAME 0x020
 
-// If this score or above CRL is probably valid
+// If this score or above CRL is probably valid.
+//
+// CRL_SCORE_IDP_MATCH is intentionally excluded: a specific-IDP CRL that
+// is missing NOCRITICAL or TIME must not be considered valid on the basis
+// of its scope match alone.
 #define CRL_SCORE_VALID \
   (CRL_SCORE_NOCRITICAL | CRL_SCORE_TIME | CRL_SCORE_SCOPE)
 
@@ -116,7 +85,7 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
 static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
 static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
                           int *pcrl_score);
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score);
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score, int *idp_match);
 static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x);
 
 static int internal_verify(X509_STORE_CTX *ctx);
@@ -625,10 +594,6 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
     return 0;
   }
 
-  // Remove the |EXFLAG_CRITICAL| flag from |x|, now that all unknown
-  // critical extensions have been handled.
-  x->ex_flags &= ~EXFLAG_CRITICAL;
-
   sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
   return 1;
 }
@@ -683,6 +648,9 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       }
     }
 
+    // The |num > 1| condition intentionally skips this check for single-certificate chains
+    // (e.g., a self-signed leaf or a partial chain with only the target certificate). This
+    // maintains consistency with OpenSSL 1.1.1 behavior.
     if (num > 1 && (ctx->param->awslc_flags&AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS) == 0) {
       // In OpenSSL 1.1.1 this check was done if |X509_V_FLAG_X509_STRICT| was enabled.
       // We did not perform this check explicitly before, but the behavior was baked into
@@ -730,7 +698,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     }
     // Check pathlen if not self issued
     if (i > 1 && !(x->ex_flags & EXFLAG_SI) && x->ex_pathlen != -1 &&
-        plen > x->ex_pathlen + 1) {
+        plen - 1 > x->ex_pathlen) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -1112,11 +1080,13 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
     return 0;
   }
 
-  // Check cert for matching CRL distribution points
-  if (crl_crldp_check(x, crl, crl_score)) {
+  int idp_match = 0;
+  if (crl_crldp_check(x, crl, crl_score, &idp_match)) {
     crl_score |= CRL_SCORE_SCOPE;
+    if (idp_match) {
+      crl_score |= CRL_SCORE_IDP_MATCH;
+    }
   }
-
   return crl_score;
 }
 
@@ -1221,8 +1191,9 @@ static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
   return 0;
 }
 
-// Check CRLDP and IDP
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
+// Check CRLDP and IDP. Return true when the CRL is a good
+// candidate CRL from which to check revocation of the certificate.
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score, int *idp_match) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
   }
@@ -1244,18 +1215,33 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
     //
     // We also do not support indirect CRLs, and a CRL issuer can only match
     // indirect CRLs (RFC 5280, section 6.3.3, step b.1).
-    // support.
-    if (dp->reasons != NULL && dp->CRLissuer != NULL &&
-        (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint))) {
+    if (dp->reasons != NULL || dp->CRLissuer != NULL) {
+      continue;
+    }
+    // At this point we have already checked that the CRL issuer matches
+    // the certificate issuer (and set CRL_SCORE_ISSUER_NAME);
+
+    // RFC 5280 Section 6.3.3 step b.2
+
+    // A CRL with a specific IDP match will be preferred
+    // over a broad no-IDP/empty-IDP match.
+    if (crl->idp && crl->idp->distpoint &&
+        idp_check_dp(dp->distpoint, crl->idp->distpoint)) {
+      *idp_match = 1;
       return 1;
     }
   }
 
   // If the CRL does not specify an issuing distribution point, allow it to
   // match anything.
-  //
-  // TODO(davidben): Does this match RFC 5280? It's hard to follow because RFC
-  // 5280 starts from distribution points, while this starts from CRLs.
+  // RFC5280 section 6.3.3 check (b).(2) does not prescribe what to do if the
+  // CRL does not include an IDP. This fallback returns CRL_SCORE_SCOPE (broad
+  // match) if the CRL did not include an IDP or an IDP without a DP. Such a
+  // CRL could still be a good candidate CRL to check against although we
+  // cannot check if it matches the DP in the certificate. A CRL with a
+  // specific IDP match receives (CRL_SCORE_SCOPE | CRL_SCORE_IDP_MATCH), so it will be preferred
+  // over a broad match. Among CRLs with the same scope class, get_crl_sk()
+  // will pick the freshest one.
   return !crl->idp || !crl->idp->distpoint;
 }
 
@@ -1564,7 +1550,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
   EVP_PKEY *pkey = X509_get0_pubkey(xs);
   if(pkey == NULL) {
     ctx->error = X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
-    ctx->current_cert = xi;
+    ctx->current_cert = xs;
     ok = 0;
     goto end;
   }
@@ -1894,11 +1880,13 @@ int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
   if (ctx->custom_crit_oids == NULL) {
     ctx->custom_crit_oids = sk_ASN1_OBJECT_new_null();
     if (ctx->custom_crit_oids == NULL) {
+      ASN1_OBJECT_free(oid_dup);
       return 0;
     }
   }
 
   if (!sk_ASN1_OBJECT_push(ctx->custom_crit_oids, oid_dup)) {
+    ASN1_OBJECT_free(oid_dup);
     return 0;
   }
   return 1;

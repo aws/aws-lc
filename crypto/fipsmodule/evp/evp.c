@@ -1,58 +1,5 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/evp.h>
 
@@ -72,6 +19,8 @@
 #include "../../pem/internal.h"
 #include "../../console/internal.h"
 #include "../../internal.h"
+#include "../kem/internal.h"
+#include "../pqdsa/internal.h"
 #include "internal.h"
 
 
@@ -101,9 +50,10 @@ EVP_PKEY *EVP_PKEY_new(void) {
 static void free_it(EVP_PKEY *pkey) {
   if (pkey->ameth && pkey->ameth->pkey_free) {
     pkey->ameth->pkey_free(pkey);
-    pkey->pkey.ptr = NULL;
-    pkey->type = EVP_PKEY_NONE;
   }
+  pkey->pkey.ptr = NULL;
+  pkey->type = EVP_PKEY_NONE;
+  pkey->ameth = NULL;
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
@@ -234,7 +184,11 @@ err:
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   SET_DIT_AUTO_RESET;
   if (to->type == EVP_PKEY_NONE) {
-    evp_pkey_set_method(to, from->ameth);
+    // TODO(crbug.com/42290409): This shouldn't leave |to| in a half-empty state
+    // on error. The complexity here largely comes from parameterless DSA keys,
+    // which we no longer support, so this function can probably be trimmed
+    // down.
+    evp_pkey_set0(to, from->ameth, NULL);
   } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
@@ -292,6 +246,31 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
   return pkey->type;
 }
 
+int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
+  if (pkey->type != EVP_PKEY_PQDSA) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_PQDSA_KEY);
+    return 0;
+  }
+  if (!pkey->pkey.pqdsa_key || !pkey->pkey.pqdsa_key->pqdsa) {
+    return 0;
+  }
+  return pkey->pkey.pqdsa_key->pqdsa->nid;
+}
+
+int EVP_PKEY_kem_get_type(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
+  if (pkey->type != EVP_PKEY_KEM) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_KEM_KEY);
+    return 0;
+  }
+  if (!pkey->pkey.kem_key || !pkey->pkey.kem_key->kem) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+  return pkey->pkey.kem_key->kem->nid;
+}
+
 int EVP_MD_get_pkey_type(const EVP_MD *md) {
   if (md) {
     int sig_nid = 0;
@@ -332,10 +311,12 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   return NULL;
 }
 
-void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
+void evp_pkey_set0(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method,
+                   void *pkey_data) {
   free_it(pkey);
   pkey->ameth = method;
-  pkey->type = pkey->ameth->pkey_id;
+  pkey->type = method ? method->pkey_id : EVP_PKEY_NONE;
+  pkey->pkey.ptr = pkey_data;
 }
 
 static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
@@ -343,7 +324,7 @@ static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
     // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
     // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
     // behavior.
-    free_it(pkey);
+    evp_pkey_set0(pkey, NULL, NULL);
   }
 
   const EVP_PKEY_ASN1_METHOD *ameth = NULL;
@@ -361,7 +342,7 @@ static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
   }
 
   if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
+    evp_pkey_set0(pkey, ameth, NULL);
   }
 
   return 1;
@@ -427,11 +408,13 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
-  return key != NULL;
+  evp_pkey_set0(pkey, meth, key);
+  return 1;
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
@@ -463,11 +446,13 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
-  return key != NULL;
+  evp_pkey_set0(pkey, meth, key);
+  return 1;
 }
 
 DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
@@ -499,17 +484,19 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
   SET_DIT_AUTO_RESET;
+  if (key == NULL) {
+    return 0;
+  }
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
   assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
-  return key != NULL;
+  evp_pkey_set0(pkey, meth, key);
+  return 1;
 }
 
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;
   if (pkey->type != EVP_PKEY_EC) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_EC_KEY_KEY);
     return NULL;
   }
   return pkey->pkey.ec;
@@ -585,9 +572,9 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
+  if (!method->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
   }
 
@@ -622,9 +609,9 @@ EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
   if (ret == NULL) {
     goto err;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set0(ret, method, NULL);
 
-  if (!ret->ameth->set_pub_raw(ret, in, len)) {
+  if (!method->set_pub_raw(ret, in, len)) {
     goto err;
   }
 
@@ -686,12 +673,18 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
-int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                        const uint8_t *context,
                                        size_t context_len) {
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
                            EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+}
+
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  return EVP_PKEY_CTX_set1_signature_context_string(ctx, context, context_len);
 }
 
 int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,

@@ -79,6 +79,12 @@ int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                         const uint8_t *ciphertext /* IN  */,
                                         const uint8_t *secret_key /* IN  */);
 
+OPENSSL_EXPORT int ml_kem_512_check_pk(const uint8_t *public_key /* IN */,
+                                       size_t public_key_len /* IN  */);
+OPENSSL_EXPORT int ml_kem_512_check_sk(const uint8_t *secret_key /* IN */,
+                                       size_t secret_key_len /* IN  */);
+
+
 OPENSSL_EXPORT int ml_kem_768_keypair_deterministic(uint8_t *public_key /* OUT */,
                                                     size_t *public_len  /* IN_OUT */,
                                                     uint8_t *secret_key /* OUT */,
@@ -125,6 +131,11 @@ int ml_kem_768_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                            size_t *shared_secret_len /* IN_OUT */,
                            const uint8_t *ciphertext /* IN  */,
                            const uint8_t *secret_key /* IN  */);
+
+OPENSSL_EXPORT int ml_kem_768_check_pk(const uint8_t *public_key /* IN */,
+                                       size_t public_key_len /* IN  */);
+OPENSSL_EXPORT int ml_kem_768_check_sk(const uint8_t *secret_key /* IN */,
+                                       size_t secret_key_len /* IN  */);
 
 OPENSSL_EXPORT int ml_kem_1024_keypair_deterministic(uint8_t *public_key /* OUT */,
                                                      size_t *public_len  /* IN_OUT */,
@@ -174,6 +185,11 @@ int ml_kem_1024_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                          size_t *shared_secret_len /* IN_OUT */,
                                          const uint8_t *ciphertext /* IN  */,
                                          const uint8_t *secret_key /* IN  */);
+
+OPENSSL_EXPORT int ml_kem_1024_check_pk(const uint8_t *public_key /* IN */,
+                                        size_t public_key_len /* IN  */);
+OPENSSL_EXPORT int ml_kem_1024_check_sk(const uint8_t *secret_key /* IN */,
+                                        size_t secret_key_len /* IN  */);
 
 #if defined(__cplusplus)
 }

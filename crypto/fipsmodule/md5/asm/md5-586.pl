@@ -1,4 +1,6 @@
 #!/usr/local/bin/perl
+# Copyright 1995-2020 The OpenSSL Project Authors. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 # Normal is the
 # md5_block_x86(MD5_CTX *c, ULONG *X);

@@ -1,63 +1,10 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com) All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/conf.h>
 
-#include <string.h>
 #include <ctype.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
@@ -65,9 +12,9 @@
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
 #include "conf_def.h"
 #include "internal.h"
-#include "../internal.h"
 
 
 static const char kDefaultSectionName[] = "default";
@@ -186,7 +133,10 @@ err:
 }
 
 static int str_copy(CONF *conf, char *section, char **pto, char *from) {
-  int q, to = 0, len = 0;
+  int q = 0, to = 0, len = 0, r = 0;
+  char *rrp = NULL, *s = NULL, *cp = NULL, *e = NULL, *rp = NULL, *np = NULL;
+  const char *p = NULL;
+  char rr = 0;
   char v;
   BUF_MEM *buf;
 
@@ -215,6 +165,9 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
       }
       if (*from == q) {
         from++;
+      } else {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_QUOTE);
+        goto err;
       }
     } else if (IS_ESC(conf, *from)) {
       from++;
@@ -234,10 +187,79 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
     } else if (IS_EOF(conf, *from)) {
       break;
     } else if (*from == '$') {
-      // Historically, $foo would expand to a previously-parsed value. This
-      // feature has been removed as it was unused and is a DoS vector.
-      OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_NOT_SUPPORTED);
-      goto err;
+      size_t newsize = 0;
+
+      // try to expand it
+      rrp = NULL;
+      s = &(from[1]);
+      if (*s == '{') {
+        q = '}';
+      } else if (*s == '(') {
+        q = ')';
+      } else {
+        q = 0;
+      }
+
+      if (q) {
+        s++;
+      }
+      cp = section;
+      e = np = s;
+      while (IS_ALPHA_NUMERIC(conf, *e)) {
+        e++;
+      }
+      if ((e[0] == ':') && (e[1] == ':')) {
+        cp = np;
+        rrp = e;
+        rr = *e;
+        *rrp = '\0';
+        e += 2;
+        np = e;
+        while (IS_ALPHA_NUMERIC(conf, *e)) {
+          e++;
+        }
+      }
+      r = *e;
+      *e = '\0';
+      rp = e;
+      if (q) {
+        if (r != q) {
+          OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_BRACE);
+          goto err;
+        }
+        e++;
+      }
+      //  So at this point we have
+      //  np which is the start of the name string which is
+      //    '\0' terminated.
+      //  cp which is the start of the section string which is
+      //    '\0' terminated.
+      //  e is the 'next point after'.
+      //  r and rr are the chars replaced by the '\0'
+      //  rp and rrp is where 'r' and 'rr' came from.
+      p = NCONF_get_string(conf, cp, np);
+      if (rrp != NULL) {
+        *rrp = rr;
+      }
+      *rp = r;
+      if (p == NULL) {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_HAS_NO_VALUE);
+        goto err;
+      }
+      newsize = strlen(p) + buf->length - (e - from);
+      if (newsize > UINT16_MAX) {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_TOO_LONG);
+        goto err;
+      }
+      if (!BUF_MEM_grow_clean(buf, newsize)) {
+        OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+      while (*p) {
+        buf->data[to++] = *(p++);
+      }
+
+      from = e;
     } else {
       buf->data[to++] = *(from++);
     }
@@ -258,7 +280,7 @@ static CONF_VALUE *get_section(const CONF *conf, const char *section) {
   CONF_VALUE template;
 
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
+  template.section = (char *)section;
   return lh_CONF_VALUE_retrieve(conf->data, &template);
 }
 
@@ -268,38 +290,56 @@ const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
   if (section_value == NULL) {
     return NULL;
   }
-  return (STACK_OF(CONF_VALUE)*) section_value->value;
+  return (STACK_OF(CONF_VALUE) *)section_value->value;
 }
 
 const char *NCONF_get_string(const CONF *conf, const char *section,
                              const char *name) {
   CONF_VALUE template, *value;
 
-  if (section == NULL) {
-    section = kDefaultSectionName;
+  OPENSSL_memset(&template, 0, sizeof(template));
+
+  if (section != NULL) {
+    template.section = (char *)section;
+    template.name = (char *)name;
+    value = lh_CONF_VALUE_retrieve(conf->data, &template);
+    if (value != NULL) {
+      return value->value;
+    }
   }
 
-  OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
-  template.name = (char *) name;
+  char defaultSectionName[] = "default";
+
+  template.section = defaultSectionName;
+  template.name = (char *)name;
   value = lh_CONF_VALUE_retrieve(conf->data, &template);
-  if (value == NULL) {
-    return NULL;
+  if (value != NULL) {
+    return value->value;
   }
-  return value->value;
+
+  return NULL;
 }
 
 static int add_string(const CONF *conf, CONF_VALUE *section,
                       CONF_VALUE *value) {
-  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE)*) section->value;
+  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE) *)section->value;
   CONF_VALUE *old_value;
 
   value->section = OPENSSL_strdup(section->section);
+  if (value->section == NULL) {
+    return 0;
+  }
+
   if (!sk_CONF_VALUE_push(section_stack, value)) {
+    OPENSSL_free(value->section);
+    value->section = NULL;
     return 0;
   }
 
   if (!lh_CONF_VALUE_insert(conf->data, &old_value, value)) {
+    (void)sk_CONF_VALUE_delete_ptr(section_stack, value);
+    OPENSSL_free(value->section);
+    value->section = NULL;
     return 0;
   }
   if (old_value != NULL) {
@@ -444,6 +484,11 @@ int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
     // we now have a line with trailing \r\n removed
 
     // i is the number of bytes
+    // Ensure addition doesn't overflow and corrupt the signed buffer position
+    if (i > INT_MAX - bufnum) {
+      OPENSSL_PUT_ERROR(CONF, ERR_R_OVERFLOW);
+      goto err;
+    }
     bufnum += i;
 
     v = NULL;

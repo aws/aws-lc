@@ -25,6 +25,7 @@
 #include "../api.h"
 #include "src/arith_native_aarch64.h"
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_ntt_native(int16_t data[MLKEM_N])
 {
   mlk_ntt_asm(data, mlk_aarch64_ntt_zetas_layer12345,
@@ -32,6 +33,7 @@ static MLK_INLINE int mlk_ntt_native(int16_t data[MLKEM_N])
   return MLK_NATIVE_FUNC_SUCCESS;
 }
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_intt_native(int16_t data[MLKEM_N])
 {
   mlk_intt_asm(data, mlk_aarch64_invntt_zetas_layer12345,
@@ -39,18 +41,21 @@ static MLK_INLINE int mlk_intt_native(int16_t data[MLKEM_N])
   return MLK_NATIVE_FUNC_SUCCESS;
 }
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_poly_reduce_native(int16_t data[MLKEM_N])
 {
   mlk_poly_reduce_asm(data);
   return MLK_NATIVE_FUNC_SUCCESS;
 }
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_poly_tomont_native(int16_t data[MLKEM_N])
 {
   mlk_poly_tomont_asm(data);
   return MLK_NATIVE_FUNC_SUCCESS;
 }
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_poly_mulcache_compute_native(int16_t x[MLKEM_N / 2],
                                                        const int16_t y[MLKEM_N])
 {
@@ -60,6 +65,7 @@ static MLK_INLINE int mlk_poly_mulcache_compute_native(int16_t x[MLKEM_N / 2],
 }
 
 #if defined(MLK_CONFIG_MULTILEVEL_WITH_SHARED) || MLKEM_K == 2
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k2_native(
     int16_t r[MLKEM_N], const int16_t a[2 * MLKEM_N],
     const int16_t b[2 * MLKEM_N], const int16_t b_cache[2 * (MLKEM_N / 2)])
@@ -70,6 +76,7 @@ static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k2_native(
 #endif /* MLK_CONFIG_MULTILEVEL_WITH_SHARED || MLKEM_K == 2 */
 
 #if defined(MLK_CONFIG_MULTILEVEL_WITH_SHARED) || MLKEM_K == 3
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k3_native(
     int16_t r[MLKEM_N], const int16_t a[3 * MLKEM_N],
     const int16_t b[3 * MLKEM_N], const int16_t b_cache[3 * (MLKEM_N / 2)])
@@ -80,6 +87,7 @@ static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k3_native(
 #endif /* MLK_CONFIG_MULTILEVEL_WITH_SHARED || MLKEM_K == 3 */
 
 #if defined(MLK_CONFIG_MULTILEVEL_WITH_SHARED) || MLKEM_K == 4
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k4_native(
     int16_t r[MLKEM_N], const int16_t a[4 * MLKEM_N],
     const int16_t b[4 * MLKEM_N], const int16_t b_cache[4 * (MLKEM_N / 2)])
@@ -89,6 +97,7 @@ static MLK_INLINE int mlk_polyvec_basemul_acc_montgomery_cached_k4_native(
 }
 #endif /* MLK_CONFIG_MULTILEVEL_WITH_SHARED || MLKEM_K == 4 */
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_poly_tobytes_native(uint8_t r[MLKEM_POLYBYTES],
                                               const int16_t a[MLKEM_N])
 {
@@ -96,6 +105,7 @@ static MLK_INLINE int mlk_poly_tobytes_native(uint8_t r[MLKEM_POLYBYTES],
   return MLK_NATIVE_FUNC_SUCCESS;
 }
 
+MLK_MUST_CHECK_RETURN_VALUE
 static MLK_INLINE int mlk_rej_uniform_native(int16_t *r, unsigned len,
                                              const uint8_t *buf,
                                              unsigned buflen)

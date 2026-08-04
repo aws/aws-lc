@@ -14,6 +14,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/bignum_invsqrt_p25519_alt.o \
       curve25519/bignum_madd_n25519.o \
       curve25519/bignum_madd_n25519_alt.o \
+      curve25519/bignum_mod_m25519.o \
       curve25519/bignum_mod_m25519_4.o \
       curve25519/bignum_mod_n25519.o \
       curve25519/bignum_mod_n25519_4.o \
@@ -137,6 +138,21 @@ OBJ = curve25519/bignum_add_p25519.o \
       generic/word_negmodinv.o \
       generic/word_popcount.o \
       generic/word_recip.o \
+      mldsa/mldsa_intt.o \
+      mldsa/mldsa_ntt.o \
+      mldsa/mldsa_reduce.o \
+      mlkem/mlkem_basemul_k2.o \
+      mlkem/mlkem_basemul_k3.o \
+      mlkem/mlkem_basemul_k4.o \
+      mlkem/mlkem_frombytes.o \
+      mlkem/mlkem_intt.o \
+      mlkem/mlkem_mulcache_compute.o \
+      mlkem/mlkem_ntt.o \
+      mlkem/mlkem_reduce.o \
+      mlkem/mlkem_rej_uniform_VARIABLE_TIME.o \
+      mlkem/mlkem_tobytes.o \
+      mlkem/mlkem_tomont.o \
+      mlkem/mlkem_unpack.o \
       p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \
       p256/bignum_cmul_p256.o \
@@ -287,6 +303,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       secp256k1/secp256k1_jmixadd.o \
       secp256k1/secp256k1_jmixadd_alt.o \
       sha3/sha3_keccak_f1600.o \
+      sha3/sha3_keccak4_f1600.o \
+      sha3/sha3_keccak4_f1600_alt.o \
       sm2/bignum_add_sm2.o \
       sm2/bignum_cmul_sm2.o \
       sm2/bignum_cmul_sm2_alt.o \
@@ -339,6 +357,9 @@ p521/%.S :: ../x86/p521/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@)
 secp256k1/%.S :: ../x86/secp256k1/%.S   ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 sha3/%.S :: ../x86/sha3/%.S               ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 sm2/%.S :: ../x86/sm2/%.S               ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+mldsa/%.S :: ../x86/mldsa/%.S           ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+mlkem/%.S :: ../x86/mlkem/%.S           ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+
 
 clean:; rm -f */*.o
 

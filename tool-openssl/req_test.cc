@@ -198,7 +198,8 @@ TEST_F(ReqTest, EncryptedPrivateKey) {
 }
 
 TEST_F(ReqTest, DefaultKeyoutPath) {
-  // Test that key is written to privkey.pem when -keyout is not specified
+  // Test that key is written to privkey.pem when -newkey is present even with
+  // no -keyout
   args_list_t args = {"-new", "-newkey", "rsa:2048", "-nodes",
                       "-out", csr_path,  "-subj",    "/CN=test.com"};
 
@@ -221,10 +222,34 @@ TEST_F(ReqTest, SuppressedKeyWrite) {
           "encrypt_key = yes\n"
           "[req_dn]\n"
           "CN = Common Name\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",   "-config", config_path,   "-out",
                       csr_path, "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  // Verify that privkey.pem was NOT created
+  ScopedFILE f(fopen("privkey.pem", "r"));
+  EXPECT_FALSE(f) << "privkey.pem should not be created";
+}
+
+TEST_F(ReqTest, ExistingKeyNoWrite) {
+  // Verify if -key is provided, no key write should happen
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "[req]\n"
+          "default_keyfile = privkey.pem\n"
+          "distinguished_name = req_dn\n"
+          "encrypt_key = yes\n"
+          "[req_dn]\n"
+          "CN = Common Name\n");
+  config_file.reset();
+
+  args_list_t args = {"-new",   "-config",      config_path,
+                      "-key",   input_key_path, "-out",
+                      csr_path, "-subj",        "/CN=primary"};
 
   ASSERT_TRUE(reqTool(args));
 
@@ -259,7 +284,7 @@ TEST_F(ReqTest, BasicConfig) {
           "distinguished_name = req_dn\n"
           "[req_dn]\n"
           "CN = Common Name\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",    "-config",       config_path, "-nodes",
                       "-keyout", output_key_path, "-out",      csr_path,
@@ -285,7 +310,7 @@ TEST_F(ReqTest, NoReqSectionConfig) {
           "encrypt_key = no\n"
           "[req_dn]\n"
           "CN = Common Name\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",    "-config",       config_path,
                       "-keyout", output_key_path, "-out",
@@ -329,7 +354,7 @@ TEST_F(ReqTest, DigestSelectionFromConfig) {
           "default_md = sha512\n"
           "distinguished_name = req_dn\n"
           "[req_dn]\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",     "-config", config_path, "-newkey",
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
@@ -346,7 +371,7 @@ TEST_F(ReqTest, KeyEncryptionFromConfig) {
           "encrypt_key = yes\n"
           "distinguished_name = req_dn\n"
           "[req_dn]\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",          "-config",  config_path,     "-newkey",
                       "rsa:2048",      "-passout", "pass:testpass", "-keyout",
@@ -369,7 +394,7 @@ TEST_F(ReqTest, ReqExtensions) {
           "[test_ext]\n"
           "basicConstraints = CA:FALSE\n"
           "keyUsage = digitalSignature, keyEncipherment\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",     "-config",       config_path, "-extensions",
                       "test_ext", "-newkey",       "rsa:2048",  "-nodes",
@@ -390,7 +415,7 @@ TEST_F(ReqTest, X509Extensions) {
           "basicConstraints = CA:FALSE\n"
           "keyUsage = digitalSignature, keyEncipherment\n"
           "subjectAltName = DNS:alt.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-x509",       "-new",       "-config",       config_path,
                       "-extensions", "custom_ext", "-newkey",       "rsa:2048",
@@ -411,7 +436,7 @@ TEST_F(ReqTest, ReqExtensionsFromConfig) {
           "[v3_req]\n"
           "basicConstraints = CA:FALSE\n"
           "keyUsage = nonRepudiation, digitalSignature, keyEncipherment\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",     "-config", config_path, "-newkey",
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
@@ -431,7 +456,7 @@ TEST_F(ReqTest, X509ExtensionsFromConfig) {
           "[v3_ca]\n"
           "basicConstraints = critical,CA:true\n"
           "keyUsage = critical,keyCertSign,cRLSign\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-x509",         "-new",     "-config", config_path,
                       "-newkey",       "rsa:2048", "-nodes",  "-keyout",
@@ -445,7 +470,7 @@ TEST_F(ReqTest, ReqExtensionsFromEmptyConfig) {
   ScopedFILE config_file(fopen(config_path, "w"));
   ASSERT_TRUE(config_file);
   fprintf(config_file.get(), "[req]\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-new",     "-config", config_path, "-newkey",
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
@@ -458,7 +483,7 @@ TEST_F(ReqTest, X509ExtensionsFromEmptyConfig) {
   ScopedFILE config_file(fopen(config_path, "w"));
   ASSERT_TRUE(config_file);
   fprintf(config_file.get(), "[req]\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   args_list_t args = {"-x509",         "-new",     "-config", config_path,
                       "-newkey",       "rsa:2048", "-nodes",  "-keyout",
@@ -691,9 +716,8 @@ TEST_F(ReqComparisonTest, GenerateBasicCSR) {
   auto csr_tool = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_tool != nullptr) << "Failed to load CSR generated by tool";
-  ASSERT_TRUE(csr_openssl != nullptr)
-      << "Failed to load CSR generated by OpenSSL";
+  ASSERT_TRUE(csr_tool) << "Failed to load CSR generated by tool";
+  ASSERT_TRUE(csr_openssl) << "Failed to load CSR generated by OpenSSL";
 
   // Compare CSR attributes
   ASSERT_TRUE(CompareCSRs(csr_tool.get(), csr_openssl.get()))
@@ -722,9 +746,8 @@ TEST_F(ReqComparisonTest, GenerateSelfSignedCertificate) {
   auto cert_tool = LoadPEMCertificate(cert_path_awslc);
   auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
 
-  ASSERT_TRUE(cert_tool != nullptr)
-      << "Failed to load certificate generated by tool";
-  ASSERT_TRUE(cert_openssl != nullptr)
+  ASSERT_TRUE(cert_tool) << "Failed to load certificate generated by tool";
+  ASSERT_TRUE(cert_openssl)
       << "Failed to load certificate generated by OpenSSL";
 
   // Compare certificates in detail with 365 days validity period
@@ -745,7 +768,7 @@ TEST_F(ReqComparisonTest, NoPromptConfig) {
           "[ req_distinguished_name ]\n"
           "CN = config.example.com\n"
           "C = US\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) +
                               " req -new -config " + config_path +
@@ -761,8 +784,8 @@ TEST_F(ReqComparisonTest, NoPromptConfig) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -788,8 +811,8 @@ TEST_F(ReqComparisonTest, InteractivePrompting) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -806,7 +829,7 @@ TEST_F(ReqComparisonTest, PrivateKeyLengthFromConfig) {
           "\n"
           "[ req_distinguished_name ]\n"
           "CN = test.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string subject = "/CN=test.example.com";
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
@@ -823,8 +846,8 @@ TEST_F(ReqComparisonTest, PrivateKeyLengthFromConfig) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 
   bssl::UniquePtr<EVP_PKEY> awslc_key(
@@ -877,7 +900,7 @@ TEST_F(ReqComparisonTest, SubjectConfigFallback) {
           "ST = California\n"
           "organizationName = Test Org\n"
           "CN = config.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
                               "-config " + config_path +
@@ -894,8 +917,8 @@ TEST_F(ReqComparisonTest, SubjectConfigFallback) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -916,8 +939,8 @@ TEST_F(ReqComparisonTest, ExistingPrivateKey) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -941,8 +964,8 @@ TEST_F(ReqComparisonTest, OutformDER) {
   auto csr_awslc = LoadDERCSR(csr_path_awslc);
   auto csr_openssl = LoadDERCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 
   // Test certificate generation
@@ -961,9 +984,8 @@ TEST_F(ReqComparisonTest, OutformDER) {
   auto cert_awslc = LoadDERCertificate(cert_path_awslc);
   auto cert_openssl = LoadDERCertificate(cert_path_openssl);
 
-  ASSERT_TRUE(cert_awslc != nullptr) << "Failed to load AWS-LC DER certificate";
-  ASSERT_TRUE(cert_openssl != nullptr)
-      << "Failed to load OpenSSL DER certificate";
+  ASSERT_TRUE(cert_awslc) << "Failed to load AWS-LC DER certificate";
+  ASSERT_TRUE(cert_openssl) << "Failed to load OpenSSL DER certificate";
 
   // Compare certificates with 365 days validity period
   ASSERT_TRUE(
@@ -994,8 +1016,8 @@ TEST_F(ReqComparisonTest, KeyConflict) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 
   bssl::UniquePtr<EVP_PKEY> awslc_key(
@@ -1024,8 +1046,8 @@ TEST_F(ReqComparisonTest, DigestSelection) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1042,7 +1064,7 @@ TEST_F(ReqComparisonTest, DigestSelectionFromConfig) {
           "\n"
           "[ req_distinguished_name ]\n"
           "CN = encrypted-key.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
                               "-config " + config_path +
@@ -1059,8 +1081,8 @@ TEST_F(ReqComparisonTest, DigestSelectionFromConfig) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1084,8 +1106,8 @@ TEST_F(ReqComparisonTest, CustomValidityPeriod) {
   auto cert_awslc = LoadPEMCertificate(cert_path_awslc);
   auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
 
-  ASSERT_TRUE(cert_awslc != nullptr) << "Failed to load AWS-LC certificate";
-  ASSERT_TRUE(cert_openssl != nullptr) << "Failed to load OpenSSL certificate";
+  ASSERT_TRUE(cert_awslc) << "Failed to load AWS-LC certificate";
+  ASSERT_TRUE(cert_openssl) << "Failed to load OpenSSL certificate";
 
   // Compare certificates with 180 days validity period
   ASSERT_TRUE(
@@ -1110,8 +1132,8 @@ TEST_F(ReqComparisonTest, CustomSigningKey) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr) << "Failed to load AWS-LC CSR";
-  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load OpenSSL CSR";
+  ASSERT_TRUE(csr_awslc) << "Failed to load AWS-LC CSR";
+  ASSERT_TRUE(csr_openssl) << "Failed to load OpenSSL CSR";
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1133,8 +1155,8 @@ TEST_F(ReqComparisonTest, ProtectedSigningKey) {
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
 
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1153,7 +1175,7 @@ TEST_F(ReqComparisonTest, GenerateProtectedPrivateKey) {
           "\n"
           "[ req_distinguished_name ]\n"
           "CN = encrypted-key.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   // Test with existing key (using the pre-generated sign_key_path) and config
   std::string awslc_command =
@@ -1210,7 +1232,7 @@ TEST_F(ReqComparisonTest, ReqExtensions) {
           "[ test_ext ]\n"
           "basicConstraints = CA:FALSE\n"
           "keyUsage = digitalSignature, keyEncipherment\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
                               "-config " + config_path +
@@ -1229,8 +1251,8 @@ TEST_F(ReqComparisonTest, ReqExtensions) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1251,7 +1273,7 @@ TEST_F(ReqComparisonTest, X509Extensions) {
           "basicConstraints = CA:FALSE\n"
           "keyUsage = digitalSignature, keyEncipherment\n"
           "subjectAltName = DNS:alt.example.com\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) +
                               " req -x509 -new " + "-config " + config_path +
@@ -1271,9 +1293,9 @@ TEST_F(ReqComparisonTest, X509Extensions) {
   auto cert_awslc = LoadPEMCertificate(cert_path_awslc);
   auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
 
-  ASSERT_TRUE(cert_awslc != nullptr)
+  ASSERT_TRUE(cert_awslc)
       << "Failed to load AWS-LC certificate with custom extensions";
-  ASSERT_TRUE(cert_openssl != nullptr)
+  ASSERT_TRUE(cert_openssl)
       << "Failed to load OpenSSL certificate with custom extensions";
 
   // Compare certificates with custom extensions
@@ -1298,7 +1320,7 @@ TEST_F(ReqComparisonTest, ReqExtensionsFromConfig) {
           "[ v3_req ]\n"
           "subjectAltName = DNS:alt1.example.com,DNS:alt2.example.com\n"
           "keyUsage = digitalSignature, keyEncipherment\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string subject = "/CN=req-ext-test.example.com";
   std::string awslc_command =
@@ -1316,8 +1338,8 @@ TEST_F(ReqComparisonTest, ReqExtensionsFromConfig) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1338,7 +1360,7 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromConfig) {
           "basicConstraints = critical,CA:true\n"
           "keyUsage = critical,keyCertSign,cRLSign\n"
           "subjectKeyIdentifier = hash\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string subject = "/CN=x509-ext-test.example.com";
   std::string awslc_command = std::string(tool_executable_path) +
@@ -1358,8 +1380,8 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromConfig) {
 
   auto cert_awslc = LoadPEMCertificate(cert_path_awslc);
   auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
-  ASSERT_TRUE(cert_awslc != nullptr);
-  ASSERT_TRUE(cert_openssl != nullptr);
+  ASSERT_TRUE(cert_awslc);
+  ASSERT_TRUE(cert_openssl);
   ASSERT_TRUE(
       CompareCertificates(cert_awslc.get(), cert_openssl.get(), nullptr, 365));
 }
@@ -1376,7 +1398,7 @@ TEST_F(ReqComparisonTest, ReqExtentionsFromEmptyConfig) {
           "[ req_distinguished_name ]\n"
           "CN = req-ext-test.example.com\n"
           "\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
                               "-config " + config_path +
@@ -1393,8 +1415,8 @@ TEST_F(ReqComparisonTest, ReqExtentionsFromEmptyConfig) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
@@ -1410,7 +1432,7 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromEmptyConfig) {
           "[ req_distinguished_name ]\n"
           "CN = x509-ext-test.example.com\n"
           "\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string awslc_command = std::string(tool_executable_path) +
                               " req -x509 -new " + "-config " + config_path +
@@ -1427,8 +1449,8 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromEmptyConfig) {
 
   auto cert_awslc = LoadPEMCertificate(cert_path_awslc);
   auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
-  ASSERT_TRUE(cert_awslc != nullptr);
-  ASSERT_TRUE(cert_openssl != nullptr);
+  ASSERT_TRUE(cert_awslc);
+  ASSERT_TRUE(cert_openssl);
   ASSERT_TRUE(
       CompareCertificates(cert_awslc.get(), cert_openssl.get(), nullptr, 365));
 }
@@ -1448,7 +1470,7 @@ TEST_F(ReqComparisonTest, NoReqSectionConfig) {
           "[ v3_req ]\n"
           "subjectAltName = DNS:alt1.example.com,DNS:alt2.example.com\n"
           "keyUsage = digitalSignature, keyEncipherment\n");
-  fclose(config_file.release());
+  config_file.reset();
 
   std::string subject = "/CN=req-ext-test.example.com";
   std::string awslc_command =
@@ -1466,8 +1488,8 @@ TEST_F(ReqComparisonTest, NoReqSectionConfig) {
 
   auto csr_awslc = LoadPEMCSR(csr_path_awslc);
   auto csr_openssl = LoadPEMCSR(csr_path_openssl);
-  ASSERT_TRUE(csr_awslc != nullptr);
-  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 

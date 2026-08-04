@@ -8,6 +8,12 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 
+# Dependencies: Ubuntu
+if [ -f /etc/debian_version ] && [ "$(id -u)" -eq 0 ]; then
+  apt-get update
+  apt-get install -y --no-install-recommends liblmdb-dev
+fi
+
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
 #  - SCRATCH_FOLDER
@@ -30,8 +36,6 @@ function bind9_patch() {
 }
 
 function bind9_build() {
-  BIND9_VERSION=$(meson introspect meson.build --projectinfo | jq -r '.version')
-
   #dnsrps was removed since bind9 9.21.2
   meson setup "$BIND9_BUILD_FOLDER" \
     --pkg-config-path="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" \
@@ -42,6 +46,8 @@ function bind9_build() {
     -Dleak-detection=enabled \
     -Djemalloc=disabled \
     -Dtracing=disabled
+
+  BIND9_VERSION=$(meson introspect "$BIND9_BUILD_FOLDER" --projectinfo | jq -r '.version')
 
   meson compile -C "$BIND9_BUILD_FOLDER"
   "$BIND9_BUILD_FOLDER"/named -V

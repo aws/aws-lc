@@ -1,16 +1,5 @@
-/* Copyright (c) 2017, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2017, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/evp.h>
 
@@ -128,10 +117,16 @@ static int pkey_ed25519ph_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
     }
     case EVP_PKEY_CTRL_SIGNING_CONTEXT: {
       EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS *params = p2;
-      if (!params || !dctx || params->context_len > sizeof(dctx->context)) {
+      if (!params || !dctx ||
+          params->context_len > sizeof(dctx->context) ||
+          (params->context_len > 0 && !params->context)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
         return 0;
       }
-      OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      OPENSSL_cleanse(dctx->context, sizeof(dctx->context));
+      if (params->context_len > 0) {
+        OPENSSL_memcpy(dctx->context, params->context, params->context_len);
+      }
       dctx->context_len = params->context_len;
       break;
     }

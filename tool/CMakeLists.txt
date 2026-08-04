@@ -41,6 +41,10 @@ else()
   endif()
 endif()
 
+if(COHABITANT_BINARIES)
+  set_target_properties(bssl PROPERTIES OUTPUT_NAME "${AWSLC_BIN_PREFIX}bssl")
+endif()
+
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}

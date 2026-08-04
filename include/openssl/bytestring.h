@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_BYTESTRING_H
 #define OPENSSL_HEADER_BYTESTRING_H
@@ -643,33 +632,6 @@ OPENSSL_EXPORT int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text,
 //
 // Note a SET type has a slightly different ordering than a SET OF.
 OPENSSL_EXPORT int CBB_flush_asn1_set_of(CBB *cbb);
-
-
-// Unicode utilities.
-//
-// These functions consider noncharacters (see section 23.7 from Unicode 15.0.0)
-// to be invalid code points and will treat them as an error condition.
-
-// The following functions read one Unicode code point from |cbs| with the
-// corresponding encoding and store it in |*out|. They return one on success and
-// zero on error.
-OPENSSL_EXPORT int CBS_get_utf8(CBS *cbs, uint32_t *out);
-OPENSSL_EXPORT int CBS_get_latin1(CBS *cbs, uint32_t *out);
-OPENSSL_EXPORT int CBS_get_ucs2_be(CBS *cbs, uint32_t *out);
-OPENSSL_EXPORT int CBS_get_utf32_be(CBS *cbs, uint32_t *out);
-
-// CBB_get_utf8_len returns the number of bytes needed to represent |u| in
-// UTF-8.
-OPENSSL_EXPORT size_t CBB_get_utf8_len(uint32_t u);
-
-// The following functions encode |u| to |cbb| with the corresponding
-// encoding. They return one on success and zero on error. Error conditions
-// include |u| being an invalid code point, or |u| being unencodable in the
-// specified encoding.
-OPENSSL_EXPORT int CBB_add_utf8(CBB *cbb, uint32_t u);
-OPENSSL_EXPORT int CBB_add_latin1(CBB *cbb, uint32_t u);
-OPENSSL_EXPORT int CBB_add_ucs2_be(CBB *cbb, uint32_t u);
-OPENSSL_EXPORT int CBB_add_utf32_be(CBB *cbb, uint32_t u);
 
 
 #if defined(__cplusplus)

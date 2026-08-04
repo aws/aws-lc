@@ -1,50 +1,5 @@
-/* ====================================================================
- * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ==================================================================== */
+// Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/base.h>
 
@@ -224,6 +179,29 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 #endif  // HW_GCM && AARCH64
 
+// Trampolines for GCM function pointers to avoid delocator issues with adr
+// on AArch64. Without these wrappers, the function pointer calculations
+// may require PC-relative offsets outside the addressable range.
+#if defined(GHASH_ASM_ARM)
+static inline void gcm_gmult_v8_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
+  gcm_gmult_v8(Xi, Htable);
+}
+
+static inline void gcm_ghash_v8_wrapper(uint8_t Xi[16], const u128 Htable[16],
+                                        const uint8_t *inp, size_t len) {
+  gcm_ghash_v8(Xi, Htable, inp, len);
+}
+
+static inline void gcm_gmult_neon_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
+  gcm_gmult_neon(Xi, Htable);
+}
+
+static inline void gcm_ghash_neon_wrapper(uint8_t Xi[16], const u128 Htable[16],
+                                          const uint8_t *inp, size_t len) {
+  gcm_ghash_neon(Xi, Htable, inp, len);
+}
+#endif
+
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]) {
@@ -240,7 +218,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_mult = gcm_gmult_avx512;
     *out_hash = gcm_ghash_avx512;
     *out_is_avx = 1;
-    return;
+    goto out;
   }
 #endif
   if (crypto_gcm_clmul_enabled()) {
@@ -249,58 +227,63 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
       *out_is_avx = 1;
-      return;
+      goto out;
     }
     gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
-    return;
+    goto out;
   }
   if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
-    return;
+    goto out;
   }
 #elif defined(GHASH_ASM_X86)
   if (crypto_gcm_clmul_enabled()) {
     gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
-    return;
+    goto out;
   }
   if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
-    return;
+    goto out;
   }
 #elif defined(GHASH_ASM_ARM)
   if (gcm_pmull_capable()) {
     gcm_init_v8(out_table, H);
-    *out_mult = gcm_gmult_v8;
-    *out_hash = gcm_ghash_v8;
-    return;
+    *out_mult = gcm_gmult_v8_wrapper;
+    *out_hash = gcm_ghash_v8_wrapper;
+    goto out;
   }
 
   if (gcm_neon_capable()) {
     gcm_init_neon(out_table, H);
-    *out_mult = gcm_gmult_neon;
-    *out_hash = gcm_ghash_neon;
-    return;
+    *out_mult = gcm_gmult_neon_wrapper;
+    *out_hash = gcm_ghash_neon_wrapper;
+    goto out;
   }
 #elif defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
     gcm_init_p8(out_table, H);
     *out_mult = gcm_gmult_p8;
     *out_hash = gcm_ghash_p8;
-    return;
+    goto out;
   }
 #endif
 
   gcm_init_nohw(out_table, H);
   *out_mult = gcm_gmult_nohw;
   *out_hash = gcm_ghash_nohw;
+
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86) || defined(GHASH_ASM_ARM) || defined(GHASH_ASM_PPC64LE)
+out:
+#endif
+  OPENSSL_cleanse(H, sizeof(H));
 }
 
 void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
@@ -315,6 +298,7 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   int is_avx;
   CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, gcm_key->Htable, &is_avx,
                     ghash_key);
+  OPENSSL_cleanse(ghash_key, sizeof(ghash_key));
 
 #if defined(OPENSSL_AARCH64) && defined(GHASH_ASM_ARM)
   gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 : 0;

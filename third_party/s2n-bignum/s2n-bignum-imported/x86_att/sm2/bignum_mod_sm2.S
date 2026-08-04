@@ -176,8 +176,6 @@ Lbignum_mod_sm2_writeback:
 #endif
         CFI_RET
 
-S2N_BN_SIZE_DIRECTIVE(bignum_mod_sm2)
-
 Lbignum_mod_sm2_shortinput:
 
         xorq    m0, m0
@@ -195,6 +193,8 @@ Lbignum_mod_sm2_shortinput:
         jz      Lbignum_mod_sm2_writeback
         movq    16(%rdx), m2
         jmp     Lbignum_mod_sm2_writeback
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_sm2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

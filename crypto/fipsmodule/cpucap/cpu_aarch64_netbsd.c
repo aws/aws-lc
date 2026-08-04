@@ -50,14 +50,17 @@ void OPENSSL_cpuid_setup(void) {
   int found_cpu = 0;
 
   // Query up to 256 CPUs (arbitrary but reasonable upper limit)
+  // Scan all possible CPU indices, tolerating gaps from offline/absent CPUs.
+  // On big.LITTLE systems, CPU indices may not be contiguous (e.g., an offline
+  // core creates a gap), so we must not stop at the first missing index.
+  // NOTE: This is still subject to a TOCTOU race if CPUs come online after
+  // this scan completes. The only fully correct solution would be a
+  // kernel-provided feature intersection (like Linux's AT_HWCAP).
   for (size_t cpu_num = 0; cpu_num < 256; cpu_num++) {
     if (get_cpu_id(cpu_num, &cpu_id) < 0) {
-      // Failed to read this CPU - either it doesn't exist or is offline
-      if (found_cpu > 0) {
-        // We've already found at least one CPU, so assume we've enumerated all
-        break;
-      }
-      // Haven't found any CPUs yet, keep trying
+      // Failed to read this CPU - either it doesn't exist or is offline.
+      // Continue scanning: there may be higher-indexed cores with different
+      // (potentially fewer) capabilities.
       continue;
     }
 

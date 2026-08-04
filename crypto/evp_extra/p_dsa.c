@@ -58,19 +58,20 @@ static void pkey_dsa_cleanup(EVP_PKEY_CTX *ctx) {
 static int pkey_dsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   GUARD_PTR(ctx->pkey);
 
-  int ret = 0;
-  DSA *dsa = NULL;
-  if (!((dsa = DSA_new())) || !EVP_PKEY_assign_DSA(pkey, dsa) ||
-      !EVP_PKEY_copy_parameters(pkey, ctx->pkey)) {
-    goto err;
+  DSA *dsa = DSA_new();
+  if (dsa == NULL || !EVP_PKEY_assign_DSA(pkey, dsa)) {
+    DSA_free(dsa);
+    return 0;
   }
-  ret = DSA_generate_key(pkey->pkey.dsa);
 
-err:
-  if (ret != 1) {
-    OPENSSL_free(dsa);
+  // |pkey| now has ownership of DSA, and EVP_PKEY_free will handle from this
+  // point on.
+
+  if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey)) {
+    return 0;
   }
-  return ret;
+
+  return DSA_generate_key(pkey->pkey.dsa);
 }
 
 static int pkey_dsa_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
@@ -129,10 +130,8 @@ end:
 
 static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
                          const unsigned char *tbs, size_t tbslen) {
-  GUARD_PTR(ctx->pkey);
   GUARD_PTR(ctx->pkey->pkey.ptr);
   GUARD_PTR(ctx->data);
-  GUARD_PTR(siglen);
 
   DSA_PKEY_CTX *dctx = ctx->data;
   DSA *dsa = ctx->pkey->pkey.dsa;
@@ -141,6 +140,11 @@ static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
     // Passing NULL for sig indicates a query for the size of the signature
     *siglen = DSA_size(dsa);
     return 1;
+  }
+
+  if (*siglen < (size_t)DSA_size(dsa)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
   }
 
   DSA_SIG *result = NULL;

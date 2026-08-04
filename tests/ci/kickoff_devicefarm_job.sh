@@ -11,11 +11,11 @@ set -exuo pipefail
 #              non-zero error code.
 
 # Device Farm project to designate Device Farm runs. The two device pools defined below should also belong to this project.
-AWSLC_DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:620771051181:project:d1e78543-a776-49c5-9452-9a2b3448b728'
-# Device pool arn for FIPS.
-AWSLC_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
+AWSLC_DEVICEFARM_PROJECT_NAME='aws-lc-ci'
 # Device pool arn for non-FIPS.
-AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
+AWSLC_ANDROID_POOL_NAME='android'
+# Device pool arn for FIPS.
+AWSLC_ANDROID_FIPS_POOL_NAME='android-fips'
 
 ###########################
 # Main and related helper #
@@ -43,8 +43,8 @@ function export_global_variables() {
   if [[ -z "${ANDROID_TEST_NAME+x}" || -z "${ANDROID_TEST_NAME}" ]]; then
     export ANDROID_TEST_NAME='AWS-LC Android Test'
   fi
-  if [[ -z "${DEVICEFARM_PROJECT+x}" || -z "${DEVICEFARM_PROJECT}" ]]; then
-    export DEVICEFARM_PROJECT=$AWSLC_DEVICEFARM_PROJECT
+  if [[ -z "${DEVICEFARM_PROJECT_NAME+x}" || -z "${DEVICEFARM_PROJECT_NAME}" ]]; then
+    export DEVICEFARM_PROJECT_NAME=$AWSLC_DEVICEFARM_PROJECT_NAME
   fi
   if [[ -z "${FIPS+x}" || -z "${FIPS}" ]]; then
     export FIPS=false
@@ -55,13 +55,13 @@ function export_global_variables() {
   if [[ -z "${SHARED+x}" || -z "${SHARED}" ]]; then
     export SHARED=false
   fi
-  if [[ -z "${DEVICEFARM_DEVICE_POOL+x}" || -z "${DEVICEFARM_DEVICE_POOL}" ]]; then
+  if [[ -z "${DEVICEFARM_DEVICE_POOL_NAME+x}" || -z "${DEVICEFARM_DEVICE_POOL_NAME}" ]]; then
     if [[ "${FIPS}" = true ]]; then
       # Device pool arn for FIPS.
-      export DEVICEFARM_DEVICE_POOL=$AWSLC_FIPS_DEVICEFARM_DEVICE_POOL
+      export DEVICEFARM_DEVICE_POOL_NAME=$AWSLC_ANDROID_FIPS_POOL_NAME
     else
       # Device pool arn for non-FIPS.
-      export DEVICEFARM_DEVICE_POOL=$AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL
+      export DEVICEFARM_DEVICE_POOL_NAME=$AWSLC_ANDROID_POOL_NAME
     fi
   fi
   if [[ -z "${AWS_REGION+x}" || -z "${AWS_REGION}" ]]; then
@@ -132,11 +132,11 @@ function main() {
       shift
       ;;
     --devicefarm-project-arn)
-      export DEVICEFARM_PROJECT="${2}"
+      export DEVICEFARM_PROJECT_NAME="${2}"
       shift
       ;;
     --devicefarm-device-pool-arn)
-      export DEVICEFARM_DEVICE_POOL="${2}"
+      export DEVICEFARM_DEVICE_POOL_NAME="${2}"
       shift
       ;;
     --fips)

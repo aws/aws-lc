@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 420" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#555"/>
+    </marker>
+    <marker id="arrow-rev" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+      <path d="M8,0 L0,3 L8,6 Z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <!-- Background regions -->
+  <rect x="0" y="40" width="310" height="380" rx="8" fill="#fff8f0" stroke="none"/>
+  <rect x="310" y="40" width="430" height="380" rx="8" fill="#f0f4ff" stroke="none"/>
+
+  <!-- Column headers -->
+  <text x="155" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#886644">Informal</text>
+  <text x="525" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#445588">Formal</text>
+
+  <!-- Top-left box: Desired behavior -->
+  <rect x="20" y="70" width="250" height="90" rx="10" fill="#fff" stroke="#c88" stroke-width="2"/>
+  <text x="145" y="100" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">Desired behavior</text>
+  <text x="145" y="120" text-anchor="middle" font-size="11" fill="#666">What cryptographic applications</text>
+  <text x="145" y="135" text-anchor="middle" font-size="11" fill="#666">actually need the code to do</text>
+
+  <!-- Top-right box: Formal specification -->
+  <rect x="400" y="70" width="310" height="90" rx="10" fill="#fff" stroke="#58a" stroke-width="2"/>
+  <text x="555" y="100" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">Formal specification</text>
+  <text x="555" y="120" text-anchor="middle" font-size="11" fill="#666">HOL Light Hoare triple:</text>
+  <text x="555" y="135" text-anchor="middle" font-size="11" fill="#666">precondition, postcondition, frame</text>
+
+  <!-- Gap A arrow -->
+  <line x1="275" y1="115" x2="395" y2="115" stroke="#555" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrow)" marker-start="url(#arrow-rev)"/>
+  <rect x="305" y="98" width="60" height="22" rx="4" fill="#ffe0d0" stroke="#c88" stroke-width="1"/>
+  <text x="335" y="113" text-anchor="middle" font-size="11" font-weight="bold" fill="#a44">Gap A</text>
+
+  <!-- Proof arrow (right side, vertical) -->
+  <line x1="555" y1="260" x2="555" y2="165" stroke="#2a7" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="588" y="192" width="140" height="40" rx="6" fill="#e8f5e8" stroke="#2a7" stroke-width="1.5"/>
+  <text x="658" y="210" text-anchor="middle" font-size="12" font-weight="bold" fill="#185">Formal proof</text>
+  <text x="658" y="225" text-anchor="middle" font-size="11" fill="#296">(HOL Light)</text>
+
+  <!-- Gap C annotation -->
+  <rect x="588" y="238" width="140" height="20" rx="4" fill="#fffbe0" stroke="#a96" stroke-width="1"/>
+  <text x="658" y="252" text-anchor="middle" font-size="10" font-weight="bold" fill="#864">Gap C: prover trust</text>
+
+  <!-- Bottom-left box: Actual system -->
+  <rect x="20" y="275" width="250" height="90" rx="10" fill="#fff" stroke="#c88" stroke-width="2"/>
+  <text x="145" y="305" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">Actual system</text>
+  <text x="145" y="325" text-anchor="middle" font-size="11" fill="#666">Compiled object code running</text>
+  <text x="145" y="340" text-anchor="middle" font-size="11" fill="#666">on real CPU hardware</text>
+
+  <!-- Bottom-right box: Formal model -->
+  <rect x="400" y="275" width="310" height="90" rx="10" fill="#fff" stroke="#58a" stroke-width="2"/>
+  <text x="555" y="300" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">Formal model of code</text>
+  <text x="555" y="320" text-anchor="middle" font-size="11" fill="#666">Byte sequence from object file +</text>
+  <text x="555" y="335" text-anchor="middle" font-size="11" fill="#666">ISA semantics (x86.ml / arm.ml)</text>
+
+  <!-- Gap B arrow -->
+  <line x1="275" y1="320" x2="395" y2="320" stroke="#555" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrow)" marker-start="url(#arrow-rev)"/>
+  <rect x="305" y="303" width="60" height="22" rx="4" fill="#ffe0d0" stroke="#c88" stroke-width="1"/>
+  <text x="335" y="318" text-anchor="middle" font-size="11" font-weight="bold" fill="#a44">Gap B</text>
+
+  <!-- Caption -->
+  <text x="370" y="400" text-anchor="middle" font-size="11" fill="#888" font-style="italic">The formal proof (green) links two formal objects (blue). Gaps A, B, C are where assumptions live.</text>
+</svg>

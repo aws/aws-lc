@@ -1,69 +1,12 @@
-/* Originally written by Bodo Moeller for the OpenSSL project.
- * ====================================================================
- * Copyright (c) 1998-2005 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com).
- *
- */
-/* ====================================================================
- * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
- *
- * Portions of the attached software ("Contribution") are developed by
- * SUN MICROSYSTEMS, INC., and are contributed to the OpenSSL project.
- *
- * The Contribution is licensed pursuant to the OpenSSL open source
- * license provided above.
- *
- * The elliptic curve binary polynomial software is originally written by
- * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
- * Laboratories. */
+// Originally written by Bodo Moeller for the OpenSSL project.
+// Copyright (c) 1998-2005 The OpenSSL Project.  All rights reserved.
+// Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
+//
+// The elliptic curve binary polynomial software is originally written by
+// Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
+// Laboratories.
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef OPENSSL_HEADER_EC_KEY_H
 #define OPENSSL_HEADER_EC_KEY_H
@@ -139,7 +82,7 @@ OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
 // EC_KEY_set_public_key sets the public key of |key| to |pub|, by copying it.
 // It returns one on success and zero otherwise. |key| must already have had a
 // group configured (see |EC_KEY_set_group| and |EC_KEY_new_by_curve_name|), and
-// |pub| must also belong to that group.
+// |pub| must also belong to that group, and must not be the point at infinity.
 OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 
 #define EC_PKEY_NO_PARAMETERS 0x001
@@ -330,8 +273,9 @@ OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);
 
 // o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into
 // |*out_key|. Note that this differs from the d2i format in that |*out_key|
-// must be non-NULL with a group set. On successful exit, |*inp| is advanced by
-// |len| bytes. It returns |*out_key| or NULL on error.
+// must be non-NULL with a group set. The point must not be the point at
+// infinity. On successful exit, |*inp| is advanced by |len| bytes. It returns
+// |*out_key| or NULL on error.
 //
 // Use |EC_POINT_oct2point| instead.
 OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,

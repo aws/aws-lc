@@ -1,11 +1,10 @@
-/*
- * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright 2005 Nokia. All rights reserved.
- */
-
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+// Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright 2005 Nokia. All rights reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
 // Modifications Copyright Amazon.com, Inc. or its affiliates.
-
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/ssl.h>
 

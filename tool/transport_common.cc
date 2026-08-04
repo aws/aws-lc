@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 // Suppress MSVC's STL warnings. It flags |std::copy| calls with a raw output
 // pointer, on grounds that MSVC cannot check them. Unfortunately, there is no
@@ -165,43 +154,45 @@ bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
 
   bool ok = false;
   char buf[256];
+  *out_sock = -1;
 
-  *out_sock =
-      socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-  if (*out_sock < 0) {
-    PrintSocketError("socket");
-    goto out;
-  }
+  for (struct addrinfo *ai = result; ai != NULL; ai = ai->ai_next) {
+    *out_sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (*out_sock < 0) {
+      PrintSocketError("socket");
+      continue;
+    }
 
-  if(!quiet) {
-    switch (result->ai_family) {
-      case AF_INET: {
-        struct sockaddr_in *sin =
-                reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
-        fprintf(stderr, "Connecting to %s:%d\n",
-                inet_ntop(result->ai_family, &sin->sin_addr, buf, sizeof(buf)),
-                ntohs(sin->sin_port));
-        break;
+    if(!quiet) {
+      switch (ai->ai_family) {
+        case AF_INET: {
+          struct sockaddr_in *sin =
+                  reinterpret_cast<struct sockaddr_in *>(ai->ai_addr);
+          fprintf(stderr, "Connecting to %s:%d\n",
+                  inet_ntop(ai->ai_family, &sin->sin_addr, buf, sizeof(buf)),
+                  ntohs(sin->sin_port));
+          break;
+        }
+        case AF_INET6: {
+          struct sockaddr_in6 *sin6 =
+                  reinterpret_cast<struct sockaddr_in6 *>(ai->ai_addr);
+          fprintf(stderr, "Connecting to [%s]:%d\n",
+                  inet_ntop(ai->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
+                  ntohs(sin6->sin6_port));
+          break;
+        }
       }
-      case AF_INET6: {
-        struct sockaddr_in6 *sin6 =
-                reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr);
-        fprintf(stderr, "Connecting to [%s]:%d\n",
-                inet_ntop(result->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
-                ntohs(sin6->sin6_port));
-        break;
-      }
+    }
+
+    if (connect(*out_sock, ai->ai_addr, ai->ai_addrlen) == 0) {
+      ok = true;
+      break;
+    } else {
+      PrintSocketError("connect");
+      closesocket(*out_sock);
     }
   }
 
-  if (connect(*out_sock, result->ai_addr, result->ai_addrlen) != 0) {
-    PrintSocketError("connect");
-    closesocket(*out_sock);
-    goto out;
-  }
-  ok = true;
-
-out:
   freeaddrinfo(result);
   return ok;
 }

@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -578,4 +567,18 @@ static void RunTest(FileTest *t)
 
 TEST(HKDFTest, HKDFExpandCAVP) {
   FileTestGTest("crypto/evp_extra/kbkdf_expand_tests.txt", RunTest);
+}
+
+TEST(HKDFTest, EVP_PKEY_HKDF_RejectsXOF) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+
+  // XOF digests should be rejected when setting the digest.
+  EXPECT_FALSE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_shake128()));
+  EXPECT_FALSE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_shake256()));
+
+  // Non-XOF digests should succeed.
+  EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_sha256()));
 }

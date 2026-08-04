@@ -1,16 +1,5 @@
-/* Copyright (c) 2020, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2020, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <stdio.h>
 #include <string.h>
@@ -80,6 +69,15 @@ TEST(CryptoTest, aws_lc_assert_entropy_cpu_jitter) {
   }
 }
 
+// FIPS_version returns the FIPS version number in FIPS builds and 0 otherwise.
+TEST(CryptoTest, FIPSVersion) {
+  if (FIPS_mode() == 1) {
+    EXPECT_EQ(FIPS_version(), (uint32_t)AWSLC_FIPS_VERSION_NUMBER);
+  } else {
+    EXPECT_EQ(FIPS_version(), 0u);
+  }
+}
+
 TEST(CryptoTest, OPENSSL_hexstr2buf) {
   const char *test_cases[][2] = {{"a2", "\xa2"},
                                  {"a213", "\xa2\x13"},
@@ -107,102 +105,6 @@ TEST(CryptoTest, OPENSSL_hexstr2buf) {
   EXPECT_FALSE(OPENSSL_hexstr2buf("ag", &actual_answer_len));
 }
 
-#if defined(BORINGSSL_FIPS_COUNTERS)
-using CounterArray = size_t[fips_counter_max + 1];
-
-static void read_all_counters(CounterArray counters) {
-  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
-       counter <= fips_counter_max;
-       counter = static_cast<fips_counter_t>(counter + 1)) {
-    counters[counter] = FIPS_read_counter(counter);
-  }
-}
-
-static void expect_counter_delta_is_zero_except_for_a_one_at(
-    CounterArray before, CounterArray after, fips_counter_t position) {
-  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
-       counter <= fips_counter_max;
-       counter = static_cast<fips_counter_t>(counter + 1)) {
-    const size_t expected_delta = counter == position ? 1 : 0;
-    EXPECT_EQ(after[counter], before[counter] + expected_delta) << counter;
-  }
-}
-
-TEST(CryptoTest, FIPSCountersEVP) {
-  constexpr struct {
-    const EVP_CIPHER *(*cipher)();
-    fips_counter_t counter;
-  } kTests[] = {
-      {
-          EVP_aes_128_gcm,
-          fips_counter_evp_aes_128_gcm,
-      },
-      {
-          EVP_aes_256_gcm,
-          fips_counter_evp_aes_256_gcm,
-      },
-      {
-          EVP_aes_128_ctr,
-          fips_counter_evp_aes_128_ctr,
-      },
-      {
-          EVP_aes_256_ctr,
-          fips_counter_evp_aes_256_ctr,
-      },
-  };
-
-  uint8_t key[EVP_MAX_KEY_LENGTH] = {0};
-  uint8_t iv[EVP_MAX_IV_LENGTH] = {1};
-  CounterArray before, after;
-  for (const auto &test : kTests) {
-    read_all_counters(before);
-    bssl::ScopedEVP_CIPHER_CTX ctx;
-    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), test.cipher(), /*engine=*/nullptr,
-                                   key, iv));
-    read_all_counters(after);
-
-    expect_counter_delta_is_zero_except_for_a_one_at(before, after,
-                                                     test.counter);
-  }
-}
-
-TEST(CryptoTest, FIPSCountersEVP_AEAD) {
-  constexpr struct {
-    const EVP_AEAD *(*aead)();
-    unsigned key_len;
-    fips_counter_t counter;
-  } kTests[] = {
-      {
-          EVP_aead_aes_128_gcm,
-          16,
-          fips_counter_evp_aes_128_gcm,
-      },
-      {
-          EVP_aead_aes_256_gcm,
-          32,
-          fips_counter_evp_aes_256_gcm,
-      },
-  };
-
-  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH] = {0};
-  CounterArray before, after;
-  for (const auto &test : kTests) {
-    ASSERT_LE(test.key_len, sizeof(key));
-
-    read_all_counters(before);
-    bssl::ScopedEVP_AEAD_CTX ctx;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), test.aead(), key, test.key_len,
-                                  EVP_AEAD_DEFAULT_TAG_LENGTH,
-                                  /*engine=*/nullptr));
-    read_all_counters(after);
-
-    expect_counter_delta_is_zero_except_for_a_one_at(before, after,
-                                                     test.counter);
-  }
-}
-
-#endif  // BORINGSSL_FIPS_COUNTERS
-
 #if defined(BORINGSSL_FIPS)
 TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
 #if defined(AWSLC_FIPS)
@@ -213,23 +115,7 @@ TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
 }
 #endif // defined(BORINGSSL_FIPS)
 
-#if defined(BORINGSSL_FIPS_140_3)
-TEST(Crypto, QueryAlgorithmStatus) {
-#if defined(BORINGSSL_FIPS)
-  const bool is_fips_build = true;
-#else
-  const bool is_fips_build = false;
-#endif
-
-  EXPECT_EQ(FIPS_query_algorithm_status("AES-GCM"), is_fips_build);
-  EXPECT_EQ(FIPS_query_algorithm_status("AES-ECB"), is_fips_build);
-
-  EXPECT_FALSE(FIPS_query_algorithm_status("FakeEncrypt"));
-  EXPECT_FALSE(FIPS_query_algorithm_status(""));
-}
-#endif //BORINGSSL_FIPS_140_3
-
-#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
 TEST(Crypto, OnDemandIntegrityTest) {
   BORINGSSL_integrity_test();
 }

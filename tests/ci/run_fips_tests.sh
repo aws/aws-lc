@@ -81,6 +81,16 @@ if [[ "${AWSLC_ENABLE_FIPS_ASAN:-0}" == "1" ]]; then
   fi
 fi
 
+if [[ "${AWSLC_ENABLE_FIPS_MSAN:-0}" == "1" ]]; then
+  # The ACVP modulewrapper subprocess crashes under MSAN, so we use
+  # run_build + all_tests.go instead of fips_build_and_test to skip the
+  # ACVP tests. On ARM, MSAN also gets stuck on PoolTest.Threads
+  # (https://github.com/aws/aws-lc/issues/13).
+  echo "Building with Clang and testing AWS-LC in FIPS Release mode with memory sanitizer."
+  run_build -DFIPS=1 -DMSAN=1 -DUSE_CUSTOM_LIBCXX=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+  go run util/all_tests.go -build-dir "$BUILD_ROOT"
+fi
+
 echo "Testing shared AWS-LC in FIPS Debug mode in a different folder."
 BUILD_ROOT=$(mktemp -d)
 fips_build_and_test -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1

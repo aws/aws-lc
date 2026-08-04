@@ -1,16 +1,5 @@
-/* Copyright (c) 2018, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2018, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_WYCHEPROOF_UTIL_H
 #define OPENSSL_HEADER_CRYPTO_TEST_WYCHEPROOF_UTIL_H
@@ -22,6 +11,9 @@
 
 
 // This header contains convenience functions for Wycheproof tests.
+
+static constexpr const char kWycheproofV1Path[] =
+    "third_party/vectors/converted/wycheproof/testvectors_v1/";
 
 class FileTest;
 
@@ -39,6 +31,12 @@ struct WycheproofResult {
   // test result of "acceptable" is treated as valid if all flags are included
   // in |acceptable_flags| and invalid otherwise.
   bool IsValid(const std::vector<std::string> &acceptable_flags = {}) const;
+
+  // StringifyFlags returns a printable string of all flags.
+  std::string StringifyFlags();
+
+  // HasFlag returns true if |flag| is present in the flags vector.
+  bool HasFlag(const std::string &flag) const;
 };
 
 // GetWycheproofResult sets |*out| to the parsed "result" and "flags" keys of |t|.

@@ -1,50 +1,5 @@
-/* ====================================================================
- * Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ==================================================================== */
+// Copyright (c) 2008 The OpenSSL Project.  All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/aead.h>
 
@@ -105,7 +60,7 @@ typedef struct cipher_aes_ccm_ctx {
 #define CCM_INNER_STATE(ccm_ctx) (&ccm_ctx->ccm_state)
 
 // As per RFC3610, the nonce length in bytes is 15 - L.
-#define CCM_L_TO_NONCE_LEN(L) (15 - L)
+#define CCM_L_TO_NONCE_LEN(L) (15 - (L))
 
 static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
                               ctr128_f ctr, unsigned M, unsigned L) {
@@ -448,6 +403,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 static int aead_aes_ccm_bluetooth_8_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -469,6 +425,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth_8) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 static int aead_aes_ccm_matter_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -489,6 +446,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_matter) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
+  out->copy = aead_ctx_copy_state_trivial;
 }
 
 #if defined(OPENSSL_32_BIT)
@@ -629,7 +587,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       return -1;
     }
     // Validate the tag and invalidate the output if it doesn't match.
-    if (OPENSSL_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
+    if (CRYPTO_memcmp(cipher_ctx->tag, computed_tag, cipher_ctx->M)) {
       OPENSSL_cleanse(out, len);
       return -1;
     }
@@ -665,7 +623,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       cipher_ctx->message_len = 0;
       return 1;
     case EVP_CTRL_GET_IVLEN:
-      *(uint32_t *)ptr = CCM_L_TO_NONCE_LEN(cipher_ctx->L);
+      *(int *)ptr = CCM_L_TO_NONCE_LEN(cipher_ctx->L);
       return 1;
     case EVP_CTRL_AEAD_SET_IVLEN:
       // The nonce (IV) length is 15-L, compute L here and set it below to "set"
@@ -741,7 +699,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_192_ccm;
   out->block_size = 1; // stream cipher
   out->key_len = 24;
   out->iv_len = 13;
@@ -757,7 +715,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_256_ccm;
   out->block_size = 1; // stream cipher
   out->key_len = 32;
   out->iv_len = 13;

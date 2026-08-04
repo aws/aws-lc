@@ -3397,6 +3397,115 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+// TLS 1.3 KDF (HKDF-Expand-Label) is approved under SHA2-256 and SHA2-384, and
+// not approved for any other digest. Label / context contents do not affect
+// approval state for TLS 1.3.
+static const struct TLS13KDFTestVector {
+  const EVP_MD *(*func)();
+  const FIPSStatus expect_approved;
+} kTLS13KDFTestVectors[] = {
+    {EVP_sha1, AWSLC_NOT_APPROVED},
+    {EVP_sha224, AWSLC_NOT_APPROVED},
+    {EVP_sha256, AWSLC_APPROVED},
+    {EVP_sha384, AWSLC_APPROVED},
+    {EVP_sha512, AWSLC_NOT_APPROVED},
+};
+
+class TLS13KDF_ServiceIndicatorTest
+    : public TestWithNoErrors<TLS13KDFTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, TLS13KDF_ServiceIndicatorTest,
+                         testing::ValuesIn(kTLS13KDFTestVectors));
+
+TEST_P(TLS13KDF_ServiceIndicatorTest, HKDFExpandLabel) {
+  const TLS13KDFTestVector &test = GetParam();
+  const EVP_MD *digest = test.func();
+
+  static const uint8_t kLabel[] = "c e traffic";
+  // The HKDF-Expand-Label context is a transcript hash, so its length tracks
+  // the digest in use (e.g. 48 bytes for SHA-384, 32 for SHA-256). Size it from
+  // the digest rather than pinning it to 32 bytes so each parameterization
+  // mirrors a real caller.
+  uint8_t hash[EVP_MAX_MD_SIZE] = {0};
+  const size_t hash_len = EVP_MD_size(digest);
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  uint8_t output[32];
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(CRYPTO_tls13_hkdf_expand_label(
+          output, sizeof(output), digest, kTLSSecret, sizeof(kTLSSecret),
+          kLabel, sizeof(kLabel) - 1, hash, hash_len)));
+  EXPECT_EQ(approved, test.expect_approved);
+}
+
+static void CheckTLS13KDFRejectedNotApproved(
+    size_t out_len, const uint8_t *label, size_t label_len,
+    const uint8_t *hash, size_t hash_len, int expected_lib,
+    int expected_reason) {
+  uint8_t output[32] = {0};
+  int result = 1;
+  FIPSStatus approved = AWSLC_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, result = CRYPTO_tls13_hkdf_expand_label(
+                    output, out_len, EVP_sha256(), kTLSSecret,
+                    sizeof(kTLSSecret), label, label_len, hash, hash_len));
+
+  EXPECT_FALSE(result);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  uint32_t err = ERR_get_error();
+  EXPECT_TRUE(ErrorEquals(err, expected_lib, expected_reason))
+      << ERR_error_string(err, nullptr);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+TEST(TLS13KDF_ServiceIndicatorNegativeTest, HKDFExpandLabelRejectsBounds) {
+  static const uint8_t kLabel[] = "c e traffic";
+  const size_t kOutputLen = 32;
+  uint8_t hash[EVP_MAX_MD_SIZE] = {0};
+
+  CheckTLS13KDFRejectedNotApproved(static_cast<size_t>(UINT16_MAX) + 1, kLabel,
+                                   sizeof(kLabel) - 1, hash,
+                                   EVP_MD_size(EVP_sha256()), ERR_LIB_CRYPTO,
+                                   ERR_R_OVERFLOW);
+
+  const std::vector<uint8_t> oversized_label(250);
+  CheckTLS13KDFRejectedNotApproved(
+      kOutputLen, oversized_label.data(), oversized_label.size(), hash,
+      EVP_MD_size(EVP_sha256()), ERR_LIB_CRYPTO, ERR_R_OVERFLOW);
+
+  const std::vector<uint8_t> oversized_hash(256);
+  CheckTLS13KDFRejectedNotApproved(kOutputLen, kLabel, sizeof(kLabel) - 1,
+                                   oversized_hash.data(),
+                                   oversized_hash.size(), ERR_LIB_CRYPTO,
+                                   ERR_R_OVERFLOW);
+
+  const size_t hkdf_expand_limit = 255 * EVP_MD_size(EVP_sha256());
+  std::vector<uint8_t> output(hkdf_expand_limit + 1);
+  int result = 1;
+  FIPSStatus approved = AWSLC_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, result = CRYPTO_tls13_hkdf_expand_label(
+                    output.data(), output.size(), EVP_sha256(), kTLSSecret,
+                    sizeof(kTLSSecret), kLabel, sizeof(kLabel) - 1, hash,
+                    EVP_MD_size(EVP_sha256())));
+
+  EXPECT_FALSE(result);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  uint32_t err = ERR_get_error();
+  EXPECT_TRUE(ErrorEquals(err, ERR_LIB_HKDF, HKDF_R_OUTPUT_TOO_LARGE))
+      << ERR_error_string(err, nullptr);
+  EXPECT_EQ(0u, ERR_get_error());
+
+  uint8_t approved_output[32];
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(CRYPTO_tls13_hkdf_expand_label(
+                    approved_output, sizeof(approved_output), EVP_sha256(),
+                    kTLSSecret, sizeof(kTLSSecret), kLabel, sizeof(kLabel) - 1,
+                    hash, EVP_MD_size(EVP_sha256()))));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
+}
+
 // PBKDF2 test data from RFC 6070.
 //
 // Set 1 - short password/salt; these are too short for FIPS, so they'll

@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <assert.h>
 #include <limits.h>
@@ -495,6 +484,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
@@ -515,6 +505,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
@@ -535,6 +526,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
@@ -555,6 +547,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
@@ -575,6 +568,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
@@ -595,6 +589,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
@@ -615,6 +610,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
@@ -635,6 +631,7 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
@@ -655,6 +652,7 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 static const EVP_AEAD aead_null_sha1_tls = {
@@ -675,6 +673,7 @@ static const EVP_AEAD aead_null_sha1_tls = {
     aead_tls_tag_len,
     NULL /* serialize_state */,
     NULL /* deserialize_state */,
+    NULL /* copy */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void) {

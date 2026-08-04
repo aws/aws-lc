@@ -11,9 +11,11 @@ tuned for highest performance both by hand and using automatic optimization
 techniques such as the [SLOTHY](https://github.com/slothy-optimizer/slothy)
 superoptimizer, and each function is accompanied by a machine-checked formal
 proof in [HOL-Light](https://hol-light.github.io/) that its mathematical
-result is correct, based on a formal model of the underlying machine. Each
-function is moreover written in a constant-time style to avoid timing
-side-channels.
+result is correct, based on a formal model of the underlying machine.
+Moreover, each function is written in a constant-time style to avoid timing
+side-channels. For a detailed analysis of the formal verification process, the
+assumptions made, and the correspondence of formal models with reality, please
+refer to the [s2n-bignum soundness review](doc/s2n_bignum_soundness.md).
 
 For the SHA-3 and ML-KEM code currently part of s2n-bignum, some of the
 comments in the main part of this README do not apply exactly. See the section

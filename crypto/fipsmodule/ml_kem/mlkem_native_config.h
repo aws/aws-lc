@@ -6,6 +6,7 @@
 
 #if !defined(__ASSEMBLER__)
 #include "../../internal.h"
+#include "../cpucap/internal.h"
 #endif
 
 // Namespacing: All symbols are of the form mlkem*. Level-specific
@@ -28,17 +29,28 @@
 #define MLK_CONFIG_KEYGEN_PCT
 #endif
 
-// Map the CPU capability function to the ones used by AWS-LC
+// Map the CPU capability function to the ones used by AWS-LC.
+// MLK_SYS_CAP_NEON is defined here (not in the vendored mlkem/sys.h enum)
+// with a value that does not collide with AVX2 == 0 / SHA3 == 1.
+#if !defined(__ASSEMBLER__)
+#define MLK_SYS_CAP_NEON 2
+#endif
 #define MLK_CONFIG_CUSTOM_CAPABILITY_FUNC
 #if !defined(__ASSEMBLER__)
 #include <stdint.h>
 #include "mlkem/sys.h"
-static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
+static MLK_INLINE int mlk_sys_check_capability(int cap)
 {
 #if defined(MLK_SYS_X86_64)
   if (cap == MLK_SYS_CAP_AVX2)
   {
     return CRYPTO_is_AVX2_capable();
+  }
+#endif
+#if defined(MLK_SYS_AARCH64)
+  if (cap == MLK_SYS_CAP_NEON)
+  {
+    return CRYPTO_is_NEON_capable();
   }
 #endif
   return 0;
@@ -78,8 +90,10 @@ static MLK_INLINE void mlk_zeroize(void *ptr, size_t len) {
 #include <stdint.h>
 #include "mlkem/sys.h"
 #include <openssl/rand.h>
-static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
-    RAND_bytes(ptr, len);
+static MLK_INLINE int mlk_randombytes(void *ptr, size_t len) {
+    // RAND_bytes returns 1 on success
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(ptr, len));
+    return 0;
 }
 #endif // !__ASSEMBLER__
 
@@ -110,5 +124,13 @@ static MLK_INLINE void *mlk_memset(void *s, int c, size_t n) {
 // Enable AArch64 arithmetic backend and set path
 #define MLK_CONFIG_USE_NATIVE_BACKEND_ARITH
 #define MLK_CONFIG_ARITH_BACKEND_FILE "../mlkem_native_backend.h"
+
+// We require all of ML-KEM-512/768/1024
+//
+// This option only affects mlkem_native.h. It is therefore, at present,
+// irrelevant for AWS-LC since we directly embed the mlkem_native_bcm.c and
+// hence inherit its declarations, removing the need or mlkem_native.h.
+// Still, it's more robust to specify this here.
+#define MLK_CONFIG_MULTILEVEL_BUILD
 
 #endif // MLkEM_NATIVE_CONFIG_H

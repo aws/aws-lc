@@ -1,14 +1,43 @@
 @echo on
 set SRC_ROOT=%cd%
-set BUILD_DIR=%SRC_ROOT%\test_build_dir
+set BUILD_DIR=%TEMP%\awslc
 
-@rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
-@rem %2 specifies the architecture option to build against: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
-@rem %3 is to indicate running SDE simulation tests. If not set, SDE tests are not run.
-set MSVC_PATH=%1
+@rem %1 path to vcvarsall.bat, or "auto" to auto-detect the newest VS via
+@rem    vswhere (an empty or non-existent path also auto-detects). An explicit
+@rem    existing path (windows-omnibus pins a specific VS) is honored as-is.
+@rem    Pass "auto" rather than "": PowerShell drops empty-string arguments to
+@rem    native commands, which would shift %2 into %1.
+@rem %2 architecture: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
+@rem %3 run SDE simulation tests. If unset, SDE tests are not run.
+set MSVC_PATH=%~1
 set ARCH_OPTION=%2
 if "%~3"=="" ( set RUN_SDE=false ) else ( set RUN_SDE=%3 )
-call %MSVC_PATH% %ARCH_OPTION% || goto error
+
+@rem "auto" (or an empty / non-existent path) => auto-detect via vswhere so
+@rem hosted runners survive VS version bumps without hard-coded paths.
+if /i "%MSVC_PATH%"=="auto" set "MSVC_PATH="
+if not "%MSVC_PATH%"=="" if exist "%MSVC_PATH%" goto have_vcvars
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" (
+    echo Could not find vswhere.exe to locate Visual Studio.
+    goto error
+)
+set "VSINSTALL="
+for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -prerelease -products * -property installationPath`) do set "VSINSTALL=%%i"
+if not defined VSINSTALL (
+    echo vswhere did not find a Visual Studio installation.
+    goto error
+)
+set "MSVC_PATH=%VSINSTALL%\VC\Auxiliary\Build\vcvarsall.bat"
+if not exist "%MSVC_PATH%" (
+    echo Could not find vcvarsall.bat at "%MSVC_PATH%".
+    goto error
+)
+
+:have_vcvars
+echo Using Visual Studio environment: "%MSVC_PATH%"
+call "%MSVC_PATH%" %ARCH_OPTION% || goto error
 
 if /i "%ARCH_OPTION%" == "arm64" (
   set "CC=clang-cl"
@@ -31,7 +60,7 @@ goto :EOF
 @rem Run the same builds as run_posix_tests.sh
 @rem Check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
 @rem original string. MSVC 14 has an issue with a missing DLL that causes the debug unit tests to fail
-if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
+if "%MSVC_PATH:14.0=%"=="%MSVC_PATH%" call :build_and_test Debug "" || goto error
 call :build_and_test Release "" || goto error
 call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
 call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
@@ -40,10 +69,13 @@ call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 @rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
-call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+@rem Reuse the build tree from the preceding shared build to verify that
+@rem `cmake --install` places DLLs in bin/ and import libraries in lib/.
+call :verify_install || goto error
+call :fips_build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 if /i not "%ARCH_OPTION%" == "arm64" (
     @rem For FIPS on Windows/x86-64 we also have a RelWithDebInfo build to generate debug symbols.
-    call :build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+    call :fips_build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 )
 
 @rem On Windows, CMake defaults to dynamically linking to the Windows C-runtime.
@@ -52,6 +84,40 @@ call :build_and_test Release "-DBUILD_SHARED_LIBS=0 -DCMAKE_MSVC_RUNTIME_LIBRARY
 @rem For shared libraries, static CRT should not be used to avoid passing CRT objects across DLL boundaries:
 @rem https://learn.microsoft.com/en-us/cpp/c-runtime-library/potential-errors-passing-crt-objects-across-dll-boundaries?view=msvc-170
 
+exit /b 0
+
+@rem %1 is the build type (e.g. Release/Debug)
+@rem %2 is the additional full CMake args containing -DFIPS=1
+:fips_build_and_test
+@echo on
+call :build_and_test %1 %2 || goto error
+@echo  LOG: %date%-%time% %1 %2 running FIPS validation
+
+@rem Positive test: run test_fips.exe to verify the integrity check passes and KATs succeed.
+@rem test_fips.exe links crypto.dll, so the CRT .CRT$XCU initializer triggers the
+@rem integrity check before main. If the hash is wrong, the process aborts.
+%BUILD_DIR%\util\fipstools\test_fips.exe || goto error
+
+@rem Negative test: corrupt the FIPS module in crypto.dll and verify the integrity
+@rem check detects it. This proves the check actually runs on DLL load.
+copy /y %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto.dll.bak || goto error
+cd /d %SRC_ROOT%
+go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
+copy /y %BUILD_DIR%\crypto\crypto_corrupted.dll %BUILD_DIR%\crypto\crypto.dll || goto error
+%BUILD_DIR%\util\fipstools\test_fips.exe 2>nul
+set FIPS_NEGATIVE_RC=%ERRORLEVEL%
+@rem Restore the unmodified DLL before we decide whether the test passed or
+@rem failed, so that a failure here does not leave a corrupted crypto.dll
+@rem behind for any subsequent local invocation.
+copy /y %BUILD_DIR%\crypto\crypto.dll.bak %BUILD_DIR%\crypto\crypto.dll || goto error
+del /q %BUILD_DIR%\crypto\crypto.dll.bak
+del /q %BUILD_DIR%\crypto\crypto_corrupted.dll
+if %FIPS_NEGATIVE_RC% equ 0 (
+    echo FIPS integrity negative test failed: test_fips should have failed with corrupted crypto.dll
+    goto error
+)
+
+@echo  LOG: %date%-%time% %1 %2 FIPS validation complete
 exit /b 0
 
 :run_sde_tests
@@ -80,10 +146,10 @@ exit /b 0
 :build
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build started with cmake generation started
-cd %SRC_ROOT%
+cd /d %SRC_ROOT%
 rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%
-cd %BUILD_DIR%
+cd /d %BUILD_DIR%
 
 cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 %SRC_ROOT% || goto error
 
@@ -110,3 +176,37 @@ exit /b %errorlevel%
 :error
 echo Failed with error #%errorlevel%.
 exit /b 1
+
+@rem Runs `cmake --install` against the already-configured %BUILD_DIR% and
+@rem verifies that the expected shared-library artifacts land in the
+@rem conventional Windows install layout: DLLs in bin/, import libs in lib/.
+@rem Assumes the caller has already done a BUILD_SHARED_LIBS=1 build.
+:verify_install
+@echo on
+set INSTALL_DIR=%TEMP%\awslc_install
+rmdir /s /q "%INSTALL_DIR%" 2>nul
+
+@echo  LOG: %date%-%time% running cmake install into %INSTALL_DIR%
+cmake --install "%BUILD_DIR%" --prefix "%INSTALL_DIR%" || goto error
+
+@echo  LOG: %date%-%time% verifying install layout
+dir "%INSTALL_DIR%\bin\"
+dir "%INSTALL_DIR%\lib\"
+if not exist "%INSTALL_DIR%\bin\crypto.dll" (
+    echo ERROR: crypto.dll not found in %INSTALL_DIR%\bin\
+    goto error
+)
+if not exist "%INSTALL_DIR%\bin\ssl.dll" (
+    echo ERROR: ssl.dll not found in %INSTALL_DIR%\bin\
+    goto error
+)
+if not exist "%INSTALL_DIR%\lib\crypto.lib" (
+    echo ERROR: crypto.lib not found in %INSTALL_DIR%\lib\
+    goto error
+)
+if not exist "%INSTALL_DIR%\lib\ssl.lib" (
+    echo ERROR: ssl.lib not found in %INSTALL_DIR%\lib\
+    goto error
+)
+@echo  LOG: %date%-%time% install verification passed
+exit /b 0

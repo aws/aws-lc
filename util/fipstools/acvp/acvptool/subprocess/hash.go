@@ -1,21 +1,9 @@
 // Copyright (c) 2019, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// SPDX-License-Identifier: ISC
 
 package subprocess
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -165,7 +153,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 						}
 
 						digest = result[0]
-						outLenByteArr = uint32le(uint32(binary.LittleEndian.Uint32(result[1])))
+						outLenByteArr = uint32le(uint32(NativeEndian.Uint32(result[1])))
 						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), uint64(len(digest) * 8)})
 					}
 				}
@@ -185,7 +173,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 				}
 
 				timesByteArr := make([]byte, 8)
-				binary.LittleEndian.PutUint64(timesByteArr, times)
+				NativeEndian.PutUint64(timesByteArr, times)
 				result, err := m.Transact(h.algo+"/LDT", 1, content, timesByteArr)
 				if err != nil {
 					panic(h.algo + " LDT hash operation failed: " + err.Error())

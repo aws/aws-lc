@@ -93,6 +93,12 @@ On Linux ARM platforms, BoringSSL depends on OS APIs to query CPU capabilities.
 work around bugs in older Android devices, may additionally read
 `/proc/cpuinfo`.
 
+On Linux targets whose libc does not provide `getauxval` (e.g. older uclibc),
+AWS-LC falls back to reading `/proc/self/auxv` directly. This applies to the
+ARM, AArch64, and PPC64LE CPU capability paths as well as the `urandom`
+entropy path's debug lookup. Sandbox policies should permit opening
+`/proc/self/auxv` on such targets.
+
 On 64-bit Apple ARM platforms, BoringSSL needs to query `hw.optional.*` sysctls.
 
 If querying CPU capabilities fails, BoringSSL will still function, but may not

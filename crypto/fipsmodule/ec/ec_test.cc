@@ -1,16 +1,5 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright (c) 2014, Google Inc.
+// SPDX-License-Identifier: ISC
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -968,6 +957,12 @@ struct InvalidECPublicKey {
   size_t input_key_len;
   int nid;
 } kInvalidECPublicKeyInputs[] = {
+  /* Test 0: point at infinity. */
+  {
+    (const uint8_t *)"\x00",
+    1,
+    NID_X9_62_prime256v1
+  },
   /* Test 1: incorrect compresion representation. */
   {
     kP224PublicKey_wrong_compressed_byte,
@@ -1365,6 +1360,19 @@ TEST(ECTest, SetNULLKey) {
   EXPECT_FALSE(EC_KEY_get0_public_key(key.get()));
 }
 
+TEST(ECTest, PointAtInfinity) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<EC_POINT> inf(
+      EC_POINT_new(EC_KEY_get0_group(key.get())));
+  ASSERT_TRUE(inf);
+  ASSERT_TRUE(
+      EC_POINT_set_to_infinity(EC_KEY_get0_group(key.get()), inf.get()));
+  // Configuring a public key with the point at infinity is invalid.
+  EXPECT_FALSE(EC_KEY_set_public_key(key.get(), inf.get()));
+}
+
 TEST(ECTest, GroupMismatch) {
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp384r1));
   ASSERT_TRUE(key);
@@ -1383,12 +1391,6 @@ TEST(ECTest, EmptyKey) {
   EXPECT_FALSE(EC_KEY_get0_group(key.get()));
   EXPECT_FALSE(EC_KEY_get0_public_key(key.get()));
   EXPECT_FALSE(EC_KEY_get0_private_key(key.get()));
-}
-
-static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
-  BIGNUM *bn = nullptr;
-  BN_hex2bn(&bn, hex);
-  return bssl::UniquePtr<BIGNUM>(bn);
 }
 
 // Test that point arithmetic works with custom curves using an arbitrary |a|,
