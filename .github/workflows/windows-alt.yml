@@ -47,6 +47,54 @@ jobs:
         run: cmake --build "path has spaces/build" --target all
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
+  mingw-shared:
+    # MinGW + BUILD_SHARED_LIBS had no coverage, and GNU ld is stricter than the
+    # MSVC-ABI linkers used by the other shared jobs in two ways:
+    #  - It will not resolve __imp_ references against definitions in the same
+    #    image, so only MinGW catches a missing BORINGSSL_IMPLEMENTATION on a
+    #    target whose objects are linked into libcrypto itself.
+    #  - __attribute__((visibility("default"))) is a no-op on PE, so a symbol
+    #    only decorated for export under _MSC_VER never leaves the DLL, and
+    #    consumers fail to link against it.
+    if: github.repository_owner == 'aws'
+    runs-on: windows-latest
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v3
+        id: setup_mingw
+      - name: Setup CMake
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: Ninja
+          c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
+          cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
+          options: |
+            BUILD_SHARED_LIBS=1
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Co-locate DLLs with the test executables
+        # Windows resolves DLLs out of System32 before it looks at PATH, and the
+        # runner image has a LibreSSL libcrypto.dll there (shipped by Windows
+        # OpenSSH). MinGW gives our libraries the same lib-prefixed names, so an
+        # executable that does not sit next to our own libcrypto.dll binds to
+        # LibreSSL instead and dies in the loader with
+        # STATUS_ENTRYPOINT_NOT_FOUND. Only the directory of the executable is
+        # searched ahead of System32, so putting the build output on PATH does
+        # not help; the DLLs have to be beside the binaries.
+        run: |
+          $build = (Resolve-Path ./build).Path
+          $dlls = Get-ChildItem $build -Recurse -Filter *.dll | Where-Object { $_.FullName -notmatch '\\CMakeFiles\\' } | Group-Object Name | ForEach-Object { $_.Group[0] }
+          $exeDirs = Get-ChildItem $build -Recurse -Filter *.exe | Where-Object { $_.FullName -notmatch '\\CMakeFiles\\' } | Select-Object -ExpandProperty DirectoryName -Unique
+          foreach ($dir in $exeDirs) { foreach ($dll in $dlls) { if ($dll.DirectoryName -ne $dir) { Copy-Item $dll.FullName $dir -Force } } }
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
   clang:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
