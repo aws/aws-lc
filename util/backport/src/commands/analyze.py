@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 The analyze command: gives every supported release branch a verdict
 """
@@ -14,7 +17,11 @@ import sys
 
 
 def cmd_analyze(args) -> int:
-    """Works out the fix, then reports which branches still need it"""
+    """
+    Works out the fix, then reports which branches still need it
+    Returns the exit code: 0 when it ran or the user aborted, 1 when no supported
+    branches were found
+    """
     fix_sha, base = resolve_fix_commit(args)
     files, traceable_files = changed_files_with_status(fix_sha)
 
@@ -23,7 +30,12 @@ def cmd_analyze(args) -> int:
         print("Aborted. Re-run when your fix is ready.")
         return 0
 
-    branches = get_supported_branches()
+    branches, dropped = get_supported_branches()
+    if dropped:
+        # Said out loud, because a branch missing from the table below and a branch
+        # that never needed the fix look identical to a reader
+        for branch, why in dropped:
+            print(f"Skipping {branch}: {why}")
     if not branches:
         print(
             "No supported branches found. Is this an AWS-LC clone with the "
@@ -34,12 +46,12 @@ def cmd_analyze(args) -> int:
 
     bug_commits = sorted(find_bug_commits(fix_sha, traceable_files))
     src_files = only_source_files(files)
-    buckets = {
+    verdicts = {
         branch: classify_branch(fix_sha, src_files, bug_commits, branch)
         for branch in branches
     }
-    buckets, decided_by = refine_with_ai(fix_sha, src_files, bug_commits, buckets)
+    verdicts, decided_by = refine_with_ai(fix_sha, src_files, bug_commits, verdicts)
 
-    print_summary(fix_sha, files, bug_commits, buckets, decided_by)
-    save_run(fix_sha, base, branches, buckets)
+    print_summary(fix_sha, files, bug_commits, verdicts, decided_by)
+    save_run(fix_sha, base, branches, verdicts)
     return 0

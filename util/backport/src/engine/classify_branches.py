@@ -1,37 +1,49 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Gives one release branch its verdict
 Checks whether the fix is already there, then whether the branch still needs it
 """
 
 from engine.inspect_fix import (
+    LINES_GONE,
+    LINES_PRESENT,
     any_bug_commit_present,
+    buggy_lines,
     buggy_lines_still_present,
-    deleted_lines,
     normalize_spaces,
 )
 from util.config import (
     AFFECTED,
-    ALREADY,
-    MAINLINE_REF,
+    ALREADY_PATCHED,
     NOT_AFFECTED,
     UNSURE,
     fingerprint_pathspec,
 )
 from util.git import (
     branch_paths_by_basename,
-    get_file_on_branch,
+    branch_ref,
     git_in_repo,
+    mainline_ref,
+    resolve_on_branch,
     show_file,
 )
 
 import os
+from functools import lru_cache
 from typing import Iterable, Optional, Sequence, Set
 
-# _________ Is It Already Backported _________
+# --- Is It Already Backported ---
 
 
+@lru_cache(maxsize=None)
 def change_fingerprint(commit: str) -> Optional[str]:
-    """The commit's contents as a patch-id, ignoring generated files"""
+    """
+    The commit's contents as a patch-id, ignoring generated files
+    Returns None when git cannot produce one. Cached because every branch asks for the
+    same fix's fingerprint, and it costs a git show piped through patch-id each time
+    """
     show = git_in_repo(
         ["show", commit, *fingerprint_pathspec()],
         capture_output=True,  # bytes, the commit may touch binary files
@@ -45,14 +57,17 @@ def change_fingerprint(commit: str) -> Optional[str]:
 
 
 def branch_fingerprints(ref: str) -> Set[str]:
-    """Fingerprints of the commits the branch has that mainline does not"""
+    """
+    Fingerprints of the commits the branch has that mainline does not
+    Returns an empty set when git fails
+    """
     log = git_in_repo(
         [
             "log",
             "-p",
             "--no-merges",
             "--format=%H",
-            f"{MAINLINE_REF}..{ref}",
+            f"{mainline_ref()}..{ref}",
             *fingerprint_pathspec(),
         ],
         capture_output=True,  # bytes, diffs may contain binary content
@@ -79,7 +94,7 @@ def branch_mentions_cherry_pick(commit: str, ref: str) -> bool:
     if full.returncode != 0 or not full.stdout.strip():
         return False
     log = git_in_repo(
-        ["log", "--format=%B%x00", f"{MAINLINE_REF}..{ref}"],
+        ["log", "--format=%B%x00", f"{mainline_ref()}..{ref}"],
         capture_output=True,
         text=True,
         errors="replace",
@@ -94,8 +109,9 @@ def is_already_patched(commit: str, branch: str) -> bool:
     Is the fix already on this branch?
     Three ways to tell: it is in the branch history, a commit there names it, or
     one there has the same contents under a different SHA
+    True when any of the three holds
     """
-    ref = f"origin/{branch}"
+    ref = branch_ref(branch)
 
     # Branch forked after the fix landed, so it has it through shared history
     if git_in_repo(["merge-base", "--is-ancestor", commit, ref]).returncode == 0:
@@ -107,7 +123,7 @@ def is_already_patched(commit: str, branch: str) -> bool:
     return bool(fingerprint) and fingerprint in branch_fingerprints(ref)
 
 
-# _________ The Verdict _________
+# --- The Verdict ---
 
 
 def same_named_file_carries_fix(
@@ -116,13 +132,14 @@ def same_named_file_carries_fix(
     """
     Last resort: does a file with the same name elsewhere on the branch hold the bug?
     A name alone proves nothing, so the contents have to hold a deleted line
+    True when one of those files holds such a line
     """
     by_name = branch_paths_by_basename(ref)
     for file in src_files:
         same_named = by_name.get(os.path.basename(file))
         if not same_named:
             continue
-        removed = [normalize_spaces(line) for line in deleted_lines(fix_sha, file)]
+        removed = [normalize_spaces(line) for line in buggy_lines(fix_sha, file)]
         if not removed:
             continue
         for path in same_named:
@@ -139,26 +156,36 @@ def classify_branch(
     One branch's verdict, the only copy of this decision
     Anything unclear is UNSURE, never NOT_AFFECTED.
     A wrong not affected means a missed security backport
+    Returns one of ALREADY_PATCHED, AFFECTED, UNSURE or NOT_AFFECTED
     """
-    ref = f"origin/{branch}"
+    ref = branch_ref(branch)
 
-    # Checked first because applying a fix deletes the buggy lines, which would
-    # make still_present below False and send these branches to UNSURE
+    # With no files there is nothing to look at, and "I looked at nothing and found
+    # nothing" must not come out as not affected. git.changed_files_with_status stops
+    # the run before this, so reaching it means a caller built the list some other way
+    if not src_files:
+        return UNSURE
+
+    # Checked first because applying a fix takes the buggy lines out, which would
+    # read as LINES_GONE below and send these branches to UNSURE
     if is_already_patched(fix_sha, branch):
-        return ALREADY
+        return ALREADY_PATCHED
 
     affected = any_bug_commit_present(bug_commits, ref)
-    still_present = buggy_lines_still_present(fix_sha, tuple(src_files), ref)
+    lines = buggy_lines_still_present(fix_sha, tuple(src_files), ref)
 
-    if affected and still_present is not False:
+    # Anything but LINES_GONE, so NOTHING_TO_LOOK_FOR counts as affected here: the fix
+    # removing no distinctive line is not evidence the bug is absent
+    if affected and lines != LINES_GONE:
         return AFFECTED
     # History missed it, a branch-only commit wrote the bug, but the lines are here
-    if not affected and still_present is True:
+    if not affected and lines == LINES_PRESENT:
         return AFFECTED
 
-    # Not clearly affected. Only call it not affected when the code is not even here
+    # Not clearly affected. Only call it not affected when the code is not even here.
+    # Existence is all this needs, so nothing loads a file to answer it
     present = any(
-        get_file_on_branch(f, ref, commit=fix_sha)[0] is not None for f in src_files
+        resolve_on_branch(f, ref, commit=fix_sha) is not None for f in src_files
     )
     if not present:
         present = same_named_file_carries_fix(fix_sha, src_files, ref)

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 """
 Replays real AWS-LC fixes and grades analyze against a hand-checked answer key
 
@@ -20,23 +22,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from engine.classify_branches import classify_branch
+from engine.classify_branches import change_fingerprint, classify_branch
 from engine.consult_ai import refine_with_ai
 from engine.discover_branches import get_supported_branches
 from engine.inspect_fix import (
+    LINES_PRESENT,
+    NOTHING_TO_LOOK_FOR,
+    buggy_lines,
     buggy_lines_still_present,
-    deleted_lines,
     find_bug_commits,
     only_source_files,
 )
-from util.config import AFFECTED, ALREADY, UNSURE, fingerprint_pathspec
+from util.config import AFFECTED, ALREADY_PATCHED, UNSURE, fingerprint_pathspec
 from util.git import changed_files_with_status, using_repo
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent.parent  # util/backport/testing -> the checkout
 
 
-# _________ Reading The Bench Files _________
+# --- Reading The Bench Files ---
 
 
 def read_fixes(path: Path):
@@ -62,7 +66,7 @@ def read_answers(path: Path):
     return answers
 
 
-# _________ Talking To The Real Checkout _________
+# --- Talking To The Real Checkout ---
 
 
 def git_out(repo, *args) -> str:
@@ -152,7 +156,7 @@ def find_backport(repo, fix_sha, branch):
     return None, ""
 
 
-# _________ The Sandbox _________
+# --- The Sandbox ---
 
 
 def build_sandbox(repo, fix_sha, branches, affected, backports):
@@ -192,7 +196,7 @@ def build_sandbox(repo, fix_sha, branches, affected, backports):
     return sandbox
 
 
-# _________ Running And Grading _________
+# --- Running And Grading ---
 
 
 def score(flagged: bool, truth: bool) -> str:
@@ -204,7 +208,9 @@ def score(flagged: bool, truth: bool) -> str:
 
 def replay_one(repo, fix_sha, label, truth, jobs):
     """Replays one fix and returns a per-branch scorecard"""
-    all_branches = get_supported_branches()
+    # No support window here: these fixes are years old, and a branch that has since
+    # gone end of support was still worth backporting to at the time
+    all_branches, _ = get_supported_branches(apply_support_window=False)
     branches = branches_in_scope(repo, fix_sha, all_branches)
     if not branches:
         return None
@@ -218,10 +224,12 @@ def replay_one(repo, fix_sha, label, truth, jobs):
     sandbox = build_sandbox(
         repo, fix_sha, branches, truth, {b: v[0] for b, v in backports.items()}
     )
-    # Both caches key on the branch ref, whose contents differ per sandbox, so a
-    # stale entry from the previous fix would be silently wrong
-    deleted_lines.cache_clear()
+    # These key on a commit or a branch ref, whose contents differ per sandbox, so a
+    # stale entry from the previous fix would be silently wrong. The caches inside
+    # util.git are cleared by using_repo itself
+    buggy_lines.cache_clear()
     buggy_lines_still_present.cache_clear()
+    change_fingerprint.cache_clear()
     try:
         with using_repo(sandbox):
             files, traceable = changed_files_with_status(fix_sha)
@@ -266,7 +274,7 @@ def replay_one(repo, fix_sha, label, truth, jobs):
                 "score": score(state == AFFECTED, branch in truth),
                 # Should have been flagged but the fix is already here, so the
                 # rollback missed a backport and this cell is not a fair test
-                "stale": branch in truth and state == ALREADY,
+                "stale": branch in truth and state == ALREADY_PATCHED,
             }
         )
     return {
@@ -303,9 +311,9 @@ FLAG_NOTES = {
 
 def flag_reason(row):
     """Splits an unneeded flag into a real tool error or one of the excusable kinds"""
-    if row["still_there"] is True:
+    if row["still_there"] == LINES_PRESENT:
         return UNSHIPPED
-    if row["still_there"] is None:
+    if row["still_there"] == NOTHING_TO_LOOK_FOR:
         return ADDITION
     if row["before_ai"] == UNSURE:
         # Never a git logic error: history said it could not tell
@@ -320,25 +328,8 @@ def truth_label(row):
     return f"affected/{row['backport']}" if row["backport"] else "affected/code"
 
 
-def print_fix(result, subject, verbose):
+def print_fix(result, subject):
     """A block per fix: the header, a row per branch, then notes on anything wrong"""
-    counts = {}
-    for row in result["rows"]:
-        counts[row["score"]] = counts.get(row["score"], 0) + 1
-    real_errors = sum(
-        1 for r in result["rows"] if r["score"] == "FP" and flag_reason(r) == OVER_FLAG
-    )
-
-    if not verbose:
-        mark = "FAIL" if counts.get("FN") else ("flags" if real_errors else "ok")
-        print(
-            f"{result['fix'][:12]}  {mark:5} "
-            f"TP={counts.get('TP', 0)} TN={counts.get('TN', 0)} "
-            f"FP={counts.get('FP', 0)} FN={counts.get('FN', 0)}  "
-            f"{result['label'][:46]}"
-        )
-        return
-
     print("\n" + "=" * 113)
     print(f"{result['label']}")
     print(f'  fix {result["fix"][:12]}  "{subject[:88]}"')
@@ -392,7 +383,6 @@ def main(argv=None) -> int:
     parser.add_argument("--fix", help="replay only this SHA")
     parser.add_argument("--no-ai", action="store_true", help="git history only")
     parser.add_argument("--jobs", type=int, default=6, help="branches at a time")
-    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
     if args.no_ai:
@@ -421,7 +411,7 @@ def main(argv=None) -> int:
         if result is None:
             print(f"{sha[:12]}  skipped, no branch predates this fix")
             continue
-        print_fix(result, git_out(REPO, "log", "-1", "--format=%s", sha), args.verbose)
+        print_fix(result, git_out(REPO, "log", "-1", "--format=%s", sha))
         for row in result["rows"]:
             totals[row["score"]] += 1
             if row["score"] == "FP":
@@ -466,8 +456,6 @@ def main(argv=None) -> int:
         print(f"\n{len(stale)} cell(s) still had the fix, rollback missed a backport:")
         for sha, branch in stale:
             print(f"  {sha} {branch}")
-    if not args.verbose:
-        print("\nRun with -v for the per-branch table and notes on every flag")
     return 1 if totals["FN"] else 0
 
 

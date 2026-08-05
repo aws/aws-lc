@@ -1,12 +1,16 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 The AI layer, asked only about branches git history cannot settle
-Advisory: it can add flags for a human to review but never hide a backport
+It can add flags for a human to review but never hide a backport
 """
 
 from engine.inspect_fix import (
+    LINES_GONE,
     bug_commits_present,
+    buggy_lines,
     buggy_lines_still_present,
-    deleted_lines,
     is_comment_or_blank,
     normalize_spaces,
 )
@@ -20,12 +24,20 @@ from engine.prompts import (
 )
 from util.config import (
     AFFECTED,
-    MAX_FILE_BYTES,
+    MAX_ANSWER_TOKENS,
     NOT_AFFECTED,
     UNSURE,
     load_model_config,
 )
-from util.git import get_commit_diff, get_file_on_branch, git, git_in_repo, show_file
+from util.git import (
+    branch_ref,
+    clip_to_budget,
+    get_commit_diff,
+    git,
+    git_in_repo,
+    resolve_on_branch,
+    show_file,
+)
 
 import os
 import re
@@ -33,33 +45,32 @@ import sys
 from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-try:
-    import anthropic
-except ImportError:
-    anthropic = None
+import anthropic
+import boto3
 
-# _________ The Bedrock Client _________
+# --- The Bedrock Client ---
 
 
 @lru_cache(maxsize=1)
 def ai_client():
-    """A Bedrock client, or None when the SDK or AWS credentials are missing"""
-    if anthropic is None or os.environ.get("BACKPORT_DISABLE_AI") == "1":
+    """
+    A Bedrock client, or None when there are no AWS credentials
+    The region comes from ai-config.json and is passed explicitly, so AWS_REGION or
+    AWS_DEFAULT_REGION in the environment cannot redirect the model calls
+    BACKPORT_DISABLE_AI turns the AI pass off, which is how the replay bench measures
+    what git history settles on its own
+    """
+    if os.environ.get("BACKPORT_DISABLE_AI") == "1":
         return None
+    region = load_model_config()["aws_region"]
     # Credentials come from the normal AWS chain, not just AWS_ACCESS_KEY_ID,
     # which misses anything set up in ~/.aws
-    try:
-        import boto3
-
-        if boto3.Session().get_credentials() is None:
-            return None
-    except ImportError:
-        if not os.environ.get("AWS_ACCESS_KEY_ID"):
-            return None
-    return anthropic.AnthropicBedrock(aws_region=load_model_config()["aws_region"])
+    if boto3.Session(region_name=region).get_credentials() is None:
+        return None
+    return anthropic.AnthropicBedrock(aws_region=region)
 
 
-# _________ What The Model Sees _________
+# --- What The Model Sees ---
 
 # Common C tokens say nothing about what the fix touched
 C_STOPWORDS = set(
@@ -143,24 +154,31 @@ def symbol_presence(commit: str, changed_files: Sequence[str], branch_ref: str) 
 def branch_file_context(
     commit: str, branch: str, branch_ref: str, changed_files: Sequence[str]
 ) -> Tuple[str, List[str], bool]:
-    """The fixed files as they look on the branch, plus the ones that are missing"""
+    """
+    The fixed files as they look on the branch, plus the ones that are missing
+    Returns (context, absent files, whether any were found). Each file is read once:
+    the path is resolved without loading anything, then the contents are fetched only
+    for the files that are actually here
+    """
     parts, absent = [], []
     for file in changed_files[:6]:  # capped to keep the prompt a sane size
-        content, resolved = get_file_on_branch(file, branch_ref, commit=commit)
-        if not content:
+        resolved = resolve_on_branch(file, branch_ref, commit=commit)
+        full = show_file(branch_ref, resolved) if resolved else None
+        if not full:
             absent.append(file)
             continue
         label = file if resolved == file else f"{resolved} (older path of {file})"
-        full = show_file(branch_ref, resolved) or content
-        region = region_around(full, deleted_lines(commit, file))
+        region = region_around(full, buggy_lines(commit, file))
         if region:
             excerpt, (lo, hi) = region
             parts.append(
                 f"### {label} (on {branch}, lines {lo}-{hi}, around the change)\n"
-                f"```\n{excerpt[:MAX_FILE_BYTES]}\n```"
+                f"```\n{clip_to_budget(excerpt)}\n```"
             )
         else:
-            parts.append(f"### {label} (on {branch})\n```\n{content}\n```")
+            # No line to centre on, so the whole file goes in, cut to the budget with
+            # a marker rather than trailing off silently
+            parts.append(f"### {label} (on {branch})\n```\n{clip_to_budget(full)}\n```")
     if not parts:
         return "(none of the files the fix changes were found here)", absent, False
     return "\n\n".join(parts), absent, True
@@ -187,14 +205,23 @@ def build_prompt(
     bug_commits: Iterable[str],
     flagged_affected: bool,
 ) -> str:
-    """The user message: the fix, the branch's copy of the code, and the task"""
+    """
+    The user message: the fix, the branch's copy of the code, and the task
+
+    flagged_affected picks which of the two questions gets asked. True means git
+    history flagged this branch and the model is auditing that flag, looking for a
+    false positive. False means history could not settle the branch at all and the
+    model is breaking the tie. The auditor can only ever add doubt to a flag, the
+    tie-breaker is the only one that can turn an unsure branch into a verdict
+    """
     context, absent, any_present = branch_file_context(
         commit, branch, branch_ref, changed_files
     )
     # Only tell the auditor the lines are gone, the tie-breaker has no flag to audit
     lines_gone = (
         flagged_affected
-        and buggy_lines_still_present(commit, tuple(changed_files), branch_ref) is False
+        and buggy_lines_still_present(commit, tuple(changed_files), branch_ref)
+        == LINES_GONE
     )
     return (
         f"## Impact Analysis Request\n\n"
@@ -212,22 +239,56 @@ def build_prompt(
     )
 
 
-# _________ Asking The Model _________
+# --- Asking The Model ---
+
+
+VERDICT_LINE = "likely affected"
+CONFIDENCE_LINE = "confidence"
+
+# A label only counts as an answer where the model was asked to put it: at the start of
+# its own line, followed by a colon. The leading class is the Markdown decoration a
+# model puts in front of it, any of "- ", "**", "### " or "1. "
+ANSWER_LINE = re.compile(
+    rf"^[\s>#*\-\d.)]*(?P<label>{VERDICT_LINE}|{CONFIDENCE_LINE})[\s*]*:\s*(?P<rest>.*)$"
+)
 
 
 def read_answer(raw: str) -> Tuple[Optional[bool], str]:
-    """Pulls (likely affected, confidence) out of the reply"""
+    """
+    Reads the verdict lines out of the reply
+    Returns (likely affected, confidence). Likely affected is True or False only for
+    an exact yes or no. Anything else is None, which leaves the branch flagged, so a
+    reply the model could not commit to never clears a branch
+
+    A label that is not at the start of a line is prose, not an answer, and only the
+    first line carrying each label is read. Scanning every line for the label anywhere
+    in it let a reply quote its own labels back and win: the reasoning sentence
+    "Likely affected. No mitigation exists on this branch" landed after the real
+    verdict and cleared the branch
+    """
     likely, confidence = None, "low"
+    read = set()
     for line in raw.splitlines():
-        low = line.lower()
-        if "likely affected" in low:
-            if "yes" in low:
+        answer = ANSWER_LINE.match(line.lower())
+        if answer is None or answer["label"] in read:
+            continue
+        read.add(answer["label"])
+        rest = answer["rest"]
+        if answer["label"] == VERDICT_LINE:
+            # Only the first word after the label counts, and only an exact yes or no.
+            # "unknown", "cannot", "not" and "none" all contain "no", and a hedge
+            # like "uncertain, though probably no" must not read as a no. Clearing a
+            # branch the model could not judge is the one failure that ships a
+            # vulnerability
+            words = re.findall(r"[a-z]+", rest)
+            first = words[0] if words else ""
+            if first == "yes":
                 likely = True
-            elif "no" in low:
-                likely = False  # anything else stays None, meaning uncertain
-        if "confidence" in low:
+            elif first == "no":
+                likely = False
+        else:
             for level in ("high", "medium", "low"):
-                if level in low:
+                if re.search(rf"\b{level}\b", rest):
                     confidence = level
                     break
     return likely, confidence
@@ -248,21 +309,26 @@ def ask_about_branch(
     if client is None:
         return None
     prompt = build_prompt(
-        commit, branch, f"origin/{branch}", changed_files, bug_commits, flagged_affected
+        commit,
+        branch,
+        branch_ref(branch),
+        changed_files,
+        bug_commits,
+        flagged_affected,
     )
     cfg = load_model_config()
     try:
         with client.messages.stream(
-            model=cfg["model_id"],
-            max_tokens=cfg["max_tokens"],
+            model=cfg["opus"],
+            max_tokens=MAX_ANSWER_TOKENS,
             thinking={"type": "adaptive"},
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
             reply = stream.get_final_message()
     # Deliberately broad. Any failure here (network, auth, throttling, a model
-    # error) must leave the branch flagged rather than crash the run, since the
-    # AI is advisory
+    # error) must leave the branch flagged rather than crash the run, since the AI
+    # only ever adds a flag for review
     except Exception as exc:
         print(f"[ai] call failed for {branch}: {exc}", file=sys.stderr)
         return None
@@ -270,21 +336,21 @@ def ask_about_branch(
         # Thinking tokens ate the budget, so the answer may be cut off mid-sentence
         print(
             f"[ai] reply for {branch} hit the token limit and may be cut short, "
-            "raise max_tokens in model-config.json",
+            "raise MAX_ANSWER_TOKENS in src/util/config.py",
             file=sys.stderr,
         )
     raw = "".join(b.text for b in reply.content if hasattr(b, "text"))
     return read_answer(raw.strip())
 
 
-# _________ Settling The Unsure Branches _________
+# --- Settling The Unsure Branches ---
 
 
 def decide_unsure(
     fix_sha: str,
     files: Sequence[str],
     bug_commits: Sequence[str],
-    buckets: Dict[str, str],
+    verdicts: Dict[str, str],
     decided_by: Dict[str, str],
 ) -> Tuple[int, int]:
     """
@@ -293,28 +359,28 @@ def decide_unsure(
     Returns (asked, failed)
     """
     asked = failed = 0
-    for branch in [b for b, s in buckets.items() if s == UNSURE]:
+    for branch in [b for b, s in verdicts.items() if s == UNSURE]:
         asked += 1
         answer = ask_about_branch(fix_sha, branch, files, bug_commits)
         if answer is None:
             failed += 1
-            buckets[branch] = AFFECTED
+            verdicts[branch] = AFFECTED
             decided_by[branch] = "unclear, AI unreachable, flagged for review"
             continue
         likely, confidence = answer
         if likely is True:
-            buckets[branch] = AFFECTED
+            verdicts[branch] = AFFECTED
             decided_by[branch] = f"AI: likely affected ({confidence})"
         elif likely is False:
-            buckets[branch] = NOT_AFFECTED
+            verdicts[branch] = NOT_AFFECTED
             decided_by[branch] = f"AI: likely not affected ({confidence})"
         else:
-            buckets[branch] = AFFECTED
+            verdicts[branch] = AFFECTED
             decided_by[branch] = f"AI: uncertain ({confidence}), flagged for review"
     return asked, failed
 
 
-# _________ Reviewing Suspicious Flags _________
+# --- Reviewing Suspicious Flags ---
 
 
 def commit_time(sha: str) -> int:
@@ -324,7 +390,7 @@ def commit_time(sha: str) -> int:
 
 
 def likely_over_flagged(
-    bug_commits: Sequence[str], buckets: Dict[str, str]
+    bug_commits: Sequence[str], verdicts: Dict[str, str]
 ) -> Dict[str, Tuple[int, int]]:
     """
     AFFECTED branches that are probably wrong, worked out without the AI
@@ -337,7 +403,7 @@ def likely_over_flagged(
     if len(commits) < 2:
         return suspects  # a lone match has no old-versus-new split to doubt
     newest = max(commits, key=commit_time)
-    for branch, state in buckets.items():
+    for branch, state in verdicts.items():
         if state != AFFECTED:
             continue
         here = bug_commits_present(set(commits), branch)
@@ -376,7 +442,7 @@ def note_over_flags(
     return asked, failed
 
 
-# _________ What The Command Calls _________
+# --- What The Command Calls ---
 
 
 def warn_if_unreachable(asked: int, failed: int) -> None:
@@ -398,20 +464,20 @@ def refine_with_ai(
     fix_sha: str,
     files: Sequence[str],
     bug_commits: Sequence[str],
-    buckets: Dict[str, str],
+    verdicts: Dict[str, str],
 ) -> Tuple[Dict[str, str], Dict[str, str]]:
     """Settles the unsure branches, then reviews flags that look wrong"""
-    decided_by = {branch: "git history" for branch in buckets}
+    decided_by = {branch: "git history" for branch in verdicts}
 
-    unsure = sum(1 for s in buckets.values() if s == UNSURE)
+    unsure = sum(1 for s in verdicts.values() if s == UNSURE)
     if unsure:
         print(
             f"{unsure} branch(es) unclear from history, asking AI...\n", file=sys.stderr
         )
     # Snapshot before anything moves, so the review pass below only looks at
     # branches history positively flagged, not ones just promoted from unclear
-    from_history = dict(buckets)
-    asked, failed = decide_unsure(fix_sha, files, bug_commits, buckets, decided_by)
+    from_history = dict(verdicts)
+    asked, failed = decide_unsure(fix_sha, files, bug_commits, verdicts, decided_by)
 
     suspects = likely_over_flagged(bug_commits, from_history)
     if suspects:
@@ -427,4 +493,4 @@ def refine_with_ai(
         failed += more_failed
 
     warn_if_unreachable(asked, failed)
-    return buckets, decided_by
+    return verdicts, decided_by

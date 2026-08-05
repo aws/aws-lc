@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 # 39 real AWS-LC fixes with checked answers, one per line
 # <sha>  free text label. The branches each one should flag live in answer_key.txt
 #

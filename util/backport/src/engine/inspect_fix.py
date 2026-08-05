@@ -1,23 +1,29 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Reads the fix: which lines it deletes and which commits wrote them
 Nothing here looks at a release branch except to check the lines are still on it
 """
 
 from util.config import BackportError, is_test_or_generated_file
-from util.git import git_in_repo, show_file
+from util.git import branch_ref, git_in_repo, show_file
 
 import re
 import sys
 from functools import lru_cache
 from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
-# _________ Which Lines To Look For _________
+# --- Which Lines To Look For ---
 
 C_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".hh", ".hxx")
 
 
 def normalize_spaces(s: str) -> str:
-    """Collapses runs of whitespace so a reformatted line still matches"""
+    """
+    Collapses runs of whitespace so a reformatted line still matches
+    Returns the collapsed line
+    """
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -57,13 +63,19 @@ def only_source_files(files: Sequence[str]) -> List[str]:
     """
     Drops tests and generated files, since neither is the shipped code
     Keeps everything when the fix touches nothing else
+    Returns the files worth analyzing
     """
     return [f for f in files if not is_test_or_generated_file(f)] or list(files)
 
 
 @lru_cache(maxsize=None)
-def deleted_lines(commit: str, file: str) -> List[str]:
-    """The distinctive lines the commit deletes from the file"""
+def buggy_lines(commit: str, file: str) -> List[str]:
+    """
+    The distinctive lines the fix takes out of the file, which is what the bug looked
+    like. A modified line counts too: git writes a change as a removal plus an
+    addition, so the old wording of a line the fix rewrote lands here as well
+    Returns an empty list when the diff fails or nothing distinctive came out
+    """
     diff = git_in_repo(
         ["diff", f"{commit}^", commit, "--", file], capture_output=True, text=True
     )
@@ -81,20 +93,28 @@ def deleted_lines(commit: str, file: str) -> List[str]:
     return removed
 
 
+# What the search for the buggy lines found. A plain bool cannot say the third one,
+# and that third case is the one that must not read as "the bug is gone"
+LINES_PRESENT = "present"
+LINES_GONE = "gone"
+NOTHING_TO_LOOK_FOR = "nothing_to_look_for"
+
+
 @lru_cache(maxsize=None)
 def buggy_lines_still_present(
     commit: str, changed_files: Tuple[str, ...], ref: str
-) -> Optional[bool]:
+) -> str:
     """
-    Are the lines the fix deletes still on the branch?
-    True still there, False gone, None the fix deleted nothing to look for
+    Whether the lines the fix takes out are still on the branch
+    Returns LINES_PRESENT, LINES_GONE, or NOTHING_TO_LOOK_FOR when the fix removed no
+    distinctive line to search for, which is not evidence either way
     """
     saw_removed = False
     for file in changed_files:
         # A hit in a test or generated file is not the shipped code
         if is_test_or_generated_file(file):
             continue
-        removed = deleted_lines(commit, file)
+        removed = buggy_lines(commit, file)
         if not removed:
             continue
         saw_removed = True
@@ -103,15 +123,18 @@ def buggy_lines_still_present(
             continue
         content = normalize_spaces(content)
         if any(normalize_spaces(line) in content for line in removed):
-            return True
-    return False if saw_removed else None
+            return LINES_PRESENT
+    return LINES_GONE if saw_removed else NOTHING_TO_LOOK_FOR
 
 
-# _________ Which Commits Wrote The Bug _________
+# --- Which Commits Wrote The Bug ---
 
 
 def blame_lines(file: str, line_start: int, line_end: int, ref: str) -> Optional[str]:
-    """Oldest commit to touch those lines, from `log -L` or failing that `blame`"""
+    """
+    Oldest commit to touch those lines, from `log -L` or failing that `blame`
+    Returns None when neither can name a commit, usually a fix that only added lines
+    """
     log = git_in_repo(
         ["log", f"-L{line_start},{line_end}:{file}", "--format=%H", "--reverse", ref],
         capture_output=True,
@@ -148,6 +171,7 @@ def find_bug_commits(commit: str, files: Sequence[str]) -> Set[str]:
     The commits that wrote the lines this fix changes
     Hunks that only touch comments are skipped, so a stale comment cannot drag in
     some ancient unrelated commit
+    Returns their SHAs, empty when nothing could be blamed
     """
     bug_commits = set()
     for file in files:
@@ -212,7 +236,7 @@ def bug_commits_present(bug_commits: Iterable[str], branch: str) -> Set[str]:
     any_bug_commit_present stops at the first hit, this returns them all, so a
     caller can tell all of them are here from only the old ones are here
     """
-    ref = f"origin/{branch}"
+    ref = branch_ref(branch)
     return {
         sha
         for sha in bug_commits

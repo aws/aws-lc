@@ -1,22 +1,27 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Everything that runs a git command
 Only imports util.config, so it can never make an import cycle
 """
 
 from util.config import (
-    MAINLINE_REF,
     MAX_DIFF_BYTES,
     MAX_FILE_BYTES,
+    RELEASE_REMOTE,
     TOOL_ROOT,
     BackportError,
 )
 
 import os
+import re
 import subprocess
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
-# _________ Where We Run _________
+# --- Where We Run ---
 
 # Git runs in the repo this tool lives in (<repo>/util/backport -> <repo>)
 # Pinned instead of using the current directory: we pass repo-relative paths like
@@ -31,17 +36,64 @@ def using_repo(path) -> Iterator[None]:
     """
     Points git at another checkout for the duration of the block
     Only the replay bench uses this, to aim the engine at a throwaway sandbox
+    Every cache in this module keys on refs or paths that belong to one checkout, so
+    they are dropped on the way in and on the way out. A sandbox has its own remotes,
+    and a stale release_remote would send every lookup at a ref that is not there
     """
     global REPO_TOP
     previous = REPO_TOP
     REPO_TOP = str(path)
+    _clear_repo_caches()
     try:
         yield
     finally:
         REPO_TOP = previous
+        _clear_repo_caches()
 
 
-# _________ Command Runners _________
+def _clear_repo_caches() -> None:
+    """Drops every cache in this module that is only valid for one checkout"""
+    release_remote.cache_clear()
+    file_on_branch.cache_clear()
+    historical_paths.cache_clear()
+
+
+# --- Which Remote Holds The Release Branches ---
+
+
+@lru_cache(maxsize=1)
+def release_remote() -> str:
+    """
+    The remote to read release branches from
+    Returns BACKPORT_REMOTE when set, else the remote pointing at aws/aws-lc, else
+    origin. Locally origin is usually a fork, which may be missing the release
+    branches or stale on them, so reading them from the remote that owns them is safer.
+    In CI there is only origin and it already is aws/aws-lc, so this picks it either way
+    """
+    if RELEASE_REMOTE:
+        return RELEASE_REMOTE
+    listed = git("remote", "-v", check=False)
+    if listed.returncode == 0:
+        for line in listed.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and re.search(
+                r"github\.com[:/]+aws/aws-lc(\.git)?$", parts[1]
+            ):
+                return parts[0]
+    return "origin"
+
+
+def branch_ref(branch: str) -> str:
+    """The remote-tracking ref for a release branch, e.g. upstream/fips-2024-09-27"""
+    return f"{release_remote()}/{branch}"
+
+
+def mainline_ref() -> str:
+    """The ref a release branch's own commits are measured against"""
+    return f"{release_remote()}/main"
+
+
+# --- Command Runners ---
 
 
 def git_in_repo(args: Sequence[str], **kwargs):
@@ -54,20 +106,14 @@ def git_in_repo(args: Sequence[str], **kwargs):
     return subprocess.run(["git", *args], **kwargs)
 
 
-def run(
-    args: Sequence[str],
-    check: bool = True,
-    cwd: Optional[str] = None,
-    stdin: Optional[str] = None,
-):
+def run(args: Sequence[str], check: bool = True):
     """
-    Runs a command and captures its output
-    Raises BackportError when it fails, unlike git_in_repo above
+    Runs a command in the repo and captures its output
+    Returns the finished process. Raises BackportError when it fails, unlike
+    git_in_repo above
     """
-    if cwd is None:
-        cwd = REPO_TOP
     p = subprocess.run(
-        list(args), capture_output=True, text=True, cwd=cwd, input=stdin, check=False
+        list(args), capture_output=True, text=True, cwd=REPO_TOP, check=False
     )
     if check and p.returncode != 0:
         raise BackportError(
@@ -76,19 +122,15 @@ def run(
     return p
 
 
-def git(
-    *args: str,
-    check: bool = True,
-    cwd: Optional[str] = None,
-    stdin: Optional[str] = None,
-):
+def git(*args: str, check: bool = True):
     """
     Runs a git command through run(), so a failure stops the run
+    Returns the finished process
     """
-    return run(["git", *args], check=check, cwd=cwd, stdin=stdin)
+    return run(["git", *args], check=check)
 
 
-# _________ Finding The Fix _________
+# --- Finding The Fix ---
 
 # commit-tree will not run without a name and email set, so hand it one
 BOT_IDENTITY = (
@@ -140,7 +182,7 @@ def resolve_fix_commit(args) -> Tuple[str, str]:
     Nothing is checked out. Several commits get squashed into one commit object with
     commit-tree, so a fix spread over commits is read as its net change
     """
-    spec = getattr(args, "commit", None) or f"{MAINLINE_REF}...HEAD"
+    spec = getattr(args, "commit", None) or f"{mainline_ref()}...HEAD"
     endpoints = range_endpoints(spec)
     if endpoints is None:
         fix_sha = _rev(spec)
@@ -172,24 +214,31 @@ def resolve_fix_commit(args) -> Tuple[str, str]:
     return squashed, base_sha
 
 
-# _________ Reading What Changed _________
+# --- Reading What Changed ---
 
 
 def changed_files_with_status(commit: str) -> Tuple[List[str], List[str]]:
     """
     Files the commit touches, as (all files, traceable files)
     Traceable leaves out files the fix added, since a new file has no history to blame
+    Raises when git fails or the commit changes nothing, because an empty list would
+    otherwise clear every branch without looking at a single line of code
 
     Reads `git diff-tree --name-status`, one line per file:
         M     crypto/aead.c              modified
         A     tls/new_feature.c          added
         R100  old.c    new.c             renamed, new path last
     """
-    output = git_in_repo(
+    result = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],
         capture_output=True,
         text=True,
-    ).stdout
+    )
+    if result.returncode != 0:
+        raise BackportError(
+            f"could not read the files '{commit}' changes: {result.stderr.strip()}"
+        )
+    output = result.stdout
 
     changed_files: List[str] = []
     traceable_files: List[str] = []
@@ -201,6 +250,14 @@ def changed_files_with_status(commit: str) -> Tuple[List[str], List[str]]:
         changed_files.append(path)
         if not status.startswith("A"):  # A means the fix added it
             traceable_files.append(path)
+    if not changed_files:
+        # A merge commit is the one that reaches here: diff-tree shows nothing for it
+        # against its first parent, and still exits 0
+        raise BackportError(
+            f"'{commit}' changes no files, so there is nothing to analyze.\n"
+            "A merge commit reports no changes of its own. Analyze what it brought "
+            f"in instead, with --commit {commit}^..{commit}"
+        )
     return changed_files, traceable_files
 
 
@@ -224,7 +281,7 @@ def branch_paths_by_basename(ref: str) -> Dict[str, List[str]]:
     return grouped
 
 
-# _________ Reading Files Through Renames _________
+# --- Reading Files Through Renames ---
 
 
 def get_commit_diff(commit: str) -> str:
@@ -255,10 +312,12 @@ def show_file(ref: str, path: str) -> Optional[str]:
     return result.stdout
 
 
+@lru_cache(maxsize=None)
 def historical_paths(commit: str, file_path: str, limit: int = 6) -> List[str]:
     """
     Paths the file has had over time, current name first then older ones
-    Lets us find the file on a branch that forked before a rename
+    Lets us find the file on a branch that forked before a rename. Cached because
+    every branch asks the same question about the same file
     """
     paths = [file_path]
     result = git_in_repo(
@@ -282,22 +341,40 @@ def historical_paths(commit: str, file_path: str, limit: int = 6) -> List[str]:
     return paths
 
 
-def get_file_on_branch(
+def clip_to_budget(content: str) -> str:
+    """
+    Content cut to MAX_FILE_BYTES, with a marker saying what was dropped
+    Returns it unchanged when it already fits. The marker is the point: a file cut
+    off in silence reads to the model as though the code is simply not there, and
+    not there is how a branch gets cleared
+    """
+    if len(content) <= MAX_FILE_BYTES:
+        return content
+    dropped = len(content) - MAX_FILE_BYTES
+    return content[:MAX_FILE_BYTES] + (
+        f"\n\n[cut off here, {dropped} more bytes follow in this file. "
+        "Code missing below this point is missing from the excerpt, not from the file]"
+    )
+
+
+@lru_cache(maxsize=None)
+def file_on_branch(ref: str, path: str) -> bool:
+    """Whether the branch has that path at all, without reading the file"""
+    return git("cat-file", "-e", f"{ref}:{path}", check=False).returncode == 0
+
+
+def resolve_on_branch(
     file_path: str, branch_ref: str, commit: Optional[str] = None
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Optional[str]:
     """
-    (contents, path) for the file on that branch, cut off at MAX_FILE_BYTES
-    Missing at its current path, walks back through older names when given a commit
-    Gives (None, None) when the file is nowhere on the branch
+    The path this file lives at on the branch, following renames
+    Returns None when it is nowhere on the branch. Only asks git whether the path
+    exists, so a caller that just needs to know that never loads the contents
     """
-    content = show_file(branch_ref, file_path)
-    if content is not None:
-        return content[:MAX_FILE_BYTES], file_path
+    if file_on_branch(branch_ref, file_path):
+        return file_path
     if commit:
         for older in historical_paths(commit, file_path):
-            if older == file_path:
-                continue
-            content = show_file(branch_ref, older)
-            if content is not None:
-                return content[:MAX_FILE_BYTES], older
-    return None, None
+            if older != file_path and file_on_branch(branch_ref, older):
+                return older
+    return None

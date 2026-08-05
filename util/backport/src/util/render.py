@@ -1,21 +1,31 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Prints the analyze result and asks the yes/no questions
 No git or analysis logic here
 """
 
-from util.config import AFFECTED, ALREADY, LABEL, NOT_AFFECTED, TEST_SUFFIXES, UNSURE
+from util.config import (
+    AFFECTED,
+    ALREADY_PATCHED,
+    LABEL,
+    NOT_AFFECTED,
+    TEST_SUFFIXES,
+    UNSURE,
+)
 
 from typing import Dict, Sequence
 
 # Affected first, those are the ones to act on
-ORDER = {AFFECTED: 0, UNSURE: 1, ALREADY: 2, NOT_AFFECTED: 3}
+ORDER = {AFFECTED: 0, UNSURE: 1, ALREADY_PATCHED: 2, NOT_AFFECTED: 3}
 
 
 def print_summary(
     fix_sha: str,
     files: Sequence[str],
     bug_commits: Sequence[str],
-    buckets: Dict[str, str],
+    verdicts: Dict[str, str],
     decided_by: Dict[str, str],
 ) -> None:
     """Prints every branch and its verdict as a table"""
@@ -25,13 +35,13 @@ def print_summary(
     print()
 
     # Widths follow the longest value so long branch names stay lined up
-    branch_w = max([len("branch")] + [len(b) for b in buckets])
-    status_w = max([len("status")] + [len(LABEL[s]) for s in buckets.values()])
+    branch_w = max([len("branch")] + [len(b) for b in verdicts])
+    status_w = max([len("status")] + [len(LABEL[s]) for s in verdicts.values()])
     print(f"  {'branch':<{branch_w}} {'status':<{status_w}} basis")
     print(f"  {'-' * branch_w} {'-' * status_w} {'-' * 40}")
 
     # sorted() is stable, so branches stay newest first inside each group
-    for branch, state in sorted(buckets.items(), key=lambda kv: ORDER.get(kv[1], 9)):
+    for branch, state in sorted(verdicts.items(), key=lambda kv: ORDER.get(kv[1], 9)):
         basis = decided_by.get(branch, "")
         print(f"  {branch:<{branch_w}} {LABEL[state]:<{status_w}} {basis}".rstrip())
 

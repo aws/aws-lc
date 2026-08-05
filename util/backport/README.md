@@ -12,9 +12,9 @@ passes:
    that wrote them, and checks whether those commits and those lines reached each
    branch. This settles most branches on its own.
 2. **AI** - only for branches history cannot settle, plus a second look at flagged
-   branches that match just part of a fix's history. Advisory: it can add flags for
-   a human to review, but a no-answer always leaves the branch flagged, so it can
-   never hide a needed backport.
+   branches that match just part of a fix's history. It can add flags for a human to
+   review, but a no-answer always leaves the branch flagged, so it can never hide a
+   needed backport.
 
 Nothing is cherry-picked, pushed, or committed. The tool only reports.
 
@@ -22,15 +22,18 @@ Nothing is cherry-picked, pushed, or committed. The tool only reports.
 
 ### Required Tools
 
-- **Python 3**: for the tool itself, no third-party packages needed for the git pass
-- **git**: with the release branches fetched (`git fetch origin`)
-- **anthropic + boto3**: for the AI pass (`pip3 install --user anthropic boto3`)
+- **Python 3**: for the tool itself
+- **git**: with the release branches fetched from the remote that has them
+  (`git fetch upstream`, or `git fetch origin` in a clone of `aws/aws-lc` itself)
+- **anthropic + boto3**: required, not optional (`pip3 install --user anthropic boto3`).
+  The AI pass is part of how a verdict is reached, so the tool imports them at startup
+  even when `BACKPORT_DISABLE_AI` is set
 
 ### AWS Permissions
 
 The AI pass calls Claude on Amazon Bedrock, so you need permission to invoke the
-model named in `model-config.json`. Credentials are read through the normal AWS
-chain (environment, `~/.aws`, SSO, IAM role).
+model named in `.github/workflows/ai-config.json`. Credentials are read through the
+normal AWS chain (environment, `~/.aws`, SSO, IAM role).
 
 ## Setup
 
@@ -38,12 +41,18 @@ Run from the top of an AWS-LC checkout. The tool operates on the checkout it liv
 in, so there is nothing to configure.
 
 ```bash
-# make sure the release branches are present
-git fetch origin
+# make sure the release branches are present. Whichever remote points at
+# aws/aws-lc is the one they are read from
+git fetch upstream
+```
 
-# set up credentials for the AI pass
+Credentials for the AI pass come from the normal AWS chain, so `AWS_PROFILE` is usually
+all you need. The region is not taken from the environment: it comes from `aws_region`
+in `.github/workflows/ai-config.json`, so a stray `AWS_REGION` cannot send the model
+calls elsewhere.
+
+```bash
 export AWS_PROFILE=your-profile
-export AWS_REGION=us-east-1
 ```
 
 ## Usage
@@ -54,7 +63,7 @@ export AWS_REGION=us-east-1
 util/backport/backport analyze
 ```
 
-With no arguments this analyzes your branch's commits since `origin/main`. Several
+With no arguments this analyzes your branch's commits since the mainline. Several
 commits are read as their net change, so a fix split across commits is judged as a
 whole.
 
@@ -119,38 +128,70 @@ flagging.
 
 ### Model settings
 
-`model-config.json` at the tool root:
+`.github/workflows/ai-config.json`, shared with the autofix workflow:
 
 ```json
 {
-  "model_id": "us.anthropic.claude-opus-4-8",
   "aws_region": "us-west-2",
-  "max_tokens": 4096
+  "opus": "us.anthropic.claude-opus-5"
 }
 ```
 
-All three are required. To change the model, edit this file.
+Both are required. The file also names the sonnet and haiku models that autofix uses,
+which this tool ignores. To change the model, edit that file. Sharing it is what keeps
+this tool and autofix from drifting onto different models.
 
-Keep `max_tokens` generous. The model thinks before answering, and a small budget
-truncates the reply mid-answer, which shows up as every branch coming back
-"uncertain".
+The reply budget is `MAX_ANSWER_TOKENS` in `src/util/config.py`, next to the other
+limits on what goes to the model. Keep it generous. The model thinks before answering,
+and a small budget truncates the reply mid-answer, which shows up as every branch
+coming back "uncertain".
+
+### Which branches count
+
+Release branches are read from whichever remote points at `aws/aws-lc`, falling back to
+`origin` when there is no such remote. `BACKPORT_REMOTE` overrides it.
+
+That matters locally: `origin` is usually your own fork, which may not have the release
+branches at all, or may be months behind on them. In CI there is only `origin` and it
+already is `aws/aws-lc`, so the same rule picks the right thing in both places. Fetch
+them first either way:
+
+```bash
+git fetch upstream
+```
+
+The branches found are then checked against `fips_versions.aws-lc.json`, which mirrors
+the end-of-support table in `VERSIONING.md`. A branch past its end of support, or marked
+as no longer actively maintained, is skipped and the reason is printed:
+
+```
+Skipping fips-2021-10-20: support ended 2026-10
+```
+
+It is printed rather than quietly left out, because a branch missing from the table and
+a branch that never needed the fix look identical otherwise.
+
+A branch that is **not** in the file is kept. Unknown must not mean silently skipped,
+since the cost of that is a missed backport. A newly cut branch is analyzed from the day
+it appears, and adding it to the file only matters once it has an end date.
+
+When a branch ages out, update the file from `VERSIONING.md`. A unit test fails as soon
+as anything listed in it is past its date, so this cannot rot unnoticed.
 
 ### Environment Variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `BACKPORT_DISABLE_AI` | unset | set to `1` for the git-history pass only |
-| `BACKPORT_MAINLINE_REF` | `origin/main` | what release branches are compared against |
-| `BACKPORT_BRANCH_PREFIXES` | `origin/fips-,origin/AWS-LC-FIPS-,origin/NetOS` | which branches count as releases |
-| `BACKPORT_GENERATED_PATHS` | `generated-src` | machine-written paths to ignore |
-| `AWS_PROFILE`, `AWS_REGION` | unset | credentials for the AI pass |
+| `BACKPORT_REMOTE` | worked out | which remote the release branches are read from |
+| `AWS_PROFILE` | unset | credentials for the AI pass. The region is not read from the environment |
 
 ## Project Structure
 
 ```
 util/backport/
 ├── backport                      # entry point script
-├── model-config.json             # model id, region, token budget
+├── fips_versions.aws-lc.json     # which release branches are still in support
 ├── src/
 │   ├── main.py                   # argument parsing
 │   ├── commands/
@@ -182,8 +223,10 @@ cd util/backport
 python3 -m unittest testing.test_engine
 ```
 
-Covers the pure helpers: the line filters, source file selection, branch ordering,
-and reading the model's reply. No checkout or credentials needed.
+Covers the pure helpers and the decision logic: the line filters, source file
+selection, branch ordering, reading the model's reply, the per-branch verdict table,
+and the guards that stop an empty or truncated read from clearing a branch. No
+checkout or credentials needed.
 
 ### Replay bench
 
@@ -191,7 +234,7 @@ and reading the model's reply. No checkout or credentials needed.
 cd util/backport
 python3 testing/replay_fixes.py            # with the AI pass
 python3 testing/replay_fixes.py --no-ai    # git history only
-python3 testing/replay_fixes.py -v --fix 9545d9de6059
+python3 testing/replay_fixes.py --fix 9545d9de6059
 ```
 
 Replays 39 real AWS-LC fixes against checked answers. Each fix runs in a throwaway
@@ -201,23 +244,36 @@ takes about five minutes without the AI pass and roughly 20 minutes with it.
 
 **Example Output:**
 
+A block per fix, then the totals. One fix's block below, with the totals from a
+full run:
+
 ```
-Replaying 39 fix(es), AI on
+=================================================================================
+DH_check() excessive time with oversized modulus (CVE-2023-3446)
+  fix 9545d9de6059  "Fix DH_check() excessive time with oversized modulus (#1109)"
+=================================================================================
+  changed files: ['crypto/dh_extra/dh_test.cc', 'crypto/fipsmodule/dh/check.c']
+  bug commits:   ['95c29f3cd1']
 
-9545d9de6059  ok    TP=3 TN=0 FP=0 FN=0  DH_check() excessive time with oversized modul
-2a184bd568ff  ok    TP=2 TN=3 FP=0 FN=0  ML-DSA constant-time hardening (#2602)
+  branch                   verdict    basis        answer key       result
+  ------------------------ ---------- ------------ ---------------- ------
+  fips-2022-11-02          affected   git history  affected/trailer OK
+  fips-2021-10-20-1MU      affected   git history  affected/trailer OK
+  fips-2021-10-20          affected   git history  affected/trailer OK
 
+=================================================================================
 157 branch cells over 39 fix(es)
+=================================================================================
   correctly flagged     102
-  correctly cleared     52
-  unneeded flags        3
+  correctly cleared     51
+  unneeded flags        4
       real over-flags   0  history flagged it but the lines are absent, a tool error
       never shipped     2  lines still there, the flag is correct
       unclear           1  history could not tell, defaulted to affected
-      AI upgraded       0  history unclear, the AI called it affected
+      AI upgraded       1  history unclear, the AI called it affected
       addition only     0  nothing deleted to look for
   MISSED BACKPORTS      0
-  agreement             98%
+  agreement             97%
 ```
 
 Unneeded flags are split by cause, because only one kind is a tool error. There are
@@ -228,13 +284,14 @@ really is vulnerable but that were never given the fix.
 
 | | git history only | with the AI pass |
 | --- | --- | --- |
-| unneeded flags | 25 | 3 |
-| correctly cleared | 30 | 52 |
+| unneeded flags | 25 | 4 |
+| correctly cleared | 30 | 51 |
 | missed backports | 0 | 0 |
-| agreement | 84% | 98% |
+| agreement | 84% | 97% |
 
 The git-history column is exact and identical every run. The AI column is a single
-sample: the model is not deterministic, so expect a few unneeded flags either way.
+sample taken on the model in `.github/workflows/ai-config.json`: the model does not give
+the same answer every time, so expect a few unneeded flags either way.
 Missed backports stay at 0 in both, because a branch the AI cannot clear stays
 flagged.
 
@@ -249,10 +306,12 @@ already carries the fix, so scoring it proves nothing.
 
 ### No supported branches found
 
-The release branches are not in your checkout:
+The release branches are not in your checkout, or they are on a remote the tool is not
+reading. It reads whichever remote points at `aws/aws-lc`:
 
 ```bash
-git fetch origin
+git remote -v
+git fetch upstream
 git branch -r | grep fips-
 ```
 
@@ -269,18 +328,13 @@ aws sts get-caller-identity
 A client is created even when credentials are expired, so a successful profile
 listing is not proof. The warning after a run is.
 
-### Every branch comes back "uncertain"
+### Nothing to analyze
 
-`max_tokens` in `model-config.json` is too small and replies are being cut off. The
-tool prints a warning naming the branch when this happens. Raise it to 4096.
-
-### Analysis is slow
-
-The git pass takes a few seconds. Each AI call adds roughly 30 seconds, and only
-unsettled branches trigger one. For a quick answer:
+The commit changes no files. A merge commit is the usual cause: it reports no changes
+of its own, so analyze what it brought in instead.
 
 ```bash
-BACKPORT_DISABLE_AI=1 util/backport/backport analyze
+util/backport/backport analyze --commit <sha>^..<sha>
 ```
 
 ### Wrong or empty results from a subdirectory
@@ -290,6 +344,6 @@ using your working directory. If you see empty results, file it as a bug.
 
 ## Support
 
-- Re-run with `-v` on the bench to see per-branch reasoning
+- Every bench run prints the per-branch table and a note on every flag
 - Check the `basis` column to see whether history or the AI decided a branch
 - Contact the AWS-LC team

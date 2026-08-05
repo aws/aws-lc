@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 """
 Main entry point for backport identification automation
 Calls upon actions based on command-line arguments
@@ -34,6 +36,7 @@ def add_analyze(subparsers) -> None:
 def build_parser() -> argparse.ArgumentParser:
     """
     Build parser for args
+    Returns the parser, with the analyze subcommand on it
     """
     ap = argparse.ArgumentParser(
         prog="backport",
@@ -44,12 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
-# ________ MAIN ________
+# --- MAIN ---
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """
     Parses arguments and runs command
+    Returns the command's exit code, or 1 when it raised a BackportError
     """
     args = build_parser().parse_args(argv)
 
