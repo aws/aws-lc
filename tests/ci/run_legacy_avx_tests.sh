@@ -23,5 +23,6 @@ for build_option in "${build_options_to_test[@]}"; do
   build_and_test ${build_option} -D${AVX_FLAG}=ON
 done
 
-# When Go is disabled, a different test target is produced
+# When Go is disabled, a different test target is produced. Without Perl, the
+# AVX option only verifies the build because generated-src lacks AVX guards.
 build_and_run_minimal_test -DDISABLE_PERL=ON -DDISABLE_GO=ON -D${AVX_FLAG}=ON
