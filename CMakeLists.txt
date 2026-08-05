@@ -1082,13 +1082,29 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# The Android CMake files set -ffunction-sections and -fdata-sections, which
-# is incompatible with FIPS_SHARED.
-if(FIPS_SHARED AND ANDROID)
+# -ffunction-sections / -fdata-sections are incompatible with FIPS_SHARED.
+# On ELF, gcc_fips_shared.lds already handles this: it gathers known split
+# sections into .text and /DISCARD/s anything unexpected. Android and MinGW
+# lack that linker-script safety net (Android's NDK toolchain injects these
+# flags externally; MinGW/PE has no linker script support), so we override
+# at the compiler level.
+if(FIPS_SHARED AND (ANDROID OR MINGW))
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
+endif()
+
+# GCC (-O2+) splits cold code into separate .text.unlikely/.text.* sections.
+# On ELF, gcc_fips_shared.lds gathers these between the bcm text markers, but
+# the MinGW path partial-links with a plain `ld -r` (PE has no linker script
+# support), so any split-out section would land outside the integrity-checked
+# region. Keep all module code in one contiguous .text bracketed by the markers.
+if(FIPS_SHARED AND MINGW AND GCC)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
 endif()
 
 if(OPENSSL_SMALL)
@@ -1391,6 +1407,14 @@ endif()
 # via Web Workers and SharedArrayBuffer, configured through compiler flags.
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
+  if(MINGW AND FIPS)
+    # Statically link winpthread so the FIPS module has no DLL dependency on it.
+    # This overwrites (not appends) INTERFACE_LINK_LIBRARIES because
+    # find_package(Threads) already set it to -lpthread (dynamic); appending
+    # would leave the dynamic entry on the link line.
+    set_property(TARGET Threads::Threads PROPERTY
+      INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
+  endif()
   set(AWSLC_LINK_THREADS TRUE)
   # CMAKE_THREAD_LIBS_INIT contains the actual linker flags (e.g., -lpthread)
   # set by find_package(Threads). Use this for pkgconfig instead of the
