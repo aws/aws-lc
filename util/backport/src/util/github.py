@@ -1,0 +1,233 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+"""
+Everything that talks to GitHub, through the gh CLI
+Kept in one place so no command can grow a second, slightly different PR opener
+"""
+
+from util.config import BackportError
+from util.git import git, run
+
+import re
+import shutil
+from typing import List, Optional, Tuple
+
+# The repo backports are reviewed in. Branches are never pushed here, only PRs opened
+AWS_LC_REPO = "aws/aws-lc"
+
+_SLUG = re.compile(r"github\.com[:/]+([^/]+)/([^/]+?)(?:\.git)?/?$")
+
+
+# _________ The gh CLI _________
+
+
+def gh(*args: str, check: bool = False):
+    """
+    Runs the GitHub CLI in this repo
+    Returns the finished process. gh finds its own credentials: GH_TOKEN or
+    GITHUB_TOKEN from the environment in CI, its stored login on a laptop, so
+    nothing here has to know which one is in play
+    """
+    return run(["gh", *args], check=check)
+
+
+def require_gh() -> None:
+    """Raises unless the gh CLI is installed and logged in"""
+    if shutil.which("gh") is None:
+        raise BackportError(
+            "the GitHub CLI (gh) is not installed, so no pull request can be opened.\n"
+            "  Install it, or run without --open-pr and open them by hand."
+        )
+    if gh("auth", "status").returncode != 0:
+        raise BackportError(
+            "the GitHub CLI is not logged in.\n"
+            "  Run 'gh auth login', or set GH_TOKEN."
+        )
+
+
+# _________ Which Repo Is Which _________
+
+
+def remote_slug(remote: str) -> Optional[str]:
+    """
+    The owner/repo a remote points at, or None when the URL cannot be read
+    """
+    url = git("remote", "get-url", remote, check=False)
+    if url.returncode != 0:
+        return None
+    found = _SLUG.search(url.stdout.strip())
+    return f"{found.group(1)}/{found.group(2)}" if found else None
+
+
+def require_push_remote(remote: str) -> str:
+    """
+    Checks a remote is somewhere we are allowed to push branches
+    Returns its owner/repo. aws/aws-lc is refused: backport branches belong on a fork,
+    and pushing them there would put half-reviewed work on the real repository
+    """
+    slug = remote_slug(remote)
+    if slug is None:
+        raise BackportError(f"no remote called '{remote}' in this checkout.")
+    if slug.lower() == AWS_LC_REPO:
+        raise BackportError(
+            f"remote '{remote}' is {slug}, which is where the pull requests go, not\n"
+            "  where the branches go. Push to your fork instead, with --remote."
+        )
+    return slug
+
+
+def base_repo(remote: str) -> str:
+    """
+    Which repo the pull requests are opened against
+    Returns owner/repo from the named remote, falling back to aws/aws-lc when
+    that remote is not configured
+    """
+    return remote_slug(remote) or AWS_LC_REPO
+
+
+def head_spec(push_slug: str, base_slug: str, branch: str) -> str:
+    """
+    How to name the branch to GitHub, as owner:branch across repos or plain within one
+    This is the only difference between a laptop pushing to a fork and CI pushing to
+    the repo it is already running in
+    """
+    if push_slug.split("/")[0] == base_slug.split("/")[0]:
+        return branch
+    return f"{push_slug.split('/')[0]}:{branch}"
+
+
+# _________ Branches And Pull Requests _________
+
+
+def push_branch(remote: str, branch: str) -> Optional[str]:
+    """
+    Pushes one local branch to the remote
+    Returns None on success or the git error, so one bad branch cannot stop the rest
+    """
+    pushed = git(
+        "push", "--force-with-lease", remote, f"{branch}:{branch}", check=False
+    )
+    if pushed.returncode != 0:
+        return (pushed.stderr or pushed.stdout).strip()
+    return None
+
+
+def existing_pr(repo: str, head: str) -> Optional[str]:
+    """
+    The URL of an open pull request already using this head branch, or None
+    Checked before opening one so a second run does not file a duplicate
+    """
+    found = gh(
+        "pr",
+        "list",
+        "--repo",
+        repo,
+        "--head",
+        head,
+        "--state",
+        "open",
+        "--json",
+        "url",
+        "--jq",
+        ".[0].url // empty",
+    )
+    if found.returncode != 0:
+        return None
+    return found.stdout.strip() or None
+
+
+def create_pr(repo: str, base: str, head: str, title: str, body: str) -> str:
+    """
+    Opens a pull request and returns its URL, or a string starting with 'error:'
+    Never a draft: a backport nobody notices is the same as no backport
+    """
+    made = gh(
+        "pr",
+        "create",
+        "--repo",
+        repo,
+        "--base",
+        base,
+        "--head",
+        head,
+        "--title",
+        title,
+        "--body",
+        body,
+    )
+    if made.returncode != 0:
+        return f"error: {(made.stderr or made.stdout).strip()}"
+    return made.stdout.strip()
+
+
+def comment_on_pr(repo: str, number: str, body: str) -> Optional[str]:
+    """Leaves a comment on a pull request. Returns the error text, or None"""
+    posted = gh("pr", "comment", str(number), "--repo", repo, "--body", body)
+    if posted.returncode != 0:
+        return (posted.stderr or posted.stdout).strip()
+    return None
+
+
+def pr_title_and_body(
+    branch: str,
+    fix: str,
+    subject: str,
+    basis: str,
+    source_pr: Optional[str],
+    fips_note: str = "",
+) -> Tuple[str, str]:
+    """
+    The title and body for one backport pull request, as (title, body)
+    fips_note, when the fix reaches inside the validated module, is put above everything
+    else. A reviewer who reads one line of this has to read that one
+    """
+    title = f"[backport {branch}] {subject}"
+    link = f" of #{source_pr}" if source_pr else ""
+    warning = (
+        f"> [!WARNING]\n> **FIPS boundary:** this fix {fips_note}.\n\n"
+        if fips_note
+        else ""
+    )
+    body = (
+        f"{warning}"
+        f"Backport{link} of `{fix[:12]}` onto `{branch}`.\n\n"
+        f"- Verdict: **affected** ({basis or 'git history'}).\n"
+        "- Cherry-picked as-is, with no changes beyond conflict resolution.\n"
+        "- **Not** auto-merged. Please review before merging.\n"
+        + ("- Needs FIPS review before merging.\n" if fips_note else "")
+        + "\n_Opened by the AWS-LC backport tool._"
+    )
+    return title, body
+
+
+def summary_lines(
+    fix: str,
+    subject: str,
+    results: List[Tuple[str, str, str]],
+    fips_note: str = "",
+) -> str:
+    """
+    A markdown table of what happened to each branch, for a comment on the source PR
+    results is (branch, outcome, detail)
+    Carries the same FIPS boundary warning as the pull request bodies, since this comment
+    is what the author of the fix actually reads
+    """
+    lines = [
+        f"### Backport report for `{fix[:12]}`",
+        "",
+        f"{subject}",
+        "",
+    ]
+    if fips_note:
+        lines += [f"> [!WARNING]\n> **FIPS boundary:** this fix {fips_note}.", ""]
+    lines += [
+        "| Branch | Result |",
+        "| --- | --- |",
+    ]
+    for branch, outcome, detail in results:
+        lines.append(f"| `{branch}` | {outcome}: {detail} |")
+    lines += ["", "Nothing is auto-merged. Every pull request above needs review."]
+    if fips_note:
+        lines.append("Every branch above also needs FIPS review before it merges.")
+    return "\n".join(lines)

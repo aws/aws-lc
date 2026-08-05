@@ -20,9 +20,10 @@ passes:
 It also says when a fix reaches inside the validated FIPS module, which is a
 certification question rather than a code one.
 
-`apply` then cherry-picks the fix onto one local branch per affected branch.
+`apply` then cherry-picks the fix onto one local branch per affected branch, and
+`publish` turns those into one pull request each.
 
-Nothing is pushed and no pull request is opened. The branches are yours to review.
+Nothing is auto-merged, and nothing is ever a draft. Every pull request needs review.
 
 ## Prerequisites
 
@@ -34,6 +35,8 @@ Nothing is pushed and no pull request is opened. The branches are yours to revie
 - **anthropic + boto3**: required, not optional (`pip3 install --user anthropic boto3`).
   The AI pass is part of how a verdict is reached, so the tool imports them at startup
   even when `BACKPORT_DISABLE_AI` is set
+- **gh**: the GitHub CLI, for `publish` only. Logged in with `gh auth login`, or
+  `GH_TOKEN` set, which is how CI supplies it
 
 ### AWS Permissions
 
@@ -197,6 +200,69 @@ normal on the older branches, where the surrounding code has moved on.
 leaves the branches you already have alone. The command exits non-zero if any branch
 conflicted, so a script can tell whether anything needs a human.
 
+### Open the pull requests
+
+```bash
+util/backport/backport publish
+```
+
+Pushes each finished backport branch to your fork and opens one pull request per
+branch into the matching release branch. One command, however many branches the fix
+touched.
+
+Most of the time you never type it: `apply --open-pr` offers to run it as soon as the
+cherry-picks are done, so a normal session is `analyze` then `apply`.
+
+```bash
+util/backport/backport apply --open-pr
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--branch` | just this release branch |
+| `--pr` | source pull request number, linked in each body and given a summary comment |
+| `--remote` | fork remote the branches are pushed to, `origin` by default |
+| `--dry-run` | print what would be pushed and opened, touch nothing |
+| `--yes` | skip the confirm, for scripts and CI |
+
+Branches go to your fork; the pull requests are opened against `aws/aws-lc`. Pushing
+to `aws/aws-lc` is refused outright, so a stray `--remote` cannot put half-reviewed
+work on the real repository.
+
+`--dry-run` pushes nothing, opens nothing, and prints the summary comment instead of
+posting it. The source pull request belongs to whoever wrote the fix, so a dry run does
+not write to it either.
+
+**Example Output:**
+
+```
+Fix ac3aee3104
+Opening pull requests into aws/aws-lc for: fips-2025-09-12-lts, fips-2024-09-27
+Branches are pushed to 'origin'
+Go ahead? [Y/N] y
+  fips-2025-09-12-lts: opened: https://github.com/aws/aws-lc/pull/3401
+  fips-2024-09-27: unfinished: cherry-pick still open in .backport-worktrees/...
+
+1 pull request(s) opened, 1 still need attention
+  fips-2024-09-27
+  Unfinished branches: resolve the conflict in the worktree, then
+  'git cherry-pick --continue' there and run publish again.
+```
+
+**Results:**
+
+| Result | Meaning |
+| --- | --- |
+| `opened` | pushed and a pull request created |
+| `already open` | a pull request for that branch exists, so nothing was done again |
+| `unfinished` | its cherry-pick is still stopped in the worktree, resolve it first |
+| `missing` | no such backport branch, run `apply` first |
+| `failed` | the push or the pull request failed, with the reason |
+
+Nothing is ever a draft and nothing is auto-merged. Re-running is safe: a branch that
+already has a pull request is left alone, and finishing a conflict by hand is enough
+to let the next run pick it up, with no need to run `apply` again.
+
 ## Configuration
 
 ### Model settings
@@ -296,7 +362,8 @@ util/backport/
 │   ├── main.py                   # argument parsing
 │   ├── commands/
 │   │   ├── analyze.py            # the analyze command
-│   │   └── apply.py              # the apply command
+│   │   ├── apply.py              # the apply command
+│   │   └── publish.py            # the publish command
 │   ├── engine/
 │   │   ├── inspect_fix.py        # which lines the fix deletes, who wrote them
 │   │   ├── discover_branches.py  # which release branches to check
@@ -306,6 +373,7 @@ util/backport/
 │   └── util/
 │       ├── config.py             # verdicts, settings, the FIPS boundary, the saved run
 │       ├── git.py                # everything that runs a git command
+│       ├── github.py             # everything that talks to GitHub, through gh
 │       └── render.py             # the output table and prompts
 ├── testing/
 │   ├── test_engine.py            # unit tests, no repo or credentials
@@ -451,6 +519,27 @@ util/backport/backport analyze
 The same error appears if the run names a fix this checkout no longer has, which
 happens when a range was analyzed and git has since collected the squashed commit.
 Re-running `analyze` fixes both.
+
+### No pull request can be opened
+
+`publish` needs the GitHub CLI, installed and logged in:
+
+```bash
+gh auth login
+gh auth status
+```
+
+In CI set `GH_TOKEN` instead, and give the job `contents: write` and
+`pull-requests: write`.
+
+### Refused to push to aws/aws-lc
+
+Backport branches belong on a fork; only the pull requests go to `aws/aws-lc`. Point
+`--remote` at your fork:
+
+```bash
+util/backport/backport publish --remote origin
+```
 
 ### Wrong or empty results from a subdirectory
 

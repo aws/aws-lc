@@ -61,5 +61,5 @@ def cmd_analyze(args) -> int:
         print()
         print(f"FIPS BOUNDARY: this fix {fips_boundary_note(fips_files)}.")
 
-    save_run(fix_sha, base, branches, verdicts, fips_files)
+    save_run(fix_sha, base, branches, verdicts, decided_by, fips_files)
     return 0
