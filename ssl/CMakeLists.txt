@@ -70,20 +70,27 @@ if(ENABLE_SYMBOL_VERSIONING)
 endif()
 
 if(BUILD_TESTING)
-  # ocsp_integration_test.cc does integration tests with the Amazon Trust
-  # Services OCSP responder. This is ran as its own test executable because
-  # internal sandbox builds cannot properly connect with the host.
-  # Since the integration test relies on libssl functionalities to retrieve
-  # the certification chain from a host, this integration test dimension is
-  # built with libssl and libcrypto.
+  # Tests that connect to a live, remote host. Kept as its own executable, and
+  # deliberately out of util/all_tests.json, so the default test run stays
+  # hermetic; environments without outbound access (e.g. internal sandbox
+  # builds) simply do not run it. Built against libssl and libcrypto because
+  # these tests use libssl to retrieve a certificate chain from a host.
   # Skip on Generic systems (e.g., WASI) which don't have BSD sockets.
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
     add_executable(
       ${INTEGRATION_TEST_EXEC}
 
       ../crypto/ocsp/ocsp_integration_test.cc
-      ../tool/transport_common.cc
+      ../tool-openssl/s_client_integration_test.cc
+
+      # Link closure for SClientTool.
+      ../tool-openssl/ordered_args.cc
+      ../tool-openssl/s_client.cc
+      ../tool/args.cc
+      ../tool/client.cc
       ../tool/fd.cc
+      ../tool/file.cc
+      ../tool/transport_common.cc
 
       $<TARGET_OBJECTS:crypto_test_data>
     )
