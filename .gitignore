@@ -48,3 +48,4 @@ symbols.txt
 awslcTestTmpFile*
 /pages-output
 util/backport/.backport-runs/
+util/backport/.backport-worktrees/

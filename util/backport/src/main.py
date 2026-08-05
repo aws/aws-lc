@@ -7,6 +7,7 @@ Calls upon actions based on command-line arguments
 """
 
 from commands.analyze import cmd_analyze
+from commands.apply import cmd_apply
 from util.config import BackportError
 
 import argparse
@@ -33,10 +34,29 @@ def add_analyze(subparsers) -> None:
     p.set_defaults(func=cmd_analyze)
 
 
+def add_apply(subparsers) -> None:
+    """
+    Cherry-picks the analyzed fix onto a local branch per affected release branch
+    Reads the run analyze saved, so analyze has to have run first
+    """
+    p = subparsers.add_parser(
+        "apply", help="cherry-picks the fix onto a branch per affected branch"
+    )
+    p.add_argument(
+        "--branch", help="only this release branch, instead of every affected one"
+    )
+    p.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skips the confirm. Useful for test scripts",
+    )
+    p.set_defaults(func=cmd_apply)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     Build parser for args
-    Returns the parser, with the analyze subcommand on it
+    Returns the parser, with the analyze and apply subcommands on it
     """
     ap = argparse.ArgumentParser(
         prog="backport",
@@ -44,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = ap.add_subparsers(dest="cmd", required=True)
     add_analyze(subparsers)
+    add_apply(subparsers)
     return ap
 
 
