@@ -108,7 +108,7 @@ jobs:
         id: clang
         with:
           # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
-          version: 20
+          version: 22
           env: true
       - name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
