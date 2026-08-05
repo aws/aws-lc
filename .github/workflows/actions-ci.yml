@@ -370,12 +370,9 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     env:
       GOFLAGS: "-buildvcs=false"
-    container:
-      image: arm64v8/ubuntu:26.04
-      options: "--platform linux/arm64"
     strategy:
       fail-fast: false
       matrix:
@@ -386,12 +383,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
-      - name: Install build dependencies
+      - name: Select compiler
         env:
           MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
-          apt-get update
-          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          clang-${MATRIX_CLANG_VERSION} --version
           echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
