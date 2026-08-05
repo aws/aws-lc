@@ -375,3 +375,68 @@ def resolve_on_branch(
             if older != file_path and file_on_branch(branch_ref, older):
                 return older
     return None
+
+
+# --- Backporting ---
+
+# Cherry-picks happen in a worktree under here, never in the tree you are sitting in
+WORKTREE_ROOT = TOOL_ROOT / ".backport-worktrees"
+
+
+def commit_exists(sha: str) -> bool:
+    """True when this checkout still has that commit"""
+    return git("cat-file", "-e", f"{sha}^{{commit}}", check=False).returncode == 0
+
+
+def branch_exists(name: str) -> bool:
+    """True when that local branch already exists"""
+    ref = f"refs/heads/{name}"
+    return git("show-ref", "--verify", "--quiet", ref, check=False).returncode == 0
+
+
+def add_worktree(path, branch: str, start_point: str) -> None:
+    """
+    Checks start_point out at path on a new branch
+    A worktree is used so apply never moves the branch you have checked out, and an
+    unfinished cherry-pick can never strand your own working tree mid-merge
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    git("worktree", "add", "-q", "-b", branch, str(path), start_point)
+
+
+def remove_worktree(path) -> None:
+    """Drops the worktree but keeps the branch it built"""
+    git("worktree", "remove", "--force", str(path), check=False)
+
+
+def cherry_pick(path, sha: str) -> Tuple[bool, List[str]]:
+    """
+    Cherry-picks sha in the worktree at path
+    Returns (applied, conflicted files). The user's own name lands on the commit
+    because git is left to read their config, so the result is theirs to push
+
+    -x is what writes the "cherry picked from commit" line into the message, which is
+    one of the three signals analyze uses to spot a branch that already has the fix.
+    Without it the tool could not recognise its own backports on the next run
+    """
+    picked = git("-C", str(path), "cherry-pick", "-x", sha, check=False)
+    if picked.returncode == 0:
+        return True, []
+    unmerged = git(
+        "-C", str(path), "diff", "--name-only", "--diff-filter=U", check=False
+    )
+    return False, [f for f in unmerged.stdout.splitlines() if f.strip()]
+
+
+def cherry_pick_was_empty(path) -> bool:
+    """
+    True when the cherry-pick stopped because the change is already there
+    git calls this an empty commit, which means the branch did not need the fix
+    """
+    state = git("-C", str(path), "status", "--porcelain", check=False)
+    return not state.stdout.strip()
+
+
+def abort_cherry_pick(path) -> None:
+    """Backs a stopped cherry-pick out, leaving the worktree on its branch"""
+    git("-C", str(path), "cherry-pick", "--abort", check=False)

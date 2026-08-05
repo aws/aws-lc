@@ -9,9 +9,11 @@ Run from util/backport:
     python3 -m unittest testing.test_engine
 """
 
+import argparse
 import datetime
 import io
 import json
+import re
 import subprocess
 import sys
 import unittest
@@ -22,6 +24,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from commands import apply as apply_cmd
 from engine import (
     classify_branches,
     consult_ai,
@@ -30,6 +33,8 @@ from engine import (
     prompts,
 )
 from util import config, git
+
+import main
 
 
 class NormalizeSpaces(unittest.TestCase):
@@ -1371,6 +1376,205 @@ class AnUnreadableManifestWarns(unittest.TestCase):
             self.assertEqual(config.load_supported_versions(), {})
         self.assertIn("could not read", said.getvalue())
         self.assertIn("out of support", said.getvalue())
+
+
+class BackportBranchName(unittest.TestCase):
+    def test_names_carry_the_branch_and_the_fix(self):
+        got = apply_cmd.backport_branch_name("ac3aee3104ff", "fips-2024-09-27")
+        self.assertEqual(got, "backport-fips-2024-09-27-ac3aee3104")
+
+    def test_two_fixes_on_one_branch_do_not_collide(self):
+        first = apply_cmd.backport_branch_name("aaaaaaaaaaaa", "fips-2024-09-27")
+        second = apply_cmd.backport_branch_name("bbbbbbbbbbbb", "fips-2024-09-27")
+        self.assertNotEqual(first, second)
+
+
+# One of each verdict, so a target picker has to filter rather than pass them through
+APPLY_VERDICTS = {
+    "fips-2024-09-27": config.AFFECTED,
+    "fips-2022-11-02": config.UNSURE,
+    "fips-2021-10-20": config.NOT_AFFECTED,
+    "fips-NetOS-2024-06-11": config.ALREADY_PATCHED,
+}
+
+
+class BranchesToBackport(unittest.TestCase):
+    # Cherry-picking a branch analyze could not settle would be a guess, so unsure
+    # branches are left out and only affected ones are acted on
+
+    def test_only_affected_branches_by_default(self):
+        self.assertEqual(
+            apply_cmd.branches_to_backport(APPLY_VERDICTS, None), ["fips-2024-09-27"]
+        )
+
+    def test_a_named_branch_is_used_even_when_not_affected(self):
+        # An explicit --branch is the user overriding the verdict on purpose
+        got = apply_cmd.branches_to_backport(APPLY_VERDICTS, "fips-2021-10-20")
+        self.assertEqual(got, ["fips-2021-10-20"])
+
+    def test_a_branch_that_was_not_analyzed_is_an_error(self):
+        with self.assertRaises(config.BackportError) as caught:
+            apply_cmd.branches_to_backport(APPLY_VERDICTS, "fips-1999-01-01")
+        self.assertIn("fips-1999-01-01", str(caught.exception))
+
+    def test_nothing_affected_gives_no_targets(self):
+        cleared = {"fips-2024-09-27": config.NOT_AFFECTED}
+        self.assertEqual(apply_cmd.branches_to_backport(cleared, None), [])
+
+
+class LoadRun(unittest.TestCase):
+    # apply acts on what analyze decided, so a run it cannot trust has to stop it
+    # rather than cherry-pick against the wrong fix
+
+    def load(self, text, commit_there=True):
+        """load_run reading canned run file contents"""
+
+        class FakePath:
+            def read_text(self, encoding=None):
+                if text is None:
+                    raise FileNotFoundError
+                return text
+
+        with mock.patch.multiple(
+            apply_cmd, RUN_FILE=FakePath(), commit_exists=lambda sha: commit_there
+        ):
+            return apply_cmd.load_run()
+
+    def test_a_good_run_comes_back_parsed(self):
+        run = self.load(
+            '{"fix": "abc123", "verdicts": {"fips-2024-09-27": "affected"}}'
+        )
+        self.assertEqual(run["fix"], "abc123")
+
+    def test_no_run_at_all_says_to_analyze_first(self):
+        with self.assertRaises(config.BackportError) as caught:
+            self.load(None)
+        self.assertIn("analyze", str(caught.exception))
+
+    def test_unreadable_json_is_an_error(self):
+        with self.assertRaises(config.BackportError):
+            self.load("{not json")
+
+    def test_a_run_without_verdicts_is_an_error(self):
+        with self.assertRaises(config.BackportError) as caught:
+            self.load('{"fix": "abc123"}')
+        self.assertIn("verdicts", str(caught.exception))
+
+    def test_a_fix_gc_took_is_an_error(self):
+        # A range analyze squashes into a commit nothing references, so it can vanish
+        with self.assertRaises(config.BackportError) as caught:
+            self.load('{"fix": "abc123", "verdicts": {}}', commit_there=False)
+        self.assertIn("abc123", str(caught.exception))
+
+
+class CherryPickOnto(unittest.TestCase):
+    # A clean pick leaves only the branch behind; a conflict has to leave the worktree
+    # in place, since that is where the user resolves it
+
+    def run_one(self, exists=False, applied=True, conflicts=(), empty=False):
+        """cherry_pick_onto with every git call faked, as (outcome, found, calls)"""
+        calls = []
+        with mock.patch.multiple(
+            apply_cmd,
+            branch_exists=lambda name: exists,
+            branch_ref=lambda branch: f"upstream/{branch}",
+            add_worktree=lambda path, branch, start: calls.append(("add", start)),
+            cherry_pick=lambda path, sha: (applied, list(conflicts)),
+            cherry_pick_was_empty=lambda path: empty,
+            abort_cherry_pick=lambda path: calls.append(("abort", None)),
+            remove_worktree=lambda path: calls.append(("remove", None)),
+        ):
+            outcome, found = apply_cmd.cherry_pick_onto("abc1234567", "fips-2024-09-27")
+        return outcome, found, calls
+
+    def test_a_clean_pick_keeps_the_branch_and_drops_the_worktree(self):
+        outcome, _, calls = self.run_one(applied=True)
+        self.assertEqual(outcome, apply_cmd.APPLIED)
+        self.assertIn(("remove", None), calls)
+
+    def test_a_conflict_keeps_the_worktree(self):
+        outcome, found, calls = self.run_one(applied=False, conflicts=["crypto/x.c"])
+        self.assertEqual(outcome, apply_cmd.CONFLICT)
+        self.assertEqual(found, ["crypto/x.c"])
+        self.assertNotIn(("remove", None), calls)
+
+    def test_an_existing_branch_is_left_alone(self):
+        outcome, _, calls = self.run_one(exists=True)
+        self.assertEqual(outcome, apply_cmd.BRANCH_EXISTS)
+        self.assertEqual(calls, [])
+
+    def test_a_change_already_there_is_not_a_conflict(self):
+        outcome, _, calls = self.run_one(applied=False, conflicts=[], empty=True)
+        self.assertEqual(outcome, apply_cmd.ALREADY_THERE)
+        self.assertIn(("abort", None), calls)
+        self.assertIn(("remove", None), calls)
+
+    def test_the_worktree_starts_from_the_release_branch(self):
+        # From the remote analyze read, not from origin. A fork is often behind on the
+        # release branches, and a stale base would make the backport wrong
+        _, _, calls = self.run_one()
+        self.assertIn(("add", "upstream/fips-2024-09-27"), calls)
+
+
+class ReadmeMatchesTheCode(unittest.TestCase):
+    # The README is the only description of the CLI, so drift is a real bug. These
+    # fail when a command, a flag or a file is added without documenting it
+
+    README = Path(__file__).resolve().parent.parent / "README.md"
+    TOOL = README.parent
+
+    def readme(self) -> str:
+        return self.README.read_text(encoding="utf-8")
+
+    def subcommands(self):
+        """Every subcommand the parser accepts, and its flags, from the parser itself"""
+        parser = main.build_parser()
+        # _actions is the only way to walk the subparsers, and it stays in step with main
+        subs = next(
+            a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+        )
+        found = {}
+        for name, sub in subs.choices.items():
+            flags = set()
+            for action in sub._actions:
+                flags.update(f for f in action.option_strings if f.startswith("--"))
+            flags.discard("--help")
+            found[name] = flags
+        return found
+
+    def test_every_subcommand_is_documented(self):
+        text = self.readme()
+        for name in self.subcommands():
+            # assertTrue, not assertIn, so a failure does not dump the whole README
+            self.assertTrue(
+                f"backport {name}" in text, f"'{name}' is not shown in the README"
+            )
+
+    def test_every_flag_is_documented(self):
+        text = self.readme()
+        for name, flags in self.subcommands().items():
+            for flag in sorted(flags):
+                self.assertTrue(
+                    flag in text, f"{name} takes {flag}, the README omits it"
+                )
+
+    def test_the_structure_listing_matches_what_ships(self):
+        # Anything a reader would look for by name, so no __init__.py and nothing
+        # generated or gitignored
+        skip_dirs = ("__pycache__", "qa", ".backport-runs", ".backport-worktrees")
+        shipped = {
+            p.name
+            for p in self.TOOL.rglob("*")
+            if p.is_file()
+            and p.suffix in (".py", ".json", ".txt")
+            and p.name != "__init__.py"
+            and not any(part in skip_dirs for part in p.parts)
+        }
+        listed = set(re.findall(r"([\w.-]+\.(?:py|json|txt))\s+#", self.readme()))
+        self.assertEqual(
+            shipped - listed, set(), "these ship but are not in the README listing"
+        )
+        self.assertEqual(listed - shipped, set(), "these are listed but do not exist")
 
 
 if __name__ == "__main__":
