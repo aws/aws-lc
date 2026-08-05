@@ -75,6 +75,37 @@ jobs:
             source /opt/compiler-env/setup-clang-19.sh
             ${{ matrix.run }}
 
+  graviton5:
+    name: graviton5-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton5-c9g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
+          run: |
+            source /opt/compiler-env/setup-clang-19.sh
+            ${{ matrix.run }}
+
 
   # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
   # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,
