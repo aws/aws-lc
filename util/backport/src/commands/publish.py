@@ -24,6 +24,7 @@ from util.github import (
     existing_pr,
     fork_remote,
     head_spec,
+    plan_block,
     pr_title_and_body,
     push_branch,
     require_gh,
@@ -205,12 +206,13 @@ def report(
             outcomes,
             fips_note_for(run),
         )
+        body = table + "\n\n" + plan_block(run["fix"], outcomes)
         if dry_run:
             print()
             print(f"dry run: would comment this on #{source_pr}")
-            print(table)
+            print(body)
             return
-        failure = comment_on_pr(repo, source_pr, table)
+        failure = comment_on_pr(repo, source_pr, body)
         if failure:
             print(f"could not comment on #{source_pr}: {failure}")
 

@@ -20,8 +20,9 @@ passes:
 It also says when a fix reaches inside the validated FIPS module, which is a
 certification question rather than a code one.
 
-`apply` then cherry-picks the fix onto one local branch per affected branch, and
-`publish` turns those into one pull request each.
+`apply` then cherry-picks the fix onto one local branch per affected branch, `resolve`
+helps you finish any that conflicted, and `publish` turns them into one pull request
+each.
 
 Nothing is auto-merged, and nothing is ever a draft. Every pull request needs review.
 
@@ -301,6 +302,42 @@ Nothing is ever a draft and nothing is auto-merged. Re-running is safe: a branch
 already has a pull request is left alone, and finishing a conflict by hand is enough
 to let the next run pick it up, with no need to run `apply` again.
 
+### Finish the conflicted ones
+
+```bash
+util/backport/backport resolve
+```
+
+Walks the branches whose cherry-pick stopped, one at a time. For each it names the
+worktree and the conflicting files, waits while you fix them, then finishes the pick
+and offers to open the pull requests.
+
+When the bot did the analysis you have no saved run, so point it at the pull request
+the bot reported on and it takes the branch list from there:
+
+```bash
+util/backport/backport resolve --pr 3401
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--branch` | just this release branch |
+| `--pr` | take the branch list from the bot's report on that pull request |
+| `--remote` | fork remote the branches are pushed to, `origin` by default |
+
+Resolve the conflict the way you would any other: edit the files in the worktree and
+`git add` each one. `resolve` will not finish the pick until git reports nothing
+unmerged **and** no staged file still contains a conflict marker. Both checks matter,
+for different reasons:
+
+- A delete or rename conflict has no markers at all, so a marker scan alone would wave
+  it through and silently keep one side.
+- Staging a file is what clears it from git's unmerged list, so once you have staged
+  something badly, only the marker scan can still see it.
+
+It never stages anything for you. `git add` is how you say which side you chose, and
+guessing on your behalf is how a backport quietly loses half of a fix.
+
 ## Running In CI
 
 `.github/workflows/backport-bot.yml` does the same three steps automatically. It fires
@@ -316,6 +353,19 @@ It runs as two jobs, and the split is the point:
 
 The model reads repository content, so the job that reads it is never the job holding a
 token that could change it. The verdict travels between them as an artifact.
+
+The bot only opens the pull requests it can cherry-pick cleanly. A branch that
+conflicts is reported in its comment on the source pull request and left alone, because
+nobody is there to choose a side. That comment carries the run as JSON, so the reviewer
+picks it up from there:
+
+```bash
+util/backport/backport apply
+util/backport/backport resolve --pr 3401
+```
+
+`apply` recreates the branches locally, `resolve` walks the conflicts, and it offers to
+open the remaining pull requests when they are finished.
 
 Branches are pushed to `aws/aws-lc` itself, because in CI the checkout already is
 `aws/aws-lc`. That needs `--push-to-aws-lc`, which is refused everywhere else,
@@ -448,7 +498,8 @@ util/backport/
 │   ├── commands/
 │   │   ├── analyze.py            # the analyze command
 │   │   ├── apply.py              # the apply command
-│   │   └── publish.py            # the publish command
+│   │   ├── publish.py            # the publish command
+│   │   └── resolve.py            # the resolve command
 │   ├── engine/
 │   │   ├── inspect_fix.py        # which lines the fix deletes, who wrote them
 │   │   ├── discover_branches.py  # which release branches to check

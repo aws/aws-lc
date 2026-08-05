@@ -10,6 +10,7 @@ Run from util/backport:
 """
 
 import argparse
+import contextlib
 import datetime
 import io
 import json
@@ -25,7 +26,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from commands import apply as apply_cmd
-from commands import publish
+from commands import publish, resolve
 from engine import (
     classify_branches,
     consult_ai,
@@ -1987,6 +1988,85 @@ class PushOnlyBackportBranches(unittest.TestCase):
         ):
             got = github.push_branch("origin", "backport-x")
         self.assertIn("denied", got)
+
+
+class RunFromPr(unittest.TestCase):
+    # When CI did the analysis there is no saved run here, so the plan on the pull
+    # request is the only way resolve knows which branches were flagged
+
+    def test_a_plan_becomes_a_run(self):
+        plan = {"fix": "abc123", "branches": {"fips-2024-09-27": "unfinished"}}
+        with mock.patch.object(resolve, "read_plan", lambda repo, n: plan):
+            got = resolve.run_from_pr("3401")
+        self.assertEqual(got["fix"], "abc123")
+        self.assertEqual(list(got["verdicts"]), ["fips-2024-09-27"])
+
+    def test_a_pull_request_with_no_plan_stops_the_run(self):
+        with mock.patch.object(
+            resolve, "read_plan", lambda repo, n: None
+        ), self.assertRaises(config.BackportError) as caught:
+            resolve.run_from_pr("3401")
+        self.assertIn("3401", str(caught.exception))
+
+
+class ResolveBranch(unittest.TestCase):
+    # Two independent refusals. git's unmerged list catches an untouched conflict, and
+    # the marker scan catches a file staged with the markers left in, which git itself
+    # is perfectly happy to commit
+
+    def walk(self, answers, unmerged, staged=(), markers=(), fail=None):
+        """resolve_branch with the worktree faked, returning (outcome, prompts asked)"""
+        asked = []
+        unmerged_calls = list(unmerged)
+
+        def next_unmerged(path):
+            return unmerged_calls.pop(0) if unmerged_calls else []
+
+        def yn(prompt):
+            asked.append(prompt)
+            return answers.pop(0)
+
+        with mock.patch.multiple(
+            resolve,
+            WORKTREE_ROOT=FakeWorktreeRoot(True),
+            unmerged_files=next_unmerged,
+            staged_files=lambda path: list(staged),
+            files_with_conflict_markers=lambda path, files: list(markers),
+            continue_cherry_pick=lambda path: fail,
+            ask_yn=yn,
+        ), contextlib.redirect_stdout(io.StringIO()):
+            # resolve_branch talks to the user, which would otherwise litter the run
+            outcome, _ = resolve.resolve_branch("fips-2024-09-27", "backport-x")
+        return outcome, asked
+
+    def test_saying_no_leaves_it_alone(self):
+        outcome, _ = self.walk([False], unmerged=[["a.c"]])
+        self.assertEqual(outcome, resolve.LEFT)
+
+    def test_an_untouched_conflict_is_refused(self):
+        # first answer yes, git still reports unmerged, so it asks again
+        outcome, asked = self.walk([True, False], unmerged=[["a.c"], ["a.c"]])
+        self.assertEqual(outcome, resolve.LEFT)
+        self.assertEqual(len(asked), 2)
+
+    def test_a_file_staged_with_markers_is_refused(self):
+        outcome, asked = self.walk(
+            [True, False], unmerged=[["a.c"], []], staged=["a.c"], markers=["a.c"]
+        )
+        self.assertEqual(outcome, resolve.LEFT)
+        self.assertEqual(len(asked), 2)
+
+    def test_a_clean_resolution_finishes(self):
+        outcome, asked = self.walk([True], unmerged=[["a.c"], []], staged=["a.c"])
+        self.assertEqual(outcome, resolve.FINISHED)
+        self.assertEqual(len(asked), 1)
+
+    def test_git_refusing_to_continue_asks_again(self):
+        outcome, asked = self.walk(
+            [True, False], unmerged=[["a.c"], [], []], fail="empty commit"
+        )
+        self.assertEqual(outcome, resolve.LEFT)
+        self.assertEqual(len(asked), 2)
 
 
 if __name__ == "__main__":

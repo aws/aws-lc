@@ -9,6 +9,7 @@ Kept in one place so no command can grow a second, slightly different PR opener
 from util.config import BACKPORT_BRANCH_PREFIX, BackportError
 from util.git import git, release_remote, run
 
+import json
 import re
 import shutil
 from functools import lru_cache
@@ -262,3 +263,57 @@ def summary_lines(
     if fips_note:
         lines.append("Every branch above also needs FIPS review before it merges.")
     return "\n".join(lines)
+
+
+# Marks our JSON so resolve can tell it from any other fenced block in the comment.
+# Bump the version if the shape changes
+PLAN_KEY = "backport_plan"
+PLAN_VERSION = 1
+
+
+def plan_block(fix: str, results: List[Tuple[str, str, str]]) -> str:
+    """
+    The run as JSON, folded into the comment so resolve can read it back
+    When CI did the analysis there is no saved run on the reviewer's machine, so this
+    is the only way 'backport resolve --pr N' can know which branches were flagged
+    """
+    payload = {
+        PLAN_KEY: PLAN_VERSION,
+        "fix": fix,
+        "branches": {b: o for b, o, _ in results},
+    }
+    blob = json.dumps(payload, indent=2)
+    return (
+        "<details>\n<summary>backport plan (read by <code>backport resolve</code>)"
+        f"</summary>\n\n```json\n{blob}\n```\n\n</details>"
+    )
+
+
+def read_plan(repo: str, number: str) -> Optional[dict]:
+    """
+    The most recent backport plan on a pull request, or None when there is none
+    Returns the parsed payload. A comment that is not ours, or not valid JSON, is
+    skipped rather than raising, since anyone may comment anything on a pull request
+    """
+    got = gh(
+        "pr",
+        "view",
+        str(number),
+        "--repo",
+        repo,
+        "--json",
+        "comments",
+        "--jq",
+        ".comments[].body",
+    )
+    if got.returncode != 0:
+        return None
+    found = None
+    for blob in re.findall(r"```json\s*(\{.*?\})\s*```", got.stdout, re.DOTALL):
+        try:
+            payload = json.loads(blob)
+        except json.JSONDecodeError:
+            continue
+        if payload.get(PLAN_KEY) == PLAN_VERSION:
+            found = payload  # keep going, the last one is the newest
+    return found

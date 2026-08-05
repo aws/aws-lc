@@ -9,6 +9,7 @@ Calls upon actions based on command-line arguments
 from commands.analyze import cmd_analyze
 from commands.apply import cmd_apply
 from commands.publish import cmd_publish
+from commands.resolve import cmd_resolve
 from util.config import BackportError
 
 import argparse
@@ -99,10 +100,32 @@ def add_publish(subparsers) -> None:
     p.set_defaults(func=cmd_publish)
 
 
+def add_resolve(subparsers) -> None:
+    """
+    Walks the conflicts apply left behind, one branch at a time
+    Takes the branch list from the last local run, or from --pr when the bot did it
+    """
+    p = subparsers.add_parser(
+        "resolve", help="finishes the conflicted backports, one branch at a time"
+    )
+    p.add_argument("--branch", help="only this release branch")
+    p.add_argument(
+        "--pr",
+        help="take the branch list from the bot's report on this pull request, "
+        "for when CI did the analysis",
+    )
+    p.add_argument(
+        "--remote",
+        default="origin",
+        help="fork remote the branches are pushed to (default origin)",
+    )
+    p.set_defaults(func=cmd_resolve)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     Build parser for args
-    Returns the parser, with the analyze, apply and publish subcommands on it
+    Returns the parser, with the analyze, apply, publish and resolve subcommands on it
     """
     ap = argparse.ArgumentParser(
         prog="backport",
@@ -112,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_analyze(subparsers)
     add_apply(subparsers)
     add_publish(subparsers)
+    add_resolve(subparsers)
     return ap
 
 

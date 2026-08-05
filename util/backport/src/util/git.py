@@ -19,6 +19,7 @@ import re
 import subprocess
 from contextlib import contextmanager
 from functools import lru_cache
+from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 # --- Where We Run ---
@@ -466,3 +467,67 @@ def commit_subject(commit: str) -> str:
     """The one-line subject of a commit, or an empty string when git cannot read it"""
     subject = git("log", "-1", "--format=%s", commit, check=False)
     return subject.stdout.strip() if subject.returncode == 0 else ""
+
+
+def unmerged_files(path) -> List[str]:
+    """The still-conflicting files in a worktree. Empty when nothing is unmerged"""
+    listed = git("-C", str(path), "diff", "--name-only", "--diff-filter=U", check=False)
+    if listed.returncode != 0:
+        return []
+    return [f for f in listed.stdout.splitlines() if f.strip()]
+
+
+def staged_files(path) -> List[str]:
+    """
+    The files a stopped cherry-pick is about to commit in that worktree
+    Staging is what clears a file out of the unmerged list, so this is the only view
+    that still sees a file the user staged with the markers left in
+    """
+    listed = git("-C", str(path), "diff", "--cached", "--name-only", check=False)
+    if listed.returncode != 0:
+        return []
+    return [f for f in listed.stdout.splitlines() if f.strip()]
+
+
+def files_with_conflict_markers(path, files: Sequence[str]) -> List[str]:
+    """
+    Which of those files still carry a merge marker
+    Checked before finishing a cherry-pick, because git is happy to commit a file with
+    the markers left in and the result compiles as nonsense
+    """
+    left = []
+    for name in files:
+        try:
+            body = (Path(str(path)) / name).read_text(
+                encoding="utf-8", errors="replace"
+            )
+        except OSError:
+            continue  # deleted as part of the resolution, nothing to check
+        for line in body.splitlines():
+            if line.startswith(("<<<<<<<", ">>>>>>>")):
+                left.append(name)
+                break
+    return left
+
+
+def continue_cherry_pick(path) -> Optional[str]:
+    """
+    Finishes a cherry-pick whose conflicts have already been staged
+
+    path: the worktree the pick stopped in
+    Returns None when it completed, or git's complaint. Stages nothing: git add is how
+    the user says which side of a conflict they chose, and a delete or rename conflict
+    has no markers to check, so staging for them would pick a side silently
+    """
+    done = git(
+        "-C",
+        str(path),
+        "-c",
+        "core.editor=true",
+        "cherry-pick",
+        "--continue",
+        check=False,
+    )
+    if done.returncode != 0:
+        return (done.stderr or done.stdout).strip()
+    return None
