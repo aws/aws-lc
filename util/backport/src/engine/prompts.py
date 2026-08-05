@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Every word sent to the model, kept apart from the logic that sends it
 Wording here is what makes the AI's answers useful, so change it carefully
@@ -18,13 +21,17 @@ SYSTEM_PROMPT = (
     "- Answer in plain Markdown."
 )
 
-# read_answer() parses these four lines back out, so the labels have to stay
+# read_answer() parses these lines back out, so the first line is spelled out as a
+# requirement. An off-menu word like "Unknown" used to be read as a no
 ANSWER_FORMAT = (
-    "Respond with:\n"
-    "- **Likely affected**: Yes / No / Uncertain\n"
-    "- **Confidence**: high / medium / low\n"
+    "Answer with these four lines and nothing before them:\n"
+    "- **Likely affected**: Yes | No | Uncertain\n"
+    "- **Confidence**: high | medium | low\n"
     "- **Reasoning**: 2-4 sentences\n"
-    "- **Recommendation**: one line for the human reviewer"
+    "- **Recommendation**: one line for the human reviewer\n\n"
+    "The first line MUST be exactly Yes, No or Uncertain. If you cannot decide, the "
+    "answer is Uncertain, not Unknown and not Cannot determine. The second line "
+    "takes high, medium or low."
 )
 
 # Asked when git history flagged the branch, to look for a false positive

@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 The AI layer, asked only about branches git history cannot settle
 Advisory: it can add flags for a human to review but never hide a backport
@@ -20,12 +23,19 @@ from engine.prompts import (
 )
 from util.config import (
     AFFECTED,
-    MAX_FILE_BYTES,
+    MAX_ANSWER_TOKENS,
     NOT_AFFECTED,
     UNSURE,
     load_model_config,
 )
-from util.git import get_commit_diff, get_file_on_branch, git, git_in_repo, show_file
+from util.git import (
+    clip_to_budget,
+    get_commit_diff,
+    get_file_on_branch,
+    git,
+    git_in_repo,
+    show_file,
+)
 
 import os
 import re
@@ -157,7 +167,7 @@ def branch_file_context(
             excerpt, (lo, hi) = region
             parts.append(
                 f"### {label} (on {branch}, lines {lo}-{hi}, around the change)\n"
-                f"```\n{excerpt[:MAX_FILE_BYTES]}\n```"
+                f"```\n{clip_to_budget(excerpt)}\n```"
             )
         else:
             parts.append(f"### {label} (on {branch})\n```\n{content}\n```")
@@ -215,19 +225,36 @@ def build_prompt(
 # _________ Asking The Model _________
 
 
+VERDICT_LINE = "likely affected"
+CONFIDENCE_LINE = "confidence"
+
+
 def read_answer(raw: str) -> Tuple[Optional[bool], str]:
-    """Pulls (likely affected, confidence) out of the reply"""
+    """
+    Reads the verdict lines out of the reply
+    Returns (likely affected, confidence). Likely affected is True or False only for
+    an exact yes or no. Anything else is None, which leaves the branch flagged, so a
+    reply the model could not commit to never clears a branch
+    """
     likely, confidence = None, "low"
     for line in raw.splitlines():
         low = line.lower()
-        if "likely affected" in low:
-            if "yes" in low:
+        if VERDICT_LINE in low:
+            # Only the first word after the label counts, and only an exact yes or no.
+            # "unknown", "cannot", "not" and "none" all contain "no", and a hedge
+            # like "uncertain, though probably no" must not read as a no. Clearing a
+            # branch the model could not judge is the one failure that ships a
+            # vulnerability
+            words = re.findall(r"[a-z]+", low.split(VERDICT_LINE, 1)[1])
+            first = words[0] if words else ""
+            if first == "yes":
                 likely = True
-            elif "no" in low:
-                likely = False  # anything else stays None, meaning uncertain
-        if "confidence" in low:
+            elif first == "no":
+                likely = False
+        if CONFIDENCE_LINE in low:
+            after = low.split(CONFIDENCE_LINE, 1)[1]
             for level in ("high", "medium", "low"):
-                if level in low:
+                if re.search(rf"\b{level}\b", after):
                     confidence = level
                     break
     return likely, confidence
@@ -254,7 +281,7 @@ def ask_about_branch(
     try:
         with client.messages.stream(
             model=cfg["model_id"],
-            max_tokens=cfg["max_tokens"],
+            max_tokens=MAX_ANSWER_TOKENS,
             thinking={"type": "adaptive"},
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
@@ -270,7 +297,7 @@ def ask_about_branch(
         # Thinking tokens ate the budget, so the answer may be cut off mid-sentence
         print(
             f"[ai] reply for {branch} hit the token limit and may be cut short, "
-            "raise max_tokens in model-config.json",
+            "raise MAX_ANSWER_TOKENS in src/util/config.py",
             file=sys.stderr,
         )
     raw = "".join(b.text for b in reply.content if hasattr(b, "text"))

@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Finds the release branches to check and puts them in order
 Independent of the rest of the engine, only the analyze command calls it
@@ -31,14 +34,20 @@ def branch_date_key(name: str) -> str:
 
 
 def sort_branches(names: Iterable[str]) -> List[str]:
-    """Newest to oldest by the date in the name, undated last"""
+    """
+    Newest to oldest by the date in the name, undated last
+    Returns a new sorted list
+    """
     return sorted(
         names, key=lambda n: (branch_date_key(n) or "0000-00-00", n), reverse=True
     )
 
 
 def get_supported_branches() -> List[str]:
-    """Release branches to check, newest first, matched on name prefix"""
+    """
+    Release branches to check, newest first, matched on name prefix
+    Returns an empty list when none of them are fetched
+    """
     return sort_branches(
         name
         for name in remote_branch_names()

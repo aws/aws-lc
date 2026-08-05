@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 The analyze command: gives every supported release branch a verdict
 """
@@ -14,7 +17,11 @@ import sys
 
 
 def cmd_analyze(args) -> int:
-    """Works out the fix, then reports which branches still need it"""
+    """
+    Works out the fix, then reports which branches still need it
+    Returns the exit code: 0 when it ran or the user aborted, 1 when no supported
+    branches were found
+    """
     fix_sha, base = resolve_fix_commit(args)
     files, traceable_files = changed_files_with_status(fix_sha)
 

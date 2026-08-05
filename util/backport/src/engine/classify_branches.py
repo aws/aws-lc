@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Gives one release branch its verdict
 Checks whether the fix is already there, then whether the branch still needs it
@@ -31,7 +34,10 @@ from typing import Iterable, Optional, Sequence, Set
 
 
 def change_fingerprint(commit: str) -> Optional[str]:
-    """The commit's contents as a patch-id, ignoring generated files"""
+    """
+    The commit's contents as a patch-id, ignoring generated files
+    Returns None when git cannot produce one
+    """
     show = git_in_repo(
         ["show", commit, *fingerprint_pathspec()],
         capture_output=True,  # bytes, the commit may touch binary files
@@ -45,7 +51,10 @@ def change_fingerprint(commit: str) -> Optional[str]:
 
 
 def branch_fingerprints(ref: str) -> Set[str]:
-    """Fingerprints of the commits the branch has that mainline does not"""
+    """
+    Fingerprints of the commits the branch has that mainline does not
+    Returns an empty set when git fails
+    """
     log = git_in_repo(
         [
             "log",
@@ -94,6 +103,7 @@ def is_already_patched(commit: str, branch: str) -> bool:
     Is the fix already on this branch?
     Three ways to tell: it is in the branch history, a commit there names it, or
     one there has the same contents under a different SHA
+    True when any of the three holds
     """
     ref = f"origin/{branch}"
 
@@ -116,6 +126,7 @@ def same_named_file_carries_fix(
     """
     Last resort: does a file with the same name elsewhere on the branch hold the bug?
     A name alone proves nothing, so the contents have to hold a deleted line
+    True when one of those files holds such a line
     """
     by_name = branch_paths_by_basename(ref)
     for file in src_files:
@@ -139,8 +150,15 @@ def classify_branch(
     One branch's verdict, the only copy of this decision
     Anything unclear is UNSURE, never NOT_AFFECTED.
     A wrong not affected means a missed security backport
+    Returns one of ALREADY, AFFECTED, UNSURE or NOT_AFFECTED
     """
     ref = f"origin/{branch}"
+
+    # With no files there is nothing to look at, and "I looked at nothing and found
+    # nothing" must not come out as not affected. git.changed_files_with_status stops
+    # the run before this, so reaching it means a caller built the list some other way
+    if not src_files:
+        return UNSURE
 
     # Checked first because applying a fix deletes the buggy lines, which would
     # make still_present below False and send these branches to UNSURE

@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Reads the fix: which lines it deletes and which commits wrote them
 Nothing here looks at a release branch except to check the lines are still on it
@@ -17,7 +20,10 @@ C_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".hh", ".hxx")
 
 
 def normalize_spaces(s: str) -> str:
-    """Collapses runs of whitespace so a reformatted line still matches"""
+    """
+    Collapses runs of whitespace so a reformatted line still matches
+    Returns the collapsed line
+    """
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -57,13 +63,17 @@ def only_source_files(files: Sequence[str]) -> List[str]:
     """
     Drops tests and generated files, since neither is the shipped code
     Keeps everything when the fix touches nothing else
+    Returns the files worth analyzing
     """
     return [f for f in files if not is_test_or_generated_file(f)] or list(files)
 
 
 @lru_cache(maxsize=None)
 def deleted_lines(commit: str, file: str) -> List[str]:
-    """The distinctive lines the commit deletes from the file"""
+    """
+    The distinctive lines the commit deletes from the file
+    Returns an empty list when the diff fails or nothing distinctive was deleted
+    """
     diff = git_in_repo(
         ["diff", f"{commit}^", commit, "--", file], capture_output=True, text=True
     )
@@ -111,7 +121,10 @@ def buggy_lines_still_present(
 
 
 def blame_lines(file: str, line_start: int, line_end: int, ref: str) -> Optional[str]:
-    """Oldest commit to touch those lines, from `log -L` or failing that `blame`"""
+    """
+    Oldest commit to touch those lines, from `log -L` or failing that `blame`
+    Returns None when neither can name a commit, usually a fix that only added lines
+    """
     log = git_in_repo(
         ["log", f"-L{line_start},{line_end}:{file}", "--format=%H", "--reverse", ref],
         capture_output=True,
@@ -148,6 +161,7 @@ def find_bug_commits(commit: str, files: Sequence[str]) -> Set[str]:
     The commits that wrote the lines this fix changes
     Hunks that only touch comments are skipped, so a stale comment cannot drag in
     some ancient unrelated commit
+    Returns their SHAs, empty when nothing could be blamed
     """
     bug_commits = set()
     for file in files:

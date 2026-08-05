@@ -123,17 +123,17 @@ flagging.
 
 ```json
 {
-  "model_id": "us.anthropic.claude-opus-4-8",
-  "aws_region": "us-west-2",
-  "max_tokens": 4096
+  "model_id": "us.anthropic.claude-opus-5",
+  "aws_region": "us-west-2"
 }
 ```
 
-All three are required. To change the model, edit this file.
+Both are required. To change the model, edit this file.
 
-Keep `max_tokens` generous. The model thinks before answering, and a small budget
-truncates the reply mid-answer, which shows up as every branch coming back
-"uncertain".
+The reply budget is `MAX_ANSWER_TOKENS` in `src/util/config.py`, next to the other
+limits on what goes to the model. Keep it generous. The model thinks before answering,
+and a small budget truncates the reply mid-answer, which shows up as every branch
+coming back "uncertain".
 
 ### Environment Variables
 
@@ -150,7 +150,6 @@ truncates the reply mid-answer, which shows up as every branch coming back
 ```
 util/backport/
 ├── backport                      # entry point script
-├── model-config.json             # model id, region, token budget
 ├── src/
 │   ├── main.py                   # argument parsing
 │   ├── commands/
@@ -182,8 +181,10 @@ cd util/backport
 python3 -m unittest testing.test_engine
 ```
 
-Covers the pure helpers: the line filters, source file selection, branch ordering,
-and reading the model's reply. No checkout or credentials needed.
+Covers the pure helpers and the decision logic: the line filters, source file
+selection, branch ordering, reading the model's reply, the per-branch verdict table,
+and the guards that stop an empty or truncated read from clearing a branch. No
+checkout or credentials needed.
 
 ### Replay bench
 
@@ -191,7 +192,7 @@ and reading the model's reply. No checkout or credentials needed.
 cd util/backport
 python3 testing/replay_fixes.py            # with the AI pass
 python3 testing/replay_fixes.py --no-ai    # git history only
-python3 testing/replay_fixes.py -v --fix 9545d9de6059
+python3 testing/replay_fixes.py --fix 9545d9de6059
 ```
 
 Replays 39 real AWS-LC fixes against checked answers. Each fix runs in a throwaway
@@ -201,23 +202,36 @@ takes about five minutes without the AI pass and roughly 20 minutes with it.
 
 **Example Output:**
 
+A block per fix, then the totals. One fix's block below, with the totals from a
+full run:
+
 ```
-Replaying 39 fix(es), AI on
+=================================================================================
+DH_check() excessive time with oversized modulus (CVE-2023-3446)
+  fix 9545d9de6059  "Fix DH_check() excessive time with oversized modulus (#1109)"
+=================================================================================
+  changed files: ['crypto/dh_extra/dh_test.cc', 'crypto/fipsmodule/dh/check.c']
+  bug commits:   ['95c29f3cd1']
 
-9545d9de6059  ok    TP=3 TN=0 FP=0 FN=0  DH_check() excessive time with oversized modul
-2a184bd568ff  ok    TP=2 TN=3 FP=0 FN=0  ML-DSA constant-time hardening (#2602)
+  branch                   verdict    basis        answer key       result
+  ------------------------ ---------- ------------ ---------------- ------
+  fips-2022-11-02          affected   git history  affected/trailer OK
+  fips-2021-10-20-1MU      affected   git history  affected/trailer OK
+  fips-2021-10-20          affected   git history  affected/trailer OK
 
+=================================================================================
 157 branch cells over 39 fix(es)
+=================================================================================
   correctly flagged     102
-  correctly cleared     52
-  unneeded flags        3
+  correctly cleared     51
+  unneeded flags        4
       real over-flags   0  history flagged it but the lines are absent, a tool error
       never shipped     2  lines still there, the flag is correct
       unclear           1  history could not tell, defaulted to affected
-      AI upgraded       0  history unclear, the AI called it affected
+      AI upgraded       1  history unclear, the AI called it affected
       addition only     0  nothing deleted to look for
   MISSED BACKPORTS      0
-  agreement             98%
+  agreement             97%
 ```
 
 Unneeded flags are split by cause, because only one kind is a tool error. There are
@@ -228,13 +242,14 @@ really is vulnerable but that were never given the fix.
 
 | | git history only | with the AI pass |
 | --- | --- | --- |
-| unneeded flags | 25 | 3 |
-| correctly cleared | 30 | 52 |
+| unneeded flags | 25 | 4 |
+| correctly cleared | 30 | 51 |
 | missed backports | 0 | 0 |
-| agreement | 84% | 98% |
+| agreement | 84% | 97% |
 
 The git-history column is exact and identical every run. The AI column is a single
-sample: the model is not deterministic, so expect a few unneeded flags either way.
+sample taken on the model in `model-config.json`: the model is not deterministic, so
+expect a few unneeded flags either way.
 Missed backports stay at 0 in both, because a branch the AI cannot clear stays
 flagged.
 
@@ -269,18 +284,13 @@ aws sts get-caller-identity
 A client is created even when credentials are expired, so a successful profile
 listing is not proof. The warning after a run is.
 
-### Every branch comes back "uncertain"
+### Nothing to analyze
 
-`max_tokens` in `model-config.json` is too small and replies are being cut off. The
-tool prints a warning naming the branch when this happens. Raise it to 4096.
-
-### Analysis is slow
-
-The git pass takes a few seconds. Each AI call adds roughly 30 seconds, and only
-unsettled branches trigger one. For a quick answer:
+The commit changes no files. A merge commit is the usual cause: it reports no changes
+of its own, so analyze what it brought in instead.
 
 ```bash
-BACKPORT_DISABLE_AI=1 util/backport/backport analyze
+util/backport/backport analyze --commit <sha>^..<sha>
 ```
 
 ### Wrong or empty results from a subdirectory
@@ -290,6 +300,6 @@ using your working directory. If you see empty results, file it as a bug.
 
 ## Support
 
-- Re-run with `-v` on the bench to see per-branch reasoning
+- Every bench run prints the per-branch table and a note on every flag
 - Check the `basis` column to see whether history or the AI decided a branch
 - Contact the AWS-LC team

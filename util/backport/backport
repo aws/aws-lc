@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 # Wrapper so the tool runs as `util/backport/backport <command>` from the repo top.
 # Finds its own location, so it works from a subfolder too. AWS_REGION is bridged
 # to AWS_DEFAULT_REGION because boto3 reads the latter.

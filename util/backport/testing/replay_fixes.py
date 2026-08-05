@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 """
 Replays real AWS-LC fixes and grades analyze against a hand-checked answer key
 
@@ -320,25 +322,8 @@ def truth_label(row):
     return f"affected/{row['backport']}" if row["backport"] else "affected/code"
 
 
-def print_fix(result, subject, verbose):
+def print_fix(result, subject):
     """A block per fix: the header, a row per branch, then notes on anything wrong"""
-    counts = {}
-    for row in result["rows"]:
-        counts[row["score"]] = counts.get(row["score"], 0) + 1
-    real_errors = sum(
-        1 for r in result["rows"] if r["score"] == "FP" and flag_reason(r) == OVER_FLAG
-    )
-
-    if not verbose:
-        mark = "FAIL" if counts.get("FN") else ("flags" if real_errors else "ok")
-        print(
-            f"{result['fix'][:12]}  {mark:5} "
-            f"TP={counts.get('TP', 0)} TN={counts.get('TN', 0)} "
-            f"FP={counts.get('FP', 0)} FN={counts.get('FN', 0)}  "
-            f"{result['label'][:46]}"
-        )
-        return
-
     print("\n" + "=" * 113)
     print(f"{result['label']}")
     print(f'  fix {result["fix"][:12]}  "{subject[:88]}"')
@@ -392,7 +377,6 @@ def main(argv=None) -> int:
     parser.add_argument("--fix", help="replay only this SHA")
     parser.add_argument("--no-ai", action="store_true", help="git history only")
     parser.add_argument("--jobs", type=int, default=6, help="branches at a time")
-    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
     if args.no_ai:
@@ -421,7 +405,7 @@ def main(argv=None) -> int:
         if result is None:
             print(f"{sha[:12]}  skipped, no branch predates this fix")
             continue
-        print_fix(result, git_out(REPO, "log", "-1", "--format=%s", sha), args.verbose)
+        print_fix(result, git_out(REPO, "log", "-1", "--format=%s", sha))
         for row in result["rows"]:
             totals[row["score"]] += 1
             if row["score"] == "FP":
@@ -466,8 +450,6 @@ def main(argv=None) -> int:
         print(f"\n{len(stale)} cell(s) still had the fix, rollback missed a backport:")
         for sha, branch in stale:
             print(f"  {sha} {branch}")
-    if not args.verbose:
-        print("\nRun with -v for the per-branch table and notes on every flag")
     return 1 if totals["FN"] else 0
 
 

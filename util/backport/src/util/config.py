@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """Configurations for backport tool"""
 
 import json
@@ -35,19 +38,30 @@ class BackportError(Exception):
 # Reads from model-config.json
 
 # Hard limit guardrails for read and send to the model
+# MAX_FILE_BYTES is a prompt budget, not a file size: up to six files go into one
+# question, so this is what fits alongside the rest of the prompt. It covers all but
+# about 3% of aws-lc's sources, and anything over it is marked as cut off rather than
+# quietly shortened
 MAX_DIFF_BYTES = 40000
-MAX_FILE_BYTES = 45000
+MAX_FILE_BYTES = 100000
+
+# What the model may spend on one reply. Generous on purpose: adaptive thinking spends
+# this before the answer starts, so a tight budget cuts off the verdict lines and every
+# branch comes back uncertain. It tunes this tool rather than naming the model, so it
+# lives here and not in model-config.json
+MAX_ANSWER_TOKENS = 4096
 
 # Finds where ./util/backport is
 TOOL_ROOT = Path(__file__).resolve().parent.parent.parent
 SETTINGS_PATH = TOOL_ROOT / "model-config.json"
-REQUIRED_CFG = ("model_id", "aws_region", "max_tokens")
+REQUIRED_CFG = ("model_id", "aws_region")
 
 
 @lru_cache(maxsize=1)
 def load_model_config() -> dict:
     """
     Read model-config.json. Raises if missing or incomplete
+    Returns the parsed config
     """
     try:
         cfg = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
@@ -74,7 +88,10 @@ TEST_SUFFIXES = ("_test.cc", "_test.cpp", "_test.c", "_test.cxx")
 
 
 def fingerprint_pathspec() -> List[str]:
-    """Paths to compare when fingerprinting, generated files left out"""
+    """
+    Paths to compare when fingerprinting, generated files left out
+    Returns an empty list when there is nothing to leave out
+    """
     if not GENERATED_PATHSPECS:
         return []
     return ["--", "."] + [f":(exclude){p}" for p in GENERATED_PATHSPECS]
@@ -84,6 +101,7 @@ def is_test_or_generated_file(f: str) -> bool:
     """
     Checks if file is a test or a generated file
     Omitted from analysis
+    True for either
     """
     if any(f == p or f.startswith(p.rstrip("/") + "/") for p in GENERATED_PATHSPECS):
         return True

@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 """
 Everything that runs a git command
 Only imports util.config, so it can never make an import cycle
@@ -54,20 +57,14 @@ def git_in_repo(args: Sequence[str], **kwargs):
     return subprocess.run(["git", *args], **kwargs)
 
 
-def run(
-    args: Sequence[str],
-    check: bool = True,
-    cwd: Optional[str] = None,
-    stdin: Optional[str] = None,
-):
+def run(args: Sequence[str], check: bool = True):
     """
-    Runs a command and captures its output
-    Raises BackportError when it fails, unlike git_in_repo above
+    Runs a command in the repo and captures its output
+    Returns the finished process. Raises BackportError when it fails, unlike
+    git_in_repo above
     """
-    if cwd is None:
-        cwd = REPO_TOP
     p = subprocess.run(
-        list(args), capture_output=True, text=True, cwd=cwd, input=stdin, check=False
+        list(args), capture_output=True, text=True, cwd=REPO_TOP, check=False
     )
     if check and p.returncode != 0:
         raise BackportError(
@@ -76,16 +73,12 @@ def run(
     return p
 
 
-def git(
-    *args: str,
-    check: bool = True,
-    cwd: Optional[str] = None,
-    stdin: Optional[str] = None,
-):
+def git(*args: str, check: bool = True):
     """
     Runs a git command through run(), so a failure stops the run
+    Returns the finished process
     """
-    return run(["git", *args], check=check, cwd=cwd, stdin=stdin)
+    return run(["git", *args], check=check)
 
 
 # _________ Finding The Fix _________
@@ -179,17 +172,24 @@ def changed_files_with_status(commit: str) -> Tuple[List[str], List[str]]:
     """
     Files the commit touches, as (all files, traceable files)
     Traceable leaves out files the fix added, since a new file has no history to blame
+    Raises when git fails or the commit changes nothing, because an empty list would
+    otherwise clear every branch without looking at a single line of code
 
     Reads `git diff-tree --name-status`, one line per file:
         M     crypto/aead.c              modified
         A     tls/new_feature.c          added
         R100  old.c    new.c             renamed, new path last
     """
-    output = git_in_repo(
+    result = git_in_repo(
         ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],
         capture_output=True,
         text=True,
-    ).stdout
+    )
+    if result.returncode != 0:
+        raise BackportError(
+            f"could not read the files '{commit}' changes: {result.stderr.strip()}"
+        )
+    output = result.stdout
 
     changed_files: List[str] = []
     traceable_files: List[str] = []
@@ -201,6 +201,14 @@ def changed_files_with_status(commit: str) -> Tuple[List[str], List[str]]:
         changed_files.append(path)
         if not status.startswith("A"):  # A means the fix added it
             traceable_files.append(path)
+    if not changed_files:
+        # A merge commit is the one that reaches here: diff-tree shows nothing for it
+        # against its first parent, and still exits 0
+        raise BackportError(
+            f"'{commit}' changes no files, so there is nothing to analyze.\n"
+            "A merge commit reports no changes of its own. Analyze what it brought "
+            f"in instead, with --commit {commit}^..{commit}"
+        )
     return changed_files, traceable_files
 
 
@@ -282,6 +290,22 @@ def historical_paths(commit: str, file_path: str, limit: int = 6) -> List[str]:
     return paths
 
 
+def clip_to_budget(content: str) -> str:
+    """
+    Content cut to MAX_FILE_BYTES, with a marker saying what was dropped
+    Returns it unchanged when it already fits. The marker is the point: a file cut
+    off in silence reads to the model as though the code is simply not there, and
+    not there is how a branch gets cleared
+    """
+    if len(content) <= MAX_FILE_BYTES:
+        return content
+    dropped = len(content) - MAX_FILE_BYTES
+    return content[:MAX_FILE_BYTES] + (
+        f"\n\n[cut off here, {dropped} more bytes follow in this file. "
+        "Code missing below this point is missing from the excerpt, not from the file]"
+    )
+
+
 def get_file_on_branch(
     file_path: str, branch_ref: str, commit: Optional[str] = None
 ) -> Tuple[Optional[str], Optional[str]]:
@@ -292,12 +316,12 @@ def get_file_on_branch(
     """
     content = show_file(branch_ref, file_path)
     if content is not None:
-        return content[:MAX_FILE_BYTES], file_path
+        return clip_to_budget(content), file_path
     if commit:
         for older in historical_paths(commit, file_path):
             if older == file_path:
                 continue
             content = show_file(branch_ref, older)
             if content is not None:
-                return content[:MAX_FILE_BYTES], older
+                return clip_to_budget(content), older
     return None, None

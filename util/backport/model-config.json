@@ -1,5 +1,4 @@
 {
-  "model_id": "us.anthropic.claude-opus-4-8",
-  "aws_region": "us-west-2",
-  "max_tokens": 4096
+  "model_id": "us.anthropic.claude-opus-5",
+  "aws_region": "us-west-2"
 }
