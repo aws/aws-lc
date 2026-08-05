@@ -104,12 +104,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2
-        id: clang
-        with:
-          # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
-          version: 22
-          env: true
+        run: |
+          choco upgrade llvm --no-progress --yes
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install LLVM"
+          }
+          & "C:/Program Files/LLVM/bin/clang.exe" --version
       - name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
         with:
