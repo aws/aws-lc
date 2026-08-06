@@ -100,7 +100,7 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'
       - name: Checkout
@@ -146,7 +146,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Check for git tag

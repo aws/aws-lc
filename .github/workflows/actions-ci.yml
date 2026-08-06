@@ -50,7 +50,7 @@ jobs:
           - "macos-15-intel"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -71,7 +71,7 @@ jobs:
           - "macos-15-intel"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
@@ -93,7 +93,7 @@ jobs:
           - "macos-15"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -115,7 +115,7 @@ jobs:
           - "windows-11-arm"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install NASM
@@ -145,7 +145,7 @@ jobs:
           - 0 # default
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - if: matrix.clang == 20
@@ -201,7 +201,7 @@ jobs:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -273,7 +273,7 @@ jobs:
             shard_index: 0
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install dependencies
@@ -313,7 +313,7 @@ jobs:
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - run: |
@@ -342,7 +342,7 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -381,7 +381,7 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -423,7 +423,7 @@ jobs:
             fips: "1"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -461,7 +461,7 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -499,7 +499,7 @@ jobs:
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -534,7 +534,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Setup CMake
@@ -577,7 +577,7 @@ jobs:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Setup Clang
