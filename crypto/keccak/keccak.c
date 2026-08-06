@@ -3,15 +3,13 @@
 
 #include "internal.h"
 
-#include <assert.h>
-
 #include "../internal.h"
 
 // Keccak-256 (Ethereum-style, original 0x01 padding). NOT FIPS-approved.
 //
 // This reuses the FIPS module's FIPS 202 buffering primitives and Keccak-f[1600]
 // permutation but initialises the context with the original Keccak padding byte
-// (|KECCAK256_PAD_CHAR|) instead of a FIPS 202 one. Because the module's
+// (|KECCAK256_PAD_CHAR|) instead of the FIPS 202 ones. Because the module's
 // |FIPS202_Init| deliberately rejects non-FIPS-202 padding, we set up the
 // context here rather than calling it.
 
@@ -20,14 +18,14 @@ int Keccak256_Init(KECCAK1600_CTX *ctx) {
     return 0;
   }
 
-  const size_t block_size = KECCAK256_CBLOCK;
-  // Mirror the block-size bound |FIPS202_Init| enforces on the context buffer.
-  if (block_size > sizeof(ctx->buf)) {
-    return 0;
-  }
+  // |FIPS202_Init| bounds its |block_size| argument against the context buffer
+  // at runtime because there it is variable. Keccak-256's block size is a
+  // compile-time constant, so assert it statically instead.
+  OPENSSL_STATIC_ASSERT(KECCAK256_CBLOCK <= sizeof(ctx->buf),
+                        keccak256_block_size_exceeds_ctx_buffer)
 
   FIPS202_Reset(ctx);
-  ctx->block_size = block_size;
+  ctx->block_size = KECCAK256_CBLOCK;
   ctx->md_size = KECCAK256_DIGEST_LENGTH;
   ctx->pad = KECCAK256_PAD_CHAR;
   return 1;
@@ -43,6 +41,14 @@ int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (len == 0) {
     return 1;
   }
+  // As in |Keccak256_Final|, refuse a zeroed context rather than letting it
+  // reach |FIPS202_Update|, where |Keccak1600_Absorb| would spin forever on
+  // |while (len >= r)| with |r == 0|. Absorbing into a context that was never
+  // initialised, or that EVP has already finalised and cleansed, is a caller
+  // error, so this reports failure rather than silently doing nothing.
+  if (ctx->block_size == 0) {
+    return 0;
+  }
   return FIPS202_Update(ctx, data, len);
 }
 
@@ -50,10 +56,16 @@ int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx) {
   if (out == NULL || ctx == NULL) {
     return 0;
   }
-  // This function must be paired with |Keccak256_Init|, which sets |md_size| to
-  // |KECCAK256_DIGEST_LENGTH|. Unlike SHA-3/SHAKE, Keccak-256 is a fixed-length
-  // hash, so |md_size| is never legitimately zero here.
-  assert(ctx->md_size == KECCAK256_DIGEST_LENGTH);
+  // A zeroed context reaches here whenever |Keccak256_Init| was skipped, and
+  // also on a second |Keccak256_Final| through EVP: |EVP_DigestFinal_ex|
+  // cleanses |md_data| on the way out. Bail out first, because the callees below
+  // assume an initialised context: |FIPS202_Finalize| assumes |block_size| is
+  // non-zero and would index |ctx->buf[block_size - 1]| out of bounds, and
+  // |Keccak1600_Absorb| assumes the same and would loop forever on |r == 0|.
+  // |SHA3_Final| guards the same way.
+  if (ctx->md_size == 0) {
+    return 1;
+  }
   if (FIPS202_Finalize(out, ctx) == 0) {
     return 0;
   }
