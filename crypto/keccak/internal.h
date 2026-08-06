@@ -40,11 +40,14 @@ extern "C" {
 int Keccak256_Init(KECCAK1600_CTX *ctx);
 
 // Keccak256_Update absorbs |len| bytes from |data| into |ctx| and returns 1 on
-// success or 0 on failure.
+// success or 0 on failure. It fails if |ctx| has already been finalised or was
+// never initialised.
 int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // Keccak256_Final pads the last block and writes |KECCAK256_DIGEST_LENGTH|
-// bytes to |out|. It returns 1 on success and 0 on programmer error.
+// bytes to |out|. It returns 1 on success and 0 on programmer error. As with
+// |SHA3_Final|, an uninitialised (zeroed) |ctx| returns 1 without writing to
+// |out|.
 int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx);
 
 // Keccak256 writes the Keccak-256 digest of |len| bytes from |data| to |out|
