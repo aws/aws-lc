@@ -107,7 +107,7 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
  * FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
  */
 // FIPS202_Reset zero's |ctx| fields.
-static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
+void FIPS202_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
   ctx->state = KECCAK1600_STATE_ABSORB;
@@ -117,11 +117,11 @@ static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
 // the internal buffer. It initialises the |ctx| fields and returns 1 on
 // success and 0 on failure.
 static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
-  if (pad != SHA3_PAD_CHAR && 
-      pad != SHAKE_PAD_CHAR) { 
+  if (pad != SHA3_PAD_CHAR &&
+      pad != SHAKE_PAD_CHAR) {
     return 0;
   }
-      
+
   if (block_size <= sizeof(ctx->buf)) {
       FIPS202_Reset(ctx);
       ctx->block_size = block_size;
@@ -136,7 +136,7 @@ static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, siz
 // previous calls. It processes |data| in blocks through |Keccak1600_Absorb| and places
 // the rest in the intermediate buffer. FIPS202_Update fails if called from inappropriate
 // |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
-static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
@@ -188,7 +188,7 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 // This function should be called once to finalize absorb and initiate
 // squeeze phase. FIPS202_Finalize fails if called from inappropriate
 // |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
-static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
+int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
