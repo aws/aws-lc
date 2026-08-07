@@ -171,6 +171,19 @@ function verify_dist_pkg_structure() {
         if [[ ! -f "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/openssl.pc" ]]; then
             fail "openssl.pc not found in ${LIB_DIR}/pkgconfig/ (OpenSSL shim enabled)"
         fi
+
+        # OpenSSL compat pkg-config files must exist and must not reference
+        # the cohabitant include directory.
+        local PC_FILE
+        for PC_FILE in libcrypto.pc libssl.pc; do
+            local PC_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig/${PC_FILE}"
+            if [[ ! -f "${PC_PATH}" ]]; then
+                fail "${PC_FILE} not found in ${LIB_DIR}/pkgconfig/ (OpenSSL shim enabled)"
+            fi
+            if grep -q "include/aws-lc" "${PC_PATH}"; then
+                fail "${PC_FILE} references the cohabitant include directory"
+            fi
+        done
     else
         # When OpenSSL shim is disabled, symlinks should NOT exist
         if [[ -e "${INSTALL_DIR}/include/openssl" ]]; then
@@ -192,6 +205,14 @@ function verify_dist_pkg_structure() {
                 fail "libssl.a should not exist in ${LIB_DIR}/ when OpenSSL shim is disabled"
             fi
         fi
+
+        # OpenSSL compat pkg-config files should NOT exist either
+        local PC_FILE
+        for PC_FILE in openssl.pc libcrypto.pc libssl.pc; do
+            if [[ -e "${INSTALL_DIR}/${LIB_DIR}/pkgconfig/${PC_FILE}" ]]; then
+                fail "${PC_FILE} should not exist when OpenSSL shim is disabled"
+            fi
+        done
     fi
 
     echo "Installation structure verified successfully!"
@@ -347,6 +368,75 @@ EOF
     echo "pkg-config test passed for ${PC_NAME}!"
 }
 
+# Verify the OpenSSL compat pkg-config files behave like genuine OpenSSL's:
+# all three names resolve, the cohabitant include directory does not leak,
+# and a pc file declaring 'Requires.private: libcrypto' (the pattern shipped
+# by libssh2 and others) resolves.
+function test_openssl_compat_pkg_config() {
+    local INSTALL_NAME=$1
+    local INSTALL_DIR=${SCRATCH_DIR}/${INSTALL_NAME}
+
+    # Detect library directory (lib or lib64)
+    local LIB_DIR
+    LIB_DIR=$(get_lib_dir "${INSTALL_DIR}")
+
+    echo ""
+    echo "=============================================="
+    echo "Testing OpenSSL compat pkg-config files for: ${INSTALL_NAME}"
+    echo "=============================================="
+
+    export PKG_CONFIG_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+
+    local PC_NAME
+    for PC_NAME in openssl libcrypto libssl; do
+        if ! pkg-config --exists "${PC_NAME}"; then
+            fail "pkg-config cannot find package: ${PC_NAME}"
+        fi
+        local CFLAGS
+        CFLAGS=$(pkg-config --cflags "${PC_NAME}")
+        echo "${PC_NAME} CFLAGS: ${CFLAGS}"
+        if [[ "${CFLAGS}" == *"include/aws-lc"* ]]; then
+            fail "cohabitant include directory leaked into '${PC_NAME}' Cflags: ${CFLAGS}"
+        fi
+    done
+
+    # The compat files must still link the suffixed libraries.
+    local LIBS
+    LIBS=$(pkg-config --libs libcrypto)
+    if [[ "${LIBS}" != *"-lcrypto-awslc"* ]]; then
+        fail "compat libcrypto.pc does not link libcrypto-awslc: ${LIBS}"
+    fi
+    LIBS=$(pkg-config --libs libssl)
+    if [[ "${LIBS}" != *"-lssl-awslc"* ]]; then
+        fail "compat libssl.pc does not link libssl-awslc: ${LIBS}"
+    fi
+
+    # Reproduce the third-party consumer pattern: pkg-config resolves
+    # Requires.private to compute Cflags, so this fails unless libcrypto.pc
+    # exists under that exact filename.
+    local CONSUMER_DIR=${SCRATCH_DIR}/pkgconfig-consumer
+    rm -rf "${CONSUMER_DIR:?}"
+    mkdir -p ${CONSUMER_DIR}
+    cat <<EOF > ${CONSUMER_DIR}/shimconsumer.pc
+prefix=/nonexistent
+Name: shimconsumer
+Description: Synthetic consumer of OpenSSL via pkg-config
+Version: 1.0
+Requires.private: libcrypto
+Libs: -L\${prefix}/lib -lshimconsumer
+Cflags: -I\${prefix}/include
+EOF
+
+    export PKG_CONFIG_PATH="${CONSUMER_DIR}:${PKG_CONFIG_PATH}"
+    if ! pkg-config --cflags --libs shimconsumer > /dev/null; then
+        fail "pkg-config failed to resolve 'Requires.private: libcrypto' for a consumer package"
+    fi
+
+    unset PKG_CONFIG_PATH
+
+    echo "OpenSSL compat pkg-config tests passed!"
+}
+
 # Main test execution
 
 echo ""
@@ -382,6 +472,8 @@ verify_dist_pkg_structure install-dist-pkg-shim-shared .so ON
 test_cmake_find_package install-dist-pkg-shim-shared ON
 test_pkg_config install-dist-pkg-shim-shared aws-lc OFF
 test_pkg_config install-dist-pkg-shim-shared openssl OFF
+test_pkg_config install-dist-pkg-shim-shared libcrypto OFF
+test_openssl_compat_pkg_config install-dist-pkg-shim-shared
 
 # Test 3: ENABLE_DIST_PKG only (static libs)
 echo ""
@@ -403,6 +495,8 @@ verify_dist_pkg_structure install-dist-pkg-shim-static .a ON
 test_cmake_find_package install-dist-pkg-shim-static OFF
 test_pkg_config install-dist-pkg-shim-static aws-lc ON
 test_pkg_config install-dist-pkg-shim-static openssl ON
+test_pkg_config install-dist-pkg-shim-static libcrypto ON
+test_openssl_compat_pkg_config install-dist-pkg-shim-static
 
 echo ""
 echo "############################################"

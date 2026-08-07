@@ -1651,14 +1651,34 @@ include(cmake/JoinPaths.cmake)
 join_paths(LIBDIR_FOR_PC_FILE "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
 join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${AWSLC_INSTALL_INCLUDEDIR}")
 
+# Generates a pkg-config file from a template and installs it. The optional
+# INCLUDEDIR, CRYPTO_NAME and SSL_NAME arguments override the corresponding
+# template substitution variables for this one file.
 function(install_pkgconfig_file)
   set(options "")
-  set(oneValueArgs TEMPLATE DEST)
+  set(oneValueArgs TEMPLATE DEST INCLUDEDIR CRYPTO_NAME SSL_NAME)
   set(multiValueArgs)
   if(CMAKE_VERSION VERSION_LESS "3.7")
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   else()
     cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(DEFINED arg_INCLUDEDIR)
+    join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${arg_INCLUDEDIR}")
+  endif()
+  if(DEFINED arg_CRYPTO_NAME)
+    set(CRYPTO_LIB_NAME "${arg_CRYPTO_NAME}")
+  endif()
+  if(DEFINED arg_SSL_NAME)
+    set(SSL_LIB_NAME "${arg_SSL_NAME}")
+  endif()
+
+  # Requires line for product.pc.in; omit libssl when it is not built.
+  if(BUILD_LIBSSL)
+    set(PRODUCT_PC_REQUIRES "lib${SSL_LIB_NAME} lib${CRYPTO_LIB_NAME}")
+  else()
+    set(PRODUCT_PC_REQUIRES "lib${CRYPTO_LIB_NAME}")
   endif()
 
   configure_file(pkgconfig/${arg_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/pkgconfig/${arg_DEST} @ONLY)
@@ -1675,10 +1695,33 @@ endif()
 
 install_pkgconfig_file(TEMPLATE product.pc.in DEST aws-lc.pc)
 install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST lib${CRYPTO_LIB_NAME}.pc)
-install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+if(BUILD_LIBSSL)
+  install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+endif()
 
 if(INSTALL_OPENSSL_SHIM)
-  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc)
+  # OpenSSL installs openssl.pc, libcrypto.pc and libssl.pc, and pkg-config
+  # resolves packages by filename, so a drop-in replacement must provide all
+  # three names. When the libraries carry the -awslc suffix, install compat
+  # files under the OpenSSL names. Their includedir is the plain include/
+  # directory (home of the include/openssl symlink) so the cohabitant
+  # include/aws-lc path does not leak into consumers; Libs still references
+  # the suffixed libraries.
+  if(SET_LIB_SONAME)
+    install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST libcrypto.pc
+                           INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+    if(BUILD_LIBSSL)
+      install_pkgconfig_file(TEMPLATE libssl.pc.in DEST libssl.pc
+                             INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+                             CRYPTO_NAME crypto)
+    endif()
+  endif()
+
+  # Like genuine OpenSSL, openssl.pc requires the unsuffixed package names
+  # and reports the plain include directory.
+  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
+                         INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+                         CRYPTO_NAME crypto SSL_NAME ssl)
 
   # Create OpenSSL compatibility symlinks
   if(BUILD_SHARED_LIBS)
