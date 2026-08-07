@@ -136,6 +136,17 @@ setup_script="/tmp/setup-go-compiler.sh"
 ${setup_script}
 EOF
 
+# Install Rust
+ENV RUSTUP_HOME="/.rustup"
+ENV CARGO_HOME="/.cargo"
+ENV PATH="${CARGO_HOME}/bin:$PATH"
+
+COPY --from=scripts setup-rust.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-rust.sh"
+${setup_script}
+EOF
+
 # Install CryptoFuzz, this is expected to be used with al2023 provided clang so set that here
 COPY --from=dependencies build_cryptofuzz_modules.sh cryptofuzz_data.zip ${FUZZ_ROOT}/
 RUN <<EOF

@@ -11,11 +11,13 @@ on:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/ubuntu/Dockerfile.2204
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
   pull_request:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/ubuntu/Dockerfile.2204
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
 concurrency:
   group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
@@ -37,6 +39,8 @@ jobs:
       ubuntu2204_sde: ${{ steps.images.outputs.ubuntu2204_sde }}
     steps:
       - uses: actions/checkout@v7
+      - name: Load dependency pins
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .github/docker_images/dependencies.env >> "$GITHUB_ENV"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -66,6 +70,10 @@ jobs:
           context: ./.github/docker_images/aws-lc/ubuntu
           build-contexts: |
             scripts=./.github/docker_images/scripts
+          build-args: |
+            SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_LIN }}
+            SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_LIN }}
+            SDE_SHA256=${{ env.SDE_SHA256_LIN }}
           target: ubuntu2204_sde
           tags: ${{ steps.images.outputs.ubuntu2204_sde }}
           push: true
@@ -78,6 +86,9 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
             ./.github/docker_images/scripts/verify-perl-version.sh 5.34
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC Default Compilers
             source /opt/compiler-env/setup-gcc.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.4
@@ -119,6 +130,9 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
             ./.github/docker_images/scripts/verify-perl-version.sh 5.34
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC Default Compilers
             source /opt/compiler-env/setup-gcc.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.4
@@ -151,7 +165,8 @@ jobs:
             source /opt/compiler-env/setup-clang-14.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 14.0
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 14.0
-            sde --version | grep 9.44
+            # Expected SDE version comes from .github/docker_images/dependencies.env
+            sde --version | grep -F "${{ env.SDE_VERSION_PREFIX }}"
 
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
@@ -229,6 +244,9 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
             ./.github/docker_images/scripts/verify-perl-version.sh 5.34
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC Default Compilers
             source /opt/compiler-env/setup-gcc.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.4
