@@ -141,24 +141,25 @@ jobs:
           - "macos-14"
           - "macos-15"
         clang:
-          - 20
+          - 22
           - 0 # default
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
-      - if: matrix.clang == 20
+      - if: matrix.clang == 22
         run: |
-          brew install llvm@20
-          echo "CC=/opt/homebrew/opt/llvm@20/bin/clang" >> $GITHUB_ENV
-          echo "CXX=/opt/homebrew/opt/llvm@20/bin/clang++" >> $GITHUB_ENV
-          echo "LDFLAGS=-L/opt/homebrew/opt/llvm@20/lib/c++ -L/opt/homebrew/opt/llvm@20/lib -lc++abi" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I/opt/homebrew/opt/llvm@20/include" >> $GITHUB_ENV
-          echo "CFLAGS=-I/opt/homebrew/opt/llvm@20/include" >> $GITHUB_ENV
-          echo "CXXFLAGS=-I/opt/homebrew/opt/llvm@20/include -stdlib=libc++" >> $GITHUB_ENV
-          echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm@20/lib" >> $GITHUB_ENV
-          echo '/opt/homebrew/opt/llvm@20/bin' >> $GITHUB_PATH
+          brew install llvm@22
+          LLVM_PREFIX="$(brew --prefix llvm@22)"
+          echo "CC=${LLVM_PREFIX}/bin/clang" >> $GITHUB_ENV
+          echo "CXX=${LLVM_PREFIX}/bin/clang++" >> $GITHUB_ENV
+          echo "LDFLAGS=-L${LLVM_PREFIX}/lib/c++ -L${LLVM_PREFIX}/lib -lc++abi" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I${LLVM_PREFIX}/include" >> $GITHUB_ENV
+          echo "CFLAGS=-I${LLVM_PREFIX}/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I${LLVM_PREFIX}/include -stdlib=libc++" >> $GITHUB_ENV
+          echo "DYLD_LIBRARY_PATH=${LLVM_PREFIX}/lib" >> $GITHUB_ENV
+          echo "${LLVM_PREFIX}/bin" >> $GITHUB_PATH
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
@@ -196,6 +197,7 @@ jobs:
           - "clang19"
           - "clang20"
           - "clang21"
+          - "clang22"
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
@@ -338,7 +340,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc_version: ["9", "10", "11", "12", "13", "14", "15"]
+        gcc_version: ["9", "10", "11", "12", "13", "14", "15", "16"]
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
@@ -364,32 +366,28 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  arm-clang-2504-tests:
+  arm-clang-2604-tests:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     env:
       GOFLAGS: "-buildvcs=false"
-    container:
-      image: arm64v8/ubuntu:25.04
-      options: "--platform linux/arm64"
     strategy:
       fail-fast: false
       matrix:
-        clang_version: ["20"]
+        clang_version: ["22"]
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
-      - name: Install build dependencies
+      - name: Select compiler
         env:
           MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
-          apt-get update
-          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          clang-${MATRIX_CLANG_VERSION} --version
           echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
@@ -568,10 +566,10 @@ jobs:
       matrix:
         fips: [0, 1]
         compiler:
-          - "gcc13"
           - "gcc15"
-          - "clang19"
-          - "clang20"
+          - "gcc16"
+          - "clang21"
+          - "clang22"
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
