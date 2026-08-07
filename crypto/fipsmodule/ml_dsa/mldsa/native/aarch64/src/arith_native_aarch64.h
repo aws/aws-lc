@@ -61,8 +61,8 @@ MLD_INTERNAL_DATA_DECLARATION const uint8_t mld_polyz_unpack_19_indices[64];
 #define MLD_AARCH64_REJ_UNIFORM_ETA4_BUFLEN (2 * 136)
 
 #define mld_ntt_aarch64_asm MLD_NAMESPACE(ntt_aarch64_asm)
-void mld_ntt_aarch64_asm(int32_t *r, const int32_t *zetas_l123456,
-                         const int32_t *zetas_l78)
+void mld_ntt_aarch64_asm(int32_t r[MLDSA_N], const int32_t zetas_l123456[144],
+                         const int32_t zetas_l78[384])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/ntt_aarch64_asm.ml */
 __contract__(
@@ -78,8 +78,8 @@ __contract__(
 );
 
 #define mld_intt_aarch64_asm MLD_NAMESPACE(intt_aarch64_asm)
-void mld_intt_aarch64_asm(int32_t *r, const int32_t *zetas_l78,
-                          const int32_t *zetas_l123456)
+void mld_intt_aarch64_asm(int32_t r[MLDSA_N], const int32_t zetas_l78[384],
+                          const int32_t zetas_l123456[160])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/intt_aarch64_asm.ml */
 __contract__(
@@ -95,8 +95,8 @@ __contract__(
 
 #define mld_rej_uniform_aarch64_asm MLD_NAMESPACE(rej_uniform_aarch64_asm)
 MLD_MUST_CHECK_RETURN_VALUE
-uint64_t mld_rej_uniform_aarch64_asm(int32_t *r, const uint8_t *buf,
-                                     unsigned buflen, const uint8_t *table)
+uint64_t mld_rej_uniform_aarch64_asm(int32_t r[MLDSA_N], const uint8_t *buf,
+                                     unsigned buflen, const uint8_t table[256])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/rej_uniform_aarch64_asm.ml. */
 __contract__(
@@ -113,8 +113,9 @@ __contract__(
 #define mld_rej_uniform_eta2_aarch64_asm \
   MLD_NAMESPACE(rej_uniform_eta2_aarch64_asm)
 MLD_MUST_CHECK_RETURN_VALUE
-uint64_t mld_rej_uniform_eta2_aarch64_asm(int32_t *r, const uint8_t *buf,
-                                          unsigned buflen, const uint8_t *table)
+uint64_t mld_rej_uniform_eta2_aarch64_asm(int32_t r[MLDSA_N],
+                                          const uint8_t *buf, unsigned buflen,
+                                          const uint8_t table[4096])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/rej_uniform_eta2_aarch64_asm.ml */
 __contract__(
@@ -132,8 +133,9 @@ __contract__(
 #define mld_rej_uniform_eta4_aarch64_asm \
   MLD_NAMESPACE(rej_uniform_eta4_aarch64_asm)
 MLD_MUST_CHECK_RETURN_VALUE
-uint64_t mld_rej_uniform_eta4_aarch64_asm(int32_t *r, const uint8_t *buf,
-                                          unsigned buflen, const uint8_t *table)
+uint64_t mld_rej_uniform_eta4_aarch64_asm(int32_t r[MLDSA_N],
+                                          const uint8_t *buf, unsigned buflen,
+                                          const uint8_t table[4096])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/rej_uniform_eta4_aarch64_asm.ml */
 __contract__(
@@ -152,7 +154,7 @@ __contract__(
 #if !defined(MLD_CONFIG_NO_SIGN_API)
 #define mld_poly_decompose_32_aarch64_asm \
   MLD_NAMESPACE(poly_decompose_32_aarch64_asm)
-void mld_poly_decompose_32_aarch64_asm(int32_t *a1, int32_t *a0)
+void mld_poly_decompose_32_aarch64_asm(int32_t a1[MLDSA_N], int32_t a0[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_decompose_32_aarch64_asm.ml */
 __contract__(
@@ -169,7 +171,7 @@ __contract__(
 
 #define mld_poly_decompose_88_aarch64_asm \
   MLD_NAMESPACE(poly_decompose_88_aarch64_asm)
-void mld_poly_decompose_88_aarch64_asm(int32_t *a1, int32_t *a0)
+void mld_poly_decompose_88_aarch64_asm(int32_t a1[MLDSA_N], int32_t a0[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_decompose_88_aarch64_asm.ml */
 __contract__(
@@ -186,7 +188,7 @@ __contract__(
 #endif /* !MLD_CONFIG_NO_SIGN_API */
 
 #define mld_poly_caddq_aarch64_asm MLD_NAMESPACE(poly_caddq_aarch64_asm)
-void mld_poly_caddq_aarch64_asm(int32_t *a)
+void mld_poly_caddq_aarch64_asm(int32_t a[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_caddq_aarch64_asm.ml */
 __contract__(
@@ -199,7 +201,8 @@ __contract__(
 #if !defined(MLD_CONFIG_NO_VERIFY_API)
 #define mld_poly_use_hint_32_aarch64_asm \
   MLD_NAMESPACE(poly_use_hint_32_aarch64_asm)
-void mld_poly_use_hint_32_aarch64_asm(int32_t *a, const int32_t *h)
+void mld_poly_use_hint_32_aarch64_asm(int32_t a[MLDSA_N],
+                                      const int32_t h[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_use_hint_32_aarch64_asm.ml */
 __contract__(
@@ -213,7 +216,8 @@ __contract__(
 
 #define mld_poly_use_hint_88_aarch64_asm \
   MLD_NAMESPACE(poly_use_hint_88_aarch64_asm)
-void mld_poly_use_hint_88_aarch64_asm(int32_t *a, const int32_t *h)
+void mld_poly_use_hint_88_aarch64_asm(int32_t a[MLDSA_N],
+                                      const int32_t h[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_use_hint_88_aarch64_asm.ml */
 __contract__(
@@ -228,7 +232,7 @@ __contract__(
 
 #define mld_poly_chknorm_aarch64_asm MLD_NAMESPACE(poly_chknorm_aarch64_asm)
 MLD_MUST_CHECK_RETURN_VALUE
-int mld_poly_chknorm_aarch64_asm(const int32_t *a, int32_t B)
+int mld_poly_chknorm_aarch64_asm(const int32_t a[MLDSA_N], int32_t B)
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/poly_chknorm_aarch64_asm.ml */
 __contract__(
@@ -243,8 +247,8 @@ __contract__(
 #if defined(MLD_CONFIG_MULTILEVEL_WITH_SHARED) || MLD_CONFIG_PARAMETER_SET == 44
 #define mld_polyz_unpack_17_aarch64_asm \
   MLD_NAMESPACE(polyz_unpack_17_aarch64_asm)
-void mld_polyz_unpack_17_aarch64_asm(int32_t *r, const uint8_t *buf,
-                                     const uint8_t *indices)
+void mld_polyz_unpack_17_aarch64_asm(int32_t r[MLDSA_N], const uint8_t buf[576],
+                                     const uint8_t indices[64])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/polyz_unpack_17_aarch64_asm.ml */
 __contract__(
@@ -261,8 +265,8 @@ __contract__(
     (MLD_CONFIG_PARAMETER_SET == 65 || MLD_CONFIG_PARAMETER_SET == 87)
 #define mld_polyz_unpack_19_aarch64_asm \
   MLD_NAMESPACE(polyz_unpack_19_aarch64_asm)
-void mld_polyz_unpack_19_aarch64_asm(int32_t *r, const uint8_t *buf,
-                                     const uint8_t *indices)
+void mld_polyz_unpack_19_aarch64_asm(int32_t r[MLDSA_N], const uint8_t buf[640],
+                                     const uint8_t indices[64])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/polyz_unpack_19_aarch64_asm.ml */
 __contract__(
@@ -280,7 +284,8 @@ __contract__(
     defined(MLD_CONFIG_REDUCE_RAM) || defined(MLD_UNIT_TEST)
 #define mld_poly_pointwise_montgomery_aarch64_asm \
   MLD_NAMESPACE(poly_pointwise_montgomery_aarch64_asm)
-void mld_poly_pointwise_montgomery_aarch64_asm(int32_t *a, const int32_t *b)
+void mld_poly_pointwise_montgomery_aarch64_asm(int32_t a[MLDSA_N],
+                                               const int32_t b[MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in proofs/hol_light/aarch64/proofs/pointwise_montgomery_aarch64_asm.ml */
 __contract__(
@@ -301,7 +306,8 @@ __contract__(
 #define mld_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm \
   MLD_NAMESPACE(polyvecl_pointwise_acc_montgomery_l4_aarch64_asm)
 void mld_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm(
-    int32_t *r, const int32_t a[4][MLDSA_N], const int32_t b[4][MLDSA_N])
+    int32_t r[MLDSA_N], const int32_t a[4][MLDSA_N],
+    const int32_t b[4][MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in
  * proofs/hol_light/aarch64/proofs/mld_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm.ml
@@ -320,7 +326,8 @@ __contract__(
 #define mld_polyvecl_pointwise_acc_montgomery_l5_aarch64_asm \
   MLD_NAMESPACE(polyvecl_pointwise_acc_montgomery_l5_aarch64_asm)
 void mld_polyvecl_pointwise_acc_montgomery_l5_aarch64_asm(
-    int32_t *r, const int32_t a[5][MLDSA_N], const int32_t b[5][MLDSA_N])
+    int32_t r[MLDSA_N], const int32_t a[5][MLDSA_N],
+    const int32_t b[5][MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in
  * proofs/hol_light/aarch64/proofs/mld_polyvecl_pointwise_acc_montgomery_l5_aarch64_asm.ml
@@ -339,7 +346,8 @@ __contract__(
 #define mld_polyvecl_pointwise_acc_montgomery_l7_aarch64_asm \
   MLD_NAMESPACE(polyvecl_pointwise_acc_montgomery_l7_aarch64_asm)
 void mld_polyvecl_pointwise_acc_montgomery_l7_aarch64_asm(
-    int32_t *r, const int32_t a[7][MLDSA_N], const int32_t b[7][MLDSA_N])
+    int32_t r[MLDSA_N], const int32_t a[7][MLDSA_N],
+    const int32_t b[7][MLDSA_N])
 /* This must be kept in sync with the HOL-Light specification
  * in
  * proofs/hol_light/aarch64/proofs/mld_polyvecl_pointwise_acc_montgomery_l7_aarch64_asm.ml

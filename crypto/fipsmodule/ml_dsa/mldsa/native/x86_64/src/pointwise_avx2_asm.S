@@ -17,6 +17,34 @@
  * AVX2 Dilithium implementation @[REF_AVX2].
  */
 
+/*yaml
+  Name: pointwise_avx2_asm
+  Description: x86_64 AVX2 pointwise Montgomery multiplication
+  Signature: void mld_pointwise_avx2_asm(int32_t *a, const int32_t *b, const int32_t *qdata)
+  ABI:
+    Architecture: x86_64
+    CallingConvention: SysV
+    Features: [AVX2]
+    rdi:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t *a
+      description: Input/output polynomial (256 x int32_t)
+    rsi:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t *b
+      description: Input polynomial (256 x int32_t)
+    rdx:
+      type: buffer
+      size_bytes: 2496
+      permissions: read-only
+      c_parameter: const int32_t *qdata
+      description: Precomputed constants (624 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_x86_att.h"
 
 /*

@@ -49,12 +49,13 @@
 #define MLD_SYS_ARMV81M_MVE
 #endif
 
-#if defined(__x86_64__)
+/* Check if we're running on an x86_64 system. */
+#if defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
 #define MLD_SYS_X86_64
 #if defined(__AVX2__)
 #define MLD_SYS_X86_64_AVX2
 #endif
-#endif /* __x86_64__ */
+#endif /* __x86_64__ || _M_X64 || _M_AMD64 */
 
 #if defined(MLD_SYS_LITTLE_ENDIAN) && defined(__powerpc64__)
 #define MLD_SYS_PPC64LE
@@ -233,15 +234,41 @@
 #define MLD_MUST_CHECK_RETURN_VALUE
 #endif
 
+/* The x86_64 assembly backend uses the SysV calling convention. On Windows,
+ * where the Microsoft x64 calling convention is the default, it can still be
+ * used with compilers that allow choosing the calling convention per
+ * function: GCC and Clang support __attribute__((sysv_abi)), which makes
+ * calls to the annotated function follow the SysV calling convention.
+ *
+ * MLD_SYSV_ABI_SUPPORTED signals that the toolchain can call SysV assembly
+ * routines; the x86_64 assembly backend is only enabled if it is defined.
+ * MLD_SYSV_ABI is the attribute carried by declarations of x86_64 assembly
+ * routines. Both macros can be set externally for toolchains offering an
+ * equivalent mechanism that is not recognized here. */
+#if defined(MLD_SYS_X86_64) && !defined(MLD_SYSV_ABI_SUPPORTED)
+#if !defined(MLD_SYS_WINDOWS) || defined(__GNUC__) || defined(__clang__)
+#define MLD_SYSV_ABI_SUPPORTED
+#endif
+#endif
+
+#if !defined(MLD_SYSV_ABI)
+#if defined(MLD_SYS_WINDOWS) && defined(MLD_SYSV_ABI_SUPPORTED)
+#define MLD_SYSV_ABI __attribute__((sysv_abi))
+#else
+#define MLD_SYSV_ABI
+#endif
+#endif /* !MLD_SYSV_ABI */
 
 #if !defined(__ASSEMBLER__)
 /* System capability enumeration */
 typedef enum
 {
   /* x86_64 */
-  MLD_SYS_CAP_AVX2,
+  MLD_SYS_CAP_X86_64_AVX2,
   /* AArch64 */
-  MLD_SYS_CAP_SHA3
+  MLD_SYS_CAP_AARCH64_SHA3,
+  /* Armv8.1-M */
+  MLD_SYS_CAP_ARMV81M_MVE
 } mld_sys_cap;
 
 #if !defined(MLD_CONFIG_CUSTOM_CAPABILITY_FUNC)

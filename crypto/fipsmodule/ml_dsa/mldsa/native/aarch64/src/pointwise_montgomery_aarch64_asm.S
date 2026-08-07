@@ -2,6 +2,27 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: poly_pointwise_montgomery_aarch64_asm
+  Description: AArch64 pointwise Montgomery multiplication of two polynomials
+  Signature: void mld_poly_pointwise_montgomery_aarch64_asm(int32_t a[256], const int32_t b[256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: read/write
+      c_parameter: int32_t a[256]
+      description: Input/output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 1024
+      permissions: read-only
+      c_parameter: const int32_t b[256]
+      description: Input polynomial (256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*

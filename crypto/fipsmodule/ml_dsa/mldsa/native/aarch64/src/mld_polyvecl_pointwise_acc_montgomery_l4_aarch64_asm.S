@@ -2,6 +2,33 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: polyvecl_pointwise_acc_montgomery_l4_aarch64_asm
+  Description: AArch64 pointwise multiply-accumulate of length-4 polynomial vectors
+  Signature: void mld_polyvecl_pointwise_acc_montgomery_l4_aarch64_asm(int32_t r[256], const int32_t a[4][256], const int32_t b[4][256])
+  ABI:
+    Architecture: aarch64
+    CallingConvention: AAPCS64
+    x0:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t r[256]
+      description: Output polynomial (256 x int32_t)
+    x1:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t a[4][256]
+      description: Input polynomial vector a (4 x 256 x int32_t)
+    x2:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t b[4][256]
+      description: Input polynomial vector b (4 x 256 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_arm.h"
 
 /*

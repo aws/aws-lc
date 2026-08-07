@@ -17,6 +17,40 @@
  * AVX2 Dilithium implementation @[REF_AVX2].
  */
 
+/*yaml
+  Name: pointwise_acc_l4_avx2_asm
+  Description: x86_64 AVX2 pointwise multiply-accumulate of length-4 polynomial vectors
+  Signature: void mld_pointwise_acc_l4_avx2_asm(int32_t *c, const int32_t a[4][256], const int32_t b[4][256], const int32_t *qdata)
+  ABI:
+    Architecture: x86_64
+    CallingConvention: SysV
+    Features: [AVX2]
+    rdi:
+      type: buffer
+      size_bytes: 1024
+      permissions: write-only
+      c_parameter: int32_t *c
+      description: Output polynomial (256 x int32_t)
+    rsi:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t a[4][256]
+      description: Input polynomial vector a (4 x 256 x int32_t)
+    rdx:
+      type: buffer
+      size_bytes: 4096
+      permissions: read-only
+      c_parameter: const int32_t b[4][256]
+      description: Input polynomial vector b (4 x 256 x int32_t)
+    rcx:
+      type: buffer
+      size_bytes: 2496
+      permissions: read-only
+      c_parameter: const int32_t *qdata
+      description: Precomputed constants (624 x int32_t)
+*/
+
 #include "_internal_s2n_bignum_x86_att.h"
 
 /*

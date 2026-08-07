@@ -48,7 +48,7 @@
 static MLD_INLINE int mld_sys_check_capability(int cap)
 {
 #if defined(MLD_SYS_X86_64)
-  if (cap == MLD_SYS_CAP_AVX2)
+  if (cap == MLD_SYS_CAP_X86_64_AVX2)
   {
     return CRYPTO_is_AVX2_capable();
   }
