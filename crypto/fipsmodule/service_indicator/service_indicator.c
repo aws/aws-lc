@@ -597,6 +597,20 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
 }
 
+void TLS13_KDF_verify_service_indicator(const EVP_MD *dgst) {
+  // Per RFC 8446 and the corresponding FIPS validation, the TLS 1.3 KDF
+  // (HKDF-Expand-Label) is approved with SHA2-256 and SHA2-384 as the
+  // underlying HMAC hash.
+  switch (dgst->type) {
+    case NID_sha256:
+    case NID_sha384:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 // "Whenever a hash function is employed (including as the primitive used by HMAC), an
 // approved hash function shall be used. FIPS 180 and FIPS 202 specify approved hash
 // functions"

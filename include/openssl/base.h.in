@@ -67,6 +67,11 @@ extern "C" {
 // depending on FIPS mode.
 #define AWSLC_VERSION_NUMBER_STRING "@SOFTWARE_VERSION@"
 
+// AWSLC_FIPS_VERSION_NUMBER is the FIPS version number of mainline AWS-LC,
+// independent of |AWSLC_VERSION_NUMBER_STRING|. It is incremented each time a
+// new FIPS branch is cut from mainline.
+#define AWSLC_FIPS_VERSION_NUMBER @AWSLC_FIPS_VERSION@
+
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)

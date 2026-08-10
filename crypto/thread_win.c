@@ -180,6 +180,8 @@ __pragma(comment(
 // reference to this variable with a linker /INCLUDE:symbol pragma to ensure
 // that.) If this variable is discarded, the OnThreadExit function will never
 // be called.
+#if defined(_MSC_VER)
+
 #ifdef _WIN64
 
 // .CRT section is merged with .rdata on x64 so it must be constant data.
@@ -199,6 +201,23 @@ PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 #pragma data_seg()
 
 #endif  // _WIN64
+
+#else  // !_MSC_VER
+
+// MinGW compilers do not reliably implement the MSVC section pragmas above;
+// use the GCC section attribute instead ('used' prevents discarding).
+extern const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl;
+__attribute__((section(".CRT$XLC"), used))
+const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
+
+// The callback array is only walked if the image has a TLS directory, which
+// requires the CRT's _tls_used symbol. MSVC forces it with /INCLUDE above;
+// on MinGW, create a reference so the linker pulls it in.
+extern const IMAGE_TLS_DIRECTORY _tls_used;
+__attribute__((used))
+static const IMAGE_TLS_DIRECTORY *tls_used_reference_boringssl = &_tls_used;
+
+#endif  // _MSC_VER
 
 static void **get_thread_locals(void) {
   // |TlsGetValue| clears the last error even on success, so that callers may

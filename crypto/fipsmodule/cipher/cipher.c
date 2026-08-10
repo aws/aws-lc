@@ -76,6 +76,8 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
 
   if (in->cipher->flags & EVP_CIPH_CUSTOM_COPY) {
     if (!in->cipher->ctrl((EVP_CIPHER_CTX *)in, EVP_CTRL_COPY, 0, out)) {
+      OPENSSL_free(out->cipher_data);
+      out->cipher_data = NULL;
       out->cipher = NULL;
       return 0;
     }
@@ -130,6 +132,8 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
     if (ctx->cipher->flags & EVP_CIPH_CTRL_INIT) {
       if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_INIT, 0, NULL)) {
+        OPENSSL_free(ctx->cipher_data);
+        ctx->cipher_data = NULL;
         ctx->cipher = NULL;
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
         return 0;

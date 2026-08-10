@@ -497,6 +497,10 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     return nullptr;
   }
 
+  // Note: The secret field is validated only with an upper-bound check. A
+  // minimum-length check is intentionally omitted because the serialized
+  // session bytes are assumed to be non-malleable: the calling application is
+  // responsible for protecting the integrity of session data.
   CBS session_id, secret;
   if (!CBS_get_asn1(&session, &session_id, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&session_id) > SSL3_MAX_SSL_SESSION_ID_LENGTH ||

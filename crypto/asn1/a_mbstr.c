@@ -33,6 +33,10 @@ OPENSSL_DECLARE_ERROR_REASON(ASN1, INVALID_UTF8STRING)
 int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in,
                         ossl_ssize_t len, int inform, unsigned long mask,
                         ossl_ssize_t minsize, ossl_ssize_t maxsize) {
+  if (len < -1) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_FORMAT);
+    return -1;
+  }
   if (len == -1) {
     len = strlen((const char *)in);
   }

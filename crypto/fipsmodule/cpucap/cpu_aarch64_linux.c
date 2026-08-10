@@ -6,7 +6,7 @@
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 
-#include <sys/auxv.h>
+#include "cpu_getauxval_linux.h"
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -84,6 +84,11 @@ void OPENSSL_cpuid_setup(void) {
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V2;
       // CPU capabilities of N1 are a subset of CPU capabilities of V2
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+    if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V3)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_V3;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V3
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
     }
   }

@@ -434,17 +434,28 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
-X509 *SSL_get_peer_certificate(const SSL *ssl) {
+X509 *SSL_get0_peer_certificate(const SSL *ssl) {
   check_ssl_x509_method(ssl);
   if (ssl == NULL) {
     return NULL;
   }
   SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL || session->x509_peer == NULL) {
+  if (session == NULL) {
     return NULL;
   }
-  X509_up_ref(session->x509_peer);
   return session->x509_peer;
+}
+
+X509 *SSL_get1_peer_certificate(const SSL *ssl) {
+  X509 *cert = SSL_get0_peer_certificate(ssl);
+  if (cert != NULL) {
+    X509_up_ref(cert);
+  }
+  return cert;
+}
+
+X509 *SSL_get_peer_certificate(const SSL *ssl) {
+  return SSL_get1_peer_certificate(ssl);
 }
 
 STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
@@ -766,19 +777,12 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
   return 1;
 }
 
-static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
-  assert(cert->x509_method);
-  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
-    return 0;
-  }
-
-  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
-  if (!buffer) {
-    return 0;
-  }
-
+// ssl_cert_append_cert_to_slot appends |buffer| to slot |slot_index|'s chain,
+// creating a leafless chain if the slot is empty. It consumes |buffer|.
+static int ssl_cert_append_cert_to_slot(CERT *cert, int slot_index,
+                                         UniquePtr<CRYPTO_BUFFER> buffer) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_private_keys[cert->cert_private_key_idx].chain;
+      cert->cert_private_keys[slot_index].chain;
   if (chain != nullptr) {
     return PushToStack(chain.get(), std::move(buffer));
   }
@@ -790,6 +794,21 @@ static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
   }
 
   return 1;
+}
+
+static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
+  assert(cert->x509_method);
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
+  if (!buffer) {
+    return 0;
+  }
+
+  return ssl_cert_append_cert_to_slot(cert, cert->cert_private_key_idx,
+                                      std::move(buffer));
 }
 
 static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
@@ -848,9 +867,65 @@ int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
   return ssl_cert_add1_chain_cert(ctx->cert.get(), x509);
 }
 
+// slot_has_leaf returns true if |slot_index| is valid and that slot holds a
+// leaf certificate (a non-NULL element 0 in its chain).
+static bool slot_has_leaf(const CERT *cert, int slot_index) {
+  if (slot_index < 0) {
+    return false;
+  }
+  const UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[slot_index].chain;
+  return chain != nullptr && sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr;
+}
+
+// ssl_cert_append_extra_chain_cert appends |x509| to the current certificate's
+// slot if a leaf is configured there, and otherwise to the slot matching
+// |x509|'s own key type. See |SSL_CTX_add_extra_chain_cert|.
+static int ssl_cert_append_extra_chain_cert(CERT *cert, X509 *x509) {
+  assert(cert->x509_method);
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
+  if (!buffer) {
+    return 0;
+  }
+
+  // When a leaf is already configured, append to its slot so a chain set up
+  // leaf-first lands with its leaf, including cross-type chains (e.g. an RSA
+  // intermediate for an ECDSA leaf). Only when no leaf is set yet do we route
+  // by the intermediate's own key type, which fixes appends made before the
+  // leaf.
+  int slot_index = cert->cert_private_key_idx;
+  if (!slot_has_leaf(cert, slot_index)) {
+    CBS cert_cbs;
+    CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+    UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+    if (!pubkey) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return 0;
+    }
+    slot_index = ssl_get_certificate_slot_index(pubkey.get());
+    if (slot_index < 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+      return 0;
+    }
+  }
+
+  if (!ssl_cert_append_cert_to_slot(cert, slot_index, std::move(buffer))) {
+    return 0;
+  }
+
+  X509_free(cert->x509_stash);
+  cert->x509_stash = x509;
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
+  return 1;
+}
+
 int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
   check_ssl_ctx_x509_method(ctx);
-  return SSL_CTX_add0_chain_cert(ctx, x509);
+  return ssl_cert_append_extra_chain_cert(ctx->cert.get(), x509);
 }
 
 int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {

@@ -143,6 +143,10 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
     endif()
 
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2")
+    endif()
+
     if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
     endif()
@@ -374,6 +378,7 @@ add_library(
   bytestring/unicode.c
   chacha/chacha.c
   cipher_extra/cipher_extra.c
+  cipher_extra/cts.c
   cipher_extra/derive_key.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
@@ -607,6 +612,15 @@ function(build_libcrypto)
   endif()
   if(WIN32)
     target_link_libraries(${arg_NAME} PUBLIC ws2_32)
+    # MinGW (non-Clang) builds target Windows 7 (see the top-level
+    # CMakeLists.txt, which adds -D_WIN32_WINNT=_WIN32_WINNT_WIN7), so
+    # `crypto/rand_extra/windows.c` compiles under the AWSLC_WINDOWS_7_COMPAT
+    # branch and calls BCryptGenRandom from bcrypt.dll. On MSVC this is
+    # handled by `#pragma comment(lib, "bcrypt.lib")` in that file, but
+    # MinGW ignores that pragma so we need to add the link explicitly.
+    if(MINGW)
+      target_link_libraries(${arg_NAME} PUBLIC bcrypt)
+    endif()
   endif()
 
   if(AWSLC_LINK_THREADS)
@@ -623,39 +637,38 @@ function(build_libcrypto)
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
   endif()
+
+  # Apply symbol versioning for shared libraries. The version script is a
+  # checked-in source file, so if versioning is enabled it must be present;
+  # apply_version_script() fatal-errors if it is missing rather than silently
+  # producing an unversioned library.
+  if(ENABLE_SYMBOL_VERSIONING)
+    apply_version_script(
+      TARGET ${arg_NAME}
+      VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libcrypto.map"
+    )
+  endif()
 endfunction()
 
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
-    # On Windows we use capture_hash.go: build crypto.dll with a placeholder
-    # hash, then run fips_empty_main.exe (which triggers the integrity check
-    # and prints the correct hash), then patch the placeholder in crypto.dll.
-    #
-    # The fips_integrity target (marked ALL) ensures the hash injection runs
-    # before 'install' copies crypto.dll. Without this, Cargo builds (which
-    # run 'cmake --build --target install') would skip the hash injection
-    # because fips_empty_main is not in crypto's dependency chain.
+    # On Windows, inject_hash.go parses the linker map file and the PE to locate
+    # module boundaries, computes the integrity hash, and patches it directly
+    # into the DLL. This matches the Linux/Apple approach and does not require
+    # running a binary, enabling cross-compilation without Wine.
+    set(CRYPTO_MAP_FILE "${CMAKE_CURRENT_BINARY_DIR}/fips_crypto.map")
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
-
-    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
-    target_link_libraries(fips_empty_main PUBLIC crypto)
-    target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
+    target_link_options(crypto PRIVATE "/MAP:${CRYPTO_MAP_FILE}")
 
     add_custom_command(
-      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
+      TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
-        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-        -in-executable $<TARGET_FILE:fips_empty_main>
-        -patch-dll $<TARGET_FILE:crypto>
-      COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
-      DEPENDS fips_empty_main crypto
-        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -map ${CRYPTO_MAP_FILE} -windows
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
-    )
-    add_custom_target(fips_integrity ALL
-      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fips_hash_injected.stamp
     )
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
@@ -765,6 +778,7 @@ if(BUILD_TESTING)
     chacha/chacha_test.cc
     cipher_extra/aead_test.cc
     cipher_extra/cipher_test.cc
+    cipher_extra/cts_test.cc
     compiler_test.cc
     conf/conf_test.cc
     console/console_test.cc
@@ -883,7 +897,7 @@ if(BUILD_TESTING)
   endif()
 
   if (BUILD_SHARED_LIBS AND NOT WIN32)
-    target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
+    target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=\"$<TARGET_FILE:crypto>\"")
     # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
     if(ANDROID)
       target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest ${DYNAMIC_LINKER_LIB})
@@ -894,19 +908,23 @@ if(BUILD_TESTING)
 
   add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
 
-  message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
-  add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
-  add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
+  # rwlock_static_init requires threading support (std::thread)
+  # Skip on Generic (WASI) which doesn't have pthreads
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
+    add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
+    add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+    set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
-  target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
-  if(MSVC)
-    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
-  else()
-    target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+    target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
+    if(MSVC)
+      target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
+    else()
+      target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+    endif()
+    add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
   endif()
-  add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
 
 endif()
 
@@ -916,12 +934,14 @@ if(NOT CMAKE_VERSION VERSION_LESS "3.12")
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY
             DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            NAMELINK_COMPONENT Development)
+            NAMELINK_COMPONENT Development
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
   install(TARGETS crypto
           EXPORT crypto-targets
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)

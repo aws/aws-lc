@@ -42,6 +42,10 @@ static int bio_new(BIO *bio) {
   return 1;
 }
 
+// bio_destroy_pair unlinks the two halves of a BIO pair. Concurrent calls to
+// BIO_free on both halves from separate threads are the caller's responsibility
+// to synchronize. As in OpenSSL, the BIO pair API does not provide internal
+// locking.
 static void bio_destroy_pair(BIO *bio) {
   struct bio_bio_st *b = bio->ptr;
   BIO *peer_bio;

@@ -27,18 +27,18 @@ int ECDH_compute_key(void *out, size_t out_len, const EC_POINT *pub_key,
                      const EC_KEY *priv_key,
                      void *(*kdf)(const void *in, size_t inlen, void *out,
                                   size_t *out_len)) {
-
+  int ret = -1;
   uint8_t buf[EC_MAX_BYTES];
   size_t buf_len = sizeof(buf);
 
   if (!ECDH_compute_shared_secret(buf, &buf_len, pub_key, priv_key)) {
-    return -1;
+    goto end;
   }
 
   if (kdf != NULL) {
     if (kdf(buf, buf_len, out, &out_len) == NULL) {
       OPENSSL_PUT_ERROR(ECDH, ECDH_R_KDF_FAILED);
-      return -1;
+      goto end;
     }
   } else {
     // no KDF, just copy as much as we can
@@ -50,8 +50,11 @@ int ECDH_compute_key(void *out, size_t out_len, const EC_POINT *pub_key,
 
   if (out_len > INT_MAX) {
     OPENSSL_PUT_ERROR(ECDH, ERR_R_OVERFLOW);
-    return -1;
+    goto end;
   }
 
-  return (int)out_len;
+  ret = (int)out_len;
+end:
+  OPENSSL_cleanse(buf, sizeof(buf));
+  return ret;
 }

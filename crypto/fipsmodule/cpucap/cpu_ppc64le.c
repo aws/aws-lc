@@ -5,7 +5,15 @@
 
 #if defined(OPENSSL_PPC64LE)
 
+// On Linux, use the shared getauxval helper (which falls back to reading
+// /proc/self/auxv when <sys/auxv.h> is unavailable). On FreeBSD, use the
+// system-provided <sys/auxv.h>/elf_aux_info. On other platforms no
+// auxv-style API is available; OPENSSL_ppc64le_hwcap2 stays zero-initialized.
+#if defined(OPENSSL_LINUX)
+#include "cpu_getauxval_linux.h"
+#elif defined(OPENSSL_FREEBSD)
 #include <sys/auxv.h>
+#endif
 
 #if !defined(PPC_FEATURE2_HAS_VCRYPTO)
 // PPC_FEATURE2_HAS_VCRYPTO was taken from section 4.1.2.3 of the “OpenPOWER
@@ -57,14 +65,10 @@ static void handle_cpu_env(unsigned long *out, const char *in) {
 extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {
-#if defined(AT_HWCAP2)
 #if defined(OPENSSL_LINUX)
   OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
-#elif defined(OPENSSL_FREEBSD)
+#elif defined(OPENSSL_FREEBSD) && defined(AT_HWCAP2)
   elf_aux_info(AT_HWCAP2, &OPENSSL_ppc64le_hwcap2, sizeof(OPENSSL_ppc64le_hwcap2));
-#else
-  OPENSSL_ppc64le_hwcap2 = 0;
-#endif
 #endif
   OPENSSL_cpucap_initialized = 1;
 

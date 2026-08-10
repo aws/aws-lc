@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <openssl/hmac.h>
+#include <openssl/mem.h>
 
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
@@ -21,6 +22,7 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   uint32_t i = 1;
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
+  uint8_t digest_tmp[EVP_MAX_MD_SIZE];
 
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
@@ -43,7 +45,6 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
     i_buf[3] = (uint8_t)(i & 0xff);
 
     // Compute U_1.
-    uint8_t digest_tmp[EVP_MAX_MD_SIZE];
     if (!HMAC_Init_ex(&hctx, NULL, 0, NULL, NULL) ||
         !HMAC_Update(&hctx, salt, salt_len) ||
         !HMAC_Update(&hctx, i_buf, 4) ||
@@ -87,6 +88,7 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   ret = 1;
 
 err:
+  OPENSSL_cleanse(digest_tmp, sizeof(digest_tmp));
   FIPS_service_indicator_unlock_state();
   HMAC_CTX_cleanup(&hctx);
   if (ret) {

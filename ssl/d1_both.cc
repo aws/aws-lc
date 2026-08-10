@@ -155,7 +155,7 @@ static hm_fragment *dtls1_get_incoming_message(
     SSL *ssl, uint8_t *out_alert, const struct hm_header_st *msg_hdr) {
   if (msg_hdr->seq < ssl->d1->handshake_read_seq ||
       msg_hdr->seq - ssl->d1->handshake_read_seq >= SSL_MAX_HANDSHAKE_FLIGHT) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return NULL;
   }
 
@@ -267,8 +267,7 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
     }
 
     if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
-        msg_hdr.seq >
-            (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {
+        msg_hdr.seq - ssl->d1->handshake_read_seq >= SSL_MAX_HANDSHAKE_FLIGHT) {
       // Ignore fragments from the past, or ones too far in the future.
       continue;
     }

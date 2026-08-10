@@ -1,0 +1,22 @@
+From: AWS-LC integration CI <aws-lc-ci@amazon.com>
+Subject: [PATCH] Remove BN_FLG_CONSTTIME from SPAKE plugin
+
+AWS-LC does not define BN_FLG_CONSTTIME because all BIGNUM operations
+are already constant-time. The BN_set_flags call is a no-op on stock
+OpenSSL (which ignores this hint in most contexts) and fails to compile
+against AWS-LC. Simply remove it; the constant-time property is
+unconditional in AWS-LC.
+
+---
+diff --git a/src/plugins/preauth/spake/openssl.c b/src/plugins/preauth/spake/openssl.c
+index f2e4b53..81b2f12 100644
+--- a/src/plugins/preauth/spake/openssl.c
++++ b/src/plugins/preauth/spake/openssl.c
+@@ -150,7 +150,6 @@ unmarshal_w(const groupdata *gdata, const uint8_t *wbytes)
+     if (w == NULL)
+         return NULL;
+ 
+-    BN_set_flags(w, BN_FLG_CONSTTIME);
+ 
+     if (BN_bin2bn(wbytes, reg->mult_len, w) &&
+         BN_div(NULL, w, w, gdata->order, gdata->ctx))

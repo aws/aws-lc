@@ -21,7 +21,7 @@ BSSL_NAMESPACE_BEGIN
 
 bool ssl_is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC ||
-         key_type == EVP_PKEY_ED25519;
+         key_type == EVP_PKEY_ED25519 || key_type == EVP_PKEY_PQDSA;
 }
 
 static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
@@ -61,7 +61,10 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
 typedef struct {
   uint16_t sigalg;
   int pkey_type;
-  int curve;
+  // param_nid identifies the parameter set required for this algorithm: the EC
+  // curve NID for ECDSA, or the ML-DSA parameter-set NID (NID_MLDSA44/65/87)
+  // for PQDSA. NID_undef means no parameter-set constraint.
+  int param_nid;
   const EVP_MD *(*digest_func)(void);
   bool is_rsa_pss;
 } SSL_SIGNATURE_ALGORITHM;
@@ -87,6 +90,10 @@ static const SSL_SIGNATURE_ALGORITHM kSignatureAlgorithms[] = {
      false},
 
     {SSL_SIGN_ED25519, EVP_PKEY_ED25519, NID_undef, nullptr, false},
+
+    {SSL_SIGN_MLDSA44, EVP_PKEY_PQDSA, NID_MLDSA44, nullptr, false},
+    {SSL_SIGN_MLDSA65, EVP_PKEY_PQDSA, NID_MLDSA65, nullptr, false},
+    {SSL_SIGN_MLDSA87, EVP_PKEY_PQDSA, NID_MLDSA87, nullptr, false},
 };
 
 static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
@@ -141,9 +148,18 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
 
     // EC keys have a curve requirement.
     if (alg->pkey_type == EVP_PKEY_EC &&
-        (alg->curve == NID_undef ||
+        (alg->param_nid == NID_undef ||
          EC_GROUP_get_curve_name(
-             EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey))) != alg->curve)) {
+             EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey))) != alg->param_nid)) {
+      return false;
+    }
+  }
+
+  // ML-DSA is only defined for TLS 1.3. The parameter-set NID on |alg| must
+  // match the variant of the PQDSA key.
+  if (alg->pkey_type == EVP_PKEY_PQDSA) {
+    if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||
+        EVP_PKEY_pqdsa_get_type(pkey) != alg->param_nid) {
       return false;
     }
   }
@@ -603,6 +619,9 @@ static const SignatureAlgorithmName kSignatureAlgorithmNames[] = {
     {SSL_SIGN_RSA_PSS_RSAE_SHA384, "rsa_pss_rsae_sha384"},
     {SSL_SIGN_RSA_PSS_RSAE_SHA512, "rsa_pss_rsae_sha512"},
     {SSL_SIGN_ED25519, "ed25519"},
+    {SSL_SIGN_MLDSA44, "mldsa44"},
+    {SSL_SIGN_MLDSA65, "mldsa65"},
+    {SSL_SIGN_MLDSA87, "mldsa87"},
 };
 
 const char *SSL_get_signature_algorithm_name(uint16_t sigalg,

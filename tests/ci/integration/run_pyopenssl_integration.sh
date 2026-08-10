@@ -63,7 +63,14 @@ function pyopenssl_run_tests() {
     # Build cryptography from source so it links against AWS-LC via OPENSSL_DIR.
     # Prebuilt wheels bundle their own libcrypto and would ignore OPENSSL_DIR.
     # Version >= 46 is required for AWS-LC source build support.
-    python -m pip install --no-binary cryptography cryptography
+    #
+    # Export PIP_NO_BINARY so subsequent `pip install` invocations (e.g. the
+    # PyOpenSSL install below) cannot transitively downgrade cryptography to a
+    # prebuilt wheel that bundles its own libcrypto. PyOpenSSL pins an upper
+    # bound on cryptography, and without this pip will silently replace our
+    # AWS-LC-linked build with a manylinux wheel when resolving dependencies.
+    export PIP_NO_BINARY=cryptography
+    python -m pip install cryptography
 
     # Install PyOpenSSL from the patched source along with test dependencies.
     python -m pip install -e '.[test]'

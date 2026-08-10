@@ -53,6 +53,7 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
 void SSHKDF_verify_service_indicator(const EVP_MD *evp_md);
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
                                      size_t label_len);
+void TLS13_KDF_verify_service_indicator(const EVP_MD *dgst);
 void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst);
 void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst);
 void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_len);
@@ -121,6 +122,9 @@ OPENSSL_INLINE void TLSKDF_verify_service_indicator(
     OPENSSL_UNUSED const char *label,
     OPENSSL_UNUSED size_t label_len) {}
 
+OPENSSL_INLINE void TLS13_KDF_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *dgst) {}
+
 OPENSSL_INLINE void SSKDF_digest_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *dgst) {}
 
@@ -136,7 +140,7 @@ OPENSSL_INLINE void EVP_PKEY_decapsulate_verify_service_indicator(OPENSSL_UNUSED
 #endif // AWSLC_FIPS
 
 // is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
-// of #if defined(OPENSSL_ASAN)
+// of #if defined(OPENSSL_ASAN) or #if defined(OPENSSL_MSAN)
 int is_fips_build(void);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

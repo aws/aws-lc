@@ -1,0 +1,246 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+# Validates the OPENSSL_SMALL build: it must shrink a statically-linked
+# consumer binary and must still pass the full test suite.
+#
+# The size-reduction job is intentionally advisory (continue-on-error). The
+# thresholds are calibrated from measured CI runs (see the matrix below), but
+# have not yet been observed across enough runs to trust as a blocking gate.
+# Once the numbers prove stable, drop `continue-on-error` and/or mark this job
+# as a required check in branch protection. The small-tests jobs are real
+# correctness gates and should block.
+name: OPENSSL_SMALL
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
+jobs:
+  size-reduction:
+    if: github.repository_owner == 'aws'
+    name: OPENSSL_SMALL size reduction (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Thresholds are below the clang -O2 measurements (66.9% on x86_64 and
+        # 62.4% on aarch64) to allow for compiler and runner variance.
+        include:
+          - { name: "x86_64 Linux",  runner: ubuntu-latest,    expected_reduction_percent: 50 }
+          - { name: "aarch64 Linux", runner: ubuntu-24.04-arm, expected_reduction_percent: 45 }
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake clang ninja-build golang
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v6
+      - name: Build libcrypto.a (default)
+        run: |
+          cmake -GNinja -B build-default -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF
+          cmake --build build-default --target crypto
+      - name: Build libcrypto.a (OPENSSL_SMALL)
+        run: |
+          cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=OFF -DOPENSSL_SMALL=ON
+          cmake --build build-small --target crypto
+      - name: Link consumer against each libcrypto and compare
+        env:
+          EXPECTED_REDUCTION_PERCENT: ${{ matrix.expected_reduction_percent }}
+        run: |
+          set -euo pipefail
+          common="-O2 -I include -ffunction-sections -fdata-sections"
+          libs="-lpthread -ldl -lm -Wl,--gc-sections -s"
+          clang $common tests/binary-size/main.c build-default/crypto/libcrypto.a $libs -o consumer-default
+          clang $common tests/binary-size/main.c build-small/crypto/libcrypto.a   $libs -o consumer-small
+          echo "Sanity: run the OPENSSL_SMALL-linked consumer"
+          ./consumer-small
+          size_default=$(stat -c %s consumer-default)
+          size_small=$(stat -c %s consumer-small)
+          archive_default=$(stat -c %s build-default/crypto/libcrypto.a)
+          archive_small=$(stat -c %s build-small/crypto/libcrypto.a)
+          if [ "$size_default" -le 0 ]; then
+            echo "ERROR: default consumer binary has zero size"
+            exit 1
+          fi
+          reduction=$(( (size_default - size_small) * 100 / size_default ))
+          {
+            echo "## OPENSSL_SMALL static-link size (${{ matrix.name }})"
+            echo ""
+            echo "| Build | libcrypto.a | Consumer binary |"
+            echo "|-------|-------------|-----------------|"
+            echo "| Default | $(numfmt --to=iec "$archive_default") | $(numfmt --to=iec "$size_default") (${size_default} B) |"
+            echo "| OPENSSL_SMALL | $(numfmt --to=iec "$archive_small") | $(numfmt --to=iec "$size_small") (${size_small} B) |"
+            echo "| **Reduction** | | **${reduction}%** |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "default=${size_default} small=${size_small} reduction=${reduction}%"
+          if [ "$reduction" -lt "$EXPECTED_REDUCTION_PERCENT" ]; then
+            echo "FAIL: expected >= ${EXPECTED_REDUCTION_PERCENT}% reduction, got ${reduction}%"
+            exit 1
+          fi
+          echo "PASS: ${reduction}% reduction meets the ${EXPECTED_REDUCTION_PERCENT}% threshold"
+      - name: Measure key-parsing and certificate-parsing anchors
+        # These advisory deltas measure code retained by key and certificate
+        # parsing; they are not thresholded.
+        run: |
+          set -euo pipefail
+          common="-O2 -I include -ffunction-sections -fdata-sections"
+          libs="-lpthread -ldl -lm -Wl,--gc-sections"
+          clang $common tests/binary-size/main.c build-small/crypto/libcrypto.a $libs -o consumer-gc
+          clang $common -DAWSLC_SIZE_CHECK_EVP_PARSE tests/binary-size/main.c \
+            build-small/crypto/libcrypto.a $libs -o consumer-gc-evp
+          clang $common -DAWSLC_SIZE_CHECK_D2I_X509 tests/binary-size/main.c \
+            build-small/crypto/libcrypto.a $libs -o consumer-gc-x509
+          echo "Sanity: run the GC-enabled consumers"
+          ./consumer-gc
+          ./consumer-gc-evp
+          ./consumer-gc-x509
+          size_gc=$(stat -c %s consumer-gc)
+          size_gc_evp=$(stat -c %s consumer-gc-evp)
+          size_gc_x509=$(stat -c %s consumer-gc-x509)
+          evp_overhead=$(( size_gc_evp - size_gc ))
+          x509_overhead=$(( size_gc_x509 - size_gc ))
+          {
+            echo "### Parsing anchors (OPENSSL_SMALL + section GC, ${{ matrix.name }})"
+            echo ""
+            echo "| Consumer | Binary size | Anchor cost |"
+            echo "|----------|-------------|-------------|"
+            echo "| base | $(numfmt --to=iec "$size_gc") (${size_gc} B) | |"
+            echo "| base + \`EVP_parse_public_key\` | $(numfmt --to=iec "$size_gc_evp") (${size_gc_evp} B) | **$(numfmt --to=iec "$evp_overhead") (${evp_overhead} B)** |"
+            echo "| base + X.509 public-key parse | $(numfmt --to=iec "$size_gc_x509") (${size_gc_x509} B) | **$(numfmt --to=iec "$x509_overhead") (${x509_overhead} B)** |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "gc=${size_gc} gc_evp=${size_gc_evp} gc_x509=${size_gc_x509}"
+          for bin in consumer-gc consumer-gc-evp consumer-gc-x509; do
+            {
+              echo "<details><summary>Largest retained symbols: ${bin}</summary>"
+              echo ""
+              echo '```'
+              nm -S --size-sort --radix=d "$bin" | tail -25 | tac
+              echo '```'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  small-tests:
+    if: github.repository_owner == 'aws'
+    name: Tests (OPENSSL_SMALL, ${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both architectures need coverage: aarch64 is where the s2n-bignum
+        # P-256/P-384/P-521 removal and curve25519 variant pinning are the
+        # size mechanism; on x86_64, OPENSSL_SMALL sheds AVX-512 code and the
+        # dead P-256/P-384/P-521 s2n-bignum objects while curve25519, RSA/DH
+        # mulx Montgomery, and x4-batched Keccak stay reachable (#3355).
+        include:
+          - { name: "x86_64 gcc",    runner: ubuntu-latest,    cc: gcc,   cxx: g++ }
+          - { name: "x86_64 clang",  runner: ubuntu-latest,    cc: clang, cxx: clang++ }
+          - { name: "aarch64 gcc",   runner: ubuntu-24.04-arm, cc: gcc,   cxx: g++ }
+          - { name: "aarch64 clang", runner: ubuntu-24.04-arm, cc: clang, cxx: clang++ }
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake ninja-build clang gcc g++
+          echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.18'
+      - uses: actions/checkout@v6
+      - name: Build and run tests (OPENSSL_SMALL)
+        run: |
+          cmake -GNinja -B build-small -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 -DOPENSSL_SMALL=ON
+          cmake --build build-small --target all
+          cmake --build build-small --target run_tests
+
+  small-tests-windows:
+    if: github.repository_owner == 'aws'
+    # Test generated and pre-generated assembly because NASM rejects objects
+    # without sections (bugzilla.nasm.us/show_bug.cgi?id=3392738).
+    # OPENSSL_SMALL can empty AVX-512-only sources. The AVX-disabled perlasm leg
+    # covers the same failure mode in AES-GCM-SIV and P-256. gas accepts these
+    # objects, so both require Windows coverage (#3355).
+    name: Tests (OPENSSL_SMALL, x86_64 Windows, ${{ matrix.name }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "perlasm",              disable_perl: "OFF", disable_avx: "OFF" }
+          - { name: "pre-generated",        disable_perl: "ON",  disable_avx: "OFF" }
+          - { name: "perlasm, AVX disabled", disable_perl: "OFF", disable_avx: "ON" }
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '>=1.18'
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        id: clang
+        with:
+          # VS2026 MSVC STL requires Clang >= 20 (yvals_core.h STL1000).
+          version: 20
+          env: true
+      - name: Setup CMake
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: Ninja
+          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
+          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
+          options: |
+            CMAKE_SYSTEM_NAME=Windows
+            CMAKE_SYSTEM_PROCESSOR=x86_64
+            CMAKE_BUILD_TYPE=Release
+            OPENSSL_SMALL=ON
+            DISABLE_PERL=${{ matrix.disable_perl }}
+            MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=${{ matrix.disable_avx }}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  small-sde-tests:
+    if: github.repository_owner == 'aws'
+    # The Linux/Windows legs above run on whatever CPU the hosted runner
+    # lands on, so coverage of the CPU profiles OPENSSL_SMALL cares about
+    # (in particular ADX+AVX2 without AVX-512, the fast paths restored by
+    # #3355) is probabilistic. This leg pins them deterministically with
+    # Intel SDE; see tests/ci/run_small_tests_with_sde.sh for the CPU
+    # selection rationale.
+    name: Tests (OPENSSL_SMALL, x86_64 Linux, Intel SDE)
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04_sde
+          run: |
+            source /opt/compiler-env/setup-clang-14.sh
+            ./tests/ci/run_small_tests_with_sde.sh
+          options: --privileged

@@ -32,7 +32,7 @@ information about required dependencies and build options. If you’re intereste
 getting involved [open an issue](https://github.com/aws/aws-lc/issues/new/choose) to discuss your plan.
 [Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
 info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
-If you just want to use AWS-LC, see our existing documentation in the public header
+If you just want to use AWS-LC, see our [existing documentation](https://aws.github.io/aws-lc/headers.html) in the public header
 files. If you’re moving your application from OpenSSL, see the
 [porting guide](https://github.com/aws/aws-lc/blob/main/PORTING.md)
 for more information.
@@ -66,6 +66,20 @@ If you use another CPU and would like to make sure we test it or discuss adding
 an assembly optimized algorithm implementation, please open an issue to discuss
 adding it to our CI.
 
+### Distribution Packaging
+
+AWS-LC supports distribution packaging mode for system-wide installation on Linux
+and BSD systems. When built with `-DENABLE_DIST_PKG=1`, AWS-LC enables:
+
+- **SONAME versioning**: Libraries use standard SONAME (e.g., `libcrypto-awslc.so.1`)
+- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (e.g., `AWS_LC_1.0`)
+- **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other crypto libraries
+
+Symbol versioning assigns every public API symbol to a named version node. New symbols
+introduced in future releases get new version nodes that inherit from their predecessors,
+enabling fine-grained compatibility tracking. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
+for details.
+
 ## Platform Support
 
 AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).
@@ -85,18 +99,13 @@ successfully builds and tests pass for these platform.
 A more complete description of our test setup can be found in the
 [CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 
-| OS      | CPU     |
-|---------|---------|
-| Linux   | x86     |
-| Linux   | x86-64  |
-| Linux   | aarch64 |
-| Windows | x86-64  |
-| macOS   | x86-64  |
-| macOS   | aarch64 |
-| Android | aarch64 |
-| Linux   | ppc     |
-| Linux   | ppc64   |
-| Linux   | ppc64le |
+| OS      | CPU                                   |
+|---------|---------------------------------------|
+| Android | aarch64                               |
+| iOS     | aarch64                               |
+| Linux   | aarch64, ppc, ppc64, ppc64le, x86-64  |
+| macOS   | aarch64, x86-64                       |
+| Windows | x86-64                                |
 
 ### Other platforms
 
@@ -104,18 +113,15 @@ The platforms listed below are of interest to us or to our community. However, p
 against them might not be prioritized for immediate action by our team. We welcome contributions
 that improve the experience for consumers on these platforms.
 
-| OS         | CPU         |
-|------------|-------------|
-| Android    | arm32       |
-| Emscripten | wasm32      |
-| iOS        | aarch64     |
-| Linux      | arm32       |
-| Linux      | loongarch64 |
-| Linux      | risc-v64    |
-| Linux      | s390x       |
-| Windows    | aarch64     |
-| OpenBSD    | x86-64      |
-| FreeBSD    | x86-64      |
+| OS         | CPU                              |
+|------------|----------------------------------|
+| Android    | arm32                            |
+| Emscripten | wasm32                           |
+| FreeBSD    | arm64, x86-64                    |
+| Linux      | arm32, loongarch64, risc-v64, s390x, x86 |
+| NetBSD     | arm64, x86-64                    |
+| OpenBSD    | arm64, x86-64                    |
+| Windows    | aarch64                          |
 
 ### WebAssembly (WASM) Support
 

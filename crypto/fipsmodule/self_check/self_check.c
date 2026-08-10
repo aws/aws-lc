@@ -1485,12 +1485,12 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_decapsulate_no_self_test(shared_secret, &shared_secret_len, kDecapCiphertext,
                                           kDecapDK) ||
       !check_test(kDecapSharedSecret, shared_secret, sizeof(kDecapSharedSecret),
-                  "ML-KEM decapsulate non-rejection") ||
+                  "ML-KEM-decapsulate-non-rejection") ||
       ml_kem_512_decapsulate_no_self_test(
           shared_secret, &shared_secret_len, kDecapCiphertextRejection, kDecapDK) ||
       !check_test(kDecapSharedSecretRejection, shared_secret,
                   sizeof(kDecapSharedSecretRejection),
-                  "ML-KEM decapsulate implicit rejection")) {
+                  "ML-KEM-decapsulate-rejection")) {
     goto err;
   }
 
@@ -2766,6 +2766,82 @@ static OPENSSL_NOINLINE int boringssl_self_test_fast(void) {
     goto err;
   }
 
+  // AES-KWP (Key Wrap with Padding, RFC 5649) unwrap KAT. The key and
+  // ciphertext are ACVP-AES-KWP sample vectors (tgId 15, tcId 1411 from
+  // util/fipstools/acvp/acvptool/test/vectors/ACVP-AES-KWP.bz2); the expected
+  // plaintext is the matching answer in
+  // util/fipstools/acvp/acvptool/test/expected/ACVP-AES-KWP.bz2.
+  static const uint8_t kAESKWPUnwrapKey[16] = {
+      0x40, 0x38, 0x54, 0x84, 0xb0, 0xee, 0x1e, 0x3c,
+      0x1b, 0xa2, 0xa8, 0xc5, 0x3f, 0x62, 0xf5, 0xf5,
+  };
+  static const uint8_t kAESKWPUnwrapCiphertext[40] = {
+      0x0d, 0xed, 0xd0, 0x77, 0x34, 0x3d, 0x29, 0xce, 0x75, 0x38, 0xbe, 0x2a,
+      0xad, 0xa0, 0x75, 0x43, 0x0a, 0x8c, 0x23, 0x78, 0x35, 0xa8, 0x9d, 0x0a,
+      0x72, 0xde, 0xda, 0x7b, 0xb7, 0xa5, 0x96, 0x7b, 0x67, 0x05, 0x37, 0x32,
+      0x40, 0xf2, 0xef, 0xf8,
+  };
+  static const uint8_t kAESKWPUnwrapPlaintext[32] = {
+      0xb8, 0x1e, 0x47, 0xe3, 0x1d, 0x3b, 0xa7, 0x74, 0x5c, 0xc8, 0x6b, 0xe1,
+      0x32, 0x80, 0xa6, 0x73, 0x9e, 0xb4, 0x0c, 0x80, 0xf3, 0xcf, 0x8d, 0xc6,
+      0xf7, 0xe6, 0xa6, 0x63, 0x95, 0x76, 0x7d, 0x33,
+  };
+  if (AES_set_decrypt_key(kAESKWPUnwrapKey, 8 * sizeof(kAESKWPUnwrapKey),
+                          &aes_key) != 0) {
+    fprintf(stderr, "AES_set_decrypt_key failed.\n");
+    goto err;
+  }
+  if (!AES_unwrap_key_padded(&aes_key, output, &out_len, sizeof(output),
+                             kAESKWPUnwrapCiphertext,
+                             sizeof(kAESKWPUnwrapCiphertext)) ||
+      out_len != sizeof(kAESKWPUnwrapPlaintext)) {
+    AWS_LC_FIPS_failure(
+        "AES-KWP-unwrap KAT failed because AES_unwrap_key_padded failed");
+    goto err;
+  }
+  if (!check_test(kAESKWPUnwrapPlaintext, output,
+                  sizeof(kAESKWPUnwrapPlaintext), "AES-KWP-unwrap")) {
+    goto err;
+  }
+
+  // AES-KWP (Key Wrap with Padding, RFC 5649) wrap KAT. The key and plaintext
+  // are ACVP-AES-KWP sample vectors (tgId 3, tcId 211 from
+  // util/fipstools/acvp/acvptool/test/vectors/ACVP-AES-KWP.bz2); the expected
+  // ciphertext is the matching answer in
+  // util/fipstools/acvp/acvptool/test/expected/ACVP-AES-KWP.bz2.
+  static const uint8_t kAESKWPWrapKey[16] = {
+      0xeb, 0xdf, 0xd8, 0x55, 0xa8, 0xbf, 0xf8, 0x97,
+      0x6b, 0x0c, 0x93, 0x63, 0x9e, 0x19, 0x29, 0x16,
+  };
+  static const uint8_t kAESKWPWrapPlaintext[32] = {
+      0x03, 0x59, 0x42, 0x96, 0xaa, 0x84, 0xa6, 0x0e, 0x27, 0x72, 0xf8, 0x21,
+      0xc0, 0x42, 0xea, 0xb8, 0xe4, 0x33, 0xe7, 0xf7, 0x40, 0x0b, 0x88, 0x02,
+      0x8b, 0x5f, 0x12, 0xab, 0xe1, 0x91, 0xa9, 0xd5,
+  };
+  static const uint8_t kAESKWPWrapCiphertext[40] = {
+      0xd2, 0xe3, 0x8b, 0xdb, 0x7b, 0x1e, 0xcf, 0xcf, 0xf0, 0x85, 0xdd, 0xe6,
+      0x90, 0xc5, 0x47, 0xbf, 0xd2, 0xf1, 0xb5, 0xaa, 0x9f, 0x06, 0x33, 0xa2,
+      0xad, 0xf4, 0xe8, 0x9a, 0x70, 0x40, 0xe8, 0xe5, 0x96, 0xfe, 0x3b, 0x17,
+      0xbf, 0xd2, 0x58, 0x2e,
+  };
+  if (AES_set_encrypt_key(kAESKWPWrapKey, 8 * sizeof(kAESKWPWrapKey),
+                          &aes_key) != 0) {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  if (!AES_wrap_key_padded(&aes_key, output, &out_len, sizeof(output),
+                           kAESKWPWrapPlaintext,
+                           sizeof(kAESKWPWrapPlaintext)) ||
+      out_len != sizeof(kAESKWPWrapCiphertext)) {
+    AWS_LC_FIPS_failure(
+        "AES-KWP-wrap KAT failed because AES_wrap_key_padded failed");
+    goto err;
+  }
+  if (!check_test(kAESKWPWrapCiphertext, output,
+                  sizeof(kAESKWPWrapCiphertext), "AES-KWP-wrap")) {
+    goto err;
+  }
+
   // SHA-1 KAT
   static const uint8_t kSHA1Input[16] = {
       0x13, 0x2f, 0xd9, 0xba, 0xd5, 0xc1, 0x82, 0x62,
@@ -2870,6 +2946,46 @@ static OPENSSL_NOINLINE int boringssl_self_test_fast(void) {
                        kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
                        sizeof(kTLSSeed2)) ||
       !check_test(kTLSOutput, tls_output, sizeof(kTLSOutput), "TLS-KDF KAT")) {
+    goto err;
+  }
+
+  // TLS 1.3 KDF KAT: chain HKDF_extract -> CRYPTO_tls13_hkdf_expand_label to
+  // validate the TLS 1.3 HKDF-Expand-Label composite, derived from the sample
+  // early-secret / c-e-traffic chain in RFC 8448.
+  static const uint8_t kTLS13Secret[32] = {
+      0x02, 0x4a, 0x0d, 0x80, 0xf3, 0x57, 0xf2, 0x49, 0x9a, 0x12, 0x44,
+      0xda, 0xc2, 0x6d, 0xab, 0x66, 0xfc, 0x13, 0xed, 0x85, 0xfc, 0xa7,
+      0x1d, 0xac, 0xe1, 0x46, 0x21, 0x11, 0x19, 0x52, 0x58, 0x74,
+  };
+  static const uint8_t kTLS13Salt[16] = {
+      0x54, 0x61, 0x11, 0x36, 0x75, 0x91, 0xf0, 0xf8,
+      0x92, 0xec, 0x70, 0xbd, 0x78, 0x2a, 0xef, 0x61,
+  };
+  static const uint8_t kTLS13Label[] = "c e traffic";
+  static const uint8_t kTLS13ClientHelloHash[32] = {
+      0x1d, 0xe8, 0x67, 0xed, 0x93, 0x6a, 0x73, 0x65, 0x9b, 0x05, 0xcf,
+      0x8a, 0x22, 0x77, 0xb7, 0x37, 0x29, 0xf2, 0x44, 0x94, 0x81, 0x6a,
+      0x83, 0x33, 0x7f, 0x09, 0xbb, 0x6c, 0xc2, 0x6f, 0x48, 0x9c,
+  };
+  static const uint8_t kTLS13ExpandLabelOutput[32] = {
+      0x62, 0x91, 0x52, 0x90, 0x2e, 0xc9, 0xcf, 0x9c, 0x5f, 0x1e, 0x0a,
+      0xb7, 0x00, 0x33, 0x42, 0x24, 0xc4, 0xe3, 0xba, 0x01, 0x40, 0x32,
+      0x06, 0xab, 0x09, 0x23, 0x8a, 0xdd, 0x01, 0xa4, 0x05, 0xcd,
+  };
+  uint8_t tls13_extract_output[32];
+  size_t tls13_extract_output_len;
+  uint8_t tls13_expand_label_output[sizeof(kTLS13ExpandLabelOutput)];
+  if (!HKDF_extract(tls13_extract_output, &tls13_extract_output_len,
+                    EVP_sha256(), kTLS13Secret, sizeof(kTLS13Secret),
+                    kTLS13Salt, sizeof(kTLS13Salt)) ||
+      tls13_extract_output_len != sizeof(tls13_extract_output) ||
+      !CRYPTO_tls13_hkdf_expand_label(
+          tls13_expand_label_output, sizeof(tls13_expand_label_output),
+          EVP_sha256(), tls13_extract_output, sizeof(tls13_extract_output),
+          kTLS13Label, sizeof(kTLS13Label) - 1, kTLS13ClientHelloHash,
+          sizeof(kTLS13ClientHelloHash)) ||
+      !check_test(kTLS13ExpandLabelOutput, tls13_expand_label_output,
+                  sizeof(kTLS13ExpandLabelOutput), "TLS13-KDF KAT")) {
     goto err;
   }
 

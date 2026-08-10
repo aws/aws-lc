@@ -72,15 +72,46 @@ popd
 
 echo "Pull source code from remote repository..."
 
-# Copy mldsa-native source tree -- C source only (no native backends for now)
+# Copy mldsa-native source tree -- C source
 mkdir $SRC
-cp $TMP/mldsa/src/* $SRC
+# Copy only files (not subdirectories like native/ and fips202/)
+find $TMP/mldsa/src -maxdepth 1 -type f -exec cp {} $SRC \;
+
+# Copy x86_64 backend
+# We import all assembly (.S) files and shared headers/constants from the
+# upstream x86_64 backend. The AVX2 C-intrinsic .c files (rej_uniform,
+# decompose, use_hint, chknorm, polyz_unpack) are excluded — their includes
+# are stripped from the BCM below.
+#
+# The upstream meta.h advertises both assembly and C-intrinsic operations.
+# Rather than modify it, we keep a hand-maintained replacement in
+# ../mldsa_x86_64_meta.h (referenced via MLD_CONFIG_ARITH_BACKEND_FILE) that
+# declares only the assembly-backed subset. Upstream meta.h is not copied.
+mkdir -p $SRC/native/x86_64/src
+cp $TMP/mldsa/src/native/api.h $SRC/native
+cp $TMP/mldsa/src/native/x86_64/src/arith_native_x86_64.h $SRC/native/x86_64/src
+cp $TMP/mldsa/src/native/x86_64/src/consts.h $SRC/native/x86_64/src
+cp $TMP/mldsa/src/native/x86_64/src/consts.c $SRC/native/x86_64/src
+# NOTE: all imported .S files must have verified proofs in s2n-bignum.
+cp $TMP/mldsa/src/native/x86_64/src/*.S $SRC/native/x86_64/src
+
+# Copy aarch64 backend
+# Unlike x86_64, the aarch64 backend is 100% assembly — no C-intrinsic .c
+# files. The upstream meta.h is suitable as-is, so we copy it verbatim.
+# All assembly (.S) files have verified proofs in s2n-bignum.
+mkdir -p $SRC/native/aarch64/src
+cp $TMP/mldsa/src/native/aarch64/*.h $SRC/native/aarch64
+cp $TMP/mldsa/src/native/aarch64/src/* $SRC/native/aarch64/src
 
 # We use the custom `mldsa_native_config.h`, so can remove the default one
-rm $SRC/config.h
+rm -f $SRC/config.h
 
 # Copy formatting file
 cp $TMP/.clang-format $SRC
+
+# ================================================================
+# Process mldsa_native_bcm.c
+# ================================================================
 
 # Copy and statically simplify BCM file
 # The static simplification is not necessary, but improves readability
@@ -109,6 +140,65 @@ cp $TMP/mldsa/mldsa_native.h $SRC
 # hence the relative import path is just ".".
 echo "Fixup include paths"
 sed "${SED_I[@]}" 's/#include "src\/\([^"]*\)"/#include "\1"/' $SRC/mldsa_native_bcm.c
+
+# Drop #include directives for the C-intrinsic .c files we did not import.
+# Only consts.c (shared with the assembly backend) is kept.
+echo "Strip C-intrinsic includes from mldsa_native_bcm.c"
+BCM=$SRC/mldsa_native_bcm.c
+sed "${SED_I[@]}" '/^#include "native\/x86_64\/src\/[^"]*\.c"/{/consts\.c/!d;}' "$BCM"
+
+# ================================================================
+# Fixup assembly backends to use s2n-bignum macros
+# ================================================================
+
+echo "Fixup assembly backends to use s2n-bignum macros"
+for file in $SRC/native/aarch64/src/*.S $SRC/native/x86_64/src/*.S; do
+  echo "Processing $file"
+  tmp_file=$(mktemp)
+
+  backend_define=$(if [[ "$file" == *"aarch64"* ]]; then echo "MLD_ARITH_BACKEND_AARCH64"; else echo "MLD_ARITH_BACKEND_X86_64_DEFAULT"; fi)
+
+  # Flatten multiline preprocessor directives, then process with unifdef.
+  #
+  # The parameter-set-specific files (eta-specific rejection sampling,
+  # set-specific decompose/use_hint, level-specific pointwise-acc) are
+  # guarded by `... || MLDSA_ETA == N` (resp. MLDSA_L / PARAMETER_SET).
+  # We build each .S once for all parameter sets, so we force the shared
+  # path (-DMLD_CONFIG_MULTILEVEL_WITH_SHARED): unifdef short-circuits the
+  # `||` on the known-true left operand and the `== N` comparison never has
+  # to be evaluated. The -U*_API flags resolve the remaining gate terms so
+  # the whole guard collapses and the body is included unconditionally.
+  sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\n/ /g' "$file" | \
+    unifdef -D$backend_define \
+            -UMLD_CONFIG_MULTILEVEL_NO_SHARED \
+            -DMLD_CONFIG_MULTILEVEL_WITH_SHARED \
+            -UMLD_CONFIG_NO_KEYPAIR_API \
+            -UMLD_CONFIG_NO_SIGN_API \
+            -UMLD_CONFIG_NO_VERIFY_API \
+            > "$tmp_file"
+  mv "$tmp_file" "$file"
+
+  # Replace common.h include and assembly macros
+  s2n_header=$(if [[ "$file" == *"aarch64"* ]]; then echo "_internal_s2n_bignum_arm.h"; else echo "_internal_s2n_bignum_x86_att.h"; fi)
+  sed "${SED_I[@]}" "s/#include \"\.\.\/\.\.\/\.\.\/common\.h\"/#include \"$s2n_header\"/" "$file"
+
+  func_name=$(grep -o '\.global MLD_ASM_NAMESPACE(\([^)]*\))' "$file" | sed 's/\.global MLD_ASM_NAMESPACE(\([^)]*\))/\1/')
+  if [ -n "$func_name" ]; then
+    sed "${SED_I[@]}" "s/\.global MLD_ASM_NAMESPACE($func_name)/        S2N_BN_SYM_VISIBILITY_DIRECTIVE(mldsa_$func_name)\n        S2N_BN_SYM_PRIVACY_DIRECTIVE(mldsa_$func_name)/" "$file"
+    sed "${SED_I[@]}" "s/MLD_ASM_FN_SYMBOL($func_name)/S2N_BN_SYMBOL(mldsa_$func_name):/" "$file"
+    sed "${SED_I[@]}" "s/MLD_ASM_FN_SIZE($func_name)/S2N_BN_SIZE_DIRECTIVE(mldsa_$func_name)/" "$file"
+  fi
+
+  # Prefix local labels with `Lmldsa_` to avoid collisions with other
+  # backends linked into the same FIPS BCM module (e.g. mlkem-native's
+  # ntt.S also defines `Lntt_layer123_start`). The delocator rejects
+  # duplicate symbol names across the unified BCM input.
+  # Build the rename list from the local label definitions (`^Lfoo:`) in
+  # this file, then s/Lfoo/Lmldsa_foo/g across all occurrences.
+  for label in $(grep -oE '^L[a-z][a-zA-Z0-9_]*:' "$file" | sed 's/:$//' | sort -u); do
+    sed "${SED_I[@]}" "s/\b${label}\b/Lmldsa_${label#L}/g" "$file"
+  done
+done
 
 echo "Remove temporary artifacts ..."
 rm -rf $TMP

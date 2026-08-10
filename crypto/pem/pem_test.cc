@@ -132,6 +132,7 @@ TEST(PEMTest, WriteReadRSAPem) {
   ASSERT_TRUE(write_bio);
   const EVP_CIPHER* cipher = EVP_get_cipherbynid(NID_aes_256_cbc);
   ASSERT_TRUE(cipher);
+  EXPECT_FALSE(PEM_write_bio_RSAPrivateKey(write_bio.get(), rsa.get(), cipher, (unsigned char*)SECRET, -1, nullptr, nullptr));
   ASSERT_TRUE(PEM_write_bio_RSAPrivateKey(write_bio.get(), rsa.get(), cipher, (unsigned char*)SECRET, (int)BUF_strnlen(SECRET, 256), nullptr, nullptr));
 
   const uint8_t* content;

@@ -11,7 +11,7 @@ AVX_FLAG="${1}"
 # Validate AVX_FLAG is provided
 if [[ -z "${AVX_FLAG}" ]]; then
   echo "Usage: $0 <AVX_FLAG>"
-  echo "Valid values: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX"
+  echo "Valid values: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX, MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX"
   exit 1
 fi
 
@@ -23,5 +23,6 @@ for build_option in "${build_options_to_test[@]}"; do
   build_and_test ${build_option} -D${AVX_FLAG}=ON
 done
 
-# When Go is disabled, a different test target is produced
+# When Go is disabled, a different test target is produced. Without Perl, the
+# AVX option only verifies the build because generated-src lacks AVX guards.
 build_and_run_minimal_test -DDISABLE_PERL=ON -DDISABLE_GO=ON -D${AVX_FLAG}=ON

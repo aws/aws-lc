@@ -1175,3 +1175,63 @@ int SSL_delegated_credential_used(const SSL *ssl) {
 int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 0; }
 
 void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level) {}
+
+int SSL_get_security_level(const SSL *ssl) { return 0; }
+
+void SSL_set_security_level(const SSL *ssl, int level) {}
+
+void SSL_CTX_set_security_callback(SSL_CTX *ctx, SSL_security_callback cb) {
+  if (ctx == nullptr) {
+    return;
+  }
+  ctx->security_callback = cb;
+}
+
+SSL_security_callback SSL_CTX_get_security_callback(const SSL_CTX *ctx) {
+  if (ctx == nullptr) {
+    return nullptr;
+  }
+  return ctx->security_callback;
+}
+
+void SSL_CTX_set0_security_ex_data(SSL_CTX *ctx, void *ex) {
+  if (ctx == nullptr) {
+    return;
+  }
+  ctx->security_callback_ex_data = ex;
+}
+
+void *SSL_CTX_get0_security_ex_data(const SSL_CTX *ctx) {
+  if (ctx == nullptr) {
+    return nullptr;
+  }
+  return ctx->security_callback_ex_data;
+}
+
+void SSL_set_security_callback(SSL *ssl, SSL_security_callback cb) {
+  if (ssl == nullptr) {
+    return;
+  }
+  ssl->security_callback = cb;
+}
+
+SSL_security_callback SSL_get_security_callback(const SSL *ssl) {
+  if (ssl == nullptr) {
+    return nullptr;
+  }
+  return ssl->security_callback;
+}
+
+void SSL_set0_security_ex_data(SSL *ssl, void *ex) {
+  if (ssl == nullptr) {
+    return;
+  }
+  ssl->security_callback_ex_data = ex;
+}
+
+void *SSL_get0_security_ex_data(const SSL *ssl) {
+  if (ssl == nullptr) {
+    return nullptr;
+  }
+  return ssl->security_callback_ex_data;
+}

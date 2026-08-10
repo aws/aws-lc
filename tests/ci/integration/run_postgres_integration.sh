@@ -45,10 +45,13 @@ function postgres_run_tests() {
 # SSL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
 # TODO: Remove this when we make an upstream contribution.
 function postgres_patch() {
-  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "ssl\[a\-z0\-9\/\]\* alert certificate revoked" "tlsv1 alert unknown ca" "unrecognized name" "handshake failure")
+  # Note: the revoked-cert pattern uses an alternation "(ssl...|tls) alert"
+  # (introduced upstream for OpenSSL 4 compatibility), so the substitutions
+  # below use '#' as the sed delimiter to allow a literal '|' in the patterns.
+  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "(ssl\[a\-z0\-9\/\]\*|tls) alert certificate revoked" "tlsv1 alert unknown ca" "unrecognized name" "handshake failure")
   AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "BAD_DECRYPT" "SSLV3_ALERT_CERTIFICATE_REVOKED" "TLSV1_ALERT_UNKNOWN_CA" "TLSV1_ALERT_UNRECOGNIZED_NAME" "unknown error")
   for i in "${!POSTGRES_ERROR_STRING[@]}"; do
-    find ./src/test/ssl/t/ -type f -name "*.pl" | xargs sed -i -e "s|${POSTGRES_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
+    find ./src/test/ssl/t/ -type f -name "*.pl" | xargs sed -i -e "s#${POSTGRES_ERROR_STRING[$i]}#${AWS_LC_EXPECTED_ERROR_STRING[$i]}#g"
   done
   # Some tests use shorter error string patterns (e.g. just "unknown ca" instead
   # of "tlsv1 alert unknown ca"). Apply these after the longer replacements above

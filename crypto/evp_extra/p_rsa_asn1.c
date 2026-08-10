@@ -185,6 +185,7 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   NULL /* set_pub_raw */,
   NULL /* get_priv_raw */,
   NULL /* get_pub_raw */,
+  NULL /* get_priv_seed */,
 
   rsa_opaque,
 
@@ -216,6 +217,7 @@ const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
   NULL /* set_pub_raw */,
   NULL /* get_priv_raw */,
   NULL /* get_pub_raw */,
+  NULL /* get_priv_seed */,
 
   rsa_opaque,
 

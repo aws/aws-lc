@@ -526,6 +526,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       read_ahead_buffer_size(ctx_arg->read_ahead_buffer_size),
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
+      security_callback(ctx_arg->security_callback),
+      security_callback_ex_data(ctx_arg->security_callback_ex_data),
       ctx(UpRef(ctx_arg)),
       session_ctx(UpRef(ctx_arg)),
       options(ctx->options),
@@ -2024,6 +2026,39 @@ int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
   }
   return ssl_nids_to_group_ids(&ssl->config->supported_group_list,
                                MakeConstSpan(groups, num_groups));
+}
+
+static bool ssl_check_group_ids(Array<uint16_t> *out_group_ids,
+                                Span<const uint16_t> group_ids) {
+  for (size_t i = 0; i < group_ids.size(); i++) {
+    if (ssl_group_id_to_nid(group_ids[i]) == NID_undef) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
+      return false;
+    }
+    // Reject duplicate group IDs
+    for (size_t j = 0; j < i; j++) {
+      if (group_ids[i] == group_ids[j]) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_KEY_SHARE);
+        return false;
+      }
+    }
+  }
+  return out_group_ids->CopyFrom(group_ids);
+}
+
+int SSL_CTX_set1_group_ids(SSL_CTX *ctx, const uint16_t *group_ids,
+                           size_t num_group_ids) {
+  return ssl_check_group_ids(&ctx->supported_group_list,
+                             MakeConstSpan(group_ids, num_group_ids));
+}
+
+int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
+                       size_t num_group_ids) {
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_check_group_ids(&ssl->config->supported_group_list,
+                             MakeConstSpan(group_ids, num_group_ids));
 }
 
 static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,

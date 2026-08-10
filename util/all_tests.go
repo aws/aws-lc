@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -36,6 +37,7 @@ var (
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
 	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
+	sdeCPUList      = flag.String("sde-cpus", "", "A comma-separated list of SDE CPU codes to test (e.g. 'hsw,bdw,icl'). If empty, a default list of CPUs is used.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", defaultNumWorkers(), "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
@@ -143,6 +145,10 @@ var cpusWithNoAVXSupport = []string{
 var sdeCPUs []string
 
 func initSDECPUs() {
+	if *sdeCPUList != "" {
+		sdeCPUs = strings.Split(*sdeCPUList, ",")
+		return
+	}
 	sdeCPUs = append([]string{}, defaultCPUs...)
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/C", "ver")
@@ -242,6 +248,9 @@ var (
 	errTestHanging = errors.New("test hangs without exiting")
 )
 
+// reportSeq uniquely identifies each gtest JSON report file.
+var reportSeq int64
+
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
@@ -284,6 +293,23 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	if test.numShards != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_SHARD_INDEX=%d", test.shard))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_TOTAL_SHARDS=%d", test.numShards))
+	}
+	// Write per-test-case gtest JSON report if report dir is set.
+	// Report generation is a diagnostic aid, so on error we warn and skip the report
+	// rather than failing the test run.
+	if reportDir := os.Getenv("GTEST_REPORT_DIR"); reportDir != "" {
+		if err := os.MkdirAll(reportDir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not create GTEST_REPORT_DIR %q: %v; skipping timing report\n", reportDir, err)
+		} else {
+			binName := filepath.Base(prog)
+			reportFile := filepath.Join(reportDir, fmt.Sprintf("%s_shard_%d_%d_%d.json",
+				binName, test.shard, os.Getpid(), atomic.AddInt64(&reportSeq, 1)))
+			if cmd.Env == nil {
+				cmd.Env = make([]string, len(os.Environ()))
+				copy(cmd.Env, os.Environ())
+			}
+			cmd.Env = append(cmd.Env, fmt.Sprintf("GTEST_OUTPUT=json:%s", reportFile))
+		}
 	}
 	var outBuf bytes.Buffer
 	cmd.Stdout = &outBuf

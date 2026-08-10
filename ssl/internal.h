@@ -1842,8 +1842,8 @@ struct SSL_HANDSHAKE_HINTS {
 };
 
 struct SSL_HANDSHAKE {
-  explicit SSL_HANDSHAKE(SSL *ssl);
-  ~SSL_HANDSHAKE();
+  OPENSSL_EXPORT explicit SSL_HANDSHAKE(SSL *ssl);
+  OPENSSL_EXPORT ~SSL_HANDSHAKE();
   static constexpr bool kAllowUniquePtr = true;
 
   // ssl is a non-owning pointer to the parent |SSL| object.
@@ -2203,7 +2203,7 @@ struct SSL_HANDSHAKE {
 // so many tickets.
 constexpr size_t kMaxTickets = 16;
 
-UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
+OPENSSL_EXPORT UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
 // one. Otherwise, it sends an alert and returns zero.
@@ -2486,8 +2486,9 @@ bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out);
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
 // signature. It returns true on success and false on error, setting
 // |*out_alert| to an alert to send.
-bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                             uint16_t sigalg);
+OPENSSL_EXPORT bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs,
+                                            uint8_t *out_alert,
+                                            uint16_t sigalg);
 
 
 // Underdocumented functions.
@@ -2504,7 +2505,8 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 #define SSL_PKEY_RSA 0
 #define SSL_PKEY_ECC 1
 #define SSL_PKEY_ED25519 2
-#define SSL_PKEY_SIZE 3
+#define SSL_PKEY_PQDSA 3
+#define SSL_PKEY_SIZE 4
 
 struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;
@@ -3855,6 +3857,9 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
 
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
+
   int verify_mode = SSL_VERIFY_NONE;
   int (*default_verify_callback)(int ok, X509_STORE_CTX *ctx) =
       nullptr;  // called 'verify_callback' in the SSL
@@ -4108,6 +4113,9 @@ struct ssl_st {
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
+
+  SSL_security_callback security_callback = nullptr;
+  void *security_callback_ex_data = nullptr;
 
   // session info
 

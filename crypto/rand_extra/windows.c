@@ -16,7 +16,10 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 
 // ProcessPrng (from `bcryptprimitives.dll`) is only available on Windows 8+.
-#if !defined(__MINGW32__) && defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
+// Fall back to BCryptGenRandom when targeting Windows 7 or earlier. This applies
+// to both MSVC and MinGW-w64 toolchains; MinGW-w64 ships `bcrypt.h` and can link
+// against `libbcrypt.a` / `bcrypt.dll`.
+#if defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
 #define AWSLC_WINDOWS_7_COMPAT
 #endif
 

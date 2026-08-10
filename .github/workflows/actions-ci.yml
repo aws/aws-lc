@@ -15,6 +15,10 @@ env:
   # Used to enable ASAN test dimension.
   AWSLC_ENABLE_FIPS_ASAN: 1
   DEBIAN_FRONTEND: noninteractive
+  # Set globally so every job routing tests through util/all_tests.go emits
+  # per-test-case gtest JSON reports. Jobs opt in to surfacing the summary by
+  # adding a "Test timing summary" step.
+  GTEST_REPORT_DIR: ${{ github.workspace }}/gtest_reports
 
 permissions:
   contents: read
@@ -27,7 +31,7 @@ jobs:
       AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
       - name: Sanity Test Run
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
@@ -45,13 +49,16 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-x86-FIPS:
     if: github.repository_owner == 'aws'
@@ -63,13 +70,16 @@ jobs:
         os:
           - "macos-15-intel"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-ARM:
     if: github.repository_owner == 'aws'
@@ -82,13 +92,16 @@ jobs:
           - "macos-14"
           - "macos-15"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   windows:
     if: github.repository_owner == 'aws'
@@ -101,8 +114,8 @@ jobs:
           - "windows-latest"
           - "windows-11-arm"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install NASM
@@ -111,11 +124,11 @@ jobs:
       - name: Build/Test (x64)
         if: "!endsWith(matrix.os, '-arm')"
         run: |
-          ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          ./tests/ci/run_windows_tests.bat auto x64
       - name: Build/Test (ARM64)
         if: endsWith(matrix.os, '-arm')
         run: |
-          ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" arm64
+          ./tests/ci/run_windows_tests.bat auto arm64
 
   macOS-ARM-FIPS:
     if: github.repository_owner == 'aws'
@@ -131,8 +144,8 @@ jobs:
           - 20
           - 0 # default
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - if: matrix.clang == 20
@@ -149,6 +162,9 @@ jobs:
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
+      - name: Test timing summary
+        if: always()
+        run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   compiler-tests:
     name: >-
@@ -184,8 +200,8 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -199,7 +215,10 @@ jobs:
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CXX=g++" >> $GITHUB_ENV
       - name: Setup Build
-        run: cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}} -DBUILD_SHARED_LIBS=${{matrix.shared}}
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
+          MATRIX_SHARED: ${{ matrix.shared }}
+        run: cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}" -DBUILD_SHARED_LIBS="${MATRIX_SHARED}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -253,8 +272,8 @@ jobs:
               total_shards: 1
             shard_index: 0
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install dependencies
@@ -265,10 +284,12 @@ jobs:
         env:
           GTEST_TOTAL_SHARDS: ${{ matrix.config.total_shards }}
           GTEST_SHARD_INDEX: ${{ matrix.shard_index }}
+          MATRIX_SANITIZER: ${{ matrix.config.sanitizer }}
+          MATRIX_EXTRA_CMAKE_ARGS: ${{ matrix.config.extra_cmake_args }}
         run: |
-          ./util/build_and_test.sh --sanitizer ${{ matrix.config.sanitizer }} \
+          ./util/build_and_test.sh --sanitizer "${MATRIX_SANITIZER}" \
             --test crypto_test --build-target all_tests \
-            -DCMAKE_BUILD_TYPE=Release ${{ matrix.config.extra_cmake_args }}
+            -DCMAKE_BUILD_TYPE=Release ${MATRIX_EXTRA_CMAKE_ARGS}
       - name: Run ssl_test
         if: matrix.shard_index == 0
         run: ./build/ssl/ssl_test
@@ -291,8 +312,8 @@ jobs:
       image: rust:latest
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - run: |
@@ -320,8 +341,8 @@ jobs:
         gcc_version: ["9", "10", "11", "12", "13", "14", "15"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -334,8 +355,10 @@ jobs:
         run: |
           echo "CXXFLAGS=-Wno-stringop-overflow -Wno-array-bounds" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run: |
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -357,19 +380,23 @@ jobs:
         clang_version: ["20"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
+        env:
+          MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
-          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run: |
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -395,19 +422,23 @@ jobs:
           - clang_version: "18"
             fips: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
+        env:
+          MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
-          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run: |
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -429,19 +460,23 @@ jobs:
         clang_version: ["11", "12", "13"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
+        env:
+          MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
-          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run: |
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -463,19 +498,23 @@ jobs:
         clang_version: ["7", "8", "9", "10"]
         fips: ["0", "1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
+        env:
+          MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
-          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        env:
+          MATRIX_FIPS: ${{ matrix.fips }}
         run: |
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
@@ -494,12 +533,12 @@ jobs:
           - "1"
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@v2.1.0
         with:
           generator: Ninja
           c-compiler: gcc-${{ matrix.gccversion }}
@@ -537,8 +576,8 @@ jobs:
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -562,75 +601,20 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  OpenBSD:
-    needs: [sanity-test-run]
-    runs-on: ubuntu-latest
-    name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: ["x86-64", "arm64"]
-        version: ["7.5", "7.6"]
-    steps:
-      - uses: actions/checkout@v3
-      - name: OpenBSD
-        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 120m
-        with:
-          environment_variables: AWS_LC_GO_TEST_TIMEOUT
-          operating_system: openbsd
-          cpu_count: 3
-          memory: 12G
-          architecture: ${{ matrix.arch }}
-          version: "${{ matrix.version }}"
-          shell: bash
-          run: |
-            set -x
-            sudo pkg_add cmake ninja go gmake
-            sudo pfctl -d
-            mkdir "${HOME}/bin"
-            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
-            cat << EOF | sudo tee /etc/login.conf.d/unlimited
-            unlimited:\
-                :datasize-cur=infinity:\
-                :datasize-max=infinity:\
-                :stacksize-cur=infinity:\
-                :stacksize-max=infinity:\
-                :memoryuse-cur=infinity:\
-                :memoryuse-max=infinity:\
-                :maxproc-cur=infinity:\
-                :maxproc-max=infinity:\
-                :openfiles-cur=infinity:\
-                :openfiles-max=infinity:\
-                :cpuuse-cur=infinity:\
-                :cpuuse-max=infinity:\
-                :priority=0:\
-                :ignoretime:
-            EOF
-            sudo usermod -L unlimited runner
-            sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
-            set -x
-            export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
-            cd $(pwd)
-            export PATH="${HOME}/bin:${PATH}"
-            env
-            tests/ci/run_bsd_tests.sh
-            EOF
   gcc-4_8:
     needs: [sanity-test-run]
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         working-directory: .github/docker_images/gcc-4.8
         run: |
           docker build -t "gcc-4.8"  .
       - name: Build using pre-generated assembly
         run: |
-          docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
+          docker run -v "${GITHUB_WORKSPACE}:/awslc" "gcc-4.8"
 
   alpine-linux-x86:
     needs: [sanity-test-run]
@@ -651,15 +635,19 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         working-directory: .github/docker_images/alpine-linux
+        env:
+          MATRIX_COMPILER: ${{ matrix.compiler }}
         run: |
-          docker build -t alpine_linux ${{ matrix.compiler }} .
+          docker build -t alpine_linux ${MATRIX_COMPILER} .
       - name: Run tests
+        env:
+          MATRIX_TESTS: ${{ matrix.tests }}
         run: |
-          docker run -v "${{ github.workspace }}:/awslc" \
-          alpine_linux ${{ matrix.tests }}
+          docker run -v "${GITHUB_WORKSPACE}:/awslc" \
+          alpine_linux "${MATRIX_TESTS}"
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
   #  MSVC-SDE-32-bit:
@@ -667,7 +655,7 @@ jobs:
   #    runs-on: aws-lc_windows-2019_64-core
   #    steps:
   #      - name: Git clone the repository
-  #        uses: actions/checkout@v3
+  #        uses: actions/checkout@v7
   #
   #      - name: Build Windows Dependencies
   #        run: |
@@ -689,79 +677,3 @@ jobs:
   #          echo ${env:SDEROOT}
   #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
   #
-  freebsd:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - "x86-64"
-          - "arm64"
-        version:
-          - "14.2"
-          - "15.0"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-      - name: Prepare VM
-        uses: cross-platform-actions/action@v0.32.0
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 90m
-          GOFLAGS: "-buildvcs=false"
-        with:
-          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
-          operating_system: freebsd
-          architecture: ${{ matrix.arch }}
-          version: ${{ matrix.version }}
-          shell: bash
-          memory: 12G
-          cpu_count: 3
-          run: |
-            sudo pkg install -y git gmake cmake go ninja
-            tests/ci/run_bsd_tests.sh
-  netbsd:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - "x86-64"
-          - "arm64"
-        version:
-          - "10.1"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-      - name: Prepare VM
-        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 90m
-          GOFLAGS: "-buildvcs=false"
-        with:
-          environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
-          operating_system: netbsd
-          architecture: ${{ matrix.arch }}
-          version: ${{ matrix.version }}
-          shell: bash
-          memory: 12G
-          cpu_count: 3
-          run: |
-            set -x
-            export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
-            sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
-            ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
-            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
-            curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
-            sudo mkdir -p /usr/local
-            sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
-            export GOROOT=/usr/local/go
-            export PATH="$PATH:$GOROOT/bin"
-            tests/ci/run_bsd_tests.sh

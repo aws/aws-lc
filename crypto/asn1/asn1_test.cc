@@ -1711,6 +1711,25 @@ TEST(ASN1Test, MBString) {
     ERR_clear_error();
     EXPECT_EQ(nullptr, str);
   }
+
+  // |len| values below -1 must be rejected; only -1 is special-cased to mean
+  // "call strlen on |in|". Any other negative value would otherwise be cast
+  // to a huge |size_t| by |CBS_init|.
+  static const uint8_t kDummy[] = {'a'};
+  ASN1_STRING *str = nullptr;
+  EXPECT_EQ(-1, ASN1_mbstring_ncopy(&str, kDummy, -2, MBSTRING_UTF8,
+                                    B_ASN1_UTF8STRING, /*minsize=*/0,
+                                    /*maxsize=*/0));
+  EXPECT_EQ(nullptr, str);
+  ERR_clear_error();
+
+  // |len == -1| treats |in| as NUL-terminated and should succeed.
+  ASN1_STRING *str_from_strlen = nullptr;
+  EXPECT_GE(ASN1_mbstring_ncopy(&str_from_strlen, (const uint8_t *)"a", -1,
+                                MBSTRING_UTF8, B_ASN1_UTF8STRING,
+                                /*minsize=*/0, /*maxsize=*/0),
+            0);
+  ASN1_STRING_free(str_from_strlen);
 }
 
 TEST(ASN1Test, StringByNID) {

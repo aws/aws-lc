@@ -1304,6 +1304,12 @@ type ProtocolBugs struct {
 	// fragments in DTLS.
 	SendEmptyFragments bool
 
+	// SendExtraFutureHandshakeFragment, if non-zero, causes each outgoing
+	// DTLS handshake message to be preceded by an extra fragment carrying
+	// message_seq equal to the current sequence number plus this value.
+	// The peer is expected to silently ignore the extra fragment.
+	SendExtraFutureHandshakeFragment int
+
 	// SendSplitAlert, if true, causes an alert to be sent with the header
 	// and record body split across multiple packets. The peer should
 	// discard these packets rather than process it.

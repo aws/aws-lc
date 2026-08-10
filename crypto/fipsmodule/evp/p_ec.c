@@ -88,6 +88,7 @@ static int pkey_ec_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
 
 static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                           size_t *keylen) {
+  int ret = 0;
   const EC_POINT *pubkey = NULL;
   EC_KEY *eckey;
   uint8_t buf[EC_MAX_BYTES];
@@ -115,7 +116,7 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   // Note: This is an internal function which will not update
   // the service indicator.
   if (!ECDH_compute_shared_secret(buf, &buflen, pubkey, eckey)) {
-      return 0;
+      goto end;
   }
 
   if (buflen < *keylen) {
@@ -127,7 +128,11 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   // referenced from the higher level function |EVP_PKEY_derive|. |EC_KEY| is
   // is the only possible key that can do derivations.
   ECDH_verify_service_indicator(eckey);
-  return 1;
+  ret = 1;
+
+end:
+  OPENSSL_cleanse(buf, sizeof(buf));
+  return ret;
 }
 
 static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {

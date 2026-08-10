@@ -261,11 +261,25 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         *pptr = (b->data != NULL) ? &b->data[bbm->read_off] : NULL;
       }
       break;
-    case BIO_C_SET_BUF_MEM:
+    case BIO_C_SET_BUF_MEM: {
+      // |bio->ptr| stores a |BIO_BUF_MEM| wrapper, not a raw |BUF_MEM*|.
+      // Allocate the wrapper before releasing the old state so a failure here
+      // leaves |bio| usable and does not take ownership of |ptr|.
+      BIO_BUF_MEM *new_bbm = OPENSSL_zalloc(sizeof(*new_bbm));
+      if (new_bbm == NULL) {
+        ret = 0;
+        break;
+      }
+      new_bbm->buf = ptr;
+      new_bbm->read_off = 0;
       mem_free(bio);
       bio->shutdown = (int)num;
-      bio->ptr = ptr;
+      bio->init = 1;
+      bio->ptr = new_bbm;
+      bio->num = -1;
+      bio->flags &= ~BIO_FLAGS_MEM_RDONLY;
       break;
+    }
     case BIO_C_GET_BUF_MEM_PTR:
       if (ptr != NULL) {
         mem_buf_sync(bio);

@@ -69,10 +69,10 @@ index 7fdd2be..7d8839f 100644
  class TestPostHandshakeAuth(unittest.TestCase):
      def test_pha_setter(self):
          protocols = [
-@@ -4835,6 +4840,31 @@ def test_internal_chain_server(self):
+@@ -5085,6 +5090,31 @@ def test_internal_chain_server(self):
                  self.assertEqual(res, b'\x02\n')
- 
- 
+
+
 +@unittest.skipUnless(Py_OPENSSL_IS_AWSLC, "Only test this against AWS-LC")
 +class TestPostHandshakeAuthAwsLc(unittest.TestCase):
 +    def test_pha(self):
@@ -98,9 +98,9 @@ index 7fdd2be..7d8839f 100644
 +                        ssock.verify_client_post_handshake()
 +
 +
- HAS_KEYLOG = hasattr(ssl.SSLContext, 'keylog_filename')
- requires_keylog = unittest.skipUnless(
-     HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
+ class TestSSLDebug(unittest.TestCase):
+
+     def keylog_lines(self, fname=os_helper.TESTFN):
 diff --git a/Modules/Setup b/Modules/Setup
 index e4acf6b..e4dd9b4 100644
 --- a/Modules/Setup

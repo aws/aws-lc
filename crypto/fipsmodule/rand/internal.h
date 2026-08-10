@@ -28,6 +28,15 @@ OPENSSL_EXPORT uint64_t get_private_thread_reseed_calls_since_initialization(voi
 OPENSSL_EXPORT uint64_t get_public_thread_generate_calls_since_seed(void);
 OPENSSL_EXPORT uint64_t get_public_thread_reseed_calls_since_initialization(void);
 
+// rand_thread_local_state_clear_all_FOR_TESTING runs the same shutdown
+// zeroization sequence that is registered via |atexit|. It is exposed for tests
+// that need to verify shutdown behavior (e.g. that a thread exiting after
+// shutdown does not deadlock). After this is called, no further |RAND_bytes|
+// calls in the test process will return output, so the caller is responsible
+// for arranging that no other code paths in the same process require
+// randomness afterwards.
+OPENSSL_EXPORT void rand_thread_local_state_clear_all_FOR_TESTING(void);
+
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
 struct ctr_drbg_state_st {

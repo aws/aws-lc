@@ -48,6 +48,11 @@ extern "C" {
 //
 // In the future, a replacement library will be available. Meanwhile, minimize
 // dependencies on this header where possible.
+//
+// Thread safety: Unlike other objects in this library, |X509| objects are not
+// yet safe for concurrent use by non-mutating functions (see
+// https://crbug.com/boringssl/407). Callers must not concurrently read and
+// mutate the same |X509| object without external synchronization.
 
 
 // Certificates.

@@ -299,6 +299,14 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
 
+    // ML-DSA. The codepoints are advertised in all TLS versions, but the
+    // sigalgs are only selectable in TLS 1.3 (filtered by
+    // |pkey_supports_algorithm|, and rejected at peer-sigalg-check time by
+    // |tls12_check_peer_sigalg| to satisfy draft-ietf-tls-mldsa §3.3).
+    SSL_SIGN_MLDSA44,
+    SSL_SIGN_MLDSA65,
+    SSL_SIGN_MLDSA87,
+
     // For now, SHA-1 is still accepted but least preferable.
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
@@ -323,6 +331,12 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
 
+    // ML-DSA. Selectable for signing only in TLS 1.3; the version gate lives
+    // in |pkey_supports_algorithm|.
+    SSL_SIGN_MLDSA44,
+    SSL_SIGN_MLDSA65,
+    SSL_SIGN_MLDSA87,
+
     // If the peer supports nothing else, sign with SHA-1.
     SSL_SIGN_ECDSA_SHA1,
     SSL_SIGN_RSA_PKCS1_SHA1,
@@ -344,8 +358,32 @@ bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out) {
   return true;
 }
 
+// sigalg_valid_for_protocol_version returns whether |sigalg| is permitted at
+// the negotiated TLS protocol version. ML-DSA (draft-ietf-tls-mldsa §3.3) is
+// defined only for TLS 1.3; a peer that receives ML-DSA in a TLS 1.2
+// ServerKeyExchange or CertificateVerify MUST abort with illegal_parameter.
+static bool sigalg_valid_for_protocol_version(const SSL *ssl, uint16_t sigalg) {
+  switch (sigalg) {
+    case SSL_SIGN_MLDSA44:
+    case SSL_SIGN_MLDSA65:
+    case SSL_SIGN_MLDSA87:
+      return ssl_protocol_version(ssl) >= TLS1_3_VERSION;
+    default:
+      return true;
+  }
+}
+
 bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
                              uint16_t sigalg) {
+  // Reject sigalgs that are not defined for the negotiated protocol version,
+  // even if they appear in the local verify list (we still advertise them so
+  // a higher version can negotiate them).
+  if (!sigalg_valid_for_protocol_version(hs->ssl, sigalg)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
+  }
+
   for (uint16_t verify_sigalg : tls12_get_verify_sigalgs(hs)) {
     if (verify_sigalg == sigalg) {
       return true;

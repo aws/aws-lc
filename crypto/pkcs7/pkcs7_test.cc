@@ -1565,6 +1565,32 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
 }
 
+TEST(PKCS7Test, SetTypeChangeType) {
+  // Regression: |PKCS7_set_type| must free any existing content with the
+  // destructor matching the *current* |p7->type| before installing the new
+  // type, otherwise a later call frees the prior union member through the
+  // wrong destructor. ASAN should flag any misuse.
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+  EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
+
+  // Also cover the default arm: a PKCS7 whose current content is |d.other|
+  // (e.g. parsed with an unrecognized content OID) must be freed via
+  // |ASN1_TYPE_free| before installing a known type.
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  p7->d.other = ASN1_TYPE_new();
+  ASSERT_TRUE(p7->d.other);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+}
+
 TEST(PKCS7Test, DataInitFinal) {
   bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio, bio_in;

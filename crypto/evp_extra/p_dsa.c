@@ -130,10 +130,8 @@ end:
 
 static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
                          const unsigned char *tbs, size_t tbslen) {
-  GUARD_PTR(ctx->pkey);
   GUARD_PTR(ctx->pkey->pkey.ptr);
   GUARD_PTR(ctx->data);
-  GUARD_PTR(siglen);
 
   DSA_PKEY_CTX *dctx = ctx->data;
   DSA *dsa = ctx->pkey->pkey.dsa;
@@ -142,6 +140,11 @@ static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
     // Passing NULL for sig indicates a query for the size of the signature
     *siglen = DSA_size(dsa);
     return 1;
+  }
+
+  if (*siglen < (size_t)DSA_size(dsa)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
   }
 
   DSA_SIG *result = NULL;

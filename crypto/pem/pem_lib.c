@@ -269,11 +269,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
         callback = PEM_def_callback;
       }
       pass_len = (*callback)(buf, PEM_BUFSIZE, 1, u);
-      if (pass_len < 0) {
-        OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
-        goto err;
-      }
       pass = (const unsigned char *)buf;
+    }
+    if (pass_len < 0) {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
+      goto err;
     }
     assert(iv_len <= sizeof(iv));
     AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(iv, iv_len));  // Generate a salt
@@ -483,7 +483,8 @@ int PEM_write(FILE *fp, const char *name, const char *header,
 
 int PEM_write_bio(BIO *bp, const char *name, const char *header,
                   const unsigned char *data, long len) {
-  int nlen, n, i, j, outl;
+  int nlen, n, outl;
+  long i, j;
   unsigned char *buf = NULL;
   EVP_ENCODE_CTX ctx;
   int reason = ERR_R_BUF_LIB;
@@ -533,7 +534,11 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
       (BIO_write(bp, "-----\n", 6) != 6)) {
     goto err;
   }
-  return i + outl;
+  if (i + outl > INT_MAX) {
+    reason = ERR_R_OVERFLOW;
+    goto err;
+  }
+  return (int)(i + outl);
 err:
   if (buf) {
     OPENSSL_free(buf);
@@ -722,11 +727,13 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
   *header = headerB->data;
   *data = (unsigned char *)dataB->data;
   *len = bl;
+  OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_free(nameB);
   OPENSSL_free(headerB);
   OPENSSL_free(dataB);
   return 1;
 err:
+  OPENSSL_cleanse(buf, sizeof(buf));
   BUF_MEM_free(nameB);
   BUF_MEM_free(headerB);
   BUF_MEM_free(dataB);

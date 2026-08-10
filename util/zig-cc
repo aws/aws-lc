@@ -38,4 +38,17 @@ for arg in "$@"; do
     esac
 done
 
-exec zig cc -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}"
+# Merge stderr into stdout and print the invocation on failure so CI logs
+# always surface zig's diagnostic even when something in the cmd.exe ->
+# bash -> zig chain drops stderr (observed on windows-11-arm previously).
+#
+# Capture rc via `|| rc=$?` rather than `if ! ...; then rc=$?` because the
+# latter makes $? reflect the negated if-test result (0/1) instead of zig's
+# real exit status (e.g. 139 for SIGSEGV).
+rc=0
+zig cc -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}" 2>&1 || rc=$?
+if [[ "${rc}" -ne 0 ]]; then
+    echo "zig-cc: zig exited with status ${rc}" >&2
+    echo "zig-cc: invocation was: zig cc ${filtered_args[*]}" >&2
+    exit "${rc}"
+fi

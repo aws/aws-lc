@@ -1328,6 +1328,8 @@ int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
       return SSL_PKEY_ECC;
     case EVP_PKEY_ED25519:
       return SSL_PKEY_ED25519;
+    case EVP_PKEY_PQDSA:
+      return SSL_PKEY_PQDSA;
     default:
       return -1;
   }
@@ -1341,6 +1343,11 @@ uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
     case EVP_PKEY_ED25519:
       // Ed25519 keys in TLS 1.2 repurpose the ECDSA ciphers.
       return SSL_aECDSA;
+    case EVP_PKEY_PQDSA:
+      // ML-DSA is TLS 1.3 only and is not used for TLS <= 1.2 cipher-auth
+      // selection. TLS 1.3 paths gate on |SSL_aGENERIC| in
+      // |tls12_pkey_supports_cipher_auth| instead.
+      return 0;
     default:
       return 0;
   }

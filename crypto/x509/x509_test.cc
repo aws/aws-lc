@@ -2174,7 +2174,8 @@ static bssl::UniquePtr<X509> MakeCRLDPLeaf(
 // Helper to create a CRL, optionally with an IDP extension and revoked serials.
 static bssl::UniquePtr<X509_CRL> MakeTestCRL(
     X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
-    const std::vector<int> &revoked_serials) {
+    const std::vector<int> &revoked_serials,
+    int crl_age = 0) {
   bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
   if (!crl) {
     return nullptr;
@@ -2186,7 +2187,8 @@ static bssl::UniquePtr<X509_CRL> MakeTestCRL(
   }
   bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
   if (!last_update ||
-      !ASN1_TIME_set_posix(last_update.get(), kReferenceTime) ||
+      !ASN1_TIME_adj(last_update.get(), kReferenceTime,
+                     crl_age, 0) ||
       !X509_CRL_set1_lastUpdate(crl.get(), last_update.get())) {
     return nullptr;
   }
@@ -2210,7 +2212,17 @@ static bssl::UniquePtr<X509_CRL> MakeTestCRL(
     }
     rev.release();  // Ownership transferred to crl.
   }
-  if (idp_uri) {
+  if (idp_uri && idp_uri[0] == '\0') {
+    // Empty IDP: extension present but no distribution point.
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp ||
+        !X509_CRL_add1_ext_i2d(crl.get(), NID_issuing_distribution_point,
+                                idp, /*crit=*/1, /*flags=*/0)) {
+      ISSUING_DIST_POINT_free(idp);
+      return nullptr;
+    }
+    ISSUING_DIST_POINT_free(idp);
+  } else if (idp_uri) {
     ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
     if (!idp) {
       return nullptr;
@@ -2322,6 +2334,212 @@ TEST(X509Test, CRLDistributionPointScope) {
     EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
               Verify(leaf.get(), {root.get()}, {root.get()},
                      {crl_a.get(), crl_b.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+}
+
+// A CRL whose IDP specifically matches the certificate's CRLDP must be
+// preferred over a broad CRL (no IDP or empty IDP), regardless of freshness
+// or load order.
+TEST(X509Test, CRLSpecificIDPPreferredOverBroadCRL) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x2000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  // Build a leaf with a single CRLDP pointing at kCRLURI.
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+
+  // broad_newer_vs_specific_older: clean no-IDP CRL (lastUpdate=-1d) vs
+  // revoking specific CRL (lastUpdate=-2d). The broad CRL is newer.
+  {
+    SCOPED_TRACE("broad_newer_vs_specific_older");
+    auto broad_new = MakeTestCRL(root.get(), key.get(),
+                                  nullptr, {}, /*crl_age=*/-1);
+    auto specific_old = MakeTestCRL(root.get(), key.get(),
+                                    kCRLURI, {kLeafSerial},
+                                    /*crl_age=*/-2);
+    ASSERT_TRUE(broad_new);
+    ASSERT_TRUE(specific_old);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad_new.get(), specific_old.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_old.get(), broad_new.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // empty_idp_newer_vs_specific_older: clean empty-IDP CRL (lastUpdate=-1d) vs
+  // revoking specific CRL (lastUpdate=-2d). The empty-IDP CRL is newer.
+  {
+    SCOPED_TRACE("empty_idp_newer_vs_specific_older");
+    auto empty_new = MakeTestCRL(root.get(), key.get(),
+                                  "", {}, /*crl_age=*/-1);
+    auto specific_old = MakeTestCRL(root.get(), key.get(),
+                                    kCRLURI, {kLeafSerial},
+                                    /*crl_age=*/-2);
+    ASSERT_TRUE(empty_new);
+    ASSERT_TRUE(specific_old);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {empty_new.get(), specific_old.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_old.get(), empty_new.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // broad_same_age_vs_specific_same_age: both lastUpdate=-1d.
+  // Before the fix, load order determined the result.
+  {
+    SCOPED_TRACE("broad_same_age_vs_specific_same_age");
+    auto broad_same = MakeTestCRL(root.get(), key.get(),
+                                   nullptr, {}, /*crl_age=*/-1);
+    auto specific_same = MakeTestCRL(root.get(), key.get(),
+                                     kCRLURI, {kLeafSerial},
+                                     /*crl_age=*/-1);
+    ASSERT_TRUE(broad_same);
+    ASSERT_TRUE(specific_same);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad_same.get(), specific_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_same.get(), broad_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // empty_idp_same_age_vs_specific_same_age: both lastUpdate=-1d.
+  {
+    SCOPED_TRACE("empty_idp_same_age_vs_specific_same_age");
+    auto empty_same = MakeTestCRL(root.get(), key.get(),
+                                   "", {}, /*crl_age=*/-1);
+    auto specific_same = MakeTestCRL(root.get(), key.get(),
+                                     kCRLURI, {kLeafSerial},
+                                     /*crl_age=*/-1);
+    ASSERT_TRUE(empty_same);
+    ASSERT_TRUE(specific_same);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {empty_same.get(), specific_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_same.get(), empty_same.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // specific_expired_vs_broad_in_window: a specific-IDP CRL that revokes the
+  // leaf but has expired (nextUpdate before verification time) should lose to
+  // a time-valid broad CRL. SCOPE_MATCH is intentionally not part of
+  // CRL_SCORE_VALID, so an expired specific CRL cannot outrank a valid broad
+  // CRL via the SCOPE_MATCH bit alone.
+  {
+    SCOPED_TRACE("specific_expired_vs_broad_in_window");
+    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
+                             /*crl_age=*/-1);
+    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
+                                {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(broad);
+    ASSERT_TRUE(specific);
+
+    // Set the specific CRL's nextUpdate to before kReferenceTime so it
+    // appears expired at verification time, then re-sign and re-parse.
+    bssl::UniquePtr<ASN1_TIME> expired(ASN1_TIME_new());
+    ASSERT_TRUE(expired);
+    ASSERT_TRUE(ASN1_TIME_adj(expired.get(), kReferenceTime, -1, 0));
+    ASSERT_TRUE(X509_CRL_set1_nextUpdate(specific.get(), expired.get()));
+    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_CRL(specific.get(), &der);
+    ASSERT_GT(der_len, 0);
+    const uint8_t *inp = der;
+    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+    OPENSSL_free(der);
+    ASSERT_TRUE(specific);
+
+    // The broad in-window CRL should be preferred. Since it doesn't list
+    // the revocation, the cert verifies as OK.
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad.get(), specific.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific.get(), broad.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // specific_with_unknown_critical_ext: a specific-IDP CRL that revokes the
+  // leaf but has an unhandled critical extension should lose to a processable
+  // broad CRL. The broad CRL doesn't list the revocation, so the cert should
+  // NOT be reported as revoked — we can't trust the specific CRL we can't
+  // fully process.
+  {
+    SCOPED_TRACE("specific_with_unknown_critical_ext");
+    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
+                             /*crl_age=*/-1);
+    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
+                                {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(broad);
+    ASSERT_TRUE(specific);
+
+    // Add an unknown critical extension to the specific CRL, then re-sign
+    // and re-parse.
+    static const uint8_t kUnknownOID[] = {0x2b, 0x06, 0x01, 0x04, 0x01,
+                                          0x82, 0x37, 0x15, 0x24};
+    bssl::UniquePtr<ASN1_OBJECT> oid(
+        OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
+    ASSERT_TRUE(oid);
+    bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
+    ASSERT_TRUE(ext_val);
+    ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_val.get(), kUnknownOID, sizeof(kUnknownOID)));
+    bssl::UniquePtr<X509_EXTENSION> ext(
+        X509_EXTENSION_create_by_OBJ(nullptr, oid.get(), /*crit=*/1,
+                                     ext_val.get()));
+    ASSERT_TRUE(ext);
+    ASSERT_TRUE(X509_CRL_add_ext(specific.get(), ext.get(), -1));
+    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
+
+    // Re-encode and re-parse to populate internal flags.
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_CRL(specific.get(), &der);
+    ASSERT_GT(der_len, 0);
+    const uint8_t *inp = der;
+    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
+    OPENSSL_free(der);
+    ASSERT_TRUE(specific);
+
+    // The broad CRL should be preferred since the specific one has an
+    // unprocessable critical extension. The broad CRL doesn't revoke the
+    // leaf, so verification should succeed (cert not revoked).
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad.get(), specific.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_OK,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific.get(), broad.get()},
+                     X509_V_FLAG_CRL_CHECK));
   }
 }
 
@@ -2555,16 +2773,34 @@ TEST(X509Test, NameConstraints) {
       {GEN_EMAIL, "foo@example.com", "foo@EXAMPLE.COM", X509_V_OK,
        X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@example.com", "FOO@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_ERR_EXCLUDED_VIOLATION},
       {GEN_EMAIL, "foo@example.com", "bar@example.com",
        X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
-      // OpenSSL ignores a stray leading @.
-      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
-      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK,
-       X509_V_ERR_EXCLUDED_VIOLATION},
+      // "@example.com" is not a valid constraint per RFC 5280 Sec.4.2.1.10.
+      {GEN_EMAIL, "foo@example.com", "@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       {GEN_EMAIL, "foo@bar.example.com", "@example.com",
-       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // Reject subject emails with quoted local-parts.
+      // A quoted local-part containing '@' would cause the parser to split
+      // at the wrong '@', bypassing name constraints.
+      {GEN_EMAIL, "\"a@b\"@evil.example", ".evil.example",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Reject subject emails with multiple '@' signs.
+      {GEN_EMAIL, "a@b@evil.example", ".evil.example",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Reject constraints with multiple '@' signs.
+      {GEN_EMAIL, "foo@example.com", "a@b@example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
@@ -2639,6 +2875,68 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
       // An incomplete IPv6 literal is also rejected.
       {GEN_URI, "foo://[2001:db8::1", "[2001:db8::1]",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // RFC 3986 §3.2 defines authority = [userinfo "@"] host [":" port].
+      // URIs with userinfo are rejected to prevent host confusion: without
+      // this, "spiffe://x.team-a.corp:x@team-b.corp/admin" would be matched
+      // against "x.team-a.corp" instead of the actual host "team-b.corp",
+      // bypassing permittedSubtrees or evading excludedSubtrees.
+      //
+      // Basic userinfo before host.
+      {GEN_URI, "foo://user@example.com", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Userinfo with colon (user:password style) — the colon in userinfo
+      // would previously be mistaken for a port delimiter, extracting the
+      // userinfo prefix as the host.
+      {GEN_URI, "spiffe://x.team-a.corp:x@team-b.corp/admin", "team-a.corp",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "spiffe://x.team-a.corp:x@team-b.corp/admin", "team-b.corp",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Userinfo with path, query, and fragment components.
+      {GEN_URI, "foo://user@example.com/path", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://user@example.com?query", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://user@example.com#fragment", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // '@' in path (after '/') is not userinfo and should not be rejected.
+      {GEN_URI, "foo://example.com/@user", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "foo://example.com/path@thing", ".example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // '@' after '?' or '#' is not in the authority and is not rejected.
+      // However, since the host parser doesn't treat '?' or '#' as authority
+      // terminators, the extracted host contains invalid FQDN characters and
+      // is rejected by FQDN validation.
+      {GEN_URI, "foo://example.com?x@y", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://example.com#x@y", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Empty userinfo and user:pass userinfo are both rejected.
+      {GEN_URI, "foo://@example.com", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://user:pass@example.com", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+
+      // Trailing dot normalization: "host." and "host" are the same FQDN.
+      // This matches the normalization in nc_dns().
+      {GEN_URI, "spiffe://admin.team-a.corp./admin", ".team-a.corp",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "spiffe://admin.team-a.corp/admin", ".team-a.corp.",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_URI, "spiffe://team-a.corp./admin", "team-a.corp",
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+
+      // FQDN validation: hosts must contain only a-z, A-Z, 0-9, '-', '.'.
+      // Percent-encoded hosts are rejected, preventing equivalence bypasses
+      // (e.g., "b%61d.com" should not evade an exclusion for ".bad.com").
+      {GEN_URI, "spiffe://evil.b%61d.com/resource", ".bad.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://ex%61mple.com/path", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Underscores are not valid in FQDNs.
+      {GEN_URI, "foo://my_host.example.com/path", ".example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
   };
   for (const auto &t : kTests) {
@@ -6357,6 +6655,42 @@ TEST(X509Test, ITUT_X509_nid_rsa) {
   ASSERT_TRUE(cert);
 
   EXPECT_TRUE(X509_get_X509_PUBKEY(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
+  EXPECT_TRUE(evp_pkey);
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(evp_pkey.get()));
+  EXPECT_TRUE(rsa);
+}
+
+// kRsaesOaepCertPEM is a TPM 1.2 EK certificate with |NID_rsaesOaep| SPKI.
+static const char kRsaesOaepCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDhDCCAmygAwIBAgIUBchBXcXPAWxNMJEsLXEXHv/eVZswDQYJKoZIhvcNAQEL
+BQAwVTELMAkGA1UEBhMCQ0gxHjAcBgNVBAoTFVNUTWljcm9lbGVjdHJvbmljcyBO
+VjEmMCQGA1UEAxMdU1RNIFRQTSBFSyBJbnRlcm1lZGlhdGUgQ0EgMDIwHhcNMjEw
+OTA0MDAwMDAwWhcNMzEwOTA0MDAwMDAwWjAAMIIBNzAiBgkqhkiG9w0BAQcwFaIT
+MBEGCSqGSIb3DQEBCQQEVENQQQOCAQ8AMIIBCgKCAQEAxpd3DnecpD87acEsYp4J
+stM2q5Ss3CkjAP2Ei8yGjbO6DG/6WBIZjTdI5RfIcInoqN4QMso94vm8VqijdRI+
+Zo5hLTCPLKXYwa6UG5yIPZ3ENQdhgZWeEPWe+pp9VUwz8wi78Ifk+CCV6Xp/5kQi
+DCsR+RYbOVb9QgR6kjq+cx1z8YFp5u+k3Pl9tMq9xgIp5E6hT2MaS12KnoN8+hYI
+mfCYVnpzBeQaHDp1KUoyDK6xGt86VxB0QyRbniHI38qgQL6qhO7z96aQ0pNGoQde
+QUxFf/sETurQ5zSf+3btnS8afjxdVBKzj3isv5BaQrt0mdB7+3XWD+ASda33SY12
+6wIDAQABo4GLMIGIMB8GA1UdIwQYMBaAFFcfgGtHzOeb+jWUfO2IuNEAWuCeMEIG
+A1UdIAQ7MDkwNwYEVR0gADAvMC0GCCsGAQUFBwIBFiFodHRwOi8vd3d3LnN0LmNv
+bS9UUE0vcmVwb3NpdG9yeS8wDAYDVR0TAQH/BAIwADATBgNVHSUBAf8ECTAHBgVn
+gQUIATANBgkqhkiG9w0BAQsFAAOCAQEAMOhFPNcebyCRFOBztlWhmDb2DHTCD0nC
+DVobH4WZJXGf4bkYNO3mOLyWtHEVzb36kiq7enh3f/eGhDPwKB8axlozpR5KAvER
+szKNO8iLGOjuYzI2A4DazkttczFfzSB9QDgJrwTNEfIJtwRm2HQSiL0zzuEQOnaS
+UWyt/iKn4/34BjEeaw4/Ld7+f06LXqSr18SUr0LTB2kk+Zzf0Och1C+G1CNLgJMM
+MNQikAv0xdaOMX3HzA+phFlLbw/x8sboMlzmrbr92a/4Fp5WvmOSHH3ciwTtbAQn
+A2TfExNOaKD2BG5FnB7c66puw2/yVxhveocQYgmT9XtMrNX00vEZJQ==
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, RsaesOaepSPKI) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kRsaesOaepCertPEM));
+  ASSERT_TRUE(cert);
+
   bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
   EXPECT_TRUE(evp_pkey);
 
