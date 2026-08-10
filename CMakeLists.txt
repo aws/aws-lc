@@ -39,6 +39,8 @@ option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an ent
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
+option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires AWSLC_PROVIDER_OPENSSL_ROOT" OFF)
+set(AWSLC_PROVIDER_OPENSSL_ROOT "" CACHE PATH "Install prefix of an OpenSSL 3.5 or later build, supplying the provider headers BUILD_AWSLC_PROVIDER needs")
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -1415,6 +1417,9 @@ if(BUILD_LIBSSL)
   endif()
 endif()
 add_subdirectory(util/fipstools)
+if(BUILD_AWSLC_PROVIDER)
+  add_subdirectory(provider)
+endif()
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)

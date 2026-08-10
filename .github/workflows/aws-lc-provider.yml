@@ -1,0 +1,33 @@
+name: aws-lc-provider Tests
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DEBIAN_FRONTEND: noninteractive
+
+permissions:
+  contents: read
+
+jobs:
+  aws-lc-provider-linux:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ">=1.18"
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+            cmake ninja-build make perl binutils
+      - name: Build the provider and run its unit tests
+        run: |
+          ./tests/ci/run_aws_lc_provider_tests.sh
