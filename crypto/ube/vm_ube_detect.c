@@ -7,12 +7,6 @@
 
 #if defined(OPENSSL_LINUX)
 #include <fcntl.h>
-// This file is compiled only for Linux, where the toolchains we support
-// (GCC/Clang) always provide working, lock-free C11 atomics. We use
-// <stdatomic.h> directly for the acquire fence in the vmclock seqlock reader
-// rather than the tree's |CRYPTO_atomic_*| refcount helpers, which do not
-// expose a general-purpose fence.
-#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -21,6 +15,25 @@
 
 #include "../internal.h"
 #include "vmclock_abi.h"
+
+// vm_ube_acquire_fence is an acquire memory barrier for the vmclock seqlock
+// reader. We cannot unconditionally use C11 <stdatomic.h>: the legacy build
+// (tests/ci/run_legacy_build.sh) compiles this file with gcc 4.1 under
+// -std=gnu99, which predates both C11 atomics and __atomic builtins. Mirror the
+// tree's C11 gating (see crypto/internal.h) and fall back to __sync_synchronize
+// -- a full barrier available since gcc 4.1 -- when C11 atomics are absent. A
+// full barrier is stronger than the acquire we need, so it is always correct.
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+static void vm_ube_acquire_fence(void) {
+  atomic_thread_fence(memory_order_acquire);
+}
+#else
+static void vm_ube_acquire_fence(void) {
+  __sync_synchronize();
+}
+#endif
 
 // VM UBE state. A backend either initializes successfully or VM UBE detection
 // is unavailable ("not supported"). There is deliberately no hard-failure
@@ -199,13 +212,13 @@ static int vm_ube_read_vmclock_gn(uint64_t *out) {
     uint32_t seq = vmclock_addr->seq_count & ~1u;
     // Acquire fence pairs with the VMM's release fence: it ensures the
     // |seq_count| read is not reordered after the |vm_generation_counter| read.
-    atomic_thread_fence(memory_order_acquire);
+    vm_ube_acquire_fence();
 
     uint64_t value = vmclock_addr->vm_generation_counter;
 
     // Acquire fence ensures the second |seq_count| read is not reordered before
     // the |vm_generation_counter| read.
-    atomic_thread_fence(memory_order_acquire);
+    vm_ube_acquire_fence();
     if (seq == vmclock_addr->seq_count) {
       *out = value;
       return 1;
