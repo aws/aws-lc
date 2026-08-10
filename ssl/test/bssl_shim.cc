@@ -1422,8 +1422,13 @@ class StderrDelimiter {
 };
 
 int main(int argc, char **argv) {
-#if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_TEST_SYSGENID)
   if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+#if defined(OPENSSL_LINUX) && defined(AWSLC_TEST_VMCLOCK)
+  if (1 != HAZMAT_init_vmclock_file()) {
     abort();
   }
 #endif

@@ -233,7 +233,7 @@ TEST_F(randTest, UbeDetectionMocked) {
 
   MockedUbeDetection(
     [](uint64_t gn) {
-      set_vm_ube_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));
+      set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 }
