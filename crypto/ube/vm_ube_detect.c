@@ -350,12 +350,34 @@ int HAZMAT_init_vmclock_file(void) {
     return 0;
   }
 
+  // Only initialize the file if it does not already contain a valid vmclock
+  // (magic not yet set); otherwise leave it untouched. This is required for
+  // correctness under the test runner: all_tests.go launches several
+  // crypto_test processes concurrently against the same stand-in file, and
+  // every process calls this at startup. Unconditionally rewriting the struct
+  // would reset |vm_generation_counter| to 0 in the middle of another process's
+  // VmUbeGenerationTest, which had just written a value and was about to read
+  // it back -- yielding a consistent read of the wrong (0) value.
+  //
+  // Note this differs from HAZMAT_init_sysgenid_file's empty-file check: the CI
+  // pre-creates the stand-in file zero-filled (dd), so it is never empty. A
+  // zero sysgenid value is valid, but vmclock additionally needs |magic| set,
+  // so we gate on the magic instead. Once any process has written the magic,
+  // later-starting processes see it and leave the file (and its generation
+  // counter) alone.
+  uint32_t existing_magic = 0;
+  if ((ssize_t)sizeof(existing_magic) ==
+          read(fd, &existing_magic, sizeof(existing_magic)) &&
+      existing_magic == VMCLOCK_MAGIC) {
+    close(fd);
+    return 1;
+  }
+
   if (0 != lseek(fd, 0, SEEK_SET)) {
     close(fd);
     return 0;
   }
 
-  // Always write a valid vmclock structure at the start of the file.
   struct vmclock_abi vmc;
   memset(&vmc, 0, sizeof(vmc));
   vmc.magic = VMCLOCK_MAGIC;
