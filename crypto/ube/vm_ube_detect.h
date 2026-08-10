@@ -35,9 +35,18 @@ extern "C" {
 // vmclock is preferred when available. If neither is available, the function
 // reports that VM UBE detection is not supported.
 //
-// |CRYPTO_get_vm_ube_generation| returns 0 only when the filesystem
-// presents a VM UBE interface but we are unable to initialize its use.
-// Otherwise, it returns 1.
+// Return values are tri-state:
+//   1  Success. |*vm_ube_generation_number| holds the current generation
+//      number, or 0 if no VM UBE interface is present (not supported).
+//   0  Permanent failure: a VM UBE interface is present but could not be
+//      initialized. (Not currently returned on Linux -- an uninitializable
+//      device degrades to "not supported" -- but reserved for callers that
+//      must distinguish it.)
+//  -1  Transient failure: a backend initialized successfully but could not
+//      produce a consistent read this call (e.g. a momentarily wedged vmclock
+//      seqlock). |*vm_ube_generation_number| is set to 0. Callers must treat
+//      this as "reseed conservatively for this call" and retry later, NOT as a
+//      permanent loss of detection.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
                                           uint64_t *vm_ube_generation_number);
 

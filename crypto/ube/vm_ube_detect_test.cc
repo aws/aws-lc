@@ -165,10 +165,13 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
   // irrelevant; the reader must never observe a consistent seq_count.
   ASSERT_TRUE(set_vmclock_seq_count(&vmc_test, 0x7FFFFFFF));
 
-  // The read must terminate (bounded retries) and report failure rather than
-  // hang. This test hanging *is* the failure signal for the unbounded-loop bug.
+  // The read must terminate (bounded retries) and report a *transient* failure
+  // (-1) rather than hang. -1 (not 0) is essential: the UBE layer maps a 0
+  // return to permanent, process-wide disabling of all detection, whereas -1
+  // means "reseed conservatively this call, retry later". This test hanging
+  // *is* the failure signal for the unbounded-loop bug.
   gen = 0xdeadbeef;
-  ASSERT_EQ(0, CRYPTO_get_vm_ube_generation(&gen));
+  ASSERT_EQ(-1, CRYPTO_get_vm_ube_generation(&gen));
   ASSERT_EQ((uint64_t)0, gen);
 
   // Release the seqlock. Reset seq_count to an even value first: the seqlock

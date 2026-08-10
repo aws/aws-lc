@@ -240,12 +240,16 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
       return 1;
     case VM_UBE_STATE_SUCCESS_INITIALISE:
       if (vm_ube_read_generation(vm_ube_generation_number) != 1) {
-        // A backend that initialized successfully but now cannot produce a
-        // consistent read (e.g. a wedged vmclock seqlock) is treated as a
-        // failure so the caller reseeds conservatively rather than trusting a
-        // stale or torn value.
+        // A backend that initialized successfully but cannot produce a
+        // consistent read this call (e.g. a momentarily wedged vmclock
+        // seqlock) is a *transient* failure -- distinct from a permanent
+        // initialization failure. Return -1 so the UBE layer forces a
+        // conservative reseed for this call without irreversibly disabling all
+        // UBE detection for the process (see ube.c). The value is zeroed so a
+        // caller that ignores the distinction still never sees a stale/torn
+        // number.
         *vm_ube_generation_number = 0;
-        return 0;
+        return -1;
       }
       return 1;
     default:
