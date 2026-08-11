@@ -16,7 +16,7 @@ Thank you in advance for collaborating with us to help protect our customers.
 
 ### Shared Responsibility Model
 
-Security is a shared responsibility between AWS-LC and the applications that use it. AWS-LC is a general-purpose cryptographic library, and its consumers include s2n-tls and aws-lc-rs.
+Security is a shared responsibility between AWS-LC and the applications that use it.
 
 AWS-LC is responsible for correctly implementing the cryptographic algorithms and protocols it supports, for keeping secret-dependent operations free of observable timing and memory access variation, for zeroizing key material it owns, and for reporting failures accurately rather than returning a misleading success.
 
