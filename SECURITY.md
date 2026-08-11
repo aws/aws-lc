@@ -20,7 +20,7 @@ Security is a shared responsibility between AWS-LC and the applications that use
 
 AWS-LC is responsible for correctly and securely implementing the cryptographic algorithms and protocols it supports, and for protecting the key material entrusted to it.
 
-Applications are responsible for the security of the host on which the process loading AWS-LC runs, and for using AWS-LC in a way that achieves their security goals. This includes selecting algorithms, key sizes, and parameters adequate for their own threat model, and calling the API correctly. AWS-LC is a C library with a large OpenSSL compatibility surface, so it offers weaker misuse resistance than an API designed for that purpose.
+Applications are responsible for the security of the host on which the process loading AWS-LC runs, and for using AWS-LC in a way that achieves their security goals. This includes selecting algorithms, key sizes, and parameters adequate for their own threat model, and calling the API correctly.
 
 Given this shared responsibility, the following attacks are considered out of scope for AWS-LC:
 
