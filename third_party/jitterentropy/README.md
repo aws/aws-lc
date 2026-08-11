@@ -8,6 +8,12 @@ https://github.com/smuellerDD/jitterentropy-library.
 The following changes were made to the original source code to integrate
 the library with AWS-LC:
 * `asm volatile` was changed to `__asm__volatile`
+* In `jitterentropy.h`, the `JENT_PRIVATE_STATIC` export decoration was
+  widened from `_MSC_VER` to `_WIN32`. On PE targets
+  `__attribute__((visibility("default")))` is a no-op, so under MinGW the
+  `jent_*` symbols were never exported from `libcrypto.dll` and consumers of a
+  shared build failed to link against them. Submitted upstream as
+  https://github.com/smuellerDD/jitterentropy-library/pull/212.
 
 The original README.md file starts below.
 
