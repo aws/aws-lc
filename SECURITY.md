@@ -40,7 +40,7 @@ The following adversarial models describe the threats that AWS-LC is designed to
 An adversary who controls data an application passes to AWS-LC, such as certificates, signatures, ciphertexts, and encoded keys. This adversary can:
 
 * Send crafted encodings (e.g. DER, PEM) to exploit flaws in parsers
-* Supply malformed public keys or group parameters to provoke invalid-curve or small-subgroup behavior
+* Present revoked or misissued certificates, or chains that violate path constraints
 * Tamper with authenticated ciphertexts, or attempt to forge signatures and authentication tags
 * Cause denial of service through resource exhaustion
 
@@ -67,7 +67,7 @@ Given the adversarial models above, the following are examples of security-relev
 * Memory safety defects, undefined behavior, integer overflow, or reads of uninitialized memory
 * Secret-dependent timing, branching, or memory access in cryptographic operations
 * Incorrect algorithm implementations that weaken confidentiality, integrity, or authentication
-* Verification routines that accept an invalid signature, authentication tag, or certificate chain
+* Verification routines that accept an invalid signature or authentication tag, or a certificate that should be rejected
 * Failure to zeroize long-term or intermediate secret key material
 * Weaknesses in random number generation, such as insufficient seeding or repetition across `fork`
 * A security-relevant failure reported to the caller as success
