@@ -41,7 +41,10 @@ endif()
 
 # This target exposes only a deliberately unimplemented entry point.
 add_library(awslc_provider MODULE frontend/provider.c)
-target_include_directories(awslc_provider PRIVATE
+# Replace the directory-level AWS-LC include paths inherited from the parent.
+# OpenSSL and AWS-LC both provide openssl/* headers, and the frontend must see
+# only OpenSSL's definitions.
+set_property(TARGET awslc_provider PROPERTY INCLUDE_DIRECTORIES
   "${AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR}")
 set_target_properties(awslc_provider PROPERTIES
   C_VISIBILITY_PRESET hidden
@@ -53,10 +56,6 @@ if(APPLE)
   # a MODULE library the .so suffix.
   set_target_properties(awslc_provider PROPERTIES SUFFIX ".dylib")
 endif()
-
-# Build the module in the same AWS-LC project and carry the final target's
-# dependency from the start.
-target_link_libraries(awslc_provider PRIVATE crypto)
 
 if(APPLE)
   target_link_options(awslc_provider PRIVATE "-Wl,-undefined,dynamic_lookup")
