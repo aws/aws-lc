@@ -26,7 +26,7 @@ static const CBS_ASN1_TAG kPublicKeyTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 // TODO(https://crbug.com/boringssl/497): Allow parsers to specify a list of
-// acceptable groups, so parsers don't have to pull in all four.
+// acceptable groups, so parsers don't have to pull in all ten.
 typedef const EC_GROUP *(*ec_group_func)(void);
 static const ec_group_func kAllGroups[] = {
     &EC_group_p224,             &EC_group_p256,

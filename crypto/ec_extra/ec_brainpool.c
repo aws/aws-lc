@@ -24,14 +24,14 @@
 // Brainpool curves are not FIPS-approved, we use an equivalent lazy-init
 // pattern directly.
 #define DEFINE_CURVE_DATA(type, name)                                         \
-  static type name##_storage;                                                \
-  static CRYPTO_once_t name##_once = CRYPTO_ONCE_INIT;                      \
-  static void name##_do_init(type *out);                                     \
-  static void name##_init(void) { name##_do_init(&name##_storage); }         \
-  const type *name(void) {                                                   \
-    CRYPTO_once(&name##_once, name##_init);                                  \
+  static type name##_storage;                                                 \
+  static CRYPTO_once_t name##_once = CRYPTO_ONCE_INIT;                        \
+  static void name##_do_init(type *out);                                      \
+  static void name##_init(void) { name##_do_init(&name##_storage); }          \
+  const type *name(void) {                                                    \
+    CRYPTO_once(&name##_once, name##_init);                                   \
     return (const type *)&name##_storage;                                     \
-  }                                                                          \
+  }                                                                           \
   static void name##_do_init(type *out)
 
 
