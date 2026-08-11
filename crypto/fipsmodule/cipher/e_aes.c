@@ -424,7 +424,9 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       return 1;
 
     case EVP_CTRL_GCM_IV_GEN: {
-      if (gctx->iv_gen == 0 || gctx->key_set == 0) {
+      // The invocation field is the trailing 8 bytes of the IV, so ivlen < 8
+      // would underflow when computing the counter pointer below.
+      if (gctx->iv_gen == 0 || gctx->key_set == 0 || gctx->ivlen < 8) {
         return 0;
       }
       CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, gctx->iv, gctx->ivlen);
