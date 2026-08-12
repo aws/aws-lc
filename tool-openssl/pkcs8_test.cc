@@ -211,6 +211,24 @@ TEST_F(PKCS8Test, UnsupportedPRF) {
   ASSERT_FALSE(result);
 }
 
+// Test that invalid -v2 cipher name is rejected (not silently unencrypted)
+TEST_F(PKCS8Test, InvalidV2CipherRejected) {
+  std::string passout = std::string("file:") + pass_path;
+  args_list_t args = {"-in",      in_path,         "-out",
+                      out_path,   "-topk8",        "-v2",
+                      "aes-256-ccb",  "-passout", passout.c_str()};
+
+  testing::internal::CaptureStderr();
+  bool result = pkcs8Tool(args);
+  std::string captured_stderr = testing::internal::GetCapturedStderr();
+
+  ASSERT_FALSE(result) << "Expected pkcs8Tool to fail with invalid cipher name";
+  EXPECT_TRUE(captured_stderr.find("Unsupported PKCS#8 cipher") !=
+              std::string::npos)
+      << "Expected 'Unsupported PKCS#8 cipher' in stderr, but got: "
+      << captured_stderr;
+}
+
 class PKCS8OptionUsageErrorsTest : public PKCS8Test {
  protected:
   static void TestOptionUsageErrors(const std::vector<std::string> &args) {

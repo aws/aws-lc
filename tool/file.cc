@@ -10,6 +10,12 @@
 #include <algorithm>
 #include <vector>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#endif
+
 #include "internal.h"
 
 
@@ -55,4 +61,34 @@ bool WriteToFile(const std::string &path, const uint8_t *in,
     return false;
   }
   return true;
+}
+
+bool WritePrivateKeyToFile(const std::string &path, const uint8_t *in,
+                           size_t in_len) {
+#if defined(OPENSSL_WINDOWS)
+  // On Windows, fall back to standard write. File ACLs are inherited from the
+  // parent directory.
+  return WriteToFile(path, in, in_len);
+#else
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+  if (fd < 0) {
+    fprintf(stderr, "Failed to open '%s': %s\n", path.c_str(), strerror(errno));
+    return false;
+  }
+  const uint8_t *ptr = in;
+  size_t remaining = in_len;
+  while (remaining > 0) {
+    ssize_t written = write(fd, ptr, remaining);
+    if (written < 0) {
+      fprintf(stderr, "Failed to write to '%s': %s\n", path.c_str(),
+              strerror(errno));
+      close(fd);
+      return false;
+    }
+    ptr += written;
+    remaining -= written;
+  }
+  close(fd);
+  return true;
+#endif
 }

@@ -139,6 +139,11 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
 
+// WritePrivateKeyToFile writes |in_len| bytes from |in| to |path| with
+// owner-only permissions (0600 on POSIX). Use this for private key material.
+bool WritePrivateKeyToFile(const std::string &path, const uint8_t *in,
+                           size_t in_len);
+
 // DoClient is a common function used to support the s_client option in both
 // bssl and openssl tools. It takes an additional parameter |tool| to indicate
 // which tool's s_client is being invoked. A value of true indicates openssl
