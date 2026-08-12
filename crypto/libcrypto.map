@@ -914,6 +914,11 @@ AWS_LC_1.0 {
     EC_curve_nid2nist;
     EC_curve_nist2nid;
     EC_get_builtin_curves;
+    EC_group_brainpoolP224r1;
+    EC_group_brainpoolP256r1;
+    EC_group_brainpoolP320r1;
+    EC_group_brainpoolP384r1;
+    EC_group_brainpoolP512r1;
     EC_group_p224;
     EC_group_p256;
     EC_group_p384;
