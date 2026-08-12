@@ -403,6 +403,12 @@ check_dropped_symbols() {
     print_info "These are exported by the compiler but missing from the registry/.map:"
     echo "${dropped}" | head -10 | sed 's/^/  /'
     [[ ${dropped_count} -gt 10 ]] && print_info "... and $((dropped_count - 10)) more"
+    echo ""
+    print_info "These symbols are compiled into the library but demoted to local by"
+    print_info "'local: *;', so applications cannot link against them. Register them:"
+    print_info "  ./util/update_symbol_version.sh --current"
+    print_info "then commit the updated crypto/libcrypto.{txt,map} and ssl/libssl.{txt,map}."
+    print_info "See docs/SymbolVersioning.md for when to open a new node instead."
   fi
 }
 

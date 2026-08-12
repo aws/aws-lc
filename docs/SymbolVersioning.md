@@ -128,7 +128,7 @@ The registry and version scripts are managed by Go tools and shell wrappers in `
 | [`util/read_public_symbols`](../util/read_public_symbols) | Extracts exported symbols from headers and classifies visibility (PUBLIC / PRIVATE / PRIVATE_CXX). |
 | [`util/generate_version_script`](../util/generate_version_script) | Generates a `.map` version script from a registry `.txt`. Deterministic. |
 | [`util/generate_initial_version_scripts.sh`](../util/generate_initial_version_scripts.sh) | Bootstraps both registries and `.map` files from scratch (used once to establish the baseline). |
-| [`util/update_symbol_version.sh`](../util/update_symbol_version.sh) | Adds newly introduced API to a new version node and regenerates the `.map` files. |
+| [`util/update_symbol_version.sh`](../util/update_symbol_version.sh) | Registers newly introduced API and regenerates the `.map` files. `--current` adds to the open node (the common case); passing a version opens a new node. |
 
 ### Version Script Format
 
@@ -157,23 +157,50 @@ emits this inheritance automatically; only the oldest (base) node carries the
 
 ### Adding New Symbols
 
-When new public APIs are added, the new symbols must be assigned to a new version
-node. Use `update_symbol_version.sh` rather than editing the registry or `.map`
-files by hand:
+New public API is registered in the **open** version node -- the newest node in
+the registry, which is currently `AWS_LC_1.0`. Adding to it is the normal case
+and does not require a new node:
 
 ```bash
 # Build so the new OPENSSL_EXPORT symbols exist in the headers, then:
-./util/update_symbol_version.sh AWS_LC_1.1
+./util/update_symbol_version.sh --current
 ```
 
 This extracts the current symbol set from the headers, identifies symbols not yet
-in the registry, appends them to the registry under the given node with their
-visibility, re-sorts the registry, and regenerates `crypto/libcrypto.map` and
-`ssl/libssl.map`. Commit the updated `.txt` and `.map` files together.
+in the registry, appends them to the open node with their visibility, re-sorts the
+registry, and regenerates `crypto/libcrypto.map` and `ssl/libssl.map`. Commit the
+updated `.txt` and `.map` files together.
 
-> While a version series is unreleased, newly added symbols may simply be folded
-> into the existing baseline node (`AWS_LC_1.0`) by regenerating the registry;
-> once a version has shipped, its node is frozen and new API goes into a new node.
+Always use `update_symbol_version.sh` rather than editing the registry or `.map`
+files by hand. A symbol that is missing from the registry is hidden by
+`local: *;`, which means it is compiled into the library but applications cannot
+link against it -- see [Silently dropped symbols](#silently-dropped-symbols).
+
+The version node is always an explicit argument; the script has no default. This
+is deliberate, so that adding to the open node and opening a new one are both
+conscious choices.
+
+### Opening a New Version Node
+
+Opening a node **closes** the previous one: once a node is closed, no further API
+may be added to it, because packaging metadata derived from it (see
+[Package Management](#package-management)) would otherwise be unable to
+distinguish a library that has the new API from one that does not.
+
+Closing a node is a release-level decision, not something an individual
+API-adding PR does. Don't open a node just because the current one has shipped;
+raise it with maintainers first. When it is the right call:
+
+```bash
+./util/update_symbol_version.sh AWS_LC_1.1
+```
+
+The script refuses a version that already exists in the registry, and points at
+`--current` instead -- so a mistyped version number cannot silently land API in
+the wrong node.
+
+> Note: nothing currently enforces that a closed node stays closed; it is a
+> convention. `--current` always resolves to the newest node in the registry.
 
 ### Version Naming Convention
 
@@ -209,11 +236,13 @@ absolutely necessary:
 ## CI Integration
 
 AWS-LC CI monitors the symbol registry and version scripts on every PR via
-`.github/workflows/abidiff.yml`.
+`.github/workflows/abidiff.yml`, and validates the built libraries in the
+`dist-pkg-install-tests-*` jobs of
+`.github/workflows/linux-multi-arch-omnibus.yml`.
 
 ### Symbol Check Jobs
 
-Six jobs run:
+Six registry jobs run. None of them build a library, so they are fast:
 
 1. **libcrypto symbol check (incremental)** — compares the registry between the PR base and head; flags additions (warning) and PUBLIC removals (error).
 2. **libssl symbol check (incremental)** — same for libssl.
@@ -226,13 +255,31 @@ These are implemented by
 [`.github/docker_images/symbol_check/check_symbols.sh`](../.github/docker_images/symbol_check/check_symbols.sh)
 in `incremental`, `baseline`, and `mapcheck` modes.
 
+### Built-Library Check
+
+The six jobs above all derive their view of the world from
+`util/read_public_symbols`. If that extractor ever missed an `OPENSSL_EXPORT`
+symbol, the symbol would be absent from the registry *and* hidden by the version
+script, and every registry-based check would still pass -- because none of them
+look at what the compiler actually exported.
+
+[`tests/ci/run_symbol_version_test.sh`](../tests/ci/run_symbol_version_test.sh),
+run by the `dist-pkg-install-tests-*` jobs, closes that hole: it builds the same
+sources a second time *without* `ENABLE_DIST_PKG` (so no version script is
+applied) and diffs the exported symbol sets of the two libraries. Anything
+exported by the unversioned build but missing from the versioned one was hidden
+by `local: *;`. This is the backstop, not the first line of defense -- it costs two
+full shared builds, so the cheap registry checks above should catch problems
+first.
+
 ### CI Policy
 
 - **Symbol additions**: ⚠️ Warning (allowed, but verify intentional)
 - **PUBLIC symbol removals**: ❌ Error (blocks the build — ABI break)
 - **PRIVATE / PRIVATE_CXX removals**: ⚠️ Warning (allowed)
-- **Unregistered new API (baseline)**: ❌ Error (run `update_symbol_version.sh`)
+- **Unregistered new API (baseline)**: ❌ Error (run `update_symbol_version.sh --current`)
 - **`.map` out of sync with registry (drift)**: ❌ Error (regenerate the `.map`)
+- **Exported symbol hidden by the version script**: ❌ Error (register the symbol)
 
 ### When CI Fails
 
@@ -242,11 +289,36 @@ in `incremental`, `baseline`, and `mapcheck` modes.
 ❌ UNREGISTERED SYMBOLS (1):
 CRYPTO_tls13_hkdf_expand_label
 
-🛑 New symbols are not in the registry.
-   Run: util/update_symbol_version.sh <version>
+🛑 New symbols are not in the registry. Unregistered symbols are hidden
+   by the version script, so applications cannot link against them.
+   Register them in the current version node:
+     ./util/update_symbol_version.sh --current
 ```
 
-**Action**: run `./util/update_symbol_version.sh <version>` and commit the updated `.txt`/`.map`.
+**Action**: run `./util/update_symbol_version.sh --current` and commit the updated `.txt`/`.map`.
+
+#### Silently dropped symbols
+
+Reported by the `dist-pkg-install-tests-*` jobs:
+
+```
+✗ FAIL: libcrypto: 5 exported symbol(s) silently hidden by the version script
+INFO: These are exported by the compiler but missing from the registry/.map:
+  EC_group_brainpoolP224r1
+  ...
+```
+
+This is the same root cause as an unregistered-symbol failure, seen from the
+built library instead of the headers: the listed functions are compiled into
+`libcrypto` but demoted to local symbols, so an application linking against a
+`ENABLE_DIST_PKG` build fails with an undefined reference. Confirm with:
+
+```bash
+nm -D --defined-only build/crypto/libcrypto-awslc.so | grep <symbol>  # absent
+nm              build/crypto/libcrypto-awslc.so | grep <symbol>  # present, as 't'
+```
+
+**Action**: run `./util/update_symbol_version.sh --current` and commit the updated `.txt`/`.map`. Expect the baseline check to be failing for the same reason.
 
 #### PUBLIC symbol removal (incremental check)
 
@@ -277,18 +349,27 @@ No action needed. Symbol versioning is transparent.
 
 ### Adding New Public APIs
 
-1. Add new `OPENSSL_EXPORT` functions to headers.
+1. Add new `OPENSSL_EXPORT` functions to headers and implement them.
 2. Register the new symbols and regenerate the version scripts:
    ```bash
-   ./util/update_symbol_version.sh AWS_LC_1.1
+   ./util/update_symbol_version.sh --current
    ```
-3. Optionally verify against a build:
+3. Verify the symbols are actually exported and versioned:
    ```bash
    cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON
    ninja -C build
-   nm -D build/crypto/libcrypto-awslc.so | grep @AWS_LC_1.1 | head
+   nm -D --defined-only build/crypto/libcrypto-awslc.so | grep MyNewFunction
+   # expect: T MyNewFunction@@AWS_LC_1.0
    ```
-4. Commit the updated registry (`crypto/libcrypto.txt`, `ssl/libssl.txt`) and version scripts (`crypto/libcrypto.map`, `ssl/libssl.map`) together.
+   A symbol that shows up as `t` under plain `nm`, and not at all under `nm -D`,
+   was not registered in step 2.
+4. Commit the updated registry (`crypto/libcrypto.txt`, `ssl/libssl.txt`) and version scripts (`crypto/libcrypto.map`, `ssl/libssl.map`) together with the header change.
+
+Step 2 is not optional. Skipping it produces a library that compiles, installs
+cleanly, and passes the whole test suite, but whose new API cannot be called by
+any application linking against the shared library. The tests do not catch it
+because the version script is only applied when `ENABLE_DIST_PKG` is set, and
+those builds are configured with `-DBUILD_TESTING=OFF`.
 
 ### Regenerating from Scratch
 

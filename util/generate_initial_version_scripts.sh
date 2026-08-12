@@ -38,9 +38,10 @@ done
 
 # The baseline version node for a from-scratch bootstrap. This is intentionally
 # fixed: this script only ever establishes the initial node. Later additions go
-# through update_symbol_version.sh <version>, which takes the node as an argument
-# rather than hardcoding it. The major component corresponds to ABI_VERSION in
-# CMakeLists.txt (bumped only on an ABI break).
+# through update_symbol_version.sh, which takes the node explicitly (--current to
+# add to the open node, or a version to open a new one) rather than hardcoding it.
+# The major component corresponds to ABI_VERSION in CMakeLists.txt (bumped only
+# on an ABI break).
 INITIAL_VERSION="AWS_LC_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
