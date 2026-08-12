@@ -20,12 +20,13 @@ extern "C" {
 // the SHA3 domain-separation byte (0x06), so it produces different digests.
 //
 // Keccak-256 is NOT FIPS-approved and lives outside the FIPS module. It reuses
-// the module's FIPS 202 buffering primitives (|FIPS202_Reset|, |FIPS202_Update|,
-// |FIPS202_Finalize|) and the Keccak-f[1600] permutation, but sets up the
-// context with |KECCAK256_PAD_CHAR| directly rather than going through the
-// module's |FIPS202_Init| (which only accepts FIPS 202 padding). None of these
-// functions touch the FIPS service indicator, so consumers always observe
-// AWSLC_NOT_APPROVED. Public consumers reach Keccak-256 via |EVP_keccak256|.
+// the module's FIPS 202 buffering primitives (|KeccakSponge_Reset|,
+// |KeccakSponge_Absorb|, |KeccakSponge_AbsorbFinal|) and the Keccak-f[1600]
+// permutation, but sets up the context with |KECCAK256_PAD_CHAR| directly
+// rather than going through the module's |KeccakSponge_Init| (which only
+// accepts FIPS 202 padding). None of these functions touch the FIPS service
+// indicator, so consumers always observe AWSLC_NOT_APPROVED. Public consumers
+// reach Keccak-256 via |EVP_keccak256|.
 
 // KECCAK256_PAD_CHAR is the original Keccak submission's padding byte, as used
 // by Ethereum's keccak256. It is NOT the FIPS 202 padding byte.

@@ -441,33 +441,32 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-/*
- * FIPS202 APIs manage the internal input/output buffer on top of the Keccak1600
- * API layer. They are the shared padding-and-buffering primitives underneath the
- * SHA3 and SHAKE APIs below. They are also reused, outside the FIPS module, by
- * the (non-FIPS) Keccak-256 implementation in crypto/keccak/keccak.c, which
- * sets up the context with the original Keccak padding byte rather than a FIPS
- * 202 one. FIPS202_Init deliberately accepts only FIPS 202 padding characters and
- * is therefore kept private to this module.
- */
+// KeccakSponge APIs manage the internal input/output buffer on top of the
+// Keccak1600 API layer. They are the shared padding-and-buffering primitives
+// underneath the SHA3 and SHAKE APIs below. They are also reused, outside the
+// FIPS module, by the (non-FIPS) Keccak-256 implementation in
+// crypto/keccak/keccak.c, which sets up the context with the original Keccak
+// padding byte rather than a FIPS 202 one. |KeccakSponge_Init| deliberately
+// accepts only FIPS 202 padding characters and is therefore kept private to
+// this module.
 
-// FIPS202_Reset zeroes the Keccak state and buffer of |ctx| and returns it to
-// the absorb phase.
-void FIPS202_Reset(KECCAK1600_CTX *ctx);
+// KeccakSponge_Reset zeroes the Keccak state and buffer of |ctx| and returns it
+// to the absorb phase.
+void KeccakSponge_Reset(KECCAK1600_CTX *ctx);
 
-// FIPS202_Update absorbs |len| bytes from |data| into |ctx|, buffering any
+// KeccakSponge_Absorb absorbs |len| bytes from |data| into |ctx|, buffering any
 // trailing partial block. It returns 1 on success and 0 if |ctx| is no longer
 // in a phase that accepts input. |len| must be non-zero (checked by callers).
-int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
+int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// FIPS202_Finalize applies the |ctx->pad| padding to the final block and absorbs
-// it. It must be called once to conclude the absorb phase, after which the caller
-// squeezes the digest via |Keccak1600_Squeeze|. It returns 1 on success and 0 if
-// |ctx| is no longer in a phase that accepts input.
-int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx);
+// KeccakSponge_AbsorbFinal applies the |ctx->pad| padding to the final block
+// and absorbs it. It must be called once to conclude the absorb phase, after
+// which the caller squeezes the digest via |Keccak1600_Squeeze|. It returns 1 on
+// success and 0 if |ctx| is no longer in a phase that accepts input.
+int KeccakSponge_AbsorbFinal(uint8_t *md, KECCAK1600_CTX *ctx);
 
 /*
- * SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+ * SHA3 APIs implement SHA3 functionalities on top of KeccakSponge API layer
  *
  * SHA3 context must go through the flow: (a) Init, (b) Update [multiple times],
  * (c) Final [one time].
@@ -478,19 +477,20 @@ int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx);
  * detailed above each SHA3_ function signature, is satisfied.
  */
 
-// SHA3_Init initialises |ctx| field through |FIPS202_Init| and
+// SHA3_Init initialises |ctx| field through |KeccakSponge_Init| and
 // returns 1 on success and 0 on failure. When call-discipline is
 // maintained and |bitlen| value corresponds to a SHA3 digest length
 // in bits, this function never fails.
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
-// SHA3_Update checks |ctx| pointer and |len| value, calls |FIPS202_Update|
+// SHA3_Update checks |ctx| pointer and |len| value, calls |KeccakSponge_Absorb|
 // and returns 1 on success and 0 on failure. When call-discipline is
 // maintained and |len| value corresponds to the input message length
 // (including zero), this function never fails.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
+// SHA3_Final pads the last data block and absorbs it through
+// |KeccakSponge_AbsorbFinal|.
 // It then calls |Keccak1600_Squeeze| and returns 1 on success and 0 on failure.
 // When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
@@ -536,7 +536,7 @@ int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 /*
- * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
+ * SHAKE APIs implement SHAKE functionalities on top of KeccakSponge API layer
  *
  * SHAKE context must go through the flow: (a) Init, (b) Absorb [multiple times],
  * (c) Final [one time] or Squeeze [multiple times]
@@ -547,24 +547,24 @@ int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
  * detailed above each SHAKE_ function signature, is satisfied.
  */
 
-// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and
+// SHAKE_Init initialises |ctx| fields through |KeccakSponge_Init| and
 // returns 1 on success and 0 on failure. When call-discipline is
 // maintained and |block_size| value corresponds to a SHAKE block size length
 // in bytes, this function never fails.
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
 // SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs
-// input blocks via |FIPS202_Update|. When call-discipline is
+// input blocks via |KeccakSponge_Absorb|. When call-discipline is
 // maintained and |len| value corresponds to the input message length
 // (including zero), this function never fails.
 int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
 // SHAKE_Squeeze pads the last data block and absorbs it through
-// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental
-// XOF output to |md| and returns 1 on success and 0 on failure. It can be
-// called multiple times. When call-discipline is maintained, this function
-// never fails.
+// |KeccakSponge_AbsorbFinal| on first call. It writes |len| bytes of
+// incremental XOF output to |md| and returns 1 on success and 0 on failure. It
+// can be called multiple times. When call-discipline is maintained, this
+// function never fails.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
@@ -574,7 +574,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 /*
- * SHAKE128_x4_ batched APIs implement x4 SHAKE functionalities on top of FIPS202 API layer
+ * SHAKE128_x4_ batched APIs implement x4 SHAKE functionalities on top of
+ * KeccakSponge API layer
  *
  * SHAKE128_x4_ context must go through the flow: (a) Init_x4, (b) Absorb_once_x4 [one time;
  * maximum input length of |SHAKE128_BLOCKSIZE - 1|] (c) Squeezeblocks_x4 [multiple times]
@@ -607,7 +608,7 @@ OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t
                                   KECCAK1600_CTX_x4 *ctx, size_t blks);
 /*
  * SHAKE256_x4_ signle-shot batched API implements x4 SHAKE256 functionalities on top
- * of FIPS202 API layer
+ * of KeccakSponge API layer
  *
  * SHAKE256_x4_ function never fails when the later call-discipline is adhered to:
  * (a) the pointers passed to the functions are valid.

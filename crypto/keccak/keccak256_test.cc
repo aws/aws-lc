@@ -41,10 +41,10 @@ TEST(Keccak256Test, DiffersFromSHA3_256) {
 // Misuse of the streaming API must fail cleanly rather than hang or corrupt
 // memory. A zeroed context arises whenever |Keccak256_Init| is skipped, and also
 // on a second |Keccak256_Final| through EVP, because |EVP_DigestFinal_ex|
-// cleanses |md_data|. Such a context must not reach the FIPS202 primitives,
-// which assume it is initialised: |FIPS202_Finalize| would index
-// |ctx->buf[block_size - 1]| out of bounds and |Keccak1600_Absorb| would loop
-// forever on |r == 0|.
+// cleanses |md_data|. Such a context must not reach the KeccakSponge
+// primitives, which assume it is initialised: |KeccakSponge_AbsorbFinal| would
+// index |ctx->buf[block_size - 1]| out of bounds and |Keccak1600_Absorb| would
+// loop forever on |r == 0|.
 //
 // Only |Keccak256| is |OPENSSL_EXPORT|ed, so the streaming primitives are
 // unreachable when this test links against the shared library. The EVP-level
@@ -54,7 +54,7 @@ TEST(Keccak256Test, MisuseFailsCleanly) {
   uint8_t out[KECCAK256_DIGEST_LENGTH];
 
   // A second |Keccak256_Final| on a finalised context fails: |ctx->state| is
-  // |KECCAK1600_STATE_FINAL|, which |FIPS202_Finalize| rejects.
+  // |KECCAK1600_STATE_FINAL|, which |KeccakSponge_AbsorbFinal| rejects.
   {
     KECCAK1600_CTX ctx;
     ASSERT_TRUE(Keccak256_Init(&ctx));
@@ -65,7 +65,7 @@ TEST(Keccak256Test, MisuseFailsCleanly) {
     EXPECT_FALSE(Keccak256_Update(&ctx, "abc", 3));
   }
 
-  // A zeroed context (|Keccak256_Init| skipped) must not reach the FIPS202
+  // A zeroed context (|Keccak256_Init| skipped) must not reach the KeccakSponge
   // layer. |Keccak256_Final| reports success without writing, matching
   // |SHA3_Final|'s |md_size == 0| guard; |Keccak256_Update| reports failure.
   {

@@ -10,7 +10,7 @@
 // This reuses the FIPS module's FIPS 202 buffering primitives and Keccak-f[1600]
 // permutation but initialises the context with the original Keccak padding byte
 // (|KECCAK256_PAD_CHAR|) instead of the FIPS 202 ones. Because the module's
-// |FIPS202_Init| deliberately rejects non-FIPS-202 padding, we set up the
+// |KeccakSponge_Init| deliberately rejects non-FIPS-202 padding, we set up the
 // context here rather than calling it.
 
 int Keccak256_Init(KECCAK1600_CTX *ctx) {
@@ -18,13 +18,13 @@ int Keccak256_Init(KECCAK1600_CTX *ctx) {
     return 0;
   }
 
-  // |FIPS202_Init| bounds its |block_size| argument against the context buffer
-  // at runtime because there it is variable. Keccak-256's block size is a
-  // compile-time constant, so assert it statically instead.
+  // |KeccakSponge_Init| bounds its |block_size| argument against the context
+  // buffer at runtime because there it is variable. Keccak-256's block size is
+  // a compile-time constant, so assert it statically instead.
   OPENSSL_STATIC_ASSERT(KECCAK256_CBLOCK <= sizeof(ctx->buf),
                         keccak256_block_size_exceeds_ctx_buffer)
 
-  FIPS202_Reset(ctx);
+  KeccakSponge_Reset(ctx);
   ctx->block_size = KECCAK256_CBLOCK;
   ctx->md_size = KECCAK256_DIGEST_LENGTH;
   ctx->pad = KECCAK256_PAD_CHAR;
@@ -42,14 +42,14 @@ int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
     return 1;
   }
   // As in |Keccak256_Final|, refuse a zeroed context rather than letting it
-  // reach |FIPS202_Update|, where |Keccak1600_Absorb| would spin forever on
-  // |while (len >= r)| with |r == 0|. Absorbing into a context that was never
-  // initialised, or that EVP has already finalised and cleansed, is a caller
-  // error, so this reports failure rather than silently doing nothing.
+  // reach |KeccakSponge_Absorb|, where |Keccak1600_Absorb| would spin forever
+  // on |while (len >= r)| with |r == 0|. Absorbing into a context that was
+  // never initialised, or that EVP has already finalised and cleansed, is a
+  // caller error, so this reports failure rather than silently doing nothing.
   if (ctx->block_size == 0) {
     return 0;
   }
-  return FIPS202_Update(ctx, data, len);
+  return KeccakSponge_Absorb(ctx, data, len);
 }
 
 int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx) {
@@ -59,14 +59,14 @@ int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx) {
   // A zeroed context reaches here whenever |Keccak256_Init| was skipped, and
   // also on a second |Keccak256_Final| through EVP: |EVP_DigestFinal_ex|
   // cleanses |md_data| on the way out. Bail out first, because the callees below
-  // assume an initialised context: |FIPS202_Finalize| assumes |block_size| is
-  // non-zero and would index |ctx->buf[block_size - 1]| out of bounds, and
-  // |Keccak1600_Absorb| assumes the same and would loop forever on |r == 0|.
-  // |SHA3_Final| guards the same way.
+  // assume an initialised context: |KeccakSponge_AbsorbFinal| assumes
+  // |block_size| is non-zero and would index |ctx->buf[block_size - 1]| out of
+  // bounds, and |Keccak1600_Absorb| assumes the same and would loop forever on
+  // |r == 0|. |SHA3_Final| guards the same way.
   if (ctx->md_size == 0) {
     return 1;
   }
-  if (FIPS202_Finalize(out, ctx) == 0) {
+  if (KeccakSponge_AbsorbFinal(out, ctx) == 0) {
     return 0;
   }
   Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size, ctx->state);
