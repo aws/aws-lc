@@ -79,6 +79,9 @@ bool ecTool(const args_list_t &args) {
     goto err;
   }
 
+  if (!pubout && !out_path.empty()) {
+    SetUmaskForPrivateKey();
+  }
   output_bio.reset(out_path.empty() ? BIO_new_fp(stdout, BIO_NOCLOSE)
                                     : BIO_new_file(out_path.c_str(), "wb"));
   if (!output_bio) {
