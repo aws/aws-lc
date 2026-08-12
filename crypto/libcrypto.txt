@@ -907,6 +907,11 @@ EC_POINT_set_to_infinity AWS_LC_1.0 PUBLIC
 EC_curve_nid2nist AWS_LC_1.0 PUBLIC
 EC_curve_nist2nid AWS_LC_1.0 PUBLIC
 EC_get_builtin_curves AWS_LC_1.0 PUBLIC
+EC_group_brainpoolP224r1 AWS_LC_1.0 PUBLIC
+EC_group_brainpoolP256r1 AWS_LC_1.0 PUBLIC
+EC_group_brainpoolP320r1 AWS_LC_1.0 PUBLIC
+EC_group_brainpoolP384r1 AWS_LC_1.0 PUBLIC
+EC_group_brainpoolP512r1 AWS_LC_1.0 PUBLIC
 EC_group_p224 AWS_LC_1.0 PUBLIC
 EC_group_p256 AWS_LC_1.0 PUBLIC
 EC_group_p384 AWS_LC_1.0 PUBLIC
