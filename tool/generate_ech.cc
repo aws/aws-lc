@@ -113,7 +113,7 @@ bool GenerateECH(const std::vector<std::string> &args) {
   if (!WriteToFile(
           args_map["-out-ech-config-list"], CBB_data(cbb.get()), CBB_len(cbb.get())) ||
       !WriteToFile(args_map["-out-ech-config"], ech_config, ech_config_len) ||
-      !WriteToFile(args_map["-out-private-key"], private_key, private_key_len)) {
+      !WritePrivateKeyToFile(args_map["-out-private-key"], private_key, private_key_len)) {
     fprintf(stderr, "Failed to write ECHConfig or private key to file\n");
     return false;
   }
