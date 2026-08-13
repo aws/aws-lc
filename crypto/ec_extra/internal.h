@@ -59,6 +59,12 @@ OPENSSL_EXPORT int ec_hash_to_scalar_p384_xmd_sha512_draft07(
     const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
     const uint8_t *msg, size_t msg_len);
 
+// ec_group_new_by_curve_name_nonfips returns the EC_GROUP for non-FIPS curves,
+// or NULL if |nid| is not a supported non-FIPS curve. Called from the default
+// fallthrough in EC_GROUP_new_by_curve_name to keep per-curve dispatch logic
+// outside the FIPS module boundary (bcm.o).
+const EC_GROUP *ec_group_new_by_curve_name_nonfips(int nid);
+
 enum ECParametersType {
   UNKNOWN_EC_PARAMETERS = 0,
   NAMED_CURVE_EC_PARAMETERS = 1,
