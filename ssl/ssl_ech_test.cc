@@ -311,6 +311,18 @@ TEST(SSLTest, UnsupportedECHConfig) {
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
 
+  // Unsupported KEMs are rejected. ECH is only defined over
+  // DHKEM(X25519, HKDF-SHA256), so an ML-KEM config is rejected even though the
+  // ECHConfig and the key agree on the KEM.
+  bssl::ScopedEVP_HPKE_KEY mlkem_key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(mlkem_key.get(), EVP_hpke_mlkem768()));
+  ECHConfigParams unsupported_kem;
+  unsupported_kem.key = mlkem_key.get();
+  ASSERT_TRUE(MakeECHConfig(&ech_config, unsupported_kem));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                mlkem_key.get()));
+
   // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
   ECHConfigParams unsupported_kdf;
   unsupported_kdf.key = key.get();

@@ -494,6 +494,14 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     return false;
   }
 
+  // ECH is only defined over DHKEM(X25519, HKDF-SHA256), and the client offers
+  // nothing else, but an |EVP_HPKE_KEY| can hold other KEMs, so check
+  // explicitly rather than relying on the key that happens to be configured.
+  if (ech_config_.kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
+    return false;
+  }
+
   CBS cipher_suites = ech_config_.cipher_suites;
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t kdf_id, aead_id;
