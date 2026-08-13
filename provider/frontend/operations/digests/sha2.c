@@ -192,3 +192,191 @@ static int awslc_prov_sha256_get_params(OSSL_PARAM params[]) {
 }
 
 AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha256);
+
+// SHA-384
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha384);
+
+static void *awslc_prov_sha384_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_sha2_newctx(awslc_prov_sha384_ctx_size());
+}
+
+static void awslc_prov_sha384_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha384_ctx_size());
+}
+
+static void *awslc_prov_sha384_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha384_ctx_size(),
+                                awslc_prov_sha384_copy);
+}
+
+static void awslc_prov_sha384_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha384_copy);
+}
+
+static int awslc_prov_sha384_init_op(void *dctx, const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha384_init);
+}
+
+static int awslc_prov_sha384_update_op(void *dctx, const unsigned char *in,
+                                       size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl, awslc_prov_sha384_update);
+}
+
+static int awslc_prov_sha384_final_op(void *dctx, unsigned char *out,
+                                      size_t *outl, size_t outsz) {
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha384_final,
+                                  awslc_prov_sha384_digest_size());
+}
+
+static int awslc_prov_sha384_get_params(OSSL_PARAM params[]) {
+  return awslc_prov_sha2_get_params(params, awslc_prov_sha384_block_size(),
+                                    awslc_prov_sha384_digest_size());
+}
+
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha384);
+
+// SHA-512
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512);
+
+static void *awslc_prov_sha512_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_sha2_newctx(awslc_prov_sha512_ctx_size());
+}
+
+static void awslc_prov_sha512_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha512_ctx_size());
+}
+
+static void *awslc_prov_sha512_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha512_ctx_size(),
+                                awslc_prov_sha512_copy);
+}
+
+static void awslc_prov_sha512_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha512_copy);
+}
+
+static int awslc_prov_sha512_init_op(void *dctx, const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha512_init);
+}
+
+static int awslc_prov_sha512_update_op(void *dctx, const unsigned char *in,
+                                       size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl, awslc_prov_sha512_update);
+}
+
+static int awslc_prov_sha512_final_op(void *dctx, unsigned char *out,
+                                      size_t *outl, size_t outsz) {
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha512_final,
+                                  awslc_prov_sha512_digest_size());
+}
+
+static int awslc_prov_sha512_get_params(OSSL_PARAM params[]) {
+  return awslc_prov_sha2_get_params(params, awslc_prov_sha512_block_size(),
+                                    awslc_prov_sha512_digest_size());
+}
+
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha512);
+
+// SHA-512/224
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512_224);
+
+static void *awslc_prov_sha512_224_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_sha2_newctx(awslc_prov_sha512_224_ctx_size());
+}
+
+static void awslc_prov_sha512_224_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha512_224_ctx_size());
+}
+
+static void *awslc_prov_sha512_224_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha512_224_ctx_size(),
+                                awslc_prov_sha512_224_copy);
+}
+
+static void awslc_prov_sha512_224_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha512_224_copy);
+}
+
+static int awslc_prov_sha512_224_init_op(void *dctx,
+                                         const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha512_224_init);
+}
+
+static int awslc_prov_sha512_224_update_op(void *dctx,
+                                           const unsigned char *in,
+                                           size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl,
+                                   awslc_prov_sha512_224_update);
+}
+
+static int awslc_prov_sha512_224_final_op(void *dctx, unsigned char *out,
+                                          size_t *outl, size_t outsz) {
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha512_224_final,
+                                  awslc_prov_sha512_224_digest_size());
+}
+
+static int awslc_prov_sha512_224_get_params(OSSL_PARAM params[]) {
+  return awslc_prov_sha2_get_params(params,
+                                    awslc_prov_sha512_224_block_size(),
+                                    awslc_prov_sha512_224_digest_size());
+}
+
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha512_224);
+
+// SHA-512/256
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512_256);
+
+static void *awslc_prov_sha512_256_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_sha2_newctx(awslc_prov_sha512_256_ctx_size());
+}
+
+static void awslc_prov_sha512_256_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha512_256_ctx_size());
+}
+
+static void *awslc_prov_sha512_256_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha512_256_ctx_size(),
+                                awslc_prov_sha512_256_copy);
+}
+
+static void awslc_prov_sha512_256_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha512_256_copy);
+}
+
+static int awslc_prov_sha512_256_init_op(void *dctx,
+                                         const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha512_256_init);
+}
+
+static int awslc_prov_sha512_256_update_op(void *dctx,
+                                           const unsigned char *in,
+                                           size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl,
+                                   awslc_prov_sha512_256_update);
+}
+
+static int awslc_prov_sha512_256_final_op(void *dctx, unsigned char *out,
+                                          size_t *outl, size_t outsz) {
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha512_256_final,
+                                  awslc_prov_sha512_256_digest_size());
+}
+
+static int awslc_prov_sha512_256_get_params(OSSL_PARAM params[]) {
+  return awslc_prov_sha2_get_params(params,
+                                    awslc_prov_sha512_256_block_size(),
+                                    awslc_prov_sha512_256_digest_size());
+}
+
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha512_256);
