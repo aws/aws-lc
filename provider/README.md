@@ -36,6 +36,29 @@ cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
 
 The provider artifact is `build/provider/awslc.so` (`awslc.dylib` on macOS).
 
+## FIPS
+
+The provider maps OpenSSL's FIPS-facing provider interfaces onto AWS-LC's FIPS
+build, self-tests, and service indicator. A deployment claiming FIPS compliance
+must build and package the provider with an applicable FIPS build of AWS-LC and
+satisfy the requirements of that validation:
+
+```bash
+# Building AWS-LC-FIPS with aws-lc-provider
+cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
+  -DFIPS=1 -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+```
+
+| Feature | Provider behavior |
+|---|---|
+| `fips=yes` algorithm property | Identifies implementations of algorithms that AWS-LC can approve. It classifies the algorithm rather than attesting the linked AWS-LC. Approved-only fetches must include `fips=yes`. |
+| `fips-indicator` operation parameter | Reports whether AWS-LC reports FIPS mode and approved the completed operation. Applications enforcing per-operation approval must read it after each operation. |
+| Indicator callback | When AWS-LC reports FIPS mode, invokes OpenSSL's configured indicator callback if an operation is not approved. If the callback vetoes the result, the provider clears the output and returns an error. |
+| Provider `status` parameter | Reports one after successful provider initialization. AWS-LC terminates the process if a FIPS self-test puts the module into a failure state. |
+| `OSSL_PROVIDER_self_test()` | Runs AWS-LC's known-answer self-tests through `BORINGSSL_self_test()` and propagates the result. |
+| Provider `buildinfo` parameter | Reports the linked AWS-LC version string, including AWS-LC's FIPS build identity when applicable. |
+
 ## Testing
 
 There are two test binaries for `aws-lc-provider`, one per side of the split.

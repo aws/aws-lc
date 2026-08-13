@@ -31,10 +31,30 @@
 struct awslc_prov_ctx_st {
   const OSSL_CORE_HANDLE *handle;
   OPENSSL_CORE_CTX *corectx;
+  OSSL_FUNC_indicator_cb_fn *indicator_cb;
+  int is_fips;
 };
 
 const OSSL_CORE_HANDLE *awslc_prov_ctx_handle(const AWSLC_PROV_CTX *ctx) {
   return ctx->handle;
+}
+
+int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx) {
+  return ctx != NULL && ctx->is_fips;
+}
+
+int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx, const char *type,
+                                       const char *description) {
+  OSSL_INDICATOR_CALLBACK *callback = NULL;
+
+  if (ctx == NULL || type == NULL || description == NULL) {
+    return 0;
+  }
+  if (ctx->indicator_cb == NULL) {
+    return 1;
+  }
+  ctx->indicator_cb(ctx->corectx, &callback);
+  return callback == NULL || callback(type, description, NULL);
 }
 
 // Parameters we answer about ourselves.
@@ -90,6 +110,13 @@ static void awslc_prov_teardown(void *provctx) {
   awslc_prov_clear_free(ctx, sizeof(*ctx));
 }
 
+static int awslc_prov_self_test(void *provctx) {
+  if (provctx == NULL) {
+    return 0;
+  }
+  return awslc_prov_backend_self_test();
+}
+
 // Functions we provide to the core.
 static const OSSL_DISPATCH awslc_prov_dispatch_table[] = {
     {OSSL_FUNC_PROVIDER_TEARDOWN, (void (*)(void))awslc_prov_teardown},
@@ -98,6 +125,7 @@ static const OSSL_DISPATCH awslc_prov_dispatch_table[] = {
     {OSSL_FUNC_PROVIDER_GET_PARAMS, (void (*)(void))awslc_prov_get_params},
     {OSSL_FUNC_PROVIDER_QUERY_OPERATION,
      (void (*)(void))awslc_prov_query_operation},
+    {OSSL_FUNC_PROVIDER_SELF_TEST, (void (*)(void))awslc_prov_self_test},
     OSSL_DISPATCH_END};
 
 // Entry point for the entire provider.
@@ -106,6 +134,7 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
                                         const OSSL_DISPATCH **out,
                                         void **provctx) {
   OSSL_FUNC_core_get_libctx_fn *c_get_libctx = NULL;
+  OSSL_FUNC_indicator_cb_fn *c_indicator_cb = NULL;
   AWSLC_PROV_CTX *ctx = NULL;
 
   // Scan the upcalls the core offers and keep the ones we use. Unrecognized ids
@@ -116,14 +145,16 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
       case OSSL_FUNC_CORE_GET_LIBCTX:
         c_get_libctx = OSSL_FUNC_core_get_libctx(in);
         break;
+      case OSSL_FUNC_INDICATOR_CB:
+        c_indicator_cb = OSSL_FUNC_indicator_cb(in);
+        break;
       default:
         break;
     }
   }
 
-  // Without a libctx we cannot guarantee that calls we make land in the same
-  // library context the core called us with, so refuse to load rather than
-  // guess.
+  // The indicator upcall addresses callback state through the opaque core
+  // context. Refuse to load if the core cannot supply one.
   if (c_get_libctx == NULL) {
     return 0;
   }
@@ -134,6 +165,13 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
   }
   ctx->handle = handle;
   ctx->corectx = c_get_libctx(handle);
+  ctx->indicator_cb = c_indicator_cb;
+  ctx->is_fips = awslc_prov_backend_is_fips() != 0;
+
+  if (ctx->corectx == NULL) {
+    awslc_prov_clear_free(ctx, sizeof(*ctx));
+    return 0;
+  }
 
   *provctx = ctx;
   *out = awslc_prov_dispatch_table;
