@@ -64,6 +64,7 @@
 // into whatever the dispatch slot it is serving expects.
 
 #include <stddef.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -86,9 +87,19 @@ void awslc_prov_clear_free(void *ptr, size_t size);
 // AWS-LC is underneath.
 const char *awslc_prov_backend_version(void);
 
-// Whether the AWS-LC linked here is a FIPS build. FIPS is a compile-time property
-// of AWS-LC, so this is constant for the life of the process.
+// Whether the linked AWS-LC reports FIPS mode through its public FIPS_mode()
+// API. FIPS is a compile-time property of AWS-LC, so this is constant for the
+// life of the process.
 int awslc_prov_backend_is_fips(void);
+
+// Bracket one complete AWS-LC service and report whether the service-indicator
+// counter advanced. Callers must also require the provider's stored runtime FIPS
+// state because non-FIPS AWS-LC deliberately returns a synthetic counter delta.
+uint64_t awslc_prov_service_indicator_before_call(void);
+int awslc_prov_service_indicator_after_call(uint64_t before);
+
+// Re-run AWS-LC's known-answer self-tests.
+int awslc_prov_backend_self_test(void);
 
 #if defined(__cplusplus)
 }  // extern "C"
