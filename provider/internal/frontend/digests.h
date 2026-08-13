@@ -66,6 +66,10 @@ int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
 // frontend/operations/digests/sha2.c
 AWSLC_PROV_DECLARE_DIGEST_TABLE(sha224);
 AWSLC_PROV_DECLARE_DIGEST_TABLE(sha256);
+AWSLC_PROV_DECLARE_DIGEST_TABLE(sha384);
+AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512);
+AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_224);
+AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_256);
 
 #if defined(__cplusplus)
 }  // extern "C"
