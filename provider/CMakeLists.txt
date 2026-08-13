@@ -51,6 +51,7 @@ endif()
 add_library(awslc_provider_front OBJECT
   frontend/provider.c
   frontend/registry.c
+  frontend/operations/digests/digests.c
   frontend/operations/digests/sha2.c)
 set_target_properties(awslc_provider_front PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Replace the directory-level AWS-LC include paths inherited from the parent.
