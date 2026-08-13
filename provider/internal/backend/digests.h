@@ -28,21 +28,22 @@
 extern "C" {
 #endif
 
-// SHA-256, from backend/operations/digests/sha2.c.
+// Declarations only. Backend implementations remain ordinary C so their AWS-LC
+// types, constants, and function bindings stay visible to review.
+#define AWSLC_PROV_DECLARE_DIGEST_BACKEND(algorithm)               \
+  size_t awslc_prov_##algorithm##_ctx_size(void);                  \
+  size_t awslc_prov_##algorithm##_digest_size(void);               \
+  size_t awslc_prov_##algorithm##_block_size(void);                \
+  int awslc_prov_##algorithm##_init(void *ctx);                    \
+  int awslc_prov_##algorithm##_update(void *ctx, const void *data, \
+                                      size_t len);                 \
+  int awslc_prov_##algorithm##_final(void *ctx, unsigned char *out, \
+                                     size_t out_size);             \
+  int awslc_prov_##algorithm##_copy(void *dst, const void *src)
 
-size_t awslc_prov_sha256_ctx_size(void);
-
-size_t awslc_prov_sha256_digest_size(void);
-
-size_t awslc_prov_sha256_block_size(void);
-
-int awslc_prov_sha256_init(void *ctx);
-
-int awslc_prov_sha256_update(void *ctx, const void *data, size_t len);
-
-int awslc_prov_sha256_final(void *ctx, unsigned char *out, size_t out_size);
-
-int awslc_prov_sha256_copy(void *dst, const void *src);
+// SHA-2, from backend/operations/digests/sha2.c.
+AWSLC_PROV_DECLARE_DIGEST_BACKEND(sha224);
+AWSLC_PROV_DECLARE_DIGEST_BACKEND(sha256);
 
 #if defined(__cplusplus)
 }  // extern "C"
