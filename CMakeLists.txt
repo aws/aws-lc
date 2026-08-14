@@ -128,14 +128,75 @@ endif()
 
 enable_language(C)
 
-# Enable symbol versioning for shared libraries in distribution packaging mode
-# on UNIX platforms (excluding Apple).
+# ELF symbol versioning for shared libraries. Deliberately independent of the
+# rest of distribution packaging: versioned symbols can be adopted without
+# relocating headers into include/aws-lc (COHABITANT_HEADERS) or renaming the
+# bssl tool (COHABITANT_BINARIES). ENABLE_DIST_PKG only supplies the default.
+#
 # Version scripts are derived from the symbol registry files and have stable
 # filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
 # recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
-if(ENABLE_DIST_PKG AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
-  set(ENABLE_SYMBOL_VERSIONING TRUE)
-  message(STATUS "Symbol versioning enabled")
+#
+# Not declared with option(): that would bake the first configure's default into
+# the cache, so a later -DENABLE_DIST_PKG=ON would leave versioning stuck off.
+# Testing DEFINED lets an explicit -D win (it stays in the cache, so it stays
+# DEFINED) while an unset value keeps tracking ENABLE_DIST_PKG.
+if(DEFINED ENABLE_SYMBOL_VERSIONING)
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY TRUE)
+else()
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY FALSE)
+  set(ENABLE_SYMBOL_VERSIONING "${ENABLE_DIST_PKG}")
+endif()
+
+# Version-node prefix. A non-default value yields symbol versions that do not
+# interoperate with a stock AWS-LC build, so it is only appropriate for a
+# privately distributed libcrypto (see docs/SymbolVersioning.md).
+set(SYMBOL_VERSION_NAMESPACE "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}" CACHE STRING
+    "Prefix for ELF symbol version nodes (e.g. AWS_LC yields AWS_LC_1.0)")
+
+if(NOT "${SYMBOL_VERSION_NAMESPACE}" MATCHES "${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}")
+  message(FATAL_ERROR "SYMBOL_VERSION_NAMESPACE must match ${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}, got: ${SYMBOL_VERSION_NAMESPACE}")
+endif()
+
+# A version script is a link-time input that only the ELF linker understands: a
+# static build has no link step to attach it to, and Mach-O and PE have no
+# equivalent. Fail loudly when versioning was requested explicitly; when merely
+# inherited from ENABLE_DIST_PKG, leave it off so a static dist-pkg build still
+# configures.
+if(ENABLE_SYMBOL_VERSIONING AND (NOT BUILD_SHARED_LIBS OR NOT UNIX OR APPLE))
+  if(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+    message(FATAL_ERROR "ENABLE_SYMBOL_VERSIONING requires a shared library build (-DBUILD_SHARED_LIBS=ON) on a non-Apple UNIX platform.")
+  endif()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+unset(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+
+# Canonicalize: an inherited value carries ENABLE_DIST_PKG's literal spelling, so
+# -DENABLE_DIST_PKG=1 would otherwise report "1" here rather than "ON".
+if(ENABLE_SYMBOL_VERSIONING)
+  set(ENABLE_SYMBOL_VERSIONING ON)
+else()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+
+message(STATUS "ENABLE_SYMBOL_VERSIONING: ${ENABLE_SYMBOL_VERSIONING}")
+
+# The namespace only reaches the linker through a version script, and unlike
+# ENABLE_SYMBOL_VERSIONING it has no inherited default, so setting one without
+# versioning is always a mistake. Refuse it, as ENABLE_DIST_PKG_OPENSSL_SHIM
+# without ENABLE_DIST_PKG is refused.
+if(NOT ENABLE_SYMBOL_VERSIONING AND
+   NOT "${SYMBOL_VERSION_NAMESPACE}" STREQUAL "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}")
+  message(FATAL_ERROR
+    "SYMBOL_VERSION_NAMESPACE is set to '${SYMBOL_VERSION_NAMESPACE}' but symbol "
+    "versioning is disabled, so the namespace cannot take effect. Enable "
+    "versioning with -DENABLE_SYMBOL_VERSIONING=ON (requires "
+    "-DBUILD_SHARED_LIBS=ON on a non-Apple UNIX platform), or clear the "
+    "namespace with -USYMBOL_VERSION_NAMESPACE.")
+endif()
+
+if(ENABLE_SYMBOL_VERSIONING)
+  message(STATUS "SYMBOL_VERSION_NAMESPACE: ${SYMBOL_VERSION_NAMESPACE}")
 
   # lld treats undefined symbols in version scripts as errors by default.
   # The --undefined-version flag downgrades them to warnings, matching GNU ld.
