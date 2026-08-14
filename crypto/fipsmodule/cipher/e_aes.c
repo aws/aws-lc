@@ -434,8 +434,6 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
         arg = gctx->ivlen;
       }
       OPENSSL_memcpy(ptr, gctx->iv + gctx->ivlen - arg, arg);
-      // Invocation field will be at least 8 bytes in size, so no need to check
-      // wrap around or increment more than last 8 bytes.
       uint8_t *ctr = gctx->iv + gctx->ivlen - 8;
       CRYPTO_store_u64_be(ctr, CRYPTO_load_u64_be(ctr) + 1);
       gctx->iv_set = 1;
