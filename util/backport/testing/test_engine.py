@@ -1033,8 +1033,19 @@ class ChangedFilesWithStatus(unittest.TestCase):
 
 
 class SupportEndDate(unittest.TestCase):
-    def test_month_precision(self):
-        self.assertEqual(config.support_end_date("2026-10"), datetime.date(2026, 10, 1))
+    def test_a_bare_month_ends_on_its_last_day(self):
+        # Published as a month, meaning supported through all of it. Reading it as the
+        # 1st would drop the branch up to 30 days early, and early is the silent
+        # direction: the branch leaves the report instead of being flagged
+        self.assertEqual(
+            config.support_end_date("2026-10"), datetime.date(2026, 10, 31)
+        )
+
+    def test_a_short_month_ends_on_its_own_last_day(self):
+        self.assertEqual(config.support_end_date("2027-02"), datetime.date(2027, 2, 28))
+
+    def test_a_leap_february_gets_the_29th(self):
+        self.assertEqual(config.support_end_date("2028-02"), datetime.date(2028, 2, 29))
 
     def test_full_date(self):
         self.assertEqual(
@@ -1050,6 +1061,7 @@ class SupportEndDate(unittest.TestCase):
 EOS_MANIFEST = {
     "fips-2021-10-20": {"branch": "fips-2021-10-20", "end_of_support": "2026-10"},
     "fips-2030-01-01": {"branch": "fips-2030-01-01", "end_of_support": "2031-01"},
+    "fips-exact-day": {"branch": "fips-exact-day", "end_of_support": "2026-10-15"},
     "fips-frozen": {"branch": "fips-frozen", "actively_maintained": False},
     "fips-no-date": {"branch": "fips-no-date"},
 }
@@ -1067,11 +1079,23 @@ class OutOfSupport(unittest.TestCase):
         got = self.why("fips-2021-10-20", datetime.date(2026, 11, 1))
         self.assertIn("2026-10", got)
 
+    def test_the_same_branch_is_kept_all_through_its_final_month(self):
+        # The month it ends in is still support. These are the days the off-by-one used
+        # to swallow: the branch simply stopped appearing in the report
+        for day in (1, 2, 15, 31):
+            today = datetime.date(2026, 10, day)
+            self.assertIsNone(self.why("fips-2021-10-20", today), today)
+
     def test_the_same_branch_before_its_date_is_kept(self):
         self.assertIsNone(self.why("fips-2021-10-20", datetime.date(2026, 8, 10)))
 
     def test_a_date_in_the_future_is_kept(self):
         self.assertIsNone(self.why("fips-2030-01-01", datetime.date(2026, 8, 10)))
+
+    def test_a_published_day_is_itself_still_supported(self):
+        # The end date is the last supported day, not the first unsupported one
+        self.assertIsNone(self.why("fips-exact-day", datetime.date(2026, 10, 15)))
+        self.assertIsNotNone(self.why("fips-exact-day", datetime.date(2026, 10, 16)))
 
     def test_not_actively_maintained_is_dropped(self):
         self.assertIn("maintained", self.why("fips-frozen", datetime.date(2026, 8, 10)))

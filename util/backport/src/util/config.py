@@ -6,6 +6,7 @@
 import json
 import os
 import time
+from calendar import monthrange
 from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -102,15 +103,23 @@ def load_supported_versions() -> Dict[str, dict]:
 
 def support_end_date(value: Optional[str]) -> Optional[date]:
     """
-    A YYYY-MM or YYYY-MM-DD end-of-support string as a date
+    A YYYY-MM or YYYY-MM-DD end-of-support string as the last day still supported
     Returns None when there is nothing to parse, which callers read as no published
     end date, so still supported
+
+    A bare month means supported through all of that month, which is how VERSIONING.md
+    publishes it, so YYYY-MM becomes the last day of the month and not the first. Taking
+    the first would drop a branch up to 30 days early, and an early drop is silent: the
+    branch leaves the report rather than being reported as affected
     """
     for shape in ("%Y-%m-%d", "%Y-%m"):
         try:
-            return datetime.strptime((value or "").strip(), shape).date()
+            parsed = datetime.strptime((value or "").strip(), shape).date()
         except ValueError:
             continue
+        if shape == "%Y-%m":
+            return parsed.replace(day=monthrange(parsed.year, parsed.month)[1])
+        return parsed
     return None
 
 
@@ -118,7 +127,8 @@ def out_of_support(branch: str, today: Optional[date] = None) -> Optional[str]:
     """
     Why a branch is out of support, or None when it still is supported
     A branch missing from the manifest counts as supported: unknown must not mean
-    silently skipped, since the cost of that is a missed backport
+    silently skipped, since the cost of that is a missed backport. The published end
+    date is the last supported day, so a branch is only dropped after it has passed
     """
     entry = load_supported_versions().get(branch)
     if entry is None:
