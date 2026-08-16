@@ -89,20 +89,13 @@ int X509_cmp(const X509 *a, const X509 *b) {
 int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
   int ret;
 
-  // Ensure canonical encoding is present and up to date
+  // Ensure canonical encoding is present and up to date. Canonicalization is
+  // deferred at parse time, so this is where a freshly-parsed name is
+  // canonicalized on first comparison.
 
-  if (!a->canon_enc || a->modified) {
-    ret = i2d_X509_NAME((X509_NAME *)a, NULL);
-    if (ret < 0) {
-      return -2;
-    }
-  }
-
-  if (!b->canon_enc || b->modified) {
-    ret = i2d_X509_NAME((X509_NAME *)b, NULL);
-    if (ret < 0) {
-      return -2;
-    }
+  if (!x509_name_ensure_canon((X509_NAME *)a) ||
+      !x509_name_ensure_canon((X509_NAME *)b)) {
+    return -2;
   }
 
   ret = a->canon_enclen - b->canon_enclen;
@@ -115,8 +108,9 @@ int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
 }
 
 uint32_t X509_NAME_hash(X509_NAME *x) {
-  // Make sure the X509_NAME structure contains a valid cached encoding.
-  if (i2d_X509_NAME(x, NULL) < 0) {
+  // Make sure the X509_NAME structure contains a valid canonical encoding.
+  // Canonicalization is deferred at parse time, so compute it if needed.
+  if (!x509_name_ensure_canon(x)) {
     return 0;
   }
 
