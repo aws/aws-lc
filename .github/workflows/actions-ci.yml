@@ -523,6 +523,8 @@ jobs:
   gcc-14-hardened:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
+    env:
+      GOFLAGS: "-buildvcs=false"
     strategy:
       fail-fast: false
       matrix:
@@ -542,10 +544,14 @@ jobs:
         with:
           go-version: ">=1.18"
       - name: Install build deps
+        # perl is needed for perlasm in the FIPS build; Go comes from setup-go above.
         run: |
           apt-get update
-          apt-get install -y ninja-build
+          apt-get install -y cmake ninja-build perl
           gcc --version
+          cmake --version
+          go version
+          perl --version
       - name: Setup CMake
         uses: threeal/cmake-action@v2.1.0
         with:
@@ -554,9 +560,8 @@ jobs:
           cxx-compiler: g++
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
-        # -Wno-error=hardened gives us warning but no errors if options implied by -fhardened are downgraded or disabled
-        # Ubuntu sets FORTIFY_SOURCE automatically which is one of the options implemented by hardened so this warning is
-        # generated on every compiler call.
+        # Keep -Whardened config noise (e.g. jitterentropy's -O0 compiles disabling
+        # _FORTIFY_SOURCE) from becoming fatal under the project's blanket -Werror.
         run: |
           cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild
           cmake --build ./build --target all
