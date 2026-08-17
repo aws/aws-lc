@@ -21,6 +21,7 @@ from engine.prompts import (
     SOME_ABSENT_NOTE,
     SYSTEM_PROMPT,
     TIEBREAKER_TASK,
+    UNTRUSTED_CONTENT_NOTE,
 )
 from util.config import (
     AFFECTED,
@@ -229,6 +230,9 @@ def build_prompt(
         f"**Target branch:** `{branch}`\n"
         f"**Commits that wrote these lines:** "
         f"{', '.join(list(bug_commits)[:5]) or '(none found)'}\n\n"
+        # Said once, here, where the trusted framing stops and the repository's own
+        # words begin. Everything after this point was written by whoever wrote the code
+        f"{UNTRUSTED_CONTENT_NOTE}\n\n"
         f"### What the fix changes on main\n"
         f"```diff\n{get_commit_diff(commit)}\n```\n\n"
         f"### The same files on the target branch\n{context}"
@@ -241,57 +245,81 @@ def build_prompt(
 
 # --- Asking The Model ---
 
+# The model answers by calling this tool, not by writing prose. Bedrock hands the
+# arguments back as a dict already shaped like the schema below, so there is no reply to
+# parse and no way for a sentence in the reasoning to be mistaken for the verdict
+#
+# strict is deliberately not set: Bedrock rejects it for this model, so the enums are a
+# strong steer rather than a hard guarantee and read_verdict still checks what comes back
+VERDICT_TOOL = {
+    "name": "record_verdict",
+    "description": (
+        "Record whether this release branch is affected. You MUST call this tool "
+        "exactly once. It is the only way to answer."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "affected": {
+                "type": "string",
+                "enum": ["yes", "no", "uncertain"],
+                "description": (
+                    "yes if the branch still holds the vulnerable code, no if it does "
+                    "not, uncertain if the evidence does not settle it"
+                ),
+            },
+            "confidence": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "2-4 sentences, for the human reviewer",
+            },
+        },
+        # reasoning is required even though the verdict is what gets acted on. A model
+        # asked to justify an answer gives a better answer, and the field is the cheapest
+        # place to make it do that
+        "required": ["affected", "confidence", "reasoning"],
+        "additionalProperties": False,
+    },
+}
 
-VERDICT_LINE = "likely affected"
-CONFIDENCE_LINE = "confidence"
-
-# A label only counts as an answer where the model was asked to put it: at the start of
-# its own line, followed by a colon. The leading class is the Markdown decoration a
-# model puts in front of it, any of "- ", "**", "### " or "1. "
-ANSWER_LINE = re.compile(
-    rf"^[\s>#*\-\d.)]*(?P<label>{VERDICT_LINE}|{CONFIDENCE_LINE})[\s*]*:\s*(?P<rest>.*)$"
-)
+# Only yes and no decide anything. Uncertain, and anything not in this table, is no
+# answer, and no answer leaves the branch flagged
+AFFECTED_VALUES = {"yes": True, "no": False, "uncertain": None}
+CONFIDENCE_VALUES = ("high", "medium", "low")
 
 
-def read_answer(raw: str) -> Tuple[Optional[bool], str]:
+def read_verdict(arguments) -> Tuple[Optional[bool], str]:
     """
-    Reads the verdict lines out of the reply
-    Returns (likely affected, confidence). Likely affected is True or False only for
-    an exact yes or no. Anything else is None, which leaves the branch flagged, so a
-    reply the model could not commit to never clears a branch
-
-    A label that is not at the start of a line is prose, not an answer, and only the
-    first line carrying each label is read. Scanning every line for the label anywhere
-    in it let a reply quote its own labels back and win: the reasoning sentence
-    "Likely affected. No mitigation exists on this branch" landed after the real
-    verdict and cleared the branch
+    The recorded arguments as (likely affected, confidence)
+    True or False only for an exact yes or no. Uncertain, a missing field, a value
+    outside the enum, a value of the wrong type, or anything that is not a dict all come
+    back None, so a verdict this cannot read never clears a branch
     """
-    likely, confidence = None, "low"
-    read = set()
-    for line in raw.splitlines():
-        answer = ANSWER_LINE.match(line.lower())
-        if answer is None or answer["label"] in read:
+    if not isinstance(arguments, dict):
+        return None, "low"
+    answer = arguments.get("affected")
+    confidence = arguments.get("confidence")
+    return (
+        AFFECTED_VALUES.get(answer) if isinstance(answer, str) else None,
+        confidence if confidence in CONFIDENCE_VALUES else "low",
+    )
+
+
+def verdict_arguments(reply) -> Optional[dict]:
+    """
+    The arguments of the record_verdict call, or None when the reply holds no such call
+    A reply that answered in prose, or called something else, counts as no answer
+    The first matching call wins, and the prompt asks for exactly one
+    """
+    for block in reply.content:
+        if getattr(block, "type", None) != "tool_use":
             continue
-        read.add(answer["label"])
-        rest = answer["rest"]
-        if answer["label"] == VERDICT_LINE:
-            # Only the first word after the label counts, and only an exact yes or no.
-            # "unknown", "cannot", "not" and "none" all contain "no", and a hedge
-            # like "uncertain, though probably no" must not read as a no. Clearing a
-            # branch the model could not judge is the one failure that ships a
-            # vulnerability
-            words = re.findall(r"[a-z]+", rest)
-            first = words[0] if words else ""
-            if first == "yes":
-                likely = True
-            elif first == "no":
-                likely = False
-        else:
-            for level in ("high", "medium", "low"):
-                if re.search(rf"\b{level}\b", rest):
-                    confidence = level
-                    break
-    return likely, confidence
+        if getattr(block, "name", None) == VERDICT_TOOL["name"]:
+            return getattr(block, "input", None)
+    return None
 
 
 def ask_about_branch(
@@ -323,6 +351,9 @@ def ask_about_branch(
             max_tokens=MAX_ANSWER_TOKENS,
             thinking={"type": "adaptive"},
             system=SYSTEM_PROMPT,
+            tools=[VERDICT_TOOL],
+            # Forces the call, so the model cannot answer in prose instead
+            tool_choice={"type": "tool", "name": VERDICT_TOOL["name"]},
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
             reply = stream.get_final_message()
@@ -333,14 +364,23 @@ def ask_about_branch(
         print(f"[ai] call failed for {branch}: {exc}", file=sys.stderr)
         return None
     if reply.stop_reason == "max_tokens":
-        # Thinking tokens ate the budget, so the answer may be cut off mid-sentence
+        # Thinking tokens ate the budget, so the arguments are cut off mid-object and
+        # may be missing the fields that decide the verdict. Treated as no answer, which
+        # leaves the branch flagged
         print(
-            f"[ai] reply for {branch} hit the token limit and may be cut short, "
-            "raise MAX_ANSWER_TOKENS in src/util/config.py",
+            f"[ai] reply for {branch} hit the token limit and was cut short, "
+            "leaving the branch flagged. Raise MAX_ANSWER_TOKENS in src/util/config.py",
             file=sys.stderr,
         )
-    raw = "".join(b.text for b in reply.content if hasattr(b, "text"))
-    return read_answer(raw.strip())
+        return None
+    arguments = verdict_arguments(reply)
+    if arguments is None:
+        print(
+            f"[ai] reply for {branch} recorded no verdict, leaving it flagged",
+            file=sys.stderr,
+        )
+        return None
+    return read_verdict(arguments)
 
 
 # --- Settling The Unsure Branches ---

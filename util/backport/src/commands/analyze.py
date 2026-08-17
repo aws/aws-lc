@@ -9,7 +9,7 @@ from engine.classify_branches import classify_branch
 from engine.consult_ai import refine_with_ai
 from engine.discover_branches import get_supported_branches
 from engine.inspect_fix import find_bug_commits, only_source_files
-from util.config import save_run
+from util.config import fips_boundary_files, fips_boundary_note, save_run
 from util.git import changed_files_with_status, resolve_fix_commit
 from util.render import confirm_test_file, print_summary
 
@@ -35,7 +35,7 @@ def cmd_analyze(args) -> int:
         # Said out loud, because a branch missing from the table below and a branch
         # that never needed the fix look identical to a reader
         for branch, why in dropped:
-            print(f"Skipping {branch}: {why}")
+            print(f"Skipping {branch}: {why}", file=sys.stderr)
     if not branches:
         print(
             "No supported branches found. Is this an AWS-LC clone with the "
@@ -53,5 +53,13 @@ def cmd_analyze(args) -> int:
     verdicts, decided_by = refine_with_ai(fix_sha, src_files, bug_commits, verdicts)
 
     print_summary(fix_sha, files, bug_commits, verdicts, decided_by)
-    save_run(fix_sha, base, branches, verdicts)
+
+    # Said after the table, where it is the last thing read. Every branch below is a
+    # candidate for a change inside the validated module, so this is not per-branch news
+    fips_files = fips_boundary_files(files)
+    if fips_files:
+        print()
+        print(f"FIPS BOUNDARY: this fix {fips_boundary_note(fips_files)}.")
+
+    save_run(fix_sha, base, branches, verdicts, fips_files)
     return 0

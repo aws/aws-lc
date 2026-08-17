@@ -5,6 +5,7 @@
 
 import json
 import os
+import sys
 import time
 from calendar import monthrange
 from datetime import date, datetime
@@ -95,7 +96,12 @@ def load_supported_versions() -> Dict[str, dict]:
     """
     try:
         listed = json.loads(VERSIONS_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        print(
+            f"warning: could not read {VERSIONS_PATH.name} ({exc}), so no branch will "
+            "be dropped for being out of support",
+            file=sys.stderr,
+        )
         return {}
     entries = listed.get("fips_branches", [])
     return {e["branch"]: e for e in entries if e.get("branch")}
@@ -174,6 +180,57 @@ def is_test_or_generated_file(f: str) -> bool:
     )
 
 
+# --- The FIPS Boundary ---
+# Code inside the validated module. A backport that changes anything here is not just a
+# code review: the module is validated as a build of exactly this source, so touching it
+# has certification consequences that the tool cannot judge and must not decide quietly.
+# Everything the tool can do is say so, loudly, everywhere it reports
+#
+# util/fipstools is deliberately out: it drives the module from outside rather than being
+# part of it. Keep this list narrow, since a boundary that flags everything says nothing
+FIPS_BOUNDARY_PATHS = ("crypto/fipsmodule/",)
+
+
+def fips_boundary_files(files: Sequence[str]) -> List[str]:
+    """
+    Which of the given files are inside the validated FIPS module
+
+    files: paths a fix changed, relative to the repository root
+    Returns the subset inside the module, in the order given, empty when none are
+
+    Matched on the path prefix, so a file added later under crypto/fipsmodule is caught
+    without anyone remembering to update a list. Tests and generated files under that
+    path are left out, since neither is compiled into the module and a warning that fires
+    on those stops meaning anything
+    """
+    return [
+        f
+        for f in files
+        if f.startswith(FIPS_BOUNDARY_PATHS) and not is_test_or_generated_file(f)
+    ]
+
+
+def fips_boundary_note(inside: Sequence[str]) -> str:
+    """
+    One line naming the FIPS files a change touches, for a human to read
+
+    inside: what fips_boundary_files returned, so the filtering is not repeated here
+    Returns the sentence, or empty when nothing is inside the module
+
+    Kept here so analyze, the pull request bodies and the summary comment all say the
+    same thing in the same words
+    """
+    if not inside:
+        return ""
+    shown = ", ".join(inside[:3])
+    if len(inside) > 3:
+        shown += f", and {len(inside) - 3} more"
+    return (
+        f"touches the validated FIPS module ({len(inside)} file(s): {shown}). "
+        "A backport here has certification consequences: get FIPS review before merging"
+    )
+
+
 # -- Which branches count as releases --
 # Matches release branches by name prefix, without a remote. Covers the real branches
 # and the NetOS one, which has no date in its name
@@ -193,10 +250,14 @@ RUN_FILE = TOOL_ROOT / ".backport-runs" / "last-run.json"
 
 
 def save_run(
-    fix: str, base: str, branches: Sequence[str], verdicts: Dict[str, str]
+    fix: str,
+    base: str,
+    branches: Sequence[str],
+    verdicts: Dict[str, str],
+    fips_files: Optional[Sequence[str]] = None,
 ) -> None:
     """
-    Saves what analyze decided, for apply to pick up
+    Saves what analyze decided, for apply and publish to pick up
 
     The file it writes:
         generated_at  when this ran, shown by apply so a stale run is obvious
@@ -204,6 +265,8 @@ def save_run(
         base          what the fix was compared against
         branches      every release branch that was looked at
         verdicts      one of the four verdicts per branch, the part apply acts on
+        fips_files    the files inside the validated FIPS module, so publish can carry
+                      the warning into every pull request it opens
     """
     RUN_FILE.parent.mkdir(parents=True, exist_ok=True)
     RUN_FILE.write_text(
@@ -214,7 +277,9 @@ def save_run(
                 "base": base,
                 "branches": list(branches),
                 "verdicts": verdicts,
+                "fips_files": list(fips_files or []),
             },
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )
