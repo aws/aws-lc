@@ -534,9 +534,6 @@ jobs:
           - "0"
           - "1"
     runs-on: ubuntu-24.04
-    # Pin to the exact GCC minor version used by the internal FIPS build path.
-    # Ubuntu 24.04's default gcc-14 is 14.2; the official gcc:14.4 image guarantees
-    # the same minor version that surfaces new -Wstringop-overflow warnings.
     container: gcc:14.4
     steps:
       - uses: actions/checkout@v7
