@@ -230,7 +230,7 @@ def cmd_publish(args) -> int:
     # Checked before anything is printed, so nobody confirms a run that cannot work
     require_gh()
     remote = args.remote or fork_remote()
-    push_slug = require_push_remote(remote)
+    push_slug = require_push_remote(remote, args.push_to_aws_lc)
 
     repo = base_repo(args.base_repo)
     print(f"Fix {run['fix'][:10]}")

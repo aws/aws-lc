@@ -87,6 +87,11 @@ def add_publish(subparsers) -> None:
         help="say what would be pushed and opened, without doing it",
     )
     p.add_argument(
+        "--push-to-aws-lc",
+        action="store_true",
+        help="let branches be pushed to aws/aws-lc. For CI, which runs there already",
+    )
+    p.add_argument(
         "--yes",
         action="store_true",
         help="Skips the confirm. Useful for test scripts",
