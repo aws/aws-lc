@@ -5,12 +5,13 @@
 
 import json
 import os
+import sys
 import time
 from calendar import monthrange
 from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 # --- Verdict States & Error Catching ---
 # Every branch ends up in exactly one of these
@@ -40,17 +41,13 @@ class BackportError(Exception):
 # Reads .github/workflows/ai-config.json, shared with the autofix workflow
 
 # How much the tool will read and send to the model
-# MAX_FILE_BYTES is a prompt budget, not a file size: up to six files go into one
-# question, so this is what fits alongside the rest of the prompt. It covers all but
-# about 3% of aws-lc's sources, and anything over it is marked as cut off rather than
-# quietly shortened
+# MAX_FILE_BYTES is a prompt budget: up to six files go into one question. It covers
+# about 97% of aws-lc's sources, and anything larger is marked as cut off
 MAX_DIFF_BYTES = 40000
 MAX_FILE_BYTES = 100000
 
-# What the model may spend on one reply. Generous on purpose: adaptive thinking spends
-# this before the answer starts, so a tight budget cuts off the verdict lines and every
-# branch comes back uncertain. It tunes this tool rather than naming the model, so it
-# stays here and out of the shared config
+# Adaptive thinking spends this budget before the answer starts, so too small a value
+# cuts the verdict off. Specific to this tool, so it stays out of the shared config
 MAX_ANSWER_TOKENS = 4096
 
 # Finds where ./util/backport is
@@ -90,12 +87,17 @@ def load_supported_versions() -> Dict[str, dict]:
     """
     The support window for each release branch, keyed by branch name
     Returns an empty dict when the file is missing or unreadable, which leaves every
-    branch in play. A manifest that cannot be read must not quietly shrink the list of
-    branches a fix is checked against
+    branch in play, since an unreadable manifest must not shrink the list of branches a
+    fix is checked against
     """
     try:
         listed = json.loads(VERSIONS_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        print(
+            f"warning: could not read {VERSIONS_PATH.name} ({exc}), so no branch will "
+            "be dropped for being out of support",
+            file=sys.stderr,
+        )
         return {}
     entries = listed.get("fips_branches", [])
     return {e["branch"]: e for e in entries if e.get("branch")}
@@ -174,6 +176,41 @@ def is_test_or_generated_file(f: str) -> bool:
     )
 
 
+# --- The FIPS Boundary ---
+# The module is validated as a build of exactly this source, so touching it has
+# certification consequences the tool cannot judge. It reports them for review
+#
+# util/fipstools is excluded, it drives the module from outside
+FIPS_BOUNDARY_PATHS = ("crypto/fipsmodule/",)
+
+
+def fips_boundary_files(files: Sequence[str]) -> Tuple[List[str], str]:
+    """
+    Which of the given files are inside the validated FIPS module, and what to say
+
+    files: paths a fix changed, relative to the repository root
+    Returns (inside, note): the files inside the module, and one line naming them for a
+    human. Both are empty when the fix stays outside the module
+
+    Matched on the path prefix, so new files under crypto/fipsmodule are covered. Tests
+    and generated files are excluded, since neither is compiled into the module
+    """
+    inside = [
+        f
+        for f in files
+        if f.startswith(FIPS_BOUNDARY_PATHS) and not is_test_or_generated_file(f)
+    ]
+    if not inside:
+        return [], ""
+    shown = ", ".join(inside[:3])
+    if len(inside) > 3:
+        shown += f", and {len(inside) - 3} more"
+    return inside, (
+        f"touches the validated FIPS module ({len(inside)} file(s): {shown}). "
+        "A backport here has certification consequences: get FIPS review before merging"
+    )
+
+
 # -- Which branches count as releases --
 # Matches release branches by name prefix, without a remote. Covers the real branches
 # and the NetOS one, which has no date in its name
@@ -193,10 +230,14 @@ RUN_FILE = TOOL_ROOT / ".backport-runs" / "last-run.json"
 
 
 def save_run(
-    fix: str, base: str, branches: Sequence[str], verdicts: Dict[str, str]
+    fix: str,
+    base: str,
+    branches: Sequence[str],
+    verdicts: Dict[str, str],
+    fips_files: Optional[Sequence[str]] = None,
 ) -> None:
     """
-    Saves what analyze decided, for apply to pick up
+    Saves what analyze decided, for apply and publish to pick up
 
     The file it writes:
         generated_at  when this ran, shown by apply so a stale run is obvious
@@ -204,6 +245,8 @@ def save_run(
         base          what the fix was compared against
         branches      every release branch that was looked at
         verdicts      one of the four verdicts per branch, the part apply acts on
+        fips_files    the files inside the validated FIPS module, so publish can carry
+                      the warning into every pull request it opens
     """
     RUN_FILE.parent.mkdir(parents=True, exist_ok=True)
     RUN_FILE.write_text(
@@ -214,7 +257,9 @@ def save_run(
                 "base": base,
                 "branches": list(branches),
                 "verdicts": verdicts,
+                "fips_files": list(fips_files or []),
             },
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )

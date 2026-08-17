@@ -12,9 +12,12 @@ passes:
    that wrote them, and checks whether those commits and those lines reached each
    branch. This settles most branches on its own.
 2. **AI** - only for branches history cannot settle, plus a second look at flagged
-   branches that match just part of a fix's history. It can add flags for a human to
-   review, but a no-answer always leaves the branch flagged, so it can never hide a
-   needed backport.
+   branches that match just part of a fix's history. It answers through a fixed schema
+   rather than in prose, and a no-answer always leaves the branch flagged, so it can
+   add flags for a human but never hide a needed backport.
+
+It also says when a fix reaches inside the validated FIPS module, which is a
+certification question rather than a code one.
 
 Nothing is cherry-picked, pushed, or committed. The tool only reports.
 
@@ -124,6 +127,22 @@ Anything genuinely unclear becomes `AFFECTED` rather than `not affected`. A wron
 "not affected" means a missed security backport, so the tool always errs toward
 flagging.
 
+**The FIPS boundary:**
+
+A fix that touches `crypto/fipsmodule/` gets one more line after the table:
+
+```
+FIPS BOUNDARY: this fix touches the validated FIPS module (2 file(s):
+crypto/fipsmodule/bn/bn.c, crypto/fipsmodule/bn/internal.h). A backport here has
+certification consequences: get FIPS review before merging
+```
+
+The module is validated as a build of exactly that source, so changing it is not only a
+code review. The tool cannot judge the certification impact and does not try; it makes
+sure nobody finds out later. The same line is carried into every pull request `publish`
+opens and into the summary it posts, so it survives being read by someone who never ran
+`analyze`.
+
 ## Configuration
 
 ### Model settings
@@ -143,8 +162,35 @@ this tool and autofix from drifting onto different models.
 
 The reply budget is `MAX_ANSWER_TOKENS` in `src/util/config.py`, next to the other
 limits on what goes to the model. Keep it generous. The model thinks before answering,
-and a small budget truncates the reply mid-answer, which shows up as every branch
-coming back "uncertain".
+and a small budget truncates the reply, which is treated as no answer and leaves those
+branches flagged for review.
+
+### How the model answers
+
+It doesn't answer in prose. `consult_ai.py` sends one tool, `record_verdict`, and forces
+it with `tool_choice`:
+
+```json
+{"affected": "yes" | "no" | "uncertain",
+ "confidence": "high" | "medium" | "low",
+ "reasoning": "2-4 sentences"}
+```
+
+Bedrock hands those back as a dict already shaped like the schema, so there is no reply
+text to parse. That matters more than it sounds: every earlier version of this read the
+verdict out of Markdown, and every bug in it was a parsing bug. A reasoning sentence that
+happened to start with "No" could clear a branch.
+
+`read_verdict` still validates what comes back rather than trusting it. Two Bedrock
+limits are worth knowing:
+
+- `"strict": true` on the tool is rejected for this model, so the enums are a strong
+  steer and not a hard guarantee. A value outside them reads as no answer.
+- `output_config` with a `json_schema` is rejected on this path too, which is why this
+  uses forced tool use rather than the response-format style shown in the Bedrock guide.
+
+Anything unreadable, a reply with no `record_verdict` call, or a reply cut short by the
+token limit all count as no answer, and no answer leaves the branch flagged.
 
 ### Which branches count
 
@@ -200,10 +246,10 @@ util/backport/
 │   │   ├── inspect_fix.py        # which lines the fix deletes, who wrote them
 │   │   ├── discover_branches.py  # which release branches to check
 │   │   ├── classify_branches.py  # already patched, then the verdict
-│   │   ├── consult_ai.py         # the AI pass
+│   │   ├── consult_ai.py         # the AI pass, and the verdict schema it answers with
 │   │   └── prompts.py            # every word sent to the model
 │   └── util/
-│       ├── config.py             # verdicts, settings, the saved run
+│       ├── config.py             # verdicts, settings, the FIPS boundary, the saved run
 │       ├── git.py                # everything that runs a git command
 │       └── render.py             # the output table and prompts
 ├── testing/
@@ -224,9 +270,10 @@ python3 -m unittest testing.test_engine
 ```
 
 Covers the pure helpers and the decision logic: the line filters, source file
-selection, branch ordering, reading the model's reply, the per-branch verdict table,
-and the guards that stop an empty or truncated read from clearing a branch. No
-checkout or credentials needed.
+selection, branch ordering, the verdict the model records and every way it can be
+unreadable, the FIPS boundary check, the per-branch verdict table, and the guards that
+stop an empty or truncated read from clearing a branch. No checkout or credentials
+needed.
 
 ### Replay bench
 

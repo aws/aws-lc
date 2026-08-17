@@ -160,9 +160,8 @@ def classify_branch(
     """
     ref = branch_ref(branch)
 
-    # With no files there is nothing to look at, and "I looked at nothing and found
-    # nothing" must not come out as not affected. git.changed_files_with_status stops
-    # the run before this, so reaching it means a caller built the list some other way
+    # With no files there is nothing to look at, which must not read as not affected.
+    # git stops the run before this, so reaching it means a caller built the list itself
     if not src_files:
         return UNSURE
 

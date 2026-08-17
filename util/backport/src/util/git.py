@@ -24,10 +24,8 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 # --- Where We Run ---
 
 # Git runs in the repo this tool lives in (<repo>/util/backport -> <repo>)
-# Pinned instead of using the current directory: we pass repo-relative paths like
-# `git diff <sha>^ <sha> -- crypto/x.c` and git matches those against the directory
-# it runs in. From a subfolder they match nothing and git still exits 0, so we would
-# read an empty diff and give a wrong verdict with no error to show for it
+# Pinned instead of the current directory: we pass repo-relative paths, which match
+# nothing from a subfolder, and git still exits 0, so we would read an empty diff
 REPO_TOP = str(TOOL_ROOT.parent.parent)
 
 
@@ -66,9 +64,8 @@ def release_remote() -> str:
     """
     The remote to read release branches from
     Returns BACKPORT_REMOTE when set, else the remote pointing at aws/aws-lc, else
-    origin. Locally origin is usually a fork, which may be missing the release
-    branches or stale on them, so reading them from the remote that owns them is safer.
-    In CI there is only origin and it already is aws/aws-lc, so this picks it either way
+    origin. A local origin is usually a fork, which may be missing the release branches
+    or stale on them. In CI origin already is aws/aws-lc, so this picks it either way
     """
     if RELEASE_REMOTE:
         return RELEASE_REMOTE

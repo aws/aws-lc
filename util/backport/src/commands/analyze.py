@@ -9,7 +9,7 @@ from engine.classify_branches import classify_branch
 from engine.consult_ai import refine_with_ai
 from engine.discover_branches import get_supported_branches
 from engine.inspect_fix import find_bug_commits, only_source_files
-from util.config import save_run
+from util.config import fips_boundary_files, save_run
 from util.git import changed_files_with_status, resolve_fix_commit
 from util.render import confirm_test_file, print_summary
 
@@ -32,10 +32,9 @@ def cmd_analyze(args) -> int:
 
     branches, dropped = get_supported_branches()
     if dropped:
-        # Said out loud, because a branch missing from the table below and a branch
-        # that never needed the fix look identical to a reader
+        # A skipped branch would otherwise look like one that did not need the fix
         for branch, why in dropped:
-            print(f"Skipping {branch}: {why}")
+            print(f"Skipping {branch}: {why}", file=sys.stderr)
     if not branches:
         print(
             "No supported branches found. Is this an AWS-LC clone with the "
@@ -53,5 +52,12 @@ def cmd_analyze(args) -> int:
     verdicts, decided_by = refine_with_ai(fix_sha, src_files, bug_commits, verdicts)
 
     print_summary(fix_sha, files, bug_commits, verdicts, decided_by)
-    save_run(fix_sha, base, branches, verdicts)
+
+    # After the table, since this is about the fix and not one branch
+    fips_files, fips_note = fips_boundary_files(files)
+    if fips_note:
+        print()
+        print(f"FIPS BOUNDARY: this fix {fips_note}.")
+
+    save_run(fix_sha, base, branches, verdicts, fips_files)
     return 0
