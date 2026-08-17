@@ -1,0 +1,112 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+#
+# Backport bot. When a pull request labelled needs-backport merges, work out which
+# supported release branches still need the fix and open one pull request each.
+#
+# Split into two jobs on purpose. `analyze` is the only job that talks to the model,
+# and it has no write access. `publish` is the only job that can write, and it never
+# talks to the model. So repository content, which the model reads, is never handled
+# by a job holding a token that could change the repository.
+#
+# The OIDC role is pinned to this file by job_workflow_ref in
+# tests/ci/cdk/cdk/aws_lc_github_oidc_stack.py, so renaming this file breaks the
+# trust policy until the CDK stack is redeployed. The general OIDC role excludes this
+# file by the same claim, so these jobs cannot take the general route into CI instead.
+name: backport-bot
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: analyze
+    # Only merged pull requests, and only when somebody asked for a backport. Reading
+    # the label here rather than in the tool keeps the decision with the reviewers
+    if: >-
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'needs-backport')
+    permissions:
+      id-token: write # to assume the Bedrock role
+      contents: read
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The merge commit, not the pull request head, so no untrusted code runs
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          # Brings every branch, which is how the tool sees the release branches, and
+          # the whole history, which it needs to compare them
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Load shared Bedrock settings
+        # For configure-aws-credentials, which takes no region input and reads
+        # AWS_REGION from the environment. No model id is set here: the tool reads
+        # the same shared file itself
+        run: |
+          jq -r '"AWS_REGION=\(.aws_region)"' \
+            .github/workflows/ai-config.json >> "$GITHUB_ENV"
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsBackportOidcRole
+          roleName: AwsLcGitHubActionsBedrockRole
+      - name: Install the AI client
+        run: pip3 install --user anthropic boto3
+      - name: Work out which branches need the fix
+        # The SHA goes through the environment rather than into the script, so nothing
+        # from the event is expanded by the shell. GitHub's script injection guidance:
+        # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#good-practices-for-mitigating-script-injection-attacks
+        env:
+          FIX_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          util/backport/backport analyze --commit "$FIX_SHA" --skip
+      - name: Keep the verdict for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: backport-run
+          path: util/backport/.backport-runs/last-run.json
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: analyze
+    permissions:
+      contents: write # to push the backport branches
+      pull-requests: write # to open and comment on the backport pull requests
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          # persist-credentials is left alone here, unlike in analyze: this job pushes
+          # the backport branches, and it is the checkout's credentials that do it
+      - name: Take the verdict from the analyze job
+        uses: actions/download-artifact@v4
+        with:
+          name: backport-run
+          path: util/backport/.backport-runs
+      - name: Cherry-pick and open the pull requests
+        # PR_NUMBER through the environment, not inlined into the script, same as in
+        # analyze above
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # cherry-pick needs an author, and a runner has no git identity
+          git config user.name "aws-lc-backport-bot"
+          git config user.email "backport-bot@users.noreply.github.com"
+          # --push-to-aws-lc because in CI the checkout is aws/aws-lc itself,
+          # so the backport branches have nowhere else to go
+          util/backport/backport apply --yes
+          util/backport/backport publish \
+            --pr "$PR_NUMBER" --push-to-aws-lc --yes

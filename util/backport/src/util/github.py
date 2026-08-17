@@ -6,14 +6,14 @@ Everything that talks to GitHub, through the gh CLI
 Kept in one place so no command can grow a second, slightly different PR opener
 """
 
-from util.config import BackportError
+from util.config import BACKPORT_BRANCH_PREFIX, BackportError
 from util.git import git, run
 
 import re
 import shutil
 from typing import List, Optional, Tuple
 
-# The repo backports are reviewed in. Branches are never pushed here, only PRs opened
+# Where the pull requests are opened. Branches only go here when CI says so
 AWS_LC_REPO = "aws/aws-lc"
 
 _SLUG = re.compile(r"github\.com[:/]+([^/]+)/([^/]+?)(?:\.git)?/?$")
@@ -60,16 +60,18 @@ def remote_slug(remote: str) -> Optional[str]:
     return f"{found.group(1)}/{found.group(2)}" if found else None
 
 
-def require_push_remote(remote: str) -> str:
+def require_push_remote(remote: str, allow_aws_lc: bool = False) -> str:
     """
     Checks a remote is somewhere we are allowed to push branches
-    Returns its owner/repo. aws/aws-lc is refused: backport branches belong on a fork,
-    and pushing them there would put half-reviewed work on the real repository
+    Returns its owner/repo. aws/aws-lc is refused unless allow_aws_lc is set, which
+    only CI does: running there, the checkout already is aws/aws-lc, so the branches
+    have nowhere else to go. Locally the refusal stands, so a stray --remote cannot
+    put half-reviewed work on the real repository
     """
     slug = remote_slug(remote)
     if slug is None:
         raise BackportError(f"no remote called '{remote}' in this checkout.")
-    if slug.lower() == AWS_LC_REPO:
+    if slug.lower() == AWS_LC_REPO and not allow_aws_lc:
         raise BackportError(
             f"remote '{remote}' is {slug}, which is where the pull requests go, not\n"
             "  where the branches go. Push to your fork instead, with --remote."
@@ -104,7 +106,11 @@ def push_branch(remote: str, branch: str) -> Optional[str]:
     """
     Pushes one local branch to the remote
     Returns None on success or the git error, so one bad branch cannot stop the rest
+    Anything not named backport- is refused, so even the CI run that is allowed to
+    push to aws/aws-lc can only push branches this tool built
     """
+    if not branch.startswith(BACKPORT_BRANCH_PREFIX):
+        raise BackportError(f"refusing to push '{branch}': not a backport branch.")
     pushed = git(
         "push", "--force-with-lease", remote, f"{branch}:{branch}", check=False
     )
