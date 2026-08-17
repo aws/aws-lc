@@ -86,6 +86,25 @@ jobs:
       - name: Run socat integration test
         run: |
           ./tests/ci/integration/run_socat_integration.sh
+  memcached:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      # libio-socket-ssl-perl is what lets the Perl test suite speak TLS to
+      # memcached; t/ssl_ports.t needs its TLS 1.3 support and
+      # t/ssl_session_resumption.t needs get_session_reused().
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang make autoconf automake libtool pkg-config \
+          libevent-dev libio-socket-ssl-perl
+      - uses: actions/checkout@v7
+      # Pinned to a memcached release for a stable required check. Omit the
+      # argument to track the default branch instead.
+      - name: Run memcached integration test
+        run: |
+          ./tests/ci/integration/run_memcached_integration.sh '1.6.45'
   rust-openssl:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
