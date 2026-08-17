@@ -528,8 +528,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
-          - "14"
         fips:
           - "0"
           - "1"
