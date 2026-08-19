@@ -1,6 +1,7 @@
-# AWS-LC Backport Analysis
+# AWS-LC Backport
 
-Works out which supported release branches still need a fix, before it merges.
+Works out which supported release branches still need a fix, before it merges, and
+cherry-picks it onto the ones that do.
 
 ## What This Tool Does
 
@@ -19,7 +20,9 @@ passes:
 It also says when a fix reaches inside the validated FIPS module, which is a
 certification question rather than a code one.
 
-Nothing is cherry-picked, pushed, or committed. The tool only reports.
+`apply` then cherry-picks the fix onto one local branch per affected branch.
+
+Nothing is pushed and no pull request is opened. The branches are yours to review.
 
 ## Prerequisites
 
@@ -143,6 +146,57 @@ sure nobody finds out later. The same line is carried into every pull request `p
 opens and into the summary it posts, so it survives being read by someone who never ran
 `analyze`.
 
+### Cherry-pick onto the affected branches
+
+```bash
+util/backport/backport apply
+```
+
+Reads the last `analyze` run and cherry-picks the fix onto one local branch per
+affected branch, named `backport-<release branch>-<fix>`. Branches `analyze` could not
+settle are left out, since picking onto one of those would be a guess. `--branch` does
+a single branch, including one that was cleared, and `--yes` skips the confirm.
+
+Each pick happens in its own worktree under `.backport-worktrees/`, so the branch you
+have checked out never moves and a half-finished cherry-pick can never strand your own
+working tree mid-merge. Each branch is cut from the same remote-tracking release branch
+`analyze` judged, so the backport is never built on a base the analysis never saw.
+
+**Example Output:**
+
+```
+Fix ac3aee3104, analyzed 2026-08-04 14:36:20
+Backporting onto 7 branch(es): fips-2026-06-26-snapshot, fips-2025-09-12-lts, ...
+Create these local branches? [Y/N] y
+  fips-2026-06-26-snapshot: applied, on backport-fips-2026-06-26-snapshot-ac3aee3104
+  fips-2025-09-12-lts: applied, on backport-fips-2025-09-12-lts-ac3aee3104
+  fips-2022-11-02: CONFLICT in 4 file(s)
+      crypto/dh_extra/dh_test.cc
+      crypto/fipsmodule/dh/check.c
+      resolve in util/backport/.backport-worktrees/backport-fips-2022-11-02-ac3aee3104
+
+2 of 7 applied cleanly
+Resolve each conflict in the worktree named above, then 'git cherry-pick --continue' there.
+Nothing was pushed. Review each branch before you open a pull request.
+```
+
+A clean pick leaves just the branch and removes its worktree. A conflict keeps the
+worktree, stopped mid-cherry-pick, so you can resolve it in place. Conflicts are
+normal on the older branches, where the surrounding code has moved on.
+
+**Results:**
+
+| Result | Meaning |
+| --- | --- |
+| `applied` | cherry-picked cleanly, the branch is left behind and its worktree removed |
+| `CONFLICT` | the worktree is kept, stopped mid-cherry-pick, for you to resolve |
+| `skipped` | that backport branch already exists, so nothing was touched |
+| `nothing to do` | the change is already on the branch, so the pick came out empty |
+
+`skipped` is what makes a second run safe: re-running after resolving one conflict
+leaves the branches you already have alone. The command exits non-zero if any branch
+conflicted, so a script can tell whether anything needs a human.
+
 ## Configuration
 
 ### Model settings
@@ -241,7 +295,8 @@ util/backport/
 ├── src/
 │   ├── main.py                   # argument parsing
 │   ├── commands/
-│   │   └── analyze.py            # the analyze command
+│   │   ├── analyze.py            # the analyze command
+│   │   └── apply.py              # the apply command
 │   ├── engine/
 │   │   ├── inspect_fix.py        # which lines the fix deletes, who wrote them
 │   │   ├── discover_branches.py  # which release branches to check
@@ -258,6 +313,7 @@ util/backport/
 │   ├── fixes.txt                 # 39 real fixes to replay
 │   └── answer_key.txt            # which branches each one should flag
 └── .backport-runs/               # the last analyze result, not checked in
+    .backport-worktrees/          # where a conflicted pick waits, not checked in
 ```
 
 ## Testing
@@ -383,6 +439,18 @@ of its own, so analyze what it brought in instead.
 ```bash
 util/backport/backport analyze --commit <sha>^..<sha>
 ```
+
+### No saved analyze run
+
+`apply` acts on what `analyze` decided, so `analyze` has to have run first:
+
+```bash
+util/backport/backport analyze
+```
+
+The same error appears if the run names a fix this checkout no longer has, which
+happens when a range was analyzed and git has since collected the squashed commit.
+Re-running `analyze` fixes both.
 
 ### Wrong or empty results from a subdirectory
 

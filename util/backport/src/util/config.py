@@ -221,6 +221,10 @@ SUPPORTED_BRANCH_PREFIXES = ("fips-", "AWS-LC-FIPS-", "NetOS")
 # release branches, or missing them entirely, so guessing origin is not safe
 RELEASE_REMOTE = os.environ.get("BACKPORT_REMOTE", "").strip()
 
+# What every local branch holding a backport is named after. Kept here so the code that
+# builds the name and the code that later has to recognize it cannot drift apart
+BACKPORT_BRANCH_PREFIX = "backport-"
+
 
 # --- The Saved Run ---
 # analyze writes its result here so apply can pick it up. Kept next to the tool,
