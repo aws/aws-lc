@@ -300,14 +300,37 @@ More information on this can be found in [INCORPORATING.md](/INCORPORATING.md).
 # VM UBE Detection
 
 A VMM can snapshot, clone, and restore VMs. AWS-LC supports VM UBE-type
-uniqueness breaking event detection on Linux using SysGenID
-(https://lkml.org/lkml/2021/3/8/677). This mechanism is used for security
-hardening. If a SysGenID interface is not found, then the mechanism is ignored.
+uniqueness breaking event detection on Linux. This mechanism is used for
+security hardening. Two backends are supported:
+
+- **vmclock** (preferred) via `/dev/vmclock0`, following the
+  [vmclock specification](https://uapi-group.org/specifications/specs/vmclock/).
+- **SysGenID** (fallback) via `/dev/sysgenid`
+  (https://lkml.org/lkml/2021/3/8/677).
+
+At initialization AWS-LC prefers vmclock: if `/dev/vmclock0` is present and
+usable it is used, otherwise AWS-LC falls back to `/dev/sysgenid`. If neither
+interface is found, the mechanism is ignored.
 
 ## VM UBE Prerequisites
 
 VM snapshots taken on active hosts can potentially be unsafe to use.
 See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
+
+## Testing VM UBE Detection
+
+The device nodes are not generally available in build/test environments, so
+each backend can be pointed at a regular file that stands in for its device
+node:
+
+- `-DTEST_SYSGENID_PATH=<file>` exercises the SysGenID backend.
+- `-DTEST_VMCLOCK_PATH=<file>` exercises the vmclock backend.
+
+Setting either option enables VM UBE test mode. Because vmclock is preferred at
+runtime, enabling both in a single build only exercises vmclock; to exercise the
+SysGenID path (including the vmclock-to-SysGenID fallback), build with
+`-DTEST_SYSGENID_PATH` alone. The CI scripts under `tests/ci/` build each backend
+in a separate configuration for this reason.
 
 # FIPS Mode
 
