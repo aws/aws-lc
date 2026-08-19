@@ -1385,6 +1385,43 @@ TEST(CipherTest, GCMIncrementingIV) {
     memcpy(iv + sizeof(kFixedIV), counter2, sizeof(counter2));
     ASSERT_NO_FATAL_FAILURE(expect_iv(ctx.get(), iv, /*enc=*/true));
   }
+
+  {
+    // If GCM IV length is less than 8, SET_IV_FIXED(-1) is allowed to succeed,
+    // but a subsequent EVP_CTRL_GCM_IV_GEN call must fail rather than
+    // underflow the counter pointer.
+    static const uint8_t kShortIV[7] = {1, 2, 3, 4, 5, 6, 7};
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), kCipher, /*impl=*/nullptr, kKey,
+                                   /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN,
+                                    sizeof(kShortIV), nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IV_FIXED, -1,
+                                    const_cast<uint8_t *>(kShortIV)));
+    uint8_t counter[8];
+    EXPECT_FALSE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_IV_GEN,
+                                     sizeof(counter), counter));
+  }
+
+  {
+    // EVP_CTRL_GCM_SET_IV_INV should not overflow the IV.
+    static const uint8_t kFixedIV[4] = {1, 2, 3, 4};
+    static const uint8_t kIVInvTooLarge[13] = {1, 2, 3,  4,  5,  6, 7,
+                                               8, 9, 10, 11, 12, 13};
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), kCipher, /*impl=*/nullptr, kKey,
+                                   /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IV_FIXED,
+                                    sizeof(kFixedIV),
+                                    const_cast<uint8_t *>(kFixedIV)));
+    // Negative lengths are invalid.
+    EXPECT_FALSE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IV_INV, -1,
+                                     const_cast<uint8_t *>(kIVInvTooLarge)));
+    // Overflows the IV.
+    EXPECT_FALSE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IV_INV,
+                                     sizeof(kIVInvTooLarge),
+                                     const_cast<uint8_t *>(kIVInvTooLarge)));
+  }
 }
 
 #define CHECK_ERROR(function, err) \
