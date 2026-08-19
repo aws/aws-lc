@@ -1,0 +1,7 @@
+{
+  "_comment": "Shared Bedrock settings for the repo's AI tooling. Read by the autofix workflow (.github/workflows/autofix_integration_failures.yml) and by util/backport.",
+  "aws_region": "us-west-2",
+  "opus": "us.anthropic.claude-opus-5",
+  "sonnet": "us.anthropic.claude-sonnet-4-6",
+  "haiku": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+}

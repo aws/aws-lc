@@ -403,6 +403,7 @@ add_library(
   ecdh_extra/ecdh_extra.c
   ecdsa_extra/ecdsa_asn1.c
   ec_extra/ec_asn1.c
+  ec_extra/ec_brainpool.c
   ec_extra/ec_derive.c
   ec_extra/hash_to_curve.c
   err/err.c
@@ -428,6 +429,7 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
+  keccak/keccak.c
   lhash/lhash.c
   md4/md4.c
   mem.c
@@ -834,6 +836,7 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
+    keccak/keccak256_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc

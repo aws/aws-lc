@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.4.0")
+set(SOFTWARE_VERSION "5.5.0")
 set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 1)
 set(CRYPTO_LIB_NAME "crypto")
@@ -604,20 +604,13 @@ macro(check_run file_to_test flag_to_set compile_flags)
   endif()
 endmacro()
 
-# Some ancient assemblers don't know about AVX instructions, which is an
-# assumption we make for some of the assembly implementations. This flag
-# can be set to handle such cases.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+# Without Perl, generated-src retains AVX code because it lacks corresponding
+# preprocessor guards. See BUILDING.md.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build (needs Perl to be fully effective)" OFF)
 
-# Some assemblers know about AVX and AVX2 but not ADX instructions. This flag
-# gates the ADX/AVX2/BMI2 code paths: s2n-bignum's x86_64 implementations
-# (P-256/P-384/P-521/curve25519), RSA/DH's ADX/BMI2 Montgomery multiplication
-# (bn_mulx4x_mont/bn_sqr8x_mont), the ADX paths in p256-x86_64-asm.pl, and
-# SHA3's x4-batched Keccak (which needs AVX2, not AVX-512). It does NOT gate
-# every AVX2 implementation: ChaCha20, RSAZ-1024, and SHA-1/256/512's AVX2
-# paths depend only on MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX. This flag implies
-# MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX below, but not the reverse.
-option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX/BMI2 code paths and the AVX2 code bundled with them (not all AVX2; see comment)" OFF)
+# Excludes ADX assembly and AVX2 code in the same sources, but not all AVX2 or
+# BMI1/BMI2. Implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, but not the reverse.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 "Exclude ADX assembly and bundled AVX2 code (not all AVX2 or BMI1/BMI2)" OFF)
 
 # Some assemblers know about AVX, AVX2 and ADX but not AVX512 instructions.
 # This flag can be set to handle such cases, or to opt out of AVX-512 code
@@ -648,6 +641,12 @@ endif()
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
+endif()
+
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX AND NOT PERL_EXECUTABLE)
+  message(WARNING "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX is only partially effective "
+                  "without Perl: the AVX/AVX2 code in generated-src/ has no "
+                  "#ifndef guard and is retained.")
 endif()
 
 if (GCC)
@@ -1082,9 +1081,15 @@ if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
 endif()
 
-# The Android CMake files set -ffunction-sections and -fdata-sections, which
-# is incompatible with FIPS_SHARED.
-if(FIPS_SHARED AND ANDROID)
+if((GCC OR CLANG) AND NOT MSVC AND NOT FIPS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
+endif()
+
+# FIPS_SHARED's linker script does not collect per-symbol sections, which causes
+# `ld -r` to fail. Disable GNU-style section flags even when inherited from a
+# toolchain or CFLAGS.
+if(FIPS_SHARED AND (GCC OR CLANG) AND NOT MSVC)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS
@@ -1093,16 +1098,7 @@ endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
-  # OPENSSL_SMALL implies disabling AVX-512 optimizations on x86_64 for size.
-  # This intentionally sets only MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, not
-  # MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2, so ADX/AVX2/BMI2 code stays
-  # available under OPENSSL_SMALL (#3355). This is also enforced in
-  # include/openssl/target.h for non-CMake builds.
-  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
-    add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing AVX512 optimisations")
-  endif()
+  # Apply its x86_64 AVX-512 implication after ARCH is detected.
 endif()
 
 if(CONSTANT_TIME_VALIDATION)
@@ -1185,6 +1181,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+# On x86_64, OPENSSL_SMALL disables AVX-512 but keeps ADX/AVX2 (#3355). This
+# mirrors include/openssl/target.h for non-CMake builds.
+if(OPENSSL_SMALL AND ARCH STREQUAL "x86_64" AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  message(STATUS "OPENSSL_SMALL implies MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX, removing AVX512 optimisations")
 endif()
 
 if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
@@ -1313,6 +1317,17 @@ if(BUILD_TESTING)
     add_compile_definitions(GTEST_HAS_STREAM_REDIRECTION=0)
   endif()
 
+  # GCC's object-access warnings periodically produce false positives in
+  # heavily-inlined test code (e.g. x509_test.cc under GCC 14, see #3201).
+  # PUBLIC on boringssl_gtest demotes them for test targets only; library
+  # targets keep -Werror. -Wstringop-overread requires GCC >= 11.
+  if(GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11")
+    target_compile_options(boringssl_gtest PUBLIC
+      -Wno-error=stringop-overflow
+      -Wno-error=stringop-overread
+      -Wno-error=array-bounds
+    )
+  endif()
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
   add_custom_target(all_tests)

@@ -186,6 +186,22 @@ TEST_F(PKeyOptionUsageErrorsTest, InvalidFormatOptionsTest) {
   }
 }
 
+// Test that private key output files are created with restrictive permissions
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(PKeyTest, PrivateKeyFilePermissions) {
+  args_list_t args = {"-in", in_path, "-out", out_path};
+  bool result = pkeyTool(args);
+  ASSERT_TRUE(result);
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms & 0077), static_cast<mode_t>(0))
+      << "Private key file should not be group/world accessible, got: 0"
+      << std::oct << perms;
+}
+#endif
+
 // -------------------- PKey OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:

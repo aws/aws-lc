@@ -64,7 +64,9 @@ main.plugin_load : This test generates a warning in Codebuild. Skip over since t
 main.desc_index_min_max : This test is flaky and unrelated to aws-lc.
 main.socket_conflict : mariadbd refuses to run as root in CI container; not relevant to AWS-LC.
 "> skiplist
-  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=2
+  # mtr's --retry defaults to 1, meaning no retries at all, so --retry-failure
+  # (which only caps retries) does nothing on its own.
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --retry=2 --retry-failure=2
   popd
 }
 

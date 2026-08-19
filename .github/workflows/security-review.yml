@@ -78,7 +78,7 @@ jobs:
         shell: bash
         env:
           PROJECT_NAME: SecurityReview-${{ github.event.repository.name }}
-          SOURCE_VERSION: "pr/${{ github.event.pull_request.number }}"
+          SOURCE_VERSION: "refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}"
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_STATE: ${{ github.event.pull_request.merged && 'merged' || github.event.pull_request.state }}
