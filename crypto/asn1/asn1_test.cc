@@ -574,6 +574,23 @@ TEST(ASN1Test, SerializeEmbeddedBoolean) {
   TestSerialize(val.get(), i2d_BASIC_CONSTRAINTS, kCA);
 }
 
+static std::vector<uint8_t> EmbedParamInAlgorithmIdentifier(
+    bssl::Span<const uint8_t> param) {
+  bssl::ScopedCBB cbb;
+  CBB seq;
+  BSSL_CHECK(CBB_init(cbb.get(), 64));
+  BSSL_CHECK(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
+  static const uint8_t kTestOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                                     0x04, 0x01, 0x84, 0xb7, 0x09, 0x02};
+  CBB oid;
+  BSSL_CHECK(CBB_add_asn1(&seq, &oid, CBS_ASN1_OBJECT));
+  BSSL_CHECK(CBB_add_bytes(&oid, kTestOID, sizeof(kTestOID)));
+  BSSL_CHECK(CBB_add_bytes(&seq, param.data(), param.size()));
+  BSSL_CHECK(CBB_flush(cbb.get()));
+  return std::vector<uint8_t>(CBB_data(cbb.get()),
+                              CBB_data(cbb.get()) + CBB_len(cbb.get()));
+}
+
 TEST(ASN1Test, ASN1Type) {
   const struct {
     int type;
@@ -591,6 +608,12 @@ TEST(ASN1Test, ASN1Type) {
       {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
       // INTEGER { -1 }
       {V_ASN1_INTEGER, {0x02, 0x01, 0xff}},
+      // INTEGER { 1 }
+      {V_ASN1_INTEGER, {0x02, 0x01, 0x01}},
+      // ENUMERATED { -1 }
+      {V_ASN1_ENUMERATED, {0x0a, 0x01, 0xff}},
+      // ENUMERATED { 1 }
+      {V_ASN1_ENUMERATED, {0x0a, 0x01, 0x01}},
       // OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2 }
       {V_ASN1_OBJECT,
        {0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
@@ -601,21 +624,128 @@ TEST(ASN1Test, ASN1Type) {
       {V_ASN1_SEQUENCE, {0x30, 0x00}},
       // SET {}
       {V_ASN1_SET, {0x31, 0x00}},
+      // IA5String { "a" }
+      {V_ASN1_IA5STRING, {0x16, 0x01, 0x61}},
+      // UTF8String { "a" }
+      {V_ASN1_UTF8STRING, {0x0c, 0x01, 0x61}},
+      // BMPString { u"a" }
+      {V_ASN1_BMPSTRING, {0x1e, 0x02, 0x00, 0x61}},
+      // UniversalString { U"a" }
+      {V_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x00, 0x00, 0x61}},
       // [0] { UTF8String { "a" } }
       {V_ASN1_OTHER, {0xa0, 0x03, 0x0c, 0x01, 0x61}},
+      // [UNIVERSAL 128] { `00` }
+      // Unknown universal tags up to |V_ASN1_MAX_UNIVERSAL| are represented as
+      // an |ASN1_STRING| whose type matches the tag number. (BoringSSL now
+      // parses these as |V_ASN1_OTHER| instead.)
+      {128, {0x1f, 0x81, 0x00, 0x01, 0x00}},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(Bytes(t.der));
+
+    auto check_asn1_type = [&](const ASN1_TYPE *typ) {
+      EXPECT_EQ(ASN1_TYPE_get(typ), t.type);
+      EXPECT_EQ(typ->type, t.type);
+      // If we parsed a string type, check that is consistent.
+      if (t.type != V_ASN1_NULL && t.type != V_ASN1_OBJECT &&
+          t.type != V_ASN1_BOOLEAN) {
+        int str_type = ASN1_STRING_type(typ->value.asn1_string);
+        if (str_type == V_ASN1_NEG_INTEGER ||
+            str_type == V_ASN1_NEG_ENUMERATED) {
+          str_type &= ~V_ASN1_NEG;
+        }
+        EXPECT_EQ(str_type, t.type);
+      }
+    };
 
     // The input should successfully parse.
     const uint8_t *ptr = t.der.data();
     bssl::UniquePtr<ASN1_TYPE> val(d2i_ASN1_TYPE(nullptr, &ptr, t.der.size()));
     ASSERT_TRUE(val);
 
-    EXPECT_EQ(ASN1_TYPE_get(val.get()), t.type);
-    EXPECT_EQ(val->type, t.type);
+    check_asn1_type(val.get());
     TestSerialize(val.get(), i2d_ASN1_TYPE, t.der);
+
+    // Test the same thing wrapped in an AlgorithmIdentifier.
+    std::vector<uint8_t> alg_der = EmbedParamInAlgorithmIdentifier(t.der);
+    ptr = alg_der.data();
+    bssl::UniquePtr<X509_ALGOR> alg(
+        d2i_X509_ALGOR(nullptr, &ptr, alg_der.size()));
+    ASSERT_TRUE(alg);
+
+    check_asn1_type(alg->parameter);
+    TestSerialize(alg.get(), i2d_X509_ALGOR, alg_der);
   }
+
+  static_assert(V_ASN1_NEG_INTEGER == 258,
+                "V_ASN1_NEG_INTEGER changed. Update first test below to "
+                "collide with it.");
+  const std::vector<uint8_t> kInvalidTests[] = {
+      // Tag [UNIVERSAL 258] should be rejected.
+      //
+      // Historically, unknown universal tags were represented in |ASN1_TYPE| as
+      // |ASN1_STRING|s with the type matching the tag number. This can collide
+      // with |V_ASN_NEG|, which was one of the causes of CVE-2016-2108. (258
+      // matches |V_ASN1_NEG_INTEGER|.) We now represent unsupported values with
+      // |V_ASN1_OTHER|, but retain the |V_ASN1_MAX_UNIVERSAL| limit.
+      {0x1f, 0x82, 0x02, 0x01, 0x00},
+      // Tag [UNIVERSAL 2^35-1] will not fit in an int and should not
+      // overflow.
+      {0x1f, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x01, 0x00},
+      // Supported primitive types should be rejected if constructed, except
+      // for the string types, which AWS-LC accepts as BER constructed
+      // strings. Unlike BoringSSL, AWS-LC intentionally supports BER parsing
+      // in the ASN1 macro parsers for OpenSSL and PKCS#7 compatibility.
+      // AWS-LC also accepts EOC and does not validate UTF8String contents.
+      // These acceptances are pinned at the end of this test.
+      {0x21, 0x00},  // [BOOLEAN CONSTRUCTED] {}
+      {0x22, 0x00},  // [INTEGER CONSTRUCTED] {}
+      {0x23, 0x00},  // [BIT STRING CONSTRUCTED] {}
+      {0x25, 0x00},  // [NULL CONSTRUCTED] {}
+      {0x26, 0x00},  // [OBJECT IDENTIFIER CONSTRUCTED] {}
+      {0x2a, 0x00},  // [ENUMERATED CONSTRUCTED] {}
+      // Supported constructed types should be rejected if primitive.
+      {0x10, 0x00},  // [SEQUENCE PRIMITIVE] {}
+      {0x11, 0x00},  // [SET PRIMITIVE] {}
+      // Invalid recognized types should be rejected.
+      {0x1c, 0x01, 0xff},        // UniversalString { `ff` }
+      {0x1e, 0x01, 0xff},        // BMPString { `ff` }
+      {0x02, 0x02, 0x00, 0x00},  // INTEGER { `0000` }
+      {0x0a, 0x02, 0x00, 0x00},  // ENUMERATED { `0000` }
+      {0x06, 0x00},              // OBJECT_IDENTIFIER { }
+      {0x06, 0x01, 0xff},        // OBJECT_IDENTIFIER { `ff` }
+      {0x03, 0x01, 0xff},        // BIT_STRING { `ff` }
+      {0x05, 0x01, 0xff},        // NULL { `ff` }
+      {0x01, 0x00},              // BOOLEAN {}
+      {0x01, 0x02, 0x00, 0x00},  // BOOLEAN { `0000` }
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(Bytes(t));
+    const uint8_t *ptr = t.data();
+    bssl::UniquePtr<ASN1_TYPE> val(d2i_ASN1_TYPE(nullptr, &ptr, t.size()));
+    EXPECT_FALSE(val);
+    ERR_clear_error();
+
+    std::vector<uint8_t> alg_der = EmbedParamInAlgorithmIdentifier(t);
+    ptr = alg_der.data();
+    bssl::UniquePtr<X509_ALGOR> alg(
+        d2i_X509_ALGOR(nullptr, &ptr, alg_der.size()));
+    EXPECT_FALSE(alg);
+    ERR_clear_error();
+  }
+
+  // AWS-LC accepts the following inputs, which BoringSSL rejects. The
+  // constructed string forms are intentional: AWS-LC supports BER in the
+  // ASN1 macro parsers for OpenSSL and PKCS#7 compatibility. Pin the
+  // behavior so any change in either direction is caught. These cannot go in
+  // |kTests| above because re-encoding does not round-trip to the original
+  // (constructed) form.
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x00}, true);        // EOC
+  ExpectParse(d2i_ASN1_TYPE, {0x24, 0x00}, true);        // [OCTET STRING CONSTRUCTED] {}
+  ExpectParse(d2i_ASN1_TYPE, {0x2c, 0x00}, true);        // [UTF8String CONSTRUCTED] {}
+  ExpectParse(d2i_ASN1_TYPE, {0x3c, 0x00}, true);        // [UniversalString CONSTRUCTED] {}
+  ExpectParse(d2i_ASN1_TYPE, {0x3e, 0x00}, true);        // [BMPString CONSTRUCTED] {}
+  ExpectParse(d2i_ASN1_TYPE, {0x0c, 0x01, 0xff}, true);  // UTF8String { `ff` }
 }
 
 // Test that reading |value.ptr| from a FALSE |ASN1_TYPE| behaves correctly. The
@@ -1983,7 +2113,7 @@ TEST(ASN1Test, InvalidObject) {
 
 // Encoding invalid |ASN1_TYPE|s should fail. |ASN1_TYPE|s are
 // default-initialized to an invalid type.
-TEST(ASN1Test, InvalidASN1Type) {
+TEST(ASN1Test, EncodeInvalidASN1Type) {
   bssl::UniquePtr<ASN1_TYPE> obj(ASN1_TYPE_new());
   ASSERT_TRUE(obj);
   EXPECT_EQ(-1, obj->type);
