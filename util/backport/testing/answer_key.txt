@@ -1,0 +1,50 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+# Branches each fix should flag as affected. <sha>  br1,br2,...
+# An empty list means no supported branch needed the fix.
+#
+# A branch is affected when a backport of the fix exists on it (a cherry-pick
+# trailer naming it, a commit with the same patch-id, or the same subject line), or
+# when the lines the fix removes are still somewhere on the branch tree. Branches cut
+# after the fix are out of scope, since they already carry it.
+
+9545d9de6059  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+1bb574f3f2e7  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+e17506cdbde1  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27,fips-2025-09-12-lts
+11b50d39cf23  fips-2021-10-20,fips-2021-10-20-1MU
+4c37fba343  fips-2022-11-02
+3b5856603682  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+17cd6574bdb8  fips-2022-11-02
+2a184bd568ff  fips-NetOS-2024-06-11,fips-2024-09-27
+8a43348a53b0  fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27,fips-2025-09-12-lts
+4b07805bddc5
+110f184623b5  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27,fips-2025-09-12-lts
+dcd1690320a3  fips-2024-09-27,fips-2025-09-12-lts
+37c2b5e8cf5a  fips-NetOS-2024-06-11,fips-2024-09-27
+4e32cc53a81d  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+90d2a34ead8d  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27
+cf2e09fb5d40  fips-2025-09-12-lts
+507120cc3dba  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+8da095382457  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+28be5302b592  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27
+b7917d9b83a4
+3cc65bd333ee  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27
+9ad27ab683af  fips-2021-10-20,fips-2021-10-20-1MU
+779d13f705c8  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+32e73b358236  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11,fips-2024-09-27
+eb0c0c0d8e4e  fips-NetOS-2024-06-11,fips-2024-09-27
+921c6465918e  fips-2024-09-27,fips-2025-09-12-lts
+a1aadda437e6  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+6c21187fbd56  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02,fips-NetOS-2024-06-11
+2f55cf36eda8  fips-2022-11-02
+47389586f8aa  fips-NetOS-2024-06-11,fips-2024-09-27,fips-2025-09-12-lts
+df1f12559096  fips-2024-09-27,fips-2025-09-12-lts,fips-2026-06-26-snapshot
+867356ce1db5  fips-2021-10-20,fips-2021-10-20-1MU
+ed9e7b24221d  fips-2021-10-20,fips-2021-10-20-1MU
+7c3c62c87b1b  fips-2022-11-02
+b3dac1012c36  fips-2021-10-20,fips-2021-10-20-1MU,fips-2022-11-02
+2aa522465f69  fips-2025-09-12-lts
+24cb055cb48a  fips-2022-11-02
+6bdd4c3403a1  fips-2021-10-20,fips-2021-10-20-1MU
+3781897d1c0b  fips-2021-10-20,fips-2021-10-20-1MU
