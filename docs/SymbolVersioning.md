@@ -276,6 +276,28 @@ go run ./util/generate_version_script \
   -in crypto/libcrypto.txt -out /tmp/libcrypto.map -namespace MYCORP
 ```
 
+### Relationship to Symbol Prefixing (`BORINGSSL_PREFIX`)
+
+Symbol prefixing (see "Building with Prefixed Symbols" in
+[BUILDING.md](../BUILDING.md)) and a custom version node namespace both keep a
+binary from linking against the wrong library, but they rename different
+things:
+
+| | `BORINGSSL_PREFIX` | `SYMBOL_VERSION_NAMESPACE` |
+|---|--------------------|----------------------------|
+| Renames | Every exported symbol (`SSL_new` -> `awslc_SSL_new`) | Only version node names (`AWS_LC_1.0` -> `MYCORP_1.0`) |
+| Mechanism | Generated `#define` headers compiled into library and consumers | GNU ld version script, applied at link time |
+| Consumer impact | Token-level rewrite of consumer code; also hits same-named identifiers in unrelated C++ namespaces | None; consumer source is unchanged |
+| Applies to | All build types and platforms | Shared ELF libraries only |
+| Isolation via | Names differ across builds | Dynamic linker refuses to bind `SSL_new@AWS_LC_1.0` to a library defining only `SSL_new@MYCORP_1.0` |
+
+Use prefixing when renaming the symbols is acceptable; use a version namespace
+when symbol names must stay standard (drop-in OpenSSL-API consumers, `dlsym()`
+of standard names). The two are mutually exclusive: the version scripts
+reference unprefixed names, so a prefixed build would hide every symbol behind
+`local: *`. Configuring both is rejected at configure time; a prefixed
+`ENABLE_DIST_PKG` build must set `-DENABLE_SYMBOL_VERSIONING=OFF`.
+
 ### Symbol Removal (ABI Break)
 
 **Removing a PUBLIC symbol breaks ABI compatibility** and should be avoided. If

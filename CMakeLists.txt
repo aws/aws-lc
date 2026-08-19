@@ -195,6 +195,18 @@ if(NOT ENABLE_SYMBOL_VERSIONING AND
     "namespace with -USYMBOL_VERSION_NAMESPACE.")
 endif()
 
+# BORINGSSL_PREFIX renames every exported symbol, but the version scripts
+# reference the unprefixed names, so a prefixed+versioned build would hide
+# every symbol behind "local: *". Reject the combination rather than produce
+# an empty library; docs/SymbolVersioning.md contrasts the two mechanisms.
+if(ENABLE_SYMBOL_VERSIONING AND BORINGSSL_PREFIX)
+  message(FATAL_ERROR
+    "BORINGSSL_PREFIX cannot be combined with symbol versioning: the version "
+    "scripts reference unprefixed symbol names, so the build would export no "
+    "symbols. Configure with -DENABLE_SYMBOL_VERSIONING=OFF (needed even with "
+    "-DENABLE_DIST_PKG=ON, which enables versioning by default).")
+endif()
+
 if(ENABLE_SYMBOL_VERSIONING)
   message(STATUS "SYMBOL_VERSION_NAMESPACE: ${SYMBOL_VERSION_NAMESPACE}")
 

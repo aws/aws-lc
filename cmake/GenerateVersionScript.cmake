@@ -14,7 +14,9 @@
 # Version-node prefix in the checked-in registries and .map files: their nodes
 # are named AWS_LC_<major>.<minor>. -DSYMBOL_VERSION_NAMESPACE=<prefix> rewrites
 # them into the build tree instead of using the script verbatim; see
-# docs/SymbolVersioning.md for when that is appropriate.
+# docs/SymbolVersioning.md for when that is appropriate. Unrelated to
+# BORINGSSL_PREFIX: only node names change, never symbols, and the two are
+# mutually exclusive (enforced in the top-level CMakeLists.txt).
 set(AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE "AWS_LC")
 
 # A node name is "<namespace>_<major>.<minor>", so the namespace must be a valid

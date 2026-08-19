@@ -202,6 +202,11 @@ the symbol list on the fly (by building without prefixing, using
 `read_symbols.go` to construct a symbol list, and then building again with
 prefixing).
 
+Prefixing cannot be combined with symbol versioning (the version scripts
+reference the unprefixed names); configuring both is rejected. To distinguish
+libraries that must keep identical symbol names, use a symbol version
+namespace instead (see [docs/SymbolVersioning.md](docs/SymbolVersioning.md)).
+
 This mechanism is under development and may change over time. Please contact the
 BoringSSL maintainers if making use of it.
 

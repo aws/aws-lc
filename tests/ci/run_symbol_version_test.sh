@@ -14,6 +14,7 @@
 #    independently of distribution packaging mode
 # 7. A custom namespace without symbol versioning is rejected at configure time
 # 8. The CMake and Go implementations of the namespace rewrite agree
+# 9. BORINGSSL_PREFIX with symbol versioning is rejected at configure time
 #
 # Usage: ./tests/ci/run_symbol_version_test.sh [install_dir]
 #   If install_dir is provided, uses the installed shared libraries there.
@@ -639,6 +640,77 @@ CMAKE_EOF
     else
       print_pass "Both rewrite implementations agree on a multi-node script"
     fi
+  fi
+fi
+
+# Test 12: BORINGSSL_PREFIX with symbol versioning is refused at configure time
+# (the version scripts reference unprefixed names, so the build would export
+# nothing), whether versioning is explicit or inherited from ENABLE_DIST_PKG;
+# the opt-out in the error message (-DENABLE_SYMBOL_VERSIONING=OFF) must work.
+print_test "BORINGSSL_PREFIX with symbol versioning is a configure error"
+
+PREFIX_TEST_DIR=$(mktemp -d)
+CLEANUP_DIRS+=("${PREFIX_TEST_DIR}")
+# A real symbols file, so this cannot fail for the unrelated "must specify
+# both" reason if the guard ever moves later in the configure.
+echo "SSL_new" > "${PREFIX_TEST_DIR}/symbols.txt"
+PREFIX_GUARD_ERROR="BORINGSSL_PREFIX cannot be combined with symbol versioning"
+
+PREFIX_EXPLICIT_LOG="${PREFIX_TEST_DIR}/explicit.log"
+if cmake -GNinja -B "${PREFIX_TEST_DIR}/explicit" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_SYMBOL_VERSIONING=ON \
+     -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+     -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+     -DBUILD_TESTING=OFF > "${PREFIX_EXPLICIT_LOG}" 2>&1; then
+  print_fail "Configure unexpectedly succeeded with BORINGSSL_PREFIX and explicit versioning"
+else
+  if grep -q "${PREFIX_GUARD_ERROR}" "${PREFIX_EXPLICIT_LOG}"; then
+    print_pass "Prefix with explicit versioning rejected at configure time"
+  else
+    print_fail "Configure failed, but not with the prefix/versioning error:"
+    tail -20 "${PREFIX_EXPLICIT_LOG}" | sed 's/^/  /'
+  fi
+fi
+
+# Inherited versioning (ENABLE_DIST_PKG) must be rejected the same way.
+PREFIX_INHERITED_LOG="${PREFIX_TEST_DIR}/inherited.log"
+if cmake -GNinja -B "${PREFIX_TEST_DIR}/inherited" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_DIST_PKG=ON \
+     -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+     -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+     -DBUILD_TESTING=OFF > "${PREFIX_INHERITED_LOG}" 2>&1; then
+  print_fail "Configure unexpectedly succeeded with BORINGSSL_PREFIX and ENABLE_DIST_PKG"
+else
+  if grep -q "${PREFIX_GUARD_ERROR}" "${PREFIX_INHERITED_LOG}"; then
+    print_pass "Prefix with dist-pkg-inherited versioning rejected at configure time"
+  else
+    print_fail "Configure failed, but not with the prefix/versioning error:"
+    tail -20 "${PREFIX_INHERITED_LOG}" | sed 's/^/  /'
+  fi
+fi
+
+# The opt-out check needs Go (prefix builds hard-error at configure without it).
+if ! command -v go > /dev/null 2>&1; then
+  print_warn "go not found; skipping prefix-with-versioning-off configure check"
+else
+  PREFIX_OFF_LOG="${PREFIX_TEST_DIR}/off.log"
+  if cmake -GNinja -B "${PREFIX_TEST_DIR}/off" -S "${SOURCE_ROOT}" \
+       -DBUILD_SHARED_LIBS=ON \
+       -DENABLE_DIST_PKG=ON \
+       -DENABLE_SYMBOL_VERSIONING=OFF \
+       -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+       -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+       -DBUILD_TESTING=OFF > "${PREFIX_OFF_LOG}" 2>&1; then
+    if grep -q '^-- ENABLE_SYMBOL_VERSIONING: OFF$' "${PREFIX_OFF_LOG}"; then
+      print_pass "Prefix build configures once versioning is explicitly disabled"
+    else
+      print_fail "Prefix build configured but versioning was not reported OFF"
+    fi
+  else
+    print_fail "Configure failed for prefix build with -DENABLE_SYMBOL_VERSIONING=OFF:"
+    tail -20 "${PREFIX_OFF_LOG}" | sed 's/^/  /'
   fi
 fi
 
