@@ -73,7 +73,7 @@ echo "module: ${MODULE}"
 command -v nm > /dev/null 2>&1 || fail "nm is required for the export check"
 
 exported="$(nm -g --defined-only "${MODULE}" 2>/dev/null || true)"
-grep -q 'OSSL_provider_init' <<< "${exported}" \
+grep -qw 'OSSL_provider_init' <<< "${exported}" \
   || fail "${MODULE} does not export OSSL_provider_init; it will not load"
 echo "exports OSSL_provider_init"
 

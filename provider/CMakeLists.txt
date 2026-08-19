@@ -55,8 +55,5 @@ if(APPLE)
   # OpenSSL's module loader appends .dylib on macOS, while CMake normally gives
   # a MODULE library the .so suffix.
   set_target_properties(awslc_provider PROPERTIES SUFFIX ".dylib")
-endif()
-
-if(APPLE)
   target_link_options(awslc_provider PRIVATE "-Wl,-undefined,dynamic_lookup")
 endif()
