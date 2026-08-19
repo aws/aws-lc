@@ -15,7 +15,7 @@
 // and getauxval(type) is callable -- regardless of whether <sys/auxv.h> was
 // available -- so call sites do not need to special-case the libc.
 // AT_NULL, AT_HWCAP, AT_HWCAP2, and AT_EXECFN are also defined when the
-// system header omits them (for example under `-D_XOPEN_SOURCE=700`).
+// system header omits them (for example, glibc < 2.18 lacks AT_HWCAP2).
 
 #if defined(OPENSSL_LINUX)
 
@@ -36,7 +36,7 @@
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 #elif !defined(__UCLIBC__)
-// Non-glibc, non-uclibc libc (e.g. musl) — assume getauxval is available.
+// Non-glibc, non-uclibc libc (e.g. musl) -- assume getauxval is available.
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 #endif  // !defined(OPENSSL_HAS_GETAUXVAL) && !defined(OPENSSL_GETAUXVAL_FORCE_PROC_FALLBACK)
@@ -48,10 +48,11 @@
 // Auxiliary vector type constants from the Linux kernel ABI
 // (include/uapi/linux/auxvec.h). The specific values used here are stable.
 //
-// <sys/auxv.h> may exist but still hide AT_HWCAP2 when building with
-// `-D_XOPEN_SOURCE=700` and without `_GNU_SOURCE` (aws-lc-sys Linux
-// builds on manylinux 2.17). glibc also only advertised AT_HWCAP2 starting
-// in 2.18 (see #1682).
+// <sys/auxv.h> may exist but still omit AT_HWCAP2: glibc only added it in
+// 2.18 (see #1682), so sysroots built from vanilla glibc <= 2.17 lack it
+// (observed in aws-lc-sys manylinux 2.17 builds for ppc64le; CentOS 7's
+// glibc 2.17 carries a backport of it, so stock manylinux2014 images are
+// unaffected).
 #if !defined(AT_NULL)
 #define AT_NULL 0
 #endif
