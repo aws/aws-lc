@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+# Wrapper so the tool runs as `util/backport/backport <command>` from the repo top.
+# Finds its own location, so it works from a subfolder too. The AWS region is not set
+# here on purpose: it comes from aws_region in .github/workflows/ai-config.json, so a
+# stray AWS_REGION in the environment cannot send the model calls somewhere else.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+exec python3 "$here/src/main.py" "$@"

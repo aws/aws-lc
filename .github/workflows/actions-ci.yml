@@ -9,8 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
-  SDE_MIRROR_URL: "https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
-  SDE_VERSION_TAG: sde-external-9.44.0-2024-08-22-win
+  # The Intel SDE pins live in .github/docker_images/dependencies.env (single
+  # source of truth). The commented-out MSVC-SDE-32-bit job below must load
+  # them from there if it is ever revived.
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
   AWSLC_ENABLE_FIPS_ASAN: 1
