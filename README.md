@@ -201,9 +201,7 @@ We use [GitHub Issues](https://github.com/aws/aws-lc/issues) for managing featur
 bug reports, or questions about AWS-LC API usage.
 
 If you think you might have found a security impacting issue, please instead
-follow our [Security Notification Process](#security-issue-notifications). See our
-[Security Reporting Policy](./SECURITY.md) for additional guidance on issues considered
-in-scope for our threat model.
+follow our [Security Notification Process](#security-issue-notifications).
 
 ## Security issue notifications
 
@@ -211,7 +209,5 @@ If you discover a potential security issue in AWS-LC, we ask that you notify AWS
 Security via our
 [vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
 Please do **not** create a public GitHub issue.
-
-If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
 
 See our [Security Reporting Policy](./SECURITY.md) for additional guidance on issues considered in-scope for our threat model.

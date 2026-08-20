@@ -8,7 +8,7 @@ Instead, please submit the issue to the AWS Vulnerability Disclosure Program via
 
 Amazon Web Services (AWS) practices industry-standard Coordinated Vulnerability Disclosure (CVD) with the goal of reducing adversary advantage while a security vulnerability is being addressed. The [CERT® Guide to Coordinated Vulnerability Disclosure](https://certcc.github.io/CERT-Guide-to-CVD/tutorials/cvd_in_a_nutshell/) provides information about the CVD process, and outlines tools and practices that can help achieve this goal.
 
-For more details, visit the [AWS Vulnerability Reporting Page](http://aws.amazon.com/security/vulnerability-reporting/).
+For more details, visit the [AWS Vulnerability Reporting Page](https://aws.amazon.com/security/vulnerability-reporting/).
 
 Thank you in advance for collaborating with us to help protect our customers.
 
@@ -24,7 +24,7 @@ Applications are responsible for the security of the host on which the process l
 
 Given this shared responsibility, the following attacks are considered out of scope for AWS-LC:
 
-* Attacks requiring access to the memory, files, or privileges of the calling process
+* Attacks requiring on-host root access to processes, memory, sockets or files
 * Side-channel attacks exploiting CPU or hardware flaws, such as Meltdown and Spectre
 * Physical attacks, including fault injection, power analysis, and electromagnetic observation
 * Defects in the operating system entropy source, or in the toolchain used to build AWS-LC
@@ -64,7 +64,7 @@ An unprivileged process on the same host, or a workload sharing the same physica
 
 Given the adversarial models above, the following are examples of security-relevant issues that should be reported in accordance with [Reporting Security Issues](#reporting-security-issues):
 
-* Memory safety defects, undefined behavior, integer overflow, or reads of uninitialized memory
+* Implementation defects that compromise confidentiality, integrity, or availability, including memory safety defects, undefined behavior, integer overflow, or reads of uninitialized memory
 * Secret-dependent timing, branching, or memory access in cryptographic operations
 * Incorrect algorithm implementations that weaken confidentiality, integrity, or authentication
 * Verification routines that accept an invalid signature or authentication tag, or a certificate that should be rejected
@@ -78,9 +78,9 @@ The following are generally not considered vulnerabilities in this project's con
 * Use of deprecated OpenSSL compatibility APIs that behave as documented
 * Weak algorithms or parameters that the caller explicitly selects
 * Differences from OpenSSL behavior documented in the [porting guide](./PORTING.md)
-* Findings requiring `BORINGSSL_UNSAFE_FUZZER_MODE` or `BORINGSSL_UNSAFE_DETERMINISTIC_MODE`, which disable checks for testing
+* Findings requiring the test-only modes described in [FUZZING.md](./FUZZING.md#fuzzer-mode): `BORINGSSL_UNSAFE_FUZZER_MODE` or `BORINGSSL_UNSAFE_DETERMINISTIC_MODE`
 
-Please tell us if a report concerns a FIPS build. The FIPS module is validated separately, and its boundary and platform limitations are described in [FIPS.md](./crypto/fipsmodule/FIPS.md).
+Please tell us if a report concerns a FIPS build. The FIPS module is validated separately, and its boundary and platform limitations are described in [FIPS.md](./crypto/fipsmodule/FIPS.md). See [VERSIONING.md](./VERSIONING.md) for information about which FIPS branches receive security patches.
 
 ## Prenotification Policy
 
