@@ -41,7 +41,7 @@ static void awslc_prov_sha256_freectx(void *dctx) {
 }
 
 static void *awslc_prov_sha256_dupctx(void *dctx) {
-  void *duplicate;
+  void *duplicate = NULL;
 
   if (dctx == NULL) {
     return NULL;
@@ -112,7 +112,7 @@ static const OSSL_PARAM *awslc_prov_sha256_gettable_params(void *provctx) {
 }
 
 static int awslc_prov_sha256_get_params(OSSL_PARAM params[]) {
-  OSSL_PARAM *p;
+  OSSL_PARAM *p = NULL;
 
   p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
   if (p != NULL && !OSSL_PARAM_set_size_t(p, awslc_prov_sha256_block_size())) {
