@@ -16,7 +16,7 @@ jobs:
         with:
           apt_packages: libssl-dev
           split_workflow: true
-          clang_tidy_version: 19
+          clang_tidy_version: 21
           install_commands: >-
             /github/workspace/util/build_compilation_database.sh
             -DBUILD_AWSLC_PROVIDER=ON
