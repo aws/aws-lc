@@ -10,8 +10,6 @@
 #include <openssl/core_names.h>
 #include <openssl/params.h>
 
-#include <stdio.h>
-
 #include "internal/backend.h"
 #include "internal/provider.h"
 
@@ -33,9 +31,6 @@
 struct awslc_prov_ctx_st {
   const OSSL_CORE_HANDLE *handle;
   OSSL_LIB_CTX *libctx;
-  // buildinfo is assembled once at init because get_params hands the core a
-  // pointer with OSSL_PARAM_set_utf8_ptr and does not copy the bytes.
-  char buildinfo[128];
 };
 
 OSSL_LIB_CTX *awslc_prov_ctx_libctx(const AWSLC_PROV_CTX *ctx) {
@@ -61,7 +56,7 @@ static const OSSL_PARAM *awslc_prov_gettable_params(void *provctx) {
 
 static int awslc_prov_get_params(void *provctx, OSSL_PARAM params[]) {
   AWSLC_PROV_CTX *ctx = (AWSLC_PROV_CTX *)provctx;
-  OSSL_PARAM *p;
+  OSSL_PARAM *p = NULL;
 
   if (ctx == NULL) {
     return 0;
@@ -76,7 +71,8 @@ static int awslc_prov_get_params(void *provctx, OSSL_PARAM params[]) {
     return 0;
   }
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_BUILDINFO);
-  if (p != NULL && !OSSL_PARAM_set_utf8_ptr(p, ctx->buildinfo)) {
+  if (p != NULL &&
+      !OSSL_PARAM_set_utf8_ptr(p, awslc_prov_backend_version())) {
     return 0;
   }
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_STATUS);
@@ -98,17 +94,6 @@ static void awslc_prov_teardown(void *provctx) {
   awslc_prov_clear_free(ctx, sizeof(*ctx));
 }
 
-// Report AWS-LC's version string.
-// e.g. "AWS-LC 5.4.0" against a default build, or "AWS-LC FIPS 5.4.0" against a FIPS one.
-//
-// Returns 0 on a truncated or failed format rather than reporting a misleading
-// build identity.
-static int awslc_prov_format_buildinfo(char *out, size_t out_len) {
-  int written = snprintf(out, out_len, "%s", awslc_prov_backend_version());
-
-  return written >= 0 && (size_t)written < out_len;
-}
-
 // Functions we provide to the core.
 static const OSSL_DISPATCH awslc_prov_dispatch_table[] = {
     {OSSL_FUNC_PROVIDER_TEARDOWN, (void (*)(void))awslc_prov_teardown},
@@ -125,7 +110,7 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
                                         const OSSL_DISPATCH **out,
                                         void **provctx) {
   OSSL_FUNC_core_get_libctx_fn *c_get_libctx = NULL;
-  AWSLC_PROV_CTX *ctx;
+  AWSLC_PROV_CTX *ctx = NULL;
 
   // Scan the upcalls the core offers and keep the ones we use. Unrecognized ids
   // are skipped, which is what keeps this forward-compatible as the core adds
@@ -153,11 +138,6 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
   }
   ctx->handle = handle;
   ctx->libctx = (OSSL_LIB_CTX *)c_get_libctx(handle);
-
-  if (!awslc_prov_format_buildinfo(ctx->buildinfo, sizeof(ctx->buildinfo))) {
-    awslc_prov_clear_free(ctx, sizeof(*ctx));
-    return 0;
-  }
 
   *provctx = ctx;
   *out = awslc_prov_dispatch_table;
