@@ -2,6 +2,7 @@ add_library(
   ssl
 
   bio_ssl.cc
+  crypto_policy.cc
   custom_extensions.cc
   d1_both.cc
   d1_lib.cc
@@ -120,6 +121,7 @@ if(BUILD_TESTING)
     ssl_hybrid_handshake_test.cc
     ssl_encoding_test.cc
     ssl_ciphers_test.cc
+    ssl_crypto_policy_test.cc
     ssl_handshake_test.cc
   )
 
