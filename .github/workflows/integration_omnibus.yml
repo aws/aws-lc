@@ -210,13 +210,22 @@ jobs:
             credentials: true
             run: ./tests/ci/integration/run_monit_integration.sh
 
-          # librelp Integration Tests
+          # librelp (pinned to a release - required)
           - name: librelp
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_librelp_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_librelp_integration.sh v1.13
+          # librelp (tracking upstream master - informational, allowed to fail)
+          - name: librelp-master
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            allow_failure: true
+            run: ./tests/ci/integration/run_librelp_integration.sh master
 
           # HAProxy Integration Tests
           - name: haproxy
