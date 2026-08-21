@@ -1160,6 +1160,18 @@ if(BUILD_TESTING)
     PRIVATE third_party/googletest
   )
 
+  # GCC's object-access warnings periodically produce false positives in
+  # heavily-inlined test code (e.g. x509_test.cc under GCC 14, see #3201).
+  # PUBLIC on boringssl_gtest demotes them for test targets only; library
+  # targets keep -Werror. -Wstringop-overread requires GCC >= 11.
+  if(GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11")
+    target_compile_options(boringssl_gtest PUBLIC
+      -Wno-error=stringop-overflow
+      -Wno-error=stringop-overread
+      -Wno-error=array-bounds
+    )
+  endif()
+
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
   add_custom_target(all_tests)
