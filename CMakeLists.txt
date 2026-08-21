@@ -1716,28 +1716,31 @@ if(BUILD_LIBSSL)
 endif()
 
 if(INSTALL_OPENSSL_SHIM)
-  # OpenSSL installs openssl.pc, libcrypto.pc and libssl.pc, and pkg-config
-  # resolves packages by filename, so a drop-in replacement must provide all
-  # three names. When the libraries carry the -awslc suffix, install compat
-  # files under the OpenSSL names. Their includedir is the plain include/
-  # directory (home of the include/openssl symlink) so the cohabitant
-  # include/aws-lc path does not leak into consumers; Libs still references
-  # the suffixed libraries.
+  # pkg-config resolves packages by filename, so a drop-in OpenSSL replacement
+  # must provide all three of OpenSSL's module names. All three describe the
+  # unsuffixed interface -- plain include/ and -lcrypto/-lssl, resolved via the
+  # compatibility symlinks below -- because consumers that only know OpenSSL's
+  # names cannot cope with a suffix. The symlinks keep suffixed SONAMEs, so
+  # cohabitation is preserved. See INCORPORATING.md. The native cohabitant
+  # modules are installed above and stay suffixed.
+  set(OPENSSL_SHIM_PC_OVERRIDES
+      INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+      CRYPTO_NAME crypto
+      SSL_NAME ssl)
+
+  # Only needed when the native modules are suffixed; otherwise they already
+  # carry the OpenSSL filenames and describe the same interface.
   if(SET_LIB_SONAME)
     install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST libcrypto.pc
-                           INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+                           ${OPENSSL_SHIM_PC_OVERRIDES})
     if(BUILD_LIBSSL)
       install_pkgconfig_file(TEMPLATE libssl.pc.in DEST libssl.pc
-                             INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
-                             CRYPTO_NAME crypto)
+                             ${OPENSSL_SHIM_PC_OVERRIDES})
     endif()
   endif()
 
-  # Like genuine OpenSSL, openssl.pc requires the unsuffixed package names
-  # and reports the plain include directory.
   install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
-                         INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
-                         CRYPTO_NAME crypto SSL_NAME ssl)
+                         ${OPENSSL_SHIM_PC_OVERRIDES})
 
   # Create OpenSSL compatibility symlinks
   if(BUILD_SHARED_LIBS)
@@ -1746,9 +1749,13 @@ if(INSTALL_OPENSSL_SHIM)
       install(CODE "
         execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
           lib${CRYPTO_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
       ")
+      if(BUILD_LIBSSL)
+        install(CODE "
+          execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+            lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
+        ")
+      endif()
     endif()
   else()
     if(SET_LIB_SONAME)
@@ -1756,9 +1763,13 @@ if(INSTALL_OPENSSL_SHIM)
       install(CODE "
         execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
           lib${CRYPTO_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.a\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.a\")
       " COMPONENT Development)
+      if(BUILD_LIBSSL)
+        install(CODE "
+          execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+            lib${SSL_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.a\")
+        " COMPONENT Development)
+      endif()
     endif()
   endif()
 
