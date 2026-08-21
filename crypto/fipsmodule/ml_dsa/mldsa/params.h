@@ -26,7 +26,7 @@
 #define MLDSA_ETA 2
 #define MLDSA_TAU 39
 #define MLDSA_BETA 78
-#define MLDSA_GAMMA1 (1 << 17)
+#define MLDSA_GAMMA1 ((int32_t)1 << 17)
 #define MLDSA_GAMMA2 MLDSA_GAMMA2_88
 #define MLDSA_OMEGA 80
 #define MLDSA_CTILDEBYTES 32
@@ -41,7 +41,7 @@
 #define MLDSA_ETA 4
 #define MLDSA_TAU 49
 #define MLDSA_BETA 196
-#define MLDSA_GAMMA1 (1 << 19)
+#define MLDSA_GAMMA1 ((int32_t)1 << 19)
 #define MLDSA_GAMMA2 MLDSA_GAMMA2_32
 #define MLDSA_OMEGA 55
 #define MLDSA_CTILDEBYTES 48
@@ -56,7 +56,7 @@
 #define MLDSA_ETA 2
 #define MLDSA_TAU 60
 #define MLDSA_BETA 120
-#define MLDSA_GAMMA1 (1 << 19)
+#define MLDSA_GAMMA1 ((int32_t)1 << 19)
 #define MLDSA_GAMMA2 MLDSA_GAMMA2_32
 #define MLDSA_OMEGA 75
 #define MLDSA_CTILDEBYTES 64
@@ -69,6 +69,12 @@
 #define MLDSA_POLYT1_PACKEDBYTES 320
 #define MLDSA_POLYT0_PACKEDBYTES 416
 #define MLDSA_POLYVECH_PACKEDBYTES (MLDSA_OMEGA + MLDSA_K)
+
+/* Sampling y from counter kappa uses nonces kappa, ..., kappa+L-1, which fit in
+ * uint16_t iff kappa <= UINT16_MAX - MLDSA_L. With kappa = attempt*MLDSA_L this
+ * bounds the number of signing attempts by MLD_MAX_KAPPA / MLDSA_L; see
+ * MLD_MAX_SIGNING_ATTEMPTS in sign.c. */
+#define MLD_MAX_KAPPA (UINT16_MAX - MLDSA_L)
 
 /* Layout of the packed public key pk[MLDSA_CRYPTO_PUBLICKEYBYTES] = (rho, t1):
  *

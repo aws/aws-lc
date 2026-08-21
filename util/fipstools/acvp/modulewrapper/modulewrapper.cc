@@ -3811,6 +3811,9 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+// NOTE: ml_kem.h returns ML_KEM_SUCCESS (0), the inverse of the ml_dsa.h
+// handlers further down this file (ML_DSA_SUCCESS is 1). Do not copy a
+// condition between the two families without inverting it.
 template <int nid>
 static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
                          ReplyCallback write_reply) {
@@ -3829,7 +3832,7 @@ static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
 
   // The check_sk function validates mandated by FIPS 203 Section 7.2.
   uint8_t success_flag[1] = {0};
-  if(check_fn(ek.data(), ek.size()) != 0) {
+  if(check_fn(ek.data(), ek.size()) != ML_KEM_SUCCESS) {
     return write_reply({Span<const uint8_t>(success_flag)});
   }
 
@@ -3855,7 +3858,7 @@ static bool MLKEM_DECAP_CHECK(const Span<const uint8_t> args[],
 
   // The check_sk function validates mandated by FIPS 203 Section 7.3.
   uint8_t success_flag[1] = {0};
-  if(check_fn(dk.data(), dk.size()) != 0) {
+  if(check_fn(dk.data(), dk.size()) != ML_KEM_SUCCESS) {
     return write_reply({Span<const uint8_t>(success_flag)});
   }
 

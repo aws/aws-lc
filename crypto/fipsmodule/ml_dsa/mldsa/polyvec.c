@@ -30,39 +30,38 @@
 MLD_INTERNAL_API
 void mld_polyvecl_uniform_gamma1(mld_polyvecl *v,
                                  const uint8_t seed[MLDSA_CRHBYTES],
-                                 uint16_t nonce)
+                                 uint16_t kappa)
 {
 #if defined(MLD_CONFIG_SERIAL_FIPS202_ONLY)
   int i;
 #endif
 
-  /* Safety: nonce is at most ((UINT16_MAX - MLDSA_L) / MLDSA_L), and, hence,
-   * this cast is safe. See MLD_NONCE_UB comment in sign.c. */
-  nonce = (uint16_t)(MLDSA_L * nonce);
-  /* Now, nonce <= UINT16_MAX - (MLDSA_L - 1), so the casts below are safe. */
+  /* The caller passes the base counter kappa; component i is sampled from
+   * kappa + i. Safety: kappa <= MLD_MAX_KAPPA and i < MLDSA_L, so the
+   * casts below are safe. See MLD_MAX_KAPPA comment in params.h. */
 #if defined(MLD_CONFIG_SERIAL_FIPS202_ONLY)
   for (i = 0; i < MLDSA_L; i++)
   {
-    mld_poly_uniform_gamma1(&v->vec[i], seed, (uint16_t)(nonce + i));
+    mld_poly_uniform_gamma1(&v->vec[i], seed, (uint16_t)(kappa + i));
   }
 #else /* MLD_CONFIG_SERIAL_FIPS202_ONLY */
 #if MLDSA_L == 4
   mld_poly_uniform_gamma1_4x(&v->vec[0], &v->vec[1], &v->vec[2], &v->vec[3],
-                             seed, nonce, (uint16_t)(nonce + 1),
-                             (uint16_t)(nonce + 2), (uint16_t)(nonce + 3));
+                             seed, kappa, (uint16_t)(kappa + 1),
+                             (uint16_t)(kappa + 2), (uint16_t)(kappa + 3));
 #elif MLDSA_L == 5
   mld_poly_uniform_gamma1_4x(&v->vec[0], &v->vec[1], &v->vec[2], &v->vec[3],
-                             seed, nonce, (uint16_t)(nonce + 1),
-                             (uint16_t)(nonce + 2), (uint16_t)(nonce + 3));
-  mld_poly_uniform_gamma1(&v->vec[4], seed, (uint16_t)(nonce + 4));
+                             seed, kappa, (uint16_t)(kappa + 1),
+                             (uint16_t)(kappa + 2), (uint16_t)(kappa + 3));
+  mld_poly_uniform_gamma1(&v->vec[4], seed, (uint16_t)(kappa + 4));
 #elif MLDSA_L == 7
   mld_poly_uniform_gamma1_4x(&v->vec[0], &v->vec[1], &v->vec[2],
-                             &v->vec[3 /* irrelevant */], seed, nonce,
-                             (uint16_t)(nonce + 1), (uint16_t)(nonce + 2),
+                             &v->vec[3 /* irrelevant */], seed, kappa,
+                             (uint16_t)(kappa + 1), (uint16_t)(kappa + 2),
                              0xFF /* irrelevant */);
   mld_poly_uniform_gamma1_4x(&v->vec[3], &v->vec[4], &v->vec[5], &v->vec[6],
-                             seed, (uint16_t)(nonce + 3), (uint16_t)(nonce + 4),
-                             (uint16_t)(nonce + 5), (uint16_t)(nonce + 6));
+                             seed, (uint16_t)(kappa + 3), (uint16_t)(kappa + 4),
+                             (uint16_t)(kappa + 5), (uint16_t)(kappa + 6));
 #endif /* MLDSA_L == 7 */
 #endif /* !MLD_CONFIG_SERIAL_FIPS202_ONLY */
 
