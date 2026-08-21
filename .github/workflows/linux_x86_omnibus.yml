@@ -32,6 +32,7 @@ jobs:
             ./tests/check_objects_and_errors.sh
             ./tests/check_cmake_configure.sh
             go run ./tests/check_licenses.go
+            ./tests/check_go_vet.sh
             ./tests/check_generated_src.sh
             ./tests/coding_guidelines/style.sh
             (cd util && go run ./doc.go)
