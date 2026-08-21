@@ -100,7 +100,7 @@ type mlDsaSigGenTestGroup struct {
 	ParameterSet       string `json:"parameterSet"`
 	Deterministic      bool   `json:"deterministic"`
 	SignatureInterface string `json:"signatureInterface"`
-	ExternalMu         *bool  `json:"externalMu`
+	ExternalMu         *bool  `json:"externalMu"`
 	Tests              []struct {
 		ID      uint64               `json:"tcId"`
 		Message hexEncodedByteString `json:"message"`
@@ -177,7 +177,7 @@ type mlDsaSigVerTestGroup struct {
 	ParameterSet       string `json:"parameterSet"`
 	Deterministic      bool   `json:"deterministic"`
 	SignatureInterface string `json:"signatureInterface"`
-	ExternalMu         *bool  `json:"externalMu`
+	ExternalMu         *bool  `json:"externalMu"`
 	Tests              []struct {
 		ID        uint64               `json:"tcId"`
 		PK        hexEncodedByteString `json:"pk"`
