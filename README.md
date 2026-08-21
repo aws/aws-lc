@@ -77,8 +77,10 @@ and BSD systems. When built with `-DENABLE_DIST_PKG=1`, AWS-LC enables:
 
 Symbol versioning assigns every public API symbol to a named version node. New symbols
 introduced in future releases get new version nodes that inherit from their predecessors,
-enabling fine-grained compatibility tracking. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
-for details.
+enabling fine-grained compatibility tracking. It defaults to on in this mode but is an
+independent option (`-DENABLE_SYMBOL_VERSIONING`), so versioned symbols can be adopted
+without the header relocation and binary renaming. See
+[docs/SymbolVersioning.md](docs/SymbolVersioning.md) for details.
 
 ## Platform Support
 
