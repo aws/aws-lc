@@ -5,6 +5,7 @@
 set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
+source tests/ci/pkgconfig_test_helpers.sh
 
 export CMAKE_BUILD_PARALLEL_LEVEL=1
 
@@ -20,6 +21,7 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1
 #    - install-shared
 #    - install-static
 #    - install-both
+#    - install-soname-shared
 #    - MYAPP_SRC
 
 # Assumes script is executed from the root of aws-lc directory
@@ -37,16 +39,18 @@ function fail() {
 }
 
 function install_aws_lc() {
-    local INSTALL_DIR=${SCRATCH_DIR}/$1
+    local INSTALL_NAME=$1
+    local INSTALL_DIR=${SCRATCH_DIR}/${INSTALL_NAME}
     local BUILD_SHARED_LIBS=$2
+    shift 2
 
     local BUILD_DIR=${SCRATCH_DIR}/build
     rm -rf "${BUILD_DIR:?}"
     sync
 
-    ${CMAKE_COMMAND} --fresh -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS}
+    ${CMAKE_COMMAND} --fresh -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS} "$@"
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
-    cp ${BUILD_DIR}/check-linkage.sh "${SCRATCH_DIR}/${1}-check-linkage.sh"
+    cp ${BUILD_DIR}/check-linkage.sh "${SCRATCH_DIR}/${INSTALL_NAME}-check-linkage.sh"
 }
 
 # create installation with shared libssl.so/libcrypto.so
@@ -59,14 +63,18 @@ install_aws_lc install-static BUILD_SHARED_LIBS=OFF
 install_aws_lc install-both BUILD_SHARED_LIBS=OFF
 install_aws_lc install-both BUILD_SHARED_LIBS=ON
 
-# Verify the pkg-config files installed by a default (non-dist-pkg) build.
-# Default Linux builds enable the OpenSSL shim, so the OpenSSL package names
-# (openssl, libcrypto, libssl) must always resolve. Shared builds use -awslc
-# suffixed libraries plus OpenSSL-named compat pc files; static builds
-# install the OpenSSL names directly.
+# create installation with SONAME'd, suffixed shared libraries. This is the only
+# non-dist-pkg configuration that installs the shim pc files alongside suffixed
+# native ones, and unlike dist-pkg mode the headers are not cohabitant.
+install_aws_lc install-soname-shared BUILD_SHARED_LIBS=ON -DENABLE_PRE_SONAME_BUILD=OFF
+
+# Verify the pkg-config files installed by default (non-dist-pkg) builds. These
+# enable the OpenSSL shim, so the OpenSSL module names must always resolve and
+# always describe the unsuffixed interface, whether or not the native libraries
+# carry a product suffix. The suffix is derived, not assumed.
 verify_pkgconfig_files() {
     local INSTALL_DIR=${SCRATCH_DIR}/$1
-    local LIB_SUFFIX=$2 # "-awslc" when libraries are suffixed, "" otherwise
+    local EXPECT_SUFFIXED=$2 # "ON" when native libraries should be suffixed
 
     local LIB_DIR=lib
     if [[ -d "${INSTALL_DIR}/lib64" ]]; then
@@ -74,22 +82,53 @@ verify_pkgconfig_files() {
     fi
     local PC_DIR="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
 
+    local SUFFIX
+    SUFFIX=$(get_product_suffix "${PC_DIR}")
+    echo "verify_pkgconfig_files ${1}: derived product suffix '${SUFFIX}'"
+
+    if [[ "${EXPECT_SUFFIXED}" == "ON" && -z "${SUFFIX}" ]]; then
+        fail "${1}: expected suffixed native pc files in ${PC_DIR}, found none"
+    fi
+    if [[ "${EXPECT_SUFFIXED}" != "ON" && -n "${SUFFIX}" ]]; then
+        fail "${1}: expected unsuffixed native pc files in ${PC_DIR}, found suffix '${SUFFIX}'"
+    fi
+
+    # aws-lc.pc plus the native and OpenSSL-named modules. When the native
+    # modules are unsuffixed these names collapse onto the same three files.
     local PC_FILE
-    for PC_FILE in aws-lc.pc openssl.pc libcrypto${LIB_SUFFIX}.pc libssl${LIB_SUFFIX}.pc libcrypto.pc libssl.pc; do
+    for PC_FILE in aws-lc.pc openssl.pc "libcrypto${SUFFIX}.pc" "libssl${SUFFIX}.pc" libcrypto.pc libssl.pc; do
         if [[ ! -f "${PC_DIR}/${PC_FILE}" ]]; then
             fail "${PC_FILE} not found in ${PC_DIR}"
         fi
     done
 
-    # The OpenSSL-named files must reference the real library names and the
-    # unsuffixed package names.
-    grep -q -- "-lcrypto${LIB_SUFFIX}" "${PC_DIR}/libcrypto.pc" || fail "libcrypto.pc does not link -lcrypto${LIB_SUFFIX}"
-    grep -q -- "-lssl${LIB_SUFFIX}" "${PC_DIR}/libssl.pc" || fail "libssl.pc does not link -lssl${LIB_SUFFIX}"
-    grep -q "Requires: libssl libcrypto" "${PC_DIR}/openssl.pc" || fail "openssl.pc does not require libssl libcrypto"
+    export PKG_CONFIG_PATH="${PC_DIR}"
+
+    # The OpenSSL-named modules describe the unsuffixed interface, whatever the
+    # native libraries are called.
+    assert_pkgconfig_token libcrypto --libs -lcrypto
+    assert_pkgconfig_token libssl --libs -lssl
+    assert_pkgconfig_token openssl --print-requires libcrypto
+    assert_pkgconfig_token openssl --print-requires libssl
+    assert_pkgconfig_token libssl --print-requires-private libcrypto
+
+    # The native modules keep whatever names this configuration gives them.
+    assert_pkgconfig_token "libcrypto${SUFFIX}" --libs "-lcrypto${SUFFIX}"
+    assert_pkgconfig_token "libssl${SUFFIX}" --libs "-lssl${SUFFIX}"
+    assert_pkgconfig_token aws-lc --print-requires "libcrypto${SUFFIX}"
+    assert_pkgconfig_token aws-lc --print-requires "libssl${SUFFIX}"
+
+    # No shim-facing Requires/Libs field may name a suffixed crypto/ssl token.
+    for PC_FILE in openssl.pc libcrypto.pc libssl.pc; do
+        assert_no_suffixed_openssl_tokens "${PC_DIR}/${PC_FILE}"
+    done
+
+    unset PKG_CONFIG_PATH
 }
 
-verify_pkgconfig_files install-shared -awslc
-verify_pkgconfig_files install-static ""
+verify_pkgconfig_files install-shared OFF
+verify_pkgconfig_files install-static OFF
+verify_pkgconfig_files install-soname-shared ON
 
 # write out source of a small cmake project, containing:
 # - mylib: a library that uses AWS-LC
