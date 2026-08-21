@@ -9,7 +9,9 @@ AWS-LC uses **ELF symbol versioning** for its shared libraries on UNIX systems (
 - **Concurrent Installation**: Multiple AWS-LC versions can coexist on the same system
 - **Distribution Packaging**: Standard practice for system libraries in Linux distributions
 
-Symbol versioning is automatically enabled when building with distribution packaging mode (`-DENABLE_DIST_PKG=1`).
+Symbol versioning is enabled by default in distribution packaging mode
+(`-DENABLE_DIST_PKG=1`), but it is an independent option: see
+[Enabling Symbol Versioning](#enabling-symbol-versioning).
 
 ## How It Works
 
@@ -52,9 +54,40 @@ The `@@AWS_LC_1.0` suffix indicates your application requires the `AWS_LC_1.0` v
 - CMake 3.0+
 - Ninja or Make
 
+### Enabling Symbol Versioning
+
+Symbol versioning is controlled by `ENABLE_SYMBOL_VERSIONING`, which defaults to
+the value of `ENABLE_DIST_PKG` and can be set explicitly to override that:
+
+```bash
+# Distribution packaging: versioning on by default.
+cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON
+
+# Versioned symbols WITHOUT the rest of distribution packaging: standard SONAME,
+# headers left in include/openssl, bssl not renamed.
+cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_PRE_SONAME_BUILD=OFF -DENABLE_SYMBOL_VERSIONING=ON
+
+# Distribution packaging layout WITHOUT versioned symbols.
+cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_DIST_PKG=ON -DENABLE_SYMBOL_VERSIONING=OFF
+```
+
+Versioning is independent of the other distribution-packaging behaviors
+(`COHABITANT_HEADERS`, `COHABITANT_BINARIES`, SONAME), so it can be adopted as an
+isolated step. The second example passes `-DENABLE_PRE_SONAME_BUILD=OFF` only
+because a shared library you distribute should carry a SONAME and that flag is
+currently the sole way to get one without `ENABLE_DIST_PKG`; the deprecation
+warning it prints is expected, and versioning itself does not require a SONAME.
+
+`ENABLE_SYMBOL_VERSIONING` requires a shared library build
+(`-DBUILD_SHARED_LIBS=ON`) on a non-Apple UNIX platform. Requesting it explicitly
+elsewhere is a configure error; when merely inherited from `ENABLE_DIST_PKG` it is
+silently left off.
+
 ### Build Configuration
 
-Symbol versioning is enabled automatically with distribution packaging:
+A full distribution-packaging build, which enables versioning by default:
 
 ```bash
 cmake -GNinja -B build \
@@ -126,7 +159,7 @@ The registry and version scripts are managed by Go tools and shell wrappers in `
 | Tool | Purpose |
 |------|---------|
 | [`util/read_public_symbols`](../util/read_public_symbols) | Extracts exported symbols from headers and classifies visibility (PUBLIC / PRIVATE / PRIVATE_CXX). |
-| [`util/generate_version_script`](../util/generate_version_script) | Generates a `.map` version script from a registry `.txt`. Deterministic. |
+| [`util/generate_version_script`](../util/generate_version_script) | Generates a `.map` version script from a registry `.txt`. Deterministic. `-namespace` rewrites the version node prefix. |
 | [`util/generate_initial_version_scripts.sh`](../util/generate_initial_version_scripts.sh) | Bootstraps both registries and `.map` files from scratch (used once to establish the baseline). |
 | [`util/update_symbol_version.sh`](../util/update_symbol_version.sh) | Registers newly introduced API and regenerates the `.map` files. `--current` adds to the open node (the common case); passing a version opens a new node. |
 
@@ -211,6 +244,59 @@ the wrong node.
   - `AWS_LC_1.1` - First update with new symbols
   - `AWS_LC_1.2` - Second update with new symbols
   - `AWS_LC_2.0` - After ABI break (new SONAME)
+
+### Custom Version Node Namespace
+
+The `AWS_LC` prefix in the node name is configurable via
+`-DSYMBOL_VERSION_NAMESPACE=<prefix>`:
+
+```bash
+cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_SYMBOL_VERSIONING=ON -DSYMBOL_VERSION_NAMESPACE=MYCORP
+# => nodes are named MYCORP_1.0 instead of AWS_LC_1.0
+```
+
+The prefix must be a valid linker identifier (`[A-Za-z_][A-Za-z0-9_]*`), and
+setting a non-default namespace while symbol versioning is disabled is a configure
+error rather than being silently ignored. Only node names are rewritten; symbol
+names are untouched, and the checked-in `.map` files are left alone -- the renamed
+script is written into the build tree (`<build>/crypto/libcrypto.map`,
+`<build>/ssl/libssl.map`).
+
+> **This changes the ABI contract.** An application linked against a `MYCORP_1.0`
+> build records a dependency on `MYCORP_1.0` and will not resolve against a stock
+> `AWS_LC_1.0` library, or vice versa. A custom namespace is therefore only
+> appropriate for a privately distributed libcrypto. Do not use it for anything
+> published as AWS-LC.
+
+The same rename is available from the generator directly:
+
+```bash
+go run ./util/generate_version_script \
+  -in crypto/libcrypto.txt -out /tmp/libcrypto.map -namespace MYCORP
+```
+
+### Relationship to Symbol Prefixing (`BORINGSSL_PREFIX`)
+
+Symbol prefixing (see "Building with Prefixed Symbols" in
+[BUILDING.md](../BUILDING.md)) and a custom version node namespace both keep a
+binary from linking against the wrong library, but they rename different
+things:
+
+| | `BORINGSSL_PREFIX` | `SYMBOL_VERSION_NAMESPACE` |
+|---|--------------------|----------------------------|
+| Renames | Every exported symbol (`SSL_new` -> `awslc_SSL_new`) | Only version node names (`AWS_LC_1.0` -> `MYCORP_1.0`) |
+| Mechanism | Generated `#define` headers compiled into library and consumers | GNU ld version script, applied at link time |
+| Consumer impact | Token-level rewrite of consumer code; also hits same-named identifiers in unrelated C++ namespaces | None; consumer source is unchanged |
+| Applies to | All build types and platforms | Shared ELF libraries only |
+| Isolation via | Names differ across builds | Dynamic linker refuses to bind `SSL_new@AWS_LC_1.0` to a library defining only `SSL_new@MYCORP_1.0` |
+
+Use prefixing when renaming the symbols is acceptable; use a version namespace
+when symbol names must stay standard (drop-in OpenSSL-API consumers, `dlsym()`
+of standard names). The two are mutually exclusive: the version scripts
+reference unprefixed names, so a prefixed build would hide every symbol behind
+`local: *`. Configuring both is rejected at configure time; a prefixed
+`ENABLE_DIST_PKG` build must set `-DENABLE_SYMBOL_VERSIONING=OFF`.
 
 ### Symbol Removal (ABI Break)
 
@@ -415,7 +501,9 @@ This ensures users have a compatible AWS-LC version installed.
 - **Windows**: PE format uses DEF files for exports
 - **Static libraries**: Symbol versioning only applies to shared libraries
 
-On unsupported platforms, `ENABLE_DIST_PKG` builds libraries without symbol versioning.
+On unsupported platforms, `ENABLE_DIST_PKG` builds libraries without symbol
+versioning; requesting `-DENABLE_SYMBOL_VERSIONING=ON` explicitly there is a
+configure error.
 
 ## Troubleshooting
 
