@@ -388,24 +388,14 @@ function test_cmake_find_package_openssl() {
         CMAKE_FLAGS+=("-DOPENSSL_USE_STATIC_LIBS=TRUE")
     fi
 
-    local ORIG_PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}"
-    export PKG_CONFIG_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+    local PKG_CONFIG_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+    export PKG_CONFIG_PATH
 
     ${CMAKE_COMMAND} "${CMAKE_FLAGS[@]}"
     ${CMAKE_COMMAND} --build "${BUILD_DIR}"
 
-    if [[ -n "${ORIG_PKG_CONFIG_PATH}" ]]; then
-        export PKG_CONFIG_PATH="${ORIG_PKG_CONFIG_PATH}"
-    else
-        unset PKG_CONFIG_PATH
-    fi
-
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-
-    ${BUILD_DIR}/opensslconsumer || fail "find_package(OpenSSL) consumer failed to run"
-
-    export LD_LIBRARY_PATH="${ORIG_LD_LIBRARY_PATH}"
+    run_with_library_path "${INSTALL_DIR}/${LIB_DIR}" \
+        "${BUILD_DIR}/opensslconsumer" || fail "find_package(OpenSSL) consumer failed to run"
 
     echo "Standard CMake find_package(OpenSSL) test passed!"
 }
@@ -440,14 +430,9 @@ function test_cmake_find_package() {
 
     ${CMAKE_COMMAND} --build ${BUILD_DIR}
 
-    # Set library path for running
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-
-    # Run the application
-    ${BUILD_DIR}/myapp || fail "Test application failed to run"
-
-    export LD_LIBRARY_PATH="${ORIG_LD_LIBRARY_PATH}"
+    # Run the application with the installed shared libraries.
+    run_with_library_path "${INSTALL_DIR}/${LIB_DIR}" \
+        "${BUILD_DIR}/myapp" || fail "Test application failed to run"
 
     echo "CMake find_package test passed!"
 }
@@ -477,7 +462,8 @@ function test_pkg_config() {
     echo "Static: ${IS_STATIC}"
     echo "=============================================="
 
-    export PKG_CONFIG_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+    local PKG_CONFIG_PATH="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
+    export PKG_CONFIG_PATH
 
     # Check if package exists
     if ! pkg-config --exists "${PC_NAME}"; then
@@ -511,14 +497,8 @@ EOF
     # Compile using pkg-config flags
     ${CC:-cc} ${TEST_DIR}/test.c ${CFLAGS} ${LIBS} -o ${TEST_DIR}/test
 
-    # Run
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-
-    ${TEST_DIR}/test || fail "pkg-config test application failed to run"
-
-    export LD_LIBRARY_PATH="${ORIG_LD_LIBRARY_PATH}"
-    unset PKG_CONFIG_PATH
+    run_with_library_path "${INSTALL_DIR}/${LIB_DIR}" \
+        "${TEST_DIR}/test" || fail "pkg-config test application failed to run"
 
     echo "pkg-config test passed for ${PC_NAME}!"
 }
@@ -542,7 +522,7 @@ function test_openssl_compat_pkg_config() {
     fi
 
     local SUFFIX
-    SUFFIX=$(get_product_suffix "${PC_DIR}")
+    SUFFIX=$(require_product_suffix "${PC_DIR}")
 
     echo ""
     echo "=============================================="
@@ -551,11 +531,8 @@ function test_openssl_compat_pkg_config() {
     echo "Product suffix: '${SUFFIX}'"
     echo "=============================================="
 
-    if [[ -z "${SUFFIX}" ]]; then
-        fail "could not derive the product suffix from the native pc files in ${PC_DIR}"
-    fi
-
-    export PKG_CONFIG_PATH="${PC_DIR}"
+    local PKG_CONFIG_PATH="${PC_DIR}"
+    export PKG_CONFIG_PATH
 
     # All three OpenSSL module names must resolve from the install prefix.
     local PC_NAME
@@ -652,10 +629,8 @@ EOF
 
     ${CC:-cc} ${SSL_TEST_DIR}/test.c ${SSL_CFLAGS} ${SSL_LIBS} -o ${SSL_TEST_DIR}/test
 
-    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="${INSTALL_DIR}/${LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-    ${SSL_TEST_DIR}/test || fail "shim libssl+libcrypto consumer failed to run"
-    export LD_LIBRARY_PATH="${ORIG_LD_LIBRARY_PATH}"
+    run_with_library_path "${INSTALL_DIR}/${LIB_DIR}" \
+        "${SSL_TEST_DIR}/test" || fail "shim libssl+libcrypto consumer failed to run"
 
     # The libssh2 pattern: pkg-config resolves Requires.private to compute
     # Cflags, so this fails unless libcrypto.pc exists under that exact name.
@@ -672,12 +647,10 @@ Libs: -L\${prefix}/lib -lshimconsumer
 Cflags: -I\${prefix}/include
 EOF
 
-    export PKG_CONFIG_PATH="${CONSUMER_DIR}:${PKG_CONFIG_PATH}"
+    PKG_CONFIG_PATH="${CONSUMER_DIR}:${PKG_CONFIG_PATH}"
     if ! pkg-config --cflags --libs shimconsumer > /dev/null; then
         fail "pkg-config failed to resolve 'Requires.private: libcrypto' for a consumer package"
     fi
-
-    unset PKG_CONFIG_PATH
 
     echo "OpenSSL shim pkg-config tests passed!"
 }
@@ -699,7 +672,7 @@ function test_native_pkg_config_unchanged() {
     fi
 
     local SUFFIX
-    SUFFIX=$(get_product_suffix "${PC_DIR}")
+    SUFFIX=$(require_product_suffix "${PC_DIR}")
 
     echo ""
     echo "=============================================="
@@ -707,11 +680,8 @@ function test_native_pkg_config_unchanged() {
     echo "Product suffix: '${SUFFIX}'"
     echo "=============================================="
 
-    if [[ -z "${SUFFIX}" ]]; then
-        fail "could not derive the product suffix from the native pc files in ${PC_DIR}"
-    fi
-
-    export PKG_CONFIG_PATH="${PC_DIR}"
+    local PKG_CONFIG_PATH="${PC_DIR}"
+    export PKG_CONFIG_PATH
 
     local PC_NAME
     for PC_NAME in "aws-lc" "libcrypto${SUFFIX}" "libssl${SUFFIX}"; do
@@ -748,8 +718,6 @@ function test_native_pkg_config_unchanged() {
     assert_exact_token "${REQUIRES}" "libcrypto${SUFFIX}" "native 'libssl${SUFFIX}' Requires.private"
     assert_no_exact_token "${REQUIRES}" "libcrypto" "native 'libssl${SUFFIX}' Requires.private"
 
-    unset PKG_CONFIG_PATH
-
     echo "Native cohabitant pkg-config tests passed!"
 }
 
@@ -764,17 +732,13 @@ function test_pkg_config_no_libssl() {
     local PC_DIR="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
 
     local SUFFIX
-    SUFFIX=$(get_product_suffix "${PC_DIR}")
+    SUFFIX=$(require_product_suffix "${PC_DIR}")
 
     echo ""
     echo "=============================================="
     echo "Testing BUILD_LIBSSL=OFF pkg-config modules for: ${INSTALL_NAME}"
     echo "Product suffix: '${SUFFIX}'"
     echo "=============================================="
-
-    if [[ -z "${SUFFIX}" ]]; then
-        fail "could not derive the product suffix from the native pc files in ${PC_DIR}"
-    fi
 
     local PC_FILE
     for PC_FILE in "libssl.pc" "libssl${SUFFIX}.pc"; do
@@ -801,7 +765,8 @@ function test_pkg_config_no_libssl() {
         fi
     done
 
-    export PKG_CONFIG_PATH="${PC_DIR}"
+    local PKG_CONFIG_PATH="${PC_DIR}"
+    export PKG_CONFIG_PATH
 
     if pkg-config --exists libssl; then
         fail "pkg-config resolved 'libssl' when BUILD_LIBSSL=OFF"
@@ -838,8 +803,6 @@ function test_pkg_config_no_libssl() {
     assert_no_exact_token "${LIBS}" "-lcrypto${SUFFIX}" "'libcrypto' Libs (BUILD_LIBSSL=OFF)"
     assert_no_suffixed_openssl_tokens "${PC_DIR}/libcrypto.pc"
     assert_no_suffixed_openssl_tokens "${PC_DIR}/openssl.pc"
-
-    unset PKG_CONFIG_PATH
 
     echo "BUILD_LIBSSL=OFF pkg-config tests passed!"
 }
