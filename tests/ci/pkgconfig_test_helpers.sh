@@ -13,6 +13,16 @@
 #
 # Sourcing scripts must define a fail() function before calling these.
 
+# Detect library directory (lib or lib64)
+function get_lib_dir() {
+    local INSTALL_DIR=$1
+    if [[ -d "${INSTALL_DIR}/lib64" ]]; then
+        echo "lib64"
+    else
+        echo "lib"
+    fi
+}
+
 # Derive the product suffix (e.g. "-awslc") from the installed native filenames
 # rather than hardcoding it, so these assertions still hold if SOFTWARE_NAME
 # changes. Prints the empty string when the native modules are unsuffixed.
@@ -51,8 +61,11 @@ function pc_dependency_tokens() {
 function has_exact_token() {
     local HAYSTACK=$1
     local NEEDLE=$2
+    local -a TOKENS
     local TOKEN
-    for TOKEN in ${HAYSTACK}; do
+    # read -ra splits on whitespace without pathname expansion.
+    read -ra TOKENS <<< "${HAYSTACK}"
+    for TOKEN in "${TOKENS[@]}"; do
         if [[ "${TOKEN}" == "${NEEDLE}" ]]; then
             return 0
         fi

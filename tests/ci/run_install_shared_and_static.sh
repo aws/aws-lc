@@ -76,10 +76,8 @@ verify_pkgconfig_files() {
     local INSTALL_DIR=${SCRATCH_DIR}/$1
     local EXPECT_SUFFIXED=$2 # "ON" when native libraries should be suffixed
 
-    local LIB_DIR=lib
-    if [[ -d "${INSTALL_DIR}/lib64" ]]; then
-        LIB_DIR=lib64
-    fi
+    local LIB_DIR
+    LIB_DIR=$(get_lib_dir "${INSTALL_DIR}")
     local PC_DIR="${INSTALL_DIR}/${LIB_DIR}/pkgconfig"
 
     local SUFFIX
@@ -126,8 +124,9 @@ verify_pkgconfig_files() {
     unset PKG_CONFIG_PATH
 }
 
+# The pc files do not vary with BUILD_SHARED_LIBS, so one unsuffixed install
+# covers install-shared and install-static alike.
 verify_pkgconfig_files install-shared OFF
-verify_pkgconfig_files install-static OFF
 verify_pkgconfig_files install-soname-shared ON
 
 # write out source of a small cmake project, containing:

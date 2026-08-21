@@ -39,16 +39,6 @@ function fail() {
     exit 1
 }
 
-# Detect library directory (lib or lib64)
-function get_lib_dir() {
-    local INSTALL_DIR=$1
-    if [[ -d "${INSTALL_DIR}/lib64" ]]; then
-        echo "lib64"
-    else
-        echo "lib"
-    fi
-}
-
 function install_aws_lc_dist_pkg() {
     local INSTALL_DIR=${SCRATCH_DIR}/$1
     local BUILD_SHARED_LIBS=$2  # "BUILD_SHARED_LIBS=ON" or "BUILD_SHARED_LIBS=OFF"
@@ -890,9 +880,10 @@ verify_dist_pkg_structure install-dist-pkg-shim-shared .so ON
 test_cmake_find_package install-dist-pkg-shim-shared ON
 test_pkg_config install-dist-pkg-shim-shared aws-lc OFF
 test_pkg_config install-dist-pkg-shim-shared openssl OFF
-test_pkg_config install-dist-pkg-shim-shared libcrypto OFF
+# test_openssl_compat_pkg_config subsumes a standalone libcrypto compile: it
+# token-checks all three OpenSSL module names and compiles/runs a consumer
+# against 'libssl libcrypto'.
 test_openssl_compat_pkg_config install-dist-pkg-shim-shared OFF
-test_native_pkg_config_unchanged install-dist-pkg-shim-shared OFF
 test_cmake_find_package_openssl install-dist-pkg-shim-shared OFF ON
 
 # Test 3: ENABLE_DIST_PKG only (static libs)
@@ -915,8 +906,10 @@ verify_dist_pkg_structure install-dist-pkg-shim-static .a ON
 test_cmake_find_package install-dist-pkg-shim-static OFF
 test_pkg_config install-dist-pkg-shim-static aws-lc ON
 test_pkg_config install-dist-pkg-shim-static openssl ON
-test_pkg_config install-dist-pkg-shim-static libcrypto ON
 test_openssl_compat_pkg_config install-dist-pkg-shim-static ON
+# The native pc files are identical across the shared and static shim
+# installs, so they are checked once, here, where --static also resolves the
+# Requires.private/Libs.private fields.
 test_native_pkg_config_unchanged install-dist-pkg-shim-static ON
 # The static install reproduces the original FindOpenSSL failure: its
 # extra-dependency path only runs when the library it found is a static archive.
@@ -930,6 +923,8 @@ echo "############################################"
 install_aws_lc_dist_pkg install-dist-pkg-shim-nossl ON ON OFF
 test_pkg_config_no_libssl install-dist-pkg-shim-nossl
 test_pkg_config install-dist-pkg-shim-nossl openssl OFF
+# Unlike the shim-shared/shim-static configs, this is the only compile/run
+# against the shim modules here, so the libcrypto smoke test stays.
 test_pkg_config install-dist-pkg-shim-nossl libcrypto OFF
 test_cmake_find_package_openssl install-dist-pkg-shim-nossl OFF OFF
 

@@ -1815,34 +1815,27 @@ if(INSTALL_OPENSSL_SHIM)
   install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
                          ${OPENSSL_SHIM_PC_OVERRIDES})
 
-  # Create OpenSSL compatibility symlinks
-  if(BUILD_SHARED_LIBS)
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
-      install(CODE "
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so\")
-      ")
-      if(BUILD_LIBSSL)
-        install(CODE "
-          execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-            lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
-        ")
-      endif()
+  # Create OpenSSL compatibility symlinks. Like the compat pc files above,
+  # these are only needed when the native libraries carry a suffix.
+  if(SET_LIB_SONAME)
+    if(BUILD_SHARED_LIBS)
+      set(SHIM_LIB_EXT "so")
+      set(SHIM_LINK_COMPONENT "")
+    else()
+      set(SHIM_LIB_EXT "a")
+      # Preserves the pre-existing component split: only the static symlinks
+      # are assigned to the Development component.
+      set(SHIM_LINK_COMPONENT COMPONENT Development)
     endif()
-  else()
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        lib${CRYPTO_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.${SHIM_LIB_EXT}\")
+    " ${SHIM_LINK_COMPONENT})
+    if(BUILD_LIBSSL)
       install(CODE "
         execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.a\")
-      " COMPONENT Development)
-      if(BUILD_LIBSSL)
-        install(CODE "
-          execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-            lib${SSL_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.a\")
-        " COMPONENT Development)
-      endif()
+          lib${SSL_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.${SHIM_LIB_EXT}\")
+      " ${SHIM_LINK_COMPONENT})
     endif()
   endif()
 
