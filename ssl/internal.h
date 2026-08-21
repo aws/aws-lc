@@ -27,6 +27,10 @@
 #include <type_traits>
 #include <utility>
 
+#if defined(AWSLC_CRYPTO_POLICIES)
+#include <string>
+#endif
+
 #include <openssl/aead.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
@@ -3664,6 +3668,59 @@ void ssl_set_read_error(SSL *ssl);
 // ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
 // set to false when the mutex in |SSL_CTX| has already been locked.
 void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
+
+#if defined(AWSLC_CRYPTO_POLICIES)
+
+// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). On
+// Amazon Linux 2023 and Fedora the system-wide crypto-policies framework
+// renders an OpenSSL back-end file describing the OS TLS posture. When enabled,
+// |SSL_CTX_new| seeds each new |SSL_CTX| from that file after its built-in
+// defaults. This is best-effort: consumers may override afterward, and any
+// failure leaves the built-in defaults in place.
+
+// AWSLC_CRYPTO_POLICY_PATH is the compile-time default location of the
+// crypto-policies OpenSSL back-end file. Packagers may override it with
+// -DAWSLC_CRYPTO_POLICY_PATH=..., and it may be overridden at runtime with the
+// AWSLC_CRYPTO_POLICY_FILE environment variable (see
+// |ssl_crypto_policy_default_path|).
+#if !defined(AWSLC_CRYPTO_POLICY_PATH)
+#define AWSLC_CRYPTO_POLICY_PATH "/etc/crypto-policies/back-ends/opensslcnf.config"
+#endif
+
+// CryptoPolicyConfig holds the recognized directives parsed from a
+// crypto-policies OpenSSL back-end file. Absent directives are left empty.
+struct CryptoPolicyConfig {
+  std::string cipher_string;  // CipherString (may still contain @SECLEVEL)
+  std::string ciphersuites;   // Ciphersuites
+  std::string tls_min;        // TLS.MinProtocol
+  std::string tls_max;        // TLS.MaxProtocol
+  std::string dtls_min;       // DTLS.MinProtocol
+  std::string dtls_max;       // DTLS.MaxProtocol
+  std::string sigalgs;        // SignatureAlgorithms
+  std::string groups;         // Groups
+};
+
+// ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
+// the recognized directives. Blank lines, '#' comments, and '[section]' headers
+// are ignored, as are unrecognized keys; the last occurrence of a key wins. It
+// returns true if the file could be opened and read (even if no recognized keys
+// were present) and false only if the file could not be opened.
+bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
+
+// ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
+// back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
+// variable if set and non-empty, otherwise the compile-time
+// |AWSLC_CRYPTO_POLICY_PATH| default. Mirrors the SSL_CERT_FILE override idiom.
+const char *ssl_crypto_policy_default_path(void);
+
+// ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
+// back-end file at |path|. It is best-effort and never fails: a missing or
+// malformed file, or a directive AWS-LC rejects, is ignored and the thread's
+// error queue is cleared. |is_dtls| selects the TLS.* vs DTLS.* protocol
+// directives.
+void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls);
+
+#endif  // AWSLC_CRYPTO_POLICIES
 
 BSSL_NAMESPACE_END
 

@@ -39,6 +39,7 @@ option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an ent
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
+option(ENABLE_CRYPTO_POLICIES "Seed new SSL_CTX objects from the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -368,6 +369,18 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_VM_UBE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
+if(ENABLE_CRYPTO_POLICIES)
+  message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
+  add_definitions(-DAWSLC_CRYPTO_POLICIES)
+  # Optional override of the compile-time default policy path. Packagers can set
+  # this to relocate the system crypto-policies OpenSSL back-end file; CI uses it
+  # to point at a test fixture. Mirrors TEST_SYSGENID_PATH -> AWSLC_SYSGENID_PATH.
+  if(TEST_CRYPTO_POLICY_PATH)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_PATH=${TEST_CRYPTO_POLICY_PATH}")
+    add_definitions(-DAWSLC_CRYPTO_POLICY_PATH=\"${TEST_CRYPTO_POLICY_PATH}\")
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)

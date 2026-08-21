@@ -506,6 +506,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->conf_min_version_use_default = true;
   ret->enable_read_ahead = false;
 
+#if defined(AWSLC_CRYPTO_POLICIES)
+  // Opt-in (-DENABLE_CRYPTO_POLICIES): seed this SSL_CTX from the system
+  // crypto-policies OpenSSL back-end after the built-in defaults above. This is
+  // best-effort and non-fatal; consumers may still override afterward.
+  bssl::ssl_ctx_apply_crypto_policy(
+      ret.get(), bssl::ssl_crypto_policy_default_path(), ret->method->is_dtls);
+#endif
+
   return ret.release();
 }
 
