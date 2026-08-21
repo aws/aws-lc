@@ -20,9 +20,11 @@ passes:
 It also says when a fix reaches inside the validated FIPS module, which is a
 certification question rather than a code one.
 
-`apply` then cherry-picks the fix onto one local branch per affected branch.
+`apply` then cherry-picks the fix onto one local branch per affected branch, `resolve`
+helps you finish any that conflicted, and `publish` turns them into one pull request
+each.
 
-Nothing is pushed and no pull request is opened. The branches are yours to review.
+Nothing is auto-merged, and nothing is ever a draft. Every pull request needs review.
 
 ## Prerequisites
 
@@ -34,6 +36,8 @@ Nothing is pushed and no pull request is opened. The branches are yours to revie
 - **anthropic + boto3**: required, not optional (`pip3 install --user anthropic boto3`).
   The AI pass is part of how a verdict is reached, so the tool imports them at startup
   even when `BACKPORT_DISABLE_AI` is set
+- **gh**: the GitHub CLI, for `publish` only. Logged in with `gh auth login`, or
+  `GH_TOKEN` set, which is how CI supplies it
 
 ### AWS Permissions
 
@@ -197,6 +201,203 @@ normal on the older branches, where the surrounding code has moved on.
 leaves the branches you already have alone. The command exits non-zero if any branch
 conflicted, so a script can tell whether anything needs a human.
 
+### Open the pull requests
+
+```bash
+util/backport/backport publish
+```
+
+Pushes each finished backport branch to your fork and opens one pull request per
+branch into the matching release branch. One command, however many branches the fix
+touched.
+
+Most of the time you never type it: `apply --open-pr` offers to run it as soon as the
+cherry-picks are done, so a normal session is `analyze` then `apply`.
+
+```bash
+util/backport/backport apply --open-pr
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--branch` | just this release branch |
+| `--pr` | source pull request number, linked in each body and given a summary comment |
+| `--remote` | fork remote the branches are pushed to, the non-`aws/aws-lc` remote by default |
+| `--base-repo` | `owner/repo` to open the pull requests against, the `aws/aws-lc` remote by default |
+| `--dry-run` | print what would be pushed and opened, touch nothing |
+| `--push-to-aws-lc` | let branches be pushed to `aws/aws-lc`. For CI only |
+| `--yes` | skip the confirm, for scripts and CI |
+
+Branches go to your fork; the pull requests are opened against `aws/aws-lc`. Pushing
+branches to `aws/aws-lc` is refused unless `--push-to-aws-lc` asks for it, which only
+CI does, so a stray `--remote` cannot put half-reviewed work on the real repository.
+`--base-repo` points the pull requests somewhere else, for a staging repo.
+
+`--dry-run` pushes nothing, opens nothing, and prints the summary comment instead of
+posting it. The source pull request belongs to whoever wrote the fix, so a dry run does
+not write to it either.
+
+**Example Output:**
+
+```
+Fix ac3aee3104
+Opening pull requests into aws/aws-lc for: fips-2025-09-12-lts, fips-2024-09-27
+Branches are pushed to 'origin'
+Go ahead? [Y/N] y
+  fips-2025-09-12-lts: opened: https://github.com/aws/aws-lc/pull/3401
+  fips-2024-09-27: unfinished: cherry-pick still open in .backport-worktrees/...
+
+1 pull request(s) opened, 1 still need attention
+  fips-2024-09-27
+  Unfinished branches: resolve the conflict in the worktree, then
+  'git cherry-pick --continue' there and run publish again.
+```
+
+**Results:**
+
+| Result | Meaning |
+| --- | --- |
+| `opened` | pushed and a pull request created |
+| `dry run` | `--dry-run` only, what a real run would have pushed and opened |
+| `already open` | a pull request for that branch exists, so nothing was done again |
+| `unfinished` | its cherry-pick is still stopped in the worktree, resolve it first |
+| `missing` | no such backport branch, run `apply` first |
+| `failed` | the push or the pull request failed, with the reason |
+
+**`--dry-run` Output:**
+
+Nothing is pushed and nothing is opened, and there is no confirm to answer. A branch
+whose cherry-pick is still stopped reports `unfinished` here too, so a dry run tells you
+what needs resolving before the real one:
+
+```
+Fix ac3aee3104
+Opening pull requests into aws/aws-lc for: fips-2025-09-12-lts, fips-2024-09-27
+Branches are pushed to 'origin'
+  fips-2025-09-12-lts: dry run: would push backport-fips-2025-09-12-lts-ac3aee3104 and open a PR into fips-2025-09-12-lts
+  fips-2024-09-27: unfinished: cherry-pick still open in .backport-worktrees/...
+
+dry run: 1 pull request(s) would be opened, 1 still need attention
+  fips-2024-09-27
+  Unfinished branches: resolve the conflict in the worktree, then
+  'git cherry-pick --continue' there and run publish again.
+
+dry run: would comment this on #3401
+### Backport report for `ac3aee3104ab`
+
+Fix the thing
+
+| Branch | Result |
+| --- | --- |
+| `fips-2025-09-12-lts` | dry run: would push ... and open a PR into fips-2025-09-12-lts |
+| `fips-2024-09-27` | unfinished: cherry-pick still open in ... |
+
+Nothing is auto-merged. Every pull request above needs review.
+```
+
+The last block is only printed when `--pr` names a source pull request. It is the
+comment that a real run would post there.
+
+Nothing is ever a draft and nothing is auto-merged. Re-running is safe: a branch that
+already has a pull request is left alone, and finishing a conflict by hand is enough
+to let the next run pick it up, with no need to run `apply` again.
+
+### Finish the conflicted ones
+
+```bash
+util/backport/backport resolve
+```
+
+Walks the branches whose cherry-pick stopped, one at a time. For each it names the
+worktree and the conflicting files, waits while you fix them, then finishes the pick
+and offers to open the pull requests.
+
+When the bot did the analysis you have no saved run, so point it at the pull request
+the bot reported on and it takes the branch list from there:
+
+```bash
+util/backport/backport resolve --pr 3401
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--branch` | just this release branch |
+| `--pr` | take the branch list from the bot's report on that pull request |
+| `--remote` | fork remote the branches are pushed to, `origin` by default |
+
+Resolve the conflict the way you would any other: edit the files in the worktree and
+`git add` each one. `resolve` will not finish the pick until git reports nothing
+unmerged **and** no staged file still contains a conflict marker. Both checks matter,
+for different reasons:
+
+- A delete or rename conflict has no markers at all, so a marker scan alone would wave
+  it through and silently keep one side.
+- Staging a file is what clears it from git's unmerged list, so once you have staged
+  something badly, only the marker scan can still see it.
+
+It never stages anything for you. `git add` is how you say which side you chose, and
+guessing on your behalf is how a backport quietly loses half of a fix.
+
+## Running In CI
+
+`.github/workflows/backport-bot.yml` does the same three steps automatically. It fires
+when a pull request labelled `needs-backport` merges, so the decision to backport stays
+with the reviewers rather than with the tool.
+
+It runs as two jobs, and the split is the point:
+
+| Job | Can reach the model | Can write to the repo |
+| --- | --- | --- |
+| `analyze` | yes, `id-token: write` for Bedrock | no, `contents: read` |
+| `publish` | no | yes, through a GitHub App token, not the job's own |
+
+The model reads repository content, so the job that reads it is never the job holding a
+token that could change it. The verdict travels between them as an artifact.
+
+The bot only opens the pull requests it can cherry-pick cleanly. A branch that
+conflicts is reported in its comment on the source pull request and left alone, because
+nobody is there to choose a side. That comment carries the run as JSON, so the reviewer
+picks it up from there:
+
+```bash
+util/backport/backport apply
+util/backport/backport resolve --pr 3401
+```
+
+`apply` recreates the branches locally, `resolve` walks the conflicts, and it offers to
+open the remaining pull requests when they are finished.
+
+Branches are pushed to `aws/aws-lc` itself, because in CI the checkout already is
+`aws/aws-lc`. That needs `--push-to-aws-lc`, which is refused everywhere else,
+and `push_branch` will only ever push a `backport-` branch, so the escape cannot reach
+anything else.
+
+The workflow assumes `AwsLcGitHubActionsBackportOidcRole`, which the OIDC stack pins to
+this exact workflow file by `job_workflow_ref`. Renaming the file breaks the trust
+policy until the CDK stack is redeployed. That role is the only thing allowed to chain
+into the shared `AwsLcGitHubActionsBedrockRole`, alongside autofix's own OIDC role.
+
+The pinning cuts both ways, following what autofix already does. The general
+`AwsLcGitHubActionsOidcRole` excludes this workflow file, so the bot cannot skip its own
+role and assume the general one to reach the rest of CI. One role the bot can assume,
+and one thing that role can do.
+
+### Before the bot can run
+
+Two things have to be true first, and neither is settled by merging this code.
+
+The role has to exist. CDK takes the role name from the construct id, so
+`tests/ci/cdk` has to be deployed before the workflow can assume it. Until then the
+`analyze` job fails at the credentials step.
+
+The app has to exist. `publish` mints a token from a GitHub App, so
+`BACKPORT_BOT_APP_ID` and `BACKPORT_BOT_PRIVATE_KEY` have to be set and the app
+installed with `contents: write` and `pull_requests: write`. `GITHUB_TOKEN` is not
+enough: it cannot open a pull request unless the repository lets every workflow do so,
+and pull requests it opens do not start CI, so the backports would arrive untested.
+The app also keeps that write scope on itself rather than on the repository. If a
+ruleset guards `backport-*` branches, the app needs to be allowed to push them.
+
 ## Configuration
 
 ### Model settings
@@ -296,7 +497,9 @@ util/backport/
 │   ├── main.py                   # argument parsing
 │   ├── commands/
 │   │   ├── analyze.py            # the analyze command
-│   │   └── apply.py              # the apply command
+│   │   ├── apply.py              # the apply command
+│   │   ├── publish.py            # the publish command
+│   │   └── resolve.py            # the resolve command
 │   ├── engine/
 │   │   ├── inspect_fix.py        # which lines the fix deletes, who wrote them
 │   │   ├── discover_branches.py  # which release branches to check
@@ -306,6 +509,7 @@ util/backport/
 │   └── util/
 │       ├── config.py             # verdicts, settings, the FIPS boundary, the saved run
 │       ├── git.py                # everything that runs a git command
+│       ├── github.py             # everything that talks to GitHub, through gh
 │       └── render.py             # the output table and prompts
 ├── testing/
 │   ├── test_engine.py            # unit tests, no repo or credentials
@@ -315,6 +519,9 @@ util/backport/
 └── .backport-runs/               # the last analyze result, not checked in
     .backport-worktrees/          # where a conflicted pick waits, not checked in
 ```
+
+The CI half of the tool lives outside this folder, in
+`.github/workflows/backport-bot.yml` and `tests/ci/cdk/cdk/aws_lc_github_oidc_stack.py`.
 
 ## Testing
 
@@ -451,6 +658,30 @@ util/backport/backport analyze
 The same error appears if the run names a fix this checkout no longer has, which
 happens when a range was analyzed and git has since collected the squashed commit.
 Re-running `analyze` fixes both.
+
+### No pull request can be opened
+
+`publish` needs the GitHub CLI, installed and logged in:
+
+```bash
+gh auth login
+gh auth status
+```
+
+In CI set `GH_TOKEN` instead, from a GitHub App token with `contents: write` and
+`pull_requests: write`.
+
+### Refused to push to aws/aws-lc
+
+Backport branches belong on a fork; only the pull requests go to `aws/aws-lc`. Point
+`--remote` at your fork:
+
+```bash
+util/backport/backport publish --remote origin
+```
+
+CI is the one exception: it runs inside `aws/aws-lc` already, and passes
+`--push-to-aws-lc` to say so.
 
 ### Wrong or empty results from a subdirectory
 
