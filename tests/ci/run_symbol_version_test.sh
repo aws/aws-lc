@@ -10,6 +10,11 @@
 # 3. No unversioned symbols leak
 # 4. Version definitions are present in shared libraries
 # 5. Libraries can be linked and used correctly
+# 6. Symbol versioning and its version node namespace are configurable
+#    independently of distribution packaging mode
+# 7. A custom namespace without symbol versioning is rejected at configure time
+# 8. The CMake and Go implementations of the namespace rewrite agree
+# 9. BORINGSSL_PREFIX with symbol versioning is rejected at configure time
 #
 # Usage: ./tests/ci/run_symbol_version_test.sh [install_dir]
 #   If install_dir is provided, uses the installed shared libraries there.
@@ -402,7 +407,12 @@ check_dropped_symbols() {
     print_fail "${name}: ${dropped_count} exported symbol(s) silently hidden by the version script"
     print_info "These are exported by the compiler but missing from the registry/.map:"
     echo "${dropped}" | head -10 | sed 's/^/  /'
-    [[ ${dropped_count} -gt 10 ]] && print_info "... and $((dropped_count - 10)) more"
+    # An explicit "if" rather than "[[ ... ]] && cmd": the latter returns non-zero
+    # when the condition is false, which under "set -e" would abort the script if
+    # it were ever the function's last command.
+    if [[ ${dropped_count} -gt 10 ]]; then
+      print_info "... and $((dropped_count - 10)) more"
+    fi
     echo ""
     print_info "These symbols are compiled into the library but demoted to local by"
     print_info "'local: *;', so applications cannot link against them. Register them:"
@@ -427,17 +437,17 @@ fi
 UNVERSIONED_BUILD=$(mktemp -d)
 CLEANUP_DIRS+=("${UNVERSIONED_BUILD}")
 
-print_info "Building unversioned reference libraries (no ENABLE_DIST_PKG)"
+print_info "Building unversioned reference libraries (no symbol versioning)"
 # Build with SONAME enabled (ENABLE_PRE_SONAME_BUILD=OFF) so the library file
 # names carry the same "-awslc" suffix as the versioned dist-pkg build, but with
-# ENABLE_DIST_PKG=OFF (set explicitly) so symbol versioning is not applied.
-# Symbol versioning is gated solely on ENABLE_DIST_PKG, so this reference is
-# guaranteed unversioned. (A bare -DBUILD_SHARED_LIBS=ON build would leave
-# ENABLE_PRE_SONAME_BUILD at its default ON, yielding SET_LIB_SONAME=0 and
-# unsuffixed libcrypto.so names.)
+# symbol versioning explicitly off so the reference is guaranteed unversioned
+# regardless of what ENABLE_SYMBOL_VERSIONING would default to. (A bare
+# -DBUILD_SHARED_LIBS=ON build would leave ENABLE_PRE_SONAME_BUILD at its default
+# ON, yielding SET_LIB_SONAME=0 and unsuffixed libcrypto.so names.)
 if ! cmake -GNinja -B "${UNVERSIONED_BUILD}" -S "${SOURCE_ROOT}" \
      -DBUILD_SHARED_LIBS=ON \
      -DENABLE_DIST_PKG=OFF \
+     -DENABLE_SYMBOL_VERSIONING=OFF \
      -DENABLE_PRE_SONAME_BUILD=OFF \
      -DCMAKE_BUILD_TYPE=RelWithDebInfo > /dev/null 2>&1 || \
    ! cmake --build "${UNVERSIONED_BUILD}" --target crypto ssl > /dev/null 2>&1; then
@@ -462,6 +472,247 @@ fi
 
 check_dropped_symbols "libcrypto" "${UV_CRYPTO}" "${LIBCRYPTO_SO}"
 check_dropped_symbols "libssl" "${UV_SSL}" "${LIBSSL_SO}"
+
+# Test 8: Symbol versioning is configurable independently of ENABLE_DIST_PKG.
+# Configure-only: the link is already covered above, so skipping the compile
+# keeps Tests 8-10 cheap.
+print_test "Symbol versioning can be enabled without ENABLE_DIST_PKG"
+
+DECOUPLED_BUILD=$(mktemp -d)
+CLEANUP_DIRS+=("${DECOUPLED_BUILD}")
+DECOUPLED_LOG="${DECOUPLED_BUILD}/configure.log"
+
+if cmake -GNinja -B "${DECOUPLED_BUILD}" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_DIST_PKG=OFF \
+     -DENABLE_PRE_SONAME_BUILD=OFF \
+     -DENABLE_SYMBOL_VERSIONING=ON \
+     -DBUILD_TESTING=OFF > "${DECOUPLED_LOG}" 2>&1; then
+  if grep -q '^-- ENABLE_SYMBOL_VERSIONING: ON$' "${DECOUPLED_LOG}"; then
+    print_pass "Symbol versioning enabled with ENABLE_DIST_PKG=OFF"
+  else
+    print_fail "ENABLE_SYMBOL_VERSIONING=ON did not take effect without ENABLE_DIST_PKG"
+  fi
+  # The point of the decoupling: no header relocation, no renamed binaries.
+  if grep -q '^-- COHABITANT_HEADERS: 0$' "${DECOUPLED_LOG}" && \
+     grep -q '^-- COHABITANT_BINARIES: 0$' "${DECOUPLED_LOG}"; then
+    print_pass "Versioning did not force header/binary cohabitation"
+  else
+    print_fail "Enabling symbol versioning unexpectedly turned on cohabitation"
+  fi
+else
+  print_fail "Configure failed with ENABLE_SYMBOL_VERSIONING=ON and ENABLE_DIST_PKG=OFF"
+  tail -20 "${DECOUPLED_LOG}" | sed 's/^/  /'
+fi
+
+# Test 9: A custom version node namespace is applied to the version scripts
+print_test "SYMBOL_VERSION_NAMESPACE renames the version nodes"
+
+NAMESPACE_BUILD=$(mktemp -d)
+CLEANUP_DIRS+=("${NAMESPACE_BUILD}")
+NAMESPACE_LOG="${NAMESPACE_BUILD}/configure.log"
+# Deliberately not prefixed with AWS_LC so the "no default node remains" grep
+# below cannot match the renamed node by accident.
+TEST_NAMESPACE="SYMVER_TEST_NS"
+
+if cmake -GNinja -B "${NAMESPACE_BUILD}" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_DIST_PKG=ON \
+     -DSYMBOL_VERSION_NAMESPACE="${TEST_NAMESPACE}" \
+     -DBUILD_TESTING=OFF > "${NAMESPACE_LOG}" 2>&1; then
+  namespace_ok=1
+  for lib in crypto ssl; do
+    generated="${NAMESPACE_BUILD}/${lib}/lib${lib}.map"
+    if [[ ! -f "${generated}" ]]; then
+      print_fail "lib${lib}: namespaced version script not generated at ${generated}"
+      namespace_ok=0
+      continue
+    fi
+    if ! grep -qE "^${TEST_NAMESPACE}_[0-9]+\.[0-9]+ \{" "${generated}"; then
+      print_fail "lib${lib}: generated script has no ${TEST_NAMESPACE}_<major>.<minor> node"
+      namespace_ok=0
+    fi
+    # No node may keep the default namespace, or the library would export a mix.
+    if grep -qE "^AWS_LC_[0-9]+\.[0-9]+ \{" "${generated}"; then
+      print_fail "lib${lib}: generated script still declares an AWS_LC_* node"
+      namespace_ok=0
+    fi
+    # The checked-in script is the source of truth and must not be rewritten.
+    if ! grep -qE "^AWS_LC_[0-9]+\.[0-9]+ \{" "${SOURCE_ROOT}/${lib}/lib${lib}.map"; then
+      print_fail "lib${lib}: checked-in ${lib}/lib${lib}.map was modified in place"
+      namespace_ok=0
+    fi
+  done
+  if [[ ${namespace_ok} -eq 1 ]]; then
+    print_pass "Version nodes renamed to ${TEST_NAMESPACE}_* in the build tree"
+  fi
+else
+  print_fail "Configure failed with SYMBOL_VERSION_NAMESPACE=${TEST_NAMESPACE}"
+  tail -20 "${NAMESPACE_LOG}" | sed 's/^/  /'
+fi
+
+# Test 10: A custom namespace without symbol versioning is refused rather than
+# silently ignored (it can only take effect through a version script, and unlike
+# ENABLE_SYMBOL_VERSIONING it has no inherited default).
+print_test "SYMBOL_VERSION_NAMESPACE without versioning is a configure error"
+
+NS_OFF_BUILD=$(mktemp -d)
+CLEANUP_DIRS+=("${NS_OFF_BUILD}")
+NS_OFF_LOG="${NS_OFF_BUILD}/configure.log"
+
+if cmake -GNinja -B "${NS_OFF_BUILD}" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_SYMBOL_VERSIONING=OFF \
+     -DSYMBOL_VERSION_NAMESPACE="${TEST_NAMESPACE}" \
+     -DBUILD_TESTING=OFF > "${NS_OFF_LOG}" 2>&1; then
+  print_fail "Configure unexpectedly succeeded with a namespace but versioning disabled"
+else
+  # Make sure it failed for the right reason, not some unrelated breakage.
+  if grep -q "SYMBOL_VERSION_NAMESPACE is set to" "${NS_OFF_LOG}"; then
+    print_pass "Namespace without versioning rejected at configure time"
+  else
+    print_fail "Configure failed, but not with the namespace/versioning error:"
+    tail -20 "${NS_OFF_LOG}" | sed 's/^/  /'
+  fi
+fi
+
+# Test 11: The namespace rewrite exists twice -- string(REGEX REPLACE) in
+# cmake/GenerateVersionScript.cmake (so a build never needs Go) and
+# applyNamespace() in util/generate_version_script -- and the two must agree. The
+# in-tree .map files have a single node, so this uses a synthetic multi-node
+# registry to also cover the "} AWS_LC_1.0;" inheritance clause. The fixture is
+# regenerated each run so a change to the generator's output format cannot
+# silently leave the CMake copy behind.
+print_test "CMake namespace rewrite matches the generator"
+
+if ! command -v go > /dev/null 2>&1; then
+  print_warn "go not found; skipping CMake/generator rewrite equivalence check"
+else
+  REWRITE_DIR=$(mktemp -d)
+  CLEANUP_DIRS+=("${REWRITE_DIR}")
+
+  cat > "${REWRITE_DIR}/registry.txt" <<'REGISTRY_EOF'
+AES_encrypt AWS_LC_1.0 PUBLIC
+EVP_thing AWS_LC_1.0 PUBLIC
+new_api AWS_LC_1.1 PUBLIC
+newer_api AWS_LC_2.0 PUBLIC
+REGISTRY_EOF
+
+  rewrite_ok=1
+  if ! (cd "${SOURCE_ROOT}" && go run ./util/generate_version_script \
+          -in "${REWRITE_DIR}/registry.txt" \
+          -out "${REWRITE_DIR}/default.map") > /dev/null 2>&1 || \
+     ! (cd "${SOURCE_ROOT}" && go run ./util/generate_version_script \
+          -in "${REWRITE_DIR}/registry.txt" \
+          -out "${REWRITE_DIR}/generator.map" \
+          -namespace "${TEST_NAMESPACE}") > /dev/null 2>&1; then
+    print_fail "Could not generate the multi-node fixture with the generator"
+    rewrite_ok=0
+  fi
+
+  # Fail rather than pass vacuously if the fixture lost its inheritance clause.
+  if [[ ${rewrite_ok} -eq 1 ]] && \
+     ! grep -qE '^\} AWS_LC_[0-9]+\.[0-9]+;' "${REWRITE_DIR}/default.map"; then
+    print_fail "Fixture has no '} AWS_LC_<major>.<minor>;' clause, so the inheritance rewrite is untested"
+    rewrite_ok=0
+  fi
+
+  if [[ ${rewrite_ok} -eq 1 ]]; then
+    # Drive the CMake helper in script mode: no project, no configure.
+    cat > "${REWRITE_DIR}/rewrite.cmake" <<CMAKE_EOF
+include("${SOURCE_ROOT}/cmake/GenerateVersionScript.cmake")
+_awslc_write_namespaced_version_script(
+  "${REWRITE_DIR}/default.map"
+  "${TEST_NAMESPACE}"
+  "${REWRITE_DIR}/cmake.map")
+CMAKE_EOF
+
+    if ! cmake -P "${REWRITE_DIR}/rewrite.cmake" > "${REWRITE_DIR}/rewrite.log" 2>&1; then
+      print_fail "CMake rewrite of the multi-node fixture failed"
+      tail -20 "${REWRITE_DIR}/rewrite.log" | sed 's/^/  /'
+    elif ! diff -u "${REWRITE_DIR}/generator.map" "${REWRITE_DIR}/cmake.map" \
+            > "${REWRITE_DIR}/rewrite.diff" 2>&1; then
+      print_fail "CMake rewrite disagrees with 'generate_version_script -namespace'"
+      print_info "--- generator.map (expected)  +++ cmake.map (actual)"
+      head -20 "${REWRITE_DIR}/rewrite.diff" | sed 's/^/  /'
+    elif ! grep -qE "^\\} ${TEST_NAMESPACE}_[0-9]+\\.[0-9]+;" "${REWRITE_DIR}/cmake.map"; then
+      print_fail "CMake rewrite left the inheritance clause un-renamed"
+    else
+      print_pass "Both rewrite implementations agree on a multi-node script"
+    fi
+  fi
+fi
+
+# Test 12: BORINGSSL_PREFIX with symbol versioning is refused at configure time
+# (the version scripts reference unprefixed names, so the build would export
+# nothing), whether versioning is explicit or inherited from ENABLE_DIST_PKG;
+# the opt-out in the error message (-DENABLE_SYMBOL_VERSIONING=OFF) must work.
+print_test "BORINGSSL_PREFIX with symbol versioning is a configure error"
+
+PREFIX_TEST_DIR=$(mktemp -d)
+CLEANUP_DIRS+=("${PREFIX_TEST_DIR}")
+# A real symbols file, so this cannot fail for the unrelated "must specify
+# both" reason if the guard ever moves later in the configure.
+echo "SSL_new" > "${PREFIX_TEST_DIR}/symbols.txt"
+PREFIX_GUARD_ERROR="BORINGSSL_PREFIX cannot be combined with symbol versioning"
+
+PREFIX_EXPLICIT_LOG="${PREFIX_TEST_DIR}/explicit.log"
+if cmake -GNinja -B "${PREFIX_TEST_DIR}/explicit" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_SYMBOL_VERSIONING=ON \
+     -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+     -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+     -DBUILD_TESTING=OFF > "${PREFIX_EXPLICIT_LOG}" 2>&1; then
+  print_fail "Configure unexpectedly succeeded with BORINGSSL_PREFIX and explicit versioning"
+else
+  if grep -q "${PREFIX_GUARD_ERROR}" "${PREFIX_EXPLICIT_LOG}"; then
+    print_pass "Prefix with explicit versioning rejected at configure time"
+  else
+    print_fail "Configure failed, but not with the prefix/versioning error:"
+    tail -20 "${PREFIX_EXPLICIT_LOG}" | sed 's/^/  /'
+  fi
+fi
+
+# Inherited versioning (ENABLE_DIST_PKG) must be rejected the same way.
+PREFIX_INHERITED_LOG="${PREFIX_TEST_DIR}/inherited.log"
+if cmake -GNinja -B "${PREFIX_TEST_DIR}/inherited" -S "${SOURCE_ROOT}" \
+     -DBUILD_SHARED_LIBS=ON \
+     -DENABLE_DIST_PKG=ON \
+     -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+     -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+     -DBUILD_TESTING=OFF > "${PREFIX_INHERITED_LOG}" 2>&1; then
+  print_fail "Configure unexpectedly succeeded with BORINGSSL_PREFIX and ENABLE_DIST_PKG"
+else
+  if grep -q "${PREFIX_GUARD_ERROR}" "${PREFIX_INHERITED_LOG}"; then
+    print_pass "Prefix with dist-pkg-inherited versioning rejected at configure time"
+  else
+    print_fail "Configure failed, but not with the prefix/versioning error:"
+    tail -20 "${PREFIX_INHERITED_LOG}" | sed 's/^/  /'
+  fi
+fi
+
+# The opt-out check needs Go (prefix builds hard-error at configure without it).
+if ! command -v go > /dev/null 2>&1; then
+  print_warn "go not found; skipping prefix-with-versioning-off configure check"
+else
+  PREFIX_OFF_LOG="${PREFIX_TEST_DIR}/off.log"
+  if cmake -GNinja -B "${PREFIX_TEST_DIR}/off" -S "${SOURCE_ROOT}" \
+       -DBUILD_SHARED_LIBS=ON \
+       -DENABLE_DIST_PKG=ON \
+       -DENABLE_SYMBOL_VERSIONING=OFF \
+       -DBORINGSSL_PREFIX=SYMVER_TEST_PFX \
+       -DBORINGSSL_PREFIX_SYMBOLS="${PREFIX_TEST_DIR}/symbols.txt" \
+       -DBUILD_TESTING=OFF > "${PREFIX_OFF_LOG}" 2>&1; then
+    if grep -q '^-- ENABLE_SYMBOL_VERSIONING: OFF$' "${PREFIX_OFF_LOG}"; then
+      print_pass "Prefix build configures once versioning is explicitly disabled"
+    else
+      print_fail "Prefix build configured but versioning was not reported OFF"
+    fi
+  else
+    print_fail "Configure failed for prefix build with -DENABLE_SYMBOL_VERSIONING=OFF:"
+    tail -20 "${PREFIX_OFF_LOG}" | sed 's/^/  /'
+  fi
+fi
 
 # Summary
 echo ""
