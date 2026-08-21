@@ -23,6 +23,14 @@ function get_lib_dir() {
     fi
 }
 
+# Run a command with LIBRARY_DIR prepended to LD_LIBRARY_PATH without changing
+# the caller's environment.
+function run_with_library_path() {
+    local LIBRARY_DIR=$1
+    shift
+    LD_LIBRARY_PATH="${LIBRARY_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" "$@"
+}
+
 # Derive the product suffix (e.g. "-awslc") from the installed native filenames
 # rather than hardcoding it, so these assertions still hold if SOFTWARE_NAME
 # changes. Prints the empty string when the native modules are unsuffixed.
@@ -37,6 +45,16 @@ function get_product_suffix() {
         fi
     done
     echo ""
+}
+
+function require_product_suffix() {
+    local PC_DIR=$1
+    local SUFFIX
+    SUFFIX=$(get_product_suffix "${PC_DIR}")
+    if [[ -z "${SUFFIX}" ]]; then
+        fail "could not derive the product suffix from the native pc files in ${PC_DIR}" >&2
+    fi
+    echo "${SUFFIX}"
 }
 
 # Print every whitespace-delimited token of a .pc file's Requires,
@@ -61,15 +79,12 @@ function pc_dependency_tokens() {
 function has_exact_token() {
     local HAYSTACK=$1
     local NEEDLE=$2
-    local -a TOKENS
     local TOKEN
-    # read -ra splits on whitespace without pathname expansion.
-    read -ra TOKENS <<< "${HAYSTACK}"
-    for TOKEN in "${TOKENS[@]}"; do
+    while read -r TOKEN; do
         if [[ "${TOKEN}" == "${NEEDLE}" ]]; then
             return 0
         fi
-    done
+    done < <(tr '[:space:]' '\n' <<< "${HAYSTACK}")
     return 1
 }
 
