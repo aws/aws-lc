@@ -504,6 +504,9 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   // defer to the protocol method's default min/max values in that case.
   ret->conf_max_version_use_default = true;
   ret->conf_min_version_use_default = true;
+  if (method->version == 0 && !ret->method->is_dtls) {
+    (void)ssl_ctx_apply_distribution_tls_policy(ret.get());
+  }
   ret->enable_read_ahead = false;
 
   return ret.release();

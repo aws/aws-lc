@@ -18,6 +18,7 @@ add_library(
   s3_both.cc
   s3_lib.cc
   s3_pkt.cc
+  security_policy.cc
   ssl_aead_ctx.cc
   ssl_asn1.cc
   ssl_buffer.cc
@@ -44,6 +45,9 @@ add_library(
   tls13_server.cc
 )
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
+if(BUILD_TESTING)
+  target_compile_definitions(ssl PRIVATE AWS_LC_TEST_ENV)
+endif()
 
 target_link_libraries(ssl crypto)
 
@@ -105,6 +109,7 @@ if(BUILD_TESTING)
     ssl_key_share_test.cc
     ssl_alps_test.cc
     ssl_common_test.cc
+    security_policy_test.cc
     ssl_misc_test.cc
     ssl_version_test.cc
     ssl_ech_test.cc

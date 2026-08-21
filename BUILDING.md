@@ -109,6 +109,18 @@ Symbol versioning ensures backward compatibility and enables multiple AWS-LC ver
 coexist on the same system. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md) for
 detailed information about symbol versioning, version evolution, and CI integration.
 
+### Distribution TLS Policy Detection
+
+AWS-LC can be built with opt-in support for detecting distro-managed TLS policy
+files on Linux by passing `-DENABLE_DISTRIBUTION_TLS_POLICY=ON` to CMake.
+
+This option is disabled by default. When enabled, libssl will look for Amazon
+Linux 2023 policy files, and Fedora when it uses the same
+`/etc/crypto-policies/back-ends/openssl*.config` backend format, during
+`SSL_CTX_new` for flexible TLS methods only. Missing, malformed, or partially
+unsupported policy content fails open and is reported through the OpenSSL error
+queue.
+
 ### Other Build Options
 
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)

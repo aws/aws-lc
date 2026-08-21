@@ -39,6 +39,7 @@ option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an ent
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
+option(ENABLE_DISTRIBUTION_TLS_POLICY "Enable distro-managed TLS policy autodetection for libssl on supported Linux distributions" OFF)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -118,6 +119,11 @@ message(STATUS "SET_LIB_SONAME: ${SET_LIB_SONAME}")
 message(STATUS "COHABITANT_HEADERS: ${COHABITANT_HEADERS}")
 message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 message(STATUS "INSTALL_OPENSSL_SHIM: ${INSTALL_OPENSSL_SHIM}")
+message(STATUS "ENABLE_DISTRIBUTION_TLS_POLICY: ${ENABLE_DISTRIBUTION_TLS_POLICY}")
+
+if(ENABLE_DISTRIBUTION_TLS_POLICY)
+  add_definitions(-DAWSLC_ENABLE_DISTRIBUTION_TLS_POLICY)
+endif()
 
 if(SET_LIB_SONAME)
   set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")

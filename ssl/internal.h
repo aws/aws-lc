@@ -3654,6 +3654,15 @@ void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
 void ssl_ctx_get_current_time(const SSL_CTX *ctx,
                               struct OPENSSL_timeval *out_clock);
 
+// ssl_ctx_apply_distribution_tls_policy applies a supported distro TLS policy
+// to |ctx|. Unsupported or malformed policy content fails open.
+bool ssl_ctx_apply_distribution_tls_policy(SSL_CTX *ctx);
+
+// ssl_set_distribution_tls_policy_test_root overrides the filesystem root used
+// to discover distro TLS policy files in test builds. Passing nullptr clears
+// the override.
+void ssl_set_distribution_tls_policy_test_root(const char *path);
+
 // ssl_reset_error_state resets state for |SSL_get_error|.
 void ssl_reset_error_state(SSL *ssl);
 
