@@ -90,6 +90,10 @@ int DH_check(const DH *dh, int *out_flags) {
     return 0;
   }
 
+  if (dh_fast_path_from_safe_group(dh)) {
+    return 1;
+  }
+
   // Check that p is a safe prime.
   int ok = 0, r, q_good = 0;
   BN_CTX *ctx = NULL;
