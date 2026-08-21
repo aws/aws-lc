@@ -119,7 +119,7 @@ apt-get -y --no-install-recommends install \
     net-tools \
     netcat-openbsd \
     ninja-build \
-    openjdk-11-jdk \
+    openjdk-21-jdk \
     openssl \
     pandoc \
     patch \
