@@ -38,35 +38,36 @@ class AwsLcGitHubOidcStack(Stack):
                                                      "sts.amazonaws.com"],
                                                  url="https://token.actions.githubusercontent.com")
 
+        github_repo_name = (
+            STAGING_GITHUB_REPO_NAME
+            if (env.account == PRE_PROD_ACCOUNT)
+            else GITHUB_REPO_NAME
+        )
+        github_actions_oidc_conditions = {
+            "StringEquals": {
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            },
+            "StringLike": {
+                # Check the subject claim is from our repository VERY IMPORTANT!
+                # See https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims
+                "token.actions.githubusercontent.com:sub":
+                    "repo:{}/{}:*".format(GITHUB_REPO_OWNER, github_repo_name)
+            },
+            "StringNotLike": {
+                "token.actions.githubusercontent.com:job_workflow_ref":
+                    "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
+                        GITHUB_REPO_OWNER, github_repo_name
+                    )
+            },
+        }
+
         oidc_role_name = "AwsLcGitHubActionsOidcRole"
         # This role should only be granted necessary permissions to assume other roles
         self.minimal_oidc_role = iam.Role(self, id=oidc_role_name, role_name=oidc_role_name,
-                                          assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
-                                              "StringEquals": {
-                                                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                              },
-                                              "StringLike": {
-                                                  # Check the subject claim is from our repository VERY IMPORTANT!
-                                                  # See https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims
-                                                  "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
-                                                      GITHUB_REPO_OWNER, (
-                                                          STAGING_GITHUB_REPO_NAME
-                                                          if (env.account == PRE_PROD_ACCOUNT)
-                                                          else GITHUB_REPO_NAME
-                                                      )
-                                                  )
-                                              },
-                                              "StringNotLike": {
-                                                  "token.actions.githubusercontent.com:job_workflow_ref":
-                                                      "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
-                                                          GITHUB_REPO_OWNER, (
-                                                              STAGING_GITHUB_REPO_NAME
-                                                              if (env.account == PRE_PROD_ACCOUNT)
-                                                              else GITHUB_REPO_NAME
-                                                          )
-                                                      )
-                                              },
-                                          }))
+                                          assumed_by=iam.WebIdentityPrincipal(
+                                              self.oidc_provider.attr_arn,
+                                              github_actions_oidc_conditions,
+                                          ))
 
         autofix_oidc_role_name = "AwsLcGitHubActionsAutofixOidcRole"
         self.autofix_oidc_role = iam.Role(self, id=autofix_oidc_role_name, role_name=autofix_oidc_role_name,
@@ -103,6 +104,17 @@ class AwsLcGitHubOidcStack(Stack):
 
         self.device_farm_role = create_device_farm_role(
             self, "AwsLcGitHubActionDeviceFarmRole", env, self.minimal_oidc_role, ecr_repos, devicefarm=devicefarm)
+        self.device_farm_role.assume_role_policy.add_statements(
+            iam.PolicyStatement(
+                actions=["sts:AssumeRoleWithWebIdentity"],
+                principals=[
+                    iam.WebIdentityPrincipal(
+                        self.oidc_provider.attr_arn,
+                        github_actions_oidc_conditions,
+                    )
+                ],
+            )
+        )
         self.device_farm_role.grant_assume_role(self.minimal_oidc_role)
 
         self.docker_image_build_role = create_docker_image_build_role(
