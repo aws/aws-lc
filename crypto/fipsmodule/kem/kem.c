@@ -252,6 +252,11 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
 }
 
 const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key) {
+  // Callers use a NULL return to test for the presence of a secret key, so a
+  // NULL |key| must answer that question rather than crash.
+  if (key == NULL) {
+    return NULL;
+  }
   return key->secret_key;
 }
 
@@ -344,34 +349,55 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   return 1;
 }
 
+// The kem_check_* helpers below queue their own errors, so callers must not add
+// another one on failure.
+
 static int kem_check_public_key(const KEM_KEY *key) {
+  int ok = 0;
   switch (key->kem->nid) {
     case NID_MLKEM512:
-      return ml_kem_512_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      ok = ml_kem_512_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
     case NID_MLKEM768:
-      return ml_kem_768_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      ok = ml_kem_768_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
     case NID_MLKEM1024:
-      return ml_kem_1024_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      ok = ml_kem_1024_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
     default:
       // Unreachable: KEM_KEY objects are only created for the NIDs above.
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
   }
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PUBLIC_KEY);
+    return 0;
+  }
+  return 1;
 }
 
 static int kem_check_secret_key(const KEM_KEY *key) {
+  int ok = 0;
   switch (key->kem->nid) {
     case NID_MLKEM512:
-      return ml_kem_512_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      ok = ml_kem_512_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
     case NID_MLKEM768:
-      return ml_kem_768_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      ok = ml_kem_768_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
     case NID_MLKEM1024:
-      return ml_kem_1024_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      ok = ml_kem_1024_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
     default:
       // Unreachable: KEM_KEY objects are only created for the NIDs above.
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
   }
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PRIVATE_KEY);
+    return 0;
+  }
+  return 1;
 }
 
 static int kem_check_pct(const KEM_KEY *key) {
@@ -387,24 +413,37 @@ static int kem_check_pct(const KEM_KEY *key) {
   size_t ss_dec_len = kem->shared_secret_len;
 
   if (ciphertext == NULL || ss_enc == NULL || ss_dec == NULL) {
+    // |OPENSSL_malloc| has already queued the allocation failure.
     goto cleanup;
   }
 
+  // An encaps/decaps failure is a library fault, not an invalid key pair.
   if (!kem->method->encaps(ciphertext, &ct_len, ss_enc, &ss_enc_len,
                            key->public_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto cleanup;
+  }
+
+  // Validate the encapsulation output before feeding it back into decaps.
+  if (ct_len != kem->ciphertext_len) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     goto cleanup;
   }
 
   if (!kem->method->decaps(ss_dec, &ss_dec_len, ciphertext, key->secret_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     goto cleanup;
   }
 
   if (ss_enc_len != kem->shared_secret_len ||
       ss_dec_len != kem->shared_secret_len) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     goto cleanup;
   }
 
+  // Only a shared-secret mismatch means the key pair itself failed the PCT.
   if (CRYPTO_memcmp(ss_enc, ss_dec, kem->shared_secret_len) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_KEM_PCT_FAILED);
     goto cleanup;
   }
 
@@ -437,19 +476,17 @@ int KEM_check_key(const KEM_KEY *key) {
     return 0;
   }
 
+  // The helpers above queue their own errors, so none are added here.
   if (!kem_check_public_key(key)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PUBLIC_KEY);
     return 0;
   }
 
   if (key->secret_key != NULL) {
     if (!kem_check_secret_key(key)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PRIVATE_KEY);
       return 0;
     }
 
     if (!kem_check_pct(key)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_KEM_PCT_FAILED);
       return 0;
     }
   }

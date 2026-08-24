@@ -3014,7 +3014,13 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(corrupted_pk_pkey.get(), nullptr));
   ASSERT_TRUE(corrupted_pk_ctx);
   EXPECT_FALSE(EVP_PKEY_check(corrupted_pk_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PUBLIC_KEY));
   EXPECT_FALSE(EVP_PKEY_public_check(corrupted_pk_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PUBLIC_KEY));
+  // Each failed call queues exactly one error, so the queue is now empty.
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   // Corrupted secret key fails
   std::vector<uint8_t> corrupted_sk = sk_copy;
@@ -3029,7 +3035,12 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(corrupted_sk_pkey.get(), nullptr));
   ASSERT_TRUE(corrupted_sk_ctx);
   EXPECT_FALSE(EVP_PKEY_check(corrupted_sk_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PRIVATE_KEY));
   EXPECT_FALSE(EVP_PKEY_public_check(corrupted_sk_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PRIVATE_KEY));
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   // Mismatched keypair fails PCT
   bssl::UniquePtr<EVP_PKEY_CTX> ctx2;
@@ -3052,7 +3063,10 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(mismatched_pkey.get(), nullptr));
   ASSERT_TRUE(mismatched_ctx);
   EXPECT_FALSE(EVP_PKEY_check(mismatched_ctx.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_KEM_PCT_FAILED));
   EXPECT_FALSE(EVP_PKEY_public_check(mismatched_ctx.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_KEM_PCT_FAILED));
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   // Public key only: EVP_PKEY_public_check passes (public component is valid),
   // but EVP_PKEY_check fails because it requires the private component, as with
@@ -3065,7 +3079,10 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(pk_only_pkey.get(), nullptr));
   ASSERT_TRUE(pk_only_ctx);
   EXPECT_FALSE(EVP_PKEY_check(pk_only_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_MISSING_PRIVATE_KEY));
   EXPECT_TRUE(EVP_PKEY_public_check(pk_only_ctx.get()));
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   // Public key only - corrupted
   bssl::UniquePtr<EVP_PKEY> corrupted_pk_only_pkey(
@@ -3076,7 +3093,12 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(corrupted_pk_only_pkey.get(), nullptr));
   ASSERT_TRUE(corrupted_pk_only_ctx);
   EXPECT_FALSE(EVP_PKEY_check(corrupted_pk_only_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_MISSING_PRIVATE_KEY));
   EXPECT_FALSE(EVP_PKEY_public_check(corrupted_pk_only_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PUBLIC_KEY));
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   // Secret key only - fails (public key required)
   bssl::UniquePtr<EVP_PKEY> sk_only_pkey(
@@ -3087,7 +3109,12 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       EVP_PKEY_CTX_new(sk_only_pkey.get(), nullptr));
   ASSERT_TRUE(sk_only_ctx);
   EXPECT_FALSE(EVP_PKEY_check(sk_only_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_MISSING_PUBLIC_KEY));
   EXPECT_FALSE(EVP_PKEY_public_check(sk_only_ctx.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_MISSING_PUBLIC_KEY));
+  EXPECT_EQ(ERR_peek_error(), 0u);
 
   ERR_clear_error();
 }
