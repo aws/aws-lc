@@ -765,8 +765,11 @@ function test_pkg_config_no_libssl() {
         fi
     done
 
-    local PKG_CONFIG_PATH="${PC_DIR}"
-    export PKG_CONFIG_PATH
+    # Restrict pkg-config to this install. PKG_CONFIG_PATH alone still searches
+    # the host's built-in directories, which may contain a system libssl.pc.
+    local PKG_CONFIG_PATH=""
+    local PKG_CONFIG_LIBDIR="${PC_DIR}"
+    export PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 
     if pkg-config --exists libssl; then
         fail "pkg-config resolved 'libssl' when BUILD_LIBSSL=OFF"
