@@ -1,8 +1,8 @@
 # aws-lc-provider
 
-An OpenSSL 3.x [provider](https://docs.openssl.org/3.0/man7/provider/) that implements no
+An OpenSSL [provider](https://docs.openssl.org/master/man7/provider/) that implements no
 cryptography of its own. It answers OpenSSL's algorithm fetches by delegating each operation to
-AWS-LC, so an application keeps calling the OpenSSL 3.x API while the cryptography underneath it
+AWS-LC, so an application keeps calling the OpenSSL APIs while the cryptography underneath it
 comes from AWS-LC, with no change to the application.
 
 Algorithms which it currently serves is in `ALGORITHM_SUPPORT.md`.
@@ -13,7 +13,7 @@ Start in the directory containing the AWS-LC checkout, not in the checkout itsel
 
 ```bash
 # Build OpenSSL from source. It supplies the provider headers AWS-LC's tree
-# does not carry.
+# does not carry. The minimum required OpenSSL version is 3.5.
 git clone https://github.com/openssl/openssl.git
 export OPENSSL_ROOT="${PWD}/openssl/install"
 cd openssl
