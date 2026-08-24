@@ -33,7 +33,7 @@ jobs:
   device-farm:
     name: android-${{ matrix.fips && 'fips-' || '' }}${{ matrix.release && 'release' || 'debug' }}-${{ matrix.shared && 'shared' || 'static' }}
     needs: [authorization-check]
-    environment: ${{ needs.authorization-check.outputs.approval-env }}
+    environment: ${{ needs.authorization-check.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0

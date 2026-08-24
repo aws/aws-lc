@@ -48,7 +48,7 @@ jobs:
     if: github.event_name != 'push'
     needs: authorize
     runs-on: ubuntu-latest
-    environment: ${{ needs.authorize.outputs.approval-env }}
+    environment: ${{ needs.authorize.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
     permissions:
       id-token: write
       contents: read
