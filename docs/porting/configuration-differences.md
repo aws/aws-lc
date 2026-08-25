@@ -732,6 +732,28 @@ The following table contains the differences in libcrypto configuration options 
   <p><span>NO-OP</span></p>
   </td>
  </tr>
+ <tr>
+  <td>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L928-L930">
+      BN_set_flags
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L977-L983">
+      BN_FLG_CONSTTIME
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>OFF</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
 </table>
 
 ### Intentionally Omitted Configuration Flags
@@ -752,23 +774,6 @@ The following table contains configuration options AWS-LC has intentionally omit
   </td>
   <td>
   <p><b><span>AWS-LC Default</span></b></p>
-  </td>
- </tr>
- <tr>
-  <td>
-  <p><span>BN_set_flags</span></p>
-  </td>
-  <td>
-  <p>
-    <span>
-      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/bn.h#L1053-L1062">
-        BN_FLG_CONSTTIME
-      </a>
-    </span>
-  </p>
-  </td>
-  <td>
-  <p><span>Not Implemented</span></p>
   </td>
  </tr>
  <tr>
