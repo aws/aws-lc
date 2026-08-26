@@ -1824,6 +1824,86 @@ TEST(KEMTest, ParsePrivateKeyExpandedInconsistent) {
   }
 }
 
+// Re-encodes the PKCS#8 in |der| with one extra byte appended inside the
+// privateKey OCTET STRING, so the CHOICE element is followed by trailing data.
+static bool AppendTrailingByteToPrivateKey(const uint8_t *der, size_t der_len,
+                                           std::vector<uint8_t> *out) {
+  CBS pkcs8, algorithm, private_key;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der, der_len);
+  if (!CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&pkcs8, &version) ||
+      !CBS_get_asn1_element(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+
+  bssl::ScopedCBB cbb;
+  CBB seq, pk;
+  if (!CBB_init(cbb.get(), der_len + 16) ||
+      !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, version) ||
+      !CBB_add_bytes(&seq, CBS_data(&algorithm), CBS_len(&algorithm)) ||
+      !CBB_add_asn1(&seq, &pk, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&pk, CBS_data(&private_key), CBS_len(&private_key)) ||
+      !CBB_add_u8(&pk, 0x00) || !CBB_flush(cbb.get())) {
+    return false;
+  }
+
+  uint8_t *buf = nullptr;
+  size_t buf_len = 0;
+  if (!CBB_finish(cbb.get(), &buf, &buf_len)) {
+    return false;
+  }
+  out->assign(buf, buf + buf_len);
+  OPENSSL_free(buf);
+  return true;
+}
+
+// The CHOICE occupies the whole privateKey OCTET STRING, so trailing data after
+// it is malformed DER and must be rejected for every CHOICE. |EVP_parse_private_key|
+// rejects trailing data inside the outer PKCS#8 SEQUENCE but does not re-examine
+// the privateKey contents, so |kem_priv_decode| is what has to catch this.
+TEST_P(KEMBothFormatTest, TrailingDataAfterChoiceRejected) {
+  const KEMBothFormatTestVector &test = GetParam();
+
+  const struct {
+    const char *name;
+    const char *pem_str;
+  } kCases[] = {
+      {"seed [0]", test.seed_pem_str},
+      {"expandedKey", test.expanded_pem_str},
+      {"both SEQUENCE", test.both_pem_str},
+  };
+
+  for (const auto &t : kCases) {
+    SCOPED_TRACE(t.name);
+
+    uint8_t *der = nullptr;
+    long der_len = 0;
+    ASSERT_TRUE(PEM_to_DER(t.pem_str, &der, &der_len));
+    bssl::UniquePtr<uint8_t> free_der(der);
+
+    // The unmodified key parses, so the rejection below is attributable to the
+    // trailing byte rather than to the re-encoding.
+    CBS cbs;
+    CBS_init(&cbs, der, der_len);
+    bssl::UniquePtr<EVP_PKEY> ok(EVP_parse_private_key(&cbs));
+    ASSERT_TRUE(ok);
+
+    std::vector<uint8_t> extended;
+    ASSERT_TRUE(AppendTrailingByteToPrivateKey(der, der_len, &extended));
+
+    ERR_clear_error();
+    CBS bad_cbs;
+    CBS_init(&bad_cbs, extended.data(), extended.size());
+    bssl::UniquePtr<EVP_PKEY> bad(EVP_parse_private_key(&bad_cbs));
+    EXPECT_FALSE(bad);
+    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_DECODE_ERROR);
+    ERR_clear_error();
+  }
+}
+
 // A |both| SEQUENCE whose seed or expandedKey has the wrong length must be
 // rejected before any key generation is attempted.
 TEST(KEMTest, ParsePrivateKeyBothInvalidLength) {
