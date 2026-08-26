@@ -54,10 +54,7 @@ function pyopenssl_run_tests() {
     # Upgrade pip and install build dependencies.
     python -m pip install --upgrade pip setuptools wheel
 
-    # Install the Rust and the bindgen-cli, needed by cryptography when building
-    # against AWS-LC.
-    curl https://sh.rustup.rs -sSf | sh -s -- -y
-    . "$HOME/.cargo/env"
+    # Install bindgen-cli, needed by cryptography when building against AWS-LC.
     cargo install bindgen-cli
 
     # Build cryptography from source so it links against AWS-LC via OPENSSL_DIR.

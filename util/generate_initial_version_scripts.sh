@@ -38,9 +38,10 @@ done
 
 # The baseline version node for a from-scratch bootstrap. This is intentionally
 # fixed: this script only ever establishes the initial node. Later additions go
-# through update_symbol_version.sh <version>, which takes the node as an argument
-# rather than hardcoding it. The major component corresponds to ABI_VERSION in
-# CMakeLists.txt (bumped only on an ABI break).
+# through update_symbol_version.sh, which takes the node explicitly (--current to
+# add to the open node, or a version to open a new one) rather than hardcoding it.
+# The major component corresponds to ABI_VERSION in CMakeLists.txt (bumped only
+# on an ABI break).
 INITIAL_VERSION="AWS_LC_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
@@ -51,17 +52,16 @@ echo "Step 1: Building shared libraries for validation..."
 BUILD_DIR="$(mktemp -d)"
 rm -rf "${BUILD_DIR}"
 # This build only produces libraries to validate the extracted symbols against
-# (via read_public_symbols -validate-against); it does not need symbol
-# versioning. Crucially, building with -DENABLE_DIST_PKG=ON would require the
-# .map files to already exist (apply_version_script fatal-errors otherwise),
-# which is a chicken-and-egg problem for a script whose job is to regenerate
-# those .map files from scratch. Instead build with SONAME enabled
-# (ENABLE_PRE_SONAME_BUILD=OFF, so the libraries keep the -awslc suffix the
-# find globs below expect) but ENABLE_DIST_PKG=OFF (so no version script is
-# required or applied).
+# (via read_public_symbols -validate-against). Symbol versioning is explicitly off
+# because enabling it would require the .map files to already exist
+# (apply_version_script fatal-errors otherwise) -- a chicken-and-egg problem for a
+# script whose job is to regenerate them from scratch. SONAME stays enabled
+# (ENABLE_PRE_SONAME_BUILD=OFF) so the libraries keep the -awslc suffix the find
+# globs below expect.
 cmake -B "${BUILD_DIR}" -S "${SOURCE_ROOT}" \
   -DBUILD_SHARED_LIBS=ON \
   -DENABLE_DIST_PKG=OFF \
+  -DENABLE_SYMBOL_VERSIONING=OFF \
   -DENABLE_PRE_SONAME_BUILD=OFF \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -GNinja

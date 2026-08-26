@@ -68,34 +68,44 @@ jobs:
             run: ./tests/ci/integration/run_libgit2_integration.sh main
 
           # OpenSSH Integration Tests
-          - name: openssh-master
+          - name: openssh-10.4p1
             arch: x86_64
             size: small
             image: amazonlinux:2023
             compiler: clang-15
-            openssh_branch: master
-            run: ./tests/ci/integration/run_openssh_integration.sh
+            run: ./tests/ci/integration/run_openssh_integration.sh V_10_4_P1
           - name: openssh-v8.9
             arch: x86_64
             size: small
             image: amazonlinux:2023
             compiler: clang-15
-            openssh_branch: V_8_9
-            run: ./tests/ci/integration/run_openssh_integration.sh
+            run: ./tests/ci/integration/run_openssh_integration.sh V_8_9
           - name: openssh-master
+            arch: x86_64
+            size: small
+            image: amazonlinux:2023
+            compiler: clang-15
+            allow_failure: true
+            run: ./tests/ci/integration/run_openssh_integration.sh master
+          - name: openssh-10.4p1
             arch: aarch64
             size: 2xlarge
             image: amazonlinux:2023
             compiler: clang-15
-            openssh_branch: master
-            run: ./tests/ci/integration/run_openssh_integration.sh
+            run: ./tests/ci/integration/run_openssh_integration.sh V_10_4_P1
           - name: openssh-v8.9
             arch: aarch64
             size: 2xlarge
             image: amazonlinux:2023
             compiler: clang-15
-            openssh_branch: V_8_9
-            run: ./tests/ci/integration/run_openssh_integration.sh
+            run: ./tests/ci/integration/run_openssh_integration.sh V_8_9
+          - name: openssh-master
+            arch: aarch64
+            size: 2xlarge
+            image: amazonlinux:2023
+            compiler: clang-15
+            allow_failure: true
+            run: ./tests/ci/integration/run_openssh_integration.sh master
 
           # PostgreSQL Integration Tests
           - name: postgresql
@@ -200,13 +210,22 @@ jobs:
             credentials: true
             run: ./tests/ci/integration/run_monit_integration.sh
 
-          # librelp Integration Tests
+          # librelp (pinned to a release - required)
           - name: librelp
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
-            run: ./tests/ci/integration/run_librelp_integration.sh
+            allow_failure: false
+            run: ./tests/ci/integration/run_librelp_integration.sh v1.13
+          # librelp (tracking upstream master - informational, allowed to fail)
+          - name: librelp-master
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            allow_failure: true
+            run: ./tests/ci/integration/run_librelp_integration.sh master
 
           # HAProxy Integration Tests
           - name: haproxy
@@ -429,7 +448,6 @@ jobs:
             compiler: gcc-12
             run: ./tests/ci/integration/run_pyopenssl_integration.sh '25.3.0'
     env:
-      OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
       - uses: actions/checkout@v7
@@ -442,7 +460,6 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
-            OPENSSH_BRANCH
             ACCP_FIPS
           options: ${{ matrix.options || '' }}
           user: ${{ matrix.user || '' }}
@@ -497,6 +514,7 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
         buildFIPS: [0, 1]
         crtUseSystemCrypto: [0, 1]
         include:

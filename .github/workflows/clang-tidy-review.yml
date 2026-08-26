@@ -14,8 +14,12 @@ jobs:
           go-version: '>=1.18'
       - uses: ZedThree/clang-tidy-review@v0.23.1
         with:
+          apt_packages: libssl-dev
           split_workflow: true
-          clang_tidy_version: 19
-          install_commands: /github/workspace/util/build_compilation_database.sh
+          clang_tidy_version: 21
+          install_commands: >-
+            /github/workspace/util/build_compilation_database.sh
+            -DBUILD_AWSLC_PROVIDER=ON
+            -DAWSLC_PROVIDER_OPENSSL_ROOT=/usr
           config_file: '/github/workspace/.clang-tidy'
       - uses: ZedThree/clang-tidy-review/upload@v0.23.1

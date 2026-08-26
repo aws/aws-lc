@@ -832,6 +832,88 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
   EXPECT_EQ(TLS1_2_VERSION, SSL_version(client.get()));
 }
 
+// Test that the handshake succeeds when the early callback leaves stale errors
+// on the error queue
+TEST(SSLTest, EarlyCallbackStaleErrorOnQueue) {
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(client_ctx);
+
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx.get(),
+      [](const SSL_CLIENT_HELLO *) -> ssl_select_cert_result_t {
+        // Simulate a PEM parsing loop leaving a stale error on the queue.
+        OPENSSL_PUT_ERROR(PEM, PEM_R_NO_START_LINE);
+        return ssl_select_cert_success;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+}
+
+TEST(SSLTest, Set1GroupIds) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  // Valid group IDs should succeed.
+  const uint16_t valid_groups[] = {SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP384R1};
+  EXPECT_TRUE(SSL_CTX_set1_group_ids(ctx.get(), valid_groups,
+                                     OPENSSL_ARRAY_SIZE(valid_groups)));
+  EXPECT_TRUE(SSL_set1_group_ids(ssl.get(), valid_groups,
+                                 OPENSSL_ARRAY_SIZE(valid_groups)));
+
+  // Invalid group IDs should fail.
+  const uint16_t invalid_groups[] = {0xFFFF};
+  EXPECT_FALSE(SSL_CTX_set1_group_ids(ctx.get(), invalid_groups,
+                                      OPENSSL_ARRAY_SIZE(invalid_groups)));
+  EXPECT_FALSE(SSL_set1_group_ids(ssl.get(), invalid_groups,
+                                  OPENSSL_ARRAY_SIZE(invalid_groups)));
+
+  // Duplicate group IDs should fail.
+  const uint16_t dup_groups[] = {SSL_GROUP_X25519, SSL_GROUP_X25519};
+  EXPECT_FALSE(SSL_CTX_set1_group_ids(ctx.get(), dup_groups,
+                                      OPENSSL_ARRAY_SIZE(dup_groups)));
+  EXPECT_FALSE(SSL_set1_group_ids(ssl.get(), dup_groups,
+                                  OPENSSL_ARRAY_SIZE(dup_groups)));
+
+  // Empty list should succeed (resets to defaults) and still handshake.
+  EXPECT_TRUE(SSL_CTX_set1_group_ids(ctx.get(), nullptr, 0));
+  EXPECT_TRUE(SSL_set1_group_ids(ssl.get(), nullptr, 0));
+  {
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(SSL_CTX_set1_group_ids(server_ctx.get(), nullptr, 0));
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+  }
+
+  // Verify the setting takes effect: restrict to one group and handshake.
+  {
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(client_ctx);
+    const uint16_t one_group[] = {SSL_GROUP_SECP256R1};
+    ASSERT_TRUE(SSL_CTX_set1_group_ids(server_ctx.get(), one_group,
+                                       OPENSSL_ARRAY_SIZE(one_group)));
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+    EXPECT_EQ(SSL_GROUP_SECP256R1, SSL_get_group_id(server.get()));
+  }
+}
+
 TEST(SSLTest, SetVersion) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);

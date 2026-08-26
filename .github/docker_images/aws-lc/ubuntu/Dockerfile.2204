@@ -119,7 +119,7 @@ apt-get -y --no-install-recommends install \
     net-tools \
     netcat-openbsd \
     ninja-build \
-    openjdk-11-jdk \
+    openjdk-21-jdk \
     openssl \
     pandoc \
     patch \
@@ -181,6 +181,17 @@ setup_script="/tmp/setup-go-compiler.sh"
 ${setup_script}
 EOF
 
+# Install Rust
+ENV RUSTUP_HOME="/.rustup"
+ENV CARGO_HOME="/.cargo"
+ENV PATH="${CARGO_HOME}/bin:$PATH"
+
+COPY --from=scripts setup-rust.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-rust.sh"
+${setup_script}
+EOF
+
 # Install Ruby
 ENV RBENV_ROOT="/.rbenv"
 ENV PATH="${RBENV_ROOT}/shims:${RBENV_ROOT}/bin:$PATH"
@@ -219,15 +230,24 @@ EOF
 
 FROM tools AS ubuntu2204_sde
 
-ARG SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
-ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/${SDE_VERSION_TAG}.tar.xz"
+# SDE pins come from .github/docker_images/dependencies.env, passed through as
+# --build-arg by the image-build workflow. No defaults: a build that does not
+# provide them fails below rather than drifting from the pinned versions.
+ARG SDE_VERSION_TAG
+ARG SDE_MIRROR_URL
+ARG SDE_SHA256
 
 RUN <<EOF
 set -ex
 if [[ "$(uname -m)" != "x86_64" ]]; then
     false
 fi
+if [ -z "${SDE_VERSION_TAG}" ] || [ -z "${SDE_MIRROR_URL}" ] || [ -z "${SDE_SHA256}" ]; then
+    echo "Error: SDE build args missing; pass them from .github/docker_images/dependencies.env" >&2
+    exit 1
+fi
 wget ${SDE_MIRROR_URL}
+echo "${SDE_SHA256}  ${SDE_VERSION_TAG}.tar.xz" | sha256sum -c -
 tar -xf "${SDE_VERSION_TAG}.tar.xz"
 rm "${SDE_VERSION_TAG}.tar.xz"
 EOF
