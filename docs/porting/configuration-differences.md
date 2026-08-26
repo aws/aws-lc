@@ -742,7 +742,7 @@ The following table contains the differences in libcrypto configuration options 
   </td>
   <td>
   <p><span>
-    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L977-L983">
+    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L977-L980">
       BN_FLG_CONSTTIME
     </a>
   </span></p>
