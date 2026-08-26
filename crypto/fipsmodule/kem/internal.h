@@ -121,6 +121,20 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
 // Returns 1 on success, 0 on failure.
 int KEM_check_key(const KEM_KEY *key);
 
+// KEM_KEY_set_raw_keypair_from_both function handles the |both| CHOICE of
+// ML-KEM-XX-PrivateKey, which carries a seed and an expandedKey. It performs
+// the seed consistency check mandated by RFC 9935 section 8: the expanded key
+// is regenerated from |seed| and compared bytewise against |expanded_key|. On
+// mismatch the key is rejected. On success the public key, secret key, and
+// seed buffers within |key| are allocated and set.
+//
+// NOTE: The seed must be exactly 64 bytes for all ML-KEM variants and
+//       |expanded_key| must match |key->kem->secret_key_len|; both lengths
+//       are validated. |key->kem| must be initialized and |key->public_key|
+//       and |key->secret_key| must both be NULL.
+int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
+                                      const CBS *expanded_key);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

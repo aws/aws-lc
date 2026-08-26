@@ -309,6 +309,271 @@ const char *mlkem_1024_priv_expanded_pem_str =
     "JCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\n"
     "-----END PRIVATE KEY-----\n";
 
+// C.1.1.3. ML-KEM-512 Private Key Examples: Both Format
+const char *mlkem_512_priv_both_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.2.3. ML-KEM-768 Private Key Examples: Both Format
+const char *mlkem_768_priv_both_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MIIJvgIBADALBglghkgBZQMEBAIEggmqMIIJpgRAAAECAwQFBgcICQoLDA0ODxAR\n"
+    "EhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+PwSC\n"
+    "CWAn0qd/M3VvYSCO8ROr6CWVhz1KvHMOW11nlSm/akzrY4NCcjGoYS9BVQUVrLpS\n"
+    "5I6ti5QoM7vmhl0T0Up50sXD4H8KBW2N56rfyroFjEk8gLN8q4xWJ1O7O6a27IKX\n"
+    "+IXqp1QNUwAVqEQG5VsTZrV34jbOWKJtih61pE1UIyPCFn2b9KR/mFaZygW65DuN\n"
+    "7GF/AjgKOJCv1LjH7H7eJlU6Al885bxdemITAwQjXLGtSDa1ZrW4Y72b20WihEpw\n"
+    "R7bI04PkSFJeBAtNyKK0jGw3yW1i1D8/2I4ogcQKIFyeJI9lK1kngad5+GiA8qFH\n"
+    "tnhj85HMGlqQjACV4HISKR4u+KNuuanAxgcyJbNHA6SvBJOCxHVz2mj96SRa1ETj\n"
+    "Gx+9tSHx9h83vAzvKSBn5nDSih/9kE9vEZCplpGKEwN6bKvzw3O/gpbNN6szundG\n"
+    "gJzD+K3hs2Ob1Xv8xpZQqq8d4Zj8TARjKZ5SxGF4DMQo/F0EpcUYUMumwqUnQ0Bn\n"
+    "V5PdoJvkTCnmOVxl+F0qCnxt9BHmkRsfLLbDUc0uh19Rtji+d2CX6T4vKy+D2gvu\n"
+    "9KqFup52OrZFAqDKUiLp6rWztwiO1SBg6Mgmm5Q6casK4cWxtofS4BnPgDa8+b9u\n"
+    "e6w6qjbkFmD6pFQPJkjNk6GJ7Fwt6nC6yqpP/JBvkIEOobZ78k8seM9rqIGq6mHA\n"
+    "ZSv/lbG65EJtF3O5zCyoLCHjjGNuOxxSMkSYawvoqD9d1c8tVHYvs8Xr9ZuOiFMC\n"
+    "sc5HAz7fdg9OApvkC21WaxnddYrNXHQSh4ExJE+QFyxT8mZjwh2QUwHUi6+RyRfM\n"
+    "d3np2IAswQ2Jo3BQmaKtOjqIlnQ8EURpgJO+JX2stm3HhSKLkSyNll0Uqig0LDrE\n"
+    "qT/vpTKyCUXdwQIBOcFNY4uQjE3d6aBkW5Wy5EFNQLt58EQTgw8VqHPCi7cFnCdB\n"
+    "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\n"
+    "Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.3.3. ML-KEM-1024 Private Key Examples: Both Format
+const char *mlkem_1024_priv_both_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.4.1. ML-KEM Inconsistent Seed and Expanded Private Keys
+// WARNING: these private keys are purposely bad and MUST be rejected.
+//
+// The first C.4.1 example: an ML-KEM-512 |both| private key whose seed and
+// expandedKey disagree.
+const char *mlkem_512_priv_both_inconsistent_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "P0A=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// The fourth C.4.1 example: an ML-KEM-512 |both| private key whose expandedKey
+// differs from the seed only in |z|, the implicit rejection secret. The private
+// and public vectors still match, so a pairwise consistency check passes and
+// only the bytewise check of section 8 catches it.
+const char *mlkem_512_priv_both_inconsistent_z_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "Pj4=\n"
+    "-----END PRIVATE KEY-----\n";
+
 // The following private/public keys were generated externally and encoded using the Java library BouncyCastle which is a JCA provider. 
 // Private keys generated were encoded in expandedKey format. 
 // Implementation: https://github.com/bcgit/bc-java/tree/b41f23936724284a20f10dff13c76896a846031b/prov/src/main/java/org/bouncycastle/jcajce/provider/asymmetric/mlkem
@@ -1245,6 +1510,202 @@ TEST_P(KEMTest, SeedFormatEncapsDecapsRoundTrip) {
                                    ct.data(), ct_len));
 
   EXPECT_EQ(Bytes(ss_enc), Bytes(ss_dec));
+}
+
+
+// RFC 9935 section 6 defines a third ML-KEM-XX-PrivateKey CHOICE, |both|,
+// carrying the seed and the expandedKey in a SEQUENCE. The vectors below are
+// the "Both Format" examples from Appendix C.1; each describes the same key
+// pair as the seed-only and expandedKey-only examples for its parameter set.
+struct KEMBothFormatTestVector {
+  int nid;
+  const char *both_pem_str;
+  const char *seed_pem_str;
+  const char *expanded_pem_str;
+  const char *public_pem_str;
+  size_t secret_key_len;
+  size_t seed_len;
+};
+
+static const KEMBothFormatTestVector kemBothFormatParameters[] = {
+    {NID_MLKEM512, mlkem_512_priv_both_pem_str, mlkem_512_seed_pem_str,
+     mlkem_512_priv_expanded_pem_str, mlkem_512_pub_pem_str, 1632, 64},
+    {NID_MLKEM768, mlkem_768_priv_both_pem_str, mlkem_768_seed_pem_str,
+     mlkem_768_priv_expanded_pem_str, mlkem_768_pub_pem_str, 2400, 64},
+    {NID_MLKEM1024, mlkem_1024_priv_both_pem_str, mlkem_1024_seed_pem_str,
+     mlkem_1024_priv_expanded_pem_str, mlkem_1024_pub_pem_str, 3168, 64},
+};
+
+class KEMBothFormatTest
+    : public testing::TestWithParam<KEMBothFormatTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, KEMBothFormatTest,
+                         testing::ValuesIn(kemBothFormatParameters));
+
+// A |both| private key must parse, and must yield the same key material as the
+// seed-only and expandedKey-only encodings of the same key pair.
+TEST_P(KEMBothFormatTest, ParsePrivateKeyBoth) {
+  const KEMBothFormatTestVector &test = GetParam();
+
+  uint8_t *der_both = nullptr, *der_seed = nullptr, *der_expanded = nullptr,
+          *der_pub = nullptr;
+  long der_both_len = 0, der_seed_len = 0, der_expanded_len = 0,
+       der_pub_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.both_pem_str, &der_both, &der_both_len));
+  bssl::UniquePtr<uint8_t> free_both(der_both);
+  ASSERT_TRUE(PEM_to_DER(test.seed_pem_str, &der_seed, &der_seed_len));
+  bssl::UniquePtr<uint8_t> free_seed(der_seed);
+  ASSERT_TRUE(
+      PEM_to_DER(test.expanded_pem_str, &der_expanded, &der_expanded_len));
+  bssl::UniquePtr<uint8_t> free_expanded(der_expanded);
+  ASSERT_TRUE(PEM_to_DER(test.public_pem_str, &der_pub, &der_pub_len));
+  bssl::UniquePtr<uint8_t> free_pub(der_pub);
+
+  CBS cbs;
+  CBS_init(&cbs, der_both, der_both_len);
+  bssl::UniquePtr<EVP_PKEY> both(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(both);
+  EXPECT_EQ(0u, CBS_len(&cbs));
+  EXPECT_EQ(test.nid, EVP_PKEY_kem_get_type(both.get()));
+
+  CBS_init(&cbs, der_seed, der_seed_len);
+  bssl::UniquePtr<EVP_PKEY> seed(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(seed);
+
+  CBS_init(&cbs, der_expanded, der_expanded_len);
+  bssl::UniquePtr<EVP_PKEY> expanded(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(expanded);
+
+  CBS_init(&cbs, der_pub, der_pub_len);
+  bssl::UniquePtr<EVP_PKEY> pub(EVP_parse_public_key(&cbs));
+  ASSERT_TRUE(pub);
+
+  // The expanded private key matches the expandedKey-only encoding ...
+  ASSERT_TRUE(both->pkey.kem_key->secret_key);
+  EXPECT_EQ(Bytes(both->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(expanded->pkey.kem_key->secret_key, test.secret_key_len));
+
+  // ... the seed is retained, matching the seed-only encoding ...
+  ASSERT_TRUE(both->pkey.kem_key->seed);
+  EXPECT_EQ(Bytes(both->pkey.kem_key->seed, test.seed_len),
+            Bytes(seed->pkey.kem_key->seed, test.seed_len));
+
+  // ... and the public key derived from the seed matches both the seed-only
+  // encoding and the example public key.
+  EXPECT_EQ(1, EVP_PKEY_cmp(both.get(), seed.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp(both.get(), pub.get()));
+}
+
+// RFC 9935 section 6 RECOMMENDS the seed format. A key parsed from |both|
+// retains its seed, so re-encoding produces the seed-only example byte for
+// byte.
+TEST_P(KEMBothFormatTest, BothFormatReEncodesAsSeed) {
+  const KEMBothFormatTestVector &test = GetParam();
+
+  uint8_t *der_both = nullptr, *der_seed = nullptr;
+  long der_both_len = 0, der_seed_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.both_pem_str, &der_both, &der_both_len));
+  bssl::UniquePtr<uint8_t> free_both(der_both);
+  ASSERT_TRUE(PEM_to_DER(test.seed_pem_str, &der_seed, &der_seed_len));
+  bssl::UniquePtr<uint8_t> free_seed(der_seed);
+
+  CBS cbs;
+  CBS_init(&cbs, der_both, der_both_len);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(pkey);
+
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+  uint8_t *der_out = nullptr;
+  size_t der_out_len = 0;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der_out, &der_out_len));
+  bssl::UniquePtr<uint8_t> free_out(der_out);
+
+  EXPECT_EQ(Bytes(der_seed, der_seed_len), Bytes(der_out, der_out_len));
+}
+
+// A key parsed from |both| must be usable for decapsulation.
+TEST_P(KEMBothFormatTest, BothFormatEncapsDecapsRoundTrip) {
+  const KEMBothFormatTestVector &test = GetParam();
+
+  uint8_t *der = nullptr;
+  long der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.both_pem_str, &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> enc_ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(enc_ctx);
+  size_t ct_len = 0, ss_len = 0;
+  ASSERT_TRUE(
+      EVP_PKEY_encapsulate(enc_ctx.get(), nullptr, &ct_len, nullptr, &ss_len));
+  std::vector<uint8_t> ct(ct_len), ss_enc(ss_len);
+  ASSERT_TRUE(EVP_PKEY_encapsulate(enc_ctx.get(), ct.data(), &ct_len,
+                                   ss_enc.data(), &ss_len));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> dec_ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(dec_ctx);
+  std::vector<uint8_t> ss_dec(ss_len);
+  ASSERT_TRUE(EVP_PKEY_decapsulate(dec_ctx.get(), ss_dec.data(), &ss_len,
+                                   ct.data(), ct_len));
+
+  EXPECT_EQ(Bytes(ss_enc), Bytes(ss_dec));
+}
+
+// RFC 9935 section 8 requires the seed consistency check, and mandates that an
+// inconsistent private key be rejected as malformed. These are the two |both|
+// examples from Appendix C.4.1.
+TEST(KEMTest, ParsePrivateKeyBothInconsistent) {
+  const struct {
+    const char *name;
+    const char *pem_str;
+  } kInconsistent[] = {
+      {"C.4.1 example 1: seed and expandedKey disagree",
+       mlkem_512_priv_both_inconsistent_pem_str},
+      {"C.4.1 example 4: expandedKey differs from the seed only in z",
+       mlkem_512_priv_both_inconsistent_z_pem_str},
+  };
+
+  for (const auto &t : kInconsistent) {
+    SCOPED_TRACE(t.name);
+
+    uint8_t *der = nullptr;
+    long der_len = 0;
+    ASSERT_TRUE(PEM_to_DER(t.pem_str, &der, &der_len));
+    bssl::UniquePtr<uint8_t> free_der(der);
+
+    CBS cbs;
+    CBS_init(&cbs, der, der_len);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+    EXPECT_FALSE(pkey);
+
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+    EXPECT_EQ(ERR_GET_REASON(err), EVP_R_DECODE_ERROR);
+    ERR_clear_error();
+  }
+}
+
+// A |both| SEQUENCE whose seed or expandedKey has the wrong length must be
+// rejected before any key generation is attempted.
+TEST(KEMTest, ParsePrivateKeyBothInvalidLength) {
+  uint8_t *der = nullptr;
+  long der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(mlkem_512_priv_both_pem_str, &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // Truncating the DER leaves a |both| SEQUENCE whose contents no longer parse
+  // as two complete OCTET STRINGs.
+  CBS cbs;
+  CBS_init(&cbs, der, der_len - 1);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+  EXPECT_FALSE(pkey);
+  ERR_clear_error();
 }
 
 
