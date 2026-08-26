@@ -566,3 +566,50 @@ err:
   OPENSSL_free(secret_key);
   return ret;
 }
+
+int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in) {
+  if (key == NULL || in == NULL || key->kem == NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Ensure key is uninitialized
+  if (key->public_key != NULL || key->secret_key != NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  const KEM *kem = key->kem;
+
+  // FIPS 203 encodes dk = dk_PKE || ek || H(ek) || z, where |ek| is the
+  // encapsulation key and |H(ek)| and |z| are 32 bytes each, so |ek| begins
+  // |public_key_len| + 64 bytes before the end of the decapsulation key. Every
+  // ML-KEM parameter set satisfies the size relation below; the check guards
+  // the pointer arithmetic rather than any untrusted length.
+  if (kem->secret_key_len < kem->public_key_len + 64) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  const uint8_t *embedded_public_key =
+      in + kem->secret_key_len - kem->public_key_len - 64;
+
+  key->public_key = OPENSSL_memdup(embedded_public_key, kem->public_key_len);
+  key->secret_key = OPENSSL_memdup(in, kem->secret_key_len);
+  if (key->public_key == NULL || key->secret_key == NULL) {
+    goto err;
+  }
+
+  // |KEM_check_key| queues its own error on failure, so none is added here.
+  if (!KEM_check_key(key)) {
+    goto err;
+  }
+
+  return 1;
+
+err:
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->secret_key);
+  key->public_key = NULL;
+  key->secret_key = NULL;
+  return 0;
+}

@@ -993,6 +993,10 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
 // EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
 // secret key part of the KEM key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
+//
+// |in| is taken at face value: it is checked for length but not for
+// consistency, and the public key part is left unset. Use |EVP_PKEY_check| on
+// the result to validate a key of unknown provenance.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
                                     int nid, const uint8_t *in, size_t len);
 

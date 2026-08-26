@@ -135,6 +135,23 @@ int KEM_check_key(const KEM_KEY *key);
 int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
                                       const CBS *expanded_key);
 
+// KEM_KEY_set_raw_expanded_secret_key imports the |expandedKey| CHOICE of
+// ML-KEM-XX-PrivateKey, and is the validating counterpart of
+// |KEM_KEY_set_raw_secret_key|, for use when parsing an encoded private key
+// rather than accepting raw bytes from the caller. FIPS 203 encodes the
+// encapsulation key inside the decapsulation key as
+// dk = dk_PKE || ek || H(ek) || z, so the public key is recovered from |in|
+// rather than supplied separately, and the result is then validated with
+// |KEM_check_key|. That covers the "hash check" that FIPS 203 section 7.3
+// requires before an expanded key may be used, which RFC 9935 section 8 points
+// at for the expandedKey format, and additionally runs a pairwise consistency
+// test, which catches corruption of dk_PKE that the hash check cannot see.
+//
+// NOTE: |in| must hold |key->kem->secret_key_len| bytes. |key->kem| must be
+//       initialized and |key->public_key| and |key->secret_key| must both be
+//       NULL.
+int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

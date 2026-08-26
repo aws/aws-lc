@@ -574,6 +574,89 @@ const char *mlkem_512_priv_both_inconsistent_z_pem_str =
     "Pj4=\n"
     "-----END PRIVATE KEY-----\n";
 
+// The second C.4.1 example: an ML-KEM-512 |expandedKey| private key with a
+// mutated s_0 and an intact public key hash. The FIPS 203 section 7.3 hash
+// check passes; only the pairwise consistency test rejects it.
+const char *mlkem_512_priv_expanded_mutated_s0_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "JCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\n"
+    "-----END PRIVATE KEY-----\n";
+
+// The third C.4.1 example: an ML-KEM-512 |expandedKey| private key with a
+// mutated H(ek). The section 7.3 hash check rejects it.
+const char *mlkem_512_priv_expanded_mutated_hek_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "JCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\n"
+    "-----END PRIVATE KEY-----\n";
+
 // The following private/public keys were generated externally and encoded using the Java library BouncyCastle which is a JCA provider. 
 // Private keys generated were encoded in expandedKey format. 
 // Implementation: https://github.com/bcgit/bc-java/tree/b41f23936724284a20f10dff13c76896a846031b/prov/src/main/java/org/bouncycastle/jcajce/provider/asymmetric/mlkem
@@ -925,12 +1008,12 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_TRUE(kem_key->secret_key);
 }
 
-// When a private key is parsed from the RFC 9935 section 6
-// Case-2 "expandedKey" form, only |secret_key| is populated and |public_key|
-// stays NULL. Comparing that private key against a public key (as
-// |X509_check_private_key| does during |PKCS12_parse|) must return -2 instead
-// of dereferencing NULL.
-TEST_P(KEMTest, PubCmpExpandedPrivateKeyNullPublic) {
+// A private key parsed from the RFC 9935 section 6 Case-2 "expandedKey" form
+// carries both |secret_key| and the |public_key| recovered from it, so it
+// compares equal to the separately published public key. |kem_pub_cmp| must
+// still return -2 rather than dereferencing a NULL |public_key|, which remains
+// reachable for a parameters-only key.
+TEST_P(KEMTest, PubCmpExpandedPrivateKey) {
   const KEMTestVector &test = GetParam();
 
   uint8_t *pub_der = nullptr;
@@ -942,8 +1025,9 @@ TEST_P(KEMTest, PubCmpExpandedPrivateKeyNullPublic) {
   bssl::UniquePtr<EVP_PKEY> pub_pkey(EVP_parse_public_key(&pub_cbs));
   ASSERT_TRUE(pub_pkey);
 
-  // Parse the expanded-form private key. Case 2 in |kem_priv_decode| only
-  // sets |secret_key|, so |public_key| is NULL.
+  // Parse the expanded-form private key. An expanded ML-KEM key embeds its own
+  // encapsulation key, so case 2 in |kem_priv_decode| recovers it and populates
+  // |public_key| alongside |secret_key|.
   uint8_t *priv_der = nullptr;
   long priv_der_len = 0;
   ASSERT_TRUE(
@@ -953,12 +1037,19 @@ TEST_P(KEMTest, PubCmpExpandedPrivateKeyNullPublic) {
   CBS_init(&priv_cbs, priv_der, priv_der_len);
   bssl::UniquePtr<EVP_PKEY> priv_pkey(EVP_parse_private_key(&priv_cbs));
   ASSERT_TRUE(priv_pkey);
-  ASSERT_EQ(priv_pkey->pkey.kem_key->public_key, nullptr);
+  ASSERT_TRUE(priv_pkey->pkey.kem_key->public_key);
 
-  // |EVP_PKEY_cmp| must not dereference the NULL |public_key|. It should
-  // return -2 to signal that the comparison could not be performed.
+  // The recovered public key must be the one that was published separately.
+  EXPECT_EQ(EVP_PKEY_cmp(pub_pkey.get(), priv_pkey.get()), 1);
+  EXPECT_EQ(EVP_PKEY_cmp(priv_pkey.get(), pub_pkey.get()), 1);
+
+  // |kem_pub_cmp| must still return -2 rather than dereferencing a NULL
+  // |public_key|. No import leaves a key in that state any more, so clear the
+  // public key to reach the branch. It matters because
+  // |X509_check_private_key| compares keys during |PKCS12_parse|.
+  OPENSSL_free(priv_pkey->pkey.kem_key->public_key);
+  priv_pkey->pkey.kem_key->public_key = nullptr;
   EXPECT_EQ(EVP_PKEY_cmp(pub_pkey.get(), priv_pkey.get()), -2);
-  // Same check with arguments swapped, exercising the other NULL branch.
   EXPECT_EQ(EVP_PKEY_cmp(priv_pkey.get(), pub_pkey.get()), -2);
 }
 
@@ -1687,6 +1778,48 @@ TEST(KEMTest, ParsePrivateKeyBothInconsistent) {
     uint32_t err = ERR_get_error();
     EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
     EXPECT_EQ(ERR_GET_REASON(err), EVP_R_DECODE_ERROR);
+    ERR_clear_error();
+  }
+}
+
+// FIPS 203 section 7.3, which RFC 9935 section 8 points at for the expandedKey
+// format, requires a hash check before an expanded key is used. Parsing runs
+// that check plus a pairwise consistency test, which between them reject the
+// two expandedKey-only examples from Appendix C.4.1. Each example fails a
+// different check, and the reason codes distinguish them.
+TEST(KEMTest, ParsePrivateKeyExpandedInconsistent) {
+  const struct {
+    const char *name;
+    const char *pem_str;
+    int reason;
+  } kInconsistent[] = {
+      // s_0 is mutated but H(ek) is intact, so the hash check passes and only
+      // the PCT catches the key.
+      {"C.4.1 example 2: mutated s_0, valid H(ek)",
+       mlkem_512_priv_expanded_mutated_s0_pem_str, EVP_R_KEM_PCT_FAILED},
+      // H(ek) no longer matches the embedded ek, so the hash check catches it
+      // before the PCT runs.
+      {"C.4.1 example 3: mutated H(ek)",
+       mlkem_512_priv_expanded_mutated_hek_pem_str, EVP_R_INVALID_PRIVATE_KEY},
+  };
+
+  for (const auto &t : kInconsistent) {
+    SCOPED_TRACE(t.name);
+
+    uint8_t *der = nullptr;
+    long der_len = 0;
+    ASSERT_TRUE(PEM_to_DER(t.pem_str, &der, &der_len));
+    bssl::UniquePtr<uint8_t> free_der(der);
+
+    ERR_clear_error();
+    CBS cbs;
+    CBS_init(&cbs, der, der_len);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs));
+    EXPECT_FALSE(pkey);
+
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+    EXPECT_EQ(ERR_GET_REASON(err), t.reason);
     ERR_clear_error();
   }
 }

@@ -229,7 +229,11 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
       return 0;
     }
 
-    return KEM_KEY_set_raw_secret_key(out->pkey.kem_key, CBS_data(&expanded_key));
+    // |KEM_KEY_set_raw_expanded_secret_key| recovers the public key embedded in
+    // the expanded key and validates the pair. Section 8 defers to FIPS 203
+    // section 7.3, which requires a hash check before an expanded key is used.
+    return KEM_KEY_set_raw_expanded_secret_key(out->pkey.kem_key,
+                                               CBS_data(&expanded_key));
   } else if (CBS_peek_asn1_tag(key, CBS_ASN1_SEQUENCE)) {
     // Case 3: both SEQUENCE {seed, expandedKey}
     CBS sequence, seed, expanded_key;
