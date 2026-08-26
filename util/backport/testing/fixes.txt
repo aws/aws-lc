@@ -1,0 +1,48 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+# 39 real AWS-LC fixes with checked answers, one per line
+# <sha>  free text label. The branches each one should flag live in answer_key.txt
+#
+# Run from util/backport:
+#   python3 testing/replay_fixes.py
+
+9545d9de6059   DH_check() excessive time with oversized modulus (CVE-2023-3446)
+1bb574f3f2e7   Excessive time checking DH q parameter value (#1121)
+e17506cdbde1   pkcs8: cap ciphertext length before allocating
+11b50d39cf23   BN_mod_sqrt infinite loop (CVE-2022-0778)
+4c37fba343     Kyber avoid compiler DIV (constant-time) (#1376)
+3b5856603682   Only update thread_states_list if freed state is head (UAF, #1294)
+17cd6574bdb8   Kyber avoid compiler division (constant-time) (#1360)
+2a184bd568ff   ML-DSA constant-time hardening (#2602)
+8a43348a53b0   reject zero-sized digests in HKDF EVP_PKEY
+4b07805bddc5   Prevent non-constant-time code in Kyber-R3 and ML-KEM (#1619)
+110f184623b5   Reject XOF digests in DH_compute_key_hashed
+dcd1690320a3   evp: disable EVP_PKEY_derive for KEM method
+37c2b5e8cf5a   Avoid mixing SSE and AVX in XTS-mode AVX512
+4e32cc53a81d   Don't use expired certificates if possible
+90d2a34ead8d   Remove retries on PCT failure in EC and RSA key generation
+cf2e09fb5d40   evp: fix DSA keygen error-path UAF/double-free
+507120cc3dba   Use constant curve-specific groups whenever possible
+8da095382457   Add a value barrier when checking for point doubling
+28be5302b592   Make asserts constant-time too
+b7917d9b83a4   Rand small fixes (#2664)
+3cc65bd333ee   Fix PKCS12 Error Code (#2538)
+9ad27ab683af   Add new verification error for mismatched signatures (#413)
+779d13f705c8   Consistently reject large p and large q in DH (CVE-2023-3817)
+32e73b358236   Fix theoretical overflow in BIO_printf (#2369)
+eb0c0c0d8e4e   OOB input read in AES-XTS Decrypt AVX-512 (#2227)
+921c6465918e   1-byte OOB read in EVP_PKEY_asn1_find_str
+a1aadda437e6   Handle ChaCha20 counter overflow consistently
+6c21187fbd56   Avoid conversion overflow from struct tm
+2f55cf36eda8   Plug a leak in ASN1_item_i2d()
+47389586f8aa   Fix CRL distribution point scope check in crl_crldp_check (#3105)
+df1f12559096   Fix SSL_OP_IGNORE_UNEXPECTED_EOF for socket BIOs (#3341)
+867356ce1db5   Fix handling of EXFLAG_INVALID_POLICY on the leaf
+ed9e7b24221d   Improve X.509 GeneralName parsing (#789)
+7c3c62c87b1b   Avoid buffer overread in AES-XTS decryption on aarch64 (#970)
+b3dac1012c36   Stop clang from un-constant-timing copy_from_prebuf
+2aa522465f69   Fix CN fallback handling in name constraints checking (#3107)
+24cb055cb48a   Check HWCAP_CPUID before reading MIDR_EL1 on aarch64 (#1006)
+6bdd4c3403a1   Abort when RSA or EC key generation fail (#324)
+3781897d1c0b   Include the RSA PCT check in the number of keygen attempts (#337)
