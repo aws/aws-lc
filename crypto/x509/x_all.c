@@ -6,6 +6,7 @@
 #include <limits.h>
 
 #include <openssl/asn1.h>
+#include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/dsa.h>
 #include <openssl/evp.h>
@@ -18,7 +19,118 @@
 #include "internal.h"
 
 
+static int x509_view_range(const X509 *x509, AWSLC_X509_DER_RANGE range,
+                           const uint8_t **out_data, size_t *out_len) {
+  const size_t buffer_len = CRYPTO_BUFFER_len(x509->buf);
+  if (range.offset > buffer_len || range.length > buffer_len - range.offset) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  *out_data = CRYPTO_BUFFER_data(x509->buf) + range.offset;
+  *out_len = range.length;
+  return 1;
+}
+
+static int x509_verify_view_signature(const X509_ALGOR *sigalg,
+                                      const uint8_t *signature,
+                                      size_t signature_len, const uint8_t *data,
+                                      size_t data_len, EVP_PKEY *pkey) {
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  int ret = 0;
+  if (x509_digest_verify_init(&ctx, sigalg, pkey) &&
+      EVP_DigestVerify(&ctx, signature, signature_len, data, data_len)) {
+    ret = 1;
+  } else if (ctx.pctx != NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
+  }
+  EVP_MD_CTX_cleanup(&ctx);
+  return ret;
+}
+
+static int x509_verify_view(X509 *x509, EVP_PKEY *pkey, int *out_handled) {
+  *out_handled = 0;
+  if (x509 == NULL || x509->buf == NULL) {
+    return 0;
+  }
+
+  const uint8_t *tbs_data = NULL, *tbs_alg_data = NULL, *signature_data = NULL;
+  size_t tbs_len = 0, tbs_alg_len = 0, signature_len = 0;
+  CRYPTO_MUTEX_lock_read(&x509->lock);
+  if (x509->view_state == X509_VIEW_STATE_EAGER) {
+    CRYPTO_MUTEX_unlock_read(&x509->lock);
+    return 0;
+  }
+  *out_handled = 1;
+  if (!x509_view_range(x509, x509->view.tbs_certificate, &tbs_data, &tbs_len) ||
+      !x509_view_range(x509, x509->view.tbs_signature_algorithm, &tbs_alg_data,
+                       &tbs_alg_len) ||
+      !x509_view_range(x509, x509->view.signature, &signature_data,
+                       &signature_len)) {
+    CRYPTO_MUTEX_unlock_read(&x509->lock);
+    return 0;
+  }
+  CRYPTO_MUTEX_unlock_read(&x509->lock);
+
+  if (tbs_alg_len > LONG_MAX) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+    return 0;
+  }
+  const uint8_t *tbs_alg_cursor = tbs_alg_data;
+  X509_ALGOR *tbs_alg =
+      d2i_X509_ALGOR(NULL, &tbs_alg_cursor, (long)tbs_alg_len);
+  X509_ALGOR *outer_alg = x509_get_cached_signature_algorithm(x509);
+  if (tbs_alg == NULL || outer_alg == NULL ||
+      tbs_alg_cursor != tbs_alg_data + tbs_alg_len) {
+    // These are allocation failures or an internal inconsistency rather than a
+    // verdict on the signature, so defer to the legacy path instead of
+    // reporting failure.
+    X509_ALGOR_free(tbs_alg);
+    *out_handled = 0;
+    return 0;
+  }
+  const int algorithms_match = X509_ALGOR_cmp(outer_alg, tbs_alg) == 0;
+  X509_ALGOR_free(tbs_alg);
+  if (!algorithms_match) {
+    OPENSSL_PUT_ERROR(X509, X509_R_SIGNATURE_ALGORITHM_MISMATCH);
+    return 0;
+  }
+
+  CBS encoded_signature, signature;
+  CBS_init(&encoded_signature, signature_data, signature_len);
+  uint8_t padding_bits = 0;
+  if (!CBS_get_asn1(&encoded_signature, &signature, CBS_ASN1_BITSTRING) ||
+      CBS_len(&encoded_signature) != 0 ||
+      !CBS_get_u8(&signature, &padding_bits)) {
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_BIT_STRING_BITS_LEFT);
+    return 0;
+  }
+  if (padding_bits != 0) {
+    // ASN1_item_verify historically ignores unused signature bits. Preserve
+    // that behavior for unusual certificates by using the legacy path.
+    *out_handled = 0;
+    return 0;
+  }
+
+  return x509_verify_view_signature(outer_alg, CBS_data(&signature),
+                                    CBS_len(&signature), tbs_data, tbs_len,
+                                    pkey);
+}
+
 int X509_verify(X509 *x509, EVP_PKEY *pkey) {
+  int handled = 0;
+  const int view_result = x509_verify_view(x509, pkey, &handled);
+  if (handled) {
+    return view_result;
+  }
+  if (!x509_ensure_legacy(x509)) {
+    return 0;
+  }
   if (X509_ALGOR_cmp(x509->sig_alg, x509->cert_info->signature)) {
     OPENSSL_PUT_ERROR(X509, X509_R_SIGNATURE_ALGORITHM_MISMATCH);
     return 0;
@@ -33,12 +145,18 @@ int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey) {
 }
 
 int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md) {
+  if (!x509_ensure_legacy(x)) {
+    return 0;
+  }
   asn1_encoding_clear(&x->cert_info->enc);
   return (ASN1_item_sign(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
                          x->sig_alg, x->signature, x->cert_info, pkey, md));
 }
 
 int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx) {
+  if (!x509_ensure_legacy(x)) {
+    return 0;
+  }
   asn1_encoding_clear(&x->cert_info->enc);
   return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
                             x->sig_alg, x->signature, x->cert_info, ctx);
@@ -87,8 +205,19 @@ X509 *d2i_X509_fp(FILE *fp, X509 **x509) {
   return ASN1_item_d2i_fp(ASN1_ITEM_rptr(X509), fp, x509);
 }
 
+static int i2d_x509_void(const void *x509, unsigned char **out) {
+  return i2d_X509((X509 *)x509, out);
+}
+
 int i2d_X509_fp(FILE *fp, X509 *x509) {
-  return ASN1_item_i2d_fp(ASN1_ITEM_rptr(X509), fp, x509);
+  BIO *bio = BIO_new_fp(fp, BIO_NOCLOSE);
+  if (bio == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
+    return 0;
+  }
+  const int ret = ASN1_i2d_bio(i2d_x509_void, bio, x509);
+  BIO_free(bio);
+  return ret;
 }
 
 X509 *d2i_X509_bio(BIO *bp, X509 **x509) {
@@ -96,7 +225,7 @@ X509 *d2i_X509_bio(BIO *bp, X509 **x509) {
 }
 
 int i2d_X509_bio(BIO *bp, X509 *x509) {
-  return ASN1_item_i2d_bio(ASN1_ITEM_rptr(X509), bp, x509);
+  return ASN1_i2d_bio(i2d_x509_void, bp, x509);
 }
 
 X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl) {
@@ -233,6 +362,19 @@ int X509_pubkey_digest(const X509 *data, const EVP_MD *type, unsigned char *md,
 
 int X509_digest(const X509 *data, const EVP_MD *type, unsigned char *md,
                 unsigned int *len) {
+  if (data != NULL && data->buf != NULL) {
+    CRYPTO_MUTEX_lock_read((CRYPTO_MUTEX *)&data->lock);
+    if (data->view_state == X509_VIEW_STATE_PARSED) {
+      const uint8_t *encoded = NULL;
+      size_t encoded_len = 0;
+      const int ret = x509_view_range(data, data->view.certificate, &encoded,
+                                      &encoded_len) &&
+                      EVP_Digest(encoded, encoded_len, md, len, type, NULL);
+      CRYPTO_MUTEX_unlock_read((CRYPTO_MUTEX *)&data->lock);
+      return ret;
+    }
+    CRYPTO_MUTEX_unlock_read((CRYPTO_MUTEX *)&data->lock);
+  }
   return (ASN1_item_digest(ASN1_ITEM_rptr(X509), type, (char *)data, md, len));
 }
 

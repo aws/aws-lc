@@ -3044,6 +3044,9 @@ tree_jitter_zeroize_thread_drbg AWS_LC_1.0 PRIVATE
 validate_cidr_mask AWS_LC_1.0 PRIVATE
 vm_ube_fallback_get_seed AWS_LC_1.0 PRIVATE
 voprf_pst1_sign_with_proof_scalar_for_testing AWS_LC_1.0 PRIVATE
+x509_parse_der_view AWS_LC_1.0 PRIVATE
+x509_view_fallback_count_for_testing AWS_LC_1.0 PRIVATE
+x509_view_reset_fallback_counts_for_testing AWS_LC_1.0 PRIVATE
 x509v3_bytes_to_hex AWS_LC_1.0 PRIVATE
 x509v3_cache_extensions AWS_LC_1.0 PRIVATE
 x86_64_assembly_implementation_FOR_TESTING AWS_LC_1.0 PRIVATE

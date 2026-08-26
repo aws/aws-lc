@@ -10,6 +10,17 @@
 #include <openssl/x509.h>
 
 #include "../asn1/internal.h"
+#include "x509_view.h"
+
+// The parsed-view representation is unconditional: no build option selects it,
+// so |struct x509_st| has one layout everywhere. Tooling that preprocesses
+// AWS-LC headers outside the CMake include path (the symbol registry checker,
+// ABI diffing, binding generators) sees the same struct as the library. The
+// compatibility path is chosen at run time in |d2i_X509|, not at build time.
+enum {
+  X509_VIEW_STATE_EAGER = 0,
+  X509_VIEW_STATE_PARSED = 1,
+};
 
 #if defined(__cplusplus)
 extern "C" {
@@ -115,6 +126,21 @@ struct x509_st {
   unsigned char cert_hash[SHA256_DIGEST_LENGTH];
   X509_CERT_AUX *aux;
   CRYPTO_BUFFER *buf;
+  // Parsed-view state. Present unconditionally to keep this struct's layout
+  // independent of build configuration; only populated when the view parser is
+  // enabled, and |view_state| is |X509_VIEW_STATE_EAGER| otherwise.
+  AWSLC_X509_CERTIFICATE_VIEW view;
+  uint8_t view_state;
+  uint16_t view_materialized;
+  ASN1_INTEGER *view_serial;
+  X509_NAME *view_issuer;
+  X509_VAL *view_validity;
+  X509_NAME *view_subject;
+  X509_PUBKEY *view_key;
+  STACK_OF(X509_EXTENSION) *view_extensions;
+  X509_ALGOR *view_tbs_sig_alg;
+  X509_ALGOR *view_sig_alg;
+  ASN1_BIT_STRING *view_signature;
   CRYPTO_MUTEX lock;
 } /* X509 */;
 
@@ -375,6 +401,51 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 
 // x509_init_signature_info initializes the signature info for |x509|.
 int x509_init_signature_info(X509 *x509);
+int x509_init_signature_info_with_alg(X509 *x509,
+                                      const X509_ALGOR *signature_algorithm);
+
+// x509_ensure_legacy materializes the complete legacy object graph for a
+// parsed-view certificate. It returns one on success and zero on failure.
+int x509_ensure_legacy(const X509 *x509);
+// x509_get_view_version returns one and writes the parsed version if |x509|
+// is still view-backed. It returns zero for an eager object.
+int x509_get_view_version(const X509 *x509, long *out_version);
+// These functions expose direct d2i_X509 compatibility-fallback counts to
+// tests and corpus measurement tools. They do not count paths which bypass the
+// view parser, including object reuse, certificates embedded in another ASN.1
+// object, or legacy BIO/FILE decoders. |parse_result| is an
+// |AWSLC_X509_PARSE_*| value.
+OPENSSL_EXPORT uint64_t
+x509_view_fallback_count_for_testing(uint32_t parse_result);
+OPENSSL_EXPORT void x509_view_reset_fallback_counts_for_testing(void);
+
+// These helpers materialize one owning legacy field from a parsed view. They
+// return pointers that remain valid across a later transition to the complete
+// legacy object graph.
+ASN1_INTEGER *x509_get_cached_serial(const X509 *x509);
+X509_NAME *x509_get_cached_issuer(const X509 *x509);
+X509_VAL *x509_get_cached_validity(const X509 *x509);
+X509_NAME *x509_get_cached_subject(const X509 *x509);
+X509_PUBKEY *x509_get_cached_pubkey(const X509 *x509);
+STACK_OF(X509_EXTENSION) *x509_get_cached_extensions(const X509 *x509);
+int x509_get_cached_extensions_ex(const X509 *x509,
+                                  STACK_OF(X509_EXTENSION) **out_extensions);
+// The caller must hold |x509->lock| while using this helper.
+void *x509_get_view_extension_d2i(const X509 *x509, int slot, int nid,
+                                  int *out_status, int *out_handled);
+// This helper acquires |x509->lock| itself.
+void *x509_get_view_extension_d2i_by_nid(const X509 *x509, int nid,
+                                         int *out_status, int *out_handled);
+// The caller must hold |x509->lock| while using this helper.
+int x509_view_has_unsupported_critical(const X509 *x509, int *out_value,
+                                       int *out_handled);
+X509_ALGOR *x509_get_cached_tbs_signature_algorithm(const X509 *x509);
+X509_ALGOR *x509_get_cached_signature_algorithm(const X509 *x509);
+ASN1_BIT_STRING *x509_get_cached_signature(const X509 *x509);
+int x509_digest_pristine_view(const X509 *x509,
+                              uint8_t out[SHA256_DIGEST_LENGTH],
+                              int *out_handled);
+
 
 
 // Path-building functions.
@@ -448,6 +519,10 @@ int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
 // x509v3_ext_free_with_method frees |ext_data| with |ext_method|.
 int x509v3_ext_free_with_method(const X509V3_EXT_METHOD *ext_method,
                                 void *ext_data);
+
+// x509v3_ext_d2i_nid decodes a DER extension value without first constructing
+// an |X509_EXTENSION| wrapper.
+void *x509v3_ext_d2i_nid(int nid, const uint8_t *data, size_t len);
 
 // X509V3_NAME_from_section adds attributes to |nm| by interpreting the
 // key/value pairs in |dn_sk|. It returns one on success and zero on error.

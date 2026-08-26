@@ -23,6 +23,9 @@ OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
   if (subject != NULL) {
     iname = X509_get_issuer_name(subject);
     serial = X509_get0_serialNumber(subject);
+    if (iname == NULL || serial == NULL) {
+      return NULL;
+    }
   } else {
     iname = X509_get_subject_name(issuer);
     serial = NULL;

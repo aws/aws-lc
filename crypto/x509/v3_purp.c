@@ -1,5 +1,5 @@
-// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project 2001.
-// Copyright (c) 1999-2004 The OpenSSL Project.  All rights reserved.
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
+// 2001. Copyright (c) 1999-2004 The OpenSSL Project.  All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 #include <assert.h>
@@ -15,6 +15,7 @@
 
 #include "../internal.h"
 #include "internal.h"
+#include "x509_view.h"
 
 #define V1_ROOT (EXFLAG_V1 | EXFLAG_SS)
 #define ku_reject(x, usage) \
@@ -41,6 +42,11 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca);
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
+static int x509_check_akid_internal(X509 *issuer, const ASN1_INTEGER *serial,
+                                    X509_NAME *issuer_name,
+                                    const AUTHORITY_KEYID *akid);
+static void *x509_cache_get_d2i(X509 *x, STACK_OF(X509_EXTENSION) **extensions,
+                                int slot, int nid, int *out_status);
 
 // X509_TRUST_NONE is not a valid |X509_TRUST_*| constant. It is used by
 // |X509_PURPOSE_ANY| to indicate that it has no corresponding trust type and
@@ -139,20 +145,15 @@ int X509_PURPOSE_get_trust(const X509_PURPOSE *xp) { return xp->trust; }
 
 int X509_supported_extension(const X509_EXTENSION *ex) {
   int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
-  return nid == NID_netscape_cert_type || 
-         nid == NID_key_usage ||
-         nid == NID_subject_alt_name || 
-         nid == NID_basic_constraints ||
+  return nid == NID_netscape_cert_type || nid == NID_key_usage ||
+         nid == NID_subject_alt_name || nid == NID_basic_constraints ||
          nid == NID_certificate_policies ||
-         nid == NID_crl_distribution_points || 
-         nid == NID_ext_key_usage ||
-         nid == NID_policy_constraints || 
-         nid == NID_name_constraints ||
-         nid == NID_policy_mappings || 
-         nid == NID_inhibit_any_policy;
+         nid == NID_crl_distribution_points || nid == NID_ext_key_usage ||
+         nid == NID_policy_constraints || nid == NID_name_constraints ||
+         nid == NID_policy_mappings || nid == NID_inhibit_any_policy;
 }
 
-static int setup_dp(X509 *x, DIST_POINT *dp) {
+static int setup_dp(X509_NAME *issuer_name, DIST_POINT *dp) {
   if (!dp->distpoint || (dp->distpoint->type != 1)) {
     return 1;
   }
@@ -165,24 +166,57 @@ static int setup_dp(X509 *x, DIST_POINT *dp) {
     }
   }
   if (!iname) {
-    iname = X509_get_issuer_name(x);
+    iname = issuer_name;
   }
 
   return DIST_POINT_set_dpname(dp->distpoint, iname);
 }
 
-static int setup_crldp(X509 *x) {
+static int setup_crldp(X509 *x, STACK_OF(X509_EXTENSION) *extensions,
+                       X509_NAME *issuer_name) {
   int j;
-  x->crldp = X509_get_ext_d2i(x, NID_crl_distribution_points, &j, NULL);
+  x->crldp = x509_cache_get_d2i(x, &extensions,
+                                AWSLC_X509_EXTENSION_CRL_DISTRIBUTION_POINTS,
+                                NID_crl_distribution_points, &j);
   if (x->crldp == NULL && j != -1) {
     return 0;
   }
   for (size_t i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
-    if (!setup_dp(x, sk_DIST_POINT_value(x->crldp, i))) {
+    if (!setup_dp(issuer_name, sk_DIST_POINT_value(x->crldp, i))) {
       return 0;
     }
   }
   return 1;
+}
+
+static void *x509_cache_get_d2i(X509 *x, STACK_OF(X509_EXTENSION) **extensions,
+                                int slot, int nid, int *out_status) {
+  int handled = 0;
+  void *result =
+      x509_get_view_extension_d2i(x, slot, nid, out_status, &handled);
+  if (handled) {
+    return result;
+  }
+  return X509V3_get_d2i(*extensions, nid, out_status, NULL);
+}
+
+static int x509_cache_extensions_error_locked(
+    X509 *x, const uint8_t cert_hash[SHA256_DIGEST_LENGTH], int hash_valid) {
+  if (!(x->ex_flags & EXFLAG_SET)) {
+    if (hash_valid) {
+      OPENSSL_memcpy(x->cert_hash, cert_hash, SHA256_DIGEST_LENGTH);
+    }
+    x->ex_flags |= EXFLAG_SET | EXFLAG_INVALID;
+  }
+  return (x->ex_flags & EXFLAG_INVALID) == 0;
+}
+
+static int x509_cache_extensions_error(
+    X509 *x, const uint8_t cert_hash[SHA256_DIGEST_LENGTH], int hash_valid) {
+  CRYPTO_MUTEX_lock_write(&x->lock);
+  const int ret = x509_cache_extensions_error_locked(x, cert_hash, hash_valid);
+  CRYPTO_MUTEX_unlock_write(&x->lock);
+  return ret;
 }
 
 int x509v3_cache_extensions(X509 *x) {
@@ -201,21 +235,77 @@ int x509v3_cache_extensions(X509 *x) {
     return (x->ex_flags & EXFLAG_INVALID) == 0;
   }
 
+  uint8_t cert_hash[SHA256_DIGEST_LENGTH] = {0};
+  int digest_handled = 0;
+  int digest_ok = x509_digest_pristine_view(x, cert_hash, &digest_handled);
+  if (!digest_ok) {
+    return x509_cache_extensions_error(x, cert_hash, /*hash_valid=*/0);
+  }
+  if (!digest_handled) {
+    if (!x509_ensure_legacy(x)) {
+      return x509_cache_extensions_error(x, cert_hash, /*hash_valid=*/0);
+    }
+    digest_ok = X509_digest(x, EVP_sha256(), cert_hash, NULL);
+  }
+
+  STACK_OF(X509_EXTENSION) *extensions = NULL;
+  X509_NAME *issuer = x509_get_cached_issuer(x);
+  X509_NAME *subject = x509_get_cached_subject(x);
+  ASN1_INTEGER *serial = x509_get_cached_serial(x);
+  X509_ALGOR *signature_algorithm = x509_get_cached_signature_algorithm(x);
+  const long version = X509_get_version(x);
+  if (issuer == NULL || subject == NULL || serial == NULL ||
+      signature_algorithm == NULL) {
+    return x509_cache_extensions_error(x, cert_hash, digest_ok);
+  }
+
   CRYPTO_MUTEX_lock_write(&x->lock);
   if (x->ex_flags & EXFLAG_SET) {
     CRYPTO_MUTEX_unlock_write(&x->lock);
     return (x->ex_flags & EXFLAG_INVALID) == 0;
   }
 
-  if (!X509_digest(x, EVP_sha256(), x->cert_hash, NULL)) {
+  int unsupported_critical = 0;
+  int critical_handled = 0;
+  if (!x509_view_has_unsupported_critical(x, &unsupported_critical,
+                                          &critical_handled)) {
+    const int ret =
+        x509_cache_extensions_error_locked(x, cert_hash, digest_ok);
+    CRYPTO_MUTEX_unlock_write(&x->lock);
+    return ret;
+  }
+  if (!critical_handled) {
+    CRYPTO_MUTEX_unlock_write(&x->lock);
+    if (!x509_get_cached_extensions_ex(x, &extensions)) {
+      return x509_cache_extensions_error(x, cert_hash, digest_ok);
+    }
+    CRYPTO_MUTEX_lock_write(&x->lock);
+    if (x->ex_flags & EXFLAG_SET) {
+      CRYPTO_MUTEX_unlock_write(&x->lock);
+      return (x->ex_flags & EXFLAG_INVALID) == 0;
+    }
+    if (!x509_view_has_unsupported_critical(x, &unsupported_critical,
+                                            &critical_handled)) {
+      const int ret =
+          x509_cache_extensions_error_locked(x, cert_hash, digest_ok);
+      CRYPTO_MUTEX_unlock_write(&x->lock);
+      return ret;
+    }
+  }
+
+  if (digest_ok) {
+    OPENSSL_memcpy(x->cert_hash, cert_hash, sizeof(cert_hash));
+  } else {
     x->ex_flags |= EXFLAG_INVALID;
   }
   // V1 should mean no extensions ...
-  if (X509_get_version(x) == X509_VERSION_1) {
+  if (version == X509_VERSION_1) {
     x->ex_flags |= EXFLAG_V1;
   }
   // Handle basic constraints
-  if ((bs = X509_get_ext_d2i(x, NID_basic_constraints, &j, NULL))) {
+  if ((bs = x509_cache_get_d2i(x, &extensions,
+                               AWSLC_X509_EXTENSION_BASIC_CONSTRAINTS,
+                               NID_basic_constraints, &j))) {
     if (bs->ca) {
       x->ex_flags |= EXFLAG_CA;
     }
@@ -240,7 +330,9 @@ int x509v3_cache_extensions(X509 *x) {
     x->ex_flags |= EXFLAG_INVALID;
   }
   // Handle key usage
-  if ((usage = X509_get_ext_d2i(x, NID_key_usage, &j, NULL))) {
+  if ((usage =
+           x509_cache_get_d2i(x, &extensions, AWSLC_X509_EXTENSION_KEY_USAGE,
+                              NID_key_usage, &j))) {
     if (usage->length > 0) {
       x->ex_kusage = usage->data[0];
       if (usage->length > 1) {
@@ -255,7 +347,9 @@ int x509v3_cache_extensions(X509 *x) {
     x->ex_flags |= EXFLAG_INVALID;
   }
   x->ex_xkusage = 0;
-  if ((extusage = X509_get_ext_d2i(x, NID_ext_key_usage, &j, NULL))) {
+  if ((extusage = x509_cache_get_d2i(x, &extensions,
+                                     AWSLC_X509_EXTENSION_EXTENDED_KEY_USAGE,
+                                     NID_ext_key_usage, &j))) {
     x->ex_flags |= EXFLAG_XKUSAGE;
     for (i = 0; i < sk_ASN1_OBJECT_num(extusage); i++) {
       switch (OBJ_obj2nid(sk_ASN1_OBJECT_value(extusage, i))) {
@@ -302,7 +396,9 @@ int x509v3_cache_extensions(X509 *x) {
     x->ex_flags |= EXFLAG_INVALID;
   }
 
-  if ((ns = X509_get_ext_d2i(x, NID_netscape_cert_type, &j, NULL))) {
+  if ((ns = x509_cache_get_d2i(x, &extensions,
+                               AWSLC_X509_EXTENSION_NETSCAPE_CERT_TYPE,
+                               NID_netscape_cert_type, &j))) {
     if (ns->length > 0) {
       x->ex_nscert = ns->data[0];
     } else {
@@ -313,49 +409,60 @@ int x509v3_cache_extensions(X509 *x) {
   } else if (j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  x->skid = X509_get_ext_d2i(x, NID_subject_key_identifier, &j, NULL);
+  x->skid = x509_cache_get_d2i(x, &extensions,
+                               AWSLC_X509_EXTENSION_SUBJECT_KEY_IDENTIFIER,
+                               NID_subject_key_identifier, &j);
   if (x->skid == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  x->akid = X509_get_ext_d2i(x, NID_authority_key_identifier, &j, NULL);
+  x->akid = x509_cache_get_d2i(x, &extensions,
+                               AWSLC_X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER,
+                               NID_authority_key_identifier, &j);
   if (x->akid == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
   // Does subject name match issuer ?
-  if (!X509_NAME_cmp(X509_get_subject_name(x), X509_get_issuer_name(x))) {
+  if (!X509_NAME_cmp(subject, issuer)) {
     x->ex_flags |= EXFLAG_SI;
     // If SKID matches AKID also indicate self signed
-    if (X509_check_akid(x, x->akid) == X509_V_OK &&
+    if (x509_check_akid_internal(x, serial, issuer, x->akid) == X509_V_OK &&
         !ku_reject(x, X509v3_KU_KEY_CERT_SIGN)) {
       x->ex_flags |= EXFLAG_SS;
     }
   }
-  x->altname = X509_get_ext_d2i(x, NID_subject_alt_name, &j, NULL);
+  x->altname =
+      x509_cache_get_d2i(x, &extensions, AWSLC_X509_EXTENSION_SUBJECT_ALT_NAME,
+                         NID_subject_alt_name, &j);
   if (x->altname == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  x->nc = X509_get_ext_d2i(x, NID_name_constraints, &j, NULL);
+  x->nc =
+      x509_cache_get_d2i(x, &extensions, AWSLC_X509_EXTENSION_NAME_CONSTRAINTS,
+                         NID_name_constraints, &j);
   if (x->nc == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  if (!setup_crldp(x)) {
+  if (!setup_crldp(x, extensions, issuer)) {
     x->ex_flags |= EXFLAG_INVALID;
   }
 
-  for (j = 0; j < X509_get_ext_count(x); j++) {
-    const X509_EXTENSION *ex = X509_get_ext(x, j);
-    if (!X509_EXTENSION_get_critical(ex)) {
-      continue;
-    }
-    if (!X509_supported_extension(ex)) {
+  if (critical_handled) {
+    if (unsupported_critical) {
       x->ex_flags |= EXFLAG_CRITICAL;
-      break;
+    }
+  } else {
+    for (j = 0; j < X509v3_get_ext_count(extensions); j++) {
+      const X509_EXTENSION *ex = X509v3_get_ext(extensions, j);
+      if (X509_EXTENSION_get_critical(ex) && !X509_supported_extension(ex)) {
+        x->ex_flags |= EXFLAG_CRITICAL;
+        break;
+      }
     }
   }
 
   // Set x->sig_info. Errors here are ignored so that we emit similar errors
   // to OpenSSL, instead of failing early.
-  (void)x509_init_signature_info(x);
+  (void)x509_init_signature_info_with_alg(x, signature_algorithm);
 
   x->ex_flags |= EXFLAG_SET;
 
@@ -552,8 +659,12 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca) { return 1; }
 
 int X509_check_issued(X509 *issuer, X509 *subject) {
-  if (X509_NAME_cmp(X509_get_subject_name(issuer),
-                    X509_get_issuer_name(subject))) {
+  X509_NAME *issuer_subject = X509_get_subject_name(issuer);
+  X509_NAME *subject_issuer = X509_get_issuer_name(subject);
+  if (issuer_subject == NULL || subject_issuer == NULL) {
+    return X509_V_ERR_UNSPECIFIED;
+  }
+  if (X509_NAME_cmp(issuer_subject, subject_issuer)) {
     return X509_V_ERR_SUBJECT_ISSUER_MISMATCH;
   }
   if (!x509v3_cache_extensions(issuer) || !x509v3_cache_extensions(subject)) {
@@ -573,7 +684,9 @@ int X509_check_issued(X509 *issuer, X509 *subject) {
   return X509_V_OK;
 }
 
-int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid) {
+static int x509_check_akid_internal(X509 *issuer, const ASN1_INTEGER *serial,
+                                    X509_NAME *issuer_name,
+                                    const AUTHORITY_KEYID *akid) {
   if (!akid) {
     return X509_V_OK;
   }
@@ -584,8 +697,7 @@ int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid) {
     return X509_V_ERR_AKID_SKID_MISMATCH;
   }
   // Check serial number
-  if (akid->serial &&
-      ASN1_INTEGER_cmp(X509_get_serialNumber(issuer), akid->serial)) {
+  if (akid->serial && ASN1_INTEGER_cmp(serial, akid->serial)) {
     return X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH;
   }
   // Check issuer name
@@ -605,11 +717,19 @@ int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid) {
         break;
       }
     }
-    if (nm && X509_NAME_cmp(nm, X509_get_issuer_name(issuer))) {
+    if (nm && X509_NAME_cmp(nm, issuer_name)) {
       return X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH;
     }
   }
   return X509_V_OK;
+}
+
+int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid) {
+  if (!x509_ensure_legacy(issuer)) {
+    return X509_V_ERR_UNSPECIFIED;
+  }
+  return x509_check_akid_internal(issuer, issuer->cert_info->serialNumber,
+                                  issuer->cert_info->issuer, akid);
 }
 
 uint32_t X509_get_extension_flags(X509 *x) {
