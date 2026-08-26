@@ -63,7 +63,7 @@ This produces, under `${AWS_LC_INSTALL}`:
 * `include/openssl/*.h` -- the public headers.
 * `lib/libcrypto.*` and `lib/libssl.*` -- static (`.a`) and/or shared
   (`.so`/`.dylib`) libraries, depending on `BUILD_SHARED_LIBS`.
-* `lib/pkgconfig/{libcrypto,libssl,aws-lc}.pc` -- pkg-config files.
+* `lib/pkgconfig/{libcrypto,libssl,aws-lc,openssl}.pc` -- pkg-config files.
 
 `-DCMAKE_INSTALL_LIBDIR=lib` is optional but keeps the library directory named
 `lib` on distributions that would otherwise use `lib64`; adjust the paths below
@@ -220,13 +220,9 @@ the plain build described above. The differences that affect consumers are:
 * **Headers move under an `aws-lc/` subdirectory**: they install to
   `<prefix>/include/aws-lc/openssl/` rather than `<prefix>/include/openssl/`.
   Add `-I<prefix>/include/aws-lc` so that `#include <openssl/ssl.h>` resolves.
-* **pkg-config modules are renamed to match**: use `libcrypto-awslc` and
-  `libssl-awslc` (there is also an `aws-lc` module). The unsuffixed `libcrypto`
-  and `libssl` pkg-config modules are *never* installed in this mode -- only the
-  `-awslc`-suffixed ones. Enabling the OpenSSL compatibility shim
-  (`-DENABLE_DIST_PKG_OPENSSL_SHIM=ON`) adds an `openssl` pkg-config module (and
-  unsuffixed `libcrypto.so`/`libssl.so` and `include/<...>/openssl` symlinks),
-  but it does not add unsuffixed `libcrypto`/`libssl` pkg-config modules.
+* **pkg-config modules are renamed to match**: the native modules are
+  `libcrypto-awslc` and `libssl-awslc` (there is also an `aws-lc` module). They
+  report the suffixed library names and the `include/aws-lc` header directory.
 
 Putting the first three together, a manual build against a dist-package install
 looks like:
@@ -241,6 +237,58 @@ export PKG_CONFIG_PATH="${AWS_LC_INSTALL}/lib/pkgconfig"
 cc $(pkg-config --cflags libssl-awslc) app.c \
    $(pkg-config --libs libssl-awslc libcrypto-awslc) -o app
 ```
+
+#### The OpenSSL compatibility shim
+
+Enabling the shim (`-DENABLE_DIST_PKG_OPENSSL_SHIM=ON`) adds a second,
+*unsuffixed* interface on top of the native one, for consumers that only know
+OpenSSL's names. It installs unsuffixed `libcrypto.so`/`libssl.so` (or `.a`)
+symlinks, an `include/openssl` symlink, and three more pkg-config modules:
+
+| module | Cflags | Libs |
+| --- | --- | --- |
+| `libcrypto` | `-I<prefix>/include` | `-L<prefix>/lib -lcrypto` |
+| `libssl` | `-I<prefix>/include` | `-L<prefix>/lib -lssl` |
+| `openssl` | via `Requires: libssl libcrypto` | via `Requires` |
+
+So with the shim enabled the install carries two distinct sets of pkg-config
+metadata, and both remain valid:
+
+```text
+libcrypto-awslc.pc  libssl-awslc.pc  aws-lc.pc   # native, suffixed
+libcrypto.pc        libssl.pc        openssl.pc  # shim, unsuffixed
+```
+
+The shim modules deliberately describe the unsuffixed interface throughout:
+they report `include/` rather than the cohabitant `include/aws-lc`, and they
+emit `-lcrypto`/`-lssl` rather than the suffixed names. Both matter in practice:
+
+* Emitting the cohabitant include path from `libcrypto` leaks it transitively
+  into every consumer, which breaks toolchains that treat a package's include
+  directory as single-valued (Cargo's `links` metadata is last-wins).
+* Emitting a suffixed `-l` name breaks consumers that only recognize `crypto`
+  and `ssl`. CMake's `FindOpenSSL` is the notable one: it treats any other name
+  from `openssl.pc` as an extra dependency and re-emits it as a bare `-l` flag
+  with no `-L` path, so the final link fails with `cannot find -lcrypto-awslc`.
+
+Because `-lcrypto`/`-lssl` resolve the shim symlinks, and those symlinks point
+at libraries whose SONAMEs keep the `-awslc` suffix, a shared consumer linked
+this way still records the suffixed SONAME at runtime. Cohabitation with a
+system OpenSSL is preserved.
+
+With the shim enabled you can therefore use AWS-LC as a drop-in OpenSSL:
+
+```bash
+export PKG_CONFIG_PATH="${AWS_LC_INSTALL}/lib/pkgconfig"
+cc $(pkg-config --cflags libssl) app.c \
+   $(pkg-config --libs libssl libcrypto) -o app
+
+# ... or through CMake's standard OpenSSL discovery
+cmake -B build -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL}" ...   # find_package(OpenSSL)
+```
+
+When AWS-LC is built without libssl (`-DBUILD_LIBSSL=OFF`), no `libssl` module
+is installed under either name, and `openssl.pc` requires only `libcrypto`.
 
 #### Symbol versioning
 

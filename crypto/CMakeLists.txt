@@ -648,6 +648,7 @@ function(build_libcrypto)
     apply_version_script(
       TARGET ${arg_NAME}
       VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libcrypto.map"
+      NAMESPACE "${SYMBOL_VERSION_NAMESPACE}"
     )
   endif()
 endfunction()

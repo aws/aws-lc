@@ -106,8 +106,25 @@ This mode enables:
   crypto libraries without conflicts
 
 Symbol versioning ensures backward compatibility and enables multiple AWS-LC versions to
-coexist on the same system. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md) for
-detailed information about symbol versioning, version evolution, and CI integration.
+coexist on the same system. It is on by default in this mode but is an independent
+option, so it can also be enabled on its own:
+
+```bash
+cmake -GNinja -B build \
+  -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_PRE_SONAME_BUILD=OFF \
+  -DENABLE_SYMBOL_VERSIONING=ON \
+  -DCMAKE_BUILD_TYPE=Release
+```
+
+That produces versioned symbols with a standard SONAME while leaving headers in
+`include/openssl` and the `bssl` tool unrenamed. `-DENABLE_PRE_SONAME_BUILD=OFF`
+is what provides the SONAME outside of distribution packaging mode; the
+deprecation warning it prints is expected. `-DSYMBOL_VERSION_NAMESPACE=<prefix>`
+replaces the `AWS_LC` node prefix, which is only appropriate for a privately
+distributed libcrypto. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
+for detailed information about symbol versioning, version evolution, and CI
+integration.
 
 ### Other Build Options
 
@@ -184,6 +201,11 @@ exported symbols from a `.a` file, and can be used in a build script to generate
 the symbol list on the fly (by building without prefixing, using
 `read_symbols.go` to construct a symbol list, and then building again with
 prefixing).
+
+Prefixing cannot be combined with symbol versioning (the version scripts
+reference the unprefixed names); configuring both is rejected. To distinguish
+libraries that must keep identical symbol names, use a symbol version
+namespace instead (see [docs/SymbolVersioning.md](docs/SymbolVersioning.md)).
 
 This mechanism is under development and may change over time. Please contact the
 BoringSSL maintainers if making use of it.

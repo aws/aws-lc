@@ -64,11 +64,18 @@ extract_version() {
         version=$(echo "$version_output" | head -n1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
     else
         echo "Error: Unsupported compiler type. Only GCC and Clang are supported." >&2
+        echo "Output of '$compiler --version' was:" >&2
+        if [[ -z "$version_output" ]]; then
+            echo "(empty)" >&2
+        else
+            echo "$version_output" >&2
+        fi
         return 1
     fi
-    
+
     if [[ -z "$version" ]]; then
-        echo "Error: Could not extract version from compiler output" >&2
+        echo "Error: Could not extract version from compiler output:" >&2
+        echo "$version_output" >&2
         return 1
     fi
     

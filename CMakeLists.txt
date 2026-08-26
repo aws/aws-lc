@@ -39,6 +39,8 @@ option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an ent
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
+option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires AWSLC_PROVIDER_OPENSSL_ROOT" OFF)
+set(AWSLC_PROVIDER_OPENSSL_ROOT "" CACHE PATH "Install prefix of an OpenSSL 3.5 or later build, supplying the provider headers BUILD_AWSLC_PROVIDER needs")
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -126,14 +128,87 @@ endif()
 
 enable_language(C)
 
-# Enable symbol versioning for shared libraries in distribution packaging mode
-# on UNIX platforms (excluding Apple).
+# ELF symbol versioning for shared libraries. Deliberately independent of the
+# rest of distribution packaging: versioned symbols can be adopted without
+# relocating headers into include/aws-lc (COHABITANT_HEADERS) or renaming the
+# bssl tool (COHABITANT_BINARIES). ENABLE_DIST_PKG only supplies the default.
+#
 # Version scripts are derived from the symbol registry files and have stable
 # filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
 # recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
-if(ENABLE_DIST_PKG AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
-  set(ENABLE_SYMBOL_VERSIONING TRUE)
-  message(STATUS "Symbol versioning enabled")
+#
+# Not declared with option(): that would bake the first configure's default into
+# the cache, so a later -DENABLE_DIST_PKG=ON would leave versioning stuck off.
+# Testing DEFINED lets an explicit -D win (it stays in the cache, so it stays
+# DEFINED) while an unset value keeps tracking ENABLE_DIST_PKG.
+if(DEFINED ENABLE_SYMBOL_VERSIONING)
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY TRUE)
+else()
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY FALSE)
+  set(ENABLE_SYMBOL_VERSIONING "${ENABLE_DIST_PKG}")
+endif()
+
+# Version-node prefix. A non-default value yields symbol versions that do not
+# interoperate with a stock AWS-LC build, so it is only appropriate for a
+# privately distributed libcrypto (see docs/SymbolVersioning.md).
+set(SYMBOL_VERSION_NAMESPACE "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}" CACHE STRING
+    "Prefix for ELF symbol version nodes (e.g. AWS_LC yields AWS_LC_1.0)")
+
+if(NOT "${SYMBOL_VERSION_NAMESPACE}" MATCHES "${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}")
+  message(FATAL_ERROR "SYMBOL_VERSION_NAMESPACE must match ${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}, got: ${SYMBOL_VERSION_NAMESPACE}")
+endif()
+
+# A version script is a link-time input that only the ELF linker understands: a
+# static build has no link step to attach it to, and Mach-O and PE have no
+# equivalent. Fail loudly when versioning was requested explicitly; when merely
+# inherited from ENABLE_DIST_PKG, leave it off so a static dist-pkg build still
+# configures.
+if(ENABLE_SYMBOL_VERSIONING AND (NOT BUILD_SHARED_LIBS OR NOT UNIX OR APPLE))
+  if(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+    message(FATAL_ERROR "ENABLE_SYMBOL_VERSIONING requires a shared library build (-DBUILD_SHARED_LIBS=ON) on a non-Apple UNIX platform.")
+  endif()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+unset(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+
+# Canonicalize: an inherited value carries ENABLE_DIST_PKG's literal spelling, so
+# -DENABLE_DIST_PKG=1 would otherwise report "1" here rather than "ON".
+if(ENABLE_SYMBOL_VERSIONING)
+  set(ENABLE_SYMBOL_VERSIONING ON)
+else()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+
+message(STATUS "ENABLE_SYMBOL_VERSIONING: ${ENABLE_SYMBOL_VERSIONING}")
+
+# The namespace only reaches the linker through a version script, and unlike
+# ENABLE_SYMBOL_VERSIONING it has no inherited default, so setting one without
+# versioning is always a mistake. Refuse it, as ENABLE_DIST_PKG_OPENSSL_SHIM
+# without ENABLE_DIST_PKG is refused.
+if(NOT ENABLE_SYMBOL_VERSIONING AND
+   NOT "${SYMBOL_VERSION_NAMESPACE}" STREQUAL "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}")
+  message(FATAL_ERROR
+    "SYMBOL_VERSION_NAMESPACE is set to '${SYMBOL_VERSION_NAMESPACE}' but symbol "
+    "versioning is disabled, so the namespace cannot take effect. Enable "
+    "versioning with -DENABLE_SYMBOL_VERSIONING=ON (requires "
+    "-DBUILD_SHARED_LIBS=ON on a non-Apple UNIX platform), or clear the "
+    "namespace with -USYMBOL_VERSION_NAMESPACE.")
+endif()
+
+# BORINGSSL_PREFIX renames every exported symbol, but the version scripts
+# reference the unprefixed names, so a prefixed+versioned build would hide
+# every symbol behind "local: *". Reject the combination rather than produce
+# an empty library; docs/SymbolVersioning.md contrasts the two mechanisms.
+if(ENABLE_SYMBOL_VERSIONING AND BORINGSSL_PREFIX)
+  message(FATAL_ERROR
+    "BORINGSSL_PREFIX cannot be combined with symbol versioning: the version "
+    "scripts reference unprefixed symbol names, so the build would export no "
+    "symbols. Configure with -DENABLE_SYMBOL_VERSIONING=OFF (needed even with "
+    "-DENABLE_DIST_PKG=ON, which enables versioning by default).")
+endif()
+
+if(ENABLE_SYMBOL_VERSIONING)
+  message(STATUS "SYMBOL_VERSION_NAMESPACE: ${SYMBOL_VERSION_NAMESPACE}")
 
   # lld treats undefined symbols in version scripts as errors by default.
   # The --undefined-version flag downgrades them to warnings, matching GNU ld.
@@ -1317,6 +1392,17 @@ if(BUILD_TESTING)
     add_compile_definitions(GTEST_HAS_STREAM_REDIRECTION=0)
   endif()
 
+  # GCC's object-access warnings periodically produce false positives in
+  # heavily-inlined test code (e.g. x509_test.cc under GCC 14, see #3201).
+  # PUBLIC on boringssl_gtest demotes them for test targets only; library
+  # targets keep -Werror. -Wstringop-overread requires GCC >= 11.
+  if(GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11")
+    target_compile_options(boringssl_gtest PUBLIC
+      -Wno-error=stringop-overflow
+      -Wno-error=stringop-overread
+      -Wno-error=array-bounds
+    )
+  endif()
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
   add_custom_target(all_tests)
@@ -1415,6 +1501,9 @@ if(BUILD_LIBSSL)
   endif()
 endif()
 add_subdirectory(util/fipstools)
+if(BUILD_AWSLC_PROVIDER)
+  add_subdirectory(provider)
+endif()
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -1651,14 +1740,34 @@ include(cmake/JoinPaths.cmake)
 join_paths(LIBDIR_FOR_PC_FILE "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
 join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${AWSLC_INSTALL_INCLUDEDIR}")
 
+# Generates a pkg-config file from a template and installs it. The optional
+# INCLUDEDIR, CRYPTO_NAME and SSL_NAME arguments override the corresponding
+# template substitution variables for this one file.
 function(install_pkgconfig_file)
   set(options "")
-  set(oneValueArgs TEMPLATE DEST)
+  set(oneValueArgs TEMPLATE DEST INCLUDEDIR CRYPTO_NAME SSL_NAME)
   set(multiValueArgs)
   if(CMAKE_VERSION VERSION_LESS "3.7")
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   else()
     cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(DEFINED arg_INCLUDEDIR)
+    join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${arg_INCLUDEDIR}")
+  endif()
+  if(DEFINED arg_CRYPTO_NAME)
+    set(CRYPTO_LIB_NAME "${arg_CRYPTO_NAME}")
+  endif()
+  if(DEFINED arg_SSL_NAME)
+    set(SSL_LIB_NAME "${arg_SSL_NAME}")
+  endif()
+
+  # Requires line for product.pc.in; omit libssl when it is not built.
+  if(BUILD_LIBSSL)
+    set(PRODUCT_PC_REQUIRES "lib${SSL_LIB_NAME} lib${CRYPTO_LIB_NAME}")
+  else()
+    set(PRODUCT_PC_REQUIRES "lib${CRYPTO_LIB_NAME}")
   endif()
 
   configure_file(pkgconfig/${arg_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/pkgconfig/${arg_DEST} @ONLY)
@@ -1675,31 +1784,58 @@ endif()
 
 install_pkgconfig_file(TEMPLATE product.pc.in DEST aws-lc.pc)
 install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST lib${CRYPTO_LIB_NAME}.pc)
-install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+if(BUILD_LIBSSL)
+  install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+endif()
 
 if(INSTALL_OPENSSL_SHIM)
-  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc)
+  # pkg-config resolves packages by filename, so a drop-in OpenSSL replacement
+  # must provide all three of OpenSSL's module names. All three describe the
+  # unsuffixed interface -- plain include/ and -lcrypto/-lssl, resolved via the
+  # compatibility symlinks below -- because consumers that only know OpenSSL's
+  # names cannot cope with a suffix. The symlinks keep suffixed SONAMEs, so
+  # cohabitation is preserved. See INCORPORATING.md. The native cohabitant
+  # modules are installed above and stay suffixed.
+  set(OPENSSL_SHIM_PC_OVERRIDES
+      INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+      CRYPTO_NAME crypto
+      SSL_NAME ssl)
 
-  # Create OpenSSL compatibility symlinks
-  if(BUILD_SHARED_LIBS)
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
-      install(CODE "
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
-      ")
+  # Only needed when the native modules are suffixed; otherwise they already
+  # carry the OpenSSL filenames and describe the same interface.
+  if(SET_LIB_SONAME)
+    install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST libcrypto.pc
+                           ${OPENSSL_SHIM_PC_OVERRIDES})
+    if(BUILD_LIBSSL)
+      install_pkgconfig_file(TEMPLATE libssl.pc.in DEST libssl.pc
+                             ${OPENSSL_SHIM_PC_OVERRIDES})
     endif()
-  else()
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
+  endif()
+
+  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
+                         ${OPENSSL_SHIM_PC_OVERRIDES})
+
+  # Create OpenSSL compatibility symlinks. Like the compat pc files above,
+  # these are only needed when the native libraries carry a suffix.
+  if(SET_LIB_SONAME)
+    if(BUILD_SHARED_LIBS)
+      set(SHIM_LIB_EXT "so")
+      set(SHIM_LINK_COMPONENT "")
+    else()
+      set(SHIM_LIB_EXT "a")
+      # Preserves the pre-existing component split: only the static symlinks
+      # are assigned to the Development component.
+      set(SHIM_LINK_COMPONENT COMPONENT Development)
+    endif()
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        lib${CRYPTO_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.${SHIM_LIB_EXT}\")
+    " ${SHIM_LINK_COMPONENT})
+    if(BUILD_LIBSSL)
       install(CODE "
         execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.a\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.a\")
-      " COMPONENT Development)
+          lib${SSL_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.${SHIM_LIB_EXT}\")
+      " ${SHIM_LINK_COMPONENT})
     endif()
   endif()
 

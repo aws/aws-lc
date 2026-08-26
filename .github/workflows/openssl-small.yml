@@ -181,12 +181,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "perlasm",              disable_perl: "OFF", disable_avx: "OFF" }
-          - { name: "pre-generated",        disable_perl: "ON",  disable_avx: "OFF" }
-          - { name: "perlasm, AVX disabled", disable_perl: "OFF", disable_avx: "ON" }
+          - { name: "perlasm",               build_type: "Release", disable_perl: "OFF", disable_avx: "OFF" }
+          - { name: "pre-generated, Debug",  build_type: "Debug",   disable_perl: "ON",  disable_avx: "OFF" }
+          - { name: "perlasm, AVX disabled", build_type: "Release", disable_perl: "OFF", disable_avx: "ON" }
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
+        with:
+          version: "2.16.01"
       - uses: actions/setup-go@v6
         with:
           go-version: '>=1.18'
@@ -208,7 +210,7 @@ jobs:
           options: |
             CMAKE_SYSTEM_NAME=Windows
             CMAKE_SYSTEM_PROCESSOR=x86_64
-            CMAKE_BUILD_TYPE=Release
+            CMAKE_BUILD_TYPE=${{ matrix.build_type }}
             OPENSSL_SMALL=ON
             DISABLE_PERL=${{ matrix.disable_perl }}
             MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=${{ matrix.disable_avx }}
