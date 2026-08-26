@@ -995,8 +995,14 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
 // pointer to the allocated PKEY on sucess and NULL on error.
 //
 // |in| is taken at face value: it is checked for length but not for
-// consistency, and the public key part is left unset. Use |EVP_PKEY_check| on
-// the result to validate a key of unknown provenance.
+// consistency, and the public key part is left unset. |EVP_PKEY_check| cannot
+// validate the result, because ML-KEM validation compares the two halves of the
+// pair against each other and only one is present here; it fails with
+// |EVP_R_MISSING_PUBLIC_KEY|. To import and validate a key of unknown
+// provenance, either supply both halves with |EVP_PKEY_kem_new_raw_key| and then
+// call |EVP_PKEY_check|, or parse the key from its PKCS#8 encoding with
+// |EVP_parse_private_key|, which validates the expandedKey and both formats as
+// RFC 9935 requires.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
                                     int nid, const uint8_t *in, size_t len);
 
