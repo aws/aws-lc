@@ -1454,3 +1454,170 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
   CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 }
+
+// When |out| is non-NULL, |EVP_DecryptUpdate| must write exactly |*out_len|
+// bytes and leave the remaining bytes unmodified.
+TEST(CipherTest, DecryptUpdateWritesOnlyReportedBytes) {
+  static const uint8_t kCanary = 0xab;
+  const EVP_CIPHER *kCiphers[] = {EVP_aes_128_cbc(), EVP_aes_256_cbc(),
+                                  EVP_aes_128_ecb(), EVP_aes_256_ecb(),
+                                  EVP_des_ede3_cbc()};
+  static const size_t kInputLens[] = {0, 1, 7, 8, 15, 16, 17, 31, 32, 33, 64};
+  // Zero indicates a single-shot call.
+  static const size_t kChunkSizes[] = {0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 64};
+
+  for (const EVP_CIPHER *cipher : kCiphers) {
+    SCOPED_TRACE(EVP_CIPHER_nid(cipher));
+    const size_t block_size = EVP_CIPHER_block_size(cipher);
+    const std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher), 'k');
+    const std::vector<uint8_t> iv(EVP_CIPHER_iv_length(cipher), 'i');
+    const uint8_t *iv_ptr = iv.empty() ? nullptr : iv.data();
+
+    for (size_t in_len : kInputLens) {
+      SCOPED_TRACE(in_len);
+      // Every plaintext and padding byte is smaller than |kCanary|, so any byte
+      // written past |*out_len| is detectable.
+      std::vector<uint8_t> plaintext(in_len);
+      for (size_t i = 0; i < in_len; i++) {
+        plaintext[i] = static_cast<uint8_t>(i & 0x7f);
+      }
+
+      std::vector<uint8_t> ciphertext(in_len + block_size);
+      int len, total;
+      {
+        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, /*impl=*/nullptr,
+                                       key.data(), iv_ptr));
+        ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ciphertext.data(), &len,
+                                      plaintext.data(),
+                                      static_cast<int>(in_len)));
+        total = len;
+        ASSERT_TRUE(
+            EVP_EncryptFinal_ex(ctx.get(), ciphertext.data() + total, &len));
+        total += len;
+        ciphertext.resize(static_cast<size_t>(total));
+      }
+
+      for (size_t chunk_size : kChunkSizes) {
+        SCOPED_TRACE(chunk_size);
+        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, /*impl=*/nullptr,
+                                       key.data(), iv_ptr));
+
+        std::vector<uint8_t> decrypted;
+        size_t offset = 0;
+        while (offset < ciphertext.size()) {
+          const size_t todo =
+              chunk_size == 0
+                  ? ciphertext.size()
+                  : std::min(chunk_size, ciphertext.size() - offset);
+          // Over-allocate and fill with a canary, so that writes past
+          // |*out_len| show up as a test failure rather than as heap
+          // corruption.
+          std::vector<uint8_t> out(todo + 2 * block_size, kCanary);
+          int out_len;
+          ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), out.data(), &out_len,
+                                        ciphertext.data() + offset,
+                                        static_cast<int>(todo)));
+          ASSERT_GE(out_len, 0);
+          // The documented output buffer requirement must be sufficient.
+          EXPECT_LE(static_cast<size_t>(out_len), todo + block_size - 1);
+          for (size_t i = static_cast<size_t>(out_len); i < out.size(); i++) {
+            ASSERT_EQ(kCanary, out[i])
+                << "EVP_DecryptUpdate wrote " << i - out_len + 1
+                << " byte(s) past *out_len = " << out_len;
+          }
+          decrypted.insert(decrypted.end(), out.begin(), out.begin() + out_len);
+          offset += todo;
+        }
+
+        std::vector<uint8_t> out(block_size, kCanary);
+        int out_len;
+        ASSERT_TRUE(EVP_DecryptFinal_ex(ctx.get(), out.data(), &out_len));
+        decrypted.insert(decrypted.end(), out.begin(), out.begin() + out_len);
+        EXPECT_EQ(Bytes(plaintext), Bytes(decrypted));
+      }
+    }
+  }
+}
+
+// |EVP_EncryptUpdate| and |EVP_EncryptFinal_ex| must also write exactly
+// |*out_len| bytes to |out|; |EVP_DecryptUpdate| relies on this to write the
+// withheld block into the fixed-size |ctx->final|. Ciphertext is pseudorandom,
+// so a stray write could match the canary by chance; repeating the
+// deterministic encryption under a second canary value removes the false pass.
+TEST(CipherTest, EncryptUpdateWritesOnlyReportedBytes) {
+  static const uint8_t kCanaries[] = {0xab, 0x54};
+  const EVP_CIPHER *kCiphers[] = {EVP_aes_128_cbc(),  EVP_aes_256_cbc(),
+                                  EVP_aes_128_ecb(),  EVP_aes_256_ecb(),
+                                  EVP_des_ede3_cbc(), EVP_aes_128_ctr(),
+                                  EVP_aes_128_gcm()};
+  static const size_t kInputLens[] = {0, 1, 7, 8, 15, 16, 17, 31, 32, 33, 64};
+  // Zero indicates a single-shot call.
+  static const size_t kChunkSizes[] = {0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 64};
+
+  // A fixed array keeps |plaintext + offset| valid even for empty inputs; for
+  // AEAD ciphers a NULL |in| would mean finalization, not an empty update.
+  uint8_t plaintext[64];
+  for (size_t i = 0; i < sizeof(plaintext); i++) {
+    plaintext[i] = static_cast<uint8_t>(i);
+  }
+
+  for (const EVP_CIPHER *cipher : kCiphers) {
+    SCOPED_TRACE(EVP_CIPHER_nid(cipher));
+    const size_t block_size = EVP_CIPHER_block_size(cipher);
+    const std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher), 'k');
+    const std::vector<uint8_t> iv(EVP_CIPHER_iv_length(cipher), 'i');
+    const uint8_t *iv_ptr = iv.empty() ? nullptr : iv.data();
+
+    for (size_t in_len : kInputLens) {
+      SCOPED_TRACE(in_len);
+      ASSERT_LE(in_len, sizeof(plaintext));
+
+      for (size_t chunk_size : kChunkSizes) {
+        SCOPED_TRACE(chunk_size);
+        for (uint8_t canary : kCanaries) {
+          SCOPED_TRACE(static_cast<int>(canary));
+          bssl::ScopedEVP_CIPHER_CTX ctx;
+          ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, /*impl=*/nullptr,
+                                         key.data(), iv_ptr));
+
+          size_t offset = 0;
+          do {
+            const size_t remaining = in_len - offset;
+            const size_t todo =
+                chunk_size == 0 ? remaining : std::min(chunk_size, remaining);
+            // Over-allocate and fill with a canary, so that writes past
+            // |*out_len| show up as a test failure rather than as heap
+            // corruption.
+            std::vector<uint8_t> out(todo + 2 * block_size, canary);
+            int out_len;
+            ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &out_len,
+                                          plaintext + offset,
+                                          static_cast<int>(todo)));
+            ASSERT_GE(out_len, 0);
+            // The documented output buffer requirement must be sufficient.
+            EXPECT_LE(static_cast<size_t>(out_len), todo + block_size - 1);
+            for (size_t i = static_cast<size_t>(out_len); i < out.size(); i++) {
+              ASSERT_EQ(canary, out[i])
+                  << "EVP_EncryptUpdate wrote " << i - out_len + 1
+                  << " byte(s) past *out_len = " << out_len;
+            }
+            offset += todo;
+          } while (offset < in_len);
+
+          std::vector<uint8_t> out(2 * block_size, canary);
+          int out_len;
+          ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), out.data(), &out_len));
+          ASSERT_GE(out_len, 0);
+          EXPECT_LE(static_cast<size_t>(out_len), block_size);
+          for (size_t i = static_cast<size_t>(out_len); i < out.size(); i++) {
+            ASSERT_EQ(canary, out[i])
+                << "EVP_EncryptFinal_ex wrote " << i - out_len + 1
+                << " byte(s) past *out_len = " << out_len;
+          }
+        }
+      }
+    }
+  }
+}
