@@ -98,7 +98,7 @@ typedef struct {
     double align;
     AES_KEY ks;
   } ks;
-  const uint8_t *iv; // Indicates if an IV has been set.
+  int iv_set;  // Nonzero if ctx->iv holds an explicit wrap IV.
 } EVP_AES_WRAP_CTX;
 
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
@@ -686,12 +686,12 @@ static int aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                           &wctx->ks.ks);
     }
     if (iv == NULL) {
-      wctx->iv = NULL;
+      wctx->iv_set = 0;
     }
   }
   if (iv != NULL) {
     OPENSSL_memcpy(ctx->iv, iv, ctx->cipher->iv_len);
-    wctx->iv = ctx->iv;
+    wctx->iv_set = 1;
   }
   return 1;
 }
@@ -710,10 +710,11 @@ static int aes_wrap_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   // function that indicates approval.
   int ret;
   FIPS_service_indicator_lock_state();
+  const uint8_t *iv = wctx->iv_set ? ctx->iv : NULL;
   if (ctx->encrypt) {
-    ret = AES_wrap_key(&wctx->ks.ks, wctx->iv, out, in, inlen);
+    ret = AES_wrap_key(&wctx->ks.ks, iv, out, in, inlen);
   } else {
-    ret = AES_unwrap_key(&wctx->ks.ks, wctx->iv, out, in, inlen);
+    ret = AES_unwrap_key(&wctx->ks.ks, iv, out, in, inlen);
   }
   FIPS_service_indicator_unlock_state();
   return ret;
