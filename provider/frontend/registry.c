@@ -32,7 +32,9 @@ const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
                                                  int *no_store) {
   (void)provctx;
   // The tables are static and cacheable, so the core may keep them.
-  *no_store = 0;
+  if (no_store != NULL) {
+    *no_store = 0;
+  }
 
   switch (operation_id) {
     case OSSL_OP_DIGEST:
