@@ -43,11 +43,17 @@ static int x509_verify_view_signature(const X509_ALGOR *sigalg,
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
   int ret = 0;
-  if (x509_digest_verify_init(&ctx, sigalg, pkey) &&
-      EVP_DigestVerify(&ctx, signature, signature_len, data, data_len)) {
-    ret = 1;
-  } else if (ctx.pctx != NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
+  // Match ASN1_item_verify's error behaviour exactly: a failed
+  // |x509_digest_verify_init| propagates its own specific error (unsupported
+  // algorithm OID, invalid key type), while only a failed |EVP_DigestVerify|
+  // appends ERR_R_EVP_LIB. Keying this off |ctx.pctx| instead conflated the two
+  // and clobbered the init error.
+  if (x509_digest_verify_init(&ctx, sigalg, pkey)) {
+    if (EVP_DigestVerify(&ctx, signature, signature_len, data, data_len)) {
+      ret = 1;
+    } else {
+      OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
+    }
   }
   EVP_MD_CTX_cleanup(&ctx);
   return ret;
