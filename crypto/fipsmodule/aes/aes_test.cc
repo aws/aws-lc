@@ -393,6 +393,37 @@ TEST(AESTest, WrapBadLengths) {
   }
 }
 
+// |EVP_AES_WRAP_CTX| used to store a pointer into the source |EVP_CIPHER_CTX|
+// IV buffer. |EVP_CIPHER_CTX_copy| did not retarget it, so using the copy after
+// freeing the source was a use-after-free.
+TEST(AESTest, EVPKeyWrapCopyDoesNotAliasSourceIV) {
+  static const uint8_t kKey[32] = {0};
+  static const uint8_t kIV[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  static const uint8_t kPlaintext[16] = {0};
+
+  AES_KEY aes;
+  ASSERT_EQ(0, AES_set_encrypt_key(kKey, 256, &aes));
+  uint8_t expected[24];
+  ASSERT_EQ(24, AES_wrap_key(&aes, kIV, expected, kPlaintext,
+                             sizeof(kPlaintext)));
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> src(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  ASSERT_TRUE(EVP_EncryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey,
+                                 kIV));
+
+  bssl::ScopedEVP_CIPHER_CTX dst;
+  ASSERT_TRUE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  src.reset();
+
+  uint8_t out[24];
+  int len;
+  ASSERT_TRUE(
+      EVP_EncryptUpdate(dst.get(), out, &len, kPlaintext, sizeof(kPlaintext)));
+  ASSERT_EQ(24, len);
+  EXPECT_EQ(Bytes(expected), Bytes(out, static_cast<size_t>(len)));
+}
+
 TEST(AESTest, InvalidKeySize) {
   static const uint8_t kZero[8] = {0};
   AES_KEY key;
