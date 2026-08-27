@@ -3116,6 +3116,23 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
       ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_MISSING_PUBLIC_KEY));
   EXPECT_EQ(ERR_peek_error(), 0u);
 
+  // No key material at all - a KEM |EVP_PKEY| can have its type set but no
+  // |KEM_KEY| attached. Both entry points report |EVP_R_NO_KEY_SET| rather than
+  // letting |KEM_check_key| report a NULL parameter.
+  bssl::UniquePtr<EVP_PKEY> no_key_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(no_key_pkey);
+  ASSERT_TRUE(EVP_PKEY_set_type(no_key_pkey.get(), EVP_PKEY_KEM));
+  ASSERT_EQ(no_key_pkey->pkey.kem_key, nullptr);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> no_key_ctx(
+      EVP_PKEY_CTX_new(no_key_pkey.get(), nullptr));
+  ASSERT_TRUE(no_key_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(no_key_ctx.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_NO_KEY_SET));
+  EXPECT_FALSE(EVP_PKEY_public_check(no_key_ctx.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_NO_KEY_SET));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+
   ERR_clear_error();
 }
 

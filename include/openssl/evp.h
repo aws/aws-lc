@@ -1009,8 +1009,8 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 
 // EVP_PKEY_kem_check_key validates that the public key in |key| corresponds
 // to the secret key in |key|, and that both encodings are well-formed. Both
-// halves of the key pair must be present. Prefer |EVP_PKEY_check|, which
-// applies the same validation and accepts a public-only key.
+// halves of the key pair must be present. Prefer |EVP_PKEY_check| when a
+// private key is available, or |EVP_PKEY_public_check| for a public-only key.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key in |pkey|.
