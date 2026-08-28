@@ -493,12 +493,102 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
     EXPECT_TRUE(SHA3_Init(&ctx, SHA3_384_DIGEST_BITLENGTH));
     out.resize(out_len + canary.size());
     std::copy(canary.begin(), canary.end(), out.end() - canary.size());
-    Keccak1600_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
+    Keccak1600_Squeeze(ctx.A, out.data(), out_len, ctx.block_size,
+                       KECCAK1600_STATE_ABSORB);
     EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(),
                            canary.begin()) == true);
   }
 
   EVP_MD_unstable_sha3_enable(false);
+}
+
+// A zeroed context (|SHA3_Init| skipped, or a context cleansed after use) must
+// not reach the KeccakSponge layer, where |ctx->block_size| is zero.
+TEST(SHA3Test, ZeroedContextFailsCleanly) {
+  KECCAK1600_CTX ctx;
+  OPENSSL_memset(&ctx, 0, sizeof(ctx));
+
+  uint8_t out[SHA3_256_DIGEST_LENGTH];
+
+  // |SHA3_Update| rejects it before |Keccak1600_Absorb| spins forever on
+  // |while (len >= r)| with |r == 0|.
+  EXPECT_FALSE(SHA3_Update(&ctx, "abc", 3));
+
+  // |SHA3_Final| rejects it before it writes to |ctx->buf|.
+  EXPECT_FALSE(SHA3_Final(out, &ctx));
+}
+
+// A zeroed context must not reach the KeccakSponge layer.
+TEST(SHAKETest, ZeroedContextFailsCleanly) {
+  KECCAK1600_CTX ctx;
+
+  uint8_t out[32];
+
+  // |SHAKE_Absorb| rejects an uninitialised context before |Keccak1600_Absorb|
+  // spins forever on |while (len >= r)| with |r == 0|.
+  OPENSSL_memset(&ctx, 0, sizeof(ctx));
+  EXPECT_FALSE(SHAKE_Absorb(&ctx, "abc", 3));
+
+  // |SHAKE_Final| rejects an uninitialised context before it writes to |ctx->buf|.
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  EXPECT_FALSE(SHAKE_Final(out, &ctx, sizeof(out)));
+
+  // |SHAKE_Squeeze| rejects an uninitialised context before dividing by zero at
+  // |len / ctx->block_size|.
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  EXPECT_FALSE(SHAKE_Squeeze(out, &ctx, sizeof(out)));
+}
+
+// Absorbing the padded last block already permutes, leaving a block of output
+// extractable, so |KECCAK1600_STATE_ABSORB| makes |Keccak1600_Squeeze| skip the
+// permutation before its first block.
+TEST(KeccakInternalTest, SqueezePhaseSemantics) {
+  static const uint8_t kMsg[] = {'a', 'b', 'c'};
+  uint8_t expected[64], manual[64], wrong_phase[64];
+  KECCAK1600_CTX ctx;
+
+  ASSERT_TRUE(SHAKE128(kMsg, sizeof(kMsg), expected, sizeof(expected)));
+
+  ASSERT_TRUE(SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE));
+  ASSERT_TRUE(SHAKE_Absorb(&ctx, kMsg, sizeof(kMsg)));
+  ASSERT_TRUE(KeccakSponge_AbsorbFinal(manual, &ctx));
+  Keccak1600_Squeeze(ctx.A, manual, sizeof(manual), ctx.block_size,
+                     KECCAK1600_STATE_ABSORB);
+  EXPECT_EQ(Bytes(expected, sizeof(expected)), Bytes(manual, sizeof(manual)));
+
+  ASSERT_TRUE(SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE));
+  ASSERT_TRUE(SHAKE_Absorb(&ctx, kMsg, sizeof(kMsg)));
+  ASSERT_TRUE(KeccakSponge_AbsorbFinal(wrong_phase, &ctx));
+  Keccak1600_Squeeze(ctx.A, wrong_phase, sizeof(wrong_phase), ctx.block_size,
+                     KECCAK1600_STATE_SQUEEZE);
+  EXPECT_NE(Bytes(expected, sizeof(expected)),
+            Bytes(wrong_phase, sizeof(wrong_phase)));
+}
+
+// The |ctx->state| guards added for uninitialised contexts must not change the
+// existing phase rules: incremental |SHAKE_Squeeze| stays accepted, and every
+// out-of-phase call stays rejected.
+TEST(SHAKETest, StateTransitionsStillRejected) {
+  uint8_t out[32];
+
+  // Once squeezing has begun, only |SHAKE_Squeeze| may continue. |SHAKE_Final|
+  // is rejected too, since it always absorbs padding first.
+  KECCAK1600_CTX ctx;
+  ASSERT_TRUE(SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE));
+  ASSERT_TRUE(SHAKE_Absorb(&ctx, "abc", 3));
+  ASSERT_TRUE(SHAKE_Squeeze(out, &ctx, sizeof(out)));
+  EXPECT_TRUE(SHAKE_Squeeze(out, &ctx, sizeof(out)));
+  EXPECT_FALSE(SHAKE_Absorb(&ctx, "abc", 3));
+  EXPECT_FALSE(SHAKE_Final(out, &ctx, sizeof(out)));
+
+  // After finalising, neither absorbing nor squeezing is accepted.
+  OPENSSL_memset(&ctx, 0, sizeof(ctx));
+  ASSERT_TRUE(SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE));
+  ASSERT_TRUE(SHAKE_Absorb(&ctx, "abc", 3));
+  ASSERT_TRUE(SHAKE_Final(out, &ctx, sizeof(out)));
+  EXPECT_FALSE(SHAKE_Squeeze(out, &ctx, sizeof(out)));
+  EXPECT_FALSE(SHAKE_Absorb(&ctx, "abc", 3));
+  EXPECT_FALSE(SHAKE_Final(out, &ctx, sizeof(out)));
 }
 
 // Test x4 batched SHAKE against 4 consecutive SHAKE calls
