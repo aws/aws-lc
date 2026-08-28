@@ -46,9 +46,8 @@ int Keccak256_Init(KECCAK1600_CTX *ctx);
 int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // Keccak256_Final pads the last block and writes |KECCAK256_DIGEST_LENGTH|
-// bytes to |out|. It returns 1 on success and 0 on programmer error. An
-// uninitialised (zeroed) |ctx| returns 1 without writing to |out|, because EVP's
-// |final| slot cannot report failure.
+// bytes to |out|. It returns 1 on success and 0 on programmer error: a |ctx|
+// that was never initialised, or that has already been finalised.
 int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx);
 
 // Keccak256 writes the Keccak-256 digest of |len| bytes from |data| to |out|

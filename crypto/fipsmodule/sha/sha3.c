@@ -138,8 +138,9 @@ static int KeccakSponge_Init(KECCAK1600_CTX *ctx, uint8_t pad,
 // buffer from previous calls. It processes |data| in blocks through
 // |Keccak1600_Absorb| and places the rest in the intermediate buffer.
 // KeccakSponge_Absorb fails if |ctx| is in any phase other than absorb, or on
-// |Keccak1600_Absorb| error. Otherwise, it returns 1. It prevents passing uninitialized
-// |ctx| to |Keccak1600_Absorb|, where |block_size| of zero would loop forever.
+// |Keccak1600_Absorb| error. Otherwise, it returns 1. It prevents passing
+// uninitialized |ctx| to |Keccak1600_Absorb|, where |block_size| of zero would
+// loop forever.
 int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
@@ -189,8 +190,8 @@ int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
 // KeccakSponge_AbsorbFinal processes padding and absorb of last input block.
 // This function should be called once to finalize absorb and initiate
-// squeeze phase. KeccakSponge_AbsorbFinal fails if |ctx| has already left the
-// absorb phase, or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
+// squeeze phase. KeccakSponge_AbsorbFinal fails if |ctx| is in any phase other
+// than absorb, or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
 int KeccakSponge_AbsorbFinal(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
@@ -251,8 +252,9 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   return KeccakSponge_Absorb(ctx, data, len);
 }
 
-// SHA3_Final should be called once to process final digest value. The |ctx->state|
-// check rejects an uninitialised |ctx| and a repeated call on a finalised one.
+// SHA3_Final should be called once to process final digest value. The
+// |ctx->state| check rejects an uninitialised |ctx| and a repeated call on a
+// finalised one.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (md == NULL || ctx == NULL) {
     return 0;
@@ -391,8 +393,8 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 }
 
 // SHAKE_Squeeze can be called multiple time for incremental XOF output. An
-// uninitialised or finalised |ctx| is rejected so that the callees below are never
-// reached with a |block_size| of zero.
+// uninitialised or finalised |ctx| is rejected so that the callees below are
+// never reached with a |block_size| of zero.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   size_t block_bytes;
 

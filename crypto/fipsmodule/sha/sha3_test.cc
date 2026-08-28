@@ -529,7 +529,8 @@ TEST(SHAKETest, ZeroedContextFailsCleanly) {
   OPENSSL_memset(&ctx, 0, sizeof(ctx));
   EXPECT_FALSE(SHAKE_Absorb(&ctx, "abc", 3));
 
-  // |SHAKE_Final| rejects an uninitialised context before it writes to |ctx->buf|.
+  // |SHAKE_Final| rejects an uninitialised context before it writes to
+  // |ctx->buf|.
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   EXPECT_FALSE(SHAKE_Final(out, &ctx, sizeof(out)));
 
