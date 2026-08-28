@@ -11,6 +11,7 @@
 
 #if !defined(OPENSSL_NO_SOCK)
 
+#include <errno.h>
 #include <time.h>
 #include <fcntl.h>
 #include <string.h>
@@ -108,9 +109,17 @@ int bio_sock_error_get_and_clear(int sock) {
   socklen_t error_size = sizeof(error);
   // Get and clear the pending socket error. The SO_ERROR option is read-only.
   if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) < 0) {
-    return 1;
+    return -1;
   }
   return error;
+}
+
+void bio_socket_set_error(int error) {
+#if defined(OPENSSL_WINDOWS)
+  WSASetLastError(error);
+#else
+  errno = error;
+#endif
 }
 
 int bio_socket_should_retry(int return_value) {

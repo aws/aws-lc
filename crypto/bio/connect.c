@@ -198,7 +198,17 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
 
       case BIO_CONN_S_BLOCKED_CONNECT:
         i = bio_sock_error_get_and_clear(bio->num);
+        if (i < 0) {
+          BIO_clear_retry_flags(bio);
+          OPENSSL_PUT_SYSTEM_ERROR();
+          OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
+          ERR_add_error_data(4, "host=", c->param_hostname, ":",
+                             c->param_port);
+          ret = 0;
+          goto exit_loop;
+        }
         if (i) {
+          bio_socket_set_error(i);
           if (bio_socket_should_retry(ret)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));
             c->state = BIO_CONN_S_BLOCKED_CONNECT;
