@@ -226,6 +226,23 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 // See the implemetation in |rsa.c| for details.
 int is_public_component_of_rsa_key_good(const RSA *key);
 
+// RSA_PSS_NO_SALTLEN_MINIMUM, like any negative value, imposes no minimum.
+#define RSA_PSS_NO_SALTLEN_MINIMUM (-1)
+
+// rsa_verify_PKCS1_PSS_mgf1 behaves like |RSA_verify_PKCS1_PSS_mgf1|, except
+// that a non-negative |min_sLen| also requires the recovered salt to be at
+// least |min_sLen| bytes. This only constrains |RSA_PSS_SALTLEN_AUTO|, since
+// any other |sLen| is already checked exactly.
+int rsa_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
+                              const EVP_MD *Hash, const EVP_MD *mgf1Hash,
+                              const uint8_t *EM, int sLen, int min_sLen);
+
+// rsa_verify_pss_mgf1 behaves like |RSA_verify_pss_mgf1|, with the same
+// |min_sLen| meaning as |rsa_verify_PKCS1_PSS_mgf1|.
+int rsa_verify_pss_mgf1(RSA *rsa, const uint8_t *digest, size_t digest_len,
+                        const EVP_MD *md, const EVP_MD *mgf1_md, int salt_len,
+                        int min_sLen, const uint8_t *sig, size_t sig_len);
+
 OPENSSL_EXPORT const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa);
 
 #if defined(__cplusplus)

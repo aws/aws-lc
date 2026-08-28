@@ -881,16 +881,24 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx,
                                                 int *out_padding);
 
 // EVP_PKEY_CTX_set_rsa_pss_saltlen sets the length of the salt in a PSS-padded
-// signature. A value of -1 cause the salt to be the same length as the digest
-// in the signature. A value of -2 causes the salt to be the maximum length
-// that will fit when signing and recovered from the signature when verifying.
-// Otherwise the value gives the size of the salt in bytes.
+// signature. A value of |RSA_PSS_SALTLEN_DIGEST| (-1) causes the salt to be the
+// same length as the digest in the signature. A value of |RSA_PSS_SALTLEN_AUTO|
+// (-2) causes the salt to be the maximum length that will fit when signing and
+// recovered from the signature when verifying. Otherwise the value gives the
+// size of the salt in bytes.
 //
-// If unsure, use -1.
+// For |EVP_PKEY_RSA_PSS| keys that carry a restricted salt length, a value
+// below that minimum is rejected. |RSA_PSS_SALTLEN_AUTO| is allowed, but verify
+// then requires the recovered salt to be at least that minimum. Note OpenSSL
+// instead rejects |RSA_PSS_SALTLEN_AUTO| here for a verify operation, and so
+// accepts only a salt of exactly the minimum.
+//
+// If unsure, use |RSA_PSS_SALTLEN_DIGEST|.
 //
 // Returns one on success or zero on error.
 //
-// TODO(davidben): The default is currently -2. Switch it to -1.
+// TODO(davidben): The default is currently |RSA_PSS_SALTLEN_AUTO|. Switch it to
+// |RSA_PSS_SALTLEN_DIGEST|.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
                                                     int salt_len);
 
