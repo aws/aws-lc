@@ -50,6 +50,8 @@
 //   internal/backend.h                       this file: the contract
 //   internal/backend/<class>.h               per-class backend entry points
 //   internal/frontend/<class>.h              per-class frontend contract
+//   frontend/<service>.c                     provider-wide frontend services
+//   backend/<service>.c                      provider-wide AWS-LC bindings
 //   frontend/operations/<class>/<class>.c    class-wide frontend behavior
 //   frontend/operations/<class>/<family>.c   family helpers and dispatch slots
 //   backend/operations/<class>/<family>.c    explicit AWS-LC bindings
@@ -104,6 +106,64 @@ int awslc_prov_service_indicator_after_call(uint64_t before);
 
 // Re-run AWS-LC's known-answer self-tests.
 int awslc_prov_backend_self_test(void);
+
+// ===========================================================================
+// Error translation.
+// ===========================================================================
+//
+// The provider reports every error under its own private "awslc" error library.
+//
+// The reason code space has three disjoint ranges:
+//
+//   1 to 99                  AWS-LC's cross-library reasons. Any AWS-LC library
+//                            can raise these and AWS-LC resolves them without
+//                            consulting the library field, so neither do we.
+//   100 to 4095              The provider's own reasons, AWSLC_PROV_R_* below.
+//   4096+                    An AWS-LC library-specific reason, tagged with the
+//                            library that raised it.
+//
+// AWS-LC layers on its own coded "libraries". e.g. ec, cipher, hmac...
+// Each library numbers its reasons independently which we then remap onto the
+// provider's own reason code namespace.
+// A remapped library-specific reason code looks like this:
+// [31:18] Used by OpenSSL, [17:12] AWS-LC library ID, [11:0] AWS-LC reason code
+
+#define AWSLC_PROV_ERROR_LIB_SHIFT 12
+#define AWSLC_PROV_ERROR_MAX_LIB 63
+#define AWSLC_PROV_ERROR_FIRST_OWN_REASON 100
+
+// The provider reason code for AWS-LC library |lib|'s reason |reason|.
+#define AWSLC_PROV_ERROR_REASON(lib, reason) \
+  ((uint32_t)((uint32_t)(lib) << AWSLC_PROV_ERROR_LIB_SHIFT) | (uint32_t)(reason))
+
+// The provider's own reasons codes.
+#define AWSLC_PROV_R_BACKEND_ERROR 100
+#define AWSLC_PROV_R_INVALID_PARAMETER 101
+#define AWSLC_PROV_R_UNAPPROVED_OPERATION 102
+
+// Max length for the error detail string.
+#define AWSLC_PROV_ERROR_DETAIL_SIZE 256
+
+// One AWS-LC error record.
+typedef struct {
+  // The provider reason code, ready to hand to the core.
+  uint32_t reason;
+  // AWS-LC's origin file:line. A static literal AWS-LC owns, or NULL.
+  const char *file;
+  int line;
+  // Human-readable detail that AWS-LC raised for the record, the reason
+  // text AWS-LC itself resolves for it, and whatever per-record detail AWS-LC
+  // attached.
+  char detail[AWSLC_PROV_ERROR_DETAIL_SIZE];
+} AWSLC_PROV_ERROR;
+
+// Primitives for scoping the AWS-LC error queue to one dispatch call.
+// Set the mark prior to calling an AWS-LC operation.
+void awslc_prov_error_mark(void);
+// Clear the AWS-LC error queue to the mark and discard any reported errors
+void awslc_prov_error_discard(void);
+// Pop one error off of the AWS-LC error-queue and write it to |out|
+int awslc_prov_error_shift(AWSLC_PROV_ERROR *out);
 
 #if defined(__cplusplus)
 }  // extern "C"
