@@ -12,10 +12,10 @@
 #if !defined(OPENSSL_NO_SOCK)
 
 #include <errno.h>
-#include <time.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <netdb.h>
