@@ -383,49 +383,40 @@ static bool SocketSetNonBlocking(Socket sock) {
 #endif
 }
 
-enum class WaitType { kRead, kWrite };
+enum class WaitType { kRead, kWrite, kConnect };
 
 static bool WaitForSocket(Socket sock, WaitType wait_type) {
-  // Use an arbitrary 5-second timeout, so the test doesn't hang indefinitely if
-  // there's an issue.
-  static constexpr int kTimeoutSeconds = 5;
+  // Arbitrary timeouts, so the test cannot hang. |kConnect| waits on a full
+  // connection attempt, which Windows can take a couple of seconds to refuse.
+  const int timeout_seconds = wait_type == WaitType::kConnect ? 30 : 5;
+  // A failed connection attempt can surface as an error, not writability.
+  const bool watch_errors = wait_type == WaitType::kConnect;
 #if defined(OPENSSL_WINDOWS)
-  fd_set read_set, write_set;
+  fd_set read_set, write_set, error_set;
   FD_ZERO(&read_set);
   FD_ZERO(&write_set);
+  FD_ZERO(&error_set);
   fd_set *wait_set = wait_type == WaitType::kRead ? &read_set : &write_set;
   FD_SET(sock, wait_set);
-  timeval timeout = {kTimeoutSeconds, 0};
-  if (select(0 /* unused on Windows */, &read_set, &write_set, nullptr,
-             &timeout) <= 0) {
+  if (watch_errors) {
+    FD_SET(sock, &error_set);
+  }
+  timeval timeout = {timeout_seconds, 0};
+  if (select(0 /* unused on Windows */, &read_set, &write_set,
+             watch_errors ? &error_set : nullptr, &timeout) <= 0) {
     return false;
   }
-  return FD_ISSET(sock, wait_set);
+  return FD_ISSET(sock, wait_set) ||
+         (watch_errors && FD_ISSET(sock, &error_set));
 #else
   const short events = wait_type == WaitType::kRead ? POLLIN : POLLOUT;
   pollfd fd = {.fd = sock, .events = events, .revents = 0};
-  return poll(&fd, 1, kTimeoutSeconds * 1000) == 1 && (fd.revents & events);
-#endif
-}
-
-static bool WaitForConnect(Socket sock) {
-  static constexpr int kTimeoutSeconds = 5;
-#if defined(OPENSSL_WINDOWS)
-  fd_set write_set, error_set;
-  FD_ZERO(&write_set);
-  FD_ZERO(&error_set);
-  FD_SET(sock, &write_set);
-  FD_SET(sock, &error_set);
-  timeval timeout = {kTimeoutSeconds, 0};
-  if (select(0 /* unused on Windows */, nullptr, &write_set, &error_set,
-             &timeout) <= 0) {
+  if (poll(&fd, 1, timeout_seconds * 1000) != 1) {
     return false;
   }
-  return FD_ISSET(sock, &write_set) || FD_ISSET(sock, &error_set);
-#else
-  pollfd fd = {.fd = sock, .events = POLLOUT, .revents = 0};
-  return poll(&fd, 1, kTimeoutSeconds * 1000) == 1 &&
-         (fd.revents & (POLLOUT | POLLERR | POLLHUP));
+  // POLLERR and POLLHUP are reported regardless of |events|.
+  const int accepted = watch_errors ? (events | POLLERR | POLLHUP) : events;
+  return (fd.revents & accepted) != 0;
 #endif
 }
 
@@ -500,7 +491,7 @@ TEST(BIOTest, SocketNonBlockingConnectFailure) {
 
   const int fd = BIO_get_fd(bio.get(), nullptr);
   ASSERT_NE(-1, fd);
-  ASSERT_TRUE(WaitForConnect(fd)) << LastSocketError();
+  ASSERT_TRUE(WaitForSocket(fd, WaitType::kConnect)) << LastSocketError();
 
   // A successful readiness call need not clear the retryable socket error left
   // by connect. Ensure the connect BIO uses SO_ERROR, not this stale value.
@@ -516,6 +507,8 @@ TEST(BIOTest, SocketNonBlockingConnectFailure) {
 
   uint32_t error = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SYS, ERR_GET_LIB(error));
+  // |ERR_GET_REASON| truncates to 12 bits, so Winsock codes (10000 and up)
+  // cannot round-trip. Only assert the reason where it is representable.
 #if !defined(OPENSSL_WINDOWS)
   EXPECT_EQ(ECONNREFUSED, ERR_GET_REASON(error));
 #endif
