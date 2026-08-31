@@ -516,6 +516,19 @@ TEST(BIOTest, SocketNonBlockingConnectFailure) {
   EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
   EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
   EXPECT_EQ(0u, ERR_get_error());
+
+  // Reading SO_ERROR above cleared it, so a further attempt must keep failing
+  // rather than read the now-clear error as a completed connection.
+  EXPECT_EQ(0, BIO_do_connect(bio.get()));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+  error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+  EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // Writing to a BIO whose connection never completed must fail too.
+  EXPECT_GE(0, BIO_write(bio.get(), "test", 4));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
 }
 
 TEST(BIOTest, SocketNonBlocking) {
