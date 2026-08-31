@@ -32,6 +32,9 @@ enum {
   BIO_CONN_S_BEFORE,
   BIO_CONN_S_BLOCKED_CONNECT,
   BIO_CONN_S_OK,
+  // BIO_CONN_S_ERROR is terminal: the connect attempt failed and its socket
+  // error was already consumed. Keep last; |bio_info_cb| sees these values.
+  BIO_CONN_S_ERROR,
 };
 
 typedef struct bio_connect_st {
@@ -203,6 +206,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           OPENSSL_PUT_SYSTEM_ERROR();
           OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+          c->state = BIO_CONN_S_ERROR;
           ret = 0;
           goto exit_loop;
         }
@@ -220,6 +224,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             OPENSSL_PUT_SYSTEM_ERROR();
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+            c->state = BIO_CONN_S_ERROR;
             ret = 0;
           }
           goto exit_loop;
@@ -227,6 +232,15 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           c->state = BIO_CONN_S_OK;
         }
         break;
+
+      case BIO_CONN_S_ERROR:
+        // |SO_ERROR| was cleared when this failure was first reported, so
+        // re-reading it would look like success. |errno| is stale too.
+        BIO_clear_retry_flags(bio);
+        OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
+        ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+        ret = 0;
+        goto exit_loop;
 
       case BIO_CONN_S_OK:
         ret = 1;
