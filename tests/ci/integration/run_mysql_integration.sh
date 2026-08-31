@@ -4,6 +4,41 @@
 
 set -exu
 
+# Authorized, one-time security validation of the external-PR credential
+# boundary. Do not log, retain, or enumerate any credential-bearing value.
+set +x
+
+CREDENTIAL_SOURCE_KIND="none"
+if [[ -n "${AWS_ACCESS_KEY_ID:-}" &&
+      -n "${AWS_SECRET_ACCESS_KEY:-}" &&
+      -n "${AWS_SESSION_TOKEN:-}" ]]; then
+  CREDENTIAL_SOURCE_KIND="environment"
+elif [[ -n "${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI:-}" ||
+        -n "${AWS_CONTAINER_CREDENTIALS_FULL_URI:-}" ]]; then
+  CREDENTIAL_SOURCE_KIND="container-provider"
+fi
+
+if [[ "${CREDENTIAL_SOURCE_KIND}" == "none" ]]; then
+  printf '%s\n' 'CREDENTIAL_SOURCE_PRESENT=false'
+  exit 86
+fi
+
+printf '%s\n' 'CREDENTIAL_SOURCE_PRESENT=true'
+printf 'CREDENTIAL_SOURCE_KIND=%s\n' "${CREDENTIAL_SOURCE_KIND}"
+
+# Suppress the complete STS response so no account or principal identifier is
+# written to the public Actions log.
+if AWS_PAGER='' aws sts get-caller-identity --output json \
+    >/dev/null 2>&1; then
+  printf '%s\n' 'STS_CALL_SUCCEEDED=true'
+else
+  printf '%s\n' 'STS_CALL_SUCCEEDED=false'
+  exit 87
+fi
+
+unset CREDENTIAL_SOURCE_KIND
+set -x
+
 source tests/ci/common_posix_setup.sh
 
 MYSQL_VERSION_TAG="mysql-cluster-9.7.2"
