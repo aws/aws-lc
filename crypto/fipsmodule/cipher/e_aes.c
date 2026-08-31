@@ -367,15 +367,27 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
         return 0;
       }
 
-      // Allocate memory for IV if needed
-      if (arg > EVP_MAX_IV_LENGTH && arg > gctx->ivlen) {
+      // IVs <= EVP_MAX_IV_LENGTH are stored in the built-in buffer, so
+      // downstream callers (e.g. EVP_CTRL_GCM_IV_GEN, EVP_CTRL_COPY) can rely
+      // on buffer-size(gctx->iv) >= gctx->ivlen without a separate capacity
+      // field. Shrinking below EVP_MAX_IV_LENGTH must return the pointer to
+      // c->iv, or a later COPY memdup(gctx->iv, gctx->ivlen) will produce a
+      // heap buffer smaller than a subsequent SET_IVLEN can grow ivlen to.
+      if (arg <= EVP_MAX_IV_LENGTH) {
+        if (gctx->iv != c->iv) {
+          OPENSSL_free(gctx->iv);
+          gctx->iv = c->iv;
+        }
+      } else if (arg > gctx->ivlen) {
+        // Allocate before freeing so OOM leaves the context intact.
+        uint8_t *new_iv = OPENSSL_malloc(arg);
+        if (!new_iv) {
+          return 0;
+        }
         if (gctx->iv != c->iv) {
           OPENSSL_free(gctx->iv);
         }
-        gctx->iv = OPENSSL_malloc(arg);
-        if (!gctx->iv) {
-          return 0;
-        }
+        gctx->iv = new_iv;
       }
       gctx->ivlen = arg;
       return 1;
