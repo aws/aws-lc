@@ -30,13 +30,19 @@
 
 struct awslc_prov_ctx_st {
   const OSSL_CORE_HANDLE *handle;
+  // The opaque core context the indicator upcall is addressed to, so a result of
+  // an upcall rather than one of them.
   OPENSSL_CORE_CTX *corectx;
-  OSSL_FUNC_indicator_cb_fn *indicator_cb;
+  AWSLC_PROV_UPCALLS upcalls;
   int is_fips;
 };
 
 const OSSL_CORE_HANDLE *awslc_prov_ctx_handle(const AWSLC_PROV_CTX *ctx) {
   return ctx->handle;
+}
+
+const AWSLC_PROV_UPCALLS *awslc_prov_ctx_upcalls(const AWSLC_PROV_CTX *ctx) {
+  return ctx == NULL ? NULL : &ctx->upcalls;
 }
 
 int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx) {
@@ -48,10 +54,9 @@ static int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx,
                                               const char *description) {
   OSSL_INDICATOR_CALLBACK *callback = NULL;
 
-  if (ctx->indicator_cb == NULL) {
-    return 1;
-  }
-  ctx->indicator_cb(ctx->corectx, &callback);
+  // A NULL |callback| is the application not having registered one, which
+  // permits.
+  ctx->upcalls.indicator_cb(ctx->corectx, &callback);
   return callback == NULL || callback(type, description, NULL);
 }
 
@@ -90,17 +95,25 @@ static int awslc_prov_get_params(void *provctx, OSSL_PARAM params[]) {
     return 0;
   }
 
+  // A failed set means the caller asked for a parameter at a type that cannot
+  // hold it. Raise, so the caller learns which key was wrong.
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_NAME);
   if (p != NULL && !OSSL_PARAM_set_utf8_ptr(p, AWSLC_PROV_NAME)) {
+    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           OSSL_PROV_PARAM_NAME);
     return 0;
   }
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_VERSION);
   if (p != NULL && !OSSL_PARAM_set_utf8_ptr(p, AWSLC_PROV_VERSION)) {
+    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           OSSL_PROV_PARAM_VERSION);
     return 0;
   }
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_BUILDINFO);
   if (p != NULL &&
       !OSSL_PARAM_set_utf8_ptr(p, awslc_prov_backend_version())) {
+    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           OSSL_PROV_PARAM_BUILDINFO);
     return 0;
   }
   p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_STATUS);
@@ -108,6 +121,8 @@ static int awslc_prov_get_params(void *provctx, OSSL_PARAM params[]) {
   // fails, so unlike OpenSSL's FIPS module there is no refusing-but-alive state
   // for this to report.
   if (p != NULL && !OSSL_PARAM_set_int(p, 1)) {
+    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           OSSL_PROV_PARAM_STATUS);
     return 0;
   }
   return 1;
@@ -137,6 +152,8 @@ static const OSSL_DISPATCH awslc_prov_dispatch_table[] = {
     {OSSL_FUNC_PROVIDER_GET_PARAMS, (void (*)(void))awslc_prov_get_params},
     {OSSL_FUNC_PROVIDER_QUERY_OPERATION,
      (void (*)(void))awslc_prov_query_operation},
+    {OSSL_FUNC_PROVIDER_GET_REASON_STRINGS,
+     (void (*)(void))awslc_prov_get_reason_strings},
     {OSSL_FUNC_PROVIDER_SELF_TEST, (void (*)(void))awslc_prov_self_test},
     OSSL_DISPATCH_END};
 
@@ -145,8 +162,7 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
                                         const OSSL_DISPATCH *in,
                                         const OSSL_DISPATCH **out,
                                         void **provctx) {
-  OSSL_FUNC_core_get_libctx_fn *c_get_libctx = NULL;
-  OSSL_FUNC_indicator_cb_fn *c_indicator_cb = NULL;
+  AWSLC_PROV_UPCALLS upcalls = {0};
   AWSLC_PROV_CTX *ctx = NULL;
 
   // Scan the upcalls the core offers and keep the ones we use. Unrecognized ids
@@ -155,20 +171,29 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
   for (; in->function_id != 0; in++) {
     switch (in->function_id) {
       case OSSL_FUNC_CORE_GET_LIBCTX:
-        c_get_libctx = OSSL_FUNC_core_get_libctx(in);
+        upcalls.get_libctx = OSSL_FUNC_core_get_libctx(in);
         break;
       case OSSL_FUNC_INDICATOR_CB:
-        c_indicator_cb = OSSL_FUNC_indicator_cb(in);
+        upcalls.indicator_cb = OSSL_FUNC_indicator_cb(in);
+        break;
+      case OSSL_FUNC_CORE_NEW_ERROR:
+        upcalls.new_error = OSSL_FUNC_core_new_error(in);
+        break;
+      case OSSL_FUNC_CORE_SET_ERROR_DEBUG:
+        upcalls.set_error_debug = OSSL_FUNC_core_set_error_debug(in);
+        break;
+      case OSSL_FUNC_CORE_VSET_ERROR:
+        upcalls.vset_error = OSSL_FUNC_core_vset_error(in);
         break;
       default:
         break;
     }
   }
 
-  // Without the libctx upcall we cannot address the library context the core
-  // called us with, which the indicator callback lookup needs, so refuse to
-  // load rather than guess.
-  if (c_get_libctx == NULL) {
+  // Check that all required upcalls have been cached.
+  if (upcalls.get_libctx == NULL || upcalls.indicator_cb == NULL ||
+      upcalls.new_error == NULL || upcalls.set_error_debug == NULL ||
+      upcalls.vset_error == NULL) {
     return 0;
   }
 
@@ -179,8 +204,8 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
   ctx->handle = handle;
   // n.b. corectx can and is expected to be NULL. OpenSSL uses that as a sentinel
   // for the process default core library context.
-  ctx->corectx = c_get_libctx(handle);
-  ctx->indicator_cb = c_indicator_cb;
+  ctx->corectx = upcalls.get_libctx(handle);
+  ctx->upcalls = upcalls;
   ctx->is_fips = awslc_prov_backend_is_fips() != 0;
 
   *provctx = ctx;
