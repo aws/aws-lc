@@ -130,10 +130,16 @@ OPENSSL_EXPORT int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx,
 
 // Cipher operations.
 
-// EVP_EncryptUpdate encrypts |in_len| bytes from |in| to |out|. The number
-// of output bytes may be up to |in_len| plus the block length minus one and
-// |out| must have sufficient space. The number of bytes actually output is
-// written to |*out_len|. It returns one on success and zero otherwise.
+// EVP_EncryptUpdate encrypts |in_len| bytes from |in| to |out|. If |out| is
+// non-NULL and this function succeeds, it writes exactly |*out_len| bytes and
+// leaves bytes at offsets |*out_len| and later unmodified. It returns one on
+// success and zero otherwise.
+//
+// For block ciphers, individual calls may output more or less than |in_len|
+// bytes, but at most |in_len| plus the block size minus one. The |out| buffer
+// must have room for this maximum. A partial block is withheld for a later
+// call, so |*out_len| may be zero. Across all data update and final calls, total
+// output is at most total input plus one block.
 //
 // If |ctx| is an AEAD cipher, e.g. |EVP_aes_128_gcm|, and |out| is NULL, this
 // function instead adds |in_len| bytes from |in| to the AAD and sets |*out_len|
@@ -152,10 +158,17 @@ OPENSSL_EXPORT int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                        int *out_len);
 
-// EVP_DecryptUpdate decrypts |in_len| bytes from |in| to |out|. The number of
-// output bytes may be up to |in_len| plus the block length minus one and |out|
-// must have sufficient space. The number of bytes actually output is written
-// to |*out_len|. It returns one on success and zero otherwise.
+// EVP_DecryptUpdate decrypts |in_len| bytes from |in| to |out|. If |out| is
+// non-NULL and this function succeeds, it writes exactly |*out_len| bytes and
+// leaves bytes at offsets |*out_len| and later unmodified. It returns one on
+// success and zero otherwise.
+//
+// For block ciphers, individual calls may output more or less than |in_len|
+// bytes, but at most |in_len| plus the block size minus one. The |out| buffer
+// must have room for this maximum. With padding enabled (the default), the
+// last block of ciphertext seen so far is withheld until a later call or
+// |EVP_DecryptFinal_ex| releases it, so |*out_len| may be zero. Across all data
+// update and final calls, total output is at most total input.
 //
 // If |ctx| is an AEAD cipher, e.g. |EVP_aes_128_gcm|, and |out| is NULL, this
 // function instead adds |in_len| bytes from |in| to the AAD and sets |*out_len|
