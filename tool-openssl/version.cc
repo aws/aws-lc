@@ -8,13 +8,15 @@
 
 #include <openssl/base.h>
 #include <openssl/crypto.h>
+#include <openssl/service_indicator.h>
 #include "internal.h"
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-a", kBooleanArgument, "Print all version information"},
     {"-p", kBooleanArgument, "Print platform"},
-    {"-fips", kBooleanArgument, "Print FIPS status and module version"},
+    {"-fips", kBooleanArgument,
+     "Print FIPS status and module name and version"},
     {"", kOptionalArgument, ""}
 };
 
@@ -62,7 +64,8 @@ bool VersionTool(const args_list_t &args) {
   if (fips) {
     if (FIPS_mode()) {
       printf("FIPS: enabled\n");
-      printf("FIPS module version: %" PRIu32 "\n", FIPS_version());
+      printf("FIPS module: %s module %" PRIu32 "\n", AWSLC_MODULE_NAME_STRING,
+             FIPS_version());
     } else {
       printf("FIPS: disabled\n");
     }
