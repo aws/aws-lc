@@ -4,12 +4,16 @@
 #ifndef AWSLC_PROVIDER_TEST_FIXTURE_H
 #define AWSLC_PROVIDER_TEST_FIXTURE_H
 
-// The fixture every provider test builds on.
+// The fixtures every provider test builds on. The provider is loaded from the
+// build tree, so the suite runs without an install step.
 //
-// Each test gets its own OSSL_LIB_CTX rather than the process-global default, so
-// cells are isolated and a test can assert precisely which providers are
-// present. The provider is loaded from the build tree, so the suite runs without
-// an install step.
+// There are two, because a provider sees a different library context in each and
+// only one of them is what a deployed consumer has:
+//
+//   ProviderTest       a private OSSL_LIB_CTX per test, so cells are isolated and
+//                      a test can assert precisely which providers are present.
+//   DefaultLibCtxTest  OpenSSL's default library context, which it names with a
+//                      NULL pointer. Almost every real consumer is here.
 
 #include <gtest/gtest.h>
 
@@ -97,6 +101,33 @@ class ProviderTest : public ::testing::Test {
   LibCtxPtr libctx_;
   ProviderPtr awslc_;
   ProviderPtr default_;
+};
+
+// Loads the provider into OpenSSL's default library context. This is process
+// global and logic within OpenSSL handles it slightly differently from
+// explicitly created library contexts.
+class DefaultLibCtxTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(OSSL_PROVIDER_set_default_search_path(
+        nullptr, AWSLC_PROVIDER_MODULE_DIR))
+        << "could not point OpenSSL at " << AWSLC_PROVIDER_MODULE_DIR;
+    awslc_.reset(OSSL_PROVIDER_try_load(nullptr, kProviderName, 1));
+    ASSERT_TRUE(awslc_) << "could not load the provider from "
+                        << AWSLC_PROVIDER_MODULE_DIR
+                        << " into the default library context;"
+                           " OSSL_provider_init may have failed";
+  }
+
+  void TearDown() override {
+    awslc_.reset();
+    EXPECT_TRUE(OSSL_PROVIDER_set_default_search_path(nullptr, nullptr));
+  }
+
+  OSSL_PROVIDER *awslc() { return awslc_.get(); }
+
+ private:
+  ProviderPtr awslc_;
 };
 
 }  // namespace awslc_provider_test

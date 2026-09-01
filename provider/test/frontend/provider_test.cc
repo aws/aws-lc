@@ -26,6 +26,11 @@ TEST_F(ProviderTest, Loads) {
   EXPECT_STREQ(kProviderName, OSSL_PROVIDER_get0_name(awslc()));
 }
 
+TEST_F(DefaultLibCtxTest, Loads) {
+  EXPECT_TRUE(OSSL_PROVIDER_available(nullptr, kProviderName));
+  EXPECT_STREQ(kProviderName, OSSL_PROVIDER_get0_name(awslc()));
+}
+
 TEST_F(ProviderTest, ReportsSelfDescribingParams) {
   const char *name = nullptr;
   const char *version = nullptr;
