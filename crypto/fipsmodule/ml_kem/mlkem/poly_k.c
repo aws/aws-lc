@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "sampling.h"
 #include "symmetric.h"
+#include "verify.h"
 
 /* Parameter set namespacing
  * This is to facilitate building multiple instances
@@ -38,11 +39,12 @@
   MLK_ADD_PARAM_SET(mlk_polyvec_basemul_acc_montgomery_cached_c)
 /* End of parameter set namespacing */
 
+#if !defined(MLK_CONFIG_NO_ENCAPS_API) || !defined(MLK_CONFIG_NO_DECAPS_API)
 /* Reference: `polyvec_compress()` in the reference implementation @[REF]
  *            - In contrast to the reference implementation, we assume
  *              unsigned canonical coefficients here.
  *              The reference implementation works with coefficients
- *              in the range (-MLKEM_Q+1,...,MLKEM_Q-1). */
+ *              in the range [-(MLKEM_Q-1), MLKEM_Q-1]. */
 MLK_INTERNAL_API
 void mlk_polyvec_compress_du(uint8_t r[MLKEM_POLYVECCOMPRESSEDBYTES_DU],
                              const mlk_polyvec *a)
@@ -55,7 +57,9 @@ void mlk_polyvec_compress_du(uint8_t r[MLKEM_POLYVECCOMPRESSEDBYTES_DU],
     mlk_poly_compress_du(r + i * MLKEM_POLYCOMPRESSEDBYTES_DU, &a->vec[i]);
   }
 }
+#endif /* !MLK_CONFIG_NO_ENCAPS_API || !MLK_CONFIG_NO_DECAPS_API */
 
+#if !defined(MLK_CONFIG_NO_DECAPS_API)
 /* Reference: `polyvec_decompress()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
 void mlk_polyvec_decompress_du(mlk_polyvec *r,
@@ -69,12 +73,14 @@ void mlk_polyvec_decompress_du(mlk_polyvec *r,
 
   mlk_assert_bound_2d(r->vec, MLKEM_K, MLKEM_N, 0, MLKEM_Q);
 }
+#endif /* !MLK_CONFIG_NO_DECAPS_API */
 
+#if !defined(MLK_CONFIG_NO_KEYPAIR_API) || !defined(MLK_CONFIG_NO_ENCAPS_API)
 /* Reference: `polyvec_tobytes()` in the reference implementation @[REF].
  *            - In contrast to the reference implementation, we assume
  *              unsigned canonical coefficients here.
  *              The reference implementation works with coefficients
- *              in the range (-MLKEM_Q+1,...,MLKEM_Q-1). */
+ *              in the range [-(MLKEM_Q-1), MLKEM_Q-1]. */
 MLK_INTERNAL_API
 void mlk_polyvec_tobytes(uint8_t r[MLKEM_POLYVECBYTES], const mlk_polyvec *a)
 {
@@ -85,12 +91,15 @@ void mlk_polyvec_tobytes(uint8_t r[MLKEM_POLYVECBYTES], const mlk_polyvec *a)
   __loop__(
     assigns(i, memory_slice(r, MLKEM_POLYVECBYTES))
     invariant(i <= MLKEM_K)
+    decreases(MLKEM_K - i)
   )
   {
     mlk_poly_tobytes(&r[i * MLKEM_POLYBYTES], &a->vec[i]);
   }
 }
+#endif /* !MLK_CONFIG_NO_KEYPAIR_API || !MLK_CONFIG_NO_ENCAPS_API */
 
+#if !defined(MLK_CONFIG_NO_ENCAPS_API) || !defined(MLK_CONFIG_NO_DECAPS_API)
 /* Reference: `polyvec_frombytes()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
 void mlk_polyvec_frombytes(mlk_polyvec *r, const uint8_t a[MLKEM_POLYVECBYTES])
@@ -103,6 +112,7 @@ void mlk_polyvec_frombytes(mlk_polyvec *r, const uint8_t a[MLKEM_POLYVECBYTES])
 
   mlk_assert_bound_2d(r->vec, MLKEM_K, MLKEM_N, 0, MLKEM_UINT12_LIMIT);
 }
+#endif /* !MLK_CONFIG_NO_ENCAPS_API || !MLK_CONFIG_NO_DECAPS_API */
 
 /* Reference: `polyvec_ntt()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
@@ -122,6 +132,7 @@ void mlk_polyvec_ntt(mlk_polyvec *r)
  *              while the reference implementation normalizes at
  *              the end. This allows us to drop a call to `poly_reduce()`
  *              from the base multiplication. */
+#if !defined(MLK_CONFIG_NO_ENCAPS_API) || !defined(MLK_CONFIG_NO_DECAPS_API)
 MLK_INTERNAL_API
 void mlk_polyvec_invntt_tomont(mlk_polyvec *r)
 {
@@ -133,6 +144,7 @@ void mlk_polyvec_invntt_tomont(mlk_polyvec *r)
 
   mlk_assert_abs_bound_2d(r->vec, MLKEM_K, MLKEM_N, MLK_INVNTT_BOUND);
 }
+#endif /* !MLK_CONFIG_NO_ENCAPS_API || !MLK_CONFIG_NO_DECAPS_API */
 
 /* Reference: `polyvec_basemul_acc_montgomery()` in the
  *            reference implementation @[REF].
@@ -162,7 +174,8 @@ __contract__(
   mlk_assert_bound_2d(a->vec, MLKEM_K, MLKEM_N, 0, MLKEM_UINT12_LIMIT);
 
   for (i = 0; i < MLKEM_N / 2; i++)
-  __loop__(invariant(i <= MLKEM_N / 2))
+  __loop__(invariant(i <= MLKEM_N / 2)
+           decreases(MLKEM_N / 2 - i))
   {
     unsigned k;
     int32_t t[2] = {0};
@@ -172,7 +185,8 @@ __contract__(
          t[0] <=    (int32_t) k * 2 * MLKEM_UINT12_LIMIT * 32768  &&
          t[0] >= - ((int32_t) k * 2 * MLKEM_UINT12_LIMIT * 32768) &&
          t[1] <=   ((int32_t) k * 2 * MLKEM_UINT12_LIMIT * 32768) &&
-         t[1] >= - ((int32_t) k * 2 * MLKEM_UINT12_LIMIT * 32768)))
+         t[1] >= - ((int32_t) k * 2 * MLKEM_UINT12_LIMIT * 32768))
+      decreases(MLKEM_K - k))
     {
       t[0] += (int32_t)a->vec[k].coeffs[2 * i + 1] * b_cache->vec[k].coeffs[i];
       t[0] += (int32_t)a->vec[k].coeffs[2 * i] * b->vec[k].coeffs[2 * i];
@@ -268,12 +282,14 @@ void mlk_polyvec_add(mlk_polyvec *r, const mlk_polyvec *b)
                 forall(k2, 0, MLKEM_N,
                        (r->vec[j2].coeffs[k2] <= INT16_MAX) &&
                        (r->vec[j2].coeffs[k2] >= INT16_MIN))))
+    decreases(MLKEM_K - i)
   )
   {
     mlk_poly_add(&r->vec[i], &b->vec[i]);
   }
 }
 
+#if !defined(MLK_CONFIG_NO_KEYPAIR_API)
 /* Reference: `polyvec_tomont()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
 void mlk_polyvec_tomont(mlk_polyvec *r)
@@ -286,25 +302,23 @@ void mlk_polyvec_tomont(mlk_polyvec *r)
 
   mlk_assert_abs_bound_2d(r->vec, MLKEM_K, MLKEM_N, MLKEM_Q);
 }
+#endif /* !MLK_CONFIG_NO_KEYPAIR_API */
 
 
-/*************************************************
- * Name:        mlk_poly_cbd_eta1
+/**
+ * Given an array of uniformly random bytes, compute a polynomial with
+ * coefficients distributed according to a centered binomial distribution
+ * with parameter MLKEM_ETA1.
  *
- * Description: Given an array of uniformly random bytes, compute
- *              polynomial with coefficients distributed according to
- *              a centered binomial distribution with parameter MLKEM_ETA1.
+ * @spec{Implements @[FIPS203, Algorithm 8, SamplePolyCBD_eta1], where eta1
+ * is specified per parameter set in @[FIPS203, Table 2] and represented as
+ * MLKEM_ETA1 here.}
  *
- * Arguments:   - mlk_poly *r: pointer to output polynomial
- *              - const uint8_t *buf: pointer to input byte array
+ * @reference{`poly_cbd_eta1` in the reference implementation @[REF].}
  *
- * Specification: Implements @[FIPS203, Algorithm 8, SamplePolyCBD_eta1], where
- *                eta1 is specified per parameter set in @[FIPS203, Table 2]
- *                and represented as MLKEM_ETA1 here.
- *
- **************************************************/
-
-/* Reference: `poly_cbd_eta1` in the reference implementation @[REF]. */
+ * @param[out] r   Output polynomial.
+ * @param[in]  buf Input byte array.
+ */
 static MLK_INLINE void mlk_poly_cbd_eta1(
     mlk_poly *r, const uint8_t buf[MLKEM_ETA1 * MLKEM_N / 4])
 __contract__(
@@ -323,6 +337,9 @@ __contract__(
 #endif
 }
 
+#if !defined(MLK_CONFIG_NO_KEYPAIR_API) ||                              \
+    (MLKEM_ETA1 == MLKEM_ETA2 && (!defined(MLK_CONFIG_NO_ENCAPS_API) || \
+                                  !defined(MLK_CONFIG_NO_DECAPS_API)))
 /* Reference: Does not exist in the reference implementation @[REF].
  *            - This implements a x4-batched version of `poly_getnoise_eta1()`
  *              from the reference implementation, to leverage
@@ -376,25 +393,25 @@ void mlk_poly_getnoise_eta1_4x(mlk_poly *r0, mlk_poly *r1, mlk_poly *r2,
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(extkey, sizeof(extkey));
 }
+#endif /* !MLK_CONFIG_NO_KEYPAIR_API || (MLKEM_ETA1 == MLKEM_ETA2 && \
+          (!MLK_CONFIG_NO_ENCAPS_API || !MLK_CONFIG_NO_DECAPS_API)) */
 
-#if MLKEM_K == 2 || MLKEM_K == 4
-/*************************************************
- * Name:        mlk_poly_cbd_eta2
+#if (MLKEM_K == 2 || MLKEM_K == 4) && \
+    (!defined(MLK_CONFIG_NO_ENCAPS_API) || !defined(MLK_CONFIG_NO_DECAPS_API))
+/**
+ * Given an array of uniformly random bytes, compute a polynomial with
+ * coefficients distributed according to a centered binomial distribution
+ * with parameter MLKEM_ETA2.
  *
- * Description: Given an array of uniformly random bytes, compute
- *              polynomial with coefficients distributed according to
- *              a centered binomial distribution with parameter MLKEM_ETA2.
+ * @spec{Implements @[FIPS203, Algorithm 8, SamplePolyCBD_eta2], where eta2
+ * is specified per parameter set in @[FIPS203, Table 2] and represented as
+ * MLKEM_ETA2 here.}
  *
- * Arguments:   - mlk_poly *r: pointer to output polynomial
- *              - const uint8_t *buf: pointer to input byte array
+ * @reference{`poly_cbd_eta2` in the reference implementation @[REF].}
  *
- * Specification: Implements @[FIPS203, Algorithm 8, SamplePolyCBD_eta2], where
- *                eta2 is specified per parameter set in @[FIPS203, Table 2]
- *                and represented as MLKEM_ETA2 here.
- *
- **************************************************/
-
-/* Reference: `poly_cbd_eta2` in the reference implementation @[REF]. */
+ * @param[out] r   Output polynomial.
+ * @param[in]  buf Input byte array.
+ */
 static MLK_INLINE void mlk_poly_cbd_eta2(
     mlk_poly *r, const uint8_t buf[MLKEM_ETA2 * MLKEM_N / 4])
 __contract__(
@@ -432,9 +449,11 @@ void mlk_poly_getnoise_eta2(mlk_poly *r, const uint8_t seed[MLKEM_SYMBYTES],
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(extkey, sizeof(extkey));
 }
-#endif /* MLKEM_K == 2 || MLKEM_K == 4 */
+#endif /* (MLKEM_K == 2 || MLKEM_K == 4) && (!MLK_CONFIG_NO_ENCAPS_API || \
+          !MLK_CONFIG_NO_DECAPS_API) */
 
-#if MLKEM_K == 2
+#if MLKEM_K == 2 && \
+    (!defined(MLK_CONFIG_NO_ENCAPS_API) || !defined(MLK_CONFIG_NO_DECAPS_API))
 /* Reference: Does not exist in the reference implementation @[REF].
  *            - This implements a x4-batched version of `poly_getnoise_eta1()`
  *              and `poly_getnoise_eta2()` from the reference implementation,
@@ -493,7 +512,8 @@ void mlk_poly_getnoise_eta1122_4x(mlk_poly *r0, mlk_poly *r1, mlk_poly *r2,
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(extkey, sizeof(extkey));
 }
-#endif /* MLKEM_K == 2 */
+#endif /* MLKEM_K == 2 && (!MLK_CONFIG_NO_ENCAPS_API || \
+          !MLK_CONFIG_NO_DECAPS_API) */
 
 /* To facilitate single-compilation-unit (SCU) builds, undefine all macros.
  * Don't modify by hand -- this is auto-generated by scripts/autogen. */

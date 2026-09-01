@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.5.0")
+set(SOFTWARE_VERSION "5.7.0")
 set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 1)
 set(CRYPTO_LIB_NAME "crypto")
@@ -1740,14 +1740,34 @@ include(cmake/JoinPaths.cmake)
 join_paths(LIBDIR_FOR_PC_FILE "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
 join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${AWSLC_INSTALL_INCLUDEDIR}")
 
+# Generates a pkg-config file from a template and installs it. The optional
+# INCLUDEDIR, CRYPTO_NAME and SSL_NAME arguments override the corresponding
+# template substitution variables for this one file.
 function(install_pkgconfig_file)
   set(options "")
-  set(oneValueArgs TEMPLATE DEST)
+  set(oneValueArgs TEMPLATE DEST INCLUDEDIR CRYPTO_NAME SSL_NAME)
   set(multiValueArgs)
   if(CMAKE_VERSION VERSION_LESS "3.7")
     cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   else()
     cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(DEFINED arg_INCLUDEDIR)
+    join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${arg_INCLUDEDIR}")
+  endif()
+  if(DEFINED arg_CRYPTO_NAME)
+    set(CRYPTO_LIB_NAME "${arg_CRYPTO_NAME}")
+  endif()
+  if(DEFINED arg_SSL_NAME)
+    set(SSL_LIB_NAME "${arg_SSL_NAME}")
+  endif()
+
+  # Requires line for product.pc.in; omit libssl when it is not built.
+  if(BUILD_LIBSSL)
+    set(PRODUCT_PC_REQUIRES "lib${SSL_LIB_NAME} lib${CRYPTO_LIB_NAME}")
+  else()
+    set(PRODUCT_PC_REQUIRES "lib${CRYPTO_LIB_NAME}")
   endif()
 
   configure_file(pkgconfig/${arg_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/pkgconfig/${arg_DEST} @ONLY)
@@ -1764,31 +1784,58 @@ endif()
 
 install_pkgconfig_file(TEMPLATE product.pc.in DEST aws-lc.pc)
 install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST lib${CRYPTO_LIB_NAME}.pc)
-install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+if(BUILD_LIBSSL)
+  install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+endif()
 
 if(INSTALL_OPENSSL_SHIM)
-  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc)
+  # pkg-config resolves packages by filename, so a drop-in OpenSSL replacement
+  # must provide all three of OpenSSL's module names. All three describe the
+  # unsuffixed interface -- plain include/ and -lcrypto/-lssl, resolved via the
+  # compatibility symlinks below -- because consumers that only know OpenSSL's
+  # names cannot cope with a suffix. The symlinks keep suffixed SONAMEs, so
+  # cohabitation is preserved. See INCORPORATING.md. The native cohabitant
+  # modules are installed above and stay suffixed.
+  set(OPENSSL_SHIM_PC_OVERRIDES
+      INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+      CRYPTO_NAME crypto
+      SSL_NAME ssl)
 
-  # Create OpenSSL compatibility symlinks
-  if(BUILD_SHARED_LIBS)
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
-      install(CODE "
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
-      ")
+  # Only needed when the native modules are suffixed; otherwise they already
+  # carry the OpenSSL filenames and describe the same interface.
+  if(SET_LIB_SONAME)
+    install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST libcrypto.pc
+                           ${OPENSSL_SHIM_PC_OVERRIDES})
+    if(BUILD_LIBSSL)
+      install_pkgconfig_file(TEMPLATE libssl.pc.in DEST libssl.pc
+                             ${OPENSSL_SHIM_PC_OVERRIDES})
     endif()
-  else()
-    if(SET_LIB_SONAME)
-      # When SONAME build is enabled, libraries have -awslc suffix
+  endif()
+
+  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
+                         ${OPENSSL_SHIM_PC_OVERRIDES})
+
+  # Create OpenSSL compatibility symlinks. Like the compat pc files above,
+  # these are only needed when the native libraries carry a suffix.
+  if(SET_LIB_SONAME)
+    if(BUILD_SHARED_LIBS)
+      set(SHIM_LIB_EXT "so")
+      set(SHIM_LINK_COMPONENT "")
+    else()
+      set(SHIM_LIB_EXT "a")
+      # Preserves the pre-existing component split: only the static symlinks
+      # are assigned to the Development component.
+      set(SHIM_LINK_COMPONENT COMPONENT Development)
+    endif()
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        lib${CRYPTO_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.${SHIM_LIB_EXT}\")
+    " ${SHIM_LINK_COMPONENT})
+    if(BUILD_LIBSSL)
       install(CODE "
         execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${CRYPTO_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.a\")
-        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
-          lib${SSL_LIB_NAME}.a \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.a\")
-      " COMPONENT Development)
+          lib${SSL_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.${SHIM_LIB_EXT}\")
+      " ${SHIM_LINK_COMPONENT})
     endif()
   endif()
 
