@@ -28,6 +28,17 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 
 It returns 0 when AWS-LC is not built in FIPS mode. The FIPS version number is independent of the AWS-LC version number and is incremented each time a new FIPS branch is cut from mainline.
 
+## Module name
+
+The `AWSLC_MODULE_NAME_STRING` macro, defined in `openssl/service_indicator.h`, is the name of the cryptographic module: `AWS-LC FIPS` in FIPS builds and `AWS-LC` otherwise. Together with `FIPS_version`, it identifies the module, for example `AWS-LC FIPS module 5`, which is what `openssl version -fips` prints:
+
+```
+$ openssl version -fips
+OpenSSL 1.1.1 (compatible; AWS-LC 5.7.0)
+FIPS: enabled
+FIPS module: AWS-LC FIPS module 5
+```
+
 ## Platform Limitations
 
 When building AWS-LC in FIPS mode, please be aware of the following platform limitations:
