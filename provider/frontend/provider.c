@@ -164,14 +164,11 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
     return 0;
   }
   ctx->handle = handle;
+  // n.b. corectx can and is expected to be NULL. OpenSSL uses that as a sentinel
+  // for the process default core library context.
   ctx->corectx = c_get_libctx(handle);
   ctx->indicator_cb = c_indicator_cb;
   ctx->is_fips = awslc_prov_backend_is_fips() != 0;
-
-  if (ctx->corectx == NULL) {
-    awslc_prov_clear_free(ctx, sizeof(*ctx));
-    return 0;
-  }
 
   *provctx = ctx;
   *out = awslc_prov_dispatch_table;
