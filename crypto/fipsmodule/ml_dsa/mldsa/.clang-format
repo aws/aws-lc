@@ -27,3 +27,4 @@ Macros:
  - __loop__(x)={} do
  # Make this artifically long to force line break
  - MLD_INTERNAL_API=void abcdefghijklmnopqrstuvwabcdefghijklmnopqrstuvwabcdefg();
+ - MLD_SYSV_ABI=void abcdefghijklmnopqrstuvwabcdefghijklmnopqrstuvwabcdefg();

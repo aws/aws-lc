@@ -31,7 +31,7 @@
 # Dependencies:
 # - unifdef
 
-GITHUB_SERVER_URL=https://github.com/
+GITHUB_SERVER_URL=${GITHUB_SERVER_URL:=https://github.com/}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=pq-code-package/mlkem-native.git}
 GITHUB_SHA=${GITHUB_SHA:=main}
 
@@ -104,6 +104,7 @@ cp $TMP/.clang-format $SRC
 # arithmetic backend that are not yet imported.
 unifdef -DMLK_CONFIG_FIPS202_CUSTOM_HEADER                             \
         -UMLK_CONFIG_USE_NATIVE_BACKEND_FIPS202                        \
+        -UMLK_SYS_PPC64LE                                              \
         -UMLK_SYS_RISCV64                                              \
         $TMP/mlkem/mlkem_native.c                                      \
         > $SRC/mlkem_native_bcm.c
@@ -134,9 +135,23 @@ for file in $SRC/native/aarch64/src/*.S $SRC/native/x86_64/src/*.S; do
 
   backend_define=$(if [[ "$file" == *"aarch64"* ]]; then echo "MLK_ARITH_BACKEND_AARCH64"; else echo "MLK_ARITH_BACKEND_X86_64_DEFAULT"; fi)
 
-  # Flatten multiline preprocessor directives, then process with unifdef
+  # Flatten multiline preprocessor directives, then process with unifdef.
+  #
+  # The parameter-set-specific files (level-specific basemul, d-specific
+  # (de)compression) are guarded by `... || MLKEM_K == N`. We build each .S
+  # once for all parameter sets, so we force the shared path
+  # (-DMLK_CONFIG_MULTILEVEL_WITH_SHARED): unifdef short-circuits the `||` on
+  # the known-true left operand and the `== N` comparison never has to be
+  # evaluated. The -U*_API flags resolve the remaining gate terms so the whole
+  # guard collapses and the body is included unconditionally.
   sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\n/ /g' "$file" | \
-    unifdef -D$backend_define -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
+    unifdef -D$backend_define \
+            -UMLK_CONFIG_MULTILEVEL_NO_SHARED \
+            -DMLK_CONFIG_MULTILEVEL_WITH_SHARED \
+            -UMLK_CONFIG_NO_KEYPAIR_API \
+            -UMLK_CONFIG_NO_ENCAPS_API \
+            -UMLK_CONFIG_NO_DECAPS_API \
+            > "$tmp_file"
   mv "$tmp_file" "$file"
 
   # Replace common.h include and assembly macros

@@ -26,6 +26,17 @@
 
 #include "./ml_kem.h"
 
+// Converts an mlkem-native return code (0 on success, negative MLK_ERR_* on
+// failure) to the ml_kem.h convention: ML_KEM_SUCCESS (0) or ML_KEM_FAILURE
+// (1). The specific upstream failure condition is currently not retained.
+//
+// Note: This is the inverse of AWS-LC's usual API convention (cf
+// API-CONVENTIONS.md) and the inverse of the convention used in
+// |ml_dsa_result| in ml_dsa.c.
+static inline int ml_kem_result(int mlk_ret) {
+  return (mlk_ret == 0) ? ML_KEM_SUCCESS : ML_KEM_FAILURE;
+}
+
 typedef struct {
   uint8_t *buffer;
   size_t *length;
@@ -90,18 +101,23 @@ int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */
   output_buffer pkey = {public_key, public_len, MLKEM512_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM512_SECRET_KEY_BYTES};
   if (!check_buffer(pkey) || !check_buffer(skey)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = mlkem512_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
 #endif
   set_written_len_on_success(res, pkey);
   set_written_len_on_success(res, skey);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
@@ -179,18 +195,23 @@ int ml_kem_768_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
   output_buffer pkey = {public_key, public_len, MLKEM768_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM768_SECRET_KEY_BYTES};
   if (!check_buffer(pkey) || !check_buffer(skey)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = mlkem768_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
 #endif
   set_written_len_on_success(res, pkey);
   set_written_len_on_success(res, skey);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
@@ -266,18 +287,23 @@ int ml_kem_1024_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */
   output_buffer pkey = {public_key, public_len, MLKEM1024_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM1024_SECRET_KEY_BYTES};
   if (!check_buffer(pkey) || !check_buffer(skey)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = mlkem1024_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
 #endif
   set_written_len_on_success(res, pkey);
   set_written_len_on_success(res, skey);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
@@ -341,18 +367,23 @@ int ml_kem_common_keypair(int (*keypair)(uint8_t * public_key, uint8_t *secret_k
                           output_buffer secret_key) {
   boringssl_ensure_ml_kem_self_test();
   if (!check_buffer(public_key) || !check_buffer(secret_key)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = keypair(public_key.buffer, secret_key.buffer);
 #if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
+  /* PCT failure is the only reachable failure condition for key generation:
+   * mlkem-native's other error codes cannot occur in an AWS-LC build.
+   * MLK_ERR_OUT_OF_MEMORY is unreachable because AWS-LC does not set
+   * MLK_CONFIG_CUSTOM_ALLOC_FREE, so MLK_ALLOC is stack allocation, and
+   * MLK_ERR_RNG_FAIL is unreachable because mlk_randombytes aborts the
+   * process on RNG failure rather than returning. */
   if (res != 0) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
   }
 #endif
   set_written_len_on_success(res, public_key);
   set_written_len_on_success(res, secret_key);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_common_encapsulate_deterministic(int (*encapsulate)(uint8_t *ciphertext, uint8_t *shared_secret, const uint8_t *public_key, const uint8_t *seed),
@@ -361,12 +392,12 @@ int ml_kem_common_encapsulate_deterministic(int (*encapsulate)(uint8_t *cipherte
                                             const uint8_t *public_key,
                                             const uint8_t *seed) {
   if (!check_buffer(ciphertext) || !check_buffer(shared_secret)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = encapsulate(ciphertext.buffer, shared_secret.buffer, public_key, seed);
   set_written_len_on_success(res, ciphertext);
   set_written_len_on_success(res, shared_secret);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_common_encapsulate(int (*encapsulate)(uint8_t *ciphertext, uint8_t *shared_secret, const uint8_t *public_key),
@@ -375,12 +406,12 @@ int ml_kem_common_encapsulate(int (*encapsulate)(uint8_t *ciphertext, uint8_t *s
                               const uint8_t *public_key) {
   boringssl_ensure_ml_kem_self_test();
   if (!check_buffer(ciphertext) || !check_buffer(shared_secret)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = encapsulate(ciphertext.buffer, shared_secret.buffer, public_key);
   set_written_len_on_success(res, ciphertext);
   set_written_len_on_success(res, shared_secret);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_common_decapsulate(int (*decapsulate)(uint8_t *shared_secret, const uint8_t *ciphertext, const uint8_t *secret_key),
@@ -388,51 +419,51 @@ int ml_kem_common_decapsulate(int (*decapsulate)(uint8_t *shared_secret, const u
                               const uint8_t *ciphertext,
                               const uint8_t *secret_key) {
   if (!check_buffer(shared_secret)) {
-    return 1;
+    return ML_KEM_FAILURE;
   }
   const int res = decapsulate(shared_secret.buffer, ciphertext, secret_key);
   set_written_len_on_success(res, shared_secret);
-  return res;
+  return ml_kem_result(res);
 }
 
 int ml_kem_512_check_pk(const uint8_t *public_key, size_t public_key_len) {
   if (public_key == NULL || public_key_len != MLKEM512_PUBLIC_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem512_check_pk(public_key);
+  return ml_kem_result(mlkem512_check_pk(public_key));
 }
 
 int ml_kem_512_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
   if (secret_key == NULL || secret_key_len != MLKEM512_SECRET_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem512_check_sk(secret_key);
+  return ml_kem_result(mlkem512_check_sk(secret_key));
 }
 
 int ml_kem_768_check_pk(const uint8_t *public_key, size_t public_key_len) {
   if (public_key == NULL || public_key_len != MLKEM768_PUBLIC_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem768_check_pk(public_key);
+  return ml_kem_result(mlkem768_check_pk(public_key));
 }
 
 int ml_kem_768_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
   if (secret_key == NULL || secret_key_len != MLKEM768_SECRET_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem768_check_sk(secret_key);
+  return ml_kem_result(mlkem768_check_sk(secret_key));
 }
 
 int ml_kem_1024_check_pk(const uint8_t *public_key, size_t public_key_len) {
   if (public_key == NULL || public_key_len != MLKEM1024_PUBLIC_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem1024_check_pk(public_key);
+  return ml_kem_result(mlkem1024_check_pk(public_key));
 }
 
 int ml_kem_1024_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
   if (secret_key == NULL || secret_key_len != MLKEM1024_SECRET_KEY_BYTES) {
-    return -1;
+    return ML_KEM_FAILURE;
   }
-  return mlkem1024_check_sk(secret_key);
+  return ml_kem_result(mlkem1024_check_sk(secret_key));
 }

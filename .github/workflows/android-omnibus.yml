@@ -30,10 +30,20 @@ jobs:
       - uses: ./.github/actions/check-authorization
         id: authz
 
+  maintainer-approval:
+    needs: authorization-check
+    runs-on: ubuntu-latest
+    # This job exists only to pause the run on the manual-approval gate.
+    # It waits until a maintainer approves, so its token sits idle in the runner during that window.
+    # Empty permissions strip that token to zero scopes, so the waiting job can never touch AWS or the repo.
+    permissions: {}
+    environment: ${{ needs.authorization-check.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
+    steps:
+      - run: "true"
+
   device-farm:
     name: android-${{ matrix.fips && 'fips-' || '' }}${{ matrix.release && 'release' || 'debug' }}-${{ matrix.shared && 'shared' || 'static' }}
-    needs: [authorization-check]
-    environment: ${{ needs.authorization-check.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
+    needs: [authorization-check, maintainer-approval]
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -51,7 +61,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
           # Safe: this job's fork checkout is gated behind the
-          # authorization-check deployment-environment approval (AWS-542), so
+          # maintainer-approval deployment-environment approval (AWS-542), so
           # fork code is only checked out after a maintainer approves the run.
           # That approval gate is exactly the human-in-the-loop mitigation that
           # actions/checkout@v7's new pull_request_target default requires; this
