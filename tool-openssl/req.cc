@@ -77,11 +77,12 @@ static const argument_t kArguments[] = {
     {"-config", kOptionalArgument, "This specifies the request template file"},
     {"-extensions", kOptionalArgument,
      "Certificate extension section, used when -x509 is given (overrides "
-     "x509_extensions in the config file). This has no effect when a "
-     "certificate request is being generated."},
+     "x509_extensions in the config file). It is not applied to certificate "
+     "requests, but is still validated when -config is given."},
     {"-reqexts", kOptionalArgument,
      "Certificate request extension section (overrides req_extensions in the "
-     "config file). This has no effect when -x509 is given."},
+     "config file). It is not applied when -x509 is given, but is still "
+     "validated when -config is given."},
     {"-key", kOptionalArgument,
      "This specifies the key file path to be used for signing."},
     {"-passin", kOptionalArgument,
@@ -629,9 +630,9 @@ bool reqTool(const args_list_t &args) {
     }
   }
 
-  // OpenSSL rejects an explicitly named section even when it does not apply to
-  // the selected output, so validate both selectors.
-  if (!config_path.empty() &&
+  // OpenSSL validates both command-line selectors regardless of output type.
+  // Only the selected output's selector may be populated from the config.
+  if (req_conf.get() &&
       (!CheckExtensionSection(req_conf.get(), cert_ext_section) ||
        !CheckExtensionSection(req_conf.get(), req_ext_section))) {
     return false;

@@ -589,6 +589,44 @@ TEST_F(ReqTest, ExtensionsDoesNotApplyToCSR) {
       << "-extensions leaked a certificate extension section into the CSR";
 }
 
+TEST_F(ReqTest, ExtensionsDoNotChangeCSRWithoutReqExtensions) {
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "[req]\n"
+          "distinguished_name = req_dn\n"
+          "x509_extensions = v3_cert\n"
+          "prompt = no\n"
+          "[req_dn]\n"
+          "CN = test.com\n"
+          "[v3_cert]\n"
+          "subjectAltName = DNS:cert-only.example.com\n");
+  config_file.reset();
+
+  args_list_t default_args = {"-new",   "-config",      config_path,
+                              "-key",   input_key_path, "-out",
+                              csr_path, "-subj",        "/CN=test.com"};
+  ASSERT_TRUE(reqTool(default_args));
+  auto default_csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(default_csr);
+  std::set<int> default_nids = CSRExtensionNIDs(default_csr.get());
+
+  args_list_t extensions_args = {"-new",         "-config",     config_path,
+                                 "-extensions",  "v3_cert",     "-key",
+                                 input_key_path, "-out",        csr_path,
+                                 "-subj",        "/CN=test.com"};
+  ASSERT_TRUE(reqTool(extensions_args));
+  auto extensions_csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(extensions_csr);
+  std::set<int> extensions_nids = CSRExtensionNIDs(extensions_csr.get());
+
+  EXPECT_EQ(extensions_nids, default_nids);
+  EXPECT_EQ(extensions_nids,
+            (std::set<int>{NID_basic_constraints, NID_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(extensions_nids);
+  EXPECT_EQ(extensions_nids.count(NID_subject_alt_name), 0u);
+}
+
 TEST_F(ReqTest, ReqextsSelectsCSRExtensions) {
   WriteExtensionRoutingConfig(config_path, "reqexts.example.com");
 
