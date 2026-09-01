@@ -17,9 +17,80 @@
 
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
+#include <set>
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
+
+static std::set<int> CSRExtensionNIDs(X509_REQ *req) {
+  std::set<int> nids;
+  bssl::UniquePtr<STACK_OF(X509_EXTENSION)> exts(X509_REQ_get_extensions(req));
+  if (exts == nullptr) {
+    return nids;
+  }
+  for (size_t i = 0; i < sk_X509_EXTENSION_num(exts.get()); i++) {
+    const X509_EXTENSION *ext = sk_X509_EXTENSION_value(exts.get(), i);
+    nids.insert(OBJ_obj2nid(X509_EXTENSION_get_object(ext)));
+  }
+  return nids;
+}
+
+static std::set<int> CertExtensionNIDs(X509 *cert) {
+  std::set<int> nids;
+  for (int i = 0; i < X509_get_ext_count(cert); i++) {
+    nids.insert(OBJ_obj2nid(X509_EXTENSION_get_object(X509_get_ext(cert, i))));
+  }
+  return nids;
+}
+
+static std::string DescribeNIDs(const std::set<int> &nids) {
+  std::string out;
+  for (int nid : nids) {
+    const char *name = OBJ_nid2sn(nid);
+    out += (out.empty() ? "" : ", ");
+    out += (name != nullptr ? name : "<unknown>");
+  }
+  return out.empty() ? "<none>" : out;
+}
+
+// authorityKeyIdentifier stays in the signing-time section because a CSR has
+// no issuer.
+static void WriteExtensionRoutingConfig(const char *path, const char *cn) {
+  ScopedFILE config_file(fopen(path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "[ req ]\n"
+          "default_bits       = 2048\n"
+          "distinguished_name = req_distinguished_name\n"
+          "x509_extensions    = v3_ca\n"
+          "req_extensions     = v3_csr\n"
+          "prompt             = no\n"
+          "\n"
+          "[ req_distinguished_name ]\n"
+          "CN = %s\n"
+          "\n"
+          "[ v3_csr ]\n"
+          "subjectAltName   = email:test@example.com\n"
+          "keyUsage         = digitalSignature\n"
+          "extendedKeyUsage = codeSigning\n"
+          "\n"
+          "[ v3_req ]\n"
+          "subjectAltName         = email:test@example.com\n"
+          "authorityKeyIdentifier = keyid,issuer\n"
+          "keyUsage               = digitalSignature\n"
+          "extendedKeyUsage       = codeSigning\n"
+          "\n"
+          "[ v3_san_only ]\n"
+          "subjectAltName = DNS:san-only.example.com\n"
+          "\n"
+          "[ v3_ca ]\n"
+          "subjectKeyIdentifier   = hash\n"
+          "authorityKeyIdentifier = keyid:always,issuer:always\n"
+          "basicConstraints       = critical, CA:true\n"
+          "keyUsage               = critical, digitalSignature, cRLSign, "
+          "keyCertSign\n",
+          cn);
+}
 
 class ReqTest : public ::testing::Test {
  protected:
@@ -493,6 +564,189 @@ TEST_F(ReqTest, X509ExtensionsFromEmptyConfig) {
   ASSERT_TRUE(reqTool(args));
 }
 
+// Misrouting v3_req to the CSR fails because authorityKeyIdentifier needs an
+// issuer.
+TEST_F(ReqTest, ExtensionsDoesNotApplyToCSR) {
+  WriteExtensionRoutingConfig(config_path, "ext-routing.example.com");
+
+  args_list_t args = {"-new",      "-config",
+                      config_path, "-extensions",
+                      "v3_req",    "-newkey",
+                      "rsa:2048",  "-nodes",
+                      "-keyout",   output_key_path,
+                      "-out",      csr_path,
+                      "-subj",     "/CN=ext-routing.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  std::set<int> nids = CSRExtensionNIDs(csr.get());
+  EXPECT_EQ(nids, (std::set<int>{NID_subject_alt_name, NID_key_usage,
+                                 NID_ext_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(nids);
+  EXPECT_EQ(nids.count(NID_authority_key_identifier), 0u)
+      << "-extensions leaked a certificate extension section into the CSR";
+}
+
+TEST_F(ReqTest, ReqextsSelectsCSRExtensions) {
+  WriteExtensionRoutingConfig(config_path, "reqexts.example.com");
+
+  args_list_t args = {"-new",      "-config",
+                      config_path, "-reqexts",
+                      "v3_csr",    "-newkey",
+                      "rsa:2048",  "-nodes",
+                      "-keyout",   output_key_path,
+                      "-out",      csr_path,
+                      "-subj",     "/CN=reqexts.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  std::set<int> nids = CSRExtensionNIDs(csr.get());
+  EXPECT_EQ(nids, (std::set<int>{NID_subject_alt_name, NID_key_usage,
+                                 NID_ext_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(nids);
+}
+
+TEST_F(ReqTest, ReqextsOverridesConfigReqExtensions) {
+  WriteExtensionRoutingConfig(config_path, "override.example.com");
+
+  args_list_t args = {"-new",        "-config",
+                      config_path,   "-reqexts",
+                      "v3_san_only", "-newkey",
+                      "rsa:2048",    "-nodes",
+                      "-keyout",     output_key_path,
+                      "-out",        csr_path,
+                      "-subj",       "/CN=override.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  std::set<int> nids = CSRExtensionNIDs(csr.get());
+  EXPECT_EQ(nids, (std::set<int>{NID_subject_alt_name}))
+      << "-reqexts did not override req_extensions; CSR extensions were "
+      << DescribeNIDs(nids);
+}
+
+// authorityKeyIdentifier cannot be resolved without an issuer.
+TEST_F(ReqTest, ReqextsWithAuthorityKeyIdentifierFails) {
+  WriteExtensionRoutingConfig(config_path, "aki.example.com");
+
+  args_list_t args = {"-new",      "-config",
+                      config_path, "-reqexts",
+                      "v3_req",    "-newkey",
+                      "rsa:2048",  "-nodes",
+                      "-keyout",   output_key_path,
+                      "-out",      csr_path,
+                      "-subj",     "/CN=aki.example.com"};
+
+  ASSERT_FALSE(reqTool(args));
+}
+
+TEST_F(ReqTest, ReqextsAndExtensionsAreIndependent) {
+  WriteExtensionRoutingConfig(config_path, "both.example.com");
+
+  args_list_t args = {
+      "-new",     "-config",     config_path, "-reqexts",
+      "v3_csr",   "-extensions", "v3_req",    "-newkey",
+      "rsa:2048", "-nodes",      "-keyout",   output_key_path,
+      "-out",     csr_path,      "-subj",     "/CN=both.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  std::set<int> nids = CSRExtensionNIDs(csr.get());
+  EXPECT_EQ(nids, (std::set<int>{NID_subject_alt_name, NID_key_usage,
+                                 NID_ext_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(nids);
+  EXPECT_EQ(nids.count(NID_authority_key_identifier), 0u);
+}
+
+TEST_F(ReqTest, ExtensionsAppliesToX509Certificate) {
+  WriteExtensionRoutingConfig(config_path, "ca.example.com");
+
+  args_list_t args = {"-x509",     "-new",          "-config",
+                      config_path, "-extensions",   "v3_ca",
+                      "-newkey",   "rsa:2048",      "-nodes",
+                      "-keyout",   output_key_path, "-out",
+                      cert_path,   "-subj",         "/CN=ca.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto cert = LoadPEMCertificate(cert_path);
+  ASSERT_TRUE(cert);
+  std::set<int> nids = CertExtensionNIDs(cert.get());
+  EXPECT_EQ(nids.count(NID_basic_constraints), 1u)
+      << "certificate extensions were " << DescribeNIDs(nids);
+  EXPECT_EQ(nids.count(NID_subject_key_identifier), 1u);
+  EXPECT_EQ(nids.count(NID_key_usage), 1u);
+}
+
+TEST_F(ReqTest, ReqextsDoesNotApplyToX509Certificate) {
+  WriteExtensionRoutingConfig(config_path, "x509-reqexts.example.com");
+
+  args_list_t args = {
+      "-x509",     "-new",          "-config",
+      config_path, "-reqexts",      "v3_san_only",
+      "-newkey",   "rsa:2048",      "-nodes",
+      "-keyout",   output_key_path, "-out",
+      cert_path,   "-subj",         "/CN=x509-reqexts.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto cert = LoadPEMCertificate(cert_path);
+  ASSERT_TRUE(cert);
+  std::set<int> nids = CertExtensionNIDs(cert.get());
+  EXPECT_EQ(nids.count(NID_basic_constraints), 1u)
+      << "certificate extensions were " << DescribeNIDs(nids);
+  EXPECT_EQ(nids.count(NID_subject_alt_name), 0u)
+      << "-reqexts leaked a request extension section into the certificate";
+}
+
+// OpenSSL rejects unknown sections even when the option does not apply to the
+// selected output.
+TEST_F(ReqTest, UnknownExtensionSectionIsRejected) {
+  WriteExtensionRoutingConfig(config_path, "unknown.example.com");
+
+  std::vector<args_list_t> testparams = {
+      {"-new", "-config", config_path, "-extensions", "no_such_section",
+       "-newkey", "rsa:2048", "-nodes", "-keyout", output_key_path, "-out",
+       csr_path, "-subj", "/CN=unknown.example.com"},
+      {"-new", "-config", config_path, "-reqexts", "no_such_section", "-newkey",
+       "rsa:2048", "-nodes", "-keyout", output_key_path, "-out", csr_path,
+       "-subj", "/CN=unknown.example.com"},
+      {"-x509", "-new", "-config", config_path, "-extensions",
+       "no_such_section", "-newkey", "rsa:2048", "-nodes", "-keyout",
+       output_key_path, "-out", cert_path, "-subj", "/CN=unknown.example.com"},
+      {"-x509", "-new", "-config", config_path, "-reqexts", "no_such_section",
+       "-newkey", "rsa:2048", "-nodes", "-keyout", output_key_path, "-out",
+       cert_path, "-subj", "/CN=unknown.example.com"},
+  };
+
+  for (const auto &args : testparams) {
+    EXPECT_FALSE(reqTool(args));
+  }
+}
+
+// Without a config, section names fall back to AWS-LC's built-in extensions.
+TEST_F(ReqTest, ReqextsWithoutConfigUsesDefaultExtensions) {
+  args_list_t args = {"-new",     "-reqexts", "v3_csr",  "-newkey",
+                      "rsa:2048", "-nodes",   "-keyout", output_key_path,
+                      "-out",     csr_path,   "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  std::set<int> nids = CSRExtensionNIDs(csr.get());
+  EXPECT_EQ(nids, (std::set<int>{NID_basic_constraints, NID_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(nids);
+}
+
 TEST_F(ReqTest, OutformPEM) {
   args_list_t args = {"-new",     "-newkey", "rsa:2048", "-nodes",
                       "-outform", "PEM",     "-keyout",  output_key_path,
@@ -626,6 +880,40 @@ TEST_F(ReqOptionUsageErrorsTest, InvalidPassinTest) {
   for (const auto &args : testparams) {
     TestOptionUsageErrors(args);
   }
+}
+
+// OpenSSL 3.2 aliases -reqexts and -extensions; AWS-LC retains the separate
+// OpenSSL 1.1.1/3.0 semantics targeted by these comparisons.
+static bool OpenSSLAliasesReqextsToExtensions(const char *openssl_path) {
+  std::string version;
+  const char *env_version = getenv("OPENSSL_TOOL_VERSION");
+  if (env_version != nullptr) {
+    version = env_version;
+  } else {
+    char version_path[PATH_MAX];
+    if (createTempFILEpath(version_path) == 0) {
+      return false;
+    }
+    std::string command =
+        std::string(openssl_path) + " version > " + version_path;
+    if (ExecuteCommand(command) != 0) {
+      RemoveFile(version_path);
+      return false;
+    }
+    std::string output = ReadFileToString(version_path);
+    RemoveFile(version_path);
+    size_t space = output.find(' ');
+    if (space == std::string::npos) {
+      return false;
+    }
+    version = output.substr(space + 1);
+  }
+
+  unsigned major = 0, minor = 0;
+  if (sscanf(version.c_str(), "%u.%u", &major, &minor) != 2) {
+    return false;
+  }
+  return major > 3 || (major == 3 && minor >= 2);
 }
 
 class ReqComparisonTest : public ::testing::Test {
@@ -1453,6 +1741,169 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromEmptyConfig) {
   ASSERT_TRUE(cert_openssl);
   ASSERT_TRUE(
       CompareCertificates(cert_awslc.get(), cert_openssl.get(), nullptr, 365));
+}
+
+// authorityKeyIdentifier turns accidental CSR routing into a hard failure.
+TEST_F(ReqComparisonTest, ExtensionsDoesNotApplyToCSR) {
+  if (OpenSSLAliasesReqextsToExtensions(openssl_executable_path)) {
+    GTEST_SKIP() << "Skipping test: OpenSSL 3.2 and later treat -reqexts as an "
+                    "alias of -extensions, so -extensions is not inert for a "
+                    "CSR there";
+  }
+
+  WriteExtensionRoutingConfig(config_path, "ext-routing.example.com");
+  std::string subject = "/CN=ext-routing.example.com";
+
+  std::string awslc_command =
+      std::string(tool_executable_path) + " req -new " + "-config " +
+      config_path + " -extensions v3_req " +
+      "-newkey rsa:2048 -nodes -keyout " + key_path_awslc + " -out " +
+      csr_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_csr_command =
+      std::string(openssl_executable_path) + " req -new " + "-config " +
+      config_path + " -extensions v3_req " +
+      "-newkey rsa:2048 -nodes -keyout " + key_path_openssl + " -out " +
+      csr_path_openssl + " -subj \"" + subject + "\"";
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_csr_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
+  ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
+
+  // CompareCSRs does not look at extensions, so check them explicitly.
+  std::set<int> nids_awslc = CSRExtensionNIDs(csr_awslc.get());
+  std::set<int> nids_openssl = CSRExtensionNIDs(csr_openssl.get());
+  EXPECT_EQ(nids_awslc, nids_openssl)
+      << "AWS-LC CSR requested " << DescribeNIDs(nids_awslc)
+      << " but OpenSSL requested " << DescribeNIDs(nids_openssl);
+  EXPECT_EQ(nids_awslc, (std::set<int>{NID_subject_alt_name, NID_key_usage,
+                                       NID_ext_key_usage}))
+      << "CSR extensions were " << DescribeNIDs(nids_awslc);
+  EXPECT_EQ(nids_awslc.count(NID_authority_key_identifier), 0u);
+}
+
+TEST_F(ReqComparisonTest, ReqextsSelectsCSRExtensions) {
+  WriteExtensionRoutingConfig(config_path, "reqexts.example.com");
+  std::string subject = "/CN=reqexts.example.com";
+
+  std::string awslc_command =
+      std::string(tool_executable_path) + " req -new " + "-config " +
+      config_path + " -reqexts v3_san_only " +
+      "-newkey rsa:2048 -nodes -keyout " + key_path_awslc + " -out " +
+      csr_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_reqexts_command =
+      std::string(openssl_executable_path) + " req -new " + "-config " +
+      config_path + " -reqexts v3_san_only " +
+      "-newkey rsa:2048 -nodes -keyout " + key_path_openssl + " -out " +
+      csr_path_openssl + " -subj \"" + subject + "\"";
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_reqexts_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
+  ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
+
+  std::set<int> nids_awslc = CSRExtensionNIDs(csr_awslc.get());
+  std::set<int> nids_openssl = CSRExtensionNIDs(csr_openssl.get());
+  EXPECT_EQ(nids_awslc, nids_openssl)
+      << "AWS-LC CSR requested " << DescribeNIDs(nids_awslc)
+      << " but OpenSSL requested " << DescribeNIDs(nids_openssl);
+  EXPECT_EQ(nids_awslc, (std::set<int>{NID_subject_alt_name}))
+      << "CSR extensions were " << DescribeNIDs(nids_awslc);
+}
+
+TEST_F(ReqComparisonTest, ReqextsWithAuthorityKeyIdentifierFails) {
+  WriteExtensionRoutingConfig(config_path, "aki.example.com");
+  std::string subject = "/CN=aki.example.com";
+
+  std::string awslc_command =
+      std::string(tool_executable_path) + " req -new " + "-config " +
+      config_path + " -reqexts v3_req " + "-newkey rsa:2048 -nodes -keyout " +
+      key_path_awslc + " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_aki_command =
+      std::string(openssl_executable_path) + " req -new " + "-config " +
+      config_path + " -reqexts v3_req " + "-newkey rsa:2048 -nodes -keyout " +
+      key_path_openssl + " -out " + csr_path_openssl + " -subj \"" + subject +
+      "\"";
+
+  EXPECT_NE(ExecuteCommand(awslc_command), 0)
+      << "AWS-LC accepted authorityKeyIdentifier in a CSR extension section";
+  EXPECT_NE(ExecuteCommand(openssl_aki_command), 0)
+      << "OpenSSL accepted authorityKeyIdentifier in a CSR extension section";
+}
+
+// Verify the affected CSR-to-certificate flow with strict verification.
+TEST_F(ReqComparisonTest, ExtensionSplitAcrossCSRAndSigning) {
+  if (OpenSSLAliasesReqextsToExtensions(openssl_executable_path)) {
+    GTEST_SKIP() << "Skipping test: OpenSSL 3.2 and later treat -reqexts as an "
+                    "alias of -extensions, so -extensions is not inert for a "
+                    "CSR there";
+  }
+
+  WriteExtensionRoutingConfig(config_path, "split.example.com");
+
+  char ca_cert_path[PATH_MAX];
+  char leaf_cert_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(ca_cert_path), 0u);
+  ASSERT_GT(createTempFILEpath(leaf_cert_path), 0u);
+
+  for (const char *tool : {tool_executable_path, openssl_executable_path}) {
+    SCOPED_TRACE(tool);
+
+    std::string ca_command =
+        std::string(tool) + " req -new -x509 -days 3650 -key " + sign_key_path +
+        " -out " + ca_cert_path + " -config " + config_path +
+        " -extensions v3_ca -subj \"/CN=split-ca\"";
+    ASSERT_EQ(ExecuteCommand(ca_command), 0);
+
+    // -extensions must not override req_extensions while creating the CSR.
+    std::string csr_command = std::string(tool) + " req -new -key " +
+                              sign_key_path + " -out " + csr_path_awslc +
+                              " -config " + config_path +
+                              " -extensions v3_req -subj \"/CN=split-leaf\"";
+    ASSERT_EQ(ExecuteCommand(csr_command), 0)
+        << "-extensions must not be applied to the CSR";
+
+    auto csr = LoadPEMCSR(csr_path_awslc);
+    ASSERT_TRUE(csr);
+    std::set<int> csr_nids = CSRExtensionNIDs(csr.get());
+    EXPECT_EQ(csr_nids, (std::set<int>{NID_subject_alt_name, NID_key_usage,
+                                       NID_ext_key_usage}))
+        << "CSR extensions were " << DescribeNIDs(csr_nids);
+    EXPECT_EQ(csr_nids.count(NID_authority_key_identifier), 0u);
+
+    // The issuer is now available, so authorityKeyIdentifier resolves.
+    std::string sign_command =
+        std::string(tool) + " x509 -req -days 365 -in " + csr_path_awslc +
+        " -extensions v3_req -extfile " + config_path + " -CA " + ca_cert_path +
+        " -CAkey " + sign_key_path + " -out " + leaf_cert_path;
+    ASSERT_EQ(ExecuteCommand(sign_command), 0);
+
+    auto leaf = LoadPEMCertificate(leaf_cert_path);
+    ASSERT_TRUE(leaf);
+    std::set<int> leaf_nids = CertExtensionNIDs(leaf.get());
+    EXPECT_EQ(leaf_nids.count(NID_authority_key_identifier), 1u)
+        << "certificate extensions were " << DescribeNIDs(leaf_nids);
+    EXPECT_EQ(leaf_nids.count(NID_subject_alt_name), 1u);
+
+    std::string verify_command = std::string(tool) + " verify -CAfile " +
+                                 ca_cert_path + " -x509_strict " +
+                                 leaf_cert_path;
+    EXPECT_EQ(ExecuteCommand(verify_command), 0);
+  }
+
+  RemoveFile(ca_cert_path);
+  RemoveFile(leaf_cert_path);
 }
 
 // Test config that does not have req section
