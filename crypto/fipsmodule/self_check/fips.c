@@ -34,4 +34,6 @@ uint32_t FIPS_version(void) {
 #endif
 }
 
+const char *FIPS_module_name(void) { return AWSLC_MODULE_NAME_STRING; }
+
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
