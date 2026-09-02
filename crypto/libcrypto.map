@@ -1426,6 +1426,7 @@ AWS_LC_1.0 {
     FIPS_is_entropy_cpu_jitter;
     FIPS_mode;
     FIPS_mode_set;
+    FIPS_module_name;
     FIPS_service_indicator_after_call;
     FIPS_service_indicator_before_call;
     FIPS_version;
