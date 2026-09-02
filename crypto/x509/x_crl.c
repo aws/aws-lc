@@ -110,6 +110,17 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       crl->idp_flags = 0;
       break;
 
+    case ASN1_OP_D2I_PRE:
+      // |ASN1_OP_D2I_POST| will not clear what it cached, so drop it here or the
+      // previous CRL's IDP and flags apply to the new one.
+      AUTHORITY_KEYID_free(crl->akid);
+      crl->akid = NULL;
+      ISSUING_DIST_POINT_free(crl->idp);
+      crl->idp = NULL;
+      crl->flags = 0;
+      crl->idp_flags = 0;
+      break;
+
     case ASN1_OP_D2I_POST: {
       // The version must be one of v1(0) or v2(1).
       long version = X509_CRL_VERSION_1;

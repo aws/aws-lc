@@ -53,8 +53,27 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       break;
 
     case ASN1_OP_D2I_PRE:
+      // |x509v3_cache_extensions| will not recompute what it cached, so drop all
+      // of it or the previous certificate's properties govern the new one.
+      X509_CERT_AUX_free(ret->aux);
+      ret->aux = NULL;
+      ASN1_OCTET_STRING_free(ret->skid);
+      ret->skid = NULL;
+      AUTHORITY_KEYID_free(ret->akid);
+      ret->akid = NULL;
+      CRL_DIST_POINTS_free(ret->crldp);
+      ret->crldp = NULL;
+      GENERAL_NAMES_free(ret->altname);
+      ret->altname = NULL;
+      NAME_CONSTRAINTS_free(ret->nc);
+      ret->nc = NULL;
       CRYPTO_BUFFER_free(ret->buf);
       ret->buf = NULL;
+      ret->ex_flags = 0;
+      ret->ex_pathlen = -1;
+      ret->ex_kusage = 0;
+      ret->ex_xkusage = 0;
+      ret->ex_nscert = 0;
       break;
 
     case ASN1_OP_D2I_POST: {
