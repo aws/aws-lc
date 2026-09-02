@@ -14,7 +14,7 @@ DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_ove
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
 DEFINE_STATIC_MUTEX(global_entropy_source_lock)
 
-static int entropy_cpu_get_entropy(uint8_t *entropy, size_t entropy_len) {
+static int entropy_cpu_get_entropy_multiple8(uint8_t *entropy, size_t entropy_len) {
 #if defined(OPENSSL_X86_64)
   if (rdrand_multiple8(entropy, entropy_len) == 1) {
     return 1;
@@ -30,13 +30,13 @@ static int entropy_cpu_get_entropy(uint8_t *entropy, size_t entropy_len) {
 static int entropy_cpu_get_prediction_resistance(
   const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
-  return entropy_cpu_get_entropy(pred_resistance, RAND_PRED_RESISTANCE_LEN);
+  return entropy_cpu_get_entropy_multiple8(pred_resistance, RAND_PRED_RESISTANCE_LEN);
 }
 
 static int entropy_cpu_get_extra_entropy(
   const struct entropy_source_t *entropy_source,
   uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
-  return entropy_cpu_get_entropy(extra_entropy, CTR_DRBG_ENTROPY_LEN);
+  return entropy_cpu_get_entropy_multiple8(extra_entropy, CTR_DRBG_ENTROPY_LEN);
 }
 
 static int entropy_os_get_extra_entropy(
@@ -159,11 +159,33 @@ struct entropy_source_t * get_entropy_source(void) {
   return entropy_source;
 }
 
+// A read of the rndr system register can fail transiently [1]: if a random
+// number cannot be returned "in a reasonable period of time", PSTATE.NZCV is
+// set to 0b0100 and the returned value is 0. This has been observed in the wild
+// per [2].
+// The Arm architecture does not specify a failure probability. Therefore, use
+// the same retry bound as for rdrand.
+// [1] https://developer.arm.com/documentation/ddi0601/2024-09/AArch64-Registers/RNDR--Random-Number
+// [2] https://github.com/aws/aws-lc/issues/3453
+#define RNDR_MAX_RETRIES 10
+OPENSSL_STATIC_ASSERT(RNDR_MAX_RETRIES > 0, rndr_max_retries_must_be_positive)
+
+// rndr_multiple8 should only be called if |have_hw_rng_aarch64| returned true.
 int rndr_multiple8(uint8_t *buf, const size_t len) {
   if (len == 0 || ((len & 0x7) != 0)) {
     return 0;
   }
-  return CRYPTO_rndr_multiple8(buf, len);
+
+  // This retries all rndr reads for the requested |len|.
+  // |CRYPTO_rndr_multiple8| will typically execute rndr multiple times. But
+  // it's easier to implement on the C-level and it should be a very rare event.
+  for (size_t tries = 0; tries < RNDR_MAX_RETRIES; tries++) {
+    if (CRYPTO_rndr_multiple8(buf, len) == 1) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 int have_hw_rng_aarch64_for_testing(void) {
