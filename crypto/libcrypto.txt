@@ -1419,6 +1419,7 @@ EXTENDED_KEY_USAGE_new AWS_LC_1.0 PUBLIC
 FIPS_is_entropy_cpu_jitter AWS_LC_1.0 PUBLIC
 FIPS_mode AWS_LC_1.0 PUBLIC
 FIPS_mode_set AWS_LC_1.0 PUBLIC
+FIPS_module_name AWS_LC_1.0 PUBLIC
 FIPS_service_indicator_after_call AWS_LC_1.0 PUBLIC
 FIPS_service_indicator_before_call AWS_LC_1.0 PUBLIC
 FIPS_version AWS_LC_1.0 PUBLIC
