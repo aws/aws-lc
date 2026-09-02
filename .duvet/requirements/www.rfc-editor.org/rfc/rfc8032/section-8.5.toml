@@ -1,0 +1,44 @@
+target = "https://www.rfc-editor.org/rfc/rfc8032#section-8.5"
+
+# Choice of Signature Primitive
+#
+#    Ed25519 and Ed25519ph have a nominal strength of 128 bits, whereas
+#    Ed448 and Ed448ph have the strength of 224.  While the lower strength
+#    is sufficient for the foreseeable future, the higher level brings
+#    some defense against possible future cryptographic advances.  Both
+#    are demolished by quantum computers just about the same.
+# 
+#    The Ed25519ph and Ed448ph variants are prehashed.  This is mainly
+#    useful for interoperation with legacy APIs, since in most of the
+#    cases, either the amount of data signed is not large or the protocol
+#    is in the position to do digesting in ways better than just
+#    prehashing (e.g., tree hashing or splitting the data).  The
+# 
+#    prehashing also makes the functions greatly more vulnerable to
+#    weaknesses in hash functions used.  These variants SHOULD NOT be
+#    used.
+# 
+#    Ed25519ctx and Ed448 have contexts.  However, this is balanced by the
+#    problems noted in Section 8.3 about contexts.
+# 
+#    On the implementation front, Ed25519 is widely implemented and has
+#    many high-quality implementations.  The others have much worse
+#    support.
+# 
+#    In summary, if a high 128-bit security level is enough, use of
+#    Ed25519 is RECOMMENDED; otherwise, Ed448 is RECOMMENDED.
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+These variants SHOULD NOT be
+used.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+In summary, if a high 128-bit security level is enough, use of
+Ed25519 is RECOMMENDED; otherwise, Ed448 is RECOMMENDED.
+'''
+
