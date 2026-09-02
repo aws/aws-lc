@@ -262,6 +262,8 @@ function sde_getenforce_check {
 
 function build_openssl {
     branch=$1
+    # If 1, leaves the checkout in place for callers that need OpenSSL source.
+    keep_source=${2:-0}
     echo "building OpenSSL ${branch}"
     git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
     pushd "${scratch_folder}/openssl-${branch}"
@@ -274,11 +276,13 @@ function build_openssl {
     cp "${scratch_folder}/openssl-${branch}/apps/openssl.cnf" "${install_dir}/openssl-${branch}/openssl.cnf"
 
     popd
-    rm -rf "${scratch_folder}/openssl-${branch}"
+    [[ "${keep_source}" == "1" ]] || rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
 function build_openssl_no_debug {
     branch=$1
+    # If 1, leaves the checkout in place for callers that need OpenSSL source.
+    keep_source=${2:-0}
     echo "building OpenSSL ${branch}"
     git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
     pushd "${scratch_folder}/openssl-${branch}"
@@ -287,7 +291,7 @@ function build_openssl_no_debug {
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
     popd
-    rm -rf "${scratch_folder}/openssl-${branch}"
+    [[ "${keep_source}" == "1" ]] || rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
 print_executable_information "cmake" "--version" "CMake version"
