@@ -15,11 +15,14 @@
 .type	CRYPTO_rndr_multiple8,%function
 .align	4
 CRYPTO_rndr_multiple8:
-	cbz	x1, .Lrndr_multiple8_error  // len = 0 is not supported
+	cbz	x1, .Lrndr_multiple8_error      // len = 0 is not supported
 
 .Lrndr_multiple8_loop:
+  // A read of rndr sets PSTATE.NZCV to 0b0100 if a random number could not be
+  // returned, and to 0b0000 otherwise. The returned value is 0 on failure, but
+  // a genuine random number can be 0 as well. Hence, use the flags.
 	mrs	x2, s3_3_c2_c4_0             // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
-	cbz	x2, .Lrndr_multiple8_error   // Check if rndr failed
+	b.eq	.Lrndr_multiple8_error           // Check if rndr failed
 
 	str	x2, [x0], #8               // Copy 8 bytes to *out and increment pointer by 8
 	sub	x1, x1, #8
