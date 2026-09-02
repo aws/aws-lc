@@ -30,12 +30,8 @@
 
 struct awslc_prov_ctx_st {
   const OSSL_CORE_HANDLE *handle;
-  OSSL_LIB_CTX *libctx;
+  OPENSSL_CORE_CTX *corectx;
 };
-
-OSSL_LIB_CTX *awslc_prov_ctx_libctx(const AWSLC_PROV_CTX *ctx) {
-  return ctx->libctx;
-}
 
 const OSSL_CORE_HANDLE *awslc_prov_ctx_handle(const AWSLC_PROV_CTX *ctx) {
   return ctx->handle;
@@ -137,7 +133,7 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
     return 0;
   }
   ctx->handle = handle;
-  ctx->libctx = (OSSL_LIB_CTX *)c_get_libctx(handle);
+  ctx->corectx = c_get_libctx(handle);
 
   *provctx = ctx;
   *out = awslc_prov_dispatch_table;

@@ -19,10 +19,6 @@ extern "C" {
 // AWSLC_PROV_CTX is the per-load provider context.
 typedef struct awslc_prov_ctx_st AWSLC_PROV_CTX;
 
-// The libctx the core handed us at init. Stored so operations that need a
-// library context use the same one the core called us with.
-OSSL_LIB_CTX *awslc_prov_ctx_libctx(const AWSLC_PROV_CTX *ctx);
-
 // The core handle for this load, used when raising errors back to the core.
 const OSSL_CORE_HANDLE *awslc_prov_ctx_handle(const AWSLC_PROV_CTX *ctx);
 

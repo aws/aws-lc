@@ -10,6 +10,7 @@
 #include <openssl/core_names.h>
 #include <openssl/evp.h>
 #include <openssl/params.h>
+#include <openssl/provider.h>
 
 #include <string>
 
