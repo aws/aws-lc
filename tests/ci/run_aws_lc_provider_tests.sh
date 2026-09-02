@@ -2,11 +2,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# Build the AWS-LC OpenSSL provider in its shipping configuration and run its
-# two unit suites. Linux only, deliberately: ENABLE_DIST_PKG is a FATAL_ERROR
-# elsewhere, and without it the two-libcrypto linkage checks below have nothing
-# to assert against, so a green run on another platform would claim more than it
-# proved. Other platforms are for development; see provider/README.md.
+# Build the AWS-LC OpenSSL provider in its shipping configuration, run its two
+# unit suites, and drive OpenSSL's own EVP vectors through it. Linux only:
+# ENABLE_DIST_PKG is a FATAL_ERROR elsewhere, so the linkage checks below would
+# have nothing to assert against.
 #
 # The provider is off by default and needs OpenSSL's provider headers, which
 # AWS-LC's own tree does not carry, so this script builds the pinned OpenSSL from
@@ -49,7 +48,6 @@ source tests/ci/common_posix_setup.sh
 # earlier 3.x lacks provider interface the front side depends on.
 openssl_provider_tag='openssl-3.5.5'
 
-# build_openssl_no_debug reads these three as globals, so the names are its.
 openssl_url='https://github.com/openssl/openssl.git'
 scratch_folder="${SYS_ROOT}/awslc-provider-scratch"
 install_dir="${scratch_folder}/openssl_install_dir"
@@ -65,10 +63,10 @@ banner "Building OpenSSL ${openssl_provider_tag}"
 mkdir -p "${scratch_folder}"
 rm -rf "${scratch_folder:?}"/*
 
-# Installs into ${install_dir}/openssl-${1} and deletes its source tree after.
-build_openssl_no_debug "${openssl_provider_tag}"
+build_openssl_no_debug "${openssl_provider_tag}" 1
 
 OPENSSL_ROOT="${install_dir}/openssl-${openssl_provider_tag}"
+OPENSSL_SRC="${scratch_folder}/openssl-${openssl_provider_tag}"
 
 # The provider headers are the actual dependency, and an install can carry a
 # libcrypto without them. Checked here so a bad prefix fails with its own message
@@ -78,6 +76,7 @@ OPENSSL_ROOT="${install_dir}/openssl-${openssl_provider_tag}"
 
 echo ""
 echo "OpenSSL prefix: ${OPENSSL_ROOT}"
+echo "OpenSSL source: ${OPENSSL_SRC}"
 
 # --------------------------------------------------------------------------
 # 2. Build AWS-LC with the provider
@@ -189,9 +188,33 @@ for binary in "${TEST_BINARIES[@]}"; do
   "${binary}" || fail "$(basename "${binary}") reported failures"
 done
 
-banner "Provider build and unit tests passed"
+# --------------------------------------------------------------------------
+# 6. OpenSSL's own EVP vectors
+# --------------------------------------------------------------------------
+#
+# OpenSSL's own known-answer corpus, driven through OpenSSL's own evp_test over
+# the real 3.x fetch path. Because the provider is a preference, a fetch it does
+# not serve falls through to the default provider and still produces the known
+# answer. So these counts do not say which provider served a case; that is the
+# unit suites' job, and they run above.
 
-# Say plainly what a green run here covers, so it is not mistaken for more.
-echo "Covered: the provider builds, loads, and its two unit suites pass, and its"
-echo "         AWS-LC references match their registered version nodes."
-echo ""
+banner "OpenSSL EVP vectors"
+
+VECTOR_RUNNER="${SRC_ROOT}/provider/test/run_evp_vectors.sh"
+# Teed so the checks below can read it while CI still sees it stream. Created up
+# front so a tee that cannot open its file is not reported as a vector failure.
+VECTOR_LOG="${BUILD_ROOT}/evp_vectors.log"
+: > "${VECTOR_LOG}" || fail "cannot write the vector log at ${VECTOR_LOG}"
+
+bash "${VECTOR_RUNNER}" \
+  "${OPENSSL_SRC}" "${openssl_provider_tag}" "${PROVIDER_DIR}" \
+  2>&1 | tee "${VECTOR_LOG}" \
+  || fail "the EVP vector gate failed"
+
+# Exit 0 alone is not evidence the runner asserted anything; one that returned
+# early would look identical. Its summary line is printed last, so requiring it
+# distinguishes a run that finished from one that bailed.
+grep -q '^files run: ' "${VECTOR_LOG}" \
+  || fail "the EVP vector gate exited 0 without reporting a summary; it did not run to completion"
+
+banner "Provider build, unit tests, and EVP vectors passed"
