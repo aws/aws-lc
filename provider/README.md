@@ -5,7 +5,7 @@ cryptography of its own. It answers OpenSSL's algorithm fetches by delegating ea
 AWS-LC, so an application keeps calling the OpenSSL APIs while the cryptography underneath it
 comes from AWS-LC, with no change to the application.
 
-Algorithms which it currently serves is in `ALGORITHM_SUPPORT.md`.
+The algorithms it currently serves are listed in `ALGORITHM_SUPPORT.md`.
 
 ## Building
 
@@ -20,8 +20,8 @@ cd openssl
 ./config --prefix="${OPENSSL_ROOT}" --openssldir="${OPENSSL_ROOT}"
 make && make install_sw
 
-# Build AWS-LC and the provider. The provider uses shared libraries and the
-# upstream OpenSSL build for header files and testing.
+# Build AWS-LC and the provider. BUILD_SHARED_LIBS=ON is required. The provider uses
+# shared libraries and the upstream OpenSSL build for header files and testing.
 cd aws-lc
 cmake -GNinja -Bbuild -DBUILD_SHARED_LIBS=ON \
   -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
@@ -34,7 +34,7 @@ cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
 ```
 
-The provider artifact is `build/provider/awslc.so`.
+The provider artifact is `build/provider/awslc.so` (`awslc.dylib` on macOS).
 
 ## Testing
 
@@ -60,15 +60,41 @@ testable through EVP belongs in the frontend binary instead.
 
 ### Installing the module
 
-OpenSSL loads a provider by bare name from its modules directory, appending the platform's
-suffix. Copy the built module there:
+The module links AWS-LC's libcrypto rather than containing it, so installing it means installing
+both. This needs the `ENABLE_DIST_PKG` build, whose suffixed soname and symbol versioning are what
+keep the module's AWS-LC references off OpenSSL's libcrypto. Linux only; elsewhere, run out of the
+build tree.
 
 ```bash
-# Where the OpenSSL you are configuring looks for modules.
-MODULES_DIR="$(openssl version -m | sed 's/^MODULESDIR: //; s/"//g')"
+# Install AWS-LC, then put its library directory on the loader path.
+export AWSLC_ROOT="${PWD}/build/install"
+cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}" \
+  -DCMAKE_INSTALL_PREFIX="${AWSLC_ROOT}"
+ninja -C build install
+export LD_LIBRARY_PATH="${AWSLC_ROOT}/lib64:${AWSLC_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+```
+
+OpenSSL loads a provider by bare name from its modules directory, appending the platform's suffix.
+The install above does not carry the module, so copy it there:
+
+```bash
+# The OpenSSL being configured, not whichever one is on PATH.
+MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //; s/"//g')"
 
 cp build/provider/awslc.so "${MODULES_DIR}/"
 ```
+
+`LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the copy.
+Check what the module resolves to:
+
+```console
+$ ldd "${MODULES_DIR}/awslc.so" | grep crypto
+	libcrypto-awslc.so.1 => /path/to/aws-lc/build/install/lib64/libcrypto-awslc.so.1 (0x...)
+```
+
+`libcrypto.so.3` there means the module is bound to OpenSSL rather than AWS-LC.
 
 ### Activating it by config file
 
@@ -127,7 +153,7 @@ EVP_MD *md = EVP_MD_fetch(libctx, "SHA2-256", "provider=awslc");
 
 ### Asserting that AWS-LC is what served the operation
 
-To verify which provider served this operation.
+To verify which provider served an operation:
 
 ```c
 EVP_MD *md = EVP_MD_fetch(libctx, "SHA2-256", "?provider=awslc");
@@ -149,7 +175,7 @@ algorithm count from what does not.
 
 | Path | Sees | Contents |
 |---|---|---|
-| `internal/backend.h` | neither | The only header file that can be included in any source file. Interfaces are plain C-types only. |
+| `internal/backend.h` | neither | The one header either side may include. The contract between them, in plain C types only. |
 | `internal/backend/<operation>.h` | neither | Per-operation backend entry points, in plain C types |
 | `internal/frontend/<operation>.h` | OpenSSL | Per-operation dispatch tables, for `registry.c` |
 | `frontend/provider.c` | OpenSSL | The entry point. Implements provider-level dispatch table functions. |
