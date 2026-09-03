@@ -12,6 +12,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/obj.h>
+#include <openssl/rsa.h>
 
 #include "internal.h"
 
@@ -160,9 +161,9 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   }
 
   EVP_PKEY *pk = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
-  if (saltlen == -1) {
+  if (saltlen == RSA_PSS_SALTLEN_DIGEST) {
     saltlen = EVP_MD_size(sigmd);
-  } else if (saltlen == -2) {
+  } else if (saltlen == RSA_PSS_SALTLEN_AUTO) {
     // TODO(davidben): Forbid this mode. The world has largely standardized on
     // salt length matching hash length.
     saltlen = EVP_PKEY_size(pk) - EVP_MD_size(sigmd) - 2;
@@ -170,7 +171,8 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
       saltlen--;
     }
   } else if (saltlen != (int)EVP_MD_size(sigmd)) {
-    // We only allow salt length matching hash length and, for now, the -2 case.
+    // We only allow salt length matching hash length and, for now, the
+    // |RSA_PSS_SALTLEN_AUTO| case.
     OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     return 0;
   }

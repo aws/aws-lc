@@ -2385,6 +2385,81 @@ TEST_P(EVPRsaPssBadKeyTest, InvalidSaltLength) {
 INSTANTIATE_TEST_SUITE_P(All, EVPRsaPssBadKeyTest,
                          testing::ValuesIn(kBadPssKeyTestInputs));
 
+// |kExampleRSAPSSKeyPKCS8| omits saltLength, so the RFC 4055 default of 20 is
+// the restricted minimum.
+TEST(EVPExtraTest, RestrictedPssAutoSaltlenHonorsMinimum) {
+  const uint8_t *p = kExampleRSAPSSKeyPKCS8;
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      d2i_AutoPrivateKey(nullptr, &p, sizeof(kExampleRSAPSSKeyPKCS8)));
+  ASSERT_TRUE(pkey);
+  ASSERT_EQ(EVP_PKEY_RSA_PSS, EVP_PKEY_id(pkey.get()));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+
+  int saltlen = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx.get(), &saltlen));
+  EXPECT_EQ(20, saltlen);
+
+  EXPECT_FALSE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), 19));
+  ERR_clear_error();
+  EXPECT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), 20));
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), RSA_PSS_SALTLEN_DIGEST));
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), RSA_PSS_SALTLEN_AUTO));
+
+  // |EVP_PKEY_CTX_dup| must keep the restriction.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx_copy(EVP_PKEY_CTX_dup(ctx.get()));
+  ASSERT_TRUE(ctx_copy);
+  EXPECT_FALSE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx_copy.get(), 19));
+  ERR_clear_error();
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx_copy.get(), RSA_PSS_SALTLEN_AUTO));
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(rsa);
+  static const uint8_t kMsg[] = {'t', 'e', 's', 't'};
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len = 0;
+  ASSERT_TRUE(EVP_Digest(kMsg, sizeof(kMsg), digest, &digest_len, EVP_sha256(),
+                         nullptr));
+
+  // Sign through |rsa| directly, which is not subject to the restriction, so
+  // that we can produce salt lengths the restricted key would never pick.
+  auto sign_with_saltlen = [&](int salt_len) {
+    std::vector<uint8_t> sig(RSA_size(rsa.get()));
+    size_t sig_len = sig.size();
+    EXPECT_TRUE(RSA_sign_pss_mgf1(rsa.get(), &sig_len, sig.data(), sig.size(),
+                                  digest, digest_len, EVP_sha256(),
+                                  EVP_sha256(), salt_len));
+    sig.resize(sig_len);
+    return sig;
+  };
+
+  // |RSA_PSS_SALTLEN_AUTO| recovers the salt length, leaving the restricted
+  // minimum as its only constraint. 24 is included so that a check testing for
+  // equality with the minimum, rather than a floor, would still fail.
+  for (int salt_len : {0, 1, 19}) {
+    SCOPED_TRACE(salt_len);
+    const std::vector<uint8_t> sig = sign_with_saltlen(salt_len);
+    EXPECT_FALSE(
+        EVP_PKEY_verify(ctx.get(), sig.data(), sig.size(), digest, digest_len));
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_PKEY_verify(ctx_copy.get(), sig.data(), sig.size(), digest,
+                                 digest_len));
+    ERR_clear_error();
+  }
+  for (int salt_len : {20, 24}) {
+    SCOPED_TRACE(salt_len);
+    const std::vector<uint8_t> sig = sign_with_saltlen(salt_len);
+    EXPECT_TRUE(
+        EVP_PKEY_verify(ctx.get(), sig.data(), sig.size(), digest, digest_len));
+    EXPECT_TRUE(EVP_PKEY_verify(ctx_copy.get(), sig.data(), sig.size(), digest,
+                                digest_len));
+  }
+}
 
 // START KEM TESTS
 
