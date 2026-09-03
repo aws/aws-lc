@@ -3,6 +3,10 @@
 
 // Back side: AWS-LC's SHA-2. Implementations are written out per algorithm so
 // each AWS-LC type, constant, and function binding remains visible to review.
+//
+// |out_size| on each final is the caller's buffer capacity, which may exceed the
+// digest length. AWS-LC's SHA*_Final take no size and document that |out| must
+// have room for the whole digest, so a short buffer must not reach them at all.
 
 #include <openssl/sha.h>
 
@@ -16,14 +20,22 @@ size_t awslc_prov_sha224_digest_size(void) { return SHA224_DIGEST_LENGTH; }
 
 size_t awslc_prov_sha224_block_size(void) { return SHA224_CBLOCK; }
 
-int awslc_prov_sha224_init(void *ctx) { return SHA224_Init((SHA256_CTX *)ctx); }
+int awslc_prov_sha224_init(void *ctx) {
+  if (ctx == NULL) {
+    return 0;
+  }
+  return SHA224_Init((SHA256_CTX *)ctx);
+}
 
 int awslc_prov_sha224_update(void *ctx, const void *data, size_t len) {
+  if (ctx == NULL || (data == NULL && len != 0)) {
+    return 0;
+  }
   return SHA224_Update((SHA256_CTX *)ctx, data, len);
 }
 
 int awslc_prov_sha224_final(void *ctx, unsigned char *out, size_t out_size) {
-  if (out_size < SHA224_DIGEST_LENGTH) {
+  if (ctx == NULL || out == NULL || out_size < SHA224_DIGEST_LENGTH) {
     return 0;
   }
   return SHA224_Final(out, (SHA256_CTX *)ctx);
@@ -60,14 +72,7 @@ int awslc_prov_sha256_update(void *ctx, const void *data, size_t len) {
 }
 
 int awslc_prov_sha256_final(void *ctx, unsigned char *out, size_t out_size) {
-  if (ctx == NULL || out == NULL) {
-    return 0;
-  }
-  // SHA256_Final takes no output size and documents that |out| must have room
-  // for SHA256_DIGEST_LENGTH bytes. OpenSSL's digest final slot passes the
-  // buffer size and expects a clean failure when it is too small, so a short
-  // buffer must not reach SHA256_Final at all.
-  if (out_size < SHA256_DIGEST_LENGTH) {
+  if (ctx == NULL || out == NULL || out_size < SHA256_DIGEST_LENGTH) {
     return 0;
   }
   return SHA256_Final(out, (SHA256_CTX *)ctx);
