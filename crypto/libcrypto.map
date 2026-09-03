@@ -1480,6 +1480,7 @@ AWS_LC_1.0 {
     KBKDF_ctr_hmac;
     Keccak1600_Squeeze;
     Keccak256;
+    KeccakSponge_AbsorbFinal;
     MD4;
     MD4_Final;
     MD4_Init;
@@ -2068,7 +2069,9 @@ AWS_LC_1.0 {
     SHA3_256;
     SHA3_384;
     SHA3_512;
+    SHA3_Final;
     SHA3_Init;
+    SHA3_Update;
     SHA512;
     SHA512_224;
     SHA512_224_Final;
@@ -2094,6 +2097,10 @@ AWS_LC_1.0 {
     SHAKE128_Squeezeblocks_x4;
     SHAKE256;
     SHAKE256_x4;
+    SHAKE_Absorb;
+    SHAKE_Final;
+    SHAKE_Init;
+    SHAKE_Squeeze;
     SIPHASH_24;
     SMIME_read_PKCS7;
     SMIME_write_PKCS7;
