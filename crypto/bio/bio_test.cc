@@ -13,7 +13,7 @@
 #include <openssl/mem.h>
 
 #include <array>
-#include <limits.h>
+#include <climits>
 
 #include "../internal.h"
 #include "../test/file_util.h"
