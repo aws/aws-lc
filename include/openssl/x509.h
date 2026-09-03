@@ -322,30 +322,35 @@ OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
 // |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
 
-// X509_get0_extensions returns |x509|'s extension list, or NULL if |x509| omits
-// it.
+// X509_get0_extensions returns |x509|'s extension list, or NULL if |x509|
+// omits it or decoding the extensions fails. Decode failures update the error
+// queue.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
     const X509 *x509);
 
-// X509_get_ext_count returns the number of extensions in |x|.
+// X509_get_ext_count returns the number of extensions in |x|, or -1 on error.
 OPENSSL_EXPORT int X509_get_ext_count(const X509 *x);
 
 // X509_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches for
-// extensions in |x|.
+// extensions in |x|. If decoding the extensions fails, it returns -1 and
+// updates the error queue.
 OPENSSL_EXPORT int X509_get_ext_by_NID(const X509 *x, int nid, int lastpos);
 
 // X509_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches for
-// extensions in |x|.
+// extensions in |x|. If decoding the extensions fails, it returns -1 and
+// updates the error queue.
 OPENSSL_EXPORT int X509_get_ext_by_OBJ(const X509 *x, const ASN1_OBJECT *obj,
                                        int lastpos);
 
 // X509_get_ext_by_critical behaves like |X509v3_get_ext_by_critical| but
-// searches for extensions in |x|.
+// searches for extensions in |x|. If decoding the extensions fails, it returns
+// -1 and updates the error queue.
 OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
                                             int lastpos);
 
 // X509_get_ext returns the extension in |x| at index |loc|, or NULL if |loc| is
-// out of bounds. This function returns a non-const pointer for OpenSSL
+// out of bounds or decoding the extensions fails. Decode failures update the
+// error queue. This function returns a non-const pointer for OpenSSL
 // compatibility, but callers should not mutate the result.
 OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
 

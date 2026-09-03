@@ -6,8 +6,22 @@
 #include <openssl/x509.h>
 
 #include "../crypto/x509/internal.h"
+#include "../crypto/x509/x509_view.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+  AWSLC_X509_CERTIFICATE_VIEW view;
+  OPENSSL_memset(&view, 0, sizeof(view));
+  if (x509_parse_der_view(buf, len, /*exact=*/1, &view) ==
+      AWSLC_X509_PARSE_OK) {
+    const uint8_t *legacy_cursor = buf;
+    bssl::UniquePtr<X509> legacy(reinterpret_cast<X509 *>(
+        ASN1_item_d2i(nullptr, &legacy_cursor, len, ASN1_ITEM_rptr(X509))));
+    // View-backed objects defer these same legacy decodes. A view parse must
+    // therefore never accept an input that the legacy object model rejects.
+    BSSL_CHECK(legacy != nullptr);
+    BSSL_CHECK(legacy_cursor == buf + len);
+  }
+
   bssl::UniquePtr<X509> x509(d2i_X509(nullptr, &buf, len));
   if (x509 != nullptr) {
     // Extract the public key.

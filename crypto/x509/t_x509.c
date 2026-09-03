@@ -37,6 +37,9 @@ int X509_print(BIO *bp, X509 *x) {
 
 int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
                   unsigned long cflag) {
+  if (!x509_ensure_legacy(x)) {
+    return 0;
+  }
   char mlch = ' ';
   int nmindent = 0;
   if ((nmflags & XN_FLAG_SEP_MASK) == XN_FLAG_SEP_MULTILINE) {

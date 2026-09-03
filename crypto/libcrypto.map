@@ -3056,6 +3056,9 @@ AWS_LC_1.0 {
     validate_cidr_mask;
     vm_ube_fallback_get_seed;
     voprf_pst1_sign_with_proof_scalar_for_testing;
+    x509_parse_der_view;
+    x509_view_fallback_count_for_testing;
+    x509_view_reset_fallback_counts_for_testing;
     x509v3_bytes_to_hex;
     x509v3_cache_extensions;
     x86_64_assembly_implementation_FOR_TESTING;

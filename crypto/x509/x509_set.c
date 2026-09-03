@@ -12,6 +12,13 @@
 
 
 long X509_get_version(const X509 *x509) {
+  long view_version = 0;
+  if (x509_get_view_version(x509, &view_version)) {
+    return view_version;
+  }
+  if (!x509_ensure_legacy(x509)) {
+    return X509_VERSION_1;
+  }
   // The default version is v1(0).
   if (x509->cert_info->version == NULL) {
     return X509_VERSION_1;
@@ -20,7 +27,7 @@ long X509_get_version(const X509 *x509) {
 }
 
 int X509_set_version(X509 *x, long version) {
-  if (x == NULL) {
+  if (x == NULL || !x509_ensure_legacy(x)) {
     return 0;
   }
 
@@ -52,7 +59,7 @@ int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
   }
 
   ASN1_INTEGER *in;
-  if (x == NULL) {
+  if (x == NULL || !x509_ensure_legacy(x)) {
     return 0;
   }
   in = x->cert_info->serialNumber;
@@ -67,14 +74,14 @@ int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
 }
 
 int X509_set_issuer_name(X509 *x, X509_NAME *name) {
-  if ((x == NULL) || (x->cert_info == NULL)) {
+  if (x == NULL || !x509_ensure_legacy(x) || x->cert_info == NULL) {
     return 0;
   }
   return (X509_NAME_set(&x->cert_info->issuer, name));
 }
 
 int X509_set_subject_name(X509 *x, X509_NAME *name) {
-  if ((x == NULL) || (x->cert_info == NULL)) {
+  if (x == NULL || !x509_ensure_legacy(x) || x->cert_info == NULL) {
     return 0;
   }
   return (X509_NAME_set(&x->cert_info->subject, name));
@@ -83,7 +90,7 @@ int X509_set_subject_name(X509 *x, X509_NAME *name) {
 int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if ((x == NULL) || (x->cert_info->validity == NULL)) {
+  if (x == NULL || !x509_ensure_legacy(x) || x->cert_info->validity == NULL) {
     return 0;
   }
   in = x->cert_info->validity->notBefore;
@@ -102,27 +109,30 @@ int X509_set_notBefore(X509 *x, const ASN1_TIME *tm) {
 }
 
 const ASN1_TIME *X509_get0_notBefore(const X509 *x) {
-  return x->cert_info->validity->notBefore;
+  X509_VAL *validity = x509_get_cached_validity(x);
+  return validity == NULL ? NULL : validity->notBefore;
 }
 
 ASN1_TIME *X509_getm_notBefore(X509 *x) {
   // Note this function takes a const |X509| pointer in OpenSSL. We require
   // non-const as this allows mutating |x|. If it comes up for compatibility,
   // we can relax this.
-  return x->cert_info->validity->notBefore;
+  X509_VAL *validity = x509_get_cached_validity(x);
+  return validity == NULL ? NULL : validity->notBefore;
 }
 
 ASN1_TIME *X509_get_notBefore(const X509 *x509) {
   // In OpenSSL, this function is an alias for |X509_getm_notBefore|, but our
   // |X509_getm_notBefore| is const-correct. |X509_get_notBefore| was
   // originally a macro, so it needs to capture both get0 and getm use cases.
-  return x509->cert_info->validity->notBefore;
+  X509_VAL *validity = x509_get_cached_validity(x509);
+  return validity == NULL ? NULL : validity->notBefore;
 }
 
 int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if ((x == NULL) || (x->cert_info->validity == NULL)) {
+  if (x == NULL || !x509_ensure_legacy(x) || x->cert_info->validity == NULL) {
     return 0;
   }
   in = x->cert_info->validity->notAfter;
@@ -141,25 +151,37 @@ int X509_set_notAfter(X509 *x, const ASN1_TIME *tm) {
 }
 
 const ASN1_TIME *X509_get0_notAfter(const X509 *x) {
-  return x->cert_info->validity->notAfter;
+  X509_VAL *validity = x509_get_cached_validity(x);
+  return validity == NULL ? NULL : validity->notAfter;
 }
 
 ASN1_TIME *X509_getm_notAfter(X509 *x) {
   // Note this function takes a const |X509| pointer in OpenSSL. We require
   // non-const as this allows mutating |x|. If it comes up for compatibility,
   // we can relax this.
-  return x->cert_info->validity->notAfter;
+  X509_VAL *validity = x509_get_cached_validity(x);
+  return validity == NULL ? NULL : validity->notAfter;
 }
 
 ASN1_TIME *X509_get_notAfter(const X509 *x509) {
   // In OpenSSL, this function is an alias for |X509_getm_notAfter|, but our
   // |X509_getm_notAfter| is const-correct. |X509_get_notAfter| was
   // originally a macro, so it needs to capture both get0 and getm use cases.
-  return x509->cert_info->validity->notAfter;
+  X509_VAL *validity = x509_get_cached_validity(x509);
+  return validity == NULL ? NULL : validity->notAfter;
 }
 
 void X509_get0_uids(const X509 *x509, const ASN1_BIT_STRING **out_issuer_uid,
                     const ASN1_BIT_STRING **out_subject_uid) {
+  if (!x509_ensure_legacy(x509)) {
+    if (out_issuer_uid != NULL) {
+      *out_issuer_uid = NULL;
+    }
+    if (out_subject_uid != NULL) {
+      *out_subject_uid = NULL;
+    }
+    return;
+  }
   if (out_issuer_uid != NULL) {
     *out_issuer_uid = x509->cert_info->issuerUID;
   }
@@ -169,22 +191,22 @@ void X509_get0_uids(const X509 *x509, const ASN1_BIT_STRING **out_issuer_uid,
 }
 
 int X509_set_pubkey(X509 *x, EVP_PKEY *pkey) {
-  if ((x == NULL) || (x->cert_info == NULL)) {
+  if (x == NULL || !x509_ensure_legacy(x) || x->cert_info == NULL) {
     return 0;
   }
   return (X509_PUBKEY_set(&(x->cert_info->key), pkey));
 }
 
 const STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x) {
-  return x->cert_info->extensions;
+  return x509_get_cached_extensions(x);
 }
 
 const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x) {
-  return x->cert_info->signature;
+  return x509_get_cached_tbs_signature_algorithm(x);
 }
 
 X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509) {
-  return x509->cert_info->key;
+  return x509_get_cached_pubkey(x509);
 }
 
 static int X509_SIG_INFO_get(const X509_SIG_INFO *sig_info, int *digest_nid,
@@ -225,6 +247,13 @@ int X509_get_signature_info(X509 *x509, int *digest_nid, int *pubkey_nid,
 }
 
 int x509_init_signature_info(X509 *x509) {
+  X509_ALGOR *signature_algorithm = x509_get_cached_signature_algorithm(x509);
+  return signature_algorithm != NULL &&
+         x509_init_signature_info_with_alg(x509, signature_algorithm);
+}
+
+int x509_init_signature_info_with_alg(X509 *x509,
+                                      const X509_ALGOR *signature_algorithm) {
   int pubkey_nid, digest_nid;
   const EVP_MD *md;
 
@@ -232,8 +261,8 @@ int x509_init_signature_info(X509 *x509) {
   x509->sig_info.pubkey_nid = NID_undef;
   x509->sig_info.sec_bits = -1;
   x509->sig_info.flags = 0;
-  if (!OBJ_find_sigid_algs(OBJ_obj2nid(x509->sig_alg->algorithm), &digest_nid,
-                           &pubkey_nid) ||
+  if (!OBJ_find_sigid_algs(OBJ_obj2nid(signature_algorithm->algorithm),
+                           &digest_nid, &pubkey_nid) ||
       pubkey_nid == NID_undef) {
     OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_SIGID_ALGS);
     return 0;
