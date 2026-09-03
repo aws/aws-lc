@@ -14,6 +14,8 @@
 // After including this header (on Linux), OPENSSL_HAS_GETAUXVAL is defined
 // and getauxval(type) is callable -- regardless of whether <sys/auxv.h> was
 // available -- so call sites do not need to special-case the libc.
+// AT_NULL, AT_HWCAP, AT_HWCAP2, and AT_EXECFN are also defined when the
+// system header omits them (for example, glibc < 2.18 lacks AT_HWCAP2).
 
 #if defined(OPENSSL_LINUX)
 
@@ -34,14 +36,37 @@
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 #elif !defined(__UCLIBC__)
-// Non-glibc, non-uclibc libc (e.g. musl) — assume getauxval is available.
+// Non-glibc, non-uclibc libc (e.g. musl) -- assume getauxval is available.
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 #endif  // !defined(OPENSSL_HAS_GETAUXVAL) && !defined(OPENSSL_GETAUXVAL_FORCE_PROC_FALLBACK)
 
 #if defined(OPENSSL_HAS_GETAUXVAL)
 #include <sys/auxv.h>
-#else
+#endif
+
+// Auxiliary vector type constants from the Linux kernel ABI
+// (include/uapi/linux/auxvec.h). The specific values used here are stable.
+//
+// <sys/auxv.h> may exist but still omit AT_HWCAP2: glibc only added it in
+// 2.18 (see #1682), so sysroots built from vanilla glibc <= 2.17 lack it
+// (observed in aws-lc-sys manylinux 2.17 builds for ppc64le; CentOS 7's
+// glibc 2.17 carries a backport of it, so stock manylinux2014 images are
+// unaffected).
+#if !defined(AT_NULL)
+#define AT_NULL 0
+#endif
+#if !defined(AT_HWCAP)
+#define AT_HWCAP 16
+#endif
+#if !defined(AT_HWCAP2)
+#define AT_HWCAP2 26
+#endif
+#if !defined(AT_EXECFN)
+#define AT_EXECFN 31
+#endif
+
+#if !defined(OPENSSL_HAS_GETAUXVAL)
 
 // When <sys/auxv.h> is not available (e.g. older uclibc without getauxval),
 // fall back to reading /proc/self/auxv. The file contains sequential pairs of
@@ -57,21 +82,6 @@
 // (no intervening fork), so close-on-exec is not security-relevant here.
 #if !defined(O_CLOEXEC)
 #define O_CLOEXEC 0
-#endif
-
-// Auxiliary vector type constants from the Linux kernel ABI
-// (include/uapi/linux/auxvec.h). The specific values used here are stable.
-#if !defined(AT_NULL)
-#define AT_NULL 0
-#endif
-#if !defined(AT_HWCAP)
-#define AT_HWCAP 16
-#endif
-#if !defined(AT_HWCAP2)
-#define AT_HWCAP2 26
-#endif
-#if !defined(AT_EXECFN)
-#define AT_EXECFN 31
 #endif
 
 // getauxval returns the value of the auxiliary-vector entry of the given
@@ -138,7 +148,7 @@ done:
 // the fallback above.
 #define OPENSSL_HAS_GETAUXVAL
 
-#endif  // OPENSSL_HAS_GETAUXVAL
+#endif  // !defined(OPENSSL_HAS_GETAUXVAL)
 
 #endif  // OPENSSL_LINUX
 

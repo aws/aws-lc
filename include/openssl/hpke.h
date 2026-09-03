@@ -19,7 +19,8 @@ extern "C" {
 // Hybrid Public Key Encryption (HPKE) enables a sender to encrypt messages to a
 // receiver with a public key.
 //
-// See RFC 9180.
+// See RFC 9180. The ML-KEM KEMs additionally implement
+// draft-ietf-hpke-pq-05.
 
 
 // Parameters.
@@ -30,11 +31,17 @@ extern "C" {
 
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
+#define EVP_HPKE_MLKEM512  0x0040
+#define EVP_HPKE_MLKEM768  0x0041
+#define EVP_HPKE_MLKEM1024 0x0042
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
 // |EVP_HPKE_KDF| selection.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem512(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem1024(void);
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
@@ -42,7 +49,13 @@ OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of an encoded public key
 // for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32
+//
+// Note this grew from 32 to 1568 when the ML-KEM KEMs were added. Callers which
+// size buffers by this constant must be rebuilt against this header, as must
+// callers which stack-allocate an |EVP_HPKE_KEY|: that struct grew from 72 bytes
+// to 4808, both because of this constant and because it now caches an expanded
+// ML-KEM decapsulation key. See |EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH|.
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1568
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
@@ -50,7 +63,10 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of an encoded private
 // key for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32
+//
+// Note the ML-KEM KEMs encode a private key as the 64-byte (d || z) seed, not
+// as the expanded decapsulation key. See draft-ietf-hpke-pq-05, section 3.
+#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 64
 
 // EVP_HPKE_KEM_private_key_len returns the length of a private key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH|.
@@ -58,7 +74,10 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
 // shared secret, for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_ENC_LENGTH 32
+//
+// As with |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|, this grew from 32 to 1568 when the
+// ML-KEM KEMs were added.
+#define EVP_HPKE_MAX_ENC_LENGTH 1568
 
 // EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
 // secret, for |kem|. This value will be at most |EVP_HPKE_MAX_ENC_LENGTH|.
@@ -66,9 +85,11 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem);
 
 // The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
+#define EVP_HPKE_HKDF_SHA384 0x0002
 
 // The following functions are KDF algorithms which may be used with HPKE.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void);
 
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
@@ -108,7 +129,10 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);
 // This may be used for more uniform cleanup of |EVP_HPKE_KEY|.
 OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
 
-// EVP_HPKE_KEY_cleanup releases memory referenced by |key|.
+// EVP_HPKE_KEY_cleanup cleanses the private key material in |key| and returns
+// |key| to the zero state, as if it had been passed to |EVP_HPKE_KEY_zero|.
+// |key| may be NULL. This clears the KEM too, so, as with a zeroed key, |key|
+// must be re-initialized before it is used again.
 OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_new returns a newly-allocated |EVP_HPKE_KEY|, or NULL on error.
@@ -142,7 +166,8 @@ OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                                      const uint8_t *priv_key,
                                      size_t priv_key_len);
 
-// EVP_HPKE_KEY_generate sets |key| to a newly-generated key using |kem|.
+// EVP_HPKE_KEY_generate sets |key| to a newly-generated key using |kem|. It
+// returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
                                          const EVP_HPKE_KEM *kem);
 
@@ -154,7 +179,8 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key);
 // writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
 // Setting |max_out| to |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH| will ensure the public
 // key fits. An exact size can also be determined by
-// |EVP_HPKE_KEM_public_key_len|.
+// |EVP_HPKE_KEM_public_key_len|. If |key| has not been initialized, or has been
+// passed to |EVP_HPKE_KEY_cleanup|, it returns zero.
 OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
                                            uint8_t *out, size_t *out_len,
                                            size_t max_out);
@@ -164,7 +190,8 @@ OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
 // writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
 // Setting |max_out| to |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH| will ensure the
 // private key fits. An exact size can also be determined by
-// |EVP_HPKE_KEM_private_key_len|.
+// |EVP_HPKE_KEM_private_key_len|. If |key| has not been initialized, or has
+// been passed to |EVP_HPKE_KEY_cleanup|, it returns zero.
 OPENSSL_EXPORT int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key,
                                             uint8_t *out, size_t *out_len,
                                             size_t max_out);
@@ -222,7 +249,9 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender(
 // EVP_HPKE_CTX_setup_sender_with_seed_for_testing behaves like
 // |EVP_HPKE_CTX_setup_sender|, but takes a seed to behave deterministically.
 // The seed's format depends on |kem|. For X25519, it is the sender's
-// ephemeral private key.
+// ephemeral private key. For the ML-KEM KEMs, it is the 32-byte ML-KEM
+// encapsulation randomness, called ikmE in draft-ietf-hpke-pq-05, and is 32
+// bytes for all three parameter sets.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
@@ -245,6 +274,10 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
 // EVP_HPKE_CTX_setup_auth_sender implements the SetupAuthS HPKE operation. It
 // behaves like |EVP_HPKE_CTX_setup_sender| but authenticates the resulting
 // context with |key|.
+//
+// Not all KEMs support this mode. The ML-KEM KEMs do not, so this function
+// fails with |EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE| when |key| uses
+// one of them. See draft-ietf-hpke-pq-05, section 7.2.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
@@ -253,8 +286,8 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender(
 
 // EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing behaves like
 // |EVP_HPKE_CTX_setup_auth_sender|, but takes a seed to behave
-// deterministically. The seed's format depends on |kem|. For X25519, it is the
-// sender's ephemeral private key.
+// deterministically. The seed's format is as described for
+// |EVP_HPKE_CTX_setup_sender_with_seed_for_testing|.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
@@ -264,6 +297,9 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing(
 // EVP_HPKE_CTX_setup_auth_recipient implements the SetupAuthR HPKE operation.
 // It behaves like |EVP_HPKE_CTX_setup_recipient| but checks the resulting
 // context was authenticated with |peer_public_key|.
+//
+// As with |EVP_HPKE_CTX_setup_auth_sender|, this fails for KEMs which do not
+// support the mode, including the ML-KEM KEMs.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_recipient(
     EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
@@ -362,10 +398,21 @@ struct evp_hpke_ctx_st {
   int is_sender;
 };
 
+// EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH is the maximum length of a KEM's
+// internal private key representation, where it differs from the serialized
+// form. It is sized for an expanded ML-KEM-1024 decapsulation key.
+#define EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH 3168
+
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
-  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
-  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+  uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  // expanded_private_key holds the KEM's internal private key representation,
+  // for KEMs where it differs from the serialized form. It is derived once when
+  // the key is initialized, so that decapsulation does not have to repeat key
+  // generation. KEMs which use the serialized private key directly leave it
+  // unused.
+  uint8_t expanded_private_key[EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH];
 };
 
 
