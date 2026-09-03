@@ -90,6 +90,7 @@ function fetch_crt_python() {
     pushd ${CRT_SRC_FOLDER}
     git clone https://github.com/awslabs/aws-crt-python.git .
     git submodule update --init
+    record_repo_commit "${CRT_SRC_FOLDER}"
     popd
 }
 
@@ -186,6 +187,7 @@ function python_patch() {
     git clone https://github.com/python/cpython.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    record_repo_commit "${src_dir}"
     for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
       echo "Apply patch ${patchfile}..."
       cat ${patchfile} \

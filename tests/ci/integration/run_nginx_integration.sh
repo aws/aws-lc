@@ -62,6 +62,8 @@ function nginx_patch_tests() {
 
 git clone https://github.com/nginx/nginx.git ${NGINX_SRC_FOLDER} --depth 1
 git clone https://github.com/nginx/nginx-tests.git ${NGINX_TEST_FOLDER} --depth 1
+record_repo_commit "${NGINX_SRC_FOLDER}"
+record_repo_commit "${NGINX_TEST_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${NGINX_BUILD_FOLDER}
 ls
 

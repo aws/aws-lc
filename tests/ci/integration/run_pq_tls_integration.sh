@@ -39,6 +39,7 @@ echo "AWS-LC build succeeded. Found ${AWS_LC_CMD}"
 
 echo "clone s2n-tls"
 git clone --depth 1 --branch "$S2N_BRANCH" "$S2N_URL" "$S2N_TLS_SRC_FOLDER"
+record_repo_commit "${S2N_TLS_SRC_FOLDER}"
 
 echo "build s2n-tls with aws-lc"
 cd "$S2N_TLS_SRC_FOLDER"
@@ -82,6 +83,7 @@ done
 
 echo "clone boring-ssl"
 git clone --depth 1 --branch "$BSSL_BRANCH" "$BSSL_URL" "$BSSL_SRC_FOLDER"
+record_repo_commit "${BSSL_SRC_FOLDER}"
 
 echo "build boring-ssl with aws-lc"
 cd "$BSSL_SRC_FOLDER"
