@@ -1382,6 +1382,10 @@ EVP_hpke_aes_128_gcm AWS_LC_1.0 PUBLIC
 EVP_hpke_aes_256_gcm AWS_LC_1.0 PUBLIC
 EVP_hpke_chacha20_poly1305 AWS_LC_1.0 PUBLIC
 EVP_hpke_hkdf_sha256 AWS_LC_1.0 PUBLIC
+EVP_hpke_hkdf_sha384 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem1024 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem512 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem768 AWS_LC_1.0 PUBLIC
 EVP_hpke_x25519_hkdf_sha256 AWS_LC_1.0 PUBLIC
 EVP_keccak256 AWS_LC_1.0 PUBLIC
 EVP_marshal_digest_algorithm AWS_LC_1.0 PUBLIC
