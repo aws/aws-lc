@@ -101,11 +101,33 @@ if(UNIX AND NOT APPLE)
     VERBATIM)
 endif()
 
-# A provider exports exactly one symbol, OSSL_provider_init. Anything else it
-# exposes is surface a consumer could bind to by accident and that we would then
-# owe compatibility on. The entry point carries an explicit visibility attribute
-# so hiding everything else does not hide it too.
+# A provider needs to expose only OSSL_provider_init. Anything else it exposes is
+# surface a consumer could bind to by accident and that we would then owe
+# compatibility on. The entry point carries an explicit visibility attribute so
+# hiding everything else does not hide it too.
 set_target_properties(awslc_provider PROPERTIES C_VISIBILITY_PRESET hidden)
+
+# C_VISIBILITY_PRESET is a compile flag, so it only reaches this target's own
+# sources. With BUILD_SHARED_LIBS off the linker pulls AWS-LC's objects out of
+# libcrypto.a into the module, and those carry OPENSSL_EXPORT's default
+# visibility. Hundreds of their names collide with the host libcrypto's, where
+# ELF resolves global scope first and could bind AWS-LC's own calls to OpenSSL's
+# definitions. A link-time export list is what covers both link modes.
+if(APPLE)
+  # ld64 takes a file of Mach-O symbol names, hence the leading underscore.
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/awslc_exports.txt"
+    "_OSSL_provider_init\n")
+  target_link_options(awslc_provider PRIVATE
+    "-Wl,-exported_symbols_list,${CMAKE_CURRENT_BINARY_DIR}/awslc_exports.txt")
+elseif(UNIX)
+  # A version script holding one anonymous node: that symbol global, the rest
+  # local. Local is stronger than hidden-on-export here, because a local symbol
+  # is not a candidate for dynamic lookup at all.
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/awslc.map"
+    "{ global: OSSL_provider_init; local: *; };\n")
+  target_link_options(awslc_provider PRIVATE
+    "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/awslc.map")
+endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
   # Two test binaries, for the same reason there are two object libraries: one
@@ -157,10 +179,12 @@ if(BUILD_TESTING AND NOT ANDROID)
     BUILD_RPATH "${AWSLC_PROVIDER_OPENSSL_ROOT}/lib64;${AWSLC_PROVIDER_OPENSSL_ROOT}/lib;${CMAKE_BINARY_DIR}")
 
   # awslc_provider_backend_test links AWS-LC and no OpenSSL. It covers the
-  # guarantees the back side adds on top of AWS-LC that the EVP API cannot reach:
-  # EVP_DigestFinal_ex sizes the output buffer from the digest's own reported
-  # length, so the undersized-output check is unreachable from above even though
-  # a consumer calling the dispatch slot directly can hit it.
+  # guarantees the back side adds on top of AWS-LC that the EVP API above cannot
+  # reach, but that a consumer calling a dispatch slot directly can.
+  #
+  # It links the backend objects and crypto rather than the module, so it proves
+  # the source and leaves proving the shipped artifact to
+  # awslc_provider_linkage_test.
   add_executable(awslc_provider_backend_test
     test/test_main.cc
     test/backend/operations/digests/sha2_test.cc

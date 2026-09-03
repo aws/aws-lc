@@ -74,8 +74,9 @@ static int awslc_prov_sha256_update_op(void *dctx, const unsigned char *in,
   if (dctx == NULL) {
     return 0;
   }
-  // A zero-length update with a NULL pointer is legal and must be a no-op rather
-  // than reaching the backend with a NULL buffer.
+  // A zero-length update with a NULL |in| is legal per the EVP contract. AWS-LC
+  // already treats len == 0 as a no-op, so this is a guard against a future
+  // backend that does not, not a workaround for the current one.
   if (inl == 0) {
     return 1;
   }

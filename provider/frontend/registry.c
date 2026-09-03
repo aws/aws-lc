@@ -21,8 +21,9 @@
   { names, AWSLC_PROV_PROPERTIES, awslc_prov_##algorithm##_functions,     \
     description }
 
-// One table per operation class.
+// One table per operation class. Each row cites the names.h macro it copies.
 static const OSSL_ALGORITHM awslc_prov_digests[] = {
+    // PROV_NAMES_SHA2_256
     AWSLC_PROV_ALG("SHA2-256:SHA-256:SHA256:2.16.840.1.101.3.4.2.1", sha256,
                    "AWS-LC SHA2-256 implementation"),
     {NULL, NULL, NULL, NULL}};

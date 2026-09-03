@@ -18,8 +18,10 @@ namespace {
 
 // One row per registered algorithm.
 struct DigestSpec {
-  const char *name;        // what we register it as
-  const char *aliases[4];  // every advertised spelling, including the OID
+  const char *name;  // what we register it as
+  // Every advertised spelling, including the OID. One slot longer than the
+  // longest row so a shorter one leaves a nullptr sentinel.
+  const char *aliases[5];
   size_t digest_size;
   size_t block_size;
   int xof;           // 1 only for an extendable-output function
@@ -68,6 +70,9 @@ class Sha2Test : public ProviderTest,
 // anywhere.
 TEST_P(Sha2Test, ResolvesUnderEveryAdvertisedName) {
   for (const char *name : GetParam().aliases) {
+    if (name == nullptr) {
+      break;
+    }
     MdPtr md = FetchRequired(name);
     ASSERT_TRUE(md) << "advertised name '" << name << "' did not resolve";
     EXPECT_STREQ(kProviderName,
