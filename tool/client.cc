@@ -729,6 +729,8 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
 
+  SSL_CTX_set_options(ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+
   const char *keylog_file = getenv("SSLKEYLOGFILE");
   if (keylog_file) {
     g_keylog_file = fopen(keylog_file, "a");
