@@ -1,7 +1,7 @@
 name: Miscellaneous test jobs
 on:
   push:
-    branches: ["*"]
+    branches: ["main", "fips-*"]
   pull_request:
     branches: ["*"]
 concurrency:
