@@ -70,6 +70,10 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
 void KEM_KEY_free(KEM_KEY *key);
 const KEM *KEM_KEY_get0_kem(KEM_KEY* key);
 
+// KEM_KEY_get0_secret_key returns a pointer to the raw secret key buffer held
+// by |key|, or NULL if no secret key is set. The buffer is owned by |key|.
+const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key);
+
 // KEM_KEY_set_raw_public_key function allocates the public key buffer
 // within the given |key| and copies the contents of |in| to it.
 //
@@ -104,6 +108,49 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 //       |key->kem| must be initialized and |key->public_key| and 
 //       |key->secret_key| must both be NULL.
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
+
+// KEM_check_key validates a KEM key based on available key material:
+// - If only the public key is present: validates the public key only.
+// - If the secret key is present: requires the public key and validates both
+//   keys, then performs a Pairwise Consistency Test (PCT) via encaps/decaps.
+//
+// This requires at least the public key; callers that need to enforce the
+// presence of the private component (e.g. |EVP_PKEY_check|) must check for it
+// before calling, mirroring the EC and RSA cases.
+//
+// Returns 1 on success, 0 on failure.
+int KEM_check_key(const KEM_KEY *key);
+
+// KEM_KEY_set_raw_keypair_from_both function handles the |both| CHOICE of
+// ML-KEM-XX-PrivateKey, which carries a seed and an expandedKey. It performs
+// the seed consistency check mandated by RFC 9935 section 8: the expanded key
+// is regenerated from |seed| and compared bytewise against |expanded_key|. On
+// mismatch the key is rejected. On success the public key, secret key, and
+// seed buffers within |key| are allocated and set.
+//
+// NOTE: The seed must be exactly 64 bytes for all ML-KEM variants and
+//       |expanded_key| must match |key->kem->secret_key_len|; both lengths
+//       are validated. |key->kem| must be initialized and |key->public_key|
+//       and |key->secret_key| must both be NULL.
+int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
+                                      const CBS *expanded_key);
+
+// KEM_KEY_set_raw_expanded_secret_key imports the |expandedKey| CHOICE of
+// ML-KEM-XX-PrivateKey, and is the validating counterpart of
+// |KEM_KEY_set_raw_secret_key|, for use when parsing an encoded private key
+// rather than accepting raw bytes from the caller. FIPS 203 encodes the
+// encapsulation key inside the decapsulation key as
+// dk = dk_PKE || ek || H(ek) || z, so the public key is recovered from |in|
+// rather than supplied separately, and the result is then validated with
+// |KEM_check_key|. That covers the "hash check" that FIPS 203 section 7.3
+// requires before an expanded key may be used, which RFC 9935 section 8 points
+// at for the expandedKey format, and additionally runs a pairwise consistency
+// test, which catches corruption of dk_PKE that the hash check cannot see.
+//
+// NOTE: |in| must hold |key->kem->secret_key_len| bytes. |key->kem| must be
+//       initialized and |key->public_key| and |key->secret_key| must both be
+//       NULL.
+int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in);
 
 #if defined(__cplusplus)
 }  // extern C

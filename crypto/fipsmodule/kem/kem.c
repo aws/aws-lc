@@ -8,6 +8,8 @@
 #include "internal.h"
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
 
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 // 2.16.840.1.101.3.4.4.1
@@ -249,6 +251,15 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
   return key->kem;
 }
 
+const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key) {
+  // Callers use a NULL return to test for the presence of a secret key, so a
+  // NULL |key| must answer that question rather than crash.
+  if (key == NULL) {
+    return NULL;
+  }
+  return key->secret_key;
+}
+
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
   OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
@@ -336,4 +347,269 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   }
 
   return 1;
+}
+
+// The kem_check_* helpers below queue their own errors, so callers must not add
+// another one on failure.
+
+static int kem_check_public_key(const KEM_KEY *key) {
+  int ok = 0;
+  switch (key->kem->nid) {
+    case NID_MLKEM512:
+      ok = ml_kem_512_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
+    case NID_MLKEM768:
+      ok = ml_kem_768_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
+    case NID_MLKEM1024:
+      ok = ml_kem_1024_check_pk(key->public_key, key->kem->public_key_len) == 0;
+      break;
+    default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+  }
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PUBLIC_KEY);
+    return 0;
+  }
+  return 1;
+}
+
+static int kem_check_secret_key(const KEM_KEY *key) {
+  int ok = 0;
+  switch (key->kem->nid) {
+    case NID_MLKEM512:
+      ok = ml_kem_512_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
+    case NID_MLKEM768:
+      ok = ml_kem_768_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
+    case NID_MLKEM1024:
+      ok = ml_kem_1024_check_sk(key->secret_key, key->kem->secret_key_len) == 0;
+      break;
+    default:
+      // Unreachable: KEM_KEY objects are only created for the NIDs above.
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+  }
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PRIVATE_KEY);
+    return 0;
+  }
+  return 1;
+}
+
+static int kem_check_pct(const KEM_KEY *key) {
+  int ret = 0;
+  const KEM *kem = key->kem;
+
+  uint8_t *ciphertext = OPENSSL_malloc(kem->ciphertext_len);
+  uint8_t *ss_enc = OPENSSL_malloc(kem->shared_secret_len);
+  uint8_t *ss_dec = OPENSSL_malloc(kem->shared_secret_len);
+
+  size_t ct_len = kem->ciphertext_len;
+  size_t ss_enc_len = kem->shared_secret_len;
+  size_t ss_dec_len = kem->shared_secret_len;
+
+  if (ciphertext == NULL || ss_enc == NULL || ss_dec == NULL) {
+    // |OPENSSL_malloc| has already queued the allocation failure.
+    goto cleanup;
+  }
+
+  // An encaps/decaps failure is a library fault, not an invalid key pair.
+  if (!kem->method->encaps(ciphertext, &ct_len, ss_enc, &ss_enc_len,
+                           key->public_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto cleanup;
+  }
+
+  // Validate the encapsulation output before feeding it back into decaps.
+  if (ct_len != kem->ciphertext_len) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto cleanup;
+  }
+
+  if (!kem->method->decaps(ss_dec, &ss_dec_len, ciphertext, key->secret_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto cleanup;
+  }
+
+  if (ss_enc_len != kem->shared_secret_len ||
+      ss_dec_len != kem->shared_secret_len) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto cleanup;
+  }
+
+  // Only a shared-secret mismatch means the key pair itself failed the PCT.
+  if (CRYPTO_memcmp(ss_enc, ss_dec, kem->shared_secret_len) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_KEM_PCT_FAILED);
+    goto cleanup;
+  }
+
+  ret = 1;
+
+cleanup:
+  // OPENSSL_cleanse and OPENSSL_free both no-op on NULL, so no guards needed.
+  OPENSSL_cleanse(ciphertext, kem->ciphertext_len);
+  OPENSSL_cleanse(ss_enc, kem->shared_secret_len);
+  OPENSSL_cleanse(ss_dec, kem->shared_secret_len);
+  OPENSSL_free(ciphertext);
+  OPENSSL_free(ss_enc);
+  OPENSSL_free(ss_dec);
+  return ret;
+}
+
+int KEM_check_key(const KEM_KEY *key) {
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (key->kem == NULL || key->kem->method == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PUBLIC_KEY);
+    return 0;
+  }
+
+  // The helpers above queue their own errors, so none are added here.
+  if (!kem_check_public_key(key)) {
+    return 0;
+  }
+
+  if (key->secret_key != NULL) {
+    if (!kem_check_secret_key(key)) {
+      return 0;
+    }
+
+    if (!kem_check_pct(key)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
+                                      const CBS *expanded_key) {
+  if (key == NULL || seed == NULL || expanded_key == NULL ||
+      key->kem == NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Ensure key is uninitialized
+  if (key->public_key != NULL || key->secret_key != NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  // Validate lengths - all ML-KEM variants use 64-byte seeds, and the
+  // expandedKey length is fixed per parameter set.
+  if (CBS_len(seed) != key->kem->keygen_seed_len ||
+      CBS_len(expanded_key) != key->kem->secret_key_len) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  int ret = 0;
+  size_t public_len = key->kem->public_key_len;
+  size_t secret_len = key->kem->secret_key_len;
+  uint8_t *new_seed = NULL;
+  uint8_t *public_key = OPENSSL_malloc(key->kem->public_key_len);
+  uint8_t *secret_key = OPENSSL_malloc(key->kem->secret_key_len);
+  if (public_key == NULL || secret_key == NULL) {
+    goto err;
+  }
+
+  // Regenerate the expanded form from the seed via
+  // ML-KEM.KeyGen_internal(d, z), using the first 32 octets of the seed as
+  // |d| and the remaining 32 as |z|.
+  if (!key->kem->method->keygen_deterministic(public_key, &public_len,
+                                              secret_key, &secret_len,
+                                              CBS_data(seed))) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  // Seed consistency check, per RFC 9935 section 8: the regenerated expanded
+  // key must be bytewise equal to the expandedKey carried in the private key,
+  // otherwise the private key MUST be rejected as malformed. Comparing only
+  // the derived public keys is not sufficient; an expandedKey that differs
+  // from the seed solely in |z|, the implicit rejection secret, yields a
+  // matching public key yet is still inconsistent.
+  if (CRYPTO_memcmp(secret_key, CBS_data(expanded_key),
+                    key->kem->secret_key_len) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  new_seed = OPENSSL_memdup(CBS_data(seed), key->kem->keygen_seed_len);
+  if (new_seed == NULL) {
+    goto err;
+  }
+
+  // Success: transfer ownership to |key|.
+  key->public_key = public_key;
+  key->secret_key = secret_key;
+  key->seed = new_seed;
+  public_key = NULL;
+  secret_key = NULL;
+  ret = 1;
+
+err:
+  OPENSSL_free(public_key);
+  OPENSSL_free(secret_key);
+  return ret;
+}
+
+int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in) {
+  if (key == NULL || in == NULL || key->kem == NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Ensure key is uninitialized
+  if (key->public_key != NULL || key->secret_key != NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  const KEM *kem = key->kem;
+
+  // FIPS 203 encodes dk = dk_PKE || ek || H(ek) || z, where |ek| is the
+  // encapsulation key and |H(ek)| and |z| are 32 bytes each, so |ek| begins
+  // |public_key_len| + 64 bytes before the end of the decapsulation key. Every
+  // ML-KEM parameter set satisfies the size relation below; the check guards
+  // the pointer arithmetic rather than any untrusted length.
+  if (kem->secret_key_len < kem->public_key_len + 64) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  const uint8_t *embedded_public_key =
+      in + kem->secret_key_len - kem->public_key_len - 64;
+
+  key->public_key = OPENSSL_memdup(embedded_public_key, kem->public_key_len);
+  key->secret_key = OPENSSL_memdup(in, kem->secret_key_len);
+  if (key->public_key == NULL || key->secret_key == NULL) {
+    goto err;
+  }
+
+  // |KEM_check_key| queues its own error on failure, so none is added here.
+  if (!KEM_check_key(key)) {
+    goto err;
+  }
+
+  return 1;
+
+err:
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->secret_key);
+  key->public_key = NULL;
+  key->secret_key = NULL;
+  return 0;
 }

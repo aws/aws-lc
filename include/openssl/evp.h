@@ -707,10 +707,14 @@ OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                                    size_t *out_key_len);
 
-// EVP_PKEY_check supports EC and RSA keys and validates both the public and
-// private components of a key pair. For EC keys, it verifies that the private
-// key component exists and calls EC_KEY_check_key. For RSA keys, it calls
-// RSA_check_key which validates both public and private key relationships.
+// EVP_PKEY_check supports EC, RSA, and KEM keys and validates both the public
+// and private components of a key pair. For EC keys, it verifies that the
+// private key component exists and calls EC_KEY_check_key. For RSA keys, it
+// calls RSA_check_key which validates both public and private key
+// relationships. For KEM keys (e.g. ML-KEM), it requires the private key to be
+// present, validates both the public and private keys, and performs a Pairwise
+// Consistency Test (encapsulate then decapsulate) to confirm the keys form a
+// matching pair.
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
@@ -721,6 +725,9 @@ OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
 // For RSA keys, this calls |RSA_check_key| which requires the public and private
 // components of the key pair. This is different from OpenSSL which does not
 // support RSA keys via this API.
+// For KEM keys (e.g. ML-KEM), this validates the public key, and if the private
+// key is also present, validates it as well along with a Pairwise Consistency
+// Test. Unlike |EVP_PKEY_check|, the private key is not required.
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
@@ -986,6 +993,16 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
 // EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
 // secret key part of the KEM key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
+//
+// |in| is taken at face value: it is checked for length but not for
+// consistency, and the public key part is left unset. |EVP_PKEY_check| cannot
+// validate the result, because ML-KEM validation compares the two halves of the
+// pair against each other and only one is present here; it fails with
+// |EVP_R_MISSING_PUBLIC_KEY|. To import and validate a key of unknown
+// provenance, either supply both halves with |EVP_PKEY_kem_new_raw_key| and then
+// call |EVP_PKEY_check|, or parse the key from its PKCS#8 encoding with
+// |EVP_parse_private_key|, which validates the expandedKey and both formats as
+// RFC 9935 requires.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
                                     int nid, const uint8_t *in, size_t len);
 
@@ -1001,7 +1018,9 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
                                                   size_t len_secret);
 
 // EVP_PKEY_kem_check_key validates that the public key in |key| corresponds
-// to the secret key in |key|.
+// to the secret key in |key|, and that both encodings are well-formed. Both
+// halves of the key pair must be present. Prefer |EVP_PKEY_check| when a
+// private key is available, or |EVP_PKEY_public_check| for a public-only key.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // EVP_PKEY_kem_get_type returns the |nid| of the configured KEM key in |pkey|.
