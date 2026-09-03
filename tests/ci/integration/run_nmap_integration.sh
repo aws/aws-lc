@@ -88,6 +88,7 @@ NMAP_PATCH_FOLDER="$(nmap_patch_folder_for_ref "${NMAP_REF}")" || exit 1
 git init ${NMAP_SRC_FOLDER}
 git -C ${NMAP_SRC_FOLDER} fetch --depth 1 https://github.com/nmap/nmap.git ${NMAP_REF}
 git -C ${NMAP_SRC_FOLDER} checkout FETCH_HEAD
+record_repo_commit "${NMAP_SRC_FOLDER}" "https://github.com/nmap/nmap.git"
 cd ${NMAP_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
