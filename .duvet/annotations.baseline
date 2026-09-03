@@ -1,0 +1,5 @@
+https://www.rfc-editor.org/rfc/rfc8032#section-5.1	impl	crypto/fipsmodule/curve25519/curve25519.c
+https://www.rfc-editor.org/rfc/rfc8032#section-5.1	impl	crypto/fipsmodule/curve25519/curve25519.c
+https://www.rfc-editor.org/rfc/rfc8032#section-5.1	test	crypto/fipsmodule/curve25519/ed25519_test.cc
+https://www.rfc-editor.org/rfc/rfc8032#section-5.1	test	crypto/fipsmodule/curve25519/ed25519_test.cc
+https://www.rfc-editor.org/rfc/rfc8032#section-8.7	impl	crypto/fipsmodule/curve25519/curve25519.c

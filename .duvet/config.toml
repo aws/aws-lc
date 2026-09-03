@@ -1,0 +1,43 @@
+'$schema' = "https://awslabs.github.io/duvet/config/v0.4.0.json"
+
+# Source patterns: the FIPS-approved-algorithm surface.
+# - crypto/fipsmodule/**  — the module itself (per-algorithm implementations)
+# - crypto/evp/**         — the EVP dispatch layer (public entry points)
+# - include/openssl/evp.h — the public API surface
+
+[[source]]
+pattern = "crypto/fipsmodule/**/*.c"
+
+[[source]]
+pattern = "crypto/fipsmodule/**/*.h"
+
+[[source]]
+pattern = "crypto/fipsmodule/**/*_test.cc"
+type = "test"
+
+[[source]]
+pattern = "crypto/evp/**/*.c"
+
+[[source]]
+pattern = "crypto/evp/*_test.cc"
+type = "test"
+
+[[source]]
+pattern = "include/openssl/evp.h"
+
+# RFC 8032 (EdDSA) — a normative IETF spec, so requirements are extracted
+# from the RFC prose (`duvet extract`) rather than hand-authored. Covers the
+# Ed25519 / Ed25519ph surface in crypto/fipsmodule/curve25519/.
+[[specification]]
+source = "https://www.rfc-editor.org/rfc/rfc8032"
+format = "ietf"
+
+[[requirement]]
+pattern = ".duvet/rfc8032-requirements/**/*.toml"
+
+[report.html]
+enabled = true
+blob-link = "https://github.com/aws/aws-lc/blob/main"
+
+[report.json]
+enabled = true
