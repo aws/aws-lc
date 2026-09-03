@@ -32,9 +32,13 @@ function validate_rust_openssl() {
     cargo -v clean
     env OPENSSL_DIR="${OPENSSL_DIR}" OPENSSL_STATIC="${OPENSSL_STATIC}" "${ADDITIONAL_ENV_VARS[@]}" \
     cargo -v test -p openssl-sys --release --no-default-features "${@:3}"
+    # default_verify_paths reads a live server that closes without a close_notify, now
+    # reported as SSL_R_UNEXPECTED_EOF_WHILE_READING. 
+    # TODO: upstream a fix to rust-openssl to expose SSL_OP_IGNORE_UNEXPECTED_EOF 
+    # for the awslc cfg (currently gated to ossl300), then remove this --skip.
     env OPENSSL_DIR="${OPENSSL_DIR}" OPENSSL_STATIC="${OPENSSL_STATIC}" "${ADDITIONAL_ENV_VARS[@]}" \
-    cargo -v test -p openssl --release --no-default-features "${@:3}"
-    
+    cargo -v test -p openssl --release --no-default-features "${@:3}" -- --skip default_verify_paths
+
     popd # "${RUST_OPENSSL_SRC_DIR}"
 }
 

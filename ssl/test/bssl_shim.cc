@@ -1257,8 +1257,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         ssl = ssl_uniqueptr->get();
         int err = SSL_get_error(ssl, n);
         if (err == SSL_ERROR_ZERO_RETURN ||
-            (n == 0 && err == SSL_ERROR_SYSCALL)) {
-          if (n != 0) {
+            (n == 0 && err == SSL_ERROR_SYSCALL) ||
+            (err == SSL_ERROR_SSL &&
+             ERR_GET_REASON(ERR_peek_error()) ==
+                 SSL_R_UNEXPECTED_EOF_WHILE_READING)) {
+          if (n > 0) {
             fprintf(stderr, "Invalid SSL_get_error output\n");
             return false;
           }
