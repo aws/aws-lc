@@ -34,6 +34,9 @@ extern "C" {
 #define EVP_HPKE_MLKEM512  0x0040
 #define EVP_HPKE_MLKEM768  0x0041
 #define EVP_HPKE_MLKEM1024 0x0042
+#define EVP_HPKE_MLKEM768_P256 0x0050
+#define EVP_HPKE_MLKEM1024_P384 0x0051
+#define EVP_HPKE_MLKEM768_X25519 0x647a
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
@@ -42,6 +45,14 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem512(void);
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768(void);
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem1024(void);
+
+// The following KEMs are the PQ/T hybrids of draft-ietf-hpke-pq, which pair
+// ML-KEM with a traditional elliptic curve. The construction, including the
+// shared-secret combiner, is specified in draft-irtf-cfrg-hybrid-kems and
+// draft-irtf-cfrg-concrete-hybrid-kems, not in RFC 9180.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768_p256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem1024_p384(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768_x25519(void);
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
@@ -53,9 +64,12 @@ OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 // Note this grew from 32 to 1568 when the ML-KEM KEMs were added. Callers which
 // size buffers by this constant must be rebuilt against this header, as must
 // callers which stack-allocate an |EVP_HPKE_KEY|: that struct grew from 72 bytes
-// to 4808, both because of this constant and because it now caches an expanded
+// to 4960, both because of this constant and because it now caches an expanded
 // ML-KEM decapsulation key. See |EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH|.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1568
+//
+// The value is set by MLKEM1024-P384, whose encapsulation key is an ML-KEM-1024
+// key followed by an uncompressed P-384 point (1568 + 97).
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1665
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
@@ -75,9 +89,9 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
 // shared secret, for all KEMs currently supported by this library.
 //
-// As with |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|, this grew from 32 to 1568 when the
-// ML-KEM KEMs were added.
-#define EVP_HPKE_MAX_ENC_LENGTH 1568
+// As with |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|, this grew from 32 to 1665 when the
+// ML-KEM and PQ/T hybrid KEMs were added.
+#define EVP_HPKE_MAX_ENC_LENGTH 1665
 
 // EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
 // secret, for |kem|. This value will be at most |EVP_HPKE_MAX_ENC_LENGTH|.
@@ -400,8 +414,9 @@ struct evp_hpke_ctx_st {
 
 // EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH is the maximum length of a KEM's
 // internal private key representation, where it differs from the serialized
-// form. It is sized for an expanded ML-KEM-1024 decapsulation key.
-#define EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH 3168
+// form. It is sized for MLKEM1024-P384, which caches an expanded ML-KEM-1024
+// decapsulation key followed by the P-384 private scalar (3168 + 48).
+#define EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH 3216
 
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
