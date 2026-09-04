@@ -34,6 +34,23 @@ The following table contains the differences in libssl configuration options AWS
 * **Aside from and `SSL_MODE_AUTO_RETRY` being "ON" by default in OpenSSL, everything is "OFF" by default in OpenSSL.**
 * Each “**Context Flag”** has a link that provides more details on the flag’s functionality and our decision behind it (WIP)
 
+### System Crypto Policies Seeding (opt-in)
+
+By default AWS-LC ignores all system configuration files. When built with
+`-DENABLE_CRYPTO_POLICIES=ON` (off by default), AWS-LC seeds each newly created
+`SSL_CTX` from the system-wide `crypto-policies` OpenSSL back-end file at
+`/etc/crypto-policies/back-ends/opensslcnf.config`, which is shipped by Amazon
+Linux 2023 and Fedora. Seeding happens inside `SSL_CTX_new`, after the built-in
+defaults are applied and before the context is returned, so a consumer that
+subsequently calls the relevant setters overrides the seeded values.
+
+The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
+`TLS.MaxProtocol`, `DTLS.MinProtocol`, `DTLS.MaxProtocol`, `SignatureAlgorithms`,
+and `Groups`. Seeding is best-effort: a missing or malformed file, or a directive
+AWS-LC does not support, is ignored rather than fatal. See
+[BUILDING.md](../../BUILDING.md) for the build flag and the
+`AWSLC_CRYPTO_POLICY_FILE` / `AWSLC_CRYPTO_POLICY_PATH` overrides.
+
 
 <table border=0 cellspacing=0 cellpadding=0
  style='border-collapse:collapse'>

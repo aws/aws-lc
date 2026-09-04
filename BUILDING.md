@@ -126,6 +126,28 @@ distributed libcrypto. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
 for detailed information about symbol versioning, version evolution, and CI
 integration.
 
+### System Crypto Policies (opt-in)
+
+On Linux distributions that ship the `crypto-policies` framework (for example
+Amazon Linux 2023 and Fedora), AWS-LC can be built to seed newly created
+`SSL_CTX` objects from the system-wide OpenSSL back-end policy file. This is
+disabled by default; enable it with `-DENABLE_CRYPTO_POLICIES=ON`. It is aimed at
+distribution packagers who want AWS-LC to honor the operator-selected system TLS
+policy without per-application code changes.
+
+When enabled, `SSL_CTX_new` reads
+`/etc/crypto-policies/back-ends/opensslcnf.config` after applying AWS-LC's
+built-in defaults and applies the `CipherString`, `Ciphersuites`,
+`TLS`/`DTLS` `MinProtocol`/`MaxProtocol`, `SignatureAlgorithms`, and `Groups`
+directives. This is best-effort: a missing or malformed file, or a directive
+AWS-LC does not support, is ignored, and consumers may still override any setting
+afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
+because AWS-LC does not implement OpenSSL security levels.
+
+The policy path can be overridden at build time with
+`-DAWSLC_CRYPTO_POLICY_PATH=/path/to/file`, or at runtime with the
+`AWSLC_CRYPTO_POLICY_FILE` environment variable.
+
 ### Other Build Options
 
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
