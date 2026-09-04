@@ -288,7 +288,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
           break;
         }
 
-        if (filename != CRYPTO_get_sysgenid_path()) {
+        if (filename != CRYPTO_get_sysgenid_path() &&
+            filename != CRYPTO_get_vmclock_path()) {
           out_trace->push_back(Event::Open(filename));
         }
 

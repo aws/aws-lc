@@ -438,11 +438,31 @@ install(DIRECTORY include/openssl
         PATTERN "*.in" EXCLUDE
 )
 
-if (TEST_SYSGENID_PATH)
+# VM UBE (Uniqueness Breaking Event) detection can be exercised in tests by
+# pointing a backend at a regular file that stands in for its device node.
+# TEST_SYSGENID_PATH and TEST_VMCLOCK_PATH are independent: setting either one
+# enables VM UBE test mode (AWSLC_VM_UBE_TESTING) and additionally sets a
+# per-backend flag (AWSLC_TEST_SYSGENID / AWSLC_TEST_VMCLOCK) so that only the
+# backend actually under test has its stand-in file created at startup. A build
+# that enables only one backend must NOT try to create the other's file, which
+# would point at the real /dev node and fail.
+#
+# Because vmclock is preferred over sysgenid at runtime, enabling both in a
+# single build only exercises vmclock. To exercise the sysgenid path (including
+# the vmclock->sysgenid fallback), build with TEST_SYSGENID_PATH alone.
+if (TEST_SYSGENID_PATH OR TEST_VMCLOCK_PATH)
   message(STATUS "Setting AWSLC_VM_UBE_TESTING=1")
   add_definitions(-DAWSLC_VM_UBE_TESTING=1)
-  message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
-  add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+  if (TEST_SYSGENID_PATH)
+    message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
+    add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+    add_definitions(-DAWSLC_TEST_SYSGENID=1)
+  endif()
+  if (TEST_VMCLOCK_PATH)
+    message(STATUS "Setting AWSLC_VMCLOCK_PATH=${TEST_VMCLOCK_PATH}")
+    add_definitions(-DAWSLC_VMCLOCK_PATH=\"${TEST_VMCLOCK_PATH}\")
+    add_definitions(-DAWSLC_TEST_VMCLOCK=1)
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)
