@@ -11,8 +11,6 @@
 #include "internal/frontend/digests.h"
 #include "internal/provider.h"
 
-#include <string.h>
-
 // Changes the DER OpenSSL emits for this digest inside PKI structures. The value
 // must match the OpenSSL default provider's, or our encodings differ from it.
 #define AWSLC_PROV_SHA2_FLAGS AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT
@@ -136,18 +134,14 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
                                     awslc_prov_sha2_final_fn final_fn,
                                     size_t digest_size) {
   AWSLC_PROV_SHA2_CTX *ctx = (AWSLC_PROV_SHA2_CTX *)dctx;
-  uint64_t before;
-  int approved;
-  int is_fips;
-  int ok;
 
   if (ctx == NULL || out == NULL || outl == NULL) {
     return 0;
   }
-  before = awslc_prov_service_indicator_before_call();
-  ok = final_fn(ctx->backend_ctx, out, outsz);
-  is_fips = awslc_prov_ctx_is_fips(ctx->provctx);
-  approved = is_fips && awslc_prov_service_indicator_after_call(before);
+  uint64_t before = awslc_prov_service_indicator_before_call();
+  int ok = final_fn(ctx->backend_ctx, out, outsz);
+  int is_fips = awslc_prov_ctx_is_fips(ctx->provctx);
+  int approved = is_fips && awslc_prov_service_indicator_after_call(before);
   if (!ok) {
     return 0;
   }
@@ -158,7 +152,7 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
       !awslc_prov_indicator_on_unapproved(
           ctx->provctx, ctx->algorithm_name,
           AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION)) {
-    memset(out, 0, digest_size);
+    awslc_prov_cleanse(out, digest_size);
     return 0;
   }
   *outl = digest_size;
