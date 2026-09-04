@@ -8,6 +8,9 @@
 // helpers, fixed-length dispatch shapes, and the per-algorithm tables registry.c
 // hands to the core.
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <openssl/core_dispatch.h>
 
 #if defined(__cplusplus)
@@ -21,7 +24,7 @@ extern "C" {
 OSSL_FUNC_digest_gettable_params_fn awslc_prov_digest_gettable_params;
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
-                                 size_t digest_size, unsigned long flags);
+                                 size_t digest_size, uint32_t flags);
 
 // Declare one fixed-length digest's slots at the exact types OpenSSL calls.
 #define AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(algorithm)                       \

@@ -3,10 +3,6 @@
 
 // Back side: AWS-LC's SHA-2. Implementations are written out per algorithm so
 // each AWS-LC type, constant, and function binding remains visible to review.
-//
-// |out_size| on each final is the caller's buffer capacity, which may exceed the
-// digest length. AWS-LC's SHA*_Final take no size and document that |out| must
-// have room for the whole digest, so a short buffer must not reach them at all.
 
 #include <openssl/sha.h>
 
