@@ -70,6 +70,10 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
 void KEM_KEY_free(KEM_KEY *key);
 const KEM *KEM_KEY_get0_kem(KEM_KEY* key);
 
+// KEM_KEY_get0_secret_key returns a pointer to the raw secret key buffer held
+// by |key|, or NULL if no secret key is set. The buffer is owned by |key|.
+const uint8_t *KEM_KEY_get0_secret_key(const KEM_KEY *key);
+
 // KEM_KEY_set_raw_public_key function allocates the public key buffer
 // within the given |key| and copies the contents of |in| to it.
 //
@@ -104,6 +108,18 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 //       |key->kem| must be initialized and |key->public_key| and 
 //       |key->secret_key| must both be NULL.
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
+
+// KEM_check_key validates a KEM key based on available key material:
+// - If only the public key is present: validates the public key only.
+// - If the secret key is present: requires the public key and validates both
+//   keys, then performs a Pairwise Consistency Test (PCT) via encaps/decaps.
+//
+// This requires at least the public key; callers that need to enforce the
+// presence of the private component (e.g. |EVP_PKEY_check|) must check for it
+// before calling, mirroring the EC and RSA cases.
+//
+// Returns 1 on success, 0 on failure.
+int KEM_check_key(const KEM_KEY *key);
 
 #if defined(__cplusplus)
 }  // extern C

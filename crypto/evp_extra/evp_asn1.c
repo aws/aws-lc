@@ -281,6 +281,21 @@ int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
     }
     case EVP_PKEY_RSA:
       return RSA_check_key(pkey->pkey.rsa);
+    case EVP_PKEY_KEM: {
+      KEM_KEY *kem_key = pkey->pkey.kem_key;
+      // A KEM |EVP_PKEY| can have its type set but no key material attached.
+      if (kem_key == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+        return 0;
+      }
+      // For EVP_PKEY_check, ensure the private key exists for KEM keys, as with
+      // the EC and RSA cases above.
+      if (KEM_KEY_get0_secret_key(kem_key) == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PRIVATE_KEY);
+        return 0;
+      }
+      return KEM_check_key(kem_key);
+    }
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -304,6 +319,15 @@ int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
       return EC_KEY_check_key(pkey->pkey.ec);
     case EVP_PKEY_RSA:
       return RSA_check_key(pkey->pkey.rsa);
+    case EVP_PKEY_KEM: {
+      KEM_KEY *kem_key = pkey->pkey.kem_key;
+      // A KEM |EVP_PKEY| can have its type set but no key material attached.
+      if (kem_key == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+        return 0;
+      }
+      return KEM_check_key(kem_key);
+    }
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
