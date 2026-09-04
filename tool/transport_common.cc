@@ -674,6 +674,8 @@ void PrintSSLError(FILE *file, const char *msg, int ssl_err, int ret) {
 }
 
 bool TransferData(SSL *ssl, int sock) {
+  SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+
   if (!SocketSetNonBlocking(sock, true)) {
     return false;
   }
