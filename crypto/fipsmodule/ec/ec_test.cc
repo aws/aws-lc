@@ -2784,6 +2784,130 @@ TEST(ECTest, ECEngine) {
   EC_KEY_METHOD_free(eng_funcs);
 }
 
+TEST(ECTest, ECPKParametersBufferRoundTrip) {
+  const EC_GROUP *const kGroups[] = {EC_group_p256(), EC_group_p384()};
+
+  for (const EC_GROUP *group : kGroups) {
+    SCOPED_TRACE(EC_GROUP_get_curve_name(group));
+
+    const int encoded_len = i2d_ECPKParameters(group, nullptr);
+    ASSERT_GT(encoded_len, 0);
+
+    std::vector<uint8_t> encoded(static_cast<size_t>(encoded_len) + 1, 0xa5);
+    uint8_t *out = encoded.data();
+    EXPECT_EQ(encoded_len, i2d_ECPKParameters(group, &out));
+    EXPECT_EQ(encoded.data() + encoded_len, out);
+    EXPECT_EQ(0xa5, encoded.back());
+
+    const uint8_t *inp = encoded.data();
+    bssl::UniquePtr<EC_GROUP> decoded(
+        d2i_ECPKParameters(nullptr, &inp, static_cast<long>(encoded.size())));
+    ASSERT_TRUE(decoded);
+    EXPECT_EQ(0, EC_GROUP_cmp(group, decoded.get(), nullptr));
+    EXPECT_EQ(encoded.data() + encoded_len, inp);
+  }
+}
+
+TEST(ECTest, ECPKParametersReplacesOutputGroup) {
+  const int encoded_len = i2d_ECPKParameters(EC_group_p256(), nullptr);
+  ASSERT_GT(encoded_len, 0);
+
+  std::vector<uint8_t> encoded(static_cast<size_t>(encoded_len));
+  uint8_t *out = encoded.data();
+  ASSERT_EQ(encoded_len, i2d_ECPKParameters(EC_group_p256(), &out));
+
+  // Use a mutable group so the |EC_GROUP_free| of the old |*out_group| is a
+  // real free that leak and address sanitizers can check. Built-in groups are
+  // static and |EC_GROUP_free| on them is a no-op.
+  EC_GROUP *out_group = EC_GROUP_new_by_curve_name_mutable(NID_secp384r1);
+  ASSERT_TRUE(out_group);
+  const uint8_t *inp = encoded.data();
+  EC_GROUP *decoded =
+      d2i_ECPKParameters(&out_group, &inp, static_cast<long>(encoded.size()));
+
+  ASSERT_TRUE(decoded);
+  EXPECT_EQ(decoded, out_group);
+  // The original |*out_group| was released and replaced by the parsed group,
+  // which is the static built-in P-256 group.
+  EXPECT_EQ(EC_group_p256(), out_group);
+  EXPECT_EQ(encoded.data() + encoded.size(), inp);
+  EC_GROUP_free(out_group);
+}
+
+TEST(ECTest, ECPKParametersBufferErrors) {
+  ERR_clear_error();
+  EXPECT_EQ(nullptr, d2i_ECPKParameters(nullptr, nullptr, 0));
+  EXPECT_EQ(0u, ERR_peek_error());
+
+  const uint8_t kMalformed[] = {0x06, 0x02, 0x2a};
+  const uint8_t *inp = kMalformed;
+  EXPECT_EQ(nullptr, d2i_ECPKParameters(nullptr, &inp, -1));
+  EXPECT_EQ(kMalformed, inp);
+  EXPECT_EQ(0u, ERR_peek_error());
+
+  EXPECT_EQ(nullptr, d2i_ECPKParameters(nullptr, &inp, sizeof(kMalformed)));
+  EXPECT_EQ(kMalformed, inp);
+  EXPECT_EQ(EC_R_DECODE_ERROR, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+
+  uint8_t *out = nullptr;
+  EXPECT_EQ(-1, i2d_ECPKParameters(nullptr, &out));
+  EXPECT_EQ(nullptr, out);
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+
+  CBS key, ec_private_key, private_key, explicit_parameters;
+  CBS_init(&key, kECKeySpecifiedCurve, sizeof(kECKeySpecifiedCurve));
+  ASSERT_TRUE(CBS_get_asn1(&key, &ec_private_key, CBS_ASN1_SEQUENCE));
+  uint64_t version = 0;
+  ASSERT_TRUE(CBS_get_asn1_uint64(&ec_private_key, &version));
+  ASSERT_EQ(1u, version);
+  ASSERT_TRUE(
+      CBS_get_asn1(&ec_private_key, &private_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_TRUE(
+      CBS_get_asn1(&ec_private_key, &explicit_parameters,
+                   CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0));
+  ASSERT_EQ(0u, CBS_len(&ec_private_key));
+  ASSERT_EQ(0u, CBS_len(&key));
+
+  const uint8_t *explicit_in = CBS_data(&explicit_parameters);
+  ASSERT_EQ(
+      EC_group_p256(),
+      d2i_ECPKParameters(nullptr, &explicit_in,
+                         static_cast<long>(CBS_len(&explicit_parameters))));
+  EXPECT_EQ(CBS_data(&explicit_parameters) + CBS_len(&explicit_parameters),
+            explicit_in);
+
+  std::vector<uint8_t> unsupported(
+      CBS_data(&explicit_parameters),
+      CBS_data(&explicit_parameters) + CBS_len(&explicit_parameters));
+  ASSERT_GT(unsupported.size(), 4u);
+  // The encoding ends with the group order INTEGER followed by the cofactor
+  // INTEGER (02 01 01). Flip the low bit of the final byte of the order so the
+  // DER stays well-formed but no longer matches a supported named curve.
+  ASSERT_EQ(0x02, unsupported[unsupported.size() - 3]);
+  ASSERT_EQ(0x01, unsupported[unsupported.size() - 2]);
+  ASSERT_EQ(0x01, unsupported[unsupported.size() - 1]);
+  unsupported[unsupported.size() - 4] ^= 1;
+  inp = unsupported.data();
+  EXPECT_EQ(nullptr, d2i_ECPKParameters(nullptr, &inp,
+                                        static_cast<long>(unsupported.size())));
+  EXPECT_EQ(unsupported.data(), inp);
+  EXPECT_EQ(EC_R_UNKNOWN_GROUP, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+
+  bssl::UniquePtr<BIGNUM> p(BN_new()), a(BN_new()), b(BN_new());
+  ASSERT_TRUE(p && a && b);
+  ASSERT_TRUE(EC_GROUP_get_curve_GFp(EC_group_p256(), p.get(), a.get(), b.get(),
+                                     nullptr));
+  bssl::UniquePtr<EC_GROUP> custom_group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), nullptr));
+  ASSERT_TRUE(custom_group);
+  EXPECT_EQ(-1, i2d_ECPKParameters(custom_group.get(), nullptr));
+  EXPECT_EQ(EC_R_UNKNOWN_GROUP, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+}
+
 TEST(ECTest, ECPKParmatersBio) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 

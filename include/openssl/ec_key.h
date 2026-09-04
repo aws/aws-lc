@@ -255,6 +255,31 @@ OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
 // are supported.
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
+// d2i_ECPKParameters parses a DER-encoded ECPKParameters structure (RFC 3279)
+// from |len| bytes at |*inp|, as described in |d2i_SAMPLE|, and returns the
+// corresponding |EC_GROUP|. If |out_group| is non-NULL, the original
+// |*out_group| is freed and the returned |EC_GROUP| is also written to
+// |*out_group|.
+//
+// Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead. Only
+// deserialization of namedCurves or explicitly-encoded versions of named curves
+// are supported.
+//
+// This function returns a non-const pointer which may be passed to
+// |EC_GROUP_free|. However, the resulting object is actually static and calling
+// |EC_GROUP_free| is optional. Note this differs from OpenSSL, which returns a
+// newly-allocated |EC_GROUP| that the caller must free.
+OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group,
+                                            const uint8_t **inp, long len);
+
+// i2d_ECPKParameters marshals |group| as a DER-encoded ECPKParameters structure
+// (RFC 3279), as described in |i2d_SAMPLE|. It returns -1 on error, including
+// if |group| is not a named curve.
+//
+// Use |EC_KEY_marshal_curve_name| instead. Only serialization of namedCurves
+// are supported.
+OPENSSL_EXPORT int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp);
+
 // d2i_ECPKParameters_bio deserializes the |ECPKParameters| specified in RFC
 // 3279 from |bio| and returns the corresponding |EC_GROUP|. If |*out_group| is
 // non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
