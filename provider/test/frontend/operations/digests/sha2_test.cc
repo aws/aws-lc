@@ -88,11 +88,8 @@ TEST_P(Sha2Test, ResolvesUnderEveryAdvertisedName) {
   }
 }
 
-// The four algorithm-level parameters our get_params slot answers. ALGID_ABSENT is
-// the one with teeth: it decides whether the DigestAlgorithmIdentifier omits its
-// parameters field, so reporting it wrongly yields DER that differs byte for byte
-// from the default provider's for every CMS digestAlgorithms entry and every RSA
-// DigestInfo.
+// ALGID_ABSENT is the one with teeth: it changes the DER OpenSSL emits for this
+// digest inside PKI structures, so it must match the default provider's value.
 TEST_P(Sha2Test, ReportsExpectedParams) {
   MdPtr md = FetchRequired();
   ASSERT_TRUE(md);

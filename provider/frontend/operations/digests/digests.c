@@ -22,7 +22,7 @@ const OSSL_PARAM *awslc_prov_digest_gettable_params(void *provctx) {
 }
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
-                                 size_t digest_size, unsigned long flags) {
+                                 size_t digest_size, uint32_t flags) {
   OSSL_PARAM *p = NULL;
 
   p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);

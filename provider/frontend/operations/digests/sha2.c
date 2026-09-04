@@ -10,6 +10,8 @@
 #include "internal/backend/digests.h"
 #include "internal/frontend/digests.h"
 
+// Changes the DER OpenSSL emits for this digest inside PKI structures. The value
+// must match the OpenSSL default provider's, or our encodings differ from it.
 #define AWSLC_PROV_SHA2_FLAGS AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT
 
 typedef int (*awslc_prov_sha2_init_fn)(void *ctx);
@@ -18,10 +20,6 @@ typedef int (*awslc_prov_sha2_update_fn)(void *ctx, const void *data,
 typedef int (*awslc_prov_sha2_final_fn)(void *ctx, unsigned char *out,
                                         size_t out_size);
 typedef int (*awslc_prov_sha2_copy_fn)(void *dst, const void *src);
-
-static void *awslc_prov_sha2_newctx(size_t ctx_size) {
-  return awslc_prov_zalloc(ctx_size);
-}
 
 static void awslc_prov_sha2_freectx(void *dctx, size_t ctx_size) {
   if (dctx == NULL) {
@@ -111,7 +109,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha224);
 
 static void *awslc_prov_sha224_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha224_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha224_ctx_size());
 }
 
 static void awslc_prov_sha224_freectx(void *dctx) {
@@ -156,7 +154,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha256);
 
 static void *awslc_prov_sha256_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha256_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha256_ctx_size());
 }
 
 static void awslc_prov_sha256_freectx(void *dctx) {
