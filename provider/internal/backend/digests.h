@@ -42,7 +42,7 @@ int awslc_prov_sha256_update(void *ctx, const void *data, size_t len);
 
 int awslc_prov_sha256_final(void *ctx, unsigned char *out, size_t out_size);
 
-void awslc_prov_sha256_copy(void *dst, const void *src);
+int awslc_prov_sha256_copy(void *dst, const void *src);
 
 #if defined(__cplusplus)
 }  // extern "C"

@@ -50,7 +50,10 @@ static void *awslc_prov_sha256_dupctx(void *dctx) {
   if (duplicate == NULL) {
     return NULL;
   }
-  awslc_prov_sha256_copy(duplicate, dctx);
+  if (!awslc_prov_sha256_copy(duplicate, dctx)) {
+    awslc_prov_clear_free(duplicate, awslc_prov_sha256_ctx_size());
+    return NULL;
+  }
   return duplicate;
 }
 
@@ -58,7 +61,7 @@ static void awslc_prov_sha256_copyctx(void *outctx, void *inctx) {
   if (outctx == NULL || inctx == NULL) {
     return;
   }
-  awslc_prov_sha256_copy(outctx, inctx);
+  (void)awslc_prov_sha256_copy(outctx, inctx);
 }
 
 static int awslc_prov_sha256_init_op(void *dctx, const OSSL_PARAM params[]) {

@@ -42,9 +42,10 @@ int awslc_prov_sha256_final(void *ctx, unsigned char *out, size_t out_size) {
   return SHA256_Final(out, (SHA256_CTX *)ctx);
 }
 
-void awslc_prov_sha256_copy(void *dst, const void *src) {
+int awslc_prov_sha256_copy(void *dst, const void *src) {
   if (dst == NULL || src == NULL) {
-    return;
+    return 0;
   }
   *(SHA256_CTX *)dst = *(const SHA256_CTX *)src;
+  return 1;
 }
