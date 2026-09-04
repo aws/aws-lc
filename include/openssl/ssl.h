@@ -438,7 +438,9 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 #define SSL_ERROR_SYSCALL 5
 
 // SSL_ERROR_ZERO_RETURN indicates the operation failed because the connection
-// was cleanly shut down with a close_notify alert.
+// was cleanly shut down with a close_notify alert, or because
+// |SSL_OP_IGNORE_UNEXPECTED_EOF| is set and the peer closed the transport
+// without sending a close_notify alert.
 #define SSL_ERROR_ZERO_RETURN 6
 
 // SSL_ERROR_WANT_CONNECT indicates the operation failed attempting to connect
@@ -639,7 +641,8 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 // SSL_OP_IGNORE_UNEXPECTED_EOF configures a connection to treat an unexpected
 // transport EOF (the peer closing the connection without sending a
 // close_notify alert) as a clean shutdown. When set, |SSL_read| reports
-// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SYSCALL|. 
+// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SSL| with
+// |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the error stack.
 #define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
 
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
@@ -6681,6 +6684,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
 #define SSL_R_BAD_HYBRID_KEYSHARE 507
 #define SSL_R_BAD_KEM_CIPHERTEXT 508
+#define SSL_R_UNEXPECTED_EOF_WHILE_READING 509
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

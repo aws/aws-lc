@@ -1256,9 +1256,17 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         int n = DoRead(ssl_uniqueptr, buf.get(), read_size);
         ssl = ssl_uniqueptr->get();
         int err = SSL_get_error(ssl, n);
+        bool is_unexpected_eof = false;
+        if (err == SSL_ERROR_SSL) {
+          uint32_t packed_error = ERR_peek_error();
+          is_unexpected_eof =
+              ERR_GET_LIB(packed_error) == ERR_LIB_SSL &&
+              ERR_GET_REASON(packed_error) == SSL_R_UNEXPECTED_EOF_WHILE_READING;
+        }
         if (err == SSL_ERROR_ZERO_RETURN ||
-            (n == 0 && err == SSL_ERROR_SYSCALL)) {
-          if (n != 0) {
+            (n == 0 && err == SSL_ERROR_SYSCALL) ||
+            is_unexpected_eof) {
+          if (n > 0) {
             fprintf(stderr, "Invalid SSL_get_error output\n");
             return false;
           }
