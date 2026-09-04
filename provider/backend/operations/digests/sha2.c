@@ -111,11 +111,12 @@ int awslc_prov_sha384_final(void *ctx, unsigned char *out, size_t out_size) {
   return SHA384_Final(out, (SHA512_CTX *)ctx);
 }
 
-void awslc_prov_sha384_copy(void *dst, const void *src) {
+int awslc_prov_sha384_copy(void *dst, const void *src) {
   if (dst == NULL || src == NULL) {
-    return;
+    return 0;
   }
   *(SHA512_CTX *)dst = *(const SHA512_CTX *)src;
+  return 1;
 }
 
 // SHA-512
@@ -147,11 +148,12 @@ int awslc_prov_sha512_final(void *ctx, unsigned char *out, size_t out_size) {
   return SHA512_Final(out, (SHA512_CTX *)ctx);
 }
 
-void awslc_prov_sha512_copy(void *dst, const void *src) {
+int awslc_prov_sha512_copy(void *dst, const void *src) {
   if (dst == NULL || src == NULL) {
-    return;
+    return 0;
   }
   *(SHA512_CTX *)dst = *(const SHA512_CTX *)src;
+  return 1;
 }
 
 // SHA-512/224
@@ -186,11 +188,12 @@ int awslc_prov_sha512_224_final(void *ctx, unsigned char *out,
   return SHA512_224_Final(out, (SHA512_CTX *)ctx);
 }
 
-void awslc_prov_sha512_224_copy(void *dst, const void *src) {
+int awslc_prov_sha512_224_copy(void *dst, const void *src) {
   if (dst == NULL || src == NULL) {
-    return;
+    return 0;
   }
   *(SHA512_CTX *)dst = *(const SHA512_CTX *)src;
+  return 1;
 }
 
 // SHA-512/256
@@ -225,9 +228,10 @@ int awslc_prov_sha512_256_final(void *ctx, unsigned char *out,
   return SHA512_256_Final(out, (SHA512_CTX *)ctx);
 }
 
-void awslc_prov_sha512_256_copy(void *dst, const void *src) {
+int awslc_prov_sha512_256_copy(void *dst, const void *src) {
   if (dst == NULL || src == NULL) {
-    return;
+    return 0;
   }
   *(SHA512_CTX *)dst = *(const SHA512_CTX *)src;
+  return 1;
 }
