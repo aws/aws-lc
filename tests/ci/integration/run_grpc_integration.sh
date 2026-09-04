@@ -35,6 +35,7 @@ cd ${SCRATCH_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 git clone --depth 1 --branch "${GRPC_REF}" https://github.com/grpc/grpc.git ${GRPC_SRC_FOLDER}
+record_repo_commit "${GRPC_SRC_FOLDER}"
 cd ${GRPC_SRC_FOLDER}
 git submodule update --recursive --init
 

@@ -69,6 +69,7 @@ function ruby_patch() {
     git clone https://github.com/ruby/ruby.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    record_repo_commit "${src_dir}"
 
     # Add directory of backport patches if branch is a version later than Ruby 3.4.
     if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then

@@ -72,6 +72,7 @@ function postgres_patch() {
 
 # Get latest postgres version.
 git clone https://github.com/postgres/postgres.git ${POSTGRES_SRC_FOLDER}
+record_repo_commit "${POSTGRES_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${POSTGRES_BUILD_FOLDER}
 ls
 

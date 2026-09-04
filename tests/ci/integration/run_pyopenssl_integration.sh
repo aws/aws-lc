@@ -33,6 +33,7 @@ function pyopenssl_clone() {
     git clone https://github.com/pyca/pyopenssl.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    record_repo_commit "${src_dir}"
     for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
         echo "Applying patch ${patchfile}..."
         patch -p1 --quiet -d ${src_dir} -i "${patchfile}"

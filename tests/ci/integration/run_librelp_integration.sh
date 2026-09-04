@@ -56,6 +56,7 @@ if [[ -n "${LIBRELP_REF}" ]]; then
 else
   git clone --depth 1 https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER}
 fi
+record_repo_commit "${LIBRELP_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${LIBRELP_BUILD_FOLDER}
 ls
 

@@ -49,6 +49,7 @@ function cyrus_build() {
 # TO-DO: Setup Kerberos and DB, then use sample client and server programs to test GSSAPI
 
 git clone --depth 1 https://github.com/cyrusimap/cyrus-sasl.git ${CYRUS_SRC_FOLDER}
+record_repo_commit "${CYRUS_SRC_FOLDER}"
 cd ${CYRUS_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls

@@ -80,6 +80,7 @@ function mariadb_patch() {
 
 # Get latest mariadb version, we can pin to a specific version if MariaDB's code changes break us too often.
 git clone https://github.com/MariaDB/server.git ${MARIADB_SRC_FOLDER} --depth 1
+record_repo_commit "${MARIADB_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MARIADB_BUILD_FOLDER}
 ls
 

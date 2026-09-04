@@ -23,6 +23,7 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER=${SYS_ROOT}/"SCRATCH_AWSLC_S2N_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+S2N_TLS_SRC_FOLDER="${SCRATCH_FOLDER}/s2n-tls"
 S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
 
 # Make script execution idempotent.
@@ -58,7 +59,8 @@ function s2n_tls_prepare_new_build() {
 # Get latest s2n-tls version.
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${S2N_TLS_BUILD_FOLDER}
-git clone https://github.com/aws/s2n-tls.git
+git clone https://github.com/aws/s2n-tls.git "${S2N_TLS_SRC_FOLDER}"
+record_repo_commit "${S2N_TLS_SRC_FOLDER}"
 ls
 
 # s2n-tls's FindLibCrypto.cmake expects to find both the static and shared

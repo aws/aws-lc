@@ -43,6 +43,7 @@ function trousers_build() {
 
 # Get latest trousers version.
 git clone https://git.code.sf.net/p/trousers/trousers "${TROUSERS_SRC_FOLDER}"
+record_repo_commit "${TROUSERS_SRC_FOLDER}"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${TROUSERS_INSTALL_FOLDER}"
 ls
 
