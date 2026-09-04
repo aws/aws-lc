@@ -1,0 +1,118 @@
+Gate the rubygems "no ML-DSA support" tests on ML-DSA key loading, not key generation.
+
+Ruby master gained rubygems tests that assume an SSL library either supports ML-DSA
+completely or not at all. AWS-LC sits between those two states: it loads ML-DSA keys and
+certificates and signs and verifies with them, but registers no keygen by algorithm name,
+so Gem::PQCUtilities.support_ml_dsa_key? is false. That probe gates four tests whose
+assertions only hold when *loading* an ML-DSA key or certificate fails, so on AWS-LC they
+run on a false premise: two raise nothing at all and two raise a different error.
+
+This adds a load-capability probe and switches only those four tests to it. The four tests
+that assert key *generation* failure keep the existing gate, because that behavior is
+genuinely correct on AWS-LC.
+
+This is a test-gating fix only. It is intended to be proposed upstream; remove this patch
+once an equivalent change lands in ruby master.
+
+diff --git a/test/rubygems/helper.rb b/test/rubygems/helper.rb
+index cd50ed5..acd5a1c 100644
+--- a/test/rubygems/helper.rb
++++ b/test/rubygems/helper.rb
+@@ -1710,6 +1710,11 @@ def omit_if_support_ml_dsa_cert
+   def omit_if_support_ml_dsa_key
+     omit "OpenSSL supports ML-DSA" if Gem::PQCUtilities.support_ml_dsa_key?
+   end
++
++  def omit_if_support_ml_dsa_key_load
++    omit "OpenSSL loads ML-DSA keys" if
++      Gem::PQCUtilities.support_ml_dsa_key_load?
++  end
+ end
+ 
+ # https://github.com/seattlerb/minitest/blob/13c48a03d84a2a87855a4de0c959f96800100357/lib/minitest/mock.rb#L192
+diff --git a/test/rubygems/pqc_utilities.rb b/test/rubygems/pqc_utilities.rb
+index 3b46daa..0eb6ccf 100644
+--- a/test/rubygems/pqc_utilities.rb
++++ b/test/rubygems/pqc_utilities.rb
+@@ -52,6 +52,29 @@ def self.support_ml_dsa_key?
+       end
+   end
+ 
++  ##
++  # Returns whether the runtime OpenSSL can load an ML-DSA key. A library can
++  # read ML-DSA keys without being able to generate them: AWS-LC parses ML-DSA
++  # keys and certificates, and signs and verifies with them, but registers no
++  # keygen by algorithm name, so support_ml_dsa_key? is false there. Tests that
++  # assert the "no ML-DSA support" path for a key or certificate read from disk
++  # need this instead of support_ml_dsa_key?.
++
++  def self.support_ml_dsa_key_load?
++    return @support_ml_dsa_key_load unless @support_ml_dsa_key_load.nil?
++
++    @support_ml_dsa_key_load =
++      begin
++        !OpenSSL::PKey.read(
++          File.read(File.join(CERTS_DIR, "mldsa65_private_key.pem"))
++        ).nil?
++      # Mirrors Gem::PEMUtilities.load_key, which rescues the same error when an
++      # unsupported key algorithm is read.
++      rescue OpenSSL::PKey::PKeyError
++        false
++      end
++  end
++
+   ##
+   # Returns whether the runtime can sign an X.509 certificate with an ML-DSA
+   # key. Ruby OpenSSL rejects the nil digest that needs before 3.3, so
+diff --git a/test/rubygems/test_gem_commands_build_command.rb b/test/rubygems/test_gem_commands_build_command.rb
+index 03af9df..5f32d76 100644
+--- a/test/rubygems/test_gem_commands_build_command.rb
++++ b/test/rubygems/test_gem_commands_build_command.rb
+@@ -642,7 +642,7 @@ def test_build_signed_gem_ml_dsa_65
+   def test_build_signed_gem_ml_dsa_65_without_ml_dsa_support
+     pend "openssl is missing" unless Gem::HAVE_OPENSSL
+ 
+-    omit_if_support_ml_dsa_key
++    omit_if_support_ml_dsa_key_load
+ 
+     spec = util_spec "some_gem" do |s|
+       s.signing_key = ML_DSA_65_PRIVATE_KEY_FILE
+diff --git a/test/rubygems/test_gem_commands_cert_command.rb b/test/rubygems/test_gem_commands_cert_command.rb
+index e8063f7..6c7d08c 100644
+--- a/test/rubygems/test_gem_commands_cert_command.rb
++++ b/test/rubygems/test_gem_commands_cert_command.rb
+@@ -527,7 +527,7 @@ def test_execute_private_ml_dsa_65_key
+   end
+ 
+   def test_execute_private_ml_dsa_65_key_without_ml_dsa_support
+-    omit_if_support_ml_dsa_key
++    omit_if_support_ml_dsa_key_load
+ 
+     use_ui @ui do
+       e = assert_raise Gem::OptionParser::InvalidArgument do
+diff --git a/test/rubygems/test_gem_security_policy.rb b/test/rubygems/test_gem_security_policy.rb
+index ae264c0..762a575 100644
+--- a/test/rubygems/test_gem_security_policy.rb
++++ b/test/rubygems/test_gem_security_policy.rb
+@@ -427,7 +427,7 @@ def test_verify_wrong_digest_type
+   end
+ 
+   def test_verify_ml_dsa_65_without_ml_dsa_support
+-    omit_if_support_ml_dsa_key
++    omit_if_support_ml_dsa_key_load
+ 
+     e = assert_raise Gem::Security::Exception do
+       @high.verify [ML_DSA_65_PUBLIC_CERT], nil, *dummy_signatures
+diff --git a/test/rubygems/test_gem_security_signer.rb b/test/rubygems/test_gem_security_signer.rb
+index be79909..8e162ad 100644
+--- a/test/rubygems/test_gem_security_signer.rb
++++ b/test/rubygems/test_gem_security_signer.rb
+@@ -80,7 +80,7 @@ def test_initialize_key_path_ml_dsa_65
+   end
+ 
+   def test_initialize_key_path_ml_dsa_65_without_ml_dsa_support
+-    omit_if_support_ml_dsa_key
++    omit_if_support_ml_dsa_key_load
+ 
+     key_file = ML_DSA_65_PRIVATE_KEY_FILE
+ 
