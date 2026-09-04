@@ -394,44 +394,13 @@ EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs, const char *pass,
   return ret;
 }
 
-int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
-                                        const EVP_CIPHER *cipher,
-                                        const char *pass, size_t pass_len,
-                                        const uint8_t *salt, size_t salt_len,
-                                        int iterations, const EVP_PKEY *pkey) {
+int pkcs8_marshal_encrypted_private_key_info(
+    CBB *out, int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+    size_t pass_len, const uint8_t *salt, size_t salt_len, int iterations,
+    const uint8_t *plaintext, size_t plaintext_len) {
   int ret = 0;
-  uint8_t *plaintext = NULL, *salt_buf = NULL;
-  size_t plaintext_len = 0;
   EVP_CIPHER_CTX ctx;
   EVP_CIPHER_CTX_init(&ctx);
-
-  // Generate a random salt if necessary.
-  if (salt == NULL) {
-    if (salt_len == 0) {
-      salt_len = PKCS12_SALT_LEN;
-    }
-
-    salt_buf = OPENSSL_malloc(salt_len);
-    if (salt_buf == NULL) {
-      goto err;
-    }
-    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt_buf, salt_len));
-
-    salt = salt_buf;
-  }
-
-  if (iterations <= 0) {
-    iterations = PKCS12_DEFAULT_ITER;
-  }
-
-  // Serialize the input key.
-  CBB plaintext_cbb;
-  if (!CBB_init(&plaintext_cbb, 128) ||
-      !EVP_marshal_private_key(&plaintext_cbb, pkey) ||
-      !CBB_finish(&plaintext_cbb, &plaintext, &plaintext_len)) {
-    CBB_cleanup(&plaintext_cbb);
-    goto err;
-  }
 
   CBB epki;
   if (!CBB_add_asn1(out, &epki, CBS_ASN1_SEQUENCE)) {
@@ -480,8 +449,53 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
   ret = 1;
 
 err:
+  EVP_CIPHER_CTX_cleanup(&ctx);
+  return ret;
+}
+
+int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
+                                        const EVP_CIPHER *cipher,
+                                        const char *pass, size_t pass_len,
+                                        const uint8_t *salt, size_t salt_len,
+                                        int iterations, const EVP_PKEY *pkey) {
+  int ret = 0;
+  uint8_t *plaintext = NULL, *salt_buf = NULL;
+  size_t plaintext_len = 0;
+
+  // Generate a random salt if necessary.
+  if (salt == NULL) {
+    if (salt_len == 0) {
+      salt_len = PKCS12_SALT_LEN;
+    }
+
+    salt_buf = OPENSSL_malloc(salt_len);
+    if (salt_buf == NULL) {
+      goto err;
+    }
+    AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt_buf, salt_len));
+
+    salt = salt_buf;
+  }
+
+  if (iterations <= 0) {
+    iterations = PKCS12_DEFAULT_ITER;
+  }
+
+  // Serialize the input key.
+  CBB plaintext_cbb;
+  if (!CBB_init(&plaintext_cbb, 128) ||
+      !EVP_marshal_private_key(&plaintext_cbb, pkey) ||
+      !CBB_finish(&plaintext_cbb, &plaintext, &plaintext_len)) {
+    CBB_cleanup(&plaintext_cbb);
+    goto err;
+  }
+
+  ret = pkcs8_marshal_encrypted_private_key_info(
+      out, pbe_nid, cipher, pass, pass_len, salt, salt_len, iterations,
+      plaintext, plaintext_len);
+
+err:
   OPENSSL_free(plaintext);
   OPENSSL_free(salt_buf);
-  EVP_CIPHER_CTX_cleanup(&ctx);
   return ret;
 }

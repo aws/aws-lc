@@ -184,7 +184,9 @@ OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
 // certificate. The key and certificates are encrypted with |key_nid| and
 // |cert_nid|, respectively, using |iterations| iterations in the
 // KDF. |mac_iterations| is the number of iterations when deriving the MAC
-// key. |key_type| must be zero. |pkey| and |cert| may be NULL to omit them.
+// key. |key_type| may be zero, |KEY_EX|, or |KEY_SIG|. The named values add a
+// Microsoft-compatible key usage attribute to the encoded private key.
+// |pkey| and |cert| may be NULL to omit them.
 //
 // Each of |key_nid|, |cert_nid|, |iterations|, and |mac_iterations| may be zero
 // to use defaults, which are |NID_pbe_WithSHA1And3_Key_TripleDES_CBC|,

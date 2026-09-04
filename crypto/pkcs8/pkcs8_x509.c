@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <openssl/pkcs8.h>
+#include <openssl/pkcs12.h>
 
 #include <limits.h>
 
@@ -1107,6 +1108,80 @@ out:
   return ret;
 }
 
+static int marshal_private_key_with_key_usage(CBB *out,
+                                              const EVP_PKEY *pkey,
+                                              int key_type) {
+  if (key_type == 0) {
+    return EVP_marshal_private_key(out, pkey);
+  }
+
+  PKCS8_PRIV_KEY_INFO *p8 = EVP_PKEY2PKCS8(pkey);
+  if (p8 == NULL) {
+    return 0;
+  }
+
+  int ret = 0;
+  uint8_t usage = (uint8_t)key_type;
+  X509_ATTRIBUTE *attribute = X509_ATTRIBUTE_create_by_NID(
+      NULL, NID_key_usage, V_ASN1_BIT_STRING, &usage, 1);
+  if (p8->attributes == NULL) {
+    p8->attributes = sk_X509_ATTRIBUTE_new_null();
+  }
+  if (attribute == NULL || p8->attributes == NULL ||
+      !sk_X509_ATTRIBUTE_push(p8->attributes, attribute)) {
+    X509_ATTRIBUTE_free(attribute);
+    goto out;
+  }
+
+  int len = i2d_PKCS8_PRIV_KEY_INFO(p8, NULL);
+  uint8_t *ptr;
+  if (len < 0 || !CBB_add_space(out, &ptr, (size_t)len) ||
+      i2d_PKCS8_PRIV_KEY_INFO(p8, &ptr) != len || !CBB_flush(out)) {
+    goto out;
+  }
+  ret = 1;
+
+out:
+  PKCS8_PRIV_KEY_INFO_free(p8);
+  return ret;
+}
+
+static int marshal_pkcs12_key(CBB *out, int key_nid, const char *password,
+                              size_t password_len, int iterations,
+                              const EVP_PKEY *pkey, int key_type) {
+  if (key_nid < 0) {
+    return marshal_private_key_with_key_usage(out, pkey, key_type);
+  }
+  if (key_type == 0) {
+    return PKCS8_marshal_encrypted_private_key(
+        out, key_nid, NULL, password, password_len,
+        NULL /* generate a random salt */, 0 /* use default salt length */,
+        iterations, pkey);
+  }
+  if (iterations <= 0) {
+    iterations = PKCS12_DEFAULT_ITER;
+  }
+
+  CBB plaintext_cbb;
+  uint8_t *plaintext = NULL;
+  size_t plaintext_len = 0;
+  if (!CBB_init(&plaintext_cbb, 128) ||
+      !marshal_private_key_with_key_usage(&plaintext_cbb, pkey, key_type) ||
+      !CBB_finish(&plaintext_cbb, &plaintext, &plaintext_len)) {
+    CBB_cleanup(&plaintext_cbb);
+    OPENSSL_free(plaintext);
+    return 0;
+  }
+
+  uint8_t salt[PKCS12_SALT_LEN];
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(salt, sizeof(salt)));
+  int ret = pkcs8_marshal_encrypted_private_key_info(
+      out, key_nid, NULL, password, password_len, salt, sizeof(salt),
+      iterations, plaintext, plaintext_len);
+  OPENSSL_free(plaintext);
+  return ret;
+}
+
 PKCS12 *PKCS12_create(const char *password, const char *name,
                       const EVP_PKEY *pkey, X509 *cert,
                       const STACK_OF(X509)* chain, int key_nid, int cert_nid,
@@ -1123,9 +1198,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   if (mac_iterations == 0) {
     mac_iterations = 1;
   }
-  if (// In OpenSSL, this specifies a non-standard Microsoft key usage extension
-      // which we do not currently support.
-      key_type != 0 ||
+  if ((key_type != 0 && key_type != KEY_EX && key_type != KEY_SIG) ||
       // In OpenSSL, -1 here means to omit the MAC, which we do not
       // currently support. Omitting it is also invalid for a password-based
       // PKCS#12 file.
@@ -1254,29 +1327,24 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
                       CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
         !CBB_add_asn1(&wrapper, &data, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_asn1(&data, &safe_contents, CBS_ASN1_SEQUENCE) ||
-        // Add a SafeBag containing a PKCS8ShroudedKeyBag.
+        // Add a SafeBag containing the private key.
         !CBB_add_asn1(&safe_contents, &bag, CBS_ASN1_SEQUENCE) ||
         !CBB_add_asn1(&bag, &bag_oid, CBS_ASN1_OBJECT)) {
       goto err;
     }
     if (key_nid < 0) {
-      if (!CBB_add_bytes(&bag_oid, kKeyBag, sizeof(kKeyBag)) ||
-          !CBB_add_asn1(&bag, &bag_contents,
-                        CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
-          !EVP_marshal_private_key(&bag_contents, pkey)) {
+      if (!CBB_add_bytes(&bag_oid, kKeyBag, sizeof(kKeyBag))) {
         goto err;
       }
-    } else {
-      if (!CBB_add_bytes(&bag_oid, kPKCS8ShroudedKeyBag,
-                         sizeof(kPKCS8ShroudedKeyBag)) ||
-          !CBB_add_asn1(&bag, &bag_contents,
-                        CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
-          !PKCS8_marshal_encrypted_private_key(
-              &bag_contents, key_nid, NULL, password, password_len,
-              NULL /* generate a random salt */,
-              0 /* use default salt length */, iterations, pkey)) {
-        goto err;
-      }
+    } else if (!CBB_add_bytes(&bag_oid, kPKCS8ShroudedKeyBag,
+                              sizeof(kPKCS8ShroudedKeyBag))) {
+      goto err;
+    }
+    if (!CBB_add_asn1(&bag, &bag_contents,
+                      CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+        !marshal_pkcs12_key(&bag_contents, key_nid, password, password_len,
+                            iterations, pkey, key_type)) {
+      goto err;
     }
     size_t name_len = 0;
     if (name) {

@@ -9,11 +9,13 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pkcs8.h>
+#include <openssl/pkcs12.h>
 #include <openssl/mem.h>
 #include <openssl/span.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
 #include "../test/test_util.h"
 
 
@@ -337,6 +339,275 @@ static bssl::UniquePtr<X509> LoadX509(bssl::Span<const uint8_t> der) {
 static bssl::UniquePtr<EVP_PKEY> LoadPrivateKey(bssl::Span<const uint8_t> der) {
   CBS cbs = der;
   return bssl::UniquePtr<EVP_PKEY>(EVP_parse_private_key(&cbs));
+}
+
+// 1.2.840.113549.1.7.1
+static const uint8_t kPKCS7DataOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
+                                        0x0d, 0x01, 0x07, 0x01};
+
+// 1.2.840.113549.1.12.10.1.1
+static const uint8_t kKeyBagOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
+                                     0x01, 0x0c, 0x0a, 0x01, 0x01};
+
+// 1.2.840.113549.1.12.10.1.2
+static const uint8_t kPKCS8ShroudedKeyBagOID[] = {
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x0c, 0x0a, 0x01, 0x02};
+
+// 2.5.29.15
+static const uint8_t kKeyUsageOID[] = {0x55, 0x1d, 0x0f};
+
+static bool ParseDataContentInfo(CBS *out, CBS *content_info) {
+  CBS oid, wrapper;
+  return CBS_get_asn1(content_info, &oid, CBS_ASN1_OBJECT) &&
+         CBS_mem_equal(&oid, kPKCS7DataOID, sizeof(kPKCS7DataOID)) &&
+         CBS_get_asn1(content_info, &wrapper,
+                      CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) &&
+         CBS_get_asn1(&wrapper, out, CBS_ASN1_OCTETSTRING) &&
+         CBS_len(&wrapper) == 0 && CBS_len(content_info) == 0;
+}
+
+static bool ExtractKeyBagPrivateKeyInfo(std::vector<uint8_t> *out,
+                                        const PKCS12 *p12,
+                                        const char *password) {
+  uint8_t *der = nullptr;
+  int der_len = i2d_PKCS12(p12, &der);
+  if (der_len <= 0) {
+    return false;
+  }
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  CBS input, pfx, auth_safe_info, auth_safe, content_infos;
+  uint64_t version;
+  CBS_init(&input, der, (size_t)der_len);
+  if (!CBS_get_asn1(&input, &pfx, CBS_ASN1_SEQUENCE) || CBS_len(&input) != 0 ||
+      !CBS_get_asn1_uint64(&pfx, &version) || version != 3 ||
+      !CBS_get_asn1(&pfx, &auth_safe_info, CBS_ASN1_SEQUENCE) ||
+      !ParseDataContentInfo(&auth_safe, &auth_safe_info) ||
+      !CBS_get_asn1(&auth_safe, &content_infos, CBS_ASN1_SEQUENCE) ||
+      CBS_len(&auth_safe) != 0) {
+    return false;
+  }
+
+  bool found = false;
+  while (CBS_len(&content_infos) != 0) {
+    CBS content_info, safe_contents_der, safe_contents;
+    if (!CBS_get_asn1(&content_infos, &content_info, CBS_ASN1_SEQUENCE) ||
+        !ParseDataContentInfo(&safe_contents_der, &content_info) ||
+        !CBS_get_asn1(&safe_contents_der, &safe_contents, CBS_ASN1_SEQUENCE) ||
+        CBS_len(&safe_contents_der) != 0) {
+      return false;
+    }
+
+    while (CBS_len(&safe_contents) != 0) {
+      CBS bag, bag_oid, bag_value;
+      if (!CBS_get_asn1(&safe_contents, &bag, CBS_ASN1_SEQUENCE) ||
+          !CBS_get_asn1(&bag, &bag_oid, CBS_ASN1_OBJECT) ||
+          !CBS_get_asn1(
+              &bag, &bag_value,
+              CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+        return false;
+      }
+      const bool is_key_bag =
+          CBS_mem_equal(&bag_oid, kKeyBagOID, sizeof(kKeyBagOID));
+      const bool is_shrouded_key_bag = CBS_mem_equal(
+          &bag_oid, kPKCS8ShroudedKeyBagOID,
+          sizeof(kPKCS8ShroudedKeyBagOID));
+      if (!is_key_bag && !is_shrouded_key_bag) {
+        continue;
+      }
+      if (found) {
+        return false;
+      }
+
+      if (is_key_bag) {
+        out->assign(CBS_data(&bag_value),
+                    CBS_data(&bag_value) + CBS_len(&bag_value));
+      } else {
+        CBS encrypted_private_key_info, algorithm, ciphertext;
+        if (!CBS_get_asn1(&bag_value, &encrypted_private_key_info,
+                          CBS_ASN1_SEQUENCE) ||
+            CBS_len(&bag_value) != 0 ||
+            !CBS_get_asn1(&encrypted_private_key_info, &algorithm,
+                          CBS_ASN1_SEQUENCE) ||
+            !CBS_get_asn1(&encrypted_private_key_info, &ciphertext,
+                          CBS_ASN1_OCTETSTRING) ||
+            CBS_len(&encrypted_private_key_info) != 0) {
+          return false;
+        }
+
+        uint8_t *plaintext = nullptr;
+        size_t plaintext_len = 0;
+        size_t password_len = password == nullptr ? 0 : strlen(password);
+        if (!pkcs8_pbe_decrypt(&plaintext, &plaintext_len, &algorithm, password,
+                               password_len, CBS_data(&ciphertext),
+                               CBS_len(&ciphertext))) {
+          return false;
+        }
+        out->assign(plaintext, plaintext + plaintext_len);
+        OPENSSL_free(plaintext);
+      }
+      found = true;
+    }
+  }
+
+  return found;
+}
+
+static void ExpectKeyUsageAttribute(
+    const PKCS12 *p12, const char *password,
+    bssl::Span<const uint8_t> expected_attribute,
+    bssl::Span<const uint8_t> expected_bit_string) {
+  std::vector<uint8_t> private_key_info;
+  ASSERT_TRUE(ExtractKeyBagPrivateKeyInfo(&private_key_info, p12, password));
+
+  CBS input, pki, algorithm, private_key;
+  uint64_t version;
+  CBS_init(&input, private_key_info.data(), private_key_info.size());
+  ASSERT_TRUE(CBS_get_asn1(&input, &pki, CBS_ASN1_SEQUENCE));
+  ASSERT_EQ(0u, CBS_len(&input));
+  ASSERT_TRUE(CBS_get_asn1_uint64(&pki, &version));
+  EXPECT_EQ(0u, version);
+  ASSERT_TRUE(CBS_get_asn1(&pki, &algorithm, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1(&pki, &private_key, CBS_ASN1_OCTETSTRING));
+
+  if (expected_attribute.empty()) {
+    EXPECT_EQ(0u, CBS_len(&pki));
+    return;
+  }
+
+  CBS attribute_element;
+  ASSERT_TRUE(CBS_get_asn1_element(
+      &pki, &attribute_element,
+      CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0));
+  EXPECT_EQ(Bytes(expected_attribute),
+            Bytes(CBS_data(&attribute_element), CBS_len(&attribute_element)));
+  EXPECT_EQ(0u, CBS_len(&pki));
+
+  CBS attributes, attribute, oid, values, bit_string;
+  ASSERT_TRUE(CBS_get_asn1(
+      &attribute_element, &attributes,
+      CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0));
+  ASSERT_EQ(0u, CBS_len(&attribute_element));
+  ASSERT_TRUE(CBS_get_asn1(&attributes, &attribute, CBS_ASN1_SEQUENCE));
+  ASSERT_EQ(0u, CBS_len(&attributes));
+  ASSERT_TRUE(CBS_get_asn1(&attribute, &oid, CBS_ASN1_OBJECT));
+  EXPECT_TRUE(CBS_mem_equal(&oid, kKeyUsageOID, sizeof(kKeyUsageOID)));
+  ASSERT_TRUE(CBS_get_asn1(&attribute, &values, CBS_ASN1_SET));
+  ASSERT_EQ(0u, CBS_len(&attribute));
+  ASSERT_TRUE(CBS_get_asn1(&values, &bit_string, CBS_ASN1_BITSTRING));
+  ASSERT_EQ(0u, CBS_len(&values));
+  EXPECT_EQ(Bytes(expected_bit_string),
+            Bytes(CBS_data(&bit_string), CBS_len(&bit_string)));
+}
+
+// OpenSSL 3.0.18 defines the constants and emits these exact attribute
+// elements through PKCS8_add_keyusage. The reference sources are:
+// https://github.com/openssl/openssl/blob/openssl-3.0.18/include/openssl/pkcs12.h.in
+// https://github.com/openssl/openssl/blob/openssl-3.0.18/crypto/pkcs12/p12_attr.c
+static const uint8_t kKeyExAttribute[] = {
+    0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x1d,
+    0x0f, 0x31, 0x04, 0x03, 0x02, 0x04, 0x10};
+static const uint8_t kKeySigAttribute[] = {
+    0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x1d,
+    0x0f, 0x31, 0x04, 0x03, 0x02, 0x07, 0x80};
+static const uint8_t kKeyExBitString[] = {0x04, 0x10};
+static const uint8_t kKeySigBitString[] = {0x07, 0x80};
+
+TEST(PKCS12Test, CreateWithKeyUsage) {
+  EXPECT_EQ(0x10, KEY_EX);
+  EXPECT_EQ(0x80, KEY_SIG);
+
+  bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
+  ASSERT_TRUE(key);
+
+  const struct {
+    int key_type;
+    bssl::Span<const uint8_t> attribute;
+    bssl::Span<const uint8_t> bit_string;
+  } kTests[] = {
+      {KEY_EX, kKeyExAttribute, kKeyExBitString},
+      {KEY_SIG, kKeySigAttribute, kKeySigBitString},
+  };
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.key_type);
+
+    bssl::UniquePtr<PKCS12> unencrypted(PKCS12_create(
+        kPassword, nullptr, key.get(), nullptr, nullptr, -1, 0, 1, 1,
+        test.key_type));
+    ASSERT_TRUE(unencrypted);
+    ExpectKeyUsageAttribute(unencrypted.get(), kPassword, test.attribute,
+                            test.bit_string);
+
+    bssl::UniquePtr<PKCS12> encrypted(PKCS12_create(
+        kPassword, nullptr, key.get(), nullptr, nullptr, 0, 0, 1, 1,
+        test.key_type));
+    ASSERT_TRUE(encrypted);
+    ExpectKeyUsageAttribute(encrypted.get(), kPassword, test.attribute,
+                            test.bit_string);
+    EVP_PKEY *parsed_key = nullptr;
+    X509 *parsed_cert = nullptr;
+    STACK_OF(X509) *parsed_ca = nullptr;
+    ASSERT_TRUE(PKCS12_parse(encrypted.get(), kPassword, &parsed_key,
+                             &parsed_cert, &parsed_ca));
+    bssl::UniquePtr<EVP_PKEY> free_parsed_key(parsed_key);
+    bssl::UniquePtr<X509> free_parsed_cert(parsed_cert);
+    bssl::UniquePtr<STACK_OF(X509)> free_parsed_ca(parsed_ca);
+    ASSERT_TRUE(parsed_key);
+    EXPECT_EQ(1, EVP_PKEY_cmp(key.get(), parsed_key));
+    EXPECT_EQ(nullptr, parsed_cert);
+    ASSERT_TRUE(parsed_ca);
+    EXPECT_EQ(0u, sk_X509_num(parsed_ca));
+  }
+}
+
+TEST(PKCS12Test, CreateWithDefaultKeyTypePreservesKeyEncoding) {
+  bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<PKCS12> p12(PKCS12_create(
+      kPassword, nullptr, key.get(), nullptr, nullptr, -1, 0, 1, 1, 0));
+  ASSERT_TRUE(p12);
+
+  std::vector<uint8_t> private_key_info;
+  ASSERT_TRUE(
+      ExtractKeyBagPrivateKeyInfo(&private_key_info, p12.get(), kPassword));
+
+  CBB expected;
+  ASSERT_TRUE(CBB_init(&expected, 0));
+  ASSERT_TRUE(EVP_marshal_private_key(&expected, key.get()));
+  EXPECT_EQ(Bytes(CBB_data(&expected), CBB_len(&expected)),
+            Bytes(private_key_info));
+  CBB_cleanup(&expected);
+
+  ExpectKeyUsageAttribute(p12.get(), kPassword, {}, {});
+}
+
+TEST(PKCS12Test, CreateWithKeyUsageNormalizesNegativeIterations) {
+  bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<PKCS12> p12(PKCS12_create(
+      kPassword, nullptr, key.get(), nullptr, nullptr, 0, 0, -1, 1, KEY_EX));
+  ASSERT_TRUE(p12);
+  ExpectKeyUsageAttribute(p12.get(), kPassword, kKeyExAttribute,
+                          kKeyExBitString);
+}
+
+TEST(PKCS12Test, CreateRejectsUnsupportedKeyType) {
+  bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
+  ASSERT_TRUE(key);
+
+  const int kUnsupported[] = {-1, 1, KEY_EX | KEY_SIG};
+  for (int key_type : kUnsupported) {
+    SCOPED_TRACE(key_type);
+    ERR_clear_error();
+    bssl::UniquePtr<PKCS12> p12(PKCS12_create(
+        kPassword, nullptr, key.get(), nullptr, nullptr, -1, 0, 1, 1,
+        key_type));
+    EXPECT_FALSE(p12);
+    uint32_t error = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_PKCS8, ERR_GET_LIB(error));
+    EXPECT_EQ(PKCS8_R_UNSUPPORTED_OPTIONS, ERR_GET_REASON(error));
+    ERR_clear_error();
+  }
 }
 
 static void TestRoundTrip(const char *password, const char *name,

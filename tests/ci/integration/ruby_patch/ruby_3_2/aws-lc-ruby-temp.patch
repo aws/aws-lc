@@ -29,23 +29,7 @@ index 6c532ac..a53162c 100644
  #else
               Qfalse
  #endif
-diff --git ruby/ext/openssl/ossl_pkcs12.c ruby/ext/openssl/ossl_pkcs12.c
-index fb947df..969aa25 100644
---- ruby/ext/openssl/ossl_pkcs12.c
-+++ ruby/ext/openssl/ossl_pkcs12.c
-@@ -134,6 +134,12 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
-     if (!NIL_P(keytype))
-         ktype = NUM2INT(keytype);
- 
-+#if defined(OPENSSL_IS_AWSLC)
-+    if (ktype != 0) {
-+        ossl_raise(rb_eArgError, "Unknown key usage type with AWS-LC %"PRIsVALUE, INT2NUM(ktype));
-+    }
-+#endif
-+
-     obj = NewPKCS12(cPKCS12);
-     x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
-     p12 = PKCS12_create(passphrase, friendlyname, key, x509, x509s,
+
 diff --git ruby/ext/openssl/ossl_pkey_ec.c ruby/ext/openssl/ossl_pkey_ec.c
 index 92842f9..1af95d0 100644
 --- ruby/ext/openssl/ossl_pkey_ec.c

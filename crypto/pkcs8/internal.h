@@ -27,6 +27,14 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
                       const char *pass, size_t pass_len, const uint8_t *in,
                       size_t in_len);
 
+// pkcs8_marshal_encrypted_private_key_info encrypts the serialized
+// PrivateKeyInfo in |plaintext| and writes an EncryptedPrivateKeyInfo to |out|.
+// |salt| must be non-NULL and |iterations| must be positive.
+int pkcs8_marshal_encrypted_private_key_info(
+    CBB *out, int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
+    size_t pass_len, const uint8_t *salt, size_t salt_len, int iterations,
+    const uint8_t *plaintext, size_t plaintext_len);
+
 #define PKCS12_KEY_ID 1
 #define PKCS12_IV_ID 2
 #define PKCS12_MAC_ID 3
