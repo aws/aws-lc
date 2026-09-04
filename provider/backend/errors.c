@@ -6,7 +6,6 @@
 #include <openssl/err.h>
 
 #include <stdio.h>
-#include <string.h>
 
 #include "internal/backend.h"
 
@@ -33,7 +32,7 @@ int awslc_prov_error_shift(AWSLC_PROV_ERROR *out) {
   if (out == NULL) {
     return 0;
   }
-  memset(out, 0, sizeof(*out));
+  awslc_prov_cleanse(out, sizeof(*out));
 
   packed = ERR_get_error_line_data(&file, &line, &data, &flags);
   if (packed == 0) {
