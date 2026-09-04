@@ -43,6 +43,7 @@ using Socket = int;
 #define INVALID_SOCKET (-1)
 static int closesocket(const int sock) { return close(sock); }
 static std::string LastSocketError() { return strerror(errno); }
+static void SetLastSocketError(int error) { errno = error; }
 #else
 using Socket = SOCKET;
 static std::string LastSocketError() {
@@ -50,6 +51,7 @@ static std::string LastSocketError() {
   snprintf(buf, sizeof(buf), "%d", WSAGetLastError());
   return buf;
 }
+static void SetLastSocketError(int error) { WSASetLastError(error); }
 #endif
 
 struct SockaddrStorage {
@@ -381,28 +383,40 @@ static bool SocketSetNonBlocking(Socket sock) {
 #endif
 }
 
-enum class WaitType { kRead, kWrite };
+enum class WaitType { kRead, kWrite, kConnect };
 
 static bool WaitForSocket(Socket sock, WaitType wait_type) {
-  // Use an arbitrary 5-second timeout, so the test doesn't hang indefinitely if
-  // there's an issue.
-  static constexpr int kTimeoutSeconds = 5;
+  // Arbitrary timeouts, so the test cannot hang. |kConnect| waits on a full
+  // connection attempt, which Windows can take a couple of seconds to refuse.
+  const int timeout_seconds = wait_type == WaitType::kConnect ? 30 : 5;
+  // A failed connection attempt can surface as an error, not writability.
+  const bool watch_errors = wait_type == WaitType::kConnect;
 #if defined(OPENSSL_WINDOWS)
-  fd_set read_set, write_set;
+  fd_set read_set, write_set, error_set;
   FD_ZERO(&read_set);
   FD_ZERO(&write_set);
+  FD_ZERO(&error_set);
   fd_set *wait_set = wait_type == WaitType::kRead ? &read_set : &write_set;
   FD_SET(sock, wait_set);
-  timeval timeout = {kTimeoutSeconds, 0};
-  if (select(0 /* unused on Windows */, &read_set, &write_set, nullptr,
-             &timeout) <= 0) {
+  if (watch_errors) {
+    FD_SET(sock, &error_set);
+  }
+  timeval timeout = {timeout_seconds, 0};
+  if (select(0 /* unused on Windows */, &read_set, &write_set,
+             watch_errors ? &error_set : nullptr, &timeout) <= 0) {
     return false;
   }
-  return FD_ISSET(sock, wait_set);
+  return FD_ISSET(sock, wait_set) ||
+         (watch_errors && FD_ISSET(sock, &error_set));
 #else
   const short events = wait_type == WaitType::kRead ? POLLIN : POLLOUT;
   pollfd fd = {.fd = sock, .events = events, .revents = 0};
-  return poll(&fd, 1, kTimeoutSeconds * 1000) == 1 && (fd.revents & events);
+  if (poll(&fd, 1, timeout_seconds * 1000) != 1) {
+    return false;
+  }
+  // POLLERR and POLLHUP are reported regardless of |events|.
+  const int accepted = watch_errors ? (events | POLLERR | POLLHUP) : events;
+  return (fd.revents & accepted) != 0;
 #endif
 }
 
@@ -445,6 +459,76 @@ TEST(BIOTest, SocketConnect) {
             recv(sock.get(), buf, sizeof(buf), 0))
       << LastSocketError();
   ASSERT_EQ(Bytes(kTestMessage, sizeof(kTestMessage)), Bytes(buf, sizeof(buf)));
+}
+
+TEST(BIOTest, SocketNonBlockingConnectFailure) {
+  sockaddr_in sin;
+  OPENSSL_cleanse(&sin, sizeof(sin));
+  sin.sin_family = AF_INET;
+  ASSERT_EQ(1, inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr));
+
+  // Find an unused loopback port for the connection attempt.
+  OwnedSocket bound_sock(Bind(AF_INET, SOCK_STREAM,
+                              reinterpret_cast<const sockaddr *>(&sin),
+                              sizeof(sin)));
+  ASSERT_TRUE(bound_sock.is_valid()) << LastSocketError();
+
+  SockaddrStorage addr;
+  ASSERT_EQ(0, getsockname(bound_sock.get(), addr.addr_mut(), &addr.len))
+      << LastSocketError();
+
+  char hostname[80];
+  snprintf(hostname, sizeof(hostname), "127.0.0.1:%d",
+           ntohs(addr.ToIPv4().sin_port));
+  bound_sock.reset();
+
+  const bssl::UniquePtr<BIO> bio(BIO_new_connect(hostname));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(BIO_set_nbio(bio.get(), 1));
+
+  ASSERT_EQ(-1, BIO_do_connect(bio.get()));
+  ASSERT_TRUE(BIO_should_retry(bio.get()));
+
+  const int fd = BIO_get_fd(bio.get(), nullptr);
+  ASSERT_NE(-1, fd);
+  ASSERT_TRUE(WaitForSocket(fd, WaitType::kConnect)) << LastSocketError();
+
+  // A successful readiness call need not clear the retryable socket error left
+  // by connect. Ensure the connect BIO uses SO_ERROR, not this stale value.
+#if defined(OPENSSL_WINDOWS)
+  SetLastSocketError(WSAEWOULDBLOCK);
+#else
+  SetLastSocketError(EINPROGRESS);
+#endif
+  ERR_clear_error();
+
+  EXPECT_EQ(0, BIO_do_connect(bio.get()));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+
+  uint32_t error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SYS, ERR_GET_LIB(error));
+  // |ERR_GET_REASON| truncates to 12 bits, so Winsock codes (10000 and up)
+  // cannot round-trip. Only assert the reason where it is representable.
+#if !defined(OPENSSL_WINDOWS)
+  EXPECT_EQ(ECONNREFUSED, ERR_GET_REASON(error));
+#endif
+  error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+  EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // Reading SO_ERROR above cleared it, so a further attempt must keep failing
+  // rather than read the now-clear error as a completed connection.
+  EXPECT_EQ(0, BIO_do_connect(bio.get()));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+  error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+  EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // Writing to a BIO whose connection never completed must fail too.
+  EXPECT_GE(0, BIO_write(bio.get(), "test", 4));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
 }
 
 TEST(BIOTest, SocketNonBlocking) {
