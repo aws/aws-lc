@@ -7,6 +7,11 @@ if(NOT AWSLC_PROVIDER_OPENSSL_ROOT)
     "prefix of an OpenSSL 3.5 or later build supplying the provider headers.")
 endif()
 
+if(NOT BUILD_SHARED_LIBS)
+  message(FATAL_ERROR
+    "BUILD_AWSLC_PROVIDER requires BUILD_SHARED_LIBS.")
+endif()
+
 find_path(AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR
   NAMES openssl/core_dispatch.h
   PATHS "${AWSLC_PROVIDER_OPENSSL_ROOT}/include"
@@ -106,28 +111,6 @@ endif()
 # compatibility on. The entry point carries an explicit visibility attribute so
 # hiding everything else does not hide it too.
 set_target_properties(awslc_provider PROPERTIES C_VISIBILITY_PRESET hidden)
-
-# C_VISIBILITY_PRESET is a compile flag, so it only reaches this target's own
-# sources. With BUILD_SHARED_LIBS off the linker pulls AWS-LC's objects out of
-# libcrypto.a into the module, and those carry OPENSSL_EXPORT's default
-# visibility. Hundreds of their names collide with the host libcrypto's, where
-# ELF resolves global scope first and could bind AWS-LC's own calls to OpenSSL's
-# definitions. A link-time export list is what covers both link modes.
-if(APPLE)
-  # ld64 takes a file of Mach-O symbol names, hence the leading underscore.
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/awslc_exports.txt"
-    "_OSSL_provider_init\n")
-  target_link_options(awslc_provider PRIVATE
-    "-Wl,-exported_symbols_list,${CMAKE_CURRENT_BINARY_DIR}/awslc_exports.txt")
-elseif(UNIX)
-  # A version script holding one anonymous node: that symbol global, the rest
-  # local. Local is stronger than hidden-on-export here, because a local symbol
-  # is not a candidate for dynamic lookup at all.
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/awslc.map"
-    "{ global: OSSL_provider_init; local: *; };\n")
-  target_link_options(awslc_provider PRIVATE
-    "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/awslc.map")
-endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
   # Two test binaries, for the same reason there are two object libraries: one
