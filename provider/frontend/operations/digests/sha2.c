@@ -199,7 +199,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha384);
 
 static void *awslc_prov_sha384_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha384_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha384_ctx_size());
 }
 
 static void awslc_prov_sha384_freectx(void *dctx) {
@@ -244,7 +244,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512);
 
 static void *awslc_prov_sha512_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha512_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha512_ctx_size());
 }
 
 static void awslc_prov_sha512_freectx(void *dctx) {
@@ -289,7 +289,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512_224);
 
 static void *awslc_prov_sha512_224_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha512_224_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha512_224_ctx_size());
 }
 
 static void awslc_prov_sha512_224_freectx(void *dctx) {
@@ -338,7 +338,7 @@ AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha512_256);
 
 static void *awslc_prov_sha512_256_newctx(void *provctx) {
   (void)provctx;
-  return awslc_prov_sha2_newctx(awslc_prov_sha512_256_ctx_size());
+  return awslc_prov_zalloc(awslc_prov_sha512_256_ctx_size());
 }
 
 static void awslc_prov_sha512_256_freectx(void *dctx) {
