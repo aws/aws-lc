@@ -81,6 +81,10 @@ void *awslc_prov_zalloc(size_t size);
 // wipe is not optional.
 void awslc_prov_clear_free(void *ptr, size_t size);
 
+// Wipe |size| bytes at |ptr|. AWS-LC exports OPENSSL_cleanse, so a front-side
+// call to it would bind to AWS-LC's libcrypto rather than the host's.
+void awslc_prov_cleanse(void *ptr, size_t size);
+
 // The AWS-LC version this provider is linked against, e.g. "AWS-LC 5.4.0". The
 // returned string is static and outlives any caller. Reported through the
 // provider's buildinfo parameter, which is the only way a consumer can tell which
