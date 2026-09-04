@@ -341,7 +341,8 @@ TEST(SSLTest, QuietShutdown) {
 
 // Test that |SSL_OP_IGNORE_UNEXPECTED_EOF| causes an unexpected transport EOF
 // (the peer closing without a close_notify) to be reported as a clean shutdown,
-// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SYSCALL|, for both the client
+// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SSL| with
+// |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the error stack, for both the client
 // and the server.
 TEST(SSLTest, IgnoreUnexpectedEOF) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -382,7 +383,8 @@ TEST(SSLTest, IgnoreUnexpectedEOF) {
   SSL_set0_rbio(server.get(), eof_bio_server);
 
   // With the option set, an unexpected transport EOF is reported as a clean
-  // shutdown, |SSL_ERROR_ZERO_RETURN|, rather than |SSL_ERROR_SYSCALL|.
+  // shutdown, |SSL_ERROR_ZERO_RETURN|, rather than |SSL_ERROR_SSL| with
+  // |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the error stack.
   char buf[1];
   int ret = SSL_read(client.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0);
