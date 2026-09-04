@@ -1570,6 +1570,13 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "max": 65536,
               "increment": 8
             }
+          ],
+          "contextLength": [
+            {
+              "min": 0,
+              "max": 2040,
+              "increment": 8
+            }
           ]
         }
       ],
@@ -1581,7 +1588,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "signatureInterfaces": [
           "internal", 
           "external"
-        ]
+        ],
+        "preHash": ["pure"]
       },{
         "algorithm": "ML-DSA",
         "mode": "sigVer",
@@ -1599,6 +1607,13 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "max": 65536,
               "increment": 8
             }
+          ],
+          "contextLength": [
+            {
+              "min": 0,
+              "max": 2040,
+              "increment": 8
+            }
           ]
         }
       ],
@@ -1610,7 +1625,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "signatureInterfaces": [
           "internal", 
           "external"
-        ]
+        ],
+        "preHash": ["pure"]
       },)"
       R"({
         "algorithm": "KTS-IFC",
