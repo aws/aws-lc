@@ -1424,6 +1424,173 @@ TEST(CipherTest, GCMIncrementingIV) {
   }
 }
 
+// The OpenSSL EVP_CTRL_CCM_* control names are aliases of the generic
+// EVP_CTRL_AEAD_* controls. Both spellings must reach the same AES-CCM
+// behavior.
+TEST(CipherTest, CCMLegacyControlAliases) {
+  static_assert(EVP_CTRL_CCM_SET_IVLEN == EVP_CTRL_AEAD_SET_IVLEN,
+                "EVP_CTRL_CCM_SET_IVLEN must alias EVP_CTRL_AEAD_SET_IVLEN");
+  static_assert(EVP_CTRL_CCM_GET_TAG == EVP_CTRL_AEAD_GET_TAG,
+                "EVP_CTRL_CCM_GET_TAG must alias EVP_CTRL_AEAD_GET_TAG");
+  static_assert(EVP_CTRL_CCM_SET_TAG == EVP_CTRL_AEAD_SET_TAG,
+                "EVP_CTRL_CCM_SET_TAG must alias EVP_CTRL_AEAD_SET_TAG");
+
+  const EVP_CIPHER *kCipher = EVP_aes_128_ccm();
+  static const uint8_t kKey[16] = {0, 1, 2,  3,  4,  5,  6,  7,
+                                   8, 9, 10, 11, 12, 13, 14, 15};
+  // Use a nonce length and tag length that differ from the CCM defaults
+  // (13 and 14, respectively) so the controls are observably applied.
+  static const uint8_t kNonce[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+  static const uint8_t kAAD[] = {'a', 'a', 'd'};
+  static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
+  constexpr int kTagLen = 12;
+
+  struct ControlNames {
+    int set_ivlen;
+    int set_tag;
+    int get_tag;
+  };
+  const ControlNames kAeadNames = {
+      EVP_CTRL_AEAD_SET_IVLEN, EVP_CTRL_AEAD_SET_TAG, EVP_CTRL_AEAD_GET_TAG};
+  const ControlNames kCcmNames = {EVP_CTRL_CCM_SET_IVLEN, EVP_CTRL_CCM_SET_TAG,
+                                  EVP_CTRL_CCM_GET_TAG};
+
+  auto encrypt = [&](const ControlNames &names, std::vector<uint8_t> *out_ct,
+                     std::vector<uint8_t> *out_tag) {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), kCipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), names.set_ivlen, sizeof(kNonce),
+                                    nullptr));
+    EXPECT_EQ(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kNonce));
+    ASSERT_TRUE(
+        EVP_CIPHER_CTX_ctrl(ctx.get(), names.set_tag, kTagLen, nullptr));
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, kKey, kNonce));
+
+    int len;
+    // CCM requires the message length up front.
+    ASSERT_TRUE(
+        EVP_EncryptUpdate(ctx.get(), nullptr, &len, nullptr, sizeof(kInput)));
+    ASSERT_TRUE(
+        EVP_EncryptUpdate(ctx.get(), nullptr, &len, kAAD, sizeof(kAAD)));
+    out_ct->resize(sizeof(kInput));
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out_ct->data(), &len, kInput,
+                                  sizeof(kInput)));
+    ASSERT_EQ(len, static_cast<int>(sizeof(kInput)));
+    // CCM's |EVP_*Final_ex| is a no-op, but must be given a non-null output
+    // pointer to be recognized as such.
+    uint8_t scratch[1];
+    ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), scratch, &len));
+    ASSERT_EQ(len, 0);
+
+    out_tag->resize(kTagLen);
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), names.get_tag, kTagLen,
+                                    out_tag->data()));
+  };
+
+  auto decrypt = [&](const ControlNames &names, bssl::Span<const uint8_t> ct,
+                     bssl::Span<uint8_t> tag, bool expect_ok) {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), kCipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), names.set_ivlen, sizeof(kNonce),
+                                    nullptr));
+    EXPECT_EQ(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kNonce));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), names.set_tag,
+                                    static_cast<int>(tag.size()), tag.data()));
+    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, kKey, kNonce));
+
+    int len;
+    ASSERT_TRUE(
+        EVP_DecryptUpdate(ctx.get(), nullptr, &len, nullptr, ct.size()));
+    ASSERT_TRUE(
+        EVP_DecryptUpdate(ctx.get(), nullptr, &len, kAAD, sizeof(kAAD)));
+    std::vector<uint8_t> plaintext(ct.size());
+    // CCM verifies the tag during |EVP_DecryptUpdate|.
+    int ret = EVP_DecryptUpdate(ctx.get(), plaintext.data(), &len, ct.data(),
+                                ct.size());
+    if (expect_ok) {
+      ASSERT_TRUE(ret);
+      ASSERT_EQ(len, static_cast<int>(ct.size()));
+      uint8_t scratch[1];
+      ASSERT_TRUE(EVP_DecryptFinal_ex(ctx.get(), scratch, &len));
+      ASSERT_EQ(len, 0);
+      EXPECT_EQ(Bytes(plaintext), Bytes(kInput));
+    } else {
+      EXPECT_FALSE(ret);
+    }
+  };
+
+  // Encrypting through either spelling must produce identical results.
+  std::vector<uint8_t> aead_ct, aead_tag, ccm_ct, ccm_tag;
+  ASSERT_NO_FATAL_FAILURE(encrypt(kAeadNames, &aead_ct, &aead_tag));
+  ASSERT_NO_FATAL_FAILURE(encrypt(kCcmNames, &ccm_ct, &ccm_tag));
+  EXPECT_EQ(Bytes(aead_ct), Bytes(ccm_ct));
+  EXPECT_EQ(Bytes(aead_tag), Bytes(ccm_tag));
+
+  // Either spelling can decrypt what the other produced.
+  ASSERT_NO_FATAL_FAILURE(decrypt(kCcmNames, aead_ct, bssl::MakeSpan(aead_tag),
+                                  /*expect_ok=*/true));
+  ASSERT_NO_FATAL_FAILURE(
+      decrypt(kAeadNames, ccm_ct, bssl::MakeSpan(ccm_tag), /*expect_ok=*/true));
+
+  // A corrupted tag is rejected through either spelling.
+  std::vector<uint8_t> bad_tag = ccm_tag;
+  bad_tag[0] ^= 0x80;
+  ASSERT_NO_FATAL_FAILURE(
+      decrypt(kCcmNames, ccm_ct, bssl::MakeSpan(bad_tag), /*expect_ok=*/false));
+  ASSERT_NO_FATAL_FAILURE(decrypt(kAeadNames, ccm_ct, bssl::MakeSpan(bad_tag),
+                                  /*expect_ok=*/false));
+
+  // Invalid parameters must fail identically through either spelling: same
+  // return value and same error queue state.
+  auto expect_same_failure = [&](int aead_cmd, int ccm_cmd, int arg,
+                                 void *ptr) {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), kCipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+
+    ERR_clear_error();
+    int aead_ret = EVP_CIPHER_CTX_ctrl(ctx.get(), aead_cmd, arg, ptr);
+    uint32_t aead_err = ERR_peek_last_error();
+
+    ERR_clear_error();
+    int ccm_ret = EVP_CIPHER_CTX_ctrl(ctx.get(), ccm_cmd, arg, ptr);
+    uint32_t ccm_err = ERR_peek_last_error();
+    ERR_clear_error();
+
+    EXPECT_EQ(aead_ret, 0);
+    EXPECT_EQ(aead_ret, ccm_ret);
+    EXPECT_EQ(aead_err, ccm_err);
+  };
+
+  // The CCM nonce length must be in [7, 13].
+  for (int ivlen : {0, 6, 14, 16}) {
+    SCOPED_TRACE(ivlen);
+    ASSERT_NO_FATAL_FAILURE(expect_same_failure(
+        EVP_CTRL_AEAD_SET_IVLEN, EVP_CTRL_CCM_SET_IVLEN, ivlen, nullptr));
+  }
+
+  // The CCM tag length must be an even value in [4, 16].
+  for (int taglen : {0, 2, 5, 18}) {
+    SCOPED_TRACE(taglen);
+    ASSERT_NO_FATAL_FAILURE(expect_same_failure(
+        EVP_CTRL_AEAD_SET_TAG, EVP_CTRL_CCM_SET_TAG, taglen, nullptr));
+  }
+
+  // Supplying tag bytes while encrypting is rejected.
+  uint8_t unexpected_tag[kTagLen] = {0};
+  ASSERT_NO_FATAL_FAILURE(expect_same_failure(
+      EVP_CTRL_AEAD_SET_TAG, EVP_CTRL_CCM_SET_TAG, kTagLen, unexpected_tag));
+
+  // Retrieving the tag before encrypting anything is rejected.
+  uint8_t tag_out[kTagLen];
+  ASSERT_NO_FATAL_FAILURE(expect_same_failure(
+      EVP_CTRL_AEAD_GET_TAG, EVP_CTRL_CCM_GET_TAG, kTagLen, tag_out));
+}
+
 #define CHECK_ERROR(function, err) \
     ERR_clear_error();                 \
     EXPECT_FALSE(function);                          \
