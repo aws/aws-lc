@@ -51,6 +51,38 @@ TEST(ObjTest, TestBasic) {
   EXPECT_EQ(OBJ_get_undef(), OBJ_nid2obj(NID_undef));
 }
 
+// ML-DSA uses the compact "MLDSAxx" short name but the OpenSSL 3.5 long name
+// "ML-DSA-xx" (see crypto/obj/objects.txt). Both spellings must resolve, so
+// that callers written against OpenSSL 3.5 interoperate while existing callers
+// using the short name keep working.
+TEST(ObjTest, MLDSANames) {
+  const struct {
+    int nid;
+    const char *short_name;
+    const char *long_name;
+  } kMLDSA[] = {
+      {NID_MLDSA44, "MLDSA44", "ML-DSA-44"},
+      {NID_MLDSA65, "MLDSA65", "ML-DSA-65"},
+      {NID_MLDSA87, "MLDSA87", "ML-DSA-87"},
+  };
+  for (const auto &t : kMLDSA) {
+    SCOPED_TRACE(t.long_name);
+    EXPECT_STREQ(t.short_name, OBJ_nid2sn(t.nid));
+    EXPECT_STREQ(t.long_name, OBJ_nid2ln(t.nid));
+    // The OpenSSL 3.5 long name resolves back to the NID.
+    EXPECT_EQ(t.nid, OBJ_ln2nid(t.long_name));
+    EXPECT_EQ(t.nid, OBJ_txt2nid(t.long_name));
+    // The short name still resolves, for backward compatibility.
+    EXPECT_EQ(t.nid, OBJ_sn2nid(t.short_name));
+    EXPECT_EQ(t.nid, OBJ_txt2nid(t.short_name));
+    // OBJ_obj2txt prefers the long name, so printing an ML-DSA key or
+    // signature algorithm (e.g. via X509_print) shows the OpenSSL 3.5 name.
+    char buf[32];
+    ASSERT_GT(OBJ_obj2txt(buf, sizeof(buf), OBJ_nid2obj(t.nid), 0), 0);
+    EXPECT_STREQ(t.long_name, buf);
+  }
+}
+
 TEST(ObjTest, TestSignatureAlgorithms) {
   int digest_nid, pkey_nid;
   ASSERT_TRUE(OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid,
