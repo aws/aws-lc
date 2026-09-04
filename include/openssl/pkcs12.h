@@ -5,7 +5,3 @@
    OpenSSL easier. */
 
 #include "pkcs8.h"
-
-// Microsoft key usage constants.
-#define KEY_EX 0x10
-#define KEY_SIG 0x80

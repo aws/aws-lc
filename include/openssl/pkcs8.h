@@ -174,6 +174,10 @@ OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
                                      int password_len);
 
+// KEY_EX and KEY_SIG are Microsoft key usage constants for |PKCS12_create|.
+#define KEY_EX 0x10
+#define KEY_SIG 0x80
+
 // PKCS12_DEFAULT_ITER is the default number of KDF iterations used when
 // creating a |PKCS12| object.
 #define PKCS12_DEFAULT_ITER 2048

@@ -116,3 +116,48 @@ index be79909..8e162ad 100644
  
      key_file = ML_DSA_65_PRIVATE_KEY_FILE
  
+diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
+--- a/ext/openssl/ossl_pkcs12.c
++++ b/ext/openssl/ossl_pkcs12.c
+@@ -118,15 +118,9 @@
+     if (!NIL_P(keytype))
+         ktype = NUM2INT(keytype);
+-
++
+-#if defined(OPENSSL_IS_AWSLC)
+-    if (ktype != 0) {
+-        ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
+-    }
+-#else
+     if (ktype != 0 && ktype != KEY_SIG && ktype != KEY_EX) {
+         ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
+     }
+-#endif
+-
++
+     obj = ossl_pkcs12_s_allocate(cPKCS12);
+     x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
+@@ -311,9 +305,7 @@
+     rb_define_method(cPKCS12, "to_der", ossl_pkcs12_to_der, 0);
+     rb_define_method(cPKCS12, "set_mac", pkcs12_set_mac, -1);
+-
++
+-#if !defined(OPENSSL_IS_AWSLC)
+     /* MSIE specific PKCS12 key usage extensions */
+     rb_define_const(cPKCS12, "KEY_EX", INT2NUM(KEY_EX));
+     rb_define_const(cPKCS12, "KEY_SIG", INT2NUM(KEY_SIG));
+-#endif
+ }
+diff --git a/test/openssl/test_pkcs12.rb b/test/openssl/test_pkcs12.rb
+--- a/test/openssl/test_pkcs12.rb
++++ b/test/openssl/test_pkcs12.rb
+@@ -201,8 +201,6 @@
+     end
+-
++
+     def test_create_with_keytype
+-      omit "AWS-LC does not support KEY_SIG and KEY_EX" if aws_lc?
+-
+       OpenSSL::PKCS12.create(
+         "omg",
+         "hello",

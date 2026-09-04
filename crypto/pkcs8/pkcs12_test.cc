@@ -366,9 +366,12 @@ static bool ParseDataContentInfo(CBS *out, CBS *content_info) {
          CBS_len(&wrapper) == 0 && CBS_len(content_info) == 0;
 }
 
-static bool ExtractKeyBagPrivateKeyInfo(std::vector<uint8_t> *out,
-                                        const PKCS12 *p12,
-                                        const char *password) {
+static bool ExtractKeyBagPrivateKeyInfo(
+    std::vector<uint8_t> *out, const PKCS12 *p12, const char *password,
+    uint64_t *out_pbe_iterations = nullptr) {
+  if (out_pbe_iterations != nullptr) {
+    *out_pbe_iterations = 0;
+  }
   uint8_t *der = nullptr;
   int der_len = i2d_PKCS12(p12, &der);
   if (der_len <= 0) {
@@ -433,6 +436,18 @@ static bool ExtractKeyBagPrivateKeyInfo(std::vector<uint8_t> *out,
                           CBS_ASN1_OCTETSTRING) ||
             CBS_len(&encrypted_private_key_info) != 0) {
           return false;
+        }
+
+        if (out_pbe_iterations != nullptr) {
+          CBS algorithm_copy = algorithm, oid, params, salt;
+          if (!CBS_get_asn1(&algorithm_copy, &oid, CBS_ASN1_OBJECT) ||
+              !CBS_get_asn1(&algorithm_copy, &params, CBS_ASN1_SEQUENCE) ||
+              CBS_len(&algorithm_copy) != 0 ||
+              !CBS_get_asn1(&params, &salt, CBS_ASN1_OCTETSTRING) ||
+              !CBS_get_asn1_uint64(&params, out_pbe_iterations) ||
+              CBS_len(&params) != 0) {
+            return false;
+          }
         }
 
         uint8_t *plaintext = nullptr;
@@ -587,6 +602,12 @@ TEST(PKCS12Test, CreateWithKeyUsageNormalizesNegativeIterations) {
   bssl::UniquePtr<PKCS12> p12(PKCS12_create(
       kPassword, nullptr, key.get(), nullptr, nullptr, 0, 0, -1, 1, KEY_EX));
   ASSERT_TRUE(p12);
+
+  std::vector<uint8_t> private_key_info;
+  uint64_t iterations = 0;
+  ASSERT_TRUE(ExtractKeyBagPrivateKeyInfo(
+      &private_key_info, p12.get(), kPassword, &iterations));
+  EXPECT_EQ(static_cast<uint64_t>(PKCS12_DEFAULT_ITER), iterations);
   ExpectKeyUsageAttribute(p12.get(), kPassword, kKeyExAttribute,
                           kKeyExBitString);
 }
