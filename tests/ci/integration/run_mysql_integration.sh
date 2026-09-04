@@ -117,6 +117,7 @@ pushd ${MYSQL_SRC_FOLDER}
 
 mysql_patch_reminder
 git checkout ${MYSQL_VERSION_TAG}
+record_repo_commit "${MYSQL_SRC_FOLDER}"
 
 mysql_patch_tests
 mysql_patch_error_strings
