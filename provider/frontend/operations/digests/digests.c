@@ -58,9 +58,18 @@ int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
   return 1;
 }
 
-int awslc_prov_digest_get_fips_indicator(OSSL_PARAM params[], int approved) {
+int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
+                                         OSSL_PARAM params[], int approved) {
   OSSL_PARAM *p =
       OSSL_PARAM_locate(params, OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR);
 
-  return p == NULL || OSSL_PARAM_set_int(p, approved);
+  if (p == NULL) {
+    return 1;
+  }
+  if (!OSSL_PARAM_set_int(p, approved)) {
+    AWSLC_PROV_ERROR_RAISE(provctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR);
+    return 0;
+  }
+  return 1;
 }
