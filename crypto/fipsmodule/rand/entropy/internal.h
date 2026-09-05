@@ -71,7 +71,8 @@ OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
 #endif // !defined(DISABLE_CPU_JITTER_ENTROPY)
 
 // rndr_multiple8 writes |len| number of bytes to |buf| generated using the
-// rndr instruction. |len| must be a multiple of 8.
+// rndr instruction. |len| must be a multiple of 8. Retries a bounded number of
+// times, because a read of rndr is allowed to fail transiently.
 // Outputs 1 on success, 0 otherwise.
 OPENSSL_EXPORT int rndr_multiple8(uint8_t *buf, const size_t len);
 
@@ -104,7 +105,8 @@ OPENSSL_INLINE int have_hw_rng_aarch64(void) {
 #endif  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
 // rdrand_multiple8 writes |len| number of bytes to |buf| generated using the
-// rdrand instruction. |len| must be a multiple of 8. Retries 
+// rdrand instruction. |len| must be a multiple of 8. Retries a bounded number
+// of times, because a read of rdrand is allowed to fail transiently.
 // Outputs 1 on success, 0 otherwise.
 OPENSSL_EXPORT int rdrand_multiple8(uint8_t *buf, size_t len);
 

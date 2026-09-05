@@ -32,7 +32,7 @@ TEST(EntropySourceHw, Aarch64) {
   ASSERT_FALSE(rndr_multiple8(buf, 0));
 
   // Multiples of 8 allowed.
-  for (size_t i = 8; i < MAX_MULTIPLE_FROM_RNG; i += 8) {
+  for (size_t i = 8; i <= sizeof(buf); i += 8) {
     ASSERT_TRUE(rndr_multiple8(buf, i));
   }
 
@@ -59,7 +59,7 @@ TEST(EntropySourceHw, x86_64) {
   ASSERT_FALSE(rdrand_multiple8(buf, 0));
 
   // Multiples of 8 allowed.
-  for (size_t i = 8; i < MAX_MULTIPLE_FROM_RNG; i += 8) {
+  for (size_t i = 8; i <= sizeof(buf); i += 8) {
     ASSERT_TRUE(rdrand_multiple8(buf, i));
   }
 
