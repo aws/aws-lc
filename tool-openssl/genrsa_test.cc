@@ -205,8 +205,9 @@ TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   EXPECT_TRUE(GenerateKey(key_size, out_path_tool))
       << "AWS-LC key generation failed";
 
-  std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
-                           out_path_tool + " -check -noout";
+  std::string verify_cmd = ShellEscape(openssl_executable_path) +
+                           " rsa -in " + ShellEscape(out_path_tool) +
+                           " -check -noout";
   EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification failed";
 }
 
@@ -240,8 +241,8 @@ TEST_P(GenRSACipherParamTest, OpenSSLCompatibility) {
   EXPECT_TRUE(genrsaTool(args))
       << "AWS-LC " << cipher_test.cipher_name << " key generation failed";
 
-  std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
-                           out_path_tool +
+  std::string verify_cmd = ShellEscape(openssl_executable_path) +
+                           " rsa -in " + ShellEscape(out_path_tool) +
                            " -passin pass:testpassword -check -noout";
   EXPECT_EQ(system(verify_cmd.c_str()), 0)
       << "OpenSSL verification of AWS-LC " << cipher_test.cipher_name

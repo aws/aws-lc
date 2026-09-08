@@ -31,13 +31,13 @@ class ECTest : public ::testing::Test {
       ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
 
       // Use OpenSSL to generate test keys for better cross-compatibility
-      std::string pem_cmd = std::string(openssl_executable_path) +
+      std::string pem_cmd = ShellEscape(openssl_executable_path) +
                             " ecparam -genkey -name prime256v1 -out " +
-                            pem_key_path;
-      std::string der_cmd = std::string(openssl_executable_path) +
+                            ShellEscape(pem_key_path);
+      std::string der_cmd = ShellEscape(openssl_executable_path) +
                             " ecparam -genkey -name prime256v1 | " +
-                            std::string(openssl_executable_path) +
-                            " ec -outform DER -out " + der_key_path;
+                            ShellEscape(openssl_executable_path) +
+                            " ec -outform DER -out " + ShellEscape(der_key_path);
 
       ASSERT_EQ(system(pem_cmd.c_str()), 0)
           << "Failed to generate PEM key with OpenSSL";
@@ -247,10 +247,12 @@ TEST_F(ECTest, CompareWithOpenSSLPEMOutput) {
                     "environment variables are not set";
   }
 
-  std::string tool_cmd = std::string(tool_executable_path) + " ec -in " +
-                         pem_key_path + " -out " + out_path;
-  std::string openssl_cmd = std::string(openssl_executable_path) + " ec -in " +
-                            pem_key_path + " -out " + out_path_openssl;
+  std::string tool_cmd = ShellEscape(tool_executable_path) + " ec -in " +
+                         ShellEscape(pem_key_path) + " -out " +
+                         ShellEscape(out_path);
+  std::string openssl_cmd = ShellEscape(openssl_executable_path) + " ec -in " +
+                            ShellEscape(pem_key_path) + " -out " +
+                            ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_cmd.c_str()), 0);
@@ -274,11 +276,12 @@ TEST_F(ECTest, CompareWithOpenSSLDEROutput) {
                     "environment variables are not set";
   }
 
-  std::string tool_cmd = std::string(tool_executable_path) + " ec -in " +
-                         pem_key_path + " -outform DER -out " + out_path;
-  std::string openssl_cmd = std::string(openssl_executable_path) + " ec -in " +
-                            pem_key_path + " -outform DER -out " +
-                            out_path_openssl;
+  std::string tool_cmd = ShellEscape(tool_executable_path) + " ec -in " +
+                         ShellEscape(pem_key_path) + " -outform DER -out " +
+                         ShellEscape(out_path);
+  std::string openssl_cmd = ShellEscape(openssl_executable_path) + " ec -in " +
+                            ShellEscape(pem_key_path) + " -outform DER -out " +
+                            ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_cmd.c_str()), 0);
