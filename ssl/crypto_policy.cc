@@ -23,6 +23,8 @@
 
 #include <openssl/err.h>
 
+#include "../crypto/err/internal.h"
+
 BSSL_NAMESPACE_BEGIN
 
 namespace {
@@ -91,6 +93,100 @@ bool CipherRuleIsUsable(const SSL_CTX *ctx, const char *rule,
   UniquePtr<SSLCipherPreferenceList> probe;
   return ssl_create_cipher_list(&probe, has_aes_hw, rule,
                                 false /* not strict */, config_tls13);
+}
+
+// ApplyPolicyVersionBounds seeds the protocol version floor and ceiling from
+// |cfg|, choosing the TLS.* or DTLS.* directives per |is_dtls|.
+void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
+                              bool is_dtls, bool version_locked) {
+  // A version-locked SSL_METHOD (TLSv1_2_method and friends) is skipped
+  // entirely. |SSL_CTX_new| pins such a context by setting both bounds to
+  // |method->version|, but the public setters validate only against the protocol
+  // method's full version range, so applying a policy here would quietly raise
+  // the ceiling and hand the caller a version they deliberately excluded.
+  if (version_locked) {
+    return;
+  }
+
+  const uint16_t policy_min =
+      CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_min : cfg.tls_min, is_dtls);
+  const uint16_t policy_max =
+      CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_max : cfg.tls_max, is_dtls);
+
+  // The setters check each bound against the method's whole version range and
+  // never against each other, so a policy whose floor sits above its ceiling
+  // would be accepted and leave every later handshake failing with
+  // SSL_R_NO_SUPPORTED_VERSIONS_ENABLED. Resolve the pair first, filling in
+  // whichever end the policy omits from the bound the context already has, and
+  // apply it only if the resulting range is non-empty.
+  //
+  // The comparison is on protocol versions rather than wire versions because
+  // DTLS wire values run backwards -- DTLS 1.0 is 0xfeff and DTLS 1.2 is 0xfefd
+  // -- so ordering the raw values would invert the test for DTLS.
+  uint16_t min_proto, max_proto;
+  if (!ssl_protocol_version_from_wire(
+          &min_proto, policy_min != 0 ? policy_min : ctx->conf_min_version) ||
+      !ssl_protocol_version_from_wire(
+          &max_proto, policy_max != 0 ? policy_max : ctx->conf_max_version) ||
+      min_proto > max_proto) {
+    return;
+  }
+
+  if (policy_min != 0) {
+    SSL_CTX_set_min_proto_version(ctx, policy_min);
+  }
+  if (policy_max != 0) {
+    SSL_CTX_set_max_proto_version(ctx, policy_max);
+  }
+}
+
+// ApplyPolicyToCtx seeds |ctx| from the policy file at |path|. Seeding is
+// best-effort: every failure is swallowed and the built-in default kept.
+// |ssl_ctx_apply_crypto_policy| wraps this and cleans up the error queue.
+void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
+                      bool version_locked) {
+  CryptoPolicyConfig cfg = {};
+  if (!ssl_crypto_policy_parse_file(path, &cfg)) {
+    // Missing or unreadable policy file: keep the built-in defaults.
+    return;
+  }
+
+  // CipherString. crypto-policies emits a leading "@SECLEVEL=N" token; AWS-LC
+  // has no security levels and its cipher-list parser rejects '@' rules other
+  // than "@STRENGTH", so the token must be stripped before the remainder is
+  // applied. The non-strict setter is used deliberately so cipher aliases
+  // AWS-LC does not recognize (e.g. "kEECDH", "-aDSS") are skipped rather than
+  // fatal.
+  if (cfg.cipher_string[0] != '\0') {
+    const char *cs = cfg.cipher_string;
+    if (strncmp(cs, "@SECLEVEL=", 10) == 0) {
+      const char *colon = strchr(cs, ':');
+      cs = colon != nullptr ? colon + 1 : "";
+    }
+    if (*cs != '\0' && CipherRuleIsUsable(ctx, cs, /*config_tls13=*/false)) {
+      SSL_CTX_set_cipher_list(ctx, cs);
+    }
+  }
+
+  // Ciphersuites (TLS 1.3).
+  if (cfg.ciphersuites[0] != '\0' &&
+      CipherRuleIsUsable(ctx, cfg.ciphersuites, /*config_tls13=*/true)) {
+    SSL_CTX_set_ciphersuites(ctx, cfg.ciphersuites);
+  }
+
+  ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
+
+  // SignatureAlgorithms. Note: the setter rejects the whole list on the first
+  // unrecognized token, so a single unsupported algorithm drops the directive
+  // and leaves the built-in default in place.
+  if (cfg.sigalgs[0] != '\0') {
+    SSL_CTX_set1_sigalgs_list(ctx, cfg.sigalgs);
+  }
+
+  // Groups. Same all-or-nothing behavior as SignatureAlgorithms.
+  if (cfg.groups[0] != '\0') {
+    SSL_CTX_set1_groups_list(ctx, cfg.groups);
+  }
 }
 
 }  // namespace
@@ -223,81 +319,28 @@ void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
     return;
   }
 
-  // Seeding is best-effort, so every failure below is swallowed. Mark the queue
-  // first and pop back to the mark on the way out: |ERR_clear_error| would also
-  // discard whatever the caller had queued before calling us. With an empty
-  // queue no mark is set and |ERR_pop_to_mark| removes everything, which is the
-  // same result.
-  ERR_set_mark();
-
-  CryptoPolicyConfig cfg = {};
-  if (!ssl_crypto_policy_parse_file(path, &cfg)) {
-    // Missing or unreadable policy file: keep the built-in defaults.
-    ERR_pop_to_mark();
-    return;
-  }
-
-  // CipherString. crypto-policies emits a leading "@SECLEVEL=N" token; AWS-LC
-  // has no security levels and its cipher-list parser rejects '@' rules other
-  // than "@STRENGTH", so the token must be stripped before the remainder is
-  // applied. The non-strict setter is used deliberately so cipher aliases
-  // AWS-LC does not recognize (e.g. "kEECDH", "-aDSS") are skipped rather than
-  // fatal.
-  if (cfg.cipher_string[0] != '\0') {
-    const char *cs = cfg.cipher_string;
-    if (strncmp(cs, "@SECLEVEL=", 10) == 0) {
-      const char *colon = strchr(cs, ':');
-      cs = colon != nullptr ? colon + 1 : "";
-    }
-    if (*cs != '\0' && CipherRuleIsUsable(ctx, cs, /*config_tls13=*/false)) {
-      SSL_CTX_set_cipher_list(ctx, cs);
-    }
-  }
-
-  // Ciphersuites (TLS 1.3).
-  if (cfg.ciphersuites[0] != '\0' &&
-      CipherRuleIsUsable(ctx, cfg.ciphersuites, /*config_tls13=*/true)) {
-    SSL_CTX_set_ciphersuites(ctx, cfg.ciphersuites);
-  }
-
-  // Protocol version floor/ceiling. Select TLS.* vs DTLS.* per the method.
+  // Seeding is best-effort, so the errors its failures queue must not reach the
+  // caller. Neither may the caller's own queue be disturbed, since this runs
+  // inside |SSL_CTX_new|. Saving the queue here and restoring it on the way out
+  // drops exactly the entries added in between.
   //
-  // A version-locked SSL_METHOD (TLSv1_2_method and friends) is skipped
-  // entirely. |SSL_CTX_new| pins such a context by setting both bounds to
-  // |method->version|, but the public setters validate only against the protocol
-  // method's full version range, so applying a policy here would quietly raise
-  // the ceiling and hand the caller a version they deliberately excluded.
-  if (!version_locked) {
-    const char *min_tok = is_dtls ? cfg.dtls_min : cfg.tls_min;
-    const char *max_tok = is_dtls ? cfg.dtls_max : cfg.tls_max;
-    if (min_tok[0] != '\0') {
-      uint16_t v = CryptoPolicyProtoVersion(min_tok, is_dtls);
-      if (v != 0) {
-        SSL_CTX_set_min_proto_version(ctx, v);
-      }
-    }
-    if (max_tok[0] != '\0') {
-      uint16_t v = CryptoPolicyProtoVersion(max_tok, is_dtls);
-      if (v != 0) {
-        SSL_CTX_set_max_proto_version(ctx, v);
-      }
-    }
-  }
+  // |ERR_set_mark| cannot do this job: a mark is a single flag on one queue
+  // entry rather than a stack, so marking here would clear a mark the caller had
+  // set around |SSL_CTX_new| and their later |ERR_pop_to_mark| would then drain
+  // their own errors.
+  const bool had_errors = ERR_peek_error() != 0;
+  UniquePtr<ERR_SAVE_STATE> saved(ERR_save_state());
 
-  // SignatureAlgorithms. Note: the setter rejects the whole list on the first
-  // unrecognized token, so a single unsupported algorithm drops the directive
-  // and leaves the built-in default in place. It does not modify |ctx| when it
-  // fails.
-  if (cfg.sigalgs[0] != '\0') {
-    SSL_CTX_set1_sigalgs_list(ctx, cfg.sigalgs);
-  }
+  ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
 
-  // Groups. Same all-or-nothing behavior as SignatureAlgorithms.
-  if (cfg.groups[0] != '\0') {
-    SSL_CTX_set1_groups_list(ctx, cfg.groups);
+  // |ERR_save_state| returns NULL both for an empty queue and on allocation
+  // failure, and |ERR_restore_state(NULL)| clears the queue. Clearing is correct
+  // for the first case and destructive in the second, so restore only when the
+  // save is known to be faithful. Under allocation failure the errors seeding
+  // queued are left in place, which is the lesser harm.
+  if (saved != nullptr || !had_errors) {
+    ERR_restore_state(saved.get());
   }
-
-  ERR_pop_to_mark();
 }
 
 BSSL_NAMESPACE_END

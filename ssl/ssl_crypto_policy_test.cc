@@ -89,9 +89,29 @@ class ScopedEnv {
   std::string saved_;
 };
 
+// A path no policy file will ever occupy, used both to make seeding a no-op and
+// as the subject of MissingFileIsIgnored.
+const char kNoSuchPath[] = "/nonexistent/aws-lc/crypto-policy/does-not-exist";
+
 }  // namespace
 
-TEST(CryptoPolicyTest, FullPolicyTLS) {
+// CryptoPolicyTest points AWSLC_CRYPTO_POLICY_FILE at a path that does not
+// exist, so an |SSL_CTX_new| inside a test is never seeded from whatever policy
+// the host happens to have installed. Tests that assert on built-in defaults
+// would otherwise pass only on machines with no crypto-policies configuration --
+// that is, everywhere except the platforms this feature targets. Tests that want
+// seeding drive it explicitly, either by calling
+// |ssl_ctx_apply_crypto_policy| or by repointing |env_| at a fixture.
+class CryptoPolicyTest : public ::testing::Test {
+ protected:
+  CryptoPolicyTest() : env_("AWSLC_CRYPTO_POLICY_FILE") {
+    env_.Set(kNoSuchPath);
+  }
+
+  ScopedEnv env_;
+};
+
+TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   TemporaryFile policy;
   if (!WriteTempPolicy(&policy, kDefaultPolicy)) {
     GTEST_SKIP();
@@ -109,7 +129,7 @@ TEST(CryptoPolicyTest, FullPolicyTLS) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-TEST(CryptoPolicyTest, SecLevelPrefixIsStripped) {
+TEST_F(CryptoPolicyTest, SecLevelPrefixIsStripped) {
   const std::string content =
       "CipherString = @SECLEVEL=3:ECDHE-RSA-AES128-GCM-SHA256\n";
   TemporaryFile policy;
@@ -135,24 +155,22 @@ TEST(CryptoPolicyTest, SecLevelPrefixIsStripped) {
   ERR_clear_error();
 }
 
-TEST(CryptoPolicyTest, MissingFileIsIgnored) {
+TEST_F(CryptoPolicyTest, MissingFileIsIgnored) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
   const uint16_t min_before = SSL_CTX_get_min_proto_version(ctx.get());
 
   CryptoPolicyConfig cfg = {};
-  EXPECT_FALSE(ssl_crypto_policy_parse_file(
-      "/nonexistent/aws-lc/crypto-policy/does-not-exist", &cfg));
+  EXPECT_FALSE(ssl_crypto_policy_parse_file(kNoSuchPath, &cfg));
 
-  ssl_ctx_apply_crypto_policy(
-      ctx.get(), "/nonexistent/aws-lc/crypto-policy/does-not-exist",
-      /*is_dtls=*/false, /*version_locked=*/false);
+  ssl_ctx_apply_crypto_policy(ctx.get(), kNoSuchPath,
+                              /*is_dtls=*/false, /*version_locked=*/false);
   // Built-in defaults are untouched and no spurious errors are left behind.
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), min_before);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-TEST(CryptoPolicyTest, MalformedFileIsBestEffort) {
+TEST_F(CryptoPolicyTest, MalformedFileIsBestEffort) {
   const std::string content =
       "this line has no equals sign\n"
       "# a comment\n"
@@ -177,7 +195,7 @@ TEST(CryptoPolicyTest, MalformedFileIsBestEffort) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-TEST(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
+TEST_F(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
   const std::string content =
       "TLS.MinProtocol = TLSv1.3\n"     // must be ignored for a DTLS context
       "DTLS.MinProtocol = DTLSv1.2\n"
@@ -197,14 +215,13 @@ TEST(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-TEST(CryptoPolicyTest, EnvOverrideDrivesSSLCTXNew) {
+TEST_F(CryptoPolicyTest, EnvOverrideDrivesSSLCTXNew) {
   TemporaryFile policy;
   if (!WriteTempPolicy(&policy, kDefaultPolicy)) {
     GTEST_SKIP();
   }
 
-  ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
-  env.Set(policy.path().c_str());
+  env_.Set(policy.path().c_str());
 
   // SSL_CTX_new should now seed from the fixture via the env override.
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -218,10 +235,9 @@ TEST(CryptoPolicyTest, EnvOverrideDrivesSSLCTXNew) {
 // /etc/crypto-policies/back-ends/opensslcnf.config; elsewhere it is a harmless
 // skip. The env variable is restored on scope exit so this test never leaves
 // seeding active for subsequent tests.
-TEST(CryptoPolicyTest, SystemPolicyIfPresent) {
-  // Read the compiled default path, ignoring any env override for this test.
-  ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
-  env.Unset();
+TEST_F(CryptoPolicyTest, SystemPolicyIfPresent) {
+  // Read the compiled default path, ignoring the fixture's env override.
+  env_.Unset();
 
   const char *path = ssl_crypto_policy_default_path();
   CryptoPolicyConfig cfg = {};
@@ -244,7 +260,7 @@ TEST(CryptoPolicyTest, SystemPolicyIfPresent) {
 // both bounds to method->version, but the public setters validate against the
 // protocol method's whole range, so a policy would otherwise widen the pin and
 // hand back a version the caller deliberately excluded.
-TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
+TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
   const std::string content =
       "TLS.MinProtocol = TLSv1.2\n"
       "TLS.MaxProtocol = TLSv1.3\n";
@@ -278,15 +294,14 @@ TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
 
 // SSL_CTX_new applies the pin through the same path, so a version-locked
 // context is unaffected by a policy delivered via the env override.
-TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPinViaSSLCTXNew) {
+TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPinViaSSLCTXNew) {
   const std::string content = "TLS.MaxProtocol = TLSv1.3\n";
   TemporaryFile policy;
   if (!WriteTempPolicy(&policy, content)) {
     GTEST_SKIP();
   }
 
-  ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
-  env.Set(policy.path().c_str());
+  env_.Set(policy.path().c_str());
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLSv1_2_method()));
   ASSERT_TRUE(ctx);
@@ -304,7 +319,7 @@ TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPinViaSSLCTXNew) {
 // cipher list alone. Ignoring the setter's return value is not enough:
 // ssl_create_cipher_list installs its empty result before reporting failure, so
 // the context would be left unable to complete any handshake.
-TEST(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
+TEST_F(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
   // kEDH and aDSS select FFDHE and DSS ciphers, neither of which AWS-LC has, so
   // the rule resolves to the empty set.
   const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
@@ -329,7 +344,7 @@ TEST(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
 
 // Likewise for Ciphersuites: a TLS 1.3 list AWS-LC cannot satisfy must not empty
 // out the TLS 1.3 suites that SSL_CTX_new merged in.
-TEST(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
+TEST_F(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
   const std::string content = "Ciphersuites = TLS_NONEXISTENT_SUITE_SHA256\n";
   TemporaryFile policy;
   if (!WriteTempPolicy(&policy, content)) {
@@ -351,7 +366,7 @@ TEST(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
 
 // Seeding must not swallow errors the caller queued beforehand. The policy here
 // provokes a failure of its own, so the cleanup path is exercised.
-TEST(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
+TEST_F(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
   const std::string content =
       "SignatureAlgorithms = totally-bogus-alg\n"
       "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
@@ -377,9 +392,137 @@ TEST(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// A policy whose floor sits above its ceiling must be dropped whole. The public
+// setters check each bound against the method's entire version range and never
+// against each other, so applying the two independently would leave the context
+// with an empty range and fail every later handshake.
+TEST_F(CryptoPolicyTest, InvertedVersionBoundsAreIgnored) {
+  const std::string content =
+      "TLS.MinProtocol = TLSv1.3\n"
+      "TLS.MaxProtocol = TLSv1.1\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // Neither bound was touched, so both getters still defer to the method.
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  // The effective range the handshake reads is the built-in one, and non-empty.
+  EXPECT_EQ(ctx->conf_min_version, TLS1_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The same for DTLS, where wire values run backwards: DTLS 1.0 is 0xfeff and
+// DTLS 1.2 is 0xfefd. Comparing raw wire values would accept this inverted pair
+// and reject the valid one below, so both directions are pinned here.
+TEST_F(CryptoPolicyTest, InvertedDTLSVersionBoundsAreIgnored) {
+  const std::string inverted =
+      "DTLS.MinProtocol = DTLSv1.2\n"
+      "DTLS.MaxProtocol = DTLSv1\n";
+  TemporaryFile bad_policy;
+  if (!WriteTempPolicy(&bad_policy, inverted)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), bad_policy.path().c_str(),
+                              /*is_dtls=*/true, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_min_version, DTLS1_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, DTLS1_2_VERSION);
+
+  // Control: the well-ordered pair is still applied.
+  const std::string ordered =
+      "DTLS.MinProtocol = DTLSv1\n"
+      "DTLS.MaxProtocol = DTLSv1.2\n";
+  TemporaryFile good_policy;
+  if (!WriteTempPolicy(&good_policy, ordered)) {
+    GTEST_SKIP();
+  }
+  bssl::UniquePtr<SSL_CTX> ok(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(ok);
+  ssl_ctx_apply_crypto_policy(ok.get(), good_policy.path().c_str(),
+                              /*is_dtls=*/true, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ok.get()), DTLS1_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ok.get()), DTLS1_2_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A bound the policy supplies alone must still be checked against the bound the
+// context already has, or a one-sided directive can invert the range by itself.
+TEST_F(CryptoPolicyTest, OneSidedBoundBelowExistingFloorIsIgnored) {
+  const std::string content =
+      "TLS.MinProtocol = TLSv1.3\n"
+      "TLS.MaxProtocol = TLSv1.3\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  ASSERT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_3_VERSION);
+
+  // The context now has a TLS 1.3 floor. A policy naming only a TLS 1.2 ceiling
+  // would drop below it, so it must be refused.
+  const std::string ceiling_only = "TLS.MaxProtocol = TLSv1.2\n";
+  TemporaryFile second;
+  if (!WriteTempPolicy(&second, ceiling_only)) {
+    GTEST_SKIP();
+  }
+  ssl_ctx_apply_crypto_policy(ctx.get(), second.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(ctx->conf_min_version, TLS1_3_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Seeding runs inside SSL_CTX_new, so a caller that brackets that call in its
+// own error-queue mark must find the mark intact afterwards. ERR_set_mark flags
+// a single queue entry rather than pushing a stack, so seeding cannot use it.
+TEST_F(CryptoPolicyTest, CallerErrorMarkIsPreserved) {
+  // Both directives fail, so seeding queues errors of its own to clean up.
+  const std::string content =
+      "SignatureAlgorithms = totally-bogus-alg\n"
+      "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ERR_clear_error();
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  const uint32_t queued = ERR_peek_error();
+  ASSERT_NE(queued, 0u);
+  ASSERT_TRUE(ERR_set_mark());
+
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // The mark still marks the caller's error, so popping to it keeps that error
+  // instead of draining the queue.
+  EXPECT_TRUE(ERR_pop_to_mark());
+  EXPECT_EQ(ERR_peek_error(), queued);
+  ERR_clear_error();
+}
+
 // A directive value longer than the parser's capacity is dropped rather than
 // truncated: a half-applied cipher list is a policy nobody chose.
-TEST(CryptoPolicyTest, OverlongValueIsDroppedNotTruncated) {
+TEST_F(CryptoPolicyTest, OverlongValueIsDroppedNotTruncated) {
   std::string content = "CipherString = ECDHE-RSA-AES128-GCM-SHA256";
   content.append(AWSLC_CRYPTO_POLICY_MAX_VALUE, 'x');
   content.append("\nTLS.MinProtocol = TLSv1.2\n");
