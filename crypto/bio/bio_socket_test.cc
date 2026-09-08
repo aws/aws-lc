@@ -278,21 +278,28 @@ static int prepare_unix_domain_socket(sockaddr_un *sun) {
   sun->sun_family = AF_UNIX;
 
   char dir_buffer[PATH_MAX] = {0};
-  char file_buffer[PATH_MAX] = {0};
 
   const size_t tmp_dir_len = createTempDirPath(dir_buffer);
-  const size_t tmp_file_len = createTempFILEpath(file_buffer);
+  if (tmp_dir_len == 0) {
+    return 0;
+  }
 
-  const size_t tmp_combined_len = tmp_dir_len + tmp_file_len + 1;
-  if (tmp_dir_len == 0 || tmp_file_len == 0 ||
-      tmp_combined_len >= sizeof(sun->sun_path) ||
+  // The temp dir is already unique, so a fixed leaf name suffices. Avoid
+  // |createTempFILEpath|: it creates a file to reserve the name, but the socket
+  // path below is a different path, so that file would just be leaked.
+  static const char kSocketName[] = "socket";
+  const size_t socket_name_len = sizeof(kSocketName) - 1;
+
+  // Length of "<dir>/<name>", excluding NUL.
+  const size_t tmp_combined_len = tmp_dir_len + 1 + socket_name_len;
+  if (tmp_combined_len >= sizeof(sun->sun_path) ||
       tmp_combined_len >= PATH_MAX) {
     return 0;
   }
   OPENSSL_memcpy((void *)sun->sun_path, (void *)dir_buffer, tmp_dir_len);
   sun->sun_path[tmp_dir_len] = '/';
-  OPENSSL_memcpy((void *)(sun->sun_path + tmp_dir_len + 1), (void *)file_buffer,
-                 tmp_file_len);
+  OPENSSL_memcpy((void *)(sun->sun_path + tmp_dir_len + 1), kSocketName,
+                 socket_name_len);
   sun->sun_path[tmp_combined_len] = '\0';
   return 1;
 }

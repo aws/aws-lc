@@ -397,10 +397,28 @@ FILE* createRawTempFILE() {
   return fopen(buffer, "w+b");
 }
 #else
-#include <cstdlib>
+#include <string.h>
 #include <unistd.h>
+#include <cstdlib>
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-  snprintf(buffer, PATH_MAX, "awslcTestTmpFileXXXXXX");
+  // Use the system temp dir, not the CWD: util/all_tests.go chdirs to the top
+  // of the checkout so tests can find their data files, so a relative name here
+  // would litter the source tree.
+  const char *tmp_dir = getenv("TMPDIR");
+  if (tmp_dir == nullptr || tmp_dir[0] == '\0') {
+    tmp_dir = "/tmp";
+  }
+  // Trim trailing slashes to avoid a doubled separator.
+  size_t tmp_dir_len = strlen(tmp_dir);
+  while (tmp_dir_len > 1 && tmp_dir[tmp_dir_len - 1] == '/') {
+    tmp_dir_len--;
+  }
+
+  int written = snprintf(buffer, PATH_MAX, "%.*s/awslcTestTmpFileXXXXXX",
+                         (int)tmp_dir_len, tmp_dir);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
 
   int fd = mkstemp(buffer);
   if (fd == -1) {
