@@ -510,8 +510,13 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   // Opt-in (-DENABLE_CRYPTO_POLICIES): seed this SSL_CTX from the system
   // crypto-policies OpenSSL back-end after the built-in defaults above. This is
   // best-effort and non-fatal; consumers may still override afterward.
+  //
+  // |method->version| is non-zero for the legacy version-locked methods, whose
+  // single acceptable version was pinned above. Pass that along so the policy's
+  // protocol bounds do not undo the pin.
   bssl::ssl_ctx_apply_crypto_policy(
-      ret.get(), bssl::ssl_crypto_policy_default_path(), ret->method->is_dtls);
+      ret.get(), bssl::ssl_crypto_policy_default_path(), ret->method->is_dtls,
+      method->version != 0);
 #endif
 
   return ret.release();

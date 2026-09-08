@@ -27,10 +27,6 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(AWSLC_CRYPTO_POLICIES)
-#include <string>
-#endif
-
 #include <openssl/aead.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
@@ -3687,17 +3683,38 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 #define AWSLC_CRYPTO_POLICY_PATH "/etc/crypto-policies/back-ends/opensslcnf.config"
 #endif
 
+// AWSLC_CRYPTO_POLICY_MAX_VALUE is the longest directive value, excluding the
+// NUL terminator, that AWS-LC will act on. The longest value the crypto-policies
+// framework emits is the LEGACY policy's CipherString, well under this bound.
+//
+// A longer value is treated as absent rather than truncated: half of a cipher
+// list or group list is not a weaker version of the operator's policy, it is a
+// different policy that nobody chose.
+#define AWSLC_CRYPTO_POLICY_MAX_VALUE 1023
+
+// AWSLC_CRYPTO_POLICY_MAX_TOKEN bounds the single-token protocol directives
+// ("TLSv1.2", "DTLSv1.2", and the like).
+#define AWSLC_CRYPTO_POLICY_MAX_TOKEN 31
+
 // CryptoPolicyConfig holds the recognized directives parsed from a
-// crypto-policies OpenSSL back-end file. Absent directives are left empty.
+// crypto-policies OpenSSL back-end file. Each field is a NUL-terminated string;
+// an absent directive is the empty string, so callers must zero-initialize
+// (|CryptoPolicyConfig cfg = {};|).
+//
+// These are fixed buffers rather than |std::string| because libssl on Linux may
+// not depend on the C++ runtime (see STYLE.md), a constraint
+// util/check_imported_libraries.go enforces. Fixed buffers also cannot throw out
+// of |SSL_CTX_new|, which is a C entry point.
 struct CryptoPolicyConfig {
-  std::string cipher_string;  // CipherString (may still contain @SECLEVEL)
-  std::string ciphersuites;   // Ciphersuites
-  std::string tls_min;        // TLS.MinProtocol
-  std::string tls_max;        // TLS.MaxProtocol
-  std::string dtls_min;       // DTLS.MinProtocol
-  std::string dtls_max;       // DTLS.MaxProtocol
-  std::string sigalgs;        // SignatureAlgorithms
-  std::string groups;         // Groups
+  // cipher_string is CipherString, which may still carry a leading @SECLEVEL.
+  char cipher_string[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];
+  char ciphersuites[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];  // Ciphersuites
+  char sigalgs[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];       // SignatureAlgorithms
+  char groups[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];        // Groups
+  char tls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MinProtocol
+  char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
+  char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
+  char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
 };
 
 // ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
@@ -3711,14 +3728,25 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
 // variable if set and non-empty, otherwise the compile-time
 // |AWSLC_CRYPTO_POLICY_PATH| default. Mirrors the SSL_CERT_FILE override idiom.
+//
+// The environment override is ignored in processes running with elevated
+// privileges, where the environment sits on the far side of a privilege boundary
+// from the root-owned default path.
 const char *ssl_crypto_policy_default_path(void);
 
 // ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
 // back-end file at |path|. It is best-effort and never fails: a missing or
-// malformed file, or a directive AWS-LC rejects, is ignored and the thread's
-// error queue is cleared. |is_dtls| selects the TLS.* vs DTLS.* protocol
-// directives.
-void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls);
+// malformed file, or a directive AWS-LC rejects, leaves the corresponding
+// built-in default in place. Errors already queued by the caller are preserved;
+// errors this function provokes are not.
+//
+// |is_dtls| selects the TLS.* vs DTLS.* protocol directives. |version_locked|
+// must be true when |ctx| came from one of the legacy version-locked
+// |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
+// protocol floor and ceiling are skipped: the caller pinned a single version and
+// a system-wide default must not silently widen it.
+void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
+                                 bool version_locked);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 

@@ -100,7 +100,7 @@ TEST(CryptoPolicyTest, FullPolicyTLS) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false);
+                              /*is_dtls=*/false, /*version_locked=*/false);
 
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_3_VERSION);
@@ -120,7 +120,7 @@ TEST(CryptoPolicyTest, SecLevelPrefixIsStripped) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false);
+                              /*is_dtls=*/false, /*version_locked=*/false);
   // The named cipher survived, proving the leading @SECLEVEL token was stripped
   // rather than causing the whole rule string to be rejected.
   EXPECT_TRUE(CtxHasCipherNamed(ctx.get(), "ECDHE-RSA-AES128-GCM-SHA256"));
@@ -140,13 +140,13 @@ TEST(CryptoPolicyTest, MissingFileIsIgnored) {
   ASSERT_TRUE(ctx);
   const uint16_t min_before = SSL_CTX_get_min_proto_version(ctx.get());
 
-  CryptoPolicyConfig cfg;
+  CryptoPolicyConfig cfg = {};
   EXPECT_FALSE(ssl_crypto_policy_parse_file(
       "/nonexistent/aws-lc/crypto-policy/does-not-exist", &cfg));
 
   ssl_ctx_apply_crypto_policy(
       ctx.get(), "/nonexistent/aws-lc/crypto-policy/does-not-exist",
-      /*is_dtls=*/false);
+      /*is_dtls=*/false, /*version_locked=*/false);
   // Built-in defaults are untouched and no spurious errors are left behind.
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), min_before);
   EXPECT_EQ(ERR_peek_error(), 0u);
@@ -170,7 +170,7 @@ TEST(CryptoPolicyTest, MalformedFileIsBestEffort) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false);
+                              /*is_dtls=*/false, /*version_locked=*/false);
   // The valid directive still applied; the bogus one was dropped; no crash and
   // the error queue is clean.
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
@@ -190,7 +190,7 @@ TEST(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/true);
+                              /*is_dtls=*/true, /*version_locked=*/false);
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), DTLS1_2_VERSION);
   // DTLSv1.3 has no constant, so max was left at the built-in default.
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
@@ -224,7 +224,7 @@ TEST(CryptoPolicyTest, SystemPolicyIfPresent) {
   env.Unset();
 
   const char *path = ssl_crypto_policy_default_path();
-  CryptoPolicyConfig cfg;
+  CryptoPolicyConfig cfg = {};
   if (!ssl_crypto_policy_parse_file(path, &cfg)) {
     GTEST_SKIP() << "no system crypto-policies file at " << path;
   }
@@ -234,10 +234,166 @@ TEST(CryptoPolicyTest, SystemPolicyIfPresent) {
   EXPECT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
   // If the system policy declared a TLS floor we recognize, it must have been
   // applied (a non-default, non-zero minimum version).
-  if (!cfg.tls_min.empty()) {
+  if (cfg.tls_min[0] != '\0') {
     EXPECT_NE(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
   }
   EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A context from a version-locked SSL_METHOD keeps its pin. SSL_CTX_new sets
+// both bounds to method->version, but the public setters validate against the
+// protocol method's whole range, so a policy would otherwise widen the pin and
+// hand back a version the caller deliberately excluded.
+TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
+  const std::string content =
+      "TLS.MinProtocol = TLSv1.2\n"
+      "TLS.MaxProtocol = TLSv1.3\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  // Negative control: the setter itself does not enforce the pin, which is why
+  // ssl_ctx_apply_crypto_policy has to skip the directives.
+  bssl::UniquePtr<SSL_CTX> unpinned(SSL_CTX_new(TLSv1_2_method()));
+  ASSERT_TRUE(unpinned);
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(unpinned.get(), TLS1_3_VERSION));
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(unpinned.get()), TLS1_3_VERSION);
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLSv1_2_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/true);
+
+  // A pinned context reports 0 from the public getters, deferring to the
+  // method's own bounds; this is what SSLTest.DefaultVersion asserts. Seeding a
+  // bound would have replaced that with an explicit, wider ceiling.
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  // The effective bounds, which the handshake actually reads, are still TLS 1.2.
+  EXPECT_EQ(ctx->conf_min_version, TLS1_2_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_2_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// SSL_CTX_new applies the pin through the same path, so a version-locked
+// context is unaffected by a policy delivered via the env override.
+TEST(CryptoPolicyTest, VersionLockedMethodKeepsItsPinViaSSLCTXNew) {
+  const std::string content = "TLS.MaxProtocol = TLSv1.3\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
+  env.Set(policy.path().c_str());
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLSv1_2_method()));
+  ASSERT_TRUE(ctx);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_2_VERSION);
+
+  // Control: an unlocked method in the same process does pick the policy up, so
+  // the assertion above reflects the pin and not seeding being inert.
+  bssl::UniquePtr<SSL_CTX> unlocked(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(unlocked);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(unlocked.get()), TLS1_3_VERSION);
+}
+
+// A CipherString whose tokens AWS-LC cannot satisfy must leave the built-in
+// cipher list alone. Ignoring the setter's return value is not enough:
+// ssl_create_cipher_list installs its empty result before reporting failure, so
+// the context would be left unable to complete any handshake.
+TEST(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
+  // kEDH and aDSS select FFDHE and DSS ciphers, neither of which AWS-LC has, so
+  // the rule resolves to the empty set.
+  const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> baseline(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(baseline);
+  const size_t default_count =
+      sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(baseline.get()));
+  ASSERT_GT(default_count, 0u);
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), default_count);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Likewise for Ciphersuites: a TLS 1.3 list AWS-LC cannot satisfy must not empty
+// out the TLS 1.3 suites that SSL_CTX_new merged in.
+TEST(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
+  const std::string content = "Ciphersuites = TLS_NONEXISTENT_SUITE_SHA256\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> baseline(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(baseline);
+  const size_t default_count =
+      sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(baseline.get()));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), default_count);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Seeding must not swallow errors the caller queued beforehand. The policy here
+// provokes a failure of its own, so the cleanup path is exercised.
+TEST(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
+  const std::string content =
+      "SignatureAlgorithms = totally-bogus-alg\n"
+      "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ERR_clear_error();
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  const uint32_t queued = ERR_peek_error();
+  ASSERT_NE(queued, 0u);
+
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // The caller's error is still there, and nothing was piled on top of it.
+  EXPECT_EQ(ERR_peek_error(), queued);
+  ERR_clear_error();
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A directive value longer than the parser's capacity is dropped rather than
+// truncated: a half-applied cipher list is a policy nobody chose.
+TEST(CryptoPolicyTest, OverlongValueIsDroppedNotTruncated) {
+  std::string content = "CipherString = ECDHE-RSA-AES128-GCM-SHA256";
+  content.append(AWSLC_CRYPTO_POLICY_MAX_VALUE, 'x');
+  content.append("\nTLS.MinProtocol = TLSv1.2\n");
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  CryptoPolicyConfig cfg = {};
+  ASSERT_TRUE(ssl_crypto_policy_parse_file(policy.path().c_str(), &cfg));
+  EXPECT_STREQ(cfg.cipher_string, "");
+  // The following directive still parsed, so the overlong one did not derail the
+  // rest of the file.
+  EXPECT_STREQ(cfg.tls_min, "TLSv1.2");
 }
 
 BSSL_NAMESPACE_END
