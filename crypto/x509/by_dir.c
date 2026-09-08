@@ -186,6 +186,11 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       X509_CRL_INFO st_crl_info;
     } crl;
   } data;
+  // The stack-allocated lookup keys must start zeroed: |x509_ensure_legacy|
+  // reads |view_state| to distinguish them from parsed certificates. A braced
+  // initializer would need nested braces on older compilers, so zero the whole
+  // union explicitly.
+  OPENSSL_memset(&data, 0, sizeof(data));
   int ok = 0;
   size_t i;
   int j, k;

@@ -6,8 +6,8 @@
 #include <openssl/asn1.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/md5.h>
+#include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 #include <openssl/stack.h>
@@ -18,11 +18,21 @@
 
 
 int X509_issuer_name_cmp(const X509 *a, const X509 *b) {
-  return (X509_NAME_cmp(a->cert_info->issuer, b->cert_info->issuer));
+  X509_NAME *a_name = x509_get_cached_issuer(a);
+  X509_NAME *b_name = x509_get_cached_issuer(b);
+  if (a_name == NULL || b_name == NULL) {
+    return -2;
+  }
+  return X509_NAME_cmp(a_name, b_name);
 }
 
 int X509_subject_name_cmp(const X509 *a, const X509 *b) {
-  return (X509_NAME_cmp(a->cert_info->subject, b->cert_info->subject));
+  X509_NAME *a_name = x509_get_cached_subject(a);
+  X509_NAME *b_name = x509_get_cached_subject(b);
+  if (a_name == NULL || b_name == NULL) {
+    return -2;
+  }
+  return X509_NAME_cmp(a_name, b_name);
 }
 
 int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b) {
@@ -34,35 +44,39 @@ int X509_CRL_match(const X509_CRL *a, const X509_CRL *b) {
 }
 
 X509_NAME *X509_get_issuer_name(const X509 *a) {
-  return a->cert_info->issuer;
+  return x509_get_cached_issuer(a);
 }
 
 uint32_t X509_issuer_name_hash(X509 *x) {
-  return X509_NAME_hash(x->cert_info->issuer);
+  X509_NAME *name = x509_get_cached_issuer(x);
+  return name == NULL ? 0 : X509_NAME_hash(name);
 }
 
 uint32_t X509_issuer_name_hash_old(X509 *x) {
-  return (X509_NAME_hash_old(x->cert_info->issuer));
+  X509_NAME *name = x509_get_cached_issuer(x);
+  return name == NULL ? 0 : X509_NAME_hash_old(name);
 }
 
 X509_NAME *X509_get_subject_name(const X509 *a) {
-  return a->cert_info->subject;
+  return x509_get_cached_subject(a);
 }
 
 ASN1_INTEGER *X509_get_serialNumber(X509 *a) {
-  return a->cert_info->serialNumber;
+  return x509_get_cached_serial(a);
 }
 
 const ASN1_INTEGER *X509_get0_serialNumber(const X509 *x509) {
-  return x509->cert_info->serialNumber;
+  return x509_get_cached_serial(x509);
 }
 
 uint32_t X509_subject_name_hash(X509 *x) {
-  return X509_NAME_hash(x->cert_info->subject);
+  X509_NAME *name = x509_get_cached_subject(x);
+  return name == NULL ? 0 : X509_NAME_hash(name);
 }
 
 uint32_t X509_subject_name_hash_old(X509 *x) {
-  return X509_NAME_hash_old(x->cert_info->subject);
+  X509_NAME *name = x509_get_cached_subject(x);
+  return name == NULL ? 0 : X509_NAME_hash_old(name);
 }
 
 // Compare two certificates: they must be identical for this to work. NB:
@@ -88,6 +102,12 @@ int X509_cmp(const X509 *a, const X509 *b) {
 
 int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
   int ret;
+
+  // Lazy X.509 field materialization may fail and return NULL. Treat that as
+  // non-equality so comparison-based certificate selection fails closed.
+  if (a == NULL || b == NULL) {
+    return -2;
+  }
 
   // Ensure canonical encoding is present and up to date
 
@@ -141,7 +161,9 @@ uint32_t X509_NAME_hash_old(X509_NAME *x) {
 
 X509 *X509_find_by_issuer_and_serial(const STACK_OF(X509) *sk, X509_NAME *name,
                                      const ASN1_INTEGER *serial) {
-  if (serial->type != V_ASN1_INTEGER && serial->type != V_ASN1_NEG_INTEGER) {
+  if (name == NULL || serial == NULL ||
+      (serial->type != V_ASN1_INTEGER &&
+       serial->type != V_ASN1_NEG_INTEGER)) {
     return NULL;
   }
 
@@ -156,6 +178,9 @@ X509 *X509_find_by_issuer_and_serial(const STACK_OF(X509) *sk, X509_NAME *name,
 }
 
 X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
+  if (name == NULL) {
+    return NULL;
+  }
   for (size_t i = 0; i < sk_X509_num(sk); i++) {
     X509 *x509 = sk_X509_value(sk, i);
     if (X509_NAME_cmp(X509_get_subject_name(x509), name) == 0) {
@@ -166,24 +191,18 @@ X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
 }
 
 EVP_PKEY *X509_get0_pubkey(const X509 *x) {
-  if (x == NULL) {
-    return NULL;
-  }
-  return X509_PUBKEY_get0(x->cert_info->key);
+  X509_PUBKEY *pubkey = x509_get_cached_pubkey(x);
+  return pubkey == NULL ? NULL : X509_PUBKEY_get0(pubkey);
 }
 
 EVP_PKEY *X509_get_pubkey(const X509 *x) {
-  if (x == NULL) {
-    return NULL;
-  }
-  return X509_PUBKEY_get(x->cert_info->key);
+  X509_PUBKEY *pubkey = x509_get_cached_pubkey(x);
+  return pubkey == NULL ? NULL : X509_PUBKEY_get(pubkey);
 }
 
 ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x) {
-  if (!x) {
-    return NULL;
-  }
-  return x->cert_info->key->public_key;
+  X509_PUBKEY *pubkey = x509_get_cached_pubkey(x);
+  return pubkey == NULL ? NULL : pubkey->public_key;
 }
 
 int X509_check_private_key(const X509 *x, const EVP_PKEY *k) {

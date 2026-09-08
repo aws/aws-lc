@@ -1246,13 +1246,16 @@ static int pkcs7_cmp_ri(PKCS7_RECIP_INFO *ri, X509 *pcert) {
   if (ri == NULL || ri->issuer_and_serial == NULL || pcert == NULL) {
     return 1;
   }
-  int ret =
-      X509_NAME_cmp(ri->issuer_and_serial->issuer, X509_get_issuer_name(pcert));
+  X509_NAME *issuer = X509_get_issuer_name(pcert);
+  const ASN1_INTEGER *serial = X509_get0_serialNumber(pcert);
+  if (issuer == NULL || serial == NULL) {
+    return 1;
+  }
+  int ret = X509_NAME_cmp(ri->issuer_and_serial->issuer, issuer);
   if (ret) {
     return ret;
   }
-  return ASN1_INTEGER_cmp(X509_get0_serialNumber(pcert),
-                          ri->issuer_and_serial->serial);
+  return ASN1_INTEGER_cmp(serial, ri->issuer_and_serial->serial);
 }
 
 static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {

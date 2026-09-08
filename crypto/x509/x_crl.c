@@ -284,8 +284,12 @@ int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **ret,
 }
 
 int X509_CRL_get0_by_cert(X509_CRL *crl, X509_REVOKED **ret, X509 *x) {
-  return crl_lookup(crl, ret, X509_get_serialNumber(x),
-                    X509_get_issuer_name(x));
+  ASN1_INTEGER *serial = X509_get_serialNumber(x);
+  X509_NAME *issuer = X509_get_issuer_name(x);
+  if (serial == NULL || issuer == NULL) {
+    return 0;
+  }
+  return crl_lookup(crl, ret, serial, issuer);
 }
 
 static int crl_revoked_issuer_match(X509_CRL *crl, X509_NAME *nm,

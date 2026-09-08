@@ -188,6 +188,7 @@ static int print_nc_ipadd(BIO *bp, const ASN1_OCTET_STRING *ip) {
 //   X509_V_ERR_UNSUPPORTED_CONSTRAINT_SYNTAX: Bad or unsupported constraint
 //     syntax.
 //   X509_V_ERR_UNSUPPORTED_NAME_SYNTAX: Bad or unsupported syntax of name.
+//   X509_V_ERR_OUT_OF_MEM: The certificate subject could not be materialized.
 
 int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
   int r, i;
@@ -195,6 +196,9 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
   X509_NAME *nm;
 
   nm = X509_get_subject_name(x);
+  if (nm == NULL) {
+    return X509_V_ERR_OUT_OF_MEM;
+  }
 
   // Guard against certificates with an excessive number of names or
   // constraints causing a computationally expensive name constraints
@@ -375,6 +379,9 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
 int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc) {
   int ret = 0;
   const X509_NAME *nm = X509_get_subject_name(x);
+  if (nm == NULL) {
+    return X509_V_ERR_OUT_OF_MEM;
+  }
   ASN1_STRING stmp = {.length = 0, .type = V_ASN1_IA5STRING, .data = NULL, .flags = 0};
   GENERAL_NAME gntmp = {.type = GEN_DNS, .d = {.dNSName = &stmp}};
 

@@ -127,7 +127,11 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   X509 *xtmp = NULL;
   size_t i;
   // Lookup all certs with matching subject name
-  certs = X509_STORE_CTX_get1_certs(ctx, X509_get_subject_name(x));
+  X509_NAME *subject = X509_get_subject_name(x);
+  if (subject == NULL) {
+    return NULL;
+  }
+  certs = X509_STORE_CTX_get1_certs(ctx, subject);
   if (certs == NULL) {
     return NULL;
   }
@@ -547,6 +551,11 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
     return 0;
   }
 
+  STACK_OF(X509_EXTENSION) *extensions = NULL;
+  if (!x509_get_cached_extensions_ex(x, &extensions)) {
+    return 0;
+  }
+
   // Allocate |found_exts| to pass to the callback.
   STACK_OF(ASN1_OBJECT) *found_exts = sk_ASN1_OBJECT_new_null();
   if (found_exts == NULL) {
@@ -555,9 +564,9 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
 
   // Iterate through all critical extensions of |x| and validate against the
   // ones that aren't recognized by |X509_supported_extension|.
-  int last_pos = X509_get_ext_by_critical(x, 1, -1);
+  int last_pos = X509v3_get_ext_by_critical(extensions, 1, -1);
   while (last_pos >= 0) {
-    const X509_EXTENSION *ext = X509_get_ext(x, last_pos);
+    const X509_EXTENSION *ext = X509v3_get_ext(extensions, last_pos);
     if (!X509_supported_extension(ext)) {
       int found = 0;
 
@@ -584,7 +593,7 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
         return 0;
       }
     }
-    last_pos = X509_get_ext_by_critical(x, 1, last_pos);
+    last_pos = X509v3_get_ext_by_critical(extensions, 1, last_pos);
   }
 
   // If we get here, all unknown critical extensions in |x| were
@@ -1060,7 +1069,9 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
     return 0;
   }
   // We do not support indirect CRLs, so the issuer names must match.
-  if (X509_NAME_cmp(X509_get_issuer_name(x), X509_CRL_get_issuer(crl))) {
+  X509_NAME *issuer = X509_get_issuer_name(x);
+  if (issuer == NULL ||
+      X509_NAME_cmp(issuer, X509_CRL_get_issuer(crl))) {
     return 0;
   }
   crl_score |= CRL_SCORE_ISSUER_NAME;
@@ -1110,7 +1121,8 @@ static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
 
   for (cidx++; cidx < (int)sk_X509_num(ctx->chain); cidx++) {
     crl_issuer = sk_X509_value(ctx->chain, cidx);
-    if (X509_NAME_cmp(X509_get_subject_name(crl_issuer), cnm)) {
+    X509_NAME *subject = X509_get_subject_name(crl_issuer);
+    if (subject == NULL || X509_NAME_cmp(subject, cnm)) {
       continue;
     }
     if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
@@ -1253,6 +1265,9 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   X509_CRL *crl = NULL;
   STACK_OF(X509_CRL) *skcrl;
   X509_NAME *nm = X509_get_issuer_name(x);
+  if (nm == NULL) {
+    return 0;
+  }
   ok = get_crl_sk(ctx, &crl, &issuer, &crl_score, ctx->crls);
   if (ok) {
     goto done;
@@ -1374,6 +1389,12 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
     if (!ok) {
       return 0;
     }
+  }
+  // X509_CRL_get0_by_cert has a boolean return value and cannot distinguish
+  // "not revoked" from a lazy field materialization failure.
+  if (X509_get0_serialNumber(x) == NULL || X509_get_issuer_name(x) == NULL) {
+    ctx->error = X509_V_ERR_OUT_OF_MEM;
+    return 0;
   }
   // Look for serial number of certificate in CRL.
   if (X509_CRL_get0_by_cert(crl, &rev, x)) {
