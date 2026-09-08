@@ -446,11 +446,12 @@ bool CheckBoundaries(const std::string &content, const std::string &begin1,
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path + " > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(in_path) + " > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -467,11 +468,13 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
 // Test against OpenSSL output "openssl rsa -in file -modulus -noout"
 // Only modulus is printed to stdin
 TEST_F(RSAComparisonTest, RSAToolCompareModulusNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " -modulus -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path + " -modulus -noout > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " -modulus -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(in_path) +
+                                " -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -483,11 +486,12 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusNooutOpenSSL) {
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file"
 // Modulus and rsa private key are printed to output file
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " -modulus -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path + " -modulus -out " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " -modulus -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " rsa -in " +
+      ShellEscape(in_path) + " -modulus -out " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -511,14 +515,14 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
 // Test against OpenSSL output reading from stdin "openssl rsa -in"
 TEST_F(RSAComparisonTest, StdinRSA) {
   std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + std::string(in_path) +
-      " -pubout | " + std::string(tool_executable_path) +
-      " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
+      ShellEscape(tool_executable_path) + " rsa -in " + ShellEscape(in_path) +
+      " -pubout | " + ShellEscape(tool_executable_path) +
+      " rsa -pubin -inform PEM -outform DER > " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " +
-      std::string(in_path) + " -pubout | " +
-      std::string(openssl_executable_path) +
-      " rsa -pubin -inform PEM -outform DER > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " rsa -in " +
+      ShellEscape(in_path) + " -pubout | " +
+      ShellEscape(openssl_executable_path) +
+      " rsa -pubin -inform PEM -outform DER > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -526,15 +530,15 @@ TEST_F(RSAComparisonTest, StdinRSA) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " rsa -in " +
-                 std::string(in_path) + " -pubout -outform DER | " +
-                 std::string(tool_executable_path) +
-                 " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " rsa -in " +
-                    std::string(in_path) + " -pubout -outform DER | " +
-                    std::string(openssl_executable_path) +
+  tool_command =
+      ShellEscape(tool_executable_path) + " rsa -in " + ShellEscape(in_path) +
+      " -pubout -outform DER | " + ShellEscape(tool_executable_path) +
+      " rsa -pubin -inform DER -outform PEM > " + ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " rsa -in " +
+                    ShellEscape(in_path) + " -pubout -outform DER | " +
+                    ShellEscape(openssl_executable_path) +
                     " rsa -pubin -inform DER -outform PEM > " +
-                    out_path_openssl;
+                    ShellEscape(out_path_openssl);
 
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
@@ -547,12 +551,13 @@ TEST_F(RSAComparisonTest, StdinRSA) {
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file
 // -noout" Only modulus is printed to output file
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOutNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " -modulus -out " + out_path_tool +
-                             " -noout";
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path + " -modulus -out " +
-                                out_path_openssl + " -noout";
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " -modulus -out " +
+                             ShellEscape(out_path_tool) + " -noout";
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(in_path) +
+                                " -modulus -out " +
+                                ShellEscape(out_path_openssl) + " -noout";
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -652,11 +657,12 @@ const std::string PUBLIC_END = "-----END PUBLIC KEY-----";
 
 // Test -pubin with PEM input (default format)
 TEST_F(RSAFormatComparisonTest, PubinPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_pem_path + " -pubin -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_pem_path + " -pubin -out " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_pem_path) + " -pubin -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_pem_path) +
+                                " -pubin -out " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -683,12 +689,14 @@ TEST_F(RSAFormatComparisonTest, PubinPEM) {
 
 // Test -pubin with DER input using -inform DER
 TEST_F(RSAFormatComparisonTest, PubinDERInput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_der_path + " -pubin -inform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_der_path +
-                                " -pubin -inform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_der_path) +
+                             " -pubin -inform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_der_path) +
+                                " -pubin -inform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -710,12 +718,14 @@ TEST_F(RSAFormatComparisonTest, PubinDERInput) {
 
 // Test -pubin with -outform DER
 TEST_F(RSAFormatComparisonTest, PubinDEROutput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_pem_path + " -pubin -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_pem_path +
-                                " -pubin -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_pem_path) +
+                             " -pubin -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_pem_path) +
+                                " -pubin -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -741,12 +751,13 @@ TEST_F(RSAFormatComparisonTest, PubinDEROutput) {
 
 // Test -inform DER with private key
 TEST_F(RSAFormatComparisonTest, PrivateKeyDERInput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_der_path +
-                                " -inform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) + " -inform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -768,12 +779,13 @@ TEST_F(RSAFormatComparisonTest, PrivateKeyDERInput) {
 
 // Test -outform DER with private key
 TEST_F(RSAFormatComparisonTest, PrivateKeyDEROutput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path +
-                                " -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -outform DER -out " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -805,12 +817,14 @@ TEST_F(RSAFormatComparisonTest, PrivateKeyDEROutput) {
 
 // Test DER to DER conversion (private key)
 TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoDER) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -841,12 +855,13 @@ TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoDER) {
 
 // Test DER to PEM conversion (private key)
 TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_der_path +
-                                " -inform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) + " -inform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -864,12 +879,13 @@ TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoPEM) {
 
 // Test PEM to DER conversion (private key)
 TEST_F(RSAFormatComparisonTest, PrivateKeyPEMtoDER) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path +
-                                " -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -outform DER -out " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -900,12 +916,14 @@ TEST_F(RSAFormatComparisonTest, PrivateKeyPEMtoDER) {
 
 // Test DER to DER conversion (public key with -pubin)
 TEST_F(RSAFormatComparisonTest, PublicKeyDERtoDER) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -outform DER -out " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_der_path) +
+                             " -pubin -inform DER -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_der_path) +
+                                " -pubin -inform DER -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -919,12 +937,14 @@ TEST_F(RSAFormatComparisonTest, PublicKeyDERtoDER) {
 
 // Test DER to PEM conversion (public key with -pubin)
 TEST_F(RSAFormatComparisonTest, PublicKeyDERtoPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_der_path + " -pubin -inform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_der_path +
-                                " -pubin -inform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_der_path) +
+                             " -pubin -inform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_der_path) +
+                                " -pubin -inform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -946,12 +966,14 @@ TEST_F(RSAFormatComparisonTest, PublicKeyDERtoPEM) {
 
 // Test PEM to DER conversion (public key with -pubin)
 TEST_F(RSAFormatComparisonTest, PublicKeyPEMtoDER) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_pem_path + " -pubin -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_pem_path +
-                                " -pubin -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_pem_path) +
+                             " -pubin -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_pem_path) +
+                                " -pubin -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -965,12 +987,14 @@ TEST_F(RSAFormatComparisonTest, PublicKeyPEMtoDER) {
 
 // Test -pubin with -modulus and PEM input
 TEST_F(RSAFormatComparisonTest, PubinModulus) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_pem_path + " -pubin -modulus -noout > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_pem_path +
-                                " -pubin -modulus -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_pem_path) +
+                             " -pubin -modulus -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_pem_path) +
+                                " -pubin -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -981,12 +1005,14 @@ TEST_F(RSAFormatComparisonTest, PubinModulus) {
 
 // Test -pubin with -modulus and DER input
 TEST_F(RSAFormatComparisonTest, PubinModulusDERInput) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -modulus -noout > " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -modulus -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_der_path) +
+                             " -pubin -inform DER -modulus -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_der_path) +
+                                " -pubin -inform DER -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -997,12 +1023,14 @@ TEST_F(RSAFormatComparisonTest, PubinModulusDERInput) {
 
 // Test -inform with modulus
 TEST_F(RSAFormatComparisonTest, InformDERWithModulus) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -modulus -noout > " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -modulus -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -modulus -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1013,11 +1041,13 @@ TEST_F(RSAFormatComparisonTest, InformDERWithModulus) {
 
 // Test -pubout with private key PEM input (extract public key)
 TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -pubout -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path + " -pubout -out " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) + " -pubout -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1044,12 +1074,14 @@ TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyPEM) {
 
 // Test -pubout with private key DER input using -inform DER
 TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyDERInput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -pubout -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_der_path +
-                                " -inform DER -pubout -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -pubout -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -pubout -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1076,12 +1108,14 @@ TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyDERInput) {
 
 // Test -pubout with -outform DER (extract public key as DER)
 TEST_F(RSAFormatComparisonTest, PuboutDEROutput) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -pubout -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -pubout -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -pubout -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1107,12 +1141,14 @@ TEST_F(RSAFormatComparisonTest, PuboutDEROutput) {
 
 // Test -pubout with -inform DER and -outform DER (DER private to DER public)
 TEST_F(RSAFormatComparisonTest, PuboutDERtoDER) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -pubout -outform DER -out " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -pubout -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -pubout -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -pubout -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1126,12 +1162,14 @@ TEST_F(RSAFormatComparisonTest, PuboutDERtoDER) {
 
 // Test -pubout with -modulus
 TEST_F(RSAFormatComparisonTest, PuboutWithModulus) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -pubout -modulus -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path +
-                                " -pubout -modulus -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -pubout -modulus -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -modulus -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1155,12 +1193,14 @@ TEST_F(RSAFormatComparisonTest, PuboutWithModulus) {
 
 // Test -pubout with -modulus and -noout (only modulus from private key)
 TEST_F(RSAFormatComparisonTest, PuboutWithModulusNoout) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -pubout -modulus -noout > " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -pubout -modulus -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -pubout -modulus -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1171,12 +1211,14 @@ TEST_F(RSAFormatComparisonTest, PuboutWithModulusNoout) {
 
 // Test -pubout with DER to PEM conversion
 TEST_F(RSAFormatComparisonTest, PuboutDERtoPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_der_path + " -inform DER -pubout -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_der_path +
-                                " -inform DER -pubout -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -pubout -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -pubout -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1195,12 +1237,14 @@ TEST_F(RSAFormatComparisonTest, PuboutDERtoPEM) {
 
 // Test -pubout with PEM to DER conversion
 TEST_F(RSAFormatComparisonTest, PuboutPEMtoDER) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -pubout -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -pubout -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -pubout -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1214,12 +1258,14 @@ TEST_F(RSAFormatComparisonTest, PuboutPEMtoDER) {
 
 // Test modulus output with -outform DER (should still output modulus as text)
 TEST_F(RSAFormatComparisonTest, ModulusWithOutformDER) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path +
-                             " -modulus -outform DER -noout > " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -modulus -outform DER -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -modulus -outform DER -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -modulus -outform DER -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1231,12 +1277,14 @@ TEST_F(RSAFormatComparisonTest, ModulusWithOutformDER) {
 
 // Test modulus with -inform DER and -outform DER, writing key to file
 TEST_F(RSAFormatComparisonTest, ModulusInformOutformDER) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -modulus -outform DER -out " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -modulus -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_der_path) +
+                             " -inform DER -modulus -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_der_path) +
+                                " -inform DER -modulus -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1245,12 +1293,14 @@ TEST_F(RSAFormatComparisonTest, ModulusInformOutformDER) {
 
 // Test modulus with public key and various format combinations
 TEST_F(RSAFormatComparisonTest, PubinModulusInformDER) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -modulus -out " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + pub_der_path +
-      " -pubin -inform DER -modulus -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_der_path) +
+                             " -pubin -inform DER -modulus -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_der_path) +
+                                " -pubin -inform DER -modulus -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1267,12 +1317,13 @@ TEST_F(RSAFormatComparisonTest, PubinModulusInformDER) {
 
 // Test modulus output to file (not stdout) with PEM input
 TEST_F(RSAFormatComparisonTest, ModulusToFile) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -modulus -out " + out_path_tool +
-                             " -noout";
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -modulus -out " + out_path_openssl + " -noout";
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) + " -modulus -out " +
+                             ShellEscape(out_path_tool) + " -noout";
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -modulus -out " +
+                                ShellEscape(out_path_openssl) + " -noout";
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1289,12 +1340,14 @@ TEST_F(RSAFormatComparisonTest, ModulusToFile) {
 
 // Test modulus with -pubout and -outform DER
 TEST_F(RSAFormatComparisonTest, ModulusPuboutOutformDER) {
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -in " + priv_pem_path +
-      " -pubout -modulus -outform DER -out " + out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -pubout -modulus -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -pubout -modulus -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -modulus -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1306,12 +1359,13 @@ TEST_F(RSAFormatComparisonTest, InformCaseInsensitive) {
   std::vector<std::string> formats = {"pem", "Pem", "PEM"};
 
   for (const auto &format : formats) {
-    std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                               priv_pem_path + " -inform " + format + " -out " +
-                               out_path_tool;
-    std::string openssl_command = std::string(openssl_executable_path) +
-                                  " rsa -in " + priv_pem_path + " -out " +
-                                  out_path_openssl;
+    std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                               ShellEscape(priv_pem_path) + " -inform " +
+                               ShellEscape(format) + " -out " +
+                               ShellEscape(out_path_tool);
+    std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                  " rsa -in " + ShellEscape(priv_pem_path) +
+                                  " -out " + ShellEscape(out_path_openssl);
 
     RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                                 out_path_openssl, tool_output_str,
@@ -1331,12 +1385,14 @@ TEST_F(RSAFormatComparisonTest, InformDERCaseInsensitive) {
   std::vector<std::string> formats = {"der", "Der", "DER"};
 
   for (const auto &format : formats) {
-    std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                               priv_der_path + " -inform " + format + " -out " +
-                               out_path_tool;
-    std::string openssl_command = std::string(openssl_executable_path) +
-                                  " rsa -in " + priv_der_path +
-                                  " -inform DER -out " + out_path_openssl;
+    std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                               ShellEscape(priv_der_path) + " -inform " +
+                               ShellEscape(format) + " -out " +
+                               ShellEscape(out_path_tool);
+    std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                  " rsa -in " + ShellEscape(priv_der_path) +
+                                  " -inform DER -out " +
+                                  ShellEscape(out_path_openssl);
 
     RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                                 out_path_openssl, tool_output_str,
@@ -1356,12 +1412,13 @@ TEST_F(RSAFormatComparisonTest, OutformCaseInsensitive) {
   std::vector<std::string> formats = {"pem", "Pem", "PEM"};
 
   for (const auto &format : formats) {
-    std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                               priv_pem_path + " -outform " + format +
-                               " -out " + out_path_tool;
-    std::string openssl_command = std::string(openssl_executable_path) +
-                                  " rsa -in " + priv_pem_path + " -out " +
-                                  out_path_openssl;
+    std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                               ShellEscape(priv_pem_path) + " -outform " +
+                               ShellEscape(format) + " -out " +
+                               ShellEscape(out_path_tool);
+    std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                  " rsa -in " + ShellEscape(priv_pem_path) +
+                                  " -out " + ShellEscape(out_path_openssl);
 
     RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                                 out_path_openssl, tool_output_str,
@@ -1380,12 +1437,14 @@ TEST_F(RSAFormatComparisonTest, OutformDERCaseInsensitive) {
   std::vector<std::string> formats = {"der", "Der", "DER"};
 
   for (const auto &format : formats) {
-    std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                               priv_pem_path + " -outform " + format +
-                               " -out " + out_path_tool;
-    std::string openssl_command = std::string(openssl_executable_path) +
-                                  " rsa -in " + priv_pem_path +
-                                  " -outform DER -out " + out_path_openssl;
+    std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                               ShellEscape(priv_pem_path) + " -outform " +
+                               ShellEscape(format) + " -out " +
+                               ShellEscape(out_path_tool);
+    std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                  " rsa -in " + ShellEscape(priv_pem_path) +
+                                  " -outform DER -out " +
+                                  ShellEscape(out_path_openssl);
 
     RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                                 out_path_openssl, tool_output_str,
@@ -1407,13 +1466,15 @@ TEST_F(RSAFormatComparisonTest, PubinCaseInsensitive) {
 
   for (const auto &inform : inform_formats) {
     for (const auto &outform : outform_formats) {
-      std::string tool_command = std::string(tool_executable_path) +
-                                 " rsa -in " + pub_der_path +
-                                 " -pubin -inform " + inform + " -outform " +
-                                 outform + " -out " + out_path_tool;
-      std::string openssl_command =
-          std::string(openssl_executable_path) + " rsa -in " + pub_der_path +
-          " -pubin -inform DER -out " + out_path_openssl;
+      std::string tool_command = ShellEscape(tool_executable_path) +
+                                 " rsa -in " + ShellEscape(pub_der_path) +
+                                 " -pubin -inform " + ShellEscape(inform) +
+                                 " -outform " + ShellEscape(outform) +
+                                 " -out " + ShellEscape(out_path_tool);
+      std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                    " rsa -in " + ShellEscape(pub_der_path) +
+                                    " -pubin -inform DER -out " +
+                                    ShellEscape(out_path_openssl);
 
       RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                                   out_path_openssl, tool_output_str,
@@ -1432,12 +1493,14 @@ TEST_F(RSAFormatComparisonTest, PubinCaseInsensitive) {
 // Test various parameter orderings with -modulus and -noout
 TEST_F(RSAFormatComparisonTest, ParameterOrdering1) {
   // Test: -modulus before -noout
-  std::string tool_command1 = std::string(tool_executable_path) + " rsa -in " +
-                              priv_pem_path + " -modulus -noout > " +
-                              out_path_tool;
-  std::string openssl_command1 = std::string(openssl_executable_path) +
-                                 " rsa -in " + priv_pem_path +
-                                 " -modulus -noout > " + out_path_openssl;
+  std::string tool_command1 = ShellEscape(tool_executable_path) + " rsa -in " +
+                              ShellEscape(priv_pem_path) +
+                              " -modulus -noout > " +
+                              ShellEscape(out_path_tool);
+  std::string openssl_command1 = ShellEscape(openssl_executable_path) +
+                                 " rsa -in " + ShellEscape(priv_pem_path) +
+                                 " -modulus -noout > " +
+                                 ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command1, openssl_command1, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1448,12 +1511,13 @@ TEST_F(RSAFormatComparisonTest, ParameterOrdering1) {
 // Test various parameter orderings with -out before other flags
 TEST_F(RSAFormatComparisonTest, ParameterOrdering2) {
   // Test: -out before -pubout
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -out " + out_path_tool +
-                             " -pubout";
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path + " -out " +
-                                out_path_openssl + " -pubout";
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) + " -out " +
+                             ShellEscape(out_path_tool) + " -pubout";
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -out " + ShellEscape(out_path_openssl) +
+                                " -pubout";
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1470,12 +1534,14 @@ TEST_F(RSAFormatComparisonTest, ParameterOrdering2) {
 // Test parameter ordering with all format flags
 TEST_F(RSAFormatComparisonTest, ParameterOrdering3) {
   // Test: -outform before -inform
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -outform DER -inform PEM -out " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_pem_path +
-      " -inform PEM -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) +
+                             " -outform DER -inform PEM -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -inform PEM -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1491,11 +1557,12 @@ TEST_F(RSAFormatComparisonTest, ParameterOrdering3) {
 
 // Test stdout output with modulus (no -out flag)
 TEST_F(RSAFormatComparisonTest, StdoutWithModulus) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             priv_pem_path + " -modulus > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path + " -modulus > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(priv_pem_path) + " -modulus > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -modulus > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1511,12 +1578,15 @@ TEST_F(RSAFormatComparisonTest, StdoutWithModulus) {
 // Test complex parameter ordering with all flags
 TEST_F(RSAFormatComparisonTest, ComplexParameterOrdering) {
   // Test: flags in unusual order
-  std::string tool_command =
-      std::string(tool_executable_path) + " rsa -modulus -in " + priv_der_path +
-      " -pubout -inform DER -out " + out_path_tool + " -outform PEM";
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " rsa -modulus -in " + ShellEscape(priv_der_path) +
+                             " -pubout -inform DER -out " +
+                             ShellEscape(out_path_tool) + " -outform PEM";
   std::string openssl_command =
-      std::string(openssl_executable_path) + " rsa -in " + priv_der_path +
-      " -inform DER -pubout -modulus -outform PEM -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " rsa -in " +
+      ShellEscape(priv_der_path) +
+      " -inform DER -pubout -modulus -outform PEM -out " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1533,12 +1603,13 @@ TEST_F(RSAFormatComparisonTest, ComplexParameterOrdering) {
 // Test -in flag at different positions
 TEST_F(RSAFormatComparisonTest, InFlagPosition) {
   // Test: -in at the end
-  std::string tool_command = std::string(tool_executable_path) +
-                             " rsa -pubout -out " + out_path_tool + " -in " +
-                             priv_pem_path;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + priv_pem_path + " -pubout -out " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " rsa -pubout -out " + ShellEscape(out_path_tool) +
+                             " -in " + ShellEscape(priv_pem_path);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(priv_pem_path) +
+                                " -pubout -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1555,12 +1626,14 @@ TEST_F(RSAFormatComparisonTest, InFlagPosition) {
 // Test -pubin with -modulus in different order
 TEST_F(RSAFormatComparisonTest, PubinModulusOrdering) {
   // Test: -pubin after -modulus
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             pub_pem_path + " -modulus -pubin -noout > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + pub_pem_path +
-                                " -pubin -modulus -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(pub_pem_path) +
+                             " -modulus -pubin -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(pub_pem_path) +
+                                " -pubin -modulus -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1572,11 +1645,13 @@ TEST_F(RSAFormatComparisonTest, PubinModulusOrdering) {
 // Test against OpenSSL output "openssl rsa -in file -noout -modulus"
 // Only modulus is printed to stdin (reordered parameters)
 TEST_F(RSAComparisonTest, RSAToolCompareReorderedModulusNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " -noout -modulus > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path + " -noout -modulus > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " -noout -modulus > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(in_path) +
+                                " -noout -modulus > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1588,11 +1663,13 @@ TEST_F(RSAComparisonTest, RSAToolCompareReorderedModulusNooutOpenSSL) {
 // Test against OpenSSL output "openssl rsa -in file -noout -modulus -out
 // out_file" Only modulus is printed to output file (reordered parameters)
 TEST_F(RSAComparisonTest, RSAToolCompareReorderedModulusOutNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
-                             in_path + " -noout -modulus -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " rsa -in " + in_path +
-                                " -noout -modulus -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " rsa -in " +
+                             ShellEscape(in_path) + " -noout -modulus -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " rsa -in " + ShellEscape(in_path) +
+                                " -noout -modulus -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,

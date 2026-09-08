@@ -270,11 +270,13 @@ class PKeyComparisonTest : public ::testing::Test {
 
 // Test against OpenSSL output "openssl pkey -in file -text -noout"
 TEST_F(PKeyComparisonTest, Text) {
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             in_path + " -text -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + in_path + " -text -noout > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(in_path) + " -text -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(in_path) +
+                                " -text -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -298,11 +300,13 @@ TEST_F(PKeyComparisonTest, Text) {
 
 // Test against OpenSSL output "openssl pkey -in file -text_pub -noout"
 TEST_F(PKeyComparisonTest, TextPub) {
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             in_path + " -text_pub -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + in_path +
-                                " -text_pub -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(in_path) + " -text_pub -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(in_path) +
+                                " -text_pub -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -326,11 +330,12 @@ TEST_F(PKeyComparisonTest, TextPub) {
 
 // Test against OpenSSL output "openssl pkey -in file -pubout"
 TEST_F(PKeyComparisonTest, Pubout) {
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             in_path + " -pubout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + in_path + " -pubout > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(in_path) + " -pubout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(in_path) +
+                                " -pubout > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -348,11 +353,13 @@ TEST_F(PKeyComparisonTest, Pubout) {
 
 // Test against OpenSSL output "openssl pkey -in file -inform DER"
 TEST_F(PKeyComparisonTest, InformDER) {
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             der_key_path + " -inform DER > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + der_key_path +
-                                " -inform DER > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(der_key_path) + " -inform DER > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(der_key_path) +
+                                " -inform DER > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -370,11 +377,13 @@ TEST_F(PKeyComparisonTest, InformDER) {
 
 // Test against OpenSSL output "openssl pkey -in file -outform DER"
 TEST_F(PKeyComparisonTest, OutformDER) {
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             in_path + " -outform DER -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + in_path + " -outform DER -out " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(in_path) + " -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(in_path) +
+                                " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -384,18 +393,18 @@ TEST_F(PKeyComparisonTest, OutformDER) {
 // Test against OpenSSL output "openssl pkey -in file -pubin -pubout"
 TEST_F(PKeyComparisonTest, PubinPubout) {
   // First create a public key file
-  std::string create_pubkey_cmd = std::string(tool_executable_path) +
-                                  " pkey -in " + in_path + " -pubout -out " +
-                                  out_path_tool;
+  std::string create_pubkey_cmd = ShellEscape(tool_executable_path) +
+                                  " pkey -in " + ShellEscape(in_path) +
+                                  " -pubout -out " + ShellEscape(out_path_tool);
   ASSERT_EQ(system(create_pubkey_cmd.c_str()), 0);
 
   // Then test reading it with -pubin
-  std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
-                             out_path_tool + " -pubin > " + out_path_tool +
-                             ".new";
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkey -in " + out_path_tool + " -pubin > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " pkey -in " +
+                             ShellEscape(out_path_tool) + " -pubin > " +
+                             ShellEscape(out_path_tool) + ".new";
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkey -in " + ShellEscape(out_path_tool) +
+                                " -pubin > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command,
                               (std::string(out_path_tool) + ".new").c_str(),
@@ -417,12 +426,12 @@ TEST_F(PKeyComparisonTest, PubinPubout) {
 
 // Test against OpenSSL output reading from stdin "cat file | openssl pkey"
 TEST_F(PKeyComparisonTest, Stdin) {
-  std::string tool_command = "cat " + std::string(in_path) + " | " +
-                             std::string(tool_executable_path) + " pkey > " +
-                             out_path_tool;
-  std::string openssl_command = "cat " + std::string(in_path) + " | " +
-                                std::string(openssl_executable_path) +
-                                " pkey > " + out_path_openssl;
+  std::string tool_command = "cat " + ShellEscape(in_path) + " | " +
+                             ShellEscape(tool_executable_path) + " pkey > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = "cat " + ShellEscape(in_path) + " | " +
+                                ShellEscape(openssl_executable_path) +
+                                " pkey > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
