@@ -101,6 +101,12 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   }
   dst->packed = src->packed;
   dst->line = src->line;
+  // The mark is part of the queue's state, so |ERR_save_state| and
+  // |ERR_restore_state| have to round-trip it. Dropping it would break a caller
+  // that set a mark and then called into code which saved and restored the
+  // queue: the caller's |ERR_pop_to_mark| would find no mark and discard the
+  // caller's own errors.
+  dst->mark = src->mark;
 }
 
 

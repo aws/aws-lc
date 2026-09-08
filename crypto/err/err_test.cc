@@ -223,6 +223,30 @@ TEST(ErrTest, SaveAndRestore) {
   }
 }
 
+// A mark is part of the queue's state, so it must survive a save and restore.
+// Otherwise a caller that marks the queue and then calls into code which saves
+// and restores it loses its own errors to the next |ERR_pop_to_mark|.
+TEST(ErrTest, SaveAndRestorePreservesMark) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ASSERT_TRUE(ERR_set_mark());
+
+  bssl::UniquePtr<ERR_SAVE_STATE> saved(ERR_save_state());
+  ASSERT_TRUE(saved);
+
+  // Stand in for the errors the saving code queues and means to discard.
+  ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
+  ERR_restore_state(saved.get());
+
+  // The mark came back with the entry it was set on, so popping to it reports
+  // success and leaves the marked error in place.
+  EXPECT_TRUE(ERR_pop_to_mark());
+  uint32_t packed_error = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+  EXPECT_EQ(ERR_GET_REASON(packed_error), 1);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
 // Querying the error queue should not affect the OS error.
 #if defined(OPENSSL_WINDOWS)
 TEST(ErrTest, PreservesLastError) {
