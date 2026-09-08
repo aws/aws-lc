@@ -96,6 +96,7 @@ function libgit2_run_tests() {
 git init "${LIBGIT2_SRC_FOLDER}"
 git -C "${LIBGIT2_SRC_FOLDER}" fetch --depth 1 https://github.com/libgit2/libgit2.git "${LIBGIT2_REF}"
 git -C "${LIBGIT2_SRC_FOLDER}" checkout FETCH_HEAD
+record_repo_commit "${LIBGIT2_SRC_FOLDER}" "https://github.com/libgit2/libgit2.git"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBGIT2_BUILD_FOLDER}" "${LIBGIT2_INSTALL_FOLDER}"
 ls
 

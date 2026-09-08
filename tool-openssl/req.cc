@@ -76,7 +76,13 @@ static const argument_t kArguments[] = {
      "whitespace is retained."},
     {"-config", kOptionalArgument, "This specifies the request template file"},
     {"-extensions", kOptionalArgument,
-     "Cert or request extension section (override value in config file)"},
+     "Certificate extension section, used when -x509 is given (overrides "
+     "x509_extensions in the config file). It is not applied to certificate "
+     "requests, but is still validated when -config is given."},
+    {"-reqexts", kOptionalArgument,
+     "Certificate request extension section (overrides req_extensions in the "
+     "config file). It is not applied when -x509 is given, but is still "
+     "validated when -config is given."},
     {"-key", kOptionalArgument,
      "This specifies the key file path to be used for signing."},
     {"-passin", kOptionalArgument,
@@ -448,6 +454,24 @@ static bool AddReqExtensions(X509_REQ *req, CONF *req_conf,
   return result;
 }
 
+// Checks that |section| exists and its extensions parse. Context-dependent
+// values are resolved only when the extensions are applied.
+static bool CheckExtensionSection(CONF *conf, const std::string &section) {
+  if (conf == nullptr || section.empty()) {
+    return true;
+  }
+
+  X509V3_CTX temp_ctx;
+  X509V3_set_ctx_test(&temp_ctx);
+  X509V3_set_nconf(&temp_ctx, conf);
+  if (!X509V3_EXT_add_nconf(conf, &temp_ctx, section.c_str(), NULL)) {
+    fprintf(stderr, "Error: Invalid extension section %s\n", section.c_str());
+    return false;
+  }
+
+  return true;
+}
+
 // Generate a random serial number for a certificate
 static bool GenerateSerial(X509 *cert) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
@@ -530,7 +554,7 @@ bool reqTool(const args_list_t &args) {
   }
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
-      outform, ext_section, digest_name;
+      outform, cert_ext_section, req_ext_section, digest_name;
   Password passin, passout;
   unsigned int days;
   bool help = false, new_flag = false, x509_flag = false, nodes = false;
@@ -549,7 +573,8 @@ bool reqTool(const args_list_t &args) {
   GetString(&keyout, "-keyout", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
-  GetString(&ext_section, "-extensions", "", parsed_args);
+  GetString(&cert_ext_section, "-extensions", "", parsed_args);
+  GetString(&req_ext_section, "-reqexts", "", parsed_args);
   GetExclusiveBoolArgument(&digest_name, kArguments, "", parsed_args);
 
   if (help) {
@@ -592,26 +617,25 @@ bool reqTool(const args_list_t &args) {
     req_section = "default";
   }
 
-  if (ext_section.empty() && req_conf.get()) {
-    const char *ext_str =
-        NCONF_get_string(req_conf.get(), req_section.c_str(),
-                         x509_flag ? REQ_V3_EXT_OPT : REQ_REQ_EXT_OPT);
-    if (ext_str) {
-      ext_section = ext_str;
+  // Each flag overrides only its corresponding config setting.
+  if (req_conf.get()) {
+    std::string &ext_section = x509_flag ? cert_ext_section : req_ext_section;
+    if (ext_section.empty()) {
+      const char *ext_str =
+          NCONF_get_string(req_conf.get(), req_section.c_str(),
+                           x509_flag ? REQ_V3_EXT_OPT : REQ_REQ_EXT_OPT);
+      if (ext_str) {
+        ext_section = ext_str;
+      }
     }
   }
 
-  // Check syntax of extension section in config file
-  if (!ext_section.empty() && !config_path.empty()) {
-    X509V3_CTX temp_ctx;
-    X509V3_set_ctx_test(&temp_ctx);
-    X509V3_set_nconf(&temp_ctx, req_conf.get());
-    if (!X509V3_EXT_add_nconf(req_conf.get(), &temp_ctx, ext_section.c_str(),
-                              NULL)) {
-      fprintf(stderr, "Error: Invalid extension section %s\n",
-              ext_section.c_str());
-      return false;
-    }
+  // OpenSSL validates both command-line selectors regardless of output type.
+  // Only the selected output's selector may be populated from the config.
+  if (req_conf.get() &&
+      (!CheckExtensionSection(req_conf.get(), cert_ext_section) ||
+       !CheckExtensionSection(req_conf.get(), req_ext_section))) {
+    return false;
   }
 
   const EVP_MD *digest = nullptr;
@@ -793,7 +817,7 @@ bool reqTool(const args_list_t &args) {
     }
 
     // Add extensions to certificate
-    if (!AddCertExtensions(cert.get(), req_conf.get(), ext_section)) {
+    if (!AddCertExtensions(cert.get(), req_conf.get(), cert_ext_section)) {
       fprintf(stderr, "Failed to add extensions to certificate\n");
       return false;
     }
@@ -805,7 +829,7 @@ bool reqTool(const args_list_t &args) {
     }
   } else {
     // Add extensions to request
-    if (!AddReqExtensions(req.get(), req_conf.get(), ext_section)) {
+    if (!AddReqExtensions(req.get(), req_conf.get(), req_ext_section)) {
       fprintf(stderr, "Failed to add extensions to CSR\n");
       return false;
     }

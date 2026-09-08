@@ -37,7 +37,9 @@ enum FIPSStatus {
 
 #if defined(AWSLC_FIPS)
 
-#define AWSLC_MODE_STRING "AWS-LC FIPS "
+// AWSLC_MODULE_NAME_STRING is the name of the cryptographic module, "AWS-LC
+// FIPS" in FIPS builds and "AWS-LC" otherwise.
+#define AWSLC_MODULE_NAME_STRING AWSLC_VERSION_NAME " FIPS"
 
 // CALL_SERVICE_AND_CHECK_APPROVED performs an approval check and runs the service.
 // The |approved| value passed in will change to |AWSLC_APPROVED| and
@@ -64,7 +66,7 @@ enum FIPSStatus {
 
 #else
 
-#define AWSLC_MODE_STRING "AWS-LC "
+#define AWSLC_MODULE_NAME_STRING AWSLC_VERSION_NAME
 
 // CALL_SERVICE_AND_CHECK_APPROVED always returns |AWSLC_APPROVED| when AWS-LC
 // is not built in FIPS mode for easier consumer compatibility that have both
@@ -77,6 +79,8 @@ enum FIPSStatus {
  while(0)                                                           \
 
 #endif // AWSLC_FIPS
+
+#define AWSLC_MODE_STRING AWSLC_MODULE_NAME_STRING " "
 
 #define AWSLC_VERSION_STRING AWSLC_MODE_STRING AWSLC_VERSION_NUMBER_STRING
 

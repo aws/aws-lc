@@ -40,6 +40,7 @@ function xtrabackup_build() {
 }
 
 git clone --recurse-submodules https://github.com/percona/percona-xtrabackup.git ${XTRABACKUP_SRC_FOLDER} --depth 1
+record_repo_commit "${XTRABACKUP_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${XTRABACKUP_BUILD_FOLDER}
 ls
 
