@@ -361,26 +361,29 @@ TEST_P(DhparamBitSizeComparisonTest, CrossCompatibility) {
   const auto &params = GetParam();
 
   // Generate with AWS-LC
-  std::string tool_command = std::string(tool_executable_path) +
-                             " dhparam -out " + out_path_tool + " " +
-                             std::to_string(params.numbits);
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " dhparam -out " + ShellEscape(out_path_tool) +
+                             " " + ShellEscape(std::to_string(params.numbits));
   ASSERT_EQ(system(tool_command.c_str()), 0) << "AWS-LC generation failed";
 
   // Verify OpenSSL can read AWS-LC generated parameters
-  std::string openssl_read = std::string(openssl_executable_path) +
-                             " dhparam -in " + out_path_tool + " -noout";
+  std::string openssl_read = ShellEscape(openssl_executable_path) +
+                             " dhparam -in " + ShellEscape(out_path_tool) +
+                             " -noout";
   ASSERT_EQ(system(openssl_read.c_str()), 0)
       << "OpenSSL cannot read AWS-LC generated parameters";
 
   // Generate with OpenSSL (can be slow, especially for larger sizes)
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dhparam -out " + out_path_openssl + " " +
-                                std::to_string(params.numbits);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " dhparam -out " +
+      ShellEscape(out_path_openssl) + " " +
+      ShellEscape(std::to_string(params.numbits));
   ASSERT_EQ(system(openssl_command.c_str()), 0) << "OpenSSL generation failed";
 
   // Verify AWS-LC can read OpenSSL generated parameters
-  std::string tool_read = std::string(tool_executable_path) + " dhparam -in " +
-                          out_path_openssl + " -noout";
+  std::string tool_read = ShellEscape(tool_executable_path) +
+                          " dhparam -in " + ShellEscape(out_path_openssl) +
+                          " -noout";
   ASSERT_EQ(system(tool_read.c_str()), 0)
       << "AWS-LC cannot read OpenSSL generated parameters";
 }
@@ -427,10 +430,12 @@ class DhparamComparisonTest : public ::testing::Test {
 
 // Test -noout flag comparison
 TEST_F(DhparamComparisonTest, NooutComparison) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " dhparam -noout 512 > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dhparam -noout 512 > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " dhparam -noout 512 > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dhparam -noout 512 > " +
+                                ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
@@ -441,17 +446,19 @@ TEST_F(DhparamComparisonTest, NooutComparison) {
 // Test DER format output comparison
 TEST_F(DhparamComparisonTest, DERFormatComparison) {
   // Generate parameters
-  std::string gen_command = std::string(tool_executable_path) +
-                            " dhparam -out " + params_path + " 512";
+  std::string gen_command = ShellEscape(tool_executable_path) +
+                            " dhparam -out " + ShellEscape(params_path) +
+                            " 512";
   ASSERT_EQ(system(gen_command.c_str()), 0);
 
   // Convert to DER with both tools
-  std::string tool_command = std::string(tool_executable_path) +
-                             " dhparam -in " + params_path +
-                             " -outform DER -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dhparam -in " + params_path +
-                                " -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " dhparam -in " + ShellEscape(params_path) +
+                             " -outform DER -out " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dhparam -in " + ShellEscape(params_path) +
+                                " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
@@ -464,20 +471,21 @@ TEST_F(DhparamComparisonTest, DERFormatComparison) {
 // Test PEM format round-trip compatibility
 TEST_F(DhparamComparisonTest, PEMRoundTripCompatibility) {
   // Generate with AWS-LC
-  std::string gen_command = std::string(tool_executable_path) +
-                            " dhparam -out " + params_path + " 512";
+  std::string gen_command = ShellEscape(tool_executable_path) +
+                            " dhparam -out " + ShellEscape(params_path) +
+                            " 512";
   ASSERT_EQ(system(gen_command.c_str()), 0);
 
   // Read with OpenSSL and output
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dhparam -in " + params_path + " -out " +
-                                out_path_openssl;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dhparam -in " + ShellEscape(params_path) +
+                                " -out " + ShellEscape(out_path_openssl);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
 
   // Read OpenSSL output with AWS-LC
-  std::string tool_command = std::string(tool_executable_path) +
-                             " dhparam -in " + out_path_openssl + " -out " +
-                             out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " dhparam -in " + ShellEscape(out_path_openssl) +
+                             " -out " + ShellEscape(out_path_tool);
   ASSERT_EQ(system(tool_command.c_str()), 0);
 
   // Outputs should match (trimmed for whitespace differences)
@@ -489,17 +497,19 @@ TEST_F(DhparamComparisonTest, PEMRoundTripCompatibility) {
 // Test text output format compatibility (structure only, not exact match)
 TEST_F(DhparamComparisonTest, TextOutputStructure) {
   // Generate parameters
-  std::string gen_command = std::string(tool_executable_path) +
-                            " dhparam -out " + params_path + " 512";
+  std::string gen_command = ShellEscape(tool_executable_path) +
+                            " dhparam -out " + ShellEscape(params_path) +
+                            " 512";
   ASSERT_EQ(system(gen_command.c_str()), 0);
 
   // Get text output from both tools
-  std::string tool_command = std::string(tool_executable_path) +
-                             " dhparam -in " + params_path +
-                             " -text -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dhparam -in " + params_path +
-                                " -text -noout > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " dhparam -in " + ShellEscape(params_path) +
+                             " -text -noout > " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dhparam -in " + ShellEscape(params_path) +
+                                " -text -noout > " +
+                                ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
@@ -521,20 +531,23 @@ TEST_F(DhparamComparisonTest, TextOutputStructure) {
 // Test format conversion compatibility
 TEST_F(DhparamComparisonTest, FormatConversionCompatibility) {
   // Generate PEM with AWS-LC
-  std::string gen_command = std::string(tool_executable_path) +
-                            " dhparam -out " + params_path + " 512";
+  std::string gen_command = ShellEscape(tool_executable_path) +
+                            " dhparam -out " + ShellEscape(params_path) +
+                            " 512";
   ASSERT_EQ(system(gen_command.c_str()), 0);
 
   // Convert PEM to DER with AWS-LC
-  std::string awslc_convert = std::string(tool_executable_path) +
-                              " dhparam -in " + params_path +
-                              " -outform DER -out " + out_path_tool;
+  std::string awslc_convert = ShellEscape(tool_executable_path) +
+                              " dhparam -in " + ShellEscape(params_path) +
+                              " -outform DER -out " +
+                              ShellEscape(out_path_tool);
   ASSERT_EQ(system(awslc_convert.c_str()), 0);
 
   // Convert same PEM to DER with OpenSSL
-  std::string openssl_convert = std::string(openssl_executable_path) +
-                                " dhparam -in " + params_path +
-                                " -outform DER -out " + out_path_openssl;
+  std::string openssl_convert = ShellEscape(openssl_executable_path) +
+                                " dhparam -in " + ShellEscape(params_path) +
+                                " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
   ASSERT_EQ(system(openssl_convert.c_str()), 0);
 
   // DER outputs should be identical

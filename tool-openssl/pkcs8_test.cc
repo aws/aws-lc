@@ -312,12 +312,14 @@ class PKCS8ComparisonTest : public ::testing::Test {
 // Test against OpenSSL output "openssl pkcs8 -topk8 -nocrypt -in file -out
 // file"
 TEST_F(PKCS8ComparisonTest, Unencrypted) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " pkcs8 -topk8 -nocrypt -in " + in_path +
-                             " -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkcs8 -topk8 -nocrypt -in " + in_path +
-                                " -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " pkcs8 -topk8 -nocrypt -in " +
+                             ShellEscape(in_path) + " -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -topk8 -nocrypt -in " +
+                                ShellEscape(in_path) + " -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -342,8 +344,9 @@ TEST_F(PKCS8ComparisonTest, Unencrypted) {
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   // Step 1: Use AWS-LC to encrypt the private key
   std::string encrypt_command =
-      std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -in " +
-      in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
+      ShellEscape(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_tool) +
+      " -passout file:" + ShellEscape(pass_path);
 
   int result = system(encrypt_command.c_str());
   ASSERT_EQ(0, result) << "AWS-LC encryption command failed";
@@ -358,9 +361,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
       << "AWS-LC output has incorrect PEM boundaries";
 
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
-  std::string decrypt_command = std::string(openssl_executable_path) +
-                                " pkcs8 -in " + out_path_tool + " -out " +
-                                decrypt_path + " -passin file:" + pass_path;
+  std::string decrypt_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -in " + ShellEscape(out_path_tool) +
+                                " -out " + ShellEscape(decrypt_path) +
+                                " -passin file:" + ShellEscape(pass_path);
 
   result = system(decrypt_command.c_str());
   ASSERT_EQ(0, result) << "OpenSSL decryption of AWS-LC output failed";
@@ -378,10 +382,11 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
 // Test cross-compatibility: OpenSSL encrypts, AWS-LC decrypts
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   // Step 1: Use OpenSSL to encrypt the private key
-  std::string encrypt_command = std::string(openssl_executable_path) +
-                                " pkcs8 -topk8 -v2 aes-256-cbc -in " + in_path +
-                                " -out " + out_path_openssl +
-                                " -passout file:" + pass_path;
+  std::string encrypt_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -topk8 -v2 aes-256-cbc -in " +
+                                ShellEscape(in_path) + " -out " +
+                                ShellEscape(out_path_openssl) +
+                                " -passout file:" + ShellEscape(pass_path);
 
   int result = system(encrypt_command.c_str());
   ASSERT_EQ(0, result) << "OpenSSL encryption command failed";
@@ -397,9 +402,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
       << "OpenSSL output has incorrect PEM boundaries";
 
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
-  std::string decrypt_command = std::string(tool_executable_path) +
-                                " pkcs8 -in " + out_path_openssl + " -out " +
-                                decrypt_path + " -passin file:" + pass_path;
+  std::string decrypt_command = ShellEscape(tool_executable_path) +
+                                " pkcs8 -in " + ShellEscape(out_path_openssl) +
+                                " -out " + ShellEscape(decrypt_path) +
+                                " -passin file:" + ShellEscape(pass_path);
 
   result = system(decrypt_command.c_str());
   ASSERT_EQ(0, result) << "AWS-LC decryption of OpenSSL output failed";
@@ -417,12 +423,14 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
 // Original format comparison test kept for backward compatibility
 TEST_F(PKCS8ComparisonTest, Encrypted) {
   std::string tool_command =
-      std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -in " +
-      in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkcs8 -topk8 -v2 aes-256-cbc -in " + in_path +
-                                " -out " + out_path_openssl +
-                                " -passout file:" + pass_path;
+      ShellEscape(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_tool) +
+      " -passout file:" + ShellEscape(pass_path);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -topk8 -v2 aes-256-cbc -in " +
+                                ShellEscape(in_path) + " -out " +
+                                ShellEscape(out_path_openssl) +
+                                " -passout file:" + ShellEscape(pass_path);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -461,12 +469,14 @@ TEST_F(PKCS8ComparisonTest, Encrypted) {
 
 // Test against OpenSSL output with DER format
 TEST_F(PKCS8ComparisonTest, DERFormat) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " pkcs8 -topk8 -nocrypt -in " + in_path +
-                             " -outform DER -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkcs8 -topk8 -nocrypt -in " + in_path +
-                                " -outform DER -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " pkcs8 -topk8 -nocrypt -in " +
+                             ShellEscape(in_path) + " -outform DER -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -topk8 -nocrypt -in " +
+                                ShellEscape(in_path) + " -outform DER -out " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -478,9 +488,10 @@ TEST_F(PKCS8ComparisonTest, DERFormat) {
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   // Step 1: Use AWS-LC to encrypt the private key with custom PRF
   std::string encrypt_command =
-      std::string(tool_executable_path) +
-      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + in_path +
-      " -out " + out_path_tool + " -passout file:" + pass_path;
+      ShellEscape(tool_executable_path) +
+      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_tool) +
+      " -passout file:" + ShellEscape(pass_path);
 
   int result = system(encrypt_command.c_str());
   ASSERT_EQ(0, result) << "AWS-LC encryption command with PRF failed";
@@ -496,9 +507,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
       << "AWS-LC output with PRF has incorrect PEM boundaries";
 
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
-  std::string decrypt_command = std::string(openssl_executable_path) +
-                                " pkcs8 -in " + out_path_tool + " -out " +
-                                decrypt_path + " -passin file:" + pass_path;
+  std::string decrypt_command = ShellEscape(openssl_executable_path) +
+                                " pkcs8 -in " + ShellEscape(out_path_tool) +
+                                " -out " + ShellEscape(decrypt_path) +
+                                " -passin file:" + ShellEscape(pass_path);
 
   result = system(decrypt_command.c_str());
   ASSERT_EQ(0, result) << "OpenSSL decryption of AWS-LC output with PRF failed";
@@ -518,9 +530,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   // Step 1: Use OpenSSL to encrypt the private key with custom PRF
   std::string encrypt_command =
-      std::string(openssl_executable_path) +
-      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + in_path +
-      " -out " + out_path_openssl + " -passout file:" + pass_path;
+      ShellEscape(openssl_executable_path) +
+      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_openssl) +
+      " -passout file:" + ShellEscape(pass_path);
 
   int result = system(encrypt_command.c_str());
   ASSERT_EQ(0, result) << "OpenSSL encryption command with PRF failed";
@@ -537,9 +550,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
       << "OpenSSL output with PRF has incorrect PEM boundaries";
 
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
-  std::string decrypt_command = std::string(tool_executable_path) +
-                                " pkcs8 -in " + out_path_openssl + " -out " +
-                                decrypt_path + " -passin file:" + pass_path;
+  std::string decrypt_command = ShellEscape(tool_executable_path) +
+                                " pkcs8 -in " + ShellEscape(out_path_openssl) +
+                                " -out " + ShellEscape(decrypt_path) +
+                                " -passin file:" + ShellEscape(pass_path);
 
   result = system(decrypt_command.c_str());
   ASSERT_EQ(0, result) << "AWS-LC decryption of OpenSSL output with PRF failed";
@@ -557,13 +571,15 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
 // Original format comparison test with PRF kept for backward compatibility
 TEST_F(PKCS8ComparisonTest, V2prf) {
   std::string tool_command =
-      std::string(tool_executable_path) +
-      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + in_path +
-      " -out " + out_path_tool + " -passout file:" + pass_path;
+      ShellEscape(tool_executable_path) +
+      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_tool) +
+      " -passout file:" + ShellEscape(pass_path);
   std::string openssl_command =
-      std::string(openssl_executable_path) +
-      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + in_path +
-      " -out " + out_path_openssl + " -passout file:" + pass_path;
+      ShellEscape(openssl_executable_path) +
+      " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_openssl) +
+      " -passout file:" + ShellEscape(pass_path);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
