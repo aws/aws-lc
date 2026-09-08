@@ -6451,6 +6451,16 @@ BSSL_NAMESPACE_END
 #define SSL_R_VERSION_TOO_HIGH (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 4)
 #define SSL_R_VERSION_TOO_LOW (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 5)
 
+// The following SSL_F_* function codes are defined for compatibility with
+// callers written against OpenSSL, which pass them as the |function| argument
+// to |ERR_put_error|. AWS-LC does not support function codes and ignores that
+// argument, so these are all defined to zero, as OpenSSL 3.0 does for its
+// legacy SSL_F_* names. SSL_F_SSL3_GET_SERVER_CERTIFICATE was removed in
+// OpenSSL 1.1.0 and is retained here for callers that still reference it.
+#define SSL_F_SSL_CTX_SET_SSL_VERSION 0
+#define SSL_F_SSL3_GET_SERVER_CERTIFICATE 0
+#define SSL_F_TLS_PROCESS_SERVER_CERTIFICATE 0
+
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -6716,15 +6726,5 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
 #define SSL_R_SERIALIZATION_INVALID_SERDE_VERSION 1122
-
-// The following SSL_F_* function codes are defined for compatibility with
-// callers written against OpenSSL, which pass them as the |function| argument
-// to |ERR_put_error|. AWS-LC does not support function codes and ignores that
-// argument, so these are all defined to zero, as OpenSSL 3.0 does for its
-// legacy SSL_F_* names. SSL_F_SSL3_GET_SERVER_CERTIFICATE was removed in
-// OpenSSL 1.1.0 and is retained here for callers that still reference it.
-#define SSL_F_SSL_CTX_SET_SSL_VERSION 0
-#define SSL_F_SSL3_GET_SERVER_CERTIFICATE 0
-#define SSL_F_TLS_PROCESS_SERVER_CERTIFICATE 0
 
 #endif  // OPENSSL_HEADER_SSL_H
