@@ -2460,6 +2460,16 @@ uint16_t ssl_get_grease_value(const SSL_HANDSHAKE *hs,
 // error.
 bool tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
 
+// ssl_sigalg_name_is_supported reports whether |name|, of length |len|, is a
+// single signature algorithm token that |SSL_CTX_set1_sigalgs_list| accepts. It
+// takes either spelling that setter takes, "ecdsa_secp256r1_sha256" or
+// "ECDSA+SHA256", and queues no errors.
+//
+// This is for filtering a list from an outside source, which may name algorithms
+// AWS-LC does not implement, down to the ones it does. The setter itself rejects
+// the whole list on the first token it does not know.
+bool ssl_sigalg_name_is_supported(const char *name, size_t len);
+
 // tls1_get_legacy_signature_algorithm sets |*out| to the signature algorithm
 // that should be used with |pkey| in TLS 1.1 and earlier. It returns true on
 // success and false if |pkey| may not be used at those versions.

@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <string>
+#include <vector>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -25,17 +26,44 @@ BSSL_NAMESPACE_BEGIN
 
 namespace {
 
-// A realistic Amazon Linux 2023 / Fedora DEFAULT policy fragment.
+// The Amazon Linux 2023 / Fedora DEFAULT policy, copied as crypto-policies
+// writes it. The Groups and SignatureAlgorithms values matter: both name
+// algorithms AWS-LC does not implement (X448 and the FFDHE groups; Ed448, the
+// RSA-PSS-PSS algorithms and the SHA-224 pairs), so a fixture that listed only
+// supported algorithms would not exercise the filtering those directives need to
+// take effect at all.
 const char kDefaultPolicy[] =
     "# crypto-policies OpenSSL back-end (test fixture)\n"
-    "CipherString = @SECLEVEL=2:kEECDH:kRSA:kEDH:-aDSS:-3DES:!DES:!RC4:!MD5:-SHA384\n"
+    "CipherString = @SECLEVEL=2:kEECDH:kRSA:kEDH:kPSK:kDHEPSK:kECDHEPSK:"
+    "kRSAPSK:-aDSS:-3DES:!DES:!RC4:!RC2:!IDEA:-SEED:!eNULL:!aNULL:!MD5:"
+    "-SHA384:-CAMELLIA:-ARIA:-AESCCM8\n"
     "Ciphersuites = TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\n"
     "TLS.MinProtocol = TLSv1.2\n"
     "TLS.MaxProtocol = TLSv1.3\n"
     "DTLS.MinProtocol = DTLSv1.2\n"
     "DTLS.MaxProtocol = DTLSv1.2\n"
-    "SignatureAlgorithms = ECDSA+SHA256:RSA+SHA256:rsa_pss_rsae_sha256\n"
-    "Groups = X25519:secp256r1:secp384r1\n";
+    "SignatureAlgorithms = ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:"
+    "ed448:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:"
+    "rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:"
+    "RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224\n"
+    "Groups = X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:"
+    "ffdhe4096:ffdhe6144:ffdhe8192\n";
+
+// The Groups and SignatureAlgorithms lines of |kDefaultPolicy| on their own, for
+// tests that want one directive without the rest of the policy.
+const char kDefaultPolicyGroups[] =
+    "X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:"
+    "ffdhe6144:ffdhe8192";
+const char kDefaultPolicySigalgs[] =
+    "ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:rsa_pss_pss_sha256:"
+    "rsa_pss_pss_sha384:rsa_pss_pss_sha512:rsa_pss_rsae_sha256:"
+    "rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512:"
+    "ECDSA+SHA224:RSA+SHA224";
+
+// ToVector copies an |Array| out so gtest can print and compare it.
+std::vector<uint16_t> ToVector(const Array<uint16_t> &in) {
+  return std::vector<uint16_t>(in.begin(), in.end());
+}
 
 bool CtxHasCipherNamed(const SSL_CTX *ctx, const char *name) {
   const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
@@ -125,7 +153,76 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_3_VERSION);
   EXPECT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
+
+  // Groups and SignatureAlgorithms took effect, keeping the policy's order and
+  // dropping only what AWS-LC cannot do.
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs),
+            (std::vector<uint16_t>{
+                SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                SSL_SIGN_ECDSA_SECP384R1_SHA384,
+                SSL_SIGN_ECDSA_SECP521R1_SHA512, SSL_SIGN_ED25519,
+                SSL_SIGN_RSA_PSS_RSAE_SHA256, SSL_SIGN_RSA_PSS_RSAE_SHA384,
+                SSL_SIGN_RSA_PSS_RSAE_SHA512, SSL_SIGN_RSA_PKCS1_SHA256,
+                SSL_SIGN_RSA_PKCS1_SHA384, SSL_SIGN_RSA_PKCS1_SHA512}));
+
   // A valid policy leaves the error queue clean.
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The two directives that need filtering. Without it a stock policy value is
+// rejected whole and the directive silently does nothing, which is what the
+// negative controls here assert about the unfiltered value.
+TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
+  bssl::UniquePtr<SSL_CTX> raw(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(raw);
+  EXPECT_FALSE(SSL_CTX_set1_groups_list(raw.get(), kDefaultPolicyGroups));
+  EXPECT_FALSE(SSL_CTX_set1_sigalgs_list(raw.get(), kDefaultPolicySigalgs));
+  ERR_clear_error();
+
+  const std::string content =
+      std::string("Groups = ") + kDefaultPolicyGroups + "\n" +
+      "SignatureAlgorithms = " + kDefaultPolicySigalgs + "\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // P-256 is present, so the crypto-policies spelling "secp256r1" was translated
+  // rather than dropped.
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A directive naming nothing AWS-LC implements is dropped rather than applied as
+// an empty preference list, which would leave the context unable to handshake.
+TEST_F(CryptoPolicyTest, WhollyUnsupportedDirectivesKeepDefaults) {
+  const std::string content =
+      "Groups = X448:ffdhe2048:ffdhe3072\n"
+      "SignatureAlgorithms = ed448:ECDSA+SHA224:rsa_pss_pss_sha256\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  const size_t default_groups = ctx->supported_group_list.size();
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ctx->supported_group_list.size(), default_groups);
+  EXPECT_TRUE(ctx->verify_sigalgs.empty());
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -364,8 +461,9 @@ TEST_F(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-// Seeding must not swallow errors the caller queued beforehand. The policy here
-// provokes a failure of its own, so the cleanup path is exercised.
+// Seeding must not swallow errors the caller queued beforehand. The cipher rule
+// here resolves to the empty set, so seeding queues errors of its own and the
+// cleanup path is exercised rather than skipped.
 TEST_F(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
   const std::string content =
       "SignatureAlgorithms = totally-bogus-alg\n"
@@ -390,6 +488,39 @@ TEST_F(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
   EXPECT_EQ(ERR_peek_error(), queued);
   ERR_clear_error();
   EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The caller's queue must come back byte-identical, not merely equal. Rebuilding
+// it -- which is what saving and restoring the queue does -- reallocates each
+// entry's data string, so a pointer the caller is already holding from
+// |ERR_peek_error_line_data| would dangle after an |SSL_CTX_new|.
+TEST_F(CryptoPolicyTest, CallerErrorDataPointerSurvives) {
+  const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
+  TemporaryFile policy;
+  if (!WriteTempPolicy(&policy, content)) {
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ERR_clear_error();
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  ERR_add_error_data(1, "caller data");
+  const char *data_before;
+  ASSERT_NE(ERR_peek_error_line_data(nullptr, nullptr, &data_before, nullptr),
+            0u);
+  ASSERT_STREQ(data_before, "caller data");
+
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  const char *data_after;
+  ASSERT_NE(ERR_peek_error_line_data(nullptr, nullptr, &data_after, nullptr),
+            0u);
+  EXPECT_EQ(data_before, data_after);
+  EXPECT_STREQ(data_after, "caller data");
+  ERR_clear_error();
 }
 
 // A policy whose floor sits above its ceiling must be dropped whole. The public

@@ -101,12 +101,14 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   }
   dst->packed = src->packed;
   dst->line = src->line;
-  // The mark is part of the queue's state, so |ERR_save_state| and
-  // |ERR_restore_state| have to round-trip it. Dropping it would break a caller
-  // that set a mark and then called into code which saved and restored the
-  // queue: the caller's |ERR_pop_to_mark| would find no mark and discard the
-  // caller's own errors.
-  dst->mark = src->mark;
+  // The mark is deliberately not copied. A saved state may be restored many
+  // times -- |hs->error| and |ssl->s3->read_error| are restored on every
+  // subsequent call once the handshake or read has failed -- and a mark carried
+  // in such a snapshot would be re-armed on each restore, so a later
+  // |ERR_pop_to_mark| from unrelated code would succeed and discard errors it
+  // never marked. Code that only needs to discard its own errors, rather than to
+  // recover errors a nested call wiped, should use |ERR_num_errors| and
+  // |ERR_pop_to_count|, which leave a caller's mark alone.
 }
 
 
@@ -684,6 +686,41 @@ void ERR_set_error_data(char *data, int flags) {
     // We can not take ownership of |data| directly because it is allocated with
     // |OPENSSL_malloc| and we will free it with system |free| later.
     OPENSSL_free(data);
+  }
+}
+
+// err_state_num_errors returns the number of entries in |state|'s queue. Valid
+// entries occupy the ring slots after |bottom| up to and including |top|.
+static size_t err_state_num_errors(const ERR_STATE *state) {
+  if (state->top >= state->bottom) {
+    return state->top - state->bottom;
+  }
+  return ERR_NUM_ERRORS - state->bottom + state->top;
+}
+
+size_t ERR_num_errors(void) {
+  ERR_STATE *const state = err_get_state();
+
+  if (state == NULL) {
+    return 0;
+  }
+  return err_state_num_errors(state);
+}
+
+void ERR_pop_to_count(size_t count) {
+  ERR_STATE *const state = err_get_state();
+
+  if (state == NULL) {
+    return;
+  }
+
+  while (err_state_num_errors(state) > count) {
+    err_clear(&state->errors[state->top]);
+    if (state->top == 0) {
+      state->top = ERR_NUM_ERRORS - 1;
+    } else {
+      state->top--;
+    }
   }
 }
 

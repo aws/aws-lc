@@ -142,7 +142,10 @@ built-in defaults and applies the `CipherString`, `Ciphersuites`,
 directives. This is best-effort: a missing or malformed file, or a directive
 AWS-LC does not support, is ignored, and consumers may still override any setting
 afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
-because AWS-LC does not implement OpenSSL security levels.
+because AWS-LC does not implement OpenSSL security levels. `SignatureAlgorithms`
+and `Groups` are narrowed to the algorithms AWS-LC implements, keeping the order
+the policy gave them, because the setters reject a whole list on the first name
+they do not recognize.
 
 The policy path can be overridden at build time with
 `-DAWSLC_CRYPTO_POLICY_PATH=/path/to/file`, or at runtime with the

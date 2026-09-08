@@ -20,12 +20,12 @@ seeds an `SSL_CTX` from the system `crypto-policies` OpenSSL back-end, the
 `@SECLEVEL=N` prefix of the `CipherString` directive is parsed and ignored
 because AWS-LC has no security levels. Only the remaining cipher list is applied,
 so the key-size and hash constraints implied by a security level are not
-enforced. Likewise, because the `SignatureAlgorithms` and `Groups` setters reject
-the entire list on the first unrecognized token, a policy entry AWS-LC does not
-support (for example a signature algorithm or group AWS-LC lacks) causes that
-whole directive to be dropped in favor of AWS-LC's built-in default rather than a
-filtered subset. See [configuration-differences.md](configuration-differences.md)
-for details.
+enforced. The `SignatureAlgorithms` and `Groups` directives are narrowed to the
+algorithms AWS-LC implements before being applied, keeping the order the policy
+gave them; names AWS-LC does not implement, such as `X448` and the `ffdhe*`
+groups, are dropped. A directive whose every entry is dropped leaves AWS-LC's
+built-in default in place. See
+[configuration-differences.md](configuration-differences.md) for details.
 
 ### libssl No-ops
 

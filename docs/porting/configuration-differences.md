@@ -47,7 +47,14 @@ subsequently calls the relevant setters overrides the seeded values.
 The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
 `TLS.MaxProtocol`, `DTLS.MinProtocol`, `DTLS.MaxProtocol`, `SignatureAlgorithms`,
 and `Groups`. Seeding is best-effort: a missing or malformed file, or a directive
-AWS-LC does not support, is ignored rather than fatal. See
+AWS-LC does not support, is ignored rather than fatal.
+
+`SignatureAlgorithms` and `Groups` are filtered before they are applied, since a
+stock policy names algorithms AWS-LC does not implement and the setters reject a
+whole list on the first name they do not recognize. The entries AWS-LC implements
+are applied in the order the policy gave them and the rest are dropped, so an
+operator's preference order survives. A directive left with no entries is skipped
+and the built-in default stands. See
 [BUILDING.md](../../BUILDING.md) for the build flag and the
 `AWSLC_CRYPTO_POLICY_FILE` / `AWSLC_CRYPTO_POLICY_PATH` overrides.
 

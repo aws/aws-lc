@@ -77,6 +77,73 @@ uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
   return 0;
 }
 
+// kMaxPolicyToken bounds a single algorithm name inside a policy list. Nothing
+// AWS-LC implements is named by anything longer.
+constexpr size_t kMaxPolicyToken = 64;
+
+// NormalizeGroupToken returns the name AWS-LC's group table uses for the
+// crypto-policies group |tok|, or NULL if AWS-LC has no such group.
+const char *NormalizeGroupToken(const char *tok) {
+  // crypto-policies uses the IANA registry name for the NIST P-256 curve.
+  // AWS-LC follows OpenSSL, which knows it as "P-256" and "prime256v1" only, so
+  // without this the most widely deployed group in the list is the one that
+  // throws the whole list away.
+  const char *name = strcmp(tok, "secp256r1") == 0 ? "P-256" : tok;
+  uint16_t group_id;
+  return ssl_name_to_group_id(&group_id, name, strlen(name)) ? name : nullptr;
+}
+
+// NormalizeSigalgToken returns |tok| if AWS-LC implements that signature
+// algorithm, or NULL otherwise.
+const char *NormalizeSigalgToken(const char *tok) {
+  return ssl_sigalg_name_is_supported(tok, strlen(tok)) ? tok : nullptr;
+}
+
+// FilterPolicyList writes the ':'-separated tokens of |value| that |normalize|
+// approves into |out|, in the order the policy gave them, and returns true if any
+// survived.
+//
+// The Groups and SignatureAlgorithms setters reject a whole list on the first
+// token they do not recognize, and a stock crypto-policies value always names
+// something AWS-LC does not implement: X448 and the FFDHE groups, Ed448, the
+// SHA-224 pairs, and the RSA-PSS-PSS algorithms. Applying such a value as written
+// therefore discards the operator's whole preference order. Dropping the
+// unsupported tokens keeps the rest of it.
+bool FilterPolicyList(char *out, size_t out_size, const char *value,
+                      const char *(*normalize)(const char *)) {
+  size_t out_len = 0;
+  out[0] = '\0';
+  for (const char *tok = value;;) {
+    const char *end = strchr(tok, ':');
+    const size_t len =
+        end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+
+    char buf[kMaxPolicyToken];
+    if (len > 0 && len < sizeof(buf)) {
+      OPENSSL_memcpy(buf, tok, len);
+      buf[len] = '\0';
+      const char *keep = normalize(buf);
+      const size_t keep_len = keep != nullptr ? strlen(keep) : 0;
+      // Room for the separator, the name, and the NUL.
+      if (keep != nullptr &&
+          out_len + (out_len > 0 ? 1 : 0) + keep_len + 1 <= out_size) {
+        if (out_len > 0) {
+          out[out_len++] = ':';
+        }
+        OPENSSL_memcpy(out + out_len, keep, keep_len);
+        out_len += keep_len;
+        out[out_len] = '\0';
+      }
+    }
+
+    if (end == nullptr) {
+      break;
+    }
+    tok = end + 1;
+  }
+  return out_len > 0;
+}
+
 // CipherRuleIsUsable reports whether |rule| yields a non-empty cipher list for
 // |ctx| under the same parameters the corresponding public setter would use.
 //
@@ -176,16 +243,18 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
 
   ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
 
-  // SignatureAlgorithms. Note: the setter rejects the whole list on the first
-  // unrecognized token, so a single unsupported algorithm drops the directive
-  // and leaves the built-in default in place.
-  if (cfg.sigalgs[0] != '\0') {
-    SSL_CTX_set1_sigalgs_list(ctx, cfg.sigalgs);
+  // SignatureAlgorithms and Groups, each narrowed to the algorithms AWS-LC
+  // implements. One buffer serves both since the directives are applied in turn.
+  char filtered[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];
+  if (cfg.sigalgs[0] != '\0' &&
+      FilterPolicyList(filtered, sizeof(filtered), cfg.sigalgs,
+                       NormalizeSigalgToken)) {
+    SSL_CTX_set1_sigalgs_list(ctx, filtered);
   }
-
-  // Groups. Same all-or-nothing behavior as SignatureAlgorithms.
-  if (cfg.groups[0] != '\0') {
-    SSL_CTX_set1_groups_list(ctx, cfg.groups);
+  if (cfg.groups[0] != '\0' &&
+      FilterPolicyList(filtered, sizeof(filtered), cfg.groups,
+                       NormalizeGroupToken)) {
+    SSL_CTX_set1_groups_list(ctx, filtered);
   }
 }
 
@@ -321,26 +390,17 @@ void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
 
   // Seeding is best-effort, so the errors its failures queue must not reach the
   // caller. Neither may the caller's own queue be disturbed, since this runs
-  // inside |SSL_CTX_new|. Saving the queue here and restoring it on the way out
-  // drops exactly the entries added in between.
-  //
-  // |ERR_set_mark| cannot do this job: a mark is a single flag on one queue
-  // entry rather than a stack, so marking here would clear a mark the caller had
-  // set around |SSL_CTX_new| and their later |ERR_pop_to_mark| would then drain
-  // their own errors.
-  const bool had_errors = ERR_peek_error() != 0;
-  UniquePtr<ERR_SAVE_STATE> saved(ERR_save_state());
+  // inside |SSL_CTX_new|, which no caller expects to touch the error queue at
+  // all. Cutting the queue back to the length it had leaves everything below the
+  // cut alone: the caller's entries, the data pointer their last
+  // |ERR_get_error_line_data| handed out, and any mark they set. It allocates
+  // nothing, so it has no failure mode, and if seeding queued nothing it does
+  // nothing.
+  const size_t num_errors = ERR_num_errors();
 
   ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
 
-  // |ERR_save_state| returns NULL both for an empty queue and on allocation
-  // failure, and |ERR_restore_state(NULL)| clears the queue. Clearing is correct
-  // for the first case and destructive in the second, so restore only when the
-  // save is known to be faithful. Under allocation failure the errors seeding
-  // queued are left in place, which is the lesser harm.
-  if (saved != nullptr || !had_errors) {
-    ERR_restore_state(saved.get());
-  }
+  ERR_pop_to_count(num_errors);
 }
 
 BSSL_NAMESPACE_END

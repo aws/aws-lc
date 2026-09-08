@@ -223,27 +223,98 @@ TEST(ErrTest, SaveAndRestore) {
   }
 }
 
-// A mark is part of the queue's state, so it must survive a save and restore.
-// Otherwise a caller that marks the queue and then calls into code which saves
-// and restores it loses its own errors to the next |ERR_pop_to_mark|.
-TEST(ErrTest, SaveAndRestorePreservesMark) {
+// A mark is not part of a saved state. A snapshot may be restored many times, so
+// a mark carried in one would be re-armed on every restore and a later
+// |ERR_pop_to_mark| would succeed against a mark nobody set.
+TEST(ErrTest, SaveAndRestoreDropsMark) {
   ERR_clear_error();
   ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
   ASSERT_TRUE(ERR_set_mark());
 
   bssl::UniquePtr<ERR_SAVE_STATE> saved(ERR_save_state());
   ASSERT_TRUE(saved);
-
-  // Stand in for the errors the saving code queues and means to discard.
-  ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
   ERR_restore_state(saved.get());
 
-  // The mark came back with the entry it was set on, so popping to it reports
-  // success and leaves the marked error in place.
-  EXPECT_TRUE(ERR_pop_to_mark());
+  EXPECT_FALSE(ERR_pop_to_mark());
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+TEST(ErrTest, NumErrors) {
+  ERR_clear_error();
+  EXPECT_EQ(0u, ERR_num_errors());
+
+  for (unsigned i = 1; i <= 3; i++) {
+    ERR_put_error(i, 0 /* unused */, i, "test", i);
+    EXPECT_EQ(static_cast<size_t>(i), ERR_num_errors());
+  }
+
+  ERR_get_error();
+  EXPECT_EQ(2u, ERR_num_errors());
+  ERR_clear_error();
+  EXPECT_EQ(0u, ERR_num_errors());
+
+  // The count saturates at the ring's capacity rather than wrapping to zero.
+  for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
+    ERR_put_error(1, 0 /* unused */, i + 1, "test", 1);
+  }
+  EXPECT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
+  ERR_clear_error();
+}
+
+TEST(ErrTest, PopToCount) {
+  ERR_clear_error();
+  for (unsigned i = 1; i <= 4; i++) {
+    ERR_put_error(i, 0 /* unused */, i, "test", i);
+  }
+
+  ERR_pop_to_count(2);
+  ASSERT_EQ(2u, ERR_num_errors());
+
+  // The two oldest entries survive, in order, and the newest two are gone.
   uint32_t packed_error = ERR_get_error();
   EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
   EXPECT_EQ(ERR_GET_REASON(packed_error), 1);
+  packed_error = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(packed_error), 2);
+  EXPECT_EQ(ERR_GET_REASON(packed_error), 2);
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // A count at or above the queue's length, and a count taken from an empty
+  // queue, are both no-ops.
+  ERR_pop_to_count(0);
+  EXPECT_EQ(0u, ERR_num_errors());
+  ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  ERR_pop_to_count(5);
+  EXPECT_EQ(1u, ERR_num_errors());
+  ERR_clear_error();
+}
+
+// |ERR_pop_to_count| exists so that code can discard its own errors from inside
+// a call the caller made for another purpose. Whatever the caller had queued,
+// including a mark, has to come back out untouched.
+TEST(ErrTest, PopToCountPreservesCallerState) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ERR_add_error_data(1, "data1");
+  ASSERT_TRUE(ERR_set_mark());
+
+  // Stand in for a nested call that queues errors it means to discard.
+  const size_t before = ERR_num_errors();
+  ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
+  ERR_put_error(3, 0 /* unused */, 3, "test3.c", 3);
+  ERR_pop_to_count(before);
+
+  // The caller's mark is still armed, so popping to it succeeds and keeps the
+  // caller's error, data string and all.
+  EXPECT_TRUE(ERR_pop_to_mark());
+  int line, flags;
+  const char *file, *data;
+  uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+  EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+  EXPECT_EQ(ERR_GET_REASON(packed_error), 1);
+  EXPECT_STREQ("test1.c", file);
+  EXPECT_EQ(line, 1);
+  EXPECT_STREQ(data, "data1");
   EXPECT_EQ(0u, ERR_get_error());
 }
 

@@ -1002,6 +1002,32 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
   return true;
 }
 
+// Defined out of line from the rest of |bssl| in this file because it needs
+// |parse_sigalgs_list|, which sits below |BSSL_NAMESPACE_END| with the public
+// setters it serves.
+BSSL_NAMESPACE_BEGIN
+
+bool ssl_sigalg_name_is_supported(const char *name, size_t len) {
+  // Long enough for the longest name in |kSignatureAlgorithmNames| and for any
+  // "PKEY+HASH" pair. |parse_sigalgs_list| rejects anything else.
+  char buf[2 * kMaxSignatureAlgorithmNameLen];
+  if (len == 0 || len >= sizeof(buf)) {
+    return false;
+  }
+  OPENSSL_memcpy(buf, name, len);
+  buf[len] = '\0';
+
+  // The parser reports a token it does not know by queueing an error. Discard it
+  // so probing a name is not observable in the caller's error queue.
+  const size_t num_errors = ERR_num_errors();
+  Array<uint16_t> sigalgs;
+  const bool ok = parse_sigalgs_list(&sigalgs, buf);
+  ERR_pop_to_count(num_errors);
+  return ok;
+}
+
+BSSL_NAMESPACE_END
+
 int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str) {
   Array<uint16_t> sigalgs;
   if (!parse_sigalgs_list(&sigalgs, str)) {
