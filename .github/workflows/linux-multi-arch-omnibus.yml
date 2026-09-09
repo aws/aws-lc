@@ -605,3 +605,40 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ./tests/ci/run_fips_callback_tests.sh
+  crypto_policies_tests:
+    name: crypto-policies-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AmazonLinux 2023 ships the crypto-policies OpenSSL back-end that this
+          # feature reads, so it is the meaningful platform for the end-to-end
+          # test.
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: gcc-11
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: gcc-11
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: clang-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_crypto_policies_tests.sh
