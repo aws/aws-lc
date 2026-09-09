@@ -137,12 +137,21 @@ policy without per-application code changes.
 
 When enabled, `SSL_CTX_new` reads
 `/etc/crypto-policies/back-ends/opensslcnf.config` after applying AWS-LC's
-built-in defaults and applies the `CipherString`, `Ciphersuites`, and
-`TLS`/`DTLS` `MinProtocol`/`MaxProtocol` directives. This is best-effort: a
-missing or malformed file, or a directive AWS-LC does not support, is ignored,
-and consumers may still override any setting afterward. The `@SECLEVEL=N` prefix
-in `CipherString` is parsed and dropped because AWS-LC does not implement
-OpenSSL security levels.
+built-in defaults and applies the `CipherString`, `Ciphersuites`,
+`TLS`/`DTLS` `MinProtocol`/`MaxProtocol`, `Groups`, and `SignatureAlgorithms`
+directives. This is best-effort: a missing or malformed file, or a directive
+AWS-LC does not support, is ignored, and consumers may still override any setting
+afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
+because AWS-LC does not implement OpenSSL security levels.
+
+`Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
+implements before being applied, keeping the operator's preference order. A stock
+policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
+groups, and the corresponding setters reject a whole list on the first name they
+do not recognize; without narrowing, the directive would have no effect at all.
+Because these setters replace AWS-LC's defaults rather than intersect with them, a
+policy that does not name AWS-LC's post-quantum groups and signature algorithms
+removes them.
 
 The file is read once per process, as OpenSSL reads `openssl.cnf`, so a policy
 change takes effect only in processes started afterward.
