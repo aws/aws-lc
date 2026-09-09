@@ -65,15 +65,6 @@ const char kDefaultGroups[] =
 // as the subject of MissingFileIsIgnored.
 const char kNoSuchPath[] = "/nonexistent/aws-lc/crypto-policy/does-not-exist";
 
-// WriteTempPolicy writes |content| to a fresh temporary file and returns it.
-// On platforms where temp files are unavailable the test is skipped.
-bool WriteTempPolicy(TemporaryFile *out, const std::string &content) {
-  if (SkipTempFileTests()) {
-    return false;
-  }
-  return out->Init(content);
-}
-
 bool CtxHasCipherNamed(const SSL_CTX *ctx, const char *name) {
   const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
   for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
@@ -119,11 +110,21 @@ class ScopedEnv {
 
 }  // namespace
 
-TEST(CryptoPolicyParseTest, FullPolicy) {
-  TemporaryFile file;
-  if (!WriteTempPolicy(&file, kDefaultPolicy)) {
-    GTEST_SKIP() << "temporary files unavailable";
+// Temporary files are unavailable in an Android APK context, which is the only
+// platform limitation these tests tolerate. Skipping once here means every
+// |TemporaryFile::Init| below is a real failure.
+class CryptoPolicyParseTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    if (SkipTempFileTests()) {
+      GTEST_SKIP();
+    }
   }
+};
+
+TEST_F(CryptoPolicyParseTest, FullPolicy) {
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init(kDefaultPolicy));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -138,7 +139,7 @@ TEST(CryptoPolicyParseTest, FullPolicy) {
   EXPECT_STREQ("DTLSv1.2", cfg.dtls_max);
 }
 
-TEST(CryptoPolicyParseTest, MissingFileFails) {
+TEST_F(CryptoPolicyParseTest, MissingFileFails) {
   CryptoPolicyConfig cfg = {};
   EXPECT_FALSE(ssl_crypto_policy_parse_file(kNoSuchPath, &cfg));
   EXPECT_STREQ("", cfg.cipher_string);
@@ -147,7 +148,7 @@ TEST(CryptoPolicyParseTest, MissingFileFails) {
 // A file that errors part way through is not a policy that simply ended: the
 // directives read so far are half of somebody's policy. Opening a directory is
 // the portable way to make the read fail.
-TEST(CryptoPolicyParseTest, ReadErrorFails) {
+TEST_F(CryptoPolicyParseTest, ReadErrorFails) {
   FILE *dir = fopen("/tmp", "r");
   if (dir == nullptr) {
     GTEST_SKIP() << "cannot open a directory as a file";
@@ -158,17 +159,15 @@ TEST(CryptoPolicyParseTest, ReadErrorFails) {
   EXPECT_FALSE(ssl_crypto_policy_parse_file("/tmp", &cfg));
 }
 
-TEST(CryptoPolicyParseTest, NullArgumentsFail) {
+TEST_F(CryptoPolicyParseTest, NullArgumentsFail) {
   CryptoPolicyConfig cfg = {};
   EXPECT_FALSE(ssl_crypto_policy_parse_file(nullptr, &cfg));
   EXPECT_FALSE(ssl_crypto_policy_parse_file(kNoSuchPath, nullptr));
 }
 
-TEST(CryptoPolicyParseTest, EmptyFileLeavesConfigEmpty) {
+TEST_F(CryptoPolicyParseTest, EmptyFileLeavesConfigEmpty) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file, "")) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init(""));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -185,21 +184,18 @@ TEST(CryptoPolicyParseTest, EmptyFileLeavesConfigEmpty) {
 // crypto-policies emits section headers and comments, and OpenSSL config files
 // carry keys from every back-end. None of it may derail the directives that
 // follow.
-TEST(CryptoPolicyParseTest, IgnoresCommentsSectionsAndUnknownKeys) {
+TEST_F(CryptoPolicyParseTest, IgnoresCommentsSectionsAndUnknownKeys) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file,
-                       "# a comment\n"
-                       "\n"
-                       "[openssl_init]\n"
-                       "providers = provider_sect\n"
-                       "MinProtocol = TLSv1.1\n"  // No TLS./DTLS. prefix.
-                       "ciphersuites = TLS_AES_128_CCM_SHA256\n"  // Wrong case.
-                       "TLS.MinProtocol = TLSv1.2\n"
-                       "no equals sign here\n"
-                       "= value with no key\n"
-                       "Groups = X25519\n")) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init("# a comment\n"
+                        "\n"
+                        "[openssl_init]\n"
+                        "providers = provider_sect\n"
+                        "MinProtocol = TLSv1.1\n"  // No TLS./DTLS. prefix.
+                        "ciphersuites = TLS_AES_128_CCM_SHA256\n"  // Wrong case
+                        "TLS.MinProtocol = TLSv1.2\n"
+                        "no equals sign here\n"
+                        "= value with no key\n"
+                        "Groups = X25519\n"));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -208,14 +204,11 @@ TEST(CryptoPolicyParseTest, IgnoresCommentsSectionsAndUnknownKeys) {
   EXPECT_STREQ("", cfg.ciphersuites);
 }
 
-TEST(CryptoPolicyParseTest, TrimsWhitespace) {
+TEST_F(CryptoPolicyParseTest, TrimsWhitespace) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file,
-                       "   Groups\t =\t X25519   \n"
-                       "\tTLS.MinProtocol   =TLSv1.2\r\n"
-                       "Ciphersuites=TLS_AES_128_GCM_SHA256\n")) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init("   Groups\t =\t X25519   \n"
+                        "\tTLS.MinProtocol   =TLSv1.2\r\n"
+                        "Ciphersuites=TLS_AES_128_GCM_SHA256\n"));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -224,15 +217,12 @@ TEST(CryptoPolicyParseTest, TrimsWhitespace) {
   EXPECT_STREQ("TLS_AES_128_GCM_SHA256", cfg.ciphersuites);
 }
 
-TEST(CryptoPolicyParseTest, StripsOneLayerOfQuotes) {
+TEST_F(CryptoPolicyParseTest, StripsOneLayerOfQuotes) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file,
-                       "Groups = \"X25519\"\n"
-                       "TLS.MinProtocol = 'TLSv1.2'\n"
-                       "TLS.MaxProtocol = \"TLSv1.3\n"     // Unbalanced.
-                       "Ciphersuites = \"'quoted'\"\n")) {  // Only the outer pair.
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init("Groups = \"X25519\"\n"
+                        "TLS.MinProtocol = 'TLSv1.2'\n"
+                        "TLS.MaxProtocol = \"TLSv1.3\n"      // Unbalanced.
+                        "Ciphersuites = \"'quoted'\"\n"));  // Outer pair only.
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -242,13 +232,10 @@ TEST(CryptoPolicyParseTest, StripsOneLayerOfQuotes) {
   EXPECT_STREQ("'quoted'", cfg.ciphersuites);
 }
 
-TEST(CryptoPolicyParseTest, LastOccurrenceWins) {
+TEST_F(CryptoPolicyParseTest, LastOccurrenceWins) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file,
-                       "Groups = X25519\n"
-                       "Groups = secp384r1\n")) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init("Groups = X25519\n"
+                        "Groups = secp384r1\n"));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -258,15 +245,13 @@ TEST(CryptoPolicyParseTest, LastOccurrenceWins) {
 // Half a group list is not a weaker version of the operator's policy, it is a
 // different policy nobody chose, so an over-long value is dropped whole and the
 // field left empty.
-TEST(CryptoPolicyParseTest, OverlongValueIsDroppedNotTruncated) {
+TEST_F(CryptoPolicyParseTest, OverlongValueIsDroppedNotTruncated) {
   std::string content = "Groups = ";
   content.append(AWSLC_CRYPTO_POLICY_MAX_VALUE + 1, 'X');
   content += "\nTLS.MinProtocol = TLSv1.2\n";
 
   TemporaryFile file;
-  if (!WriteTempPolicy(&file, content)) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init(content));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -277,15 +262,13 @@ TEST(CryptoPolicyParseTest, OverlongValueIsDroppedNotTruncated) {
 
 // A line longer than the read buffer is consumed to its newline rather than
 // split, so its tail cannot be mistaken for a directive of its own.
-TEST(CryptoPolicyParseTest, OverlongLineIsSkippedWhole) {
+TEST_F(CryptoPolicyParseTest, OverlongLineIsSkippedWhole) {
   std::string content = "Ciphersuites = ";
   content.append(9000, 'X');
   content += ":TLS.MinProtocol = TLSv1.1\nTLS.MinProtocol = TLSv1.2\n";
 
   TemporaryFile file;
-  if (!WriteTempPolicy(&file, content)) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init(content));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
@@ -294,18 +277,16 @@ TEST(CryptoPolicyParseTest, OverlongLineIsSkippedWhole) {
 }
 
 // A file whose last line has no newline is still a complete line.
-TEST(CryptoPolicyParseTest, FinalLineWithoutNewline) {
+TEST_F(CryptoPolicyParseTest, FinalLineWithoutNewline) {
   TemporaryFile file;
-  if (!WriteTempPolicy(&file, "Groups = X25519")) {
-    GTEST_SKIP() << "temporary files unavailable";
-  }
+  ASSERT_TRUE(file.Init("Groups = X25519"));
 
   CryptoPolicyConfig cfg = {};
   ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
   EXPECT_STREQ("X25519", cfg.groups);
 }
 
-TEST(CryptoPolicyParseTest, DefaultPathHonorsEnvOverride) {
+TEST_F(CryptoPolicyParseTest, DefaultPathHonorsEnvOverride) {
   ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
 
   env.Set("/tmp/some-policy.config");
@@ -333,14 +314,18 @@ class CryptoPolicyTest : public ::testing::Test {
     env_.Set(kNoSuchPath);
   }
 
+  void SetUp() override {
+    if (SkipTempFileTests()) {
+      GTEST_SKIP();
+    }
+  }
+
   ScopedEnv env_;
 };
 
 TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, kDefaultPolicy)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(kDefaultPolicy));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -359,9 +344,7 @@ TEST_F(CryptoPolicyTest, SecLevelPrefixIsStripped) {
   const std::string content =
       "CipherString = @SECLEVEL=3:ECDHE-RSA-AES128-GCM-SHA256\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -404,9 +387,7 @@ TEST_F(CryptoPolicyTest, MalformedFileIsBestEffort) {
       // neither of which AWS-LC has, so the rule resolves to the empty set.
       "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -424,9 +405,7 @@ TEST_F(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
       "DTLS.MinProtocol = DTLSv1.2\n"
       "DTLS.MaxProtocol = DTLSv1.3\n";  // unrecognized -> skipped
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
@@ -440,9 +419,7 @@ TEST_F(CryptoPolicyTest, DTLSMethodUsesDTLSDirectives) {
 
 TEST_F(CryptoPolicyTest, EnvOverrideDrivesSSLCTXNew) {
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, kDefaultPolicy)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(kDefaultPolicy));
 
   env_.Set(policy.path().c_str());
 
@@ -488,9 +465,7 @@ TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
       "TLS.MinProtocol = TLSv1.2\n"
       "TLS.MaxProtocol = TLSv1.3\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   // Negative control: the setter itself does not enforce the pin, which is why
   // ssl_ctx_apply_crypto_policy has to skip the directives.
@@ -520,9 +495,7 @@ TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPin) {
 TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPinViaSSLCTXNew) {
   const std::string content = "TLS.MaxProtocol = TLSv1.3\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   env_.Set(policy.path().c_str());
 
@@ -547,9 +520,7 @@ TEST_F(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
   // the rule resolves to the empty set.
   const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> baseline(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(baseline);
@@ -570,9 +541,7 @@ TEST_F(CryptoPolicyTest, UnsatisfiableCipherStringKeepsDefaults) {
 TEST_F(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
   const std::string content = "Ciphersuites = TLS_NONEXISTENT_SUITE_SHA256\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> baseline(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(baseline);
@@ -593,9 +562,7 @@ TEST_F(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
 TEST_F(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
   const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -625,9 +592,7 @@ TEST_F(CryptoPolicyTest, CallerErrorQueueIsPreserved) {
 TEST_F(CryptoPolicyTest, CallerErrorDataPointerSurvives) {
   const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -657,9 +622,7 @@ TEST_F(CryptoPolicyTest, CallerErrorDataPointerSurvives) {
 TEST_F(CryptoPolicyTest, CallerErrorMarkIsPreserved) {
   const std::string content = "CipherString = @SECLEVEL=2:kEDH:-aDSS\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -689,9 +652,7 @@ TEST_F(CryptoPolicyTest, InvertedVersionBoundsAreIgnored) {
       "TLS.MinProtocol = TLSv1.3\n"
       "TLS.MaxProtocol = TLSv1.1\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -715,9 +676,7 @@ TEST_F(CryptoPolicyTest, InvertedDTLSVersionBoundsAreIgnored) {
       "DTLS.MinProtocol = DTLSv1.2\n"
       "DTLS.MaxProtocol = DTLSv1\n";
   TemporaryFile bad_policy;
-  if (!WriteTempPolicy(&bad_policy, inverted)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(bad_policy.Init(inverted));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
@@ -733,15 +692,54 @@ TEST_F(CryptoPolicyTest, InvertedDTLSVersionBoundsAreIgnored) {
       "DTLS.MinProtocol = DTLSv1\n"
       "DTLS.MaxProtocol = DTLSv1.2\n";
   TemporaryFile good_policy;
-  if (!WriteTempPolicy(&good_policy, ordered)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(good_policy.Init(ordered));
   bssl::UniquePtr<SSL_CTX> ok(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ok);
   ssl_ctx_apply_crypto_policy(ok.get(), good_policy.path().c_str(),
                               /*is_dtls=*/true, /*version_locked=*/false);
   EXPECT_EQ(SSL_CTX_get_min_proto_version(ok.get()), DTLS1_VERSION);
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ok.get()), DTLS1_2_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The policy file is read once per path, so every |SSL_CTX_new| after the first
+// costs no I/O. Overwriting the file in place is therefore not picked up, while
+// a policy at a different path -- which is how the AWSLC_CRYPTO_POLICY_FILE
+// override reaches us -- is.
+TEST_F(CryptoPolicyTest, PolicyFileIsReadOncePerPath) {
+  static const char kRaisedFloor[] = "TLS.MinProtocol = TLSv1.3\n";
+
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init("TLS.MinProtocol = TLSv1.2\n"));
+  TemporaryFile other;
+  ASSERT_TRUE(other.Init(kRaisedFloor));
+
+  // All three contexts are created up front: the cache holds one entry, and
+  // |SSL_CTX_new| seeds from the fixture's path, which would evict it.
+  bssl::UniquePtr<SSL_CTX> first(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> same_path(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> new_path(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(first);
+  ASSERT_TRUE(same_path);
+  ASSERT_TRUE(new_path);
+
+  ssl_ctx_apply_crypto_policy(first.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  ASSERT_EQ(SSL_CTX_get_min_proto_version(first.get()), TLS1_2_VERSION);
+
+  const size_t len = sizeof(kRaisedFloor) - 1;
+  ScopedFILE f = policy.Open("w");
+  ASSERT_TRUE(f);
+  ASSERT_EQ(fwrite(kRaisedFloor, 1, len, f.get()), len);
+  f.reset();
+
+  ssl_ctx_apply_crypto_policy(same_path.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(same_path.get()), TLS1_2_VERSION);
+
+  ssl_ctx_apply_crypto_policy(new_path.get(), other.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(new_path.get()), TLS1_3_VERSION);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -752,9 +750,7 @@ TEST_F(CryptoPolicyTest, OneSidedBoundBelowExistingFloorIsIgnored) {
       "TLS.MinProtocol = TLSv1.3\n"
       "TLS.MaxProtocol = TLSv1.3\n";
   TemporaryFile policy;
-  if (!WriteTempPolicy(&policy, content)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(policy.Init(content));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -766,9 +762,7 @@ TEST_F(CryptoPolicyTest, OneSidedBoundBelowExistingFloorIsIgnored) {
   // would drop below it, so it must be refused.
   const std::string ceiling_only = "TLS.MaxProtocol = TLSv1.2\n";
   TemporaryFile second;
-  if (!WriteTempPolicy(&second, ceiling_only)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(second.Init(ceiling_only));
   ssl_ctx_apply_crypto_policy(ctx.get(), second.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);
   EXPECT_EQ(ctx->conf_min_version, TLS1_3_VERSION);
