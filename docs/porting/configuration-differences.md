@@ -52,7 +52,7 @@ the built-in default stands. A context created from one of the legacy
 version-locked methods, such as `TLSv1_2_method`, keeps its single pinned version
 and takes no protocol bounds from the policy. See
 [BUILDING.md](../../BUILDING.md) for the build flag and the
-`AWSLC_CRYPTO_POLICY_FILE` / `AWSLC_CRYPTO_POLICY_PATH` overrides.
+`AWSLC_CRYPTO_POLICY_FILE` override.
 
 
 <table border=0 cellspacing=0 cellpadding=0

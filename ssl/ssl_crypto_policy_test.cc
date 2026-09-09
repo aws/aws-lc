@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <string>
+#include <vector>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -26,14 +27,19 @@ BSSL_NAMESPACE_BEGIN
 
 namespace {
 
-// The Amazon Linux 2023 / Fedora DEFAULT policy, copied as crypto-policies
-// writes it.
+// The Amazon Linux 2023 / Fedora DEFAULT policy, copied byte for byte from
+// /usr/share/crypto-policies/DEFAULT/opensslcnf.txt with a comment line added.
+// Trimming it to what AWS-LC implements would defeat its purpose: the
+// Ciphersuites value names a suite AWS-LC does not have, and the Groups value
+// carries crypto-policies' '*' key-share marker, so a tidier fixture would not
+// exercise the code that has to tolerate either.
 const char kDefaultPolicy[] =
     "# crypto-policies OpenSSL back-end (test fixture)\n"
     "CipherString = @SECLEVEL=2:kEECDH:kRSA:kEDH:kPSK:kDHEPSK:kECDHEPSK:"
     "kRSAPSK:-aDSS:-3DES:!DES:!RC4:!RC2:!IDEA:-SEED:!eNULL:!aNULL:!MD5:"
     "-SHA384:-CAMELLIA:-ARIA:-AESCCM8\n"
-    "Ciphersuites = TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\n"
+    "Ciphersuites = TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:"
+    "TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_SHA256\n"
     "TLS.MinProtocol = TLSv1.2\n"
     "TLS.MaxProtocol = TLSv1.3\n"
     "DTLS.MinProtocol = DTLSv1.2\n"
@@ -42,7 +48,7 @@ const char kDefaultPolicy[] =
     "ed448:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:"
     "rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:"
     "RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224\n"
-    "Groups = X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:"
+    "Groups = *X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:"
     "ffdhe4096:ffdhe6144:ffdhe8192\n";
 
 // The expected parse of |kDefaultPolicy|, directive by directive.
@@ -51,19 +57,50 @@ const char kDefaultCipherString[] =
     "!DES:!RC4:!RC2:!IDEA:-SEED:!eNULL:!aNULL:!MD5:-SHA384:-CAMELLIA:-ARIA:"
     "-AESCCM8";
 const char kDefaultCiphersuites[] =
-    "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256";
+    "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:"
+    "TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_SHA256";
 const char kDefaultSigalgs[] =
     "ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:rsa_pss_pss_sha256:"
     "rsa_pss_pss_sha384:rsa_pss_pss_sha512:rsa_pss_rsae_sha256:"
     "rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512:"
     "ECDSA+SHA224:RSA+SHA224";
 const char kDefaultGroups[] =
-    "X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:"
+    "*X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:"
     "ffdhe6144:ffdhe8192";
 
 // A path no policy file will ever occupy, used both to make seeding a no-op and
 // as the subject of MissingFileIsIgnored.
 const char kNoSuchPath[] = "/nonexistent/aws-lc/crypto-policy/does-not-exist";
+
+// PolicyProtoVersion returns the AWS-LC version constant the crypto-policies
+// protocol name |name| denotes, or 0 for a name AWS-LC has no version for. The
+// table is spelled out rather than shared with the library so a test of the
+// mapping is not a test against itself.
+uint16_t PolicyProtoVersion(const char *name) {
+  static const struct {
+    const char *name;
+    uint16_t version;
+  } kVersions[] = {
+      {"TLSv1", TLS1_VERSION},         {"TLSv1.1", TLS1_1_VERSION},
+      {"TLSv1.2", TLS1_2_VERSION},     {"TLSv1.3", TLS1_3_VERSION},
+      {"DTLSv1", DTLS1_VERSION},       {"DTLSv1.2", DTLS1_2_VERSION},
+  };
+  for (const auto &candidate : kVersions) {
+    if (strcmp(candidate.name, name) == 0) {
+      return candidate.version;
+    }
+  }
+  return 0;
+}
+
+std::vector<std::string> CipherNames(const SSL_CTX *ctx) {
+  std::vector<std::string> names;
+  const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
+    names.push_back(SSL_CIPHER_get_name(sk_SSL_CIPHER_value(ciphers, i)));
+  }
+  return names;
+}
 
 bool CtxHasCipherNamed(const SSL_CTX *ctx, const char *name) {
   const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
@@ -430,32 +467,6 @@ TEST_F(CryptoPolicyTest, EnvOverrideDrivesSSLCTXNew) {
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_3_VERSION);
 }
 
-// End-to-end against the real system policy file, if one is present. This is
-// what makes the Amazon Linux 2023 CI job validate
-// /etc/crypto-policies/back-ends/opensslcnf.config; elsewhere it is a harmless
-// skip. The env variable is restored on scope exit so this test never leaves
-// seeding active for subsequent tests.
-TEST_F(CryptoPolicyTest, SystemPolicyIfPresent) {
-  // Read the compiled default path, ignoring the fixture's env override.
-  env_.Unset();
-
-  const char *path = ssl_crypto_policy_default_path();
-  CryptoPolicyConfig cfg = {};
-  if (!ssl_crypto_policy_parse_file(path, &cfg)) {
-    GTEST_SKIP() << "no system crypto-policies file at " << path;
-  }
-
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-  EXPECT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
-  // If the system policy declared a TLS floor we recognize, it must have been
-  // applied (a non-default, non-zero minimum version).
-  if (cfg.tls_min[0] != '\0') {
-    EXPECT_NE(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
-  }
-  EXPECT_EQ(ERR_peek_error(), 0u);
-}
-
 // A context from a version-locked SSL_METHOD keeps its pin. SSL_CTX_new sets
 // both bounds to method->version, but the public setters validate against the
 // protocol method's whole range, so a policy would otherwise widen the pin and
@@ -767,6 +778,79 @@ TEST_F(CryptoPolicyTest, OneSidedBoundBelowExistingFloorIsIgnored) {
                               /*is_dtls=*/false, /*version_locked=*/false);
   EXPECT_EQ(ctx->conf_min_version, TLS1_3_VERSION);
   EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// CryptoPolicySystemTest runs against the policy file the host actually has,
+// with seeding live: no environment override, so |SSL_CTX_new| reads the path a
+// real consumer would. Every other test here writes its own fixture file and so
+// can only confirm AWS-LC's reading of a policy the test itself composed;
+// nothing there notices when the framework writes something AWS-LC mishandles.
+//
+// AWSLC_CRYPTO_POLICY_TEST_REQUIRE_SYSTEM, which the Amazon Linux 2023 CI job
+// sets, makes a missing file a failure. Without it the suite skips, since most
+// hosts have no crypto-policies installation.
+class CryptoPolicySystemTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // Copied, not aliased: the path may point into the environment block, which
+    // a later |setenv| is free to move.
+    path_ = ssl_crypto_policy_default_path();
+    if (!ssl_crypto_policy_parse_file(path_.c_str(), &cfg_)) {
+      if (getenv("AWSLC_CRYPTO_POLICY_TEST_REQUIRE_SYSTEM") != nullptr) {
+        FAIL() << "no readable crypto-policies file at " << path_;
+      }
+      GTEST_SKIP() << "no crypto-policies file at " << path_;
+    }
+  }
+
+  std::string path_;
+  CryptoPolicyConfig cfg_ = {};
+};
+
+TEST_F(CryptoPolicySystemTest, SeedsVersionBoundsAndCiphers) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ASSERT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
+
+  const uint16_t min_version = PolicyProtoVersion(cfg_.tls_min);
+  const uint16_t max_version = PolicyProtoVersion(cfg_.tls_max);
+  if (min_version != 0) {
+    EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), min_version);
+  }
+  if (max_version != 0) {
+    EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), max_version);
+  }
+
+  // Seeding at |SSL_CTX_new| must come to the same thing as applying the file
+  // by hand. The reference context starts unseeded, so a difference here is in
+  // the wiring rather than in the reading -- the half no fixture file checks.
+  ScopedEnv env("AWSLC_CRYPTO_POLICY_FILE");
+  env.Set(kNoSuchPath);
+  bssl::UniquePtr<SSL_CTX> ref(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ref);
+  ssl_ctx_apply_crypto_policy(ref.get(), path_.c_str(), /*is_dtls=*/false,
+                              /*version_locked=*/false);
+  EXPECT_EQ(CipherNames(ctx.get()), CipherNames(ref.get()));
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()),
+            SSL_CTX_get_min_proto_version(ref.get()));
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()),
+            SSL_CTX_get_max_proto_version(ref.get()));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+TEST_F(CryptoPolicySystemTest, SeedsDTLSVersionBounds) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(ctx);
+
+  const uint16_t min_version = PolicyProtoVersion(cfg_.dtls_min);
+  const uint16_t max_version = PolicyProtoVersion(cfg_.dtls_max);
+  if (min_version != 0) {
+    EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), min_version);
+  }
+  if (max_version != 0) {
+    EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), max_version);
+  }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
