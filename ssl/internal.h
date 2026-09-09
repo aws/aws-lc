@@ -3755,8 +3755,14 @@ OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
 // |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
 // protocol floor and ceiling are skipped: the caller pinned a single version and
 // a system-wide default must not silently widen it.
-void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
-                                 bool version_locked);
+//
+// The parsed file is cached process-wide, keyed on |path|, so repeated
+// |SSL_CTX_new| calls do not re-read it.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path,
+                                                bool is_dtls,
+                                                bool version_locked);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 
