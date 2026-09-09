@@ -3725,7 +3725,10 @@ struct CryptoPolicyConfig {
 // returns true if the whole file was read (even if no recognized keys were
 // present), and false on invalid arguments or if the file could not be opened
 // or read to its end.
-bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
+                                                 CryptoPolicyConfig *out);
 
 // ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
@@ -3735,7 +3738,9 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 // The environment override is ignored in processes running with elevated
 // privileges, where the environment sits on the far side of a privilege boundary
 // from the root-owned default path.
-const char *ssl_crypto_policy_default_path(void);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
 
 // ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
 // back-end file at |path|. It is best-effort and never fails: a missing or
@@ -3748,8 +3753,14 @@ const char *ssl_crypto_policy_default_path(void);
 // |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
 // protocol floor and ceiling are skipped: the caller pinned a single version and
 // a system-wide default must not silently widen it.
-void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
-                                 bool version_locked);
+//
+// The parsed file is cached process-wide, keyed on |path|, so repeated
+// |SSL_CTX_new| calls do not re-read it.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path,
+                                                bool is_dtls,
+                                                bool version_locked);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 
