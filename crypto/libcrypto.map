@@ -2702,6 +2702,7 @@ AWS_LC_1.0 {
     d2i_DSA_SIG;
     d2i_DSAparams;
     d2i_ECDSA_SIG;
+    d2i_ECPKParameters;
     d2i_ECPKParameters_bio;
     d2i_ECParameters;
     d2i_ECPrivateKey;
@@ -2857,6 +2858,7 @@ AWS_LC_1.0 {
     i2d_DSA_SIG;
     i2d_DSAparams;
     i2d_ECDSA_SIG;
+    i2d_ECPKParameters;
     i2d_ECPKParameters_bio;
     i2d_ECParameters;
     i2d_ECPrivateKey;
