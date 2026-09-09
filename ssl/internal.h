@@ -3742,6 +3742,16 @@ OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
 // Marked with OPENSSL_EXPORT to make it available for unit tests.
 OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
 
+// ssl_sigalg_id_from_name sets |*out| to the signature algorithm named by
+// |name|, of length |len|. It takes either spelling |SSL_CTX_set1_sigalgs_list|
+// takes, "ecdsa_secp256r1_sha256" or "ECDSA+SHA256", queues no errors, and
+// returns false if AWS-LC has no such algorithm.
+//
+// This is for filtering a list from an outside source, which may name algorithms
+// AWS-LC does not implement, down to the ones it does. The name-based setter
+// rejects the whole list on the first token it does not know.
+bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len);
+
 // ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
 // back-end file at |path|. It is best-effort and never fails: a missing or
 // malformed file, or a directive AWS-LC rejects, leaves the corresponding
