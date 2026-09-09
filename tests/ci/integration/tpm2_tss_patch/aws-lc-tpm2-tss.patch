@@ -5,11 +5,11 @@ Subject: [PATCH] Support AWS-LC
 
 ---
  configure.ac                            | 6 ------
- src/tss2-esys/esys_crypto_ossl.c        | 2 +-
+ src/tss2-esys/esys_crypto_ossl.c        | 4 +++-
  src/tss2-fapi/ifapi_curl.c              | 6 +++---
  src/tss2-fapi/ifapi_verify_cert_chain.c | 2 +-
  test/unit/fapi-eventlog.c               | 2 +-
- 5 files changed, 6 insertions(+), 12 deletions(-)
+ 5 files changed, 8 insertions(+), 12 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
 index 9df86bce..d5f3bbe2 100644
@@ -32,7 +32,18 @@ diff --git a/src/tss2-esys/esys_crypto_ossl.c b/src/tss2-esys/esys_crypto_ossl.c
 index 50d00c4b..84b16347 100644
 --- a/src/tss2-esys/esys_crypto_ossl.c
 +++ b/src/tss2-esys/esys_crypto_ossl.c
-@@ -711,7 +711,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC *pub_tpm_key,
+@@ -128,8 +128,10 @@ get_ossl_cipher(TPM2_ALG_ID tpm_sym_alg, UINT16 key_bits, TPM2_ALG_ID tpm_mode) {
+         default:
+             return NULL;
+         }
++#if HAVE_EVP_SM4_CFB && !defined(OPENSSL_NO_SM4)
+     case TPM2_ALG_SM4:
+         return key_bits == 128 ? EVP_sm4_cfb128() : NULL;
++#endif
+     default:
+         return NULL;
+     }
+@@ -711,7 +713,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC *pub_tpm_key,
          goto_error(r, TSS2_ESYS_RC_MEMORY, "Could not duplicate OAEP label", cleanup);
      }
  
