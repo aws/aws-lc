@@ -15,7 +15,9 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#if !defined(BORINGSSL_SHARED_LIBRARY)
 #include "internal.h"
+#endif
 #include "../test/test_util.h"
 
 
@@ -450,6 +452,9 @@ static bool ExtractKeyBagPrivateKeyInfo(
           }
         }
 
+#if defined(BORINGSSL_SHARED_LIBRARY)
+        return false;
+#else
         uint8_t *plaintext = nullptr;
         size_t plaintext_len = 0;
         size_t password_len = password == nullptr ? 0 : strlen(password);
@@ -460,6 +465,7 @@ static bool ExtractKeyBagPrivateKeyInfo(
         }
         out->assign(plaintext, plaintext + plaintext_len);
         OPENSSL_free(plaintext);
+#endif
       }
       found = true;
     }
@@ -553,12 +559,16 @@ TEST(PKCS12Test, CreateWithKeyUsage) {
     ExpectKeyUsageAttribute(unencrypted.get(), kPassword, test.attribute,
                             test.bit_string);
 
-    bssl::UniquePtr<PKCS12> encrypted(PKCS12_create(
-        kPassword, nullptr, key.get(), nullptr, nullptr, 0, 0, 1, 1,
-        test.key_type));
+    bssl::UniquePtr<PKCS12> encrypted(PKCS12_create(kPassword, nullptr,
+                                                    key.get(), nullptr, nullptr,
+                                                    0, 0, 1, 1, test.key_type));
     ASSERT_TRUE(encrypted);
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+    // Inspecting the encrypted plaintext requires an internal decryption
+    // helper, which is intentionally unavailable from shared libraries.
     ExpectKeyUsageAttribute(encrypted.get(), kPassword, test.attribute,
                             test.bit_string);
+#endif
     EVP_PKEY *parsed_key = nullptr;
     X509 *parsed_cert = nullptr;
     STACK_OF(X509) *parsed_ca = nullptr;
@@ -596,6 +606,7 @@ TEST(PKCS12Test, CreateWithDefaultKeyTypePreservesKeyEncoding) {
   ExpectKeyUsageAttribute(p12.get(), kPassword, {}, {});
 }
 
+#if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(PKCS12Test, CreateWithKeyUsageNormalizesNegativeIterations) {
   bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
   ASSERT_TRUE(key);
@@ -605,12 +616,13 @@ TEST(PKCS12Test, CreateWithKeyUsageNormalizesNegativeIterations) {
 
   std::vector<uint8_t> private_key_info;
   uint64_t iterations = 0;
-  ASSERT_TRUE(ExtractKeyBagPrivateKeyInfo(
-      &private_key_info, p12.get(), kPassword, &iterations));
+  ASSERT_TRUE(ExtractKeyBagPrivateKeyInfo(&private_key_info, p12.get(),
+                                          kPassword, &iterations));
   EXPECT_EQ(static_cast<uint64_t>(PKCS12_DEFAULT_ITER), iterations);
   ExpectKeyUsageAttribute(p12.get(), kPassword, kKeyExAttribute,
                           kKeyExBitString);
 }
+#endif  // !BORINGSSL_SHARED_LIBRARY
 
 TEST(PKCS12Test, CreateRejectsUnsupportedKeyType) {
   bssl::UniquePtr<EVP_PKEY> key = LoadPrivateKey(kTestKey);
