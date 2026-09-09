@@ -159,6 +159,21 @@ the context would offer the versions the policy forbids. A `MinProtocol` older
 than TLS 1.0, such as `SSLv3`, keeps the built-in floor, which is already
 stricter.
 
+AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
+Every policy the framework ships today predates ML-KEM and ML-DSA, and the
+setters replace AWS-LC's defaults rather than intersect with them, so seeding
+would otherwise downgrade every context. A policy that names any post-quantum
+algorithm is taken at its word and nothing is added back. To turn post-quantum
+off, add AWS-LC's own directive to the policy file:
+
+```
+AWSLC.PostQuantum = off
+```
+
+Hybrid groups come back only when the policy keeps their classical half, so
+removing `secp384r1` also removes `SecP384r1MLKEM1024`. A group the policy
+removes with `-` stays out.
+
 AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
 policy change takes effect only in processes started afterward. A read that fails
 is retried on the next `SSL_CTX_new`, so a policy file that appears later is
