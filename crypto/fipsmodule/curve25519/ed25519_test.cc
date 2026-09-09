@@ -11,6 +11,7 @@
 #include "../../internal.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
+#include "internal.h"
 
 
 TEST(Ed25519Test, TestVectors) {
@@ -118,6 +119,48 @@ TEST(Ed25519Test, KeypairFromSeed) {
 
   EXPECT_EQ(Bytes(public_key1), Bytes(public_key2));
   EXPECT_EQ(Bytes(private_key1), Bytes(private_key2));
+}
+
+// RFC 8032 5.1.3 requires rejecting non-canonical public-key encodings:
+// y >= p, and x = 0 with the sign bit set. The s2n-bignum decoder already
+// enforces this; the Fiat/nohw decoder must match so verify and
+// ED25519_check_public_key agree across backends. These cases go through the
+// public APIs. OPENSSL_NO_ASM CI is what exercises the Fiat path;
+// OPENSSL_armcap / OPENSSL_ia32cap only select among s2n-bignum variants.
+TEST(Ed25519Test, NonCanonicalPublicKey) {
+  static const uint8_t kIdentity[32] = {0x01};
+
+  // (0, 1) with x_0 = 1.
+  static const uint8_t kIdentitySignBit[32] = {
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
+
+  // y = 1 + p = 2^255 - 18, a non-canonical encoding of the identity.
+  static const uint8_t kYEqOnePlusP[32] = {
+      0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
+
+  // y = p = 2^255 - 19, a non-canonical encoding of y = 0.
+  static const uint8_t kYEqP[32] = {
+      0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
+
+  EXPECT_TRUE(ED25519_check_public_key(kIdentity));
+  EXPECT_FALSE(ED25519_check_public_key(kIdentitySignBit));
+  EXPECT_FALSE(ED25519_check_public_key(kYEqOnePlusP));
+  EXPECT_FALSE(ED25519_check_public_key(kYEqP));
+
+  // R = (0, 1), S = 0 is a valid signature for A = identity: [0]B - [k]O = O.
+  // Non-canonical encodings of the identity would also verify if decoded.
+  static const uint8_t kIdentitySig[64] = {0x01};
+  static const uint8_t kMsg[] = {'t', 'e', 's', 't'};
+  EXPECT_TRUE(ED25519_verify(kMsg, sizeof(kMsg), kIdentitySig, kIdentity));
+  EXPECT_FALSE(
+      ED25519_verify(kMsg, sizeof(kMsg), kIdentitySig, kIdentitySignBit));
+  EXPECT_FALSE(ED25519_verify(kMsg, sizeof(kMsg), kIdentitySig, kYEqOnePlusP));
 }
 
 TEST(Ed25519phTest, TestVectors) {
