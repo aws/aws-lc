@@ -348,6 +348,9 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+      - name: Disable expired Bullseye security repository
+        if: fromJSON(matrix.gcc_version) <= 11
+        run: sed -i '/debian-security/d' /etc/apt/sources.list
       - name: Install build dependencies
         run: |
           apt-get update
