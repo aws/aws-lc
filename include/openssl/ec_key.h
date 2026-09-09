@@ -259,16 +259,18 @@ OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 // from |len| bytes at |*inp|, as described in |d2i_SAMPLE|, and returns the
 // corresponding |EC_GROUP|. If |out_group| is non-NULL, the original
 // |*out_group| is freed and the returned |EC_GROUP| is also written to
-// |*out_group|.
+// |*out_group|. On failure, it returns NULL and leaves |*out_group| unchanged.
 //
 // Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead. Only
 // deserialization of namedCurves or explicitly-encoded versions of named curves
 // are supported.
 //
 // This function returns a non-const pointer which may be passed to
-// |EC_GROUP_free|. However, the resulting object is actually static and calling
-// |EC_GROUP_free| is optional. Note this differs from OpenSSL, which returns a
-// newly-allocated |EC_GROUP| that the caller must free.
+// |EC_GROUP_free|. However, the resulting object is actually a static, shared
+// built-in group, so calling |EC_GROUP_free| is optional and the group must not
+// be mutated (setters such as |EC_GROUP_set_point_conversion_form| are no-ops
+// on it). Note this differs from OpenSSL, which returns a newly-allocated
+// |EC_GROUP| that the caller must free.
 OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group,
                                             const uint8_t **inp, long len);
 
@@ -280,14 +282,10 @@ OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group,
 // are supported.
 OPENSSL_EXPORT int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp);
 
-// d2i_ECPKParameters_bio deserializes the |ECPKParameters| specified in RFC
-// 3279 from |bio| and returns the corresponding |EC_GROUP|. If |*out_group| is
-// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
-// also written to |*out_group|. The user continues to maintain the memory
-// assigned to |*out_group| if non-null.
-//
-// Only deserialization of namedCurves or
-// explicitly-encoded versions of namedCurves are supported.
+// d2i_ECPKParameters_bio reads a DER-encoded ECPKParameters structure (RFC
+// 3279) from |bio| and returns the corresponding |EC_GROUP|. The |out_group|
+// parameter, the return value, and the supported encodings are as described in
+// |d2i_ECPKParameters|.
 OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group);
 
 // i2d_ECPKParameters_bio serializes an |EC_GROUP| to |bio| according to the
