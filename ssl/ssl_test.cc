@@ -995,6 +995,34 @@ TEST(SSLTest, SetVersion) {
   EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
 }
 
+// AWS-LC does not support OpenSSL function codes, but exposes a handful of
+// legacy SSL_F_* names for source compatibility. They must all be zero and
+// must be usable as the |function| argument to |ERR_put_error| without
+// affecting the reason code that is recorded.
+static_assert(SSL_F_SSL_CTX_SET_SSL_VERSION == 0,
+              "SSL_F_* compatibility codes must be zero");
+static_assert(SSL_F_SSL3_GET_SERVER_CERTIFICATE == 0,
+              "SSL_F_* compatibility codes must be zero");
+static_assert(SSL_F_TLS_PROCESS_SERVER_CERTIFICATE == 0,
+              "SSL_F_* compatibility codes must be zero");
+
+TEST(SSLTest, LegacyFunctionCodes) {
+  ERR_clear_error();
+  ERR_put_error(ERR_LIB_SSL, SSL_F_SSL_CTX_SET_SSL_VERSION,
+                SSL_R_UNSUPPORTED_PROTOCOL, NULL, 0);
+  EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_UNSUPPORTED_PROTOCOL));
+
+  ERR_put_error(ERR_LIB_SSL, SSL_F_SSL3_GET_SERVER_CERTIFICATE,
+                SSL_R_CERTIFICATE_VERIFY_FAILED, NULL, 0);
+  EXPECT_TRUE(
+      ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+
+  ERR_put_error(ERR_LIB_SSL, SSL_F_TLS_PROCESS_SERVER_CERTIFICATE,
+                SSL_R_CERTIFICATE_VERIFY_FAILED, NULL, 0);
+  EXPECT_TRUE(
+      ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+}
+
 TEST(SSLTest, SetVerifyResult) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =

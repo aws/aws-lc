@@ -97,5 +97,39 @@ TEST_F(ProviderTest, UnimplementedOperationsFallThroughToDefault) {
   EVP_CIPHER_free(cipher);
 }
 
+// Reproduce the deployed path: the config activates both providers and installs
+// the optional awslc property as the libctx's default query. Fetches below pass
+// no explicit property string, so both selection outcomes come from the config.
+TEST(ProviderConfigTest, LoadsPreferenceAndFallback) {
+  LibCtxPtr libctx(OSSL_LIB_CTX_new());
+  ASSERT_TRUE(libctx);
+  ASSERT_TRUE(OSSL_PROVIDER_set_default_search_path(
+      libctx.get(), AWSLC_PROVIDER_MODULE_DIR));
+  ASSERT_TRUE(
+      OSSL_LIB_CTX_load_config(libctx.get(), AWSLC_PROVIDER_CONFIG_FILE));
+
+  EXPECT_TRUE(OSSL_PROVIDER_available(libctx.get(), kProviderName));
+  EXPECT_TRUE(OSSL_PROVIDER_available(libctx.get(), "default"));
+
+  char *properties = EVP_get1_default_properties(libctx.get());
+  ASSERT_NE(nullptr, properties);
+  EXPECT_STREQ(kPreferAwslc, properties);
+  OPENSSL_free(properties);
+
+  MdPtr preferred(EVP_MD_fetch(libctx.get(), "SHA2-256", nullptr));
+  ASSERT_TRUE(preferred);
+  EXPECT_STREQ(
+      kProviderName,
+      OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(preferred.get())));
+
+  EVP_CIPHER *fallback =
+      EVP_CIPHER_fetch(libctx.get(), AWSLC_TEST_UNBACKED_CIPHER, nullptr);
+  ASSERT_NE(nullptr, fallback) << "a declined cipher did not fall through";
+  EXPECT_STREQ(
+      "default",
+      OSSL_PROVIDER_get0_name(EVP_CIPHER_get0_provider(fallback)));
+  EVP_CIPHER_free(fallback);
+}
+
 }  // namespace
 }  // namespace awslc_provider_test
