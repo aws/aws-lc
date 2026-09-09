@@ -3717,6 +3717,10 @@ struct CryptoPolicyConfig {
   char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
   char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
   char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
+  // post_quantum is AWSLC.PostQuantum, AWS-LC's own directive. "off" waives the
+  // post-quantum defaults a policy silent on them would otherwise keep; any
+  // other value, including absent, leaves them in force.
+  char post_quantum[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];
 };
 
 // ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
