@@ -3665,6 +3665,75 @@ void ssl_set_read_error(SSL *ssl);
 // set to false when the mutex in |SSL_CTX| has already been locked.
 void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
 
+#if defined(AWSLC_CRYPTO_POLICIES)
+
+// System crypto-policies (opt-in via -DENABLE_CRYPTO_POLICIES). On Amazon Linux
+// 2023 and Fedora the system-wide crypto-policies framework renders an OpenSSL
+// back-end file describing the OS TLS posture. The declarations below locate and
+// read that file.
+
+// AWSLC_CRYPTO_POLICY_PATH is the compile-time default location of the
+// crypto-policies OpenSSL back-end file. Packagers may override it with
+// -DAWSLC_CRYPTO_POLICY_PATH=..., and it may be overridden at runtime with the
+// AWSLC_CRYPTO_POLICY_FILE environment variable (see
+// |ssl_crypto_policy_default_path|).
+#if !defined(AWSLC_CRYPTO_POLICY_PATH)
+#define AWSLC_CRYPTO_POLICY_PATH "/etc/crypto-policies/back-ends/opensslcnf.config"
+#endif
+
+// AWSLC_CRYPTO_POLICY_MAX_VALUE is the longest directive value, excluding the
+// NUL terminator, that AWS-LC will act on. The longest value the crypto-policies
+// framework emits is the LEGACY policy's CipherString, well under this bound.
+//
+// A longer value is treated as absent rather than truncated: half of a cipher
+// list or group list is not a weaker version of the operator's policy, it is a
+// different policy that nobody chose.
+#define AWSLC_CRYPTO_POLICY_MAX_VALUE 1023
+
+// AWSLC_CRYPTO_POLICY_MAX_TOKEN bounds the single-token protocol directives
+// ("TLSv1.2", "DTLSv1.2", and the like).
+#define AWSLC_CRYPTO_POLICY_MAX_TOKEN 31
+
+// CryptoPolicyConfig holds the recognized directives parsed from a
+// crypto-policies OpenSSL back-end file. Each field is a NUL-terminated string;
+// an absent directive is the empty string, so callers must zero-initialize
+// (|CryptoPolicyConfig cfg = {};|).
+//
+// These are fixed buffers rather than |std::string| because libssl on Linux may
+// not depend on the C++ runtime (see STYLE.md), a constraint
+// util/check_imported_libraries.go enforces. Fixed buffers also cannot throw out
+// of |SSL_CTX_new|, which is a C entry point.
+struct CryptoPolicyConfig {
+  // cipher_string is CipherString, which may still carry a leading @SECLEVEL.
+  char cipher_string[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];
+  char ciphersuites[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];  // Ciphersuites
+  char sigalgs[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];       // SignatureAlgorithms
+  char groups[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];        // Groups
+  char tls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MinProtocol
+  char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
+  char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
+  char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
+};
+
+// ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
+// the recognized directives. Blank lines, '#' comments, and '[section]' headers
+// are ignored, as are unrecognized keys; the last occurrence of a key wins. It
+// returns true if the file could be opened and read (even if no recognized keys
+// were present) and false only if the file could not be opened.
+bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
+
+// ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
+// back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
+// variable if set and non-empty, otherwise the compile-time
+// |AWSLC_CRYPTO_POLICY_PATH| default. Mirrors the SSL_CERT_FILE override idiom.
+//
+// The environment override is ignored in processes running with elevated
+// privileges, where the environment sits on the far side of a privilege boundary
+// from the root-owned default path.
+const char *ssl_crypto_policy_default_path(void);
+
+#endif  // AWSLC_CRYPTO_POLICIES
+
 BSSL_NAMESPACE_END
 
 // ssl_x509_persist_peer_ca_names eagerly converts the peer CA names from
