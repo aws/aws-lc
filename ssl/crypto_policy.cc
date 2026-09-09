@@ -155,17 +155,17 @@ const char *ssl_crypto_policy_default_path(void) {
   // secure_getenv so that no libc feature detection is needed. It therefore does
   // not catch the rarer AT_SECURE cases that leave the ids equal, such as file
   // capabilities; a packager shipping such a binary should build with
-  // -DAWSLC_CRYPTO_POLICY_PATH and treat the compile-time path as the only one.
+  // -DAWSLC_CRYPTO_POLICY_FILE and treat the compile-time path as the only one.
 #if !defined(OPENSSL_WINDOWS)
   if (getuid() != geteuid() || getgid() != getegid()) {
-    return AWSLC_CRYPTO_POLICY_PATH;
+    return AWSLC_CRYPTO_POLICY_DEFAULT_FILE;
   }
 #endif
   const char *env = getenv("AWSLC_CRYPTO_POLICY_FILE");
   if (env != nullptr && env[0] != '\0') {
     return env;
   }
-  return AWSLC_CRYPTO_POLICY_PATH;
+  return AWSLC_CRYPTO_POLICY_DEFAULT_FILE;
 }
 
 BSSL_NAMESPACE_END

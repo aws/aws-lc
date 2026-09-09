@@ -449,12 +449,14 @@ endif()
 if(ENABLE_CRYPTO_POLICIES)
   message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
   add_definitions(-DAWSLC_CRYPTO_POLICIES)
-  # Optional override of the compile-time default policy path. Packagers can set
+  # Optional override of the compile-time default policy file. Packagers can set
   # this to relocate the system crypto-policies OpenSSL back-end file; tests use
-  # it to point at a fixture.
-  if(AWSLC_CRYPTO_POLICY_PATH)
-    message(STATUS "Setting AWSLC_CRYPTO_POLICY_PATH=${AWSLC_CRYPTO_POLICY_PATH}")
-    add_definitions(-DAWSLC_CRYPTO_POLICY_PATH=\"${AWSLC_CRYPTO_POLICY_PATH}\")
+  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
+  # overrides it at run time.
+  if(AWSLC_CRYPTO_POLICY_FILE)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
+    add_definitions(
+      -DAWSLC_CRYPTO_POLICY_DEFAULT_FILE=\"${AWSLC_CRYPTO_POLICY_FILE}\")
   endif()
 endif()
 

@@ -3672,13 +3672,15 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 // back-end file describing the OS TLS posture. The declarations below locate and
 // read that file.
 
-// AWSLC_CRYPTO_POLICY_PATH is the compile-time default location of the
-// crypto-policies OpenSSL back-end file. Packagers may override it with
-// -DAWSLC_CRYPTO_POLICY_PATH=..., and it may be overridden at runtime with the
-// AWSLC_CRYPTO_POLICY_FILE environment variable (see
-// |ssl_crypto_policy_default_path|).
-#if !defined(AWSLC_CRYPTO_POLICY_PATH)
-#define AWSLC_CRYPTO_POLICY_PATH "/etc/crypto-policies/back-ends/opensslcnf.config"
+// AWSLC_CRYPTO_POLICY_DEFAULT_FILE is the compile-time default location of the
+// crypto-policies OpenSSL back-end file. Packagers set it with
+// -DAWSLC_CRYPTO_POLICY_FILE=..., which is also the name of the environment
+// variable that overrides it at run time (see |ssl_crypto_policy_default_path|).
+// The macro spells "DEFAULT" so the name a caller sets and the value it falls
+// back to are not the same identifier.
+#if !defined(AWSLC_CRYPTO_POLICY_DEFAULT_FILE)
+#define AWSLC_CRYPTO_POLICY_DEFAULT_FILE \
+  "/etc/crypto-policies/back-ends/opensslcnf.config"
 #endif
 
 // AWSLC_CRYPTO_POLICY_MAX_VALUE is the longest directive value, excluding the
@@ -3725,7 +3727,7 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 // ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
 // variable if set and non-empty, otherwise the compile-time
-// |AWSLC_CRYPTO_POLICY_PATH| default. Mirrors the SSL_CERT_FILE override idiom.
+// |AWSLC_CRYPTO_POLICY_DEFAULT_FILE|. Mirrors the SSL_CERT_FILE override idiom.
 //
 // The environment override is ignored in processes running with elevated
 // privileges, where the environment sits on the far side of a privilege boundary

@@ -284,9 +284,11 @@ TEST(CryptoPolicyParseTest, DefaultPathHonorsEnvOverride) {
 
   // An unset or empty override falls back to the compile-time default.
   env.Unset();
-  EXPECT_STREQ(AWSLC_CRYPTO_POLICY_PATH, ssl_crypto_policy_default_path());
+  EXPECT_STREQ(AWSLC_CRYPTO_POLICY_DEFAULT_FILE,
+               ssl_crypto_policy_default_path());
   env.Set("");
-  EXPECT_STREQ(AWSLC_CRYPTO_POLICY_PATH, ssl_crypto_policy_default_path());
+  EXPECT_STREQ(AWSLC_CRYPTO_POLICY_DEFAULT_FILE,
+               ssl_crypto_policy_default_path());
 }
 
 BSSL_NAMESPACE_END
