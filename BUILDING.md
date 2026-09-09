@@ -151,9 +151,21 @@ groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
 The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
 AWS-LC selects its own key shares, and `-` drops the group it prefixes.
-Because these setters replace AWS-LC's defaults rather than intersect with them, a
-policy that does not name AWS-LC's post-quantum groups and signature algorithms
-removes them.
+
+AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
+Every policy the framework ships today predates ML-KEM and ML-DSA, and the
+setters replace AWS-LC's defaults rather than intersect with them, so seeding
+would otherwise downgrade every context. A policy that names any post-quantum
+algorithm is taken at its word and nothing is added back. To turn post-quantum
+off, add AWS-LC's own directive to the policy file:
+
+```
+AWSLC.PostQuantum = off
+```
+
+Hybrid groups come back only when the policy keeps their classical half, so
+removing `secp384r1` also removes `SecP384r1MLKEM1024`. A group the policy
+removes with `-` stays out.
 
 The file is read once per process, as OpenSSL reads `openssl.cnf`, so a policy
 change takes effect only in processes started afterward.
