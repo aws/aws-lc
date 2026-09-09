@@ -144,6 +144,9 @@ and consumers may still override any setting afterward. The `@SECLEVEL=N` prefix
 in `CipherString` is parsed and dropped because AWS-LC does not implement
 OpenSSL security levels.
 
+The file is read once per process, as OpenSSL reads `openssl.cnf`, so a policy
+change takes effect only in processes started afterward.
+
 The policy path can be overridden at build time with
 `-DAWSLC_CRYPTO_POLICY_PATH=/path/to/file`, or at runtime with the
 `AWSLC_CRYPTO_POLICY_FILE` environment variable.
