@@ -150,6 +150,18 @@ constexpr size_t kMaxPolicyIds = 64;
 // crypto-policies token |tok|, of length |len|, and returns false if AWS-LC has
 // no such group.
 bool GroupIdFromToken(uint16_t *out, const char *tok, size_t len) {
+  // OpenSSL 3.5 group-list modifiers, which every stock policy puts on its
+  // first entry: '*' asks for a key share, '?' tolerates an unimplemented
+  // group, '-' removes one. AWS-LC chooses its own key shares and already skips
+  // names it cannot resolve, so the first two need only stripping; '-' must not
+  // put the group back into the list.
+  if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+    tok++;
+    len--;
+  } else if (len > 0 && tok[0] == '-') {
+    return false;
+  }
+
   // crypto-policies uses the IANA registry name for the NIST P-256 curve.
   // AWS-LC follows OpenSSL, which knows it as "P-256" and "prime256v1" only, so
   // without this the most widely deployed group in the list is the one that

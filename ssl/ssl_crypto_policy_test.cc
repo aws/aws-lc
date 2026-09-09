@@ -114,6 +114,27 @@ bool Contains(const Array<uint16_t> &haystack, uint16_t needle) {
   return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
 }
 
+// PolicyRequests reports whether the ':'-separated |value| asks for |name|. A
+// '*' or '?' modifier still asks for the group; a '-' removes it, so the token
+// is compared with the prefix left on and does not match.
+bool PolicyRequests(const char *value, const char *name) {
+  for (const char *tok = value;;) {
+    const char *end = strchr(tok, ':');
+    size_t len = end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+    if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+      tok++;
+      len--;
+    }
+    if (len == strlen(name) && strncmp(tok, name, len) == 0) {
+      return true;
+    }
+    if (end == nullptr) {
+      return false;
+    }
+    tok = end + 1;
+  }
+}
+
 bool CtxHasCipherNamed(const SSL_CTX *ctx, const char *name) {
   const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
   for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
@@ -429,6 +450,25 @@ TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
                                    SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
   EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The OpenSSL 3.5 group-list modifiers. '*' and '?' decorate a group that is
+// still wanted, so keeping the prefix would drop it; '-' excludes one.
+TEST_F(CryptoPolicyTest, GroupListModifiers) {
+  const std::string content =
+      "Groups = *X25519:?secp384r1:-secp521r1:secp256r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP384R1,
+                                   SSL_GROUP_SECP256R1}));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -967,6 +1007,49 @@ TEST_F(CryptoPolicySystemTest, SeedsVersionBoundsAndCiphers) {
             SSL_CTX_get_min_proto_version(ref.get()));
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()),
             SSL_CTX_get_max_proto_version(ref.get()));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A fixture is written to be resolvable, so nothing above notices when
+// crypto-policies spells a group in a way AWS-LC cannot read. Every group and
+// signature algorithm the system policy asks for that AWS-LC implements must
+// survive into the seeded context.
+TEST_F(CryptoPolicySystemTest, SeedsGroupsAndSigalgs) {
+  static const struct {
+    const char *name;
+    uint16_t id;
+  } kGroups[] = {
+      {"X25519", SSL_GROUP_X25519},
+      {"secp256r1", SSL_GROUP_SECP256R1},
+      {"secp384r1", SSL_GROUP_SECP384R1},
+      {"secp521r1", SSL_GROUP_SECP521R1},
+  };
+  static const struct {
+    const char *name;
+    uint16_t id;
+  } kSigalgs[] = {
+      {"ECDSA+SHA256", SSL_SIGN_ECDSA_SECP256R1_SHA256},
+      {"ECDSA+SHA384", SSL_SIGN_ECDSA_SECP384R1_SHA384},
+      {"ECDSA+SHA512", SSL_SIGN_ECDSA_SECP521R1_SHA512},
+      {"ed25519", SSL_SIGN_ED25519},
+      {"rsa_pss_rsae_sha256", SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      {"RSA+SHA256", SSL_SIGN_RSA_PKCS1_SHA256},
+  };
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  for (const auto &group : kGroups) {
+    if (PolicyRequests(cfg_.groups, group.name)) {
+      EXPECT_TRUE(Contains(ctx->supported_group_list, group.id)) << group.name;
+    }
+  }
+  for (const auto &sigalg : kSigalgs) {
+    if (PolicyRequests(cfg_.sigalgs, sigalg.name)) {
+      EXPECT_TRUE(Contains(ctx->verify_sigalgs, sigalg.id)) << sigalg.name;
+      EXPECT_TRUE(Contains(ctx->cert->sigalgs, sigalg.id)) << sigalg.name;
+    }
+  }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 

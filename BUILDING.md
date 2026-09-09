@@ -149,6 +149,8 @@ implements before being applied, keeping the operator's preference order. A stoc
 policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
 groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
+The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
+AWS-LC selects its own key shares, and `-` drops the group it prefixes.
 Because these setters replace AWS-LC's defaults rather than intersect with them, a
 policy that does not name AWS-LC's post-quantum groups and signature algorithms
 removes them.
