@@ -5,11 +5,11 @@
 
 #include "internal.h"
 
-// This file reads the system crypto-policies OpenSSL back-end (Amazon Linux 2023
-// and Fedora). It is only compiled with -DENABLE_CRYPTO_POLICIES; otherwise it is
-// an (almost) empty translation unit. |internal.h| is included unconditionally so
-// the unit always carries declarations and never trips empty-translation-unit
-// diagnostics.
+// This file implements opt-in seeding of new |SSL_CTX| objects from the system
+// crypto-policies OpenSSL back-end (Amazon Linux 2023 and Fedora). It is only
+// compiled with -DENABLE_CRYPTO_POLICIES; otherwise it is an (almost) empty
+// translation unit. |internal.h| is included unconditionally so the unit always
+// carries declarations and never trips empty-translation-unit diagnostics.
 
 #if defined(AWSLC_CRYPTO_POLICIES)
 
@@ -20,6 +20,10 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
 #endif
+
+#include <openssl/err.h>
+
+#include "../crypto/err/internal.h"
 
 #if defined(OPENSSL_LINUX)
 #include "../crypto/fipsmodule/cpucap/cpu_getauxval_linux.h"
@@ -46,6 +50,135 @@ bool CopyPolicyValue(char *out, size_t out_size, const char *value,
   OPENSSL_memcpy(out, value, len);
   out[len] = '\0';
   return true;
+}
+
+// CryptoPolicyProtoVersion maps a crypto-policies protocol token (e.g.
+// "TLSv1.2", "DTLSv1.2") to the corresponding AWS-LC version constant, or 0 if
+// the token is unrecognized or unsupported (e.g. "DTLSv1.3", for which AWS-LC
+// has no constant).
+uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
+  if (is_dtls) {
+    if (strcmp(tok, "DTLSv1") == 0 || strcmp(tok, "DTLSv1.0") == 0) {
+      return DTLS1_VERSION;
+    }
+    if (strcmp(tok, "DTLSv1.2") == 0) {
+      return DTLS1_2_VERSION;
+    }
+    return 0;
+  }
+  if (strcmp(tok, "TLSv1") == 0 || strcmp(tok, "TLSv1.0") == 0) {
+    return TLS1_VERSION;
+  }
+  if (strcmp(tok, "TLSv1.1") == 0) {
+    return TLS1_1_VERSION;
+  }
+  if (strcmp(tok, "TLSv1.2") == 0) {
+    return TLS1_2_VERSION;
+  }
+  if (strcmp(tok, "TLSv1.3") == 0) {
+    return TLS1_3_VERSION;
+  }
+  return 0;
+}
+
+// CipherRuleIsUsable reports whether |rule| yields a non-empty cipher list for
+// |ctx| under the same parameters the corresponding public setter would use.
+//
+// This check exists because a failing |SSL_CTX_set_cipher_list| is not a no-op:
+// |ssl_create_cipher_list| installs its result, empty or not, before reporting
+// failure, and the |update_cipher_list| call that merges the TLS 1.3 suites back
+// in is then skipped. Applying a rule blind and ignoring the return value would
+// leave |ctx| with no ciphers at all rather than the built-in defaults, so the
+// rule is evaluated into a throwaway list first and only applied if it holds up.
+bool CipherRuleIsUsable(const SSL_CTX *ctx, const char *rule,
+                        bool config_tls13) {
+  const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
+                                               : EVP_has_aes_hardware();
+  UniquePtr<SSLCipherPreferenceList> probe;
+  return ssl_create_cipher_list(&probe, has_aes_hw, rule,
+                                false /* not strict */, config_tls13);
+}
+
+// ApplyPolicyVersionBounds seeds the protocol version floor and ceiling from
+// |cfg|, choosing the TLS.* or DTLS.* directives per |is_dtls|.
+void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
+                              bool is_dtls, bool version_locked) {
+  // A version-locked SSL_METHOD (TLSv1_2_method and friends) is skipped
+  // entirely. |SSL_CTX_new| pins such a context by setting both bounds to
+  // |method->version|, but the public setters validate only against the protocol
+  // method's full version range, so applying a policy here would quietly raise
+  // the ceiling and hand the caller a version they deliberately excluded.
+  if (version_locked) {
+    return;
+  }
+
+  const uint16_t policy_min =
+      CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_min : cfg.tls_min, is_dtls);
+  const uint16_t policy_max =
+      CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_max : cfg.tls_max, is_dtls);
+
+  // The setters check each bound against the method's whole version range and
+  // never against each other, so a policy whose floor sits above its ceiling
+  // would be accepted and leave every later handshake failing with
+  // SSL_R_NO_SUPPORTED_VERSIONS_ENABLED. Resolve the pair first, filling in
+  // whichever end the policy omits from the bound the context already has, and
+  // apply it only if the resulting range is non-empty.
+  //
+  // The comparison is on protocol versions rather than wire versions because
+  // DTLS wire values run backwards -- DTLS 1.0 is 0xfeff and DTLS 1.2 is 0xfefd
+  // -- so ordering the raw values would invert the test for DTLS.
+  uint16_t min_proto, max_proto;
+  if (!ssl_protocol_version_from_wire(
+          &min_proto, policy_min != 0 ? policy_min : ctx->conf_min_version) ||
+      !ssl_protocol_version_from_wire(
+          &max_proto, policy_max != 0 ? policy_max : ctx->conf_max_version) ||
+      min_proto > max_proto) {
+    return;
+  }
+
+  if (policy_min != 0) {
+    SSL_CTX_set_min_proto_version(ctx, policy_min);
+  }
+  if (policy_max != 0) {
+    SSL_CTX_set_max_proto_version(ctx, policy_max);
+  }
+}
+
+// ApplyPolicyToCtx seeds |ctx| from the policy file at |path|. Seeding is
+// best-effort: every failure is swallowed and the built-in default kept.
+// |ssl_ctx_apply_crypto_policy| wraps this and cleans up the error queue.
+void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
+                      bool version_locked) {
+  CryptoPolicyConfig cfg = {};
+  if (!ssl_crypto_policy_parse_file(path, &cfg)) {
+    // Missing or unreadable policy file: keep the built-in defaults.
+    return;
+  }
+
+  // CipherString. crypto-policies emits a leading "@SECLEVEL=N" token; AWS-LC
+  // has no security levels and its cipher-list parser rejects '@' rules other
+  // than "@STRENGTH", so the token must be stripped before the remainder is
+  // applied. The non-strict setter is used deliberately so cipher aliases
+  // AWS-LC does not recognize (e.g. "kEECDH", "-aDSS") are skipped rather than
+  // fatal.
+  if (cfg.cipher_string[0] != '\0') {
+    const char *cs = cfg.cipher_string;
+    if (strncmp(cs, "@SECLEVEL=", 10) == 0) {
+      const char *colon = strchr(cs, ':');
+      cs = colon != nullptr ? colon + 1 : "";
+    }
+    if (*cs != '\0' && CipherRuleIsUsable(ctx, cs, /*config_tls13=*/false)) {
+      SSL_CTX_set_cipher_list(ctx, cs);
+    }
+  }
+
+  // Ciphersuites (TLS 1.3).
+  if (cfg.ciphersuites[0] != '\0' &&
+      CipherRuleIsUsable(ctx, cfg.ciphersuites, /*config_tls13=*/true)) {
+    SSL_CTX_set_ciphersuites(ctx, cfg.ciphersuites);
+  }
+
+  ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
 }
 
 }  // namespace
@@ -175,6 +308,27 @@ const char *ssl_crypto_policy_default_path(void) {
     return env;
   }
   return AWSLC_CRYPTO_POLICY_DEFAULT_FILE;
+}
+
+void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
+                                 bool version_locked) {
+  if (ctx == nullptr || path == nullptr) {
+    return;
+  }
+
+  // Seeding is best-effort, so the errors its failures queue must not reach the
+  // caller. Neither may the caller's own queue be disturbed, since this runs
+  // inside |SSL_CTX_new|, which no caller expects to touch the error queue at
+  // all. Cutting the queue back to the length it had leaves everything below the
+  // cut alone: the caller's entries, the data pointer their last
+  // |ERR_get_error_line_data| handed out, and any mark they set. It allocates
+  // nothing, so it has no failure mode, and if seeding queued nothing it does
+  // nothing.
+  const size_t num_errors = ERR_num_errors();
+
+  ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
+
+  ERR_pop_to_count(num_errors);
 }
 
 BSSL_NAMESPACE_END
