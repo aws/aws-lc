@@ -453,9 +453,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
-// AWS-LC's EVP AES-CCM ciphers default to a 14-byte authentication tag,
-// unlike OpenSSL's 12-byte default. Callers requiring portable behavior should
-// set the tag length explicitly with |EVP_CTRL_CCM_SET_TAG|.
+// EVP_aes_128_ccm, EVP_aes_192_ccm, and EVP_aes_256_ccm return AES-CCM
+// ciphers. AWS-LC defaults to 14-byte authentication tags, unlike OpenSSL's
+// 12-byte default. Callers requiring portable behavior should set the tag
+// length explicitly with |EVP_CTRL_CCM_SET_TAG|.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ccm(void);
