@@ -546,8 +546,10 @@ TEST(PKCS12Test, CreateWithKeyUsage) {
     bssl::Span<const uint8_t> attribute;
     bssl::Span<const uint8_t> bit_string;
   } kTests[] = {
-      {KEY_EX, kKeyExAttribute, kKeyExBitString},
-      {KEY_SIG, kKeySigAttribute, kKeySigBitString},
+      {KEY_EX, bssl::Span<const uint8_t>(kKeyExAttribute),
+       bssl::Span<const uint8_t>(kKeyExBitString)},
+      {KEY_SIG, bssl::Span<const uint8_t>(kKeySigAttribute),
+       bssl::Span<const uint8_t>(kKeySigBitString)},
   };
   for (const auto &test : kTests) {
     SCOPED_TRACE(test.key_type);
