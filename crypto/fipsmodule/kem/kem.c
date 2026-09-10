@@ -9,6 +9,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/evp_errors.h>
 #include <openssl/mem.h>
 
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration

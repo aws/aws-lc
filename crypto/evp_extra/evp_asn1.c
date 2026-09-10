@@ -289,7 +289,8 @@ int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
         return 0;
       }
       // For EVP_PKEY_check, ensure the private key exists for KEM keys, as the
-      // EC case above does explicitly and RSA_check_key does internally.
+      // EC case above does. RSA_check_key accepts a public-only key, so the RSA
+      // case does not enforce this.
       if (KEM_KEY_get0_secret_key(kem_key) == NULL) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PRIVATE_KEY);
         return 0;
