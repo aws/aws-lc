@@ -94,7 +94,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-14 ]
+        # Path-with-spaces handling splits along POSIX vs Windows quoting, and
+        # macOS shares POSIX semantics with ubuntu-latest, which covers both
+        # ninja values. The macOS cells re-tested that on the tightest pool.
+        os: [ ubuntu-latest, windows-latest ]
         ninja: [ 0, 1 ]
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
