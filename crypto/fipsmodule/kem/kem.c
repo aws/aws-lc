@@ -450,10 +450,8 @@ static int kem_check_pct(const KEM_KEY *key) {
   ret = 1;
 
 cleanup:
-  // OPENSSL_cleanse and OPENSSL_free both no-op on NULL, so no guards needed.
-  OPENSSL_cleanse(ciphertext, kem->ciphertext_len);
-  OPENSSL_cleanse(ss_enc, kem->shared_secret_len);
-  OPENSSL_cleanse(ss_dec, kem->shared_secret_len);
+  // OPENSSL_free cleanses the buffer before releasing it and no-ops on NULL, so
+  // neither an explicit OPENSSL_cleanse nor a NULL guard is needed here.
   OPENSSL_free(ciphertext);
   OPENSSL_free(ss_enc);
   OPENSSL_free(ss_dec);
@@ -461,12 +459,7 @@ cleanup:
 }
 
 int KEM_check_key(const KEM_KEY *key) {
-  if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  if (key->kem == NULL || key->kem->method == NULL) {
+  if (key == NULL || key->kem == NULL || key->kem->method == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -476,7 +469,6 @@ int KEM_check_key(const KEM_KEY *key) {
     return 0;
   }
 
-  // The helpers above queue their own errors, so none are added here.
   if (!kem_check_public_key(key)) {
     return 0;
   }

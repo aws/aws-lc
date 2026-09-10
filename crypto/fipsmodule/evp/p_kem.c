@@ -538,9 +538,9 @@ int EVP_PKEY_kem_check_key(EVP_PKEY *key) {
     return 0;
   }
 
-  // |KEM_check_key| performs the same encapsulate/decapsulate consistency
-  // check, and additionally validates the public and secret key encodings. The
-  // NULL checks above keep this function's stricter contract, which requires
-  // both halves of the key pair to be present.
+  // |KEM_check_key| performs the encapsulate/decapsulate consistency check this
+  // function documents above, and additionally validates the public and secret
+  // key encodings. The NULL checks above keep this function's stricter contract,
+  // which requires both halves of the key pair to be present.
   return KEM_check_key(key->pkey.kem_key);
 }
