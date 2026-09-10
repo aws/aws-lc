@@ -43,6 +43,9 @@ const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
     &EVP_hpke_mlkem512,
     &EVP_hpke_mlkem768,
     &EVP_hpke_mlkem1024,
+    &EVP_hpke_mlkem768_p256,
+    &EVP_hpke_mlkem1024_p384,
+    &EVP_hpke_mlkem768_x25519,
 };
 
 // HPKETestVector corresponds to one array member in the published
@@ -1158,6 +1161,232 @@ TEST_P(HPKEMLKEMTest, PublicKeyBufferTooSmall) {
   ERR_clear_error();
 }
 
+// The PQ/T hybrids add an elliptic-curve half to enc and to the encapsulation
+// key, so each half has to be rejected or absorbed on its own terms: a bad
+// curve point is a hard error, while a corrupt ML-KEM ciphertext is implicitly
+// rejected and only fails at the AEAD.
+TEST(HPKETest, HybridKEMHalvesFailIndependently) {
+  const struct {
+    const char *name;
+    const EVP_HPKE_KEM *(*kem_func)(void);
+    const EVP_HPKE_KDF *(*kdf_func)(void);
+    const EVP_HPKE_AEAD *(*aead_func)(void);
+    size_t pq_enc_len;  // where the curve point starts inside enc
+  } kHybrids[] = {
+      {"MLKEM768-P256", &EVP_hpke_mlkem768_p256, &EVP_hpke_hkdf_sha256,
+       &EVP_hpke_aes_128_gcm, 1088},
+      {"MLKEM1024-P384", &EVP_hpke_mlkem1024_p384, &EVP_hpke_hkdf_sha384,
+       &EVP_hpke_aes_256_gcm, 1568},
+  };
+
+  for (const auto &h : kHybrids) {
+    SCOPED_TRACE(h.name);
+    const EVP_HPKE_KEM *kem = h.kem_func();
+    const EVP_HPKE_KDF *kdf = h.kdf_func();
+    const EVP_HPKE_AEAD *aead = h.aead_func();
+
+    // The private key is the 32-byte seed both halves derive from.
+    EXPECT_EQ(EVP_HPKE_KEM_private_key_len(kem), 32u);
+    EXPECT_EQ(EVP_HPKE_KEM_enc_len(kem),
+              h.pq_enc_len + (EVP_HPKE_KEM_id(kem) == EVP_HPKE_MLKEM768_P256
+                                  ? 65u
+                                  : 97u));
+
+    ScopedEVP_HPKE_KEY key;
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+    uint8_t pub[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+    size_t pub_len = 0;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), pub, &pub_len, sizeof(pub)));
+
+    ScopedEVP_HPKE_CTX sender;
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(sender.get(), enc, &enc_len,
+                                          sizeof(enc), kem, kdf, aead, pub,
+                                          pub_len, nullptr, 0));
+    static const uint8_t kMsg[] = "hybrid";
+    uint8_t ct[sizeof(kMsg) + EVP_HPKE_MAX_OVERHEAD];
+    size_t ct_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_seal(sender.get(), ct, &ct_len, sizeof(ct), kMsg,
+                                  sizeof(kMsg), nullptr, 0));
+
+    // A corrupt curve point in enc cannot be decoded, so decapsulation fails
+    // outright rather than deriving an unrelated secret.
+    {
+      std::vector<uint8_t> bad(enc, enc + enc_len);
+      bad[h.pq_enc_len + 1] ^= 1;  // inside X, off the curve
+      ScopedEVP_HPKE_CTX recipient;
+      EXPECT_FALSE(EVP_HPKE_CTX_setup_recipient(recipient.get(), key.get(), kdf,
+                                                aead, bad.data(), bad.size(),
+                                                nullptr, 0));
+      EXPECT_TRUE(
+          ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PEER_KEY));
+      ERR_clear_error();
+    }
+
+    // A corrupt ML-KEM ciphertext is implicitly rejected: setup succeeds with a
+    // pseudorandom shared secret and the failure appears at the AEAD.
+    {
+      std::vector<uint8_t> bad(enc, enc + enc_len);
+      bad[0] ^= 1;
+      ScopedEVP_HPKE_CTX recipient;
+      ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(recipient.get(), key.get(), kdf,
+                                               aead, bad.data(), bad.size(),
+                                               nullptr, 0));
+      std::vector<uint8_t> out(ct_len);
+      size_t out_len = 0;
+      EXPECT_FALSE(EVP_HPKE_CTX_open(recipient.get(), out.data(), &out_len,
+                                     out.size(), ct, ct_len, nullptr, 0));
+      ERR_clear_error();
+    }
+
+    // Truncating enc by one byte must be rejected on length alone.
+    {
+      ScopedEVP_HPKE_CTX recipient;
+      EXPECT_FALSE(EVP_HPKE_CTX_setup_recipient(recipient.get(), key.get(), kdf,
+                                                aead, enc, enc_len - 1, nullptr,
+                                                0));
+      EXPECT_TRUE(
+          ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PEER_KEY));
+      ERR_clear_error();
+    }
+
+    // A malformed curve point in the peer's encapsulation key fails on encap.
+    {
+      std::vector<uint8_t> bad(pub, pub + pub_len);
+      bad[pub_len - 1] ^= 1;
+      ScopedEVP_HPKE_CTX s2;
+      uint8_t enc2[EVP_HPKE_MAX_ENC_LENGTH];
+      size_t enc2_len = 0;
+      EXPECT_FALSE(EVP_HPKE_CTX_setup_sender(s2.get(), enc2, &enc2_len,
+                                             sizeof(enc2), kem, kdf, aead,
+                                             bad.data(), bad.size(), nullptr,
+                                             0));
+      ERR_clear_error();
+    }
+
+    // Round trip still works untouched.
+    {
+      ScopedEVP_HPKE_CTX recipient;
+      ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(recipient.get(), key.get(), kdf,
+                                               aead, enc, enc_len, nullptr, 0));
+      std::vector<uint8_t> out(ct_len);
+      size_t out_len = 0;
+      ASSERT_TRUE(EVP_HPKE_CTX_open(recipient.get(), out.data(), &out_len,
+                                    out.size(), ct, ct_len, nullptr, 0));
+      EXPECT_EQ(Bytes(out.data(), out_len), Bytes(kMsg, sizeof(kMsg)));
+    }
+  }
+}
+
+// The hybrid drafts fix group elements as the uncompressed encoding and the
+// combiner hashes those exact bytes, so an equivalent re-encoding must be
+// rejected rather than silently deriving a different shared secret. The SEC1
+// hybrid forms are the same length as uncompressed, so the length check alone
+// does not catch them.
+TEST(HPKETest, HybridRejectsNonUncompressedElements) {
+  const struct {
+    const char *name;
+    const EVP_HPKE_KEM *(*kem_func)(void);
+    size_t pq_public_len;
+    size_t pq_enc_len;
+  } kCurveHybrids[] = {
+      {"MLKEM768-P256", &EVP_hpke_mlkem768_p256, 1184, 1088},
+      {"MLKEM1024-P384", &EVP_hpke_mlkem1024_p384, 1568, 1568},
+  };
+  const EVP_HPKE_KDF *kdf = EVP_hpke_hkdf_sha256();
+  const EVP_HPKE_AEAD *aead = EVP_hpke_aes_128_gcm();
+
+  for (const auto &h : kCurveHybrids) {
+    SCOPED_TRACE(h.name);
+    const EVP_HPKE_KEM *kem = h.kem_func();
+    ScopedEVP_HPKE_KEY key;
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+    uint8_t pub[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+    size_t pub_len = 0;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), pub, &pub_len, sizeof(pub)));
+    EXPECT_EQ(pub[h.pq_public_len], 0x04);  // canonical tag
+
+    ScopedEVP_HPKE_CTX sender;
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(sender.get(), enc, &enc_len,
+                                          sizeof(enc), kem, kdf, aead, pub,
+                                          pub_len, nullptr, 0));
+    EXPECT_EQ(enc[h.pq_enc_len], 0x04);
+
+    // 0x06 and 0x07 are the SEC1 hybrid tags; one of the two is a well-formed
+    // hybrid encoding of this element, and both must be refused.
+    for (uint8_t tag : {0x06, 0x07}) {
+      SCOPED_TRACE(static_cast<int>(tag));
+
+      // As the peer's encapsulation key, on encap.
+      std::vector<uint8_t> bad_pub(pub, pub + pub_len);
+      bad_pub[h.pq_public_len] = tag;
+      ScopedEVP_HPKE_CTX s2;
+      uint8_t enc2[EVP_HPKE_MAX_ENC_LENGTH];
+      size_t enc2_len = 0;
+      EXPECT_FALSE(EVP_HPKE_CTX_setup_sender(s2.get(), enc2, &enc2_len,
+                                             sizeof(enc2), kem, kdf, aead,
+                                             bad_pub.data(), bad_pub.size(),
+                                             nullptr, 0));
+      ERR_clear_error();
+
+      // And as ct_T in enc, on decap.
+      std::vector<uint8_t> bad_enc(enc, enc + enc_len);
+      bad_enc[h.pq_enc_len] = tag;
+      ScopedEVP_HPKE_CTX r2;
+      EXPECT_FALSE(EVP_HPKE_CTX_setup_recipient(r2.get(), key.get(), kdf, aead,
+                                                bad_enc.data(), bad_enc.size(),
+                                                nullptr, 0));
+      EXPECT_TRUE(
+          ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_INVALID_PEER_KEY));
+      ERR_clear_error();
+    }
+  }
+}
+
+// X-Wing defines an output for every 32-byte element, so MLKEM768-X25519 must
+// not reject a small-order ct_T the way DHKEM(X25519) does. Decapsulation
+// succeeds and the mismatch surfaces at the AEAD instead.
+TEST(HPKETest, HybridX25519AcceptsSmallOrderElement) {
+  const EVP_HPKE_KEM *kem = EVP_hpke_mlkem768_x25519();
+  const EVP_HPKE_KDF *kdf = EVP_hpke_hkdf_sha256();
+  const EVP_HPKE_AEAD *aead = EVP_hpke_aes_128_gcm();
+  static const size_t kPQEncLen = 1088;
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+  uint8_t pub[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t pub_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), pub, &pub_len, sizeof(pub)));
+
+  ScopedEVP_HPKE_CTX sender;
+  uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+  size_t enc_len = 0;
+  ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(sender.get(), enc, &enc_len,
+                                        sizeof(enc), kem, kdf, aead, pub,
+                                        pub_len, nullptr, 0));
+  static const uint8_t kMsg[] = "small order";
+  uint8_t ct[sizeof(kMsg) + EVP_HPKE_MAX_OVERHEAD];
+  size_t ct_len = 0;
+  ASSERT_TRUE(EVP_HPKE_CTX_seal(sender.get(), ct, &ct_len, sizeof(ct), kMsg,
+                                sizeof(kMsg), nullptr, 0));
+
+  // Replace ct_T with the all-zero element, whose X25519 output is all-zero.
+  std::vector<uint8_t> bad(enc, enc + enc_len);
+  OPENSSL_memset(bad.data() + kPQEncLen, 0, X25519_PUBLIC_VALUE_LEN);
+  ScopedEVP_HPKE_CTX recipient;
+  ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(recipient.get(), key.get(), kdf,
+                                           aead, bad.data(), bad.size(),
+                                           nullptr, 0));
+  std::vector<uint8_t> out(ct_len);
+  size_t out_len = 0;
+  EXPECT_FALSE(EVP_HPKE_CTX_open(recipient.get(), out.data(), &out_len,
+                                 out.size(), ct, ct_len, nullptr, 0));
+  ERR_clear_error();
+}
+
 TEST(HPKETest, CopyZeroedKey) {
   ScopedEVP_HPKE_KEY src;
   ScopedEVP_HPKE_KEY dst;
@@ -1609,6 +1838,12 @@ static const MLKEMTestParam kMLKEMTestParams[] = {
      &EVP_hpke_aes_256_gcm},
     {"MLKEM1024_SHA384_ChaCha20Poly1305", &EVP_hpke_mlkem1024,
      &EVP_hpke_hkdf_sha384, &EVP_hpke_chacha20_poly1305},
+    {"MLKEM768_P256_SHA256_AES128GCM", &EVP_hpke_mlkem768_p256,
+     &EVP_hpke_hkdf_sha256, &EVP_hpke_aes_128_gcm},
+    {"MLKEM1024_P384_SHA384_AES256GCM", &EVP_hpke_mlkem1024_p384,
+     &EVP_hpke_hkdf_sha384, &EVP_hpke_aes_256_gcm},
+    {"MLKEM768_X25519_SHA256_ChaCha20Poly1305", &EVP_hpke_mlkem768_x25519,
+     &EVP_hpke_hkdf_sha256, &EVP_hpke_chacha20_poly1305},
 };
 
 INSTANTIATE_TEST_SUITE_P(HPKEMLKEM, HPKEMLKEMTest,

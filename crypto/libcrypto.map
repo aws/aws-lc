@@ -1391,8 +1391,11 @@ AWS_LC_1.0 {
     EVP_hpke_hkdf_sha256;
     EVP_hpke_hkdf_sha384;
     EVP_hpke_mlkem1024;
+    EVP_hpke_mlkem1024_p384;
     EVP_hpke_mlkem512;
     EVP_hpke_mlkem768;
+    EVP_hpke_mlkem768_p256;
+    EVP_hpke_mlkem768_x25519;
     EVP_hpke_x25519_hkdf_sha256;
     EVP_keccak256;
     EVP_marshal_digest_algorithm;
