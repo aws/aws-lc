@@ -58,6 +58,10 @@ rm -rf "${SCRATCH_FOLDER:?}/*"
 cd "$SCRATCH_FOLDER"
 
 wget -q $NTP_DOWNLOAD_URL
+# NTP downloads the latest source archive dynamically, so record its URL and checksum for autofix to reproduce failures.
+printf 'archive=%s sha256=%s\n' \
+  "${NTP_DOWNLOAD_URL}" "$(sha256sum "${NTP_TAR}" | cut -d ' ' -f1)" \
+  >> "${INTEGRATION_FAILURE_FILE}"
 mkdir -p "$NTP_SRC_FOLDER"
 tar -xzf "$NTP_TAR" -C "$NTP_SRC_FOLDER" --strip-components=1
 

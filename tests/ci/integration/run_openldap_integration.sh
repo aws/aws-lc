@@ -76,6 +76,7 @@ function openldap_patch() {
     git clone https://github.com/openldap/openldap.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    record_repo_commit "${src_dir}"
     for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
       echo "Apply patch ${patchfile}..."
       cat ${patchfile} \

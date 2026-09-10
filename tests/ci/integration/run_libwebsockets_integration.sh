@@ -63,6 +63,7 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE
 pushd ${SOCKET_SRC_FOLDER}
 LATEST_TAG=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
 git checkout $LATEST_TAG
+record_repo_commit "${SOCKET_SRC_FOLDER}"
 echo "Using libwebsockets version: ${LATEST_TAG}"
 
 libwebsockets_patch

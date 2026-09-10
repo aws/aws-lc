@@ -1,7 +1,7 @@
 name: android-omnibus
 on:
   push:
-    branches: ["*"]
+    branches: ["main", "fips-*"]
   pull_request_target:
     branches: ["*"]
 concurrency:

@@ -11,7 +11,7 @@ index 18cffda..110fcd0 100644
  long BIO_debug_callback_ex(BIO *bio, int cmd, const char LIBRELP_ATTR_UNUSED *argp,
  			   size_t LIBRELP_ATTR_UNUSED len, int argi, long LIBRELP_ATTR_UNUSED argl,
  			   int ret, size_t LIBRELP_ATTR_UNUSED *processed)
-@@ -1230,10 +1230,18 @@ relpTcpTLSSetPrio_ossl(relpTcp_t *const pThis)
+@@ -1230,10 +1230,19 @@ relpTcpTLSSetPrio_ossl(relpTcp_t *const pThis)
  {
  	char pristringBuf[4096];
  	char *pristring;
@@ -20,14 +20,16 @@ index 18cffda..110fcd0 100644
  	/* Compute priority string (in simple cases where the user does not care...) */
  	if(pThis->pristring == NULL) {
  		if (pThis->authmode == eRelpAuthMode_None) {
+-			#if OPENSSL_VERSION_NUMBER >= 0x10100000L \
 +			#if defined(OPENSSL_IS_AWSLC)
-+			snprintf(errmsg, sizeof(errmsg),
-+				"Warning: AWS-LC does not support anonymous ciphersuites.");
-+			callOnErr(pThis, errmsg, RELP_RET_ERR_TLS);
-+			ABORT_FINALIZE(RELP_RET_ERR_TLS_SETUP);
-+			#endif
-+
- 			#if OPENSSL_VERSION_NUMBER >= 0x10100000L \
++			if(isAnonAuth(pThis->pSrv == NULL ? pThis : pThis->pSrv->pTcp)) {
++				snprintf(errmsg, sizeof(errmsg),
++					"Warning: AWS-LC does not support anonymous ciphersuites.");
++				callOnErr(pThis, errmsg, RELP_RET_ERR_TLS);
++				ABORT_FINALIZE(RELP_RET_ERR_TLS_SETUP);
++			}
++			strncpy(pristringBuf, "DEFAULT", sizeof(pristringBuf));
++			#elif OPENSSL_VERSION_NUMBER >= 0x10100000L \
  				&& !defined(LIBRESSL_VERSION_NUMBER)
  			 /* NOTE: do never use: +eNULL, it DISABLES encryption! */
 @@ -1362,7 +1370,7 @@ relpTcpInitTLS(relpTcp_t *const pThis)
