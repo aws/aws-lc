@@ -656,6 +656,7 @@ CRYPTO_get_ube_generation_number AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_active AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_generation AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_supported AWS_LC_1.0 PRIVATE
+CRYPTO_get_vmclock_path AWS_LC_1.0 PRIVATE
 CRYPTO_has_asm AWS_LC_1.0 PUBLIC
 CRYPTO_has_broken_NEON AWS_LC_1.0 PUBLIC
 CRYPTO_is_ARMv8_DIT_capable_for_testing AWS_LC_1.0 PRIVATE
