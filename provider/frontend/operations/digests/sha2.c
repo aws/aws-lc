@@ -32,16 +32,24 @@ typedef struct {
 
 static void *awslc_prov_sha2_newctx(void *provctx, size_t backend_ctx_size,
                                     const char *algorithm_name) {
-  AWSLC_PROV_SHA2_CTX *ctx = awslc_prov_zalloc(sizeof(*ctx));
+  AWSLC_PROV_SHA2_CTX *ctx = NULL;
+  void *backend_ctx = NULL;
 
-  if (ctx == NULL) {
+  awslc_prov_error_mark();
+  ctx = awslc_prov_zalloc(sizeof(*ctx));
+  if (ctx != NULL) {
+    backend_ctx = awslc_prov_zalloc(backend_ctx_size);
+    if (backend_ctx == NULL) {
+      awslc_prov_clear_free(ctx, sizeof(*ctx));
+      ctx = NULL;
+    }
+  }
+  if (!AWSLC_PROV_ERROR_SETTLE((AWSLC_PROV_CTX *)provctx, ctx != NULL,
+                              AWSLC_PROV_R_BACKEND_ERROR, algorithm_name)) {
     return NULL;
   }
-  ctx->backend_ctx = awslc_prov_zalloc(backend_ctx_size);
-  if (ctx->backend_ctx == NULL) {
-    awslc_prov_clear_free(ctx, sizeof(*ctx));
-    return NULL;
-  }
+
+  ctx->backend_ctx = backend_ctx;
   ctx->provctx = (AWSLC_PROV_CTX *)provctx;
   ctx->backend_ctx_size = backend_ctx_size;
   ctx->algorithm_name = algorithm_name;
@@ -85,8 +93,12 @@ static void awslc_prov_sha2_copyctx(void *outctx, void *inctx,
   AWSLC_PROV_SHA2_CTX *out = (AWSLC_PROV_SHA2_CTX *)outctx;
   AWSLC_PROV_SHA2_CTX *in = (AWSLC_PROV_SHA2_CTX *)inctx;
 
-  if (out == NULL || in == NULL ||
-      out->backend_ctx_size != in->backend_ctx_size) {
+  if (out == NULL || in == NULL) {
+    return;
+  }
+  if (out->backend_ctx_size != in->backend_ctx_size) {
+    AWSLC_PROV_ERROR_RAISE(in->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           in->algorithm_name);
     return;
   }
   (void)copy(out->backend_ctx, in->backend_ctx);
@@ -106,7 +118,11 @@ static int awslc_prov_sha2_init_op(void *dctx, const OSSL_PARAM params[],
     return 0;
   }
   ctx->fips_approved = awslc_prov_ctx_is_fips(ctx->provctx);
-  return init(ctx->backend_ctx);
+
+  awslc_prov_error_mark();
+  int ok = init(ctx->backend_ctx);
+  return AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
+                                ctx->algorithm_name);
 }
 
 static int awslc_prov_sha2_update_op(void *dctx, const unsigned char *in,
@@ -124,9 +140,15 @@ static int awslc_prov_sha2_update_op(void *dctx, const unsigned char *in,
     return 1;
   }
   if (in == NULL) {
+    AWSLC_PROV_ERROR_RAISE(ctx->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           ctx->algorithm_name);
     return 0;
   }
-  return update(ctx->backend_ctx, in, inl);
+
+  awslc_prov_error_mark();
+  int ok = update(ctx->backend_ctx, in, inl);
+  return AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
+                                ctx->algorithm_name);
 }
 
 static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl,
@@ -135,14 +157,21 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
                                     size_t digest_size) {
   AWSLC_PROV_SHA2_CTX *ctx = (AWSLC_PROV_SHA2_CTX *)dctx;
 
-  if (ctx == NULL || out == NULL || outl == NULL) {
+  if (ctx == NULL) {
     return 0;
   }
+  if (out == NULL || outl == NULL) {
+    AWSLC_PROV_ERROR_RAISE(ctx->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
+                           ctx->algorithm_name);
+    return 0;
+  }
+  awslc_prov_error_mark();
   uint64_t before = awslc_prov_service_indicator_before_call();
   int ok = final_fn(ctx->backend_ctx, out, outsz);
   int is_fips = awslc_prov_ctx_is_fips(ctx->provctx);
   int approved = is_fips && awslc_prov_service_indicator_after_call(before);
-  if (!ok) {
+  if (!AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
+                              ctx->algorithm_name)) {
     return 0;
   }
   if (!approved) {
@@ -153,6 +182,8 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
           ctx->provctx, ctx->algorithm_name,
           AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION)) {
     awslc_prov_cleanse(out, digest_size);
+    AWSLC_PROV_ERROR_RAISE(ctx->provctx, AWSLC_PROV_R_UNAPPROVED_OPERATION,
+                           ctx->algorithm_name);
     return 0;
   }
   *outl = digest_size;
@@ -165,7 +196,8 @@ static int awslc_prov_sha2_get_ctx_params(void *dctx, OSSL_PARAM params[]) {
   if (ctx == NULL) {
     return 0;
   }
-  return awslc_prov_digest_get_fips_indicator(params, ctx->fips_approved);
+  return awslc_prov_digest_get_fips_indicator(ctx->provctx, params,
+                                              ctx->fips_approved);
 }
 
 static int awslc_prov_sha2_get_params(OSSL_PARAM params[],

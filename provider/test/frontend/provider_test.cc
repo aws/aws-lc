@@ -13,6 +13,9 @@
 #include <openssl/provider.h>
 
 #include <string>
+#include <vector>
+
+#include "internal/backend.h"
 
 namespace awslc_provider_test {
 namespace {
@@ -65,6 +68,27 @@ TEST_F(ProviderTest, ReportsSelfDescribingParams) {
 #endif
 
   EXPECT_EQ(1, status);
+}
+
+TEST_F(ProviderTest, RaisesErrorsUnderItsOwnErrorLibrary) {
+  int wrong_type = 0;
+  OSSL_PARAM params[] = {
+      OSSL_PARAM_construct_int(OSSL_PROV_PARAM_NAME, &wrong_type),
+      OSSL_PARAM_construct_end()};
+
+  ASSERT_FALSE(OSSL_PROVIDER_get_params(awslc(), params))
+      << "provider accepted OSSL_PROV_PARAM_NAME as an integer";
+
+  const std::vector<ErrorRecord> ours = ProviderErrors(DrainErrors());
+  ASSERT_EQ(1u, ours.size()) << "a failed get_params raised " << ours.size()
+                             << " errors under " << kProviderName;
+
+  EXPECT_EQ((unsigned long)AWSLC_PROV_R_INVALID_PARAMETER, ours[0].reason());
+  ASSERT_NE(nullptr, ours[0].reason_text());
+  EXPECT_STREQ("invalid parameter", ours[0].reason_text());
+  EXPECT_NE(std::string::npos, ours[0].file.find("provider.c")) << ours[0].file;
+  EXPECT_GT(ours[0].line, 0);
+  EXPECT_EQ(OSSL_PROV_PARAM_NAME, ours[0].data);
 }
 
 TEST_F(ProviderTest, DeclaresGettableParams) {

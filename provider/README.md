@@ -203,7 +203,9 @@ algorithm count from what does not.
 | `internal/frontend/<operation>.h` | OpenSSL | Per-operation dispatch tables, for `registry.c` |
 | `frontend/provider.c` | OpenSSL | The entry point. Implements provider-level dispatch table functions. |
 | `frontend/registry.c` | OpenSSL | One `OSSL_ALGORITHM` table per operation. |
+| `frontend/<service>.c` | OpenSSL | Provider-wide frontend services, such as error reporting. |
 | `frontend/operations/<operation>/<alg>.c` | OpenSSL | Dispatch slots and their `OSSL_PARAM` plumbing |
+| `backend/<service>.c` | AWS-LC | Provider-wide AWS-LC bindings: allocation, introspection, the error queue. |
 | `backend/operations/<operation>/<alg>.c` | AWS-LC | The calls that actually compute |
 | `test/frontend/**` | OpenSSL | Main test suite driving from the OpenSSL Provider interface. |
 | `test/backend/**` | AWS-LC | Test suite for invoking `backend/` functions directly. |
