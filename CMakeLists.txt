@@ -41,6 +41,7 @@ option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence 
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
 option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires AWSLC_PROVIDER_OPENSSL_ROOT" OFF)
 set(AWSLC_PROVIDER_OPENSSL_ROOT "" CACHE PATH "Install prefix of an OpenSSL 3.5 or later build, supplying the provider headers BUILD_AWSLC_PROVIDER needs")
+option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -443,6 +444,20 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_VM_UBE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
+if(ENABLE_CRYPTO_POLICIES)
+  message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
+  add_definitions(-DAWSLC_CRYPTO_POLICIES)
+  # Optional override of the compile-time default policy file. Packagers can set
+  # this to relocate the system crypto-policies OpenSSL back-end file; tests use
+  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
+  # overrides it at run time.
+  if(AWSLC_CRYPTO_POLICY_FILE)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
+    add_definitions(
+      -DAWSLC_CRYPTO_POLICY_DEFAULT_FILE=\"${AWSLC_CRYPTO_POLICY_FILE}\")
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)
