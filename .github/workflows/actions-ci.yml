@@ -443,14 +443,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # FIPS only; this range holds no family endpoints. clang18 keeps its
-        # non-FIPS cell as a fallback while we re-test its FIPS build, which was
-        # excluded as broken in Sept 2025. x86-64 builds clang18 FIPS fine, so
-        # the failure was arm64-specific.
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["14", "15", "16", "17", "18", "19"]
         fips: ["1"]
-        include:
-          - { clang_version: "18", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
