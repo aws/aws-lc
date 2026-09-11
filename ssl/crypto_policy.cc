@@ -141,8 +141,11 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
     }
   }
 
+  // |fgets| and |fgetc| stop on a read error exactly as they stop at end of
+  // file, so without this a truncated read would pass for a whole policy.
+  const bool ok = ferror(f) == 0;
   fclose(f);
-  return true;
+  return ok;
 }
 
 const char *ssl_crypto_policy_default_path(void) {

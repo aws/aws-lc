@@ -10,6 +10,7 @@
 
 #if defined(AWSLC_CRYPTO_POLICIES)
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -127,6 +128,20 @@ TEST(CryptoPolicyParseTest, MissingFileFails) {
   CryptoPolicyConfig cfg = {};
   EXPECT_FALSE(ssl_crypto_policy_parse_file(kNoSuchPath, &cfg));
   EXPECT_STREQ("", cfg.cipher_string);
+}
+
+// A file that errors part way through is not a policy that simply ended: the
+// directives read so far are half of somebody's policy. Opening a directory is
+// the portable way to make the read fail.
+TEST(CryptoPolicyParseTest, ReadErrorFails) {
+  FILE *dir = fopen("/tmp", "r");
+  if (dir == nullptr) {
+    GTEST_SKIP() << "cannot open a directory as a file";
+  }
+  fclose(dir);
+
+  CryptoPolicyConfig cfg = {};
+  EXPECT_FALSE(ssl_crypto_policy_parse_file("/tmp", &cfg));
 }
 
 TEST(CryptoPolicyParseTest, NullArgumentsFail) {

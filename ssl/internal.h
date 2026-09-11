@@ -3720,8 +3720,9 @@ struct CryptoPolicyConfig {
 // ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
 // the recognized directives. Blank lines, '#' comments, and '[section]' headers
 // are ignored, as are unrecognized keys; the last occurrence of a key wins. It
-// returns true if the file could be opened and read (even if no recognized keys
-// were present) and false only if the file could not be opened.
+// returns true if the whole file was read (even if no recognized keys were
+// present), and false on invalid arguments or if the file could not be opened
+// or read to its end.
 bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 
 // ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
