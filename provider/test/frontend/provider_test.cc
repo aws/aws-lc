@@ -26,6 +26,11 @@ TEST_F(ProviderTest, Loads) {
   EXPECT_STREQ(kProviderName, OSSL_PROVIDER_get0_name(awslc()));
 }
 
+TEST_F(DefaultLibCtxTest, Loads) {
+  EXPECT_TRUE(OSSL_PROVIDER_available(nullptr, kProviderName));
+  EXPECT_STREQ(kProviderName, OSSL_PROVIDER_get0_name(awslc()));
+}
+
 TEST_F(ProviderTest, ReportsSelfDescribingParams) {
   const char *name = nullptr;
   const char *version = nullptr;
@@ -53,6 +58,11 @@ TEST_F(ProviderTest, ReportsSelfDescribingParams) {
   // say.
   ASSERT_NE(nullptr, buildinfo);
   EXPECT_NE(std::string::npos, std::string(buildinfo).find("AWS-LC"));
+#if defined(AWSLC_FIPS)
+  EXPECT_NE(std::string::npos, std::string(buildinfo).find("AWS-LC FIPS"));
+#else
+  EXPECT_EQ(std::string::npos, std::string(buildinfo).find("AWS-LC FIPS"));
+#endif
 
   EXPECT_EQ(1, status);
 }
@@ -66,6 +76,10 @@ TEST_F(ProviderTest, DeclaresGettableParams) {
     EXPECT_NE(nullptr, OSSL_PARAM_locate_const(gettable, key))
         << "get_params answers " << key << " but does not advertise it";
   }
+}
+
+TEST_F(ProviderTest, RunsBackendSelfTest) {
+  EXPECT_TRUE(OSSL_PROVIDER_self_test(awslc()));
 }
 
 // An operation class the provider does not serve must return NULL from
@@ -95,6 +109,13 @@ TEST_F(ProviderTest, UnimplementedOperationsFallThroughToDefault) {
   EXPECT_STREQ("default",
                OSSL_PROVIDER_get0_name(EVP_CIPHER_get0_provider(cipher)));
   EVP_CIPHER_free(cipher);
+}
+
+TEST_F(ProviderTest, PublishesFipsCapabilityProperty) {
+  MdPtr md(EVP_MD_fetch(libctx(), "SHA2-256", "provider=awslc,fips=yes"));
+  ASSERT_TRUE(md);
+  EXPECT_STREQ(kProviderName,
+               OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
 }
 
 // Reproduce the deployed path: the config activates both providers and installs

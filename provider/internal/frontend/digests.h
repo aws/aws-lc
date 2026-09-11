@@ -17,14 +17,19 @@
 extern "C" {
 #endif
 
+#define AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION "digest"
+
 // Reported through OSSL_DIGEST_PARAM_XOF and OSSL_DIGEST_PARAM_ALGID_ABSENT.
 #define AWSLC_PROV_DIGEST_FLAG_XOF 0x0001
 #define AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT 0x0002
 
 OSSL_FUNC_digest_gettable_params_fn awslc_prov_digest_gettable_params;
+OSSL_FUNC_digest_gettable_ctx_params_fn
+    awslc_prov_digest_gettable_ctx_params;
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
                                  size_t digest_size, uint32_t flags);
+int awslc_prov_digest_get_fips_indicator(OSSL_PARAM params[], int approved);
 
 // Declare one fixed-length digest's slots at the exact types OpenSSL calls.
 #define AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(algorithm)                       \
@@ -38,7 +43,7 @@ int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
   static OSSL_FUNC_digest_get_params_fn awslc_prov_##algorithm##_get_params
 
 // Emit the table only after the ordinary C slot bodies above it are defined.
-#define AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(algorithm)                      \
+#define AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(algorithm, family)              \
   const OSSL_DISPATCH awslc_prov_##algorithm##_functions[] = {                 \
       {OSSL_FUNC_DIGEST_NEWCTX,                                                \
        (void (*)(void))awslc_prov_##algorithm##_newctx},                       \
@@ -58,6 +63,10 @@ int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
        (void (*)(void))awslc_prov_##algorithm##_get_params},                   \
       {OSSL_FUNC_DIGEST_GETTABLE_PARAMS,                                       \
        (void (*)(void))awslc_prov_digest_gettable_params},                     \
+      {OSSL_FUNC_DIGEST_GET_CTX_PARAMS,                                        \
+       (void (*)(void))awslc_prov_##family##_get_ctx_params},                  \
+      {OSSL_FUNC_DIGEST_GETTABLE_CTX_PARAMS,                                   \
+       (void (*)(void))awslc_prov_digest_gettable_ctx_params},                 \
       OSSL_DISPATCH_END}
 
 #define AWSLC_PROV_DECLARE_DIGEST_TABLE(algorithm) \

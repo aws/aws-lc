@@ -16,8 +16,13 @@ permissions:
 
 jobs:
   aws-lc-provider-linux:
+    name: aws-lc-provider Linux FIPS=${{ matrix.fips }}
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fips: [0, 1]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -30,4 +35,8 @@ jobs:
             cmake ninja-build make perl binutils
       - name: Build the provider and run its unit tests
         run: |
-          ./tests/ci/run_aws_lc_provider_tests.sh
+          if [[ "${{ matrix.fips }}" == "1" ]]; then
+            ./tests/ci/run_aws_lc_provider_tests.sh --fips
+          else
+            ./tests/ci/run_aws_lc_provider_tests.sh
+          fi
