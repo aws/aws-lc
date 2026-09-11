@@ -33,7 +33,7 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
             cmake ninja-build make perl binutils
-      - name: Build the provider and run its unit tests
+      - name: Build the provider, run its unit tests and EVP vectors
         run: |
           if [[ "${{ matrix.fips }}" == "1" ]]; then
             ./tests/ci/run_aws_lc_provider_tests.sh --fips
