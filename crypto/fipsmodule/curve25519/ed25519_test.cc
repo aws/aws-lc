@@ -13,6 +13,11 @@
 #include "../../test/test_util.h"
 
 
+//= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
+//= type=test
+//# The context (if present at all) MUST be empty.
+// RFC 8032 §7.1 known-answer vectors for plain Ed25519 (dom2 empty, no
+// context), exercised through ED25519_sign / ED25519_verify.
 TEST(Ed25519Test, TestVectors) {
   FileTestGTest("crypto/fipsmodule/curve25519/ed25519_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> private_key, public_key, message, expected_signature;
@@ -120,6 +125,12 @@ TEST(Ed25519Test, KeypairFromSeed) {
   EXPECT_EQ(Bytes(private_key1), Bytes(private_key2));
 }
 
+//= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
+//= type=test
+//# For Ed25519ph, phflag=1 and PH is SHA512 instead.
+// RFC 8032 §7.3 known-answer vectors for Ed25519ph. These KATs gate the
+// pre-hash implementation and catch double-hashing / digest-handling
+// mistakes that would otherwise produce non-compliant signatures.
 TEST(Ed25519phTest, TestVectors) {
   FileTestGTest("crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> seed, q, message, context, expected_signature;

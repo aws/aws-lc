@@ -1,0 +1,63 @@
+name: Duvet Annotation Coverage
+on:
+  push:
+    branches: [ '*' ]
+    paths:
+      - '.duvet/**'
+      - '.github/workflows/duvet.yml'
+      - 'crypto/fipsmodule/**'
+      - 'crypto/evp/**'
+      - 'include/openssl/evp.h'
+  pull_request:
+    branches: [ '*' ]
+    paths:
+      - '.duvet/**'
+      - '.github/workflows/duvet.yml'
+      - 'crypto/fipsmodule/**'
+      - 'crypto/evp/**'
+      - 'include/openssl/evp.h'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  annotation-regression:
+    if: github.repository_owner == 'aws'
+    name: Duvet annotation regression check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Rust and Cargo
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install duvet
+        run: cargo install duvet --locked
+
+      # Fails the build if any baselined `//=` citation was removed or broken.
+      # Adding annotations never fails; refresh the baseline with
+      # `python3 .duvet/scripts/check_annotations.py --update`.
+      - name: Check for annotation regressions
+        run: python3 .duvet/scripts/check_annotations.py
+
+      # The HTML coverage report is uploaded as a build artifact for review.
+      # This PR does not publish it anywhere.
+      - name: Generate coverage report
+        if: always()
+        run: duvet report --html duvet-report.html
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duvet-coverage-report
+          path: duvet-report.html
+          if-no-files-found: ignore
