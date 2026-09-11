@@ -162,11 +162,12 @@ class CRLComparisonTest : public ::testing::Test {
 
 // Test against OpenSSL output "openssl crl -in file"
 TEST_F(CRLComparisonTest, Basic) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " crl -in " + in_path + " > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " crl -in " + ShellEscape(in_path) + " > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -175,11 +176,14 @@ TEST_F(CRLComparisonTest, Basic) {
 
 // Test against OpenSSL output "openssl crl -in file -hash -fingerprint"
 TEST_F(CRLComparisonTest, HashFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " -hash -fingerprint > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " crl -in " + in_path +
-                                " -hash -fingerprint > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) +
+                             " -hash -fingerprint > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " crl -in " + ShellEscape(in_path) +
+                                " -hash -fingerprint > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -188,12 +192,14 @@ TEST_F(CRLComparisonTest, HashFingerprint) {
 
 // Test against OpenSSL output "openssl crl -in file -hash -fingerprint -noout"
 TEST_F(CRLComparisonTest, HashFingerprintNoOut) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " -hash -fingerprint -noout > " +
-                             out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) +
+                             " -hash -fingerprint -noout > " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " crl -in " + in_path +
-      " -hash -fingerprint -noout > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " crl -in " +
+      ShellEscape(in_path) + " -hash -fingerprint -noout > " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -202,11 +208,14 @@ TEST_F(CRLComparisonTest, HashFingerprintNoOut) {
 
 // Test against OpenSSL output "openssl crl -in file -fingerprint -hash"
 TEST_F(CRLComparisonTest, ReorderedHashFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " -fingerprint -hash > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " crl -in " + in_path +
-                                " -fingerprint -hash > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) +
+                             " -fingerprint -hash > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " crl -in " + ShellEscape(in_path) +
+                                " -fingerprint -hash > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -215,12 +224,14 @@ TEST_F(CRLComparisonTest, ReorderedHashFingerprint) {
 
 // Test against OpenSSL output "openssl crl -in file -fingerprint -hash -noout"
 TEST_F(CRLComparisonTest, ReorderedHashFingerprintNoOut) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " -fingerprint -hash -noout > " +
-                             out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) +
+                             " -fingerprint -hash -noout > " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " crl -in " + in_path +
-      " -fingerprint -hash -noout > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " crl -in " +
+      ShellEscape(in_path) + " -fingerprint -hash -noout > " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -229,12 +240,14 @@ TEST_F(CRLComparisonTest, ReorderedHashFingerprintNoOut) {
 
 // Test against OpenSSL output "openssl crl -in file -noout -fingerprint -hash"
 TEST_F(CRLComparisonTest, ReorderedNoOutHashFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) + " crl -in " +
-                             in_path + " -noout -fingerprint -hash > " +
-                             out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " crl -in " + ShellEscape(in_path) +
+                             " -noout -fingerprint -hash > " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " crl -in " + in_path +
-      " -noout -fingerprint -hash > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " crl -in " +
+      ShellEscape(in_path) + " -noout -fingerprint -hash > " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,

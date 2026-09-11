@@ -290,12 +290,14 @@ class EcparamCurveComparisonTest
 
 TEST_P(EcparamCurveComparisonTest, CompareParameters) {
   const auto &params = GetParam();
-  std::string tool_command = std::string(tool_executable_path) +
-                             " ecparam -name " + params.curve_name + " > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " ecparam -name " + params.curve_name + " > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " ecparam -name " +
+                             ShellEscape(params.curve_name) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " ecparam -name " +
+                                ShellEscape(params.curve_name) + " > " +
+                                ShellEscape(out_path_openssl);
   RunAndCompareCommands(tool_command, openssl_command, out_path_tool,
                         out_path_openssl);
 }
@@ -336,18 +338,19 @@ class EcparamKeyGenComparisonTest
 
 TEST_P(EcparamKeyGenComparisonTest, KeyGenCompatibility) {
   const auto &params = GetParam();
-  std::string tool_command = std::string(tool_executable_path) +
-                             " ecparam -name " + params.curve_name +
-                             " -genkey " + params.extra_args + " -out " +
-                             key_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " ecparam -name " +
+                             ShellEscape(params.curve_name) + " -genkey " +
+                             params.extra_args + " -out " +
+                             ShellEscape(key_path_tool);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
 
   // Test that OpenSSL CLI can read AWS-LC generated key
   std::string inform_flag = params.is_der ? " -inform DER" : "";
-  std::string openssl_read = std::string(openssl_executable_path) +
-                             " pkey -in " + key_path_tool + inform_flag +
-                             " -noout";
+  std::string openssl_read = ShellEscape(openssl_executable_path) +
+                             " pkey -in " + ShellEscape(key_path_tool) +
+                             inform_flag + " -noout";
   ASSERT_EQ(system(openssl_read.c_str()), 0)
       << "OpenSSL cannot read AWS-LC generated key: " << params.test_name;
 }
@@ -404,12 +407,12 @@ class EcparamComparisonTest : public ::testing::Test {
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"
 TEST_F(EcparamComparisonTest, Noout) {
-  std::string tool_command = std::string(tool_executable_path) +
+  std::string tool_command = ShellEscape(tool_executable_path) +
                              " ecparam -name prime256v1 -noout > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
                                 " ecparam -name prime256v1 -noout > " +
-                                out_path_openssl;
+                                ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
@@ -419,12 +422,12 @@ TEST_F(EcparamComparisonTest, Noout) {
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -outform DER"
 TEST_F(EcparamComparisonTest, DERFormat) {
-  std::string tool_command = std::string(tool_executable_path) +
+  std::string tool_command = ShellEscape(tool_executable_path) +
                              " ecparam -name prime256v1 -outform DER -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
                                 " ecparam -name prime256v1 -outform DER -out " +
-                                out_path_openssl;
+                                ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_command.c_str()), 0);
   ASSERT_EQ(system(openssl_command.c_str()), 0);
@@ -434,11 +437,12 @@ TEST_F(EcparamComparisonTest, DERFormat) {
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -out file"
 TEST_F(EcparamComparisonTest, FileOutput) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " ecparam -name prime256v1 -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " ecparam -name prime256v1 -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
                                 " ecparam -name prime256v1 -out " +
-                                out_path_openssl;
+                                ShellEscape(out_path_openssl);
   RunAndCompareCommands(tool_command, openssl_command, out_path_tool,
                         out_path_openssl);
 }

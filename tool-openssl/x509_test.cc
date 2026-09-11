@@ -785,11 +785,12 @@ static std::string normalize_subject(std::string input) {
 
 // Test against OpenSSL output "openssl x509 -in file -text -noout"
 TEST_F(X509ComparisonTest, Text) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -text -noout> " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -text -noout > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -text -noout> " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -text -noout > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -823,11 +824,12 @@ TEST_F(X509ComparisonTest, Text) {
 
 // Test against OpenSSL output "openssl x509 -in file -modulus"
 TEST_F(X509ComparisonTest, Modulus) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -modulus > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -modulus > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -modulus > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -modulus > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -835,10 +837,12 @@ TEST_F(X509ComparisonTest, Modulus) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -modulus -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -modulus -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -modulus -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -modulus -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -849,11 +853,12 @@ TEST_F(X509ComparisonTest, Modulus) {
 
 // Test against OpenSSL output "openssl x509 -in file -subject"
 TEST_F(X509ComparisonTest, Subject) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -subject > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -subject > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -subject > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -subject > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -866,10 +871,12 @@ TEST_F(X509ComparisonTest, Subject) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -subject -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -subject -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -subject -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -subject -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -887,11 +894,14 @@ TEST_F(X509ComparisonTest, Subject) {
 // -subject_hash_old"
 TEST_F(X509ComparisonTest, Fingerprint) {
   std::string tool_command =
-      std::string(tool_executable_path) + " x509 -in " + in_path +
-      " -subject_hash -subject_hash_old -fingerprint > " + out_path_tool;
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -subject_hash -subject_hash_old -fingerprint > " +
+      ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -subject_hash -subject_hash_old -fingerprint > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) +
+      " -subject_hash -subject_hash_old -fingerprint > " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -899,12 +909,14 @@ TEST_F(X509ComparisonTest, Fingerprint) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) +
                  " -subject_hash -subject_hash_old -fingerprint -out " +
-                 out_path_tool;
-  openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -subject_hash -subject_hash_old -fingerprint -out " + out_path_openssl;
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) +
+                    " -subject_hash -subject_hash_old -fingerprint -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -917,11 +929,14 @@ TEST_F(X509ComparisonTest, Fingerprint) {
 // -subject_hash_old"
 TEST_F(X509ComparisonTest, ReorderedFingerprint) {
   std::string tool_command =
-      std::string(tool_executable_path) + " x509 -in " + in_path +
-      " -subject_hash -fingerprint -subject_hash_old > " + out_path_tool;
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -subject_hash -fingerprint -subject_hash_old > " +
+      ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -subject_hash -fingerprint -subject_hash_old > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) +
+      " -subject_hash -fingerprint -subject_hash_old > " +
+      ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -929,12 +944,14 @@ TEST_F(X509ComparisonTest, ReorderedFingerprint) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) +
                  " -fingerprint -subject_hash_old -subject_hash -out " +
-                 out_path_tool;
-  openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -fingerprint -subject_hash_old -subject_hash -out " + out_path_openssl;
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) +
+                    " -fingerprint -subject_hash_old -subject_hash -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -946,12 +963,14 @@ TEST_F(X509ComparisonTest, ReorderedFingerprint) {
 // Test against OpenSSL output "openssl x509 -in file -fingerprint -subject_hash
 // -subject_hash_old"
 TEST_F(X509ComparisonTest, HashFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) +
+  std::string tool_command = ShellEscape(tool_executable_path) +
                              " x509 -subject_hash -fingerprint -noout -in " +
-                             in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
+                             ShellEscape(in_path) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
                                 " x509 -subject_hash -fingerprint -noout -in " +
-                                in_path + " > " + out_path_openssl;
+                                ShellEscape(in_path) + " > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -962,11 +981,12 @@ TEST_F(X509ComparisonTest, HashFingerprint) {
 
 // Test against OpenSSL output "openssl x509 -in file -pubkey"
 TEST_F(X509ComparisonTest, Pubkey) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -pubkey > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -pubkey > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -pubkey > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -pubkey > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -978,12 +998,13 @@ TEST_F(X509ComparisonTest, Pubkey) {
 // Test against OpenSSL output "openssl x509 -in file -noout -subject
 // -fingerprint"
 TEST_F(X509ComparisonTest, SubjectFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -noout -subject -fingerprint > " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -noout -subject -fingerprint > " + out_path_openssl;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -noout -subject -fingerprint > " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -noout -subject -fingerprint > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -996,11 +1017,13 @@ TEST_F(X509ComparisonTest, SubjectFingerprint) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -noout -subject -fingerprint -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -noout -subject -fingerprint -out " +
-                    out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -noout -subject -fingerprint -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) +
+                    " -noout -subject -fingerprint -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1017,12 +1040,13 @@ TEST_F(X509ComparisonTest, SubjectFingerprint) {
 // Test against OpenSSL output "openssl x509 -in file -noout -subject
 // -fingerprint"
 TEST_F(X509ComparisonTest, ReorderedSubjectFingerprint) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -noout -fingerprint -subject > " +
-                             out_path_tool;
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -noout -fingerprint -subject > " + out_path_openssl;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -noout -fingerprint -subject > " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -noout -fingerprint -subject > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1035,11 +1059,13 @@ TEST_F(X509ComparisonTest, ReorderedSubjectFingerprint) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -noout -fingerprint -subject -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -noout -fingerprint -subject -out " +
-                    out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -noout -fingerprint -subject -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) +
+                    " -noout -fingerprint -subject -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1055,11 +1081,12 @@ TEST_F(X509ComparisonTest, ReorderedSubjectFingerprint) {
 
 // Test against OpenSSL output "openssl x509 -in in_file -checkend 0"
 TEST_F(X509ComparisonTest, Checkend) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -checkend 0 > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -checkend 0 > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -checkend 0 > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -checkend 0 > " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1071,12 +1098,14 @@ TEST_F(X509ComparisonTest, Checkend) {
 // Test against OpenSSL output "openssl x509 -req -in csr_file -signkey
 // private_key_file -days 80 -out out_file"
 TEST_F(X509ComparisonTest, ReqSignkeyDays) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " x509 -req -in " + csr_path + " -signkey " +
-                             signkey_path + " -days 80 -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " x509 -req -in " + ShellEscape(csr_path) +
+                             " -signkey " + ShellEscape(signkey_path) +
+                             " -days 80 -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -req -in " + csr_path +
-      " -signkey " + signkey_path + " -days 80 -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -req -in " +
+      ShellEscape(csr_path) + " -signkey " + ShellEscape(signkey_path) +
+      " -days 80 -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1097,11 +1126,13 @@ TEST_F(X509ComparisonTest, ReqSignkeyDays) {
 
 // Test against OpenSSL output "openssl x509 -in file -dates -noout"
 TEST_F(X509ComparisonTest, DatesNoout) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -dates -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -dates -noout > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -dates -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -dates -noout > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1109,10 +1140,12 @@ TEST_F(X509ComparisonTest, DatesNoout) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -dates -noout -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -dates -noout -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -dates -noout -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -dates -noout -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1124,11 +1157,13 @@ TEST_F(X509ComparisonTest, DatesNoout) {
 // Test against OpenSSL output "openssl x509 -in file -dates -enddate", notAfter
 // date should only be printed out once
 TEST_F(X509ComparisonTest, DatesEnddate) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -dates -enddate > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -dates -enddate > " +
-                                out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -dates -enddate > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -dates -enddate > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1136,10 +1171,12 @@ TEST_F(X509ComparisonTest, DatesEnddate) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -dates -enddate -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -dates -enddate -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -dates -enddate -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -dates -enddate -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1150,12 +1187,14 @@ TEST_F(X509ComparisonTest, DatesEnddate) {
 
 // Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
 TEST_F(X509ComparisonTest, InformDEREnddate) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             der_cert_path + " -inform DER -enddate > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + der_cert_path +
-                                " -inform DER -enddate > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(der_cert_path) +
+                             " -inform DER -enddate > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(der_cert_path) +
+                                " -inform DER -enddate > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1163,11 +1202,12 @@ TEST_F(X509ComparisonTest, InformDEREnddate) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " +
-                 der_cert_path + " -inform DER -enddate -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    der_cert_path + " -inform DER -enddate -out " +
-                    out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(der_cert_path) + " -inform DER -enddate -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(der_cert_path) + " -inform DER -enddate -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1178,12 +1218,13 @@ TEST_F(X509ComparisonTest, InformDEREnddate) {
 
 // Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
 TEST_F(X509ComparisonTest, InformPEMEnddate) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -inform PEM -enddate > " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path +
-                                " -inform PEM -enddate > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -inform PEM -enddate > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -inform PEM -enddate > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1191,10 +1232,12 @@ TEST_F(X509ComparisonTest, InformPEMEnddate) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -inform PEM -enddate -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -inform PEM -enddate -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -inform PEM -enddate -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -inform PEM -enddate -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1206,13 +1249,14 @@ TEST_F(X509ComparisonTest, InformPEMEnddate) {
 // Test against OpenSSL output reading from stdin "openssl x509 -fingerprint
 // -dates"
 TEST_F(X509ComparisonTest, StdinFingerprintDates) {
-  std::string tool_command = "cat " + std::string(in_path) + " | " +
-                             std::string(tool_executable_path) +
-                             " x509 -fingerprint -dates > " + out_path_tool;
-  std::string openssl_command = "cat " + std::string(in_path) + " | " +
-                                std::string(openssl_executable_path) +
+  std::string tool_command = "cat " + ShellEscape(in_path) + " | " +
+                             ShellEscape(tool_executable_path) +
+                             " x509 -fingerprint -dates > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = "cat " + ShellEscape(in_path) + " | " +
+                                ShellEscape(openssl_executable_path) +
                                 " x509 -fingerprint -dates > " +
-                                out_path_openssl;
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1220,12 +1264,13 @@ TEST_F(X509ComparisonTest, StdinFingerprintDates) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
-  tool_command = "cat " + std::string(in_path) + " | " +
-                 std::string(tool_executable_path) +
-                 " x509 -fingerprint -dates -out " + out_path_tool;
-  openssl_command = "cat " + std::string(in_path) + " | " +
-                    std::string(openssl_executable_path) +
-                    " x509 -fingerprint -dates -out " + out_path_openssl;
+  tool_command = "cat " + ShellEscape(in_path) + " | " +
+                 ShellEscape(tool_executable_path) +
+                 " x509 -fingerprint -dates -out " + ShellEscape(out_path_tool);
+  openssl_command = "cat " + ShellEscape(in_path) + " | " +
+                    ShellEscape(openssl_executable_path) +
+                    " x509 -fingerprint -dates -out " +
+                    ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -1237,12 +1282,14 @@ TEST_F(X509ComparisonTest, StdinFingerprintDates) {
 // Test against OpenSSL output "openssl x509 -in in_file (-req) -signkey
 // private_key_file -out out_file -outform PEM"
 TEST_F(X509ComparisonTest, SignkeyOutformPEM) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -signkey " + signkey_path +
-                             " -outform PEM -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -signkey " +
+                             ShellEscape(signkey_path) + " -outform PEM -out " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -signkey " + signkey_path + " -outform PEM -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -signkey " + ShellEscape(signkey_path) +
+      " -outform PEM -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1261,12 +1308,14 @@ TEST_F(X509ComparisonTest, SignkeyOutformPEM) {
       << "Certificates generated by tool and OpenSSL have different attributes";
 
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + csr_path +
-                 " -req -signkey " + signkey_path + " -outform PEM -out " +
-                 out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    csr_path + " -req -signkey " + signkey_path +
-                    " -outform PEM -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(csr_path) + " -req -signkey " +
+                 ShellEscape(signkey_path) + " -outform PEM -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(csr_path) + " -req -signkey " +
+                    ShellEscape(signkey_path) + " -outform PEM -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1288,12 +1337,14 @@ TEST_F(X509ComparisonTest, SignkeyOutformPEM) {
 // Test against OpenSSL output "openssl x509 -in in_file (-req) -signkey
 // private_key_file -out out_file -outform DER"
 TEST_F(X509ComparisonTest, SignkeyOutformDER) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -signkey " + signkey_path +
-                             " -outform DER -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -signkey " +
+                             ShellEscape(signkey_path) + " -outform DER -out " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -signkey " + signkey_path + " -outform DER -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -signkey " + ShellEscape(signkey_path) +
+      " -outform DER -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1311,12 +1362,14 @@ TEST_F(X509ComparisonTest, SignkeyOutformDER) {
       CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 30))
       << "Certificates generated by tool and OpenSSL have different attributes";
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + csr_path +
-                 " -req -signkey " + signkey_path + " -outform DER -out " +
-                 out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    csr_path + " -req -signkey " + signkey_path +
-                    " -outform DER -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(csr_path) + " -req -signkey " +
+                 ShellEscape(signkey_path) + " -outform DER -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(csr_path) + " -req -signkey " +
+                    ShellEscape(signkey_path) + " -outform DER -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1339,12 +1392,14 @@ TEST_F(X509ComparisonTest, SignkeyOutformDER) {
 // Test against OpenSSL output "openssl x509 -in in_file -CA certfile -CAkey
 // keyfile"
 TEST_F(X509ComparisonTest, CA) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -CA " + ca_cert_path + " -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + in_path + " -CA " +
-                                ca_cert_path + " -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -CA " +
+                             ShellEscape(ca_cert_path) + " -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) + " -CA " +
+                                ShellEscape(ca_cert_path) + " -out " +
+                                ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1364,12 +1419,14 @@ TEST_F(X509ComparisonTest, CA) {
       << "Certificates generated by tool and OpenSSL have different attributes";
 
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -CA " + ca_cert_path + " -CAkey " + ca_key_path + " -out " +
-                 out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -CA " + ca_cert_path + " -CAkey " +
-                    ca_key_path + " -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -CA " + ShellEscape(ca_cert_path) +
+                 " -CAkey " + ShellEscape(ca_key_path) + " -out " +
+                 ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -CA " + ShellEscape(ca_cert_path) +
+                    " -CAkey " + ShellEscape(ca_key_path) + " -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1391,12 +1448,14 @@ TEST_F(X509ComparisonTest, CA) {
 // Test against OpenSSL output "openssl x509 -in in_file -CA certfile -CAkey
 // keyfile"
 TEST_F(X509ComparisonTest, ReqCA) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             csr_path + " -req -CA " + ca_cert_path + " -out " +
-                             out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " x509 -in " + csr_path + " -req -CA " +
-                                ca_cert_path + " -out " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(csr_path) + " -req -CA " +
+                             ShellEscape(ca_cert_path) + " -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(csr_path) +
+                                " -req -CA " + ShellEscape(ca_cert_path) +
+                                " -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1416,12 +1475,15 @@ TEST_F(X509ComparisonTest, ReqCA) {
       << "Certificates generated by tool and OpenSSL have different attributes";
 
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + csr_path +
-                 " -req -CA " + ca_cert_path + " -CAkey " + ca_key_path +
-                 " -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    csr_path + " -req -CA " + ca_cert_path + " -CAkey " +
-                    ca_key_path + " -out " + out_path_openssl;
+  tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(csr_path) +
+      " -req -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      ShellEscape(ca_key_path) + " -out " + ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(csr_path) + " -req -CA " +
+                    ShellEscape(ca_cert_path) + " -CAkey " +
+                    ShellEscape(ca_key_path) + " -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1442,13 +1504,15 @@ TEST_F(X509ComparisonTest, ReqCA) {
 
 // Test against OpenSSL output with -passin option
 TEST_F(X509ComparisonTest, Passin) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -signkey " + protected_signkey_path +
-                             " -passin pass:testpassword -out " + out_path_tool;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -signkey " + ShellEscape(protected_signkey_path) +
+      " -passin pass:testpassword -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -signkey " + protected_signkey_path +
-      " -passin pass:testpassword -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -signkey " +
+      ShellEscape(protected_signkey_path) + " -passin pass:testpassword -out " +
+      ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1478,14 +1542,16 @@ TEST_F(X509ComparisonTest, Extensions) {
   fprintf(ext_file.get(), "[test_ext]\nbasicConstraints=CA:FALSE\n");
   fclose(ext_file.release());
 
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             csr_path + " -req -signkey " + signkey_path +
-                             " -extfile " + ext_path +
-                             " -extensions test_ext -out " + out_path_tool;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(csr_path) +
+      " -req -signkey " + ShellEscape(signkey_path) + " -extfile " +
+      ShellEscape(ext_path) + " -extensions test_ext -out " +
+      ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + csr_path +
-      " -req -signkey " + signkey_path + " -extfile " + ext_path +
-      " -extensions test_ext -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(csr_path) + " -req -signkey " + ShellEscape(signkey_path) +
+      " -extfile " + ShellEscape(ext_path) + " -extensions test_ext -out " +
+      ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1506,12 +1572,15 @@ TEST_F(X509ComparisonTest, Extensions) {
   fprintf(ext_file.get(), "keyUsage=digitalSignature,keyEncipherment\n");
   fclose(ext_file.release());
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + csr_path +
-                 " -req -signkey " + signkey_path + " -extfile " + ext_path +
-                 " -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    csr_path + " -req -signkey " + signkey_path + " -extfile " +
-                    ext_path + " -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(csr_path) + " -req -signkey " +
+                 ShellEscape(signkey_path) + " -extfile " +
+                 ShellEscape(ext_path) + " -out " + ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(csr_path) + " -req -signkey " +
+                    ShellEscape(signkey_path) + " -extfile " +
+                    ShellEscape(ext_path) + " -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1534,12 +1603,15 @@ TEST_F(X509ComparisonTest, Extensions) {
   fprintf(ext_file.get(), "keyUsage=digitalSignature,keyEncipherment\n");
   fclose(ext_file.release());
 
-  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path +
-                 " -signkey " + signkey_path + " -extfile " + ext_path +
-                 " -out " + out_path_tool;
-  openssl_command = std::string(openssl_executable_path) + " x509 -in " +
-                    in_path + " -signkey " + signkey_path + " -extfile " +
-                    ext_path + " -out " + out_path_openssl;
+  tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                 ShellEscape(in_path) + " -signkey " +
+                 ShellEscape(signkey_path) + " -extfile " +
+                 ShellEscape(ext_path) + " -out " + ShellEscape(out_path_tool);
+  openssl_command = ShellEscape(openssl_executable_path) + " x509 -in " +
+                    ShellEscape(in_path) + " -signkey " +
+                    ShellEscape(signkey_path) + " -extfile " +
+                    ShellEscape(ext_path) + " -out " +
+                    ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1558,12 +1630,14 @@ TEST_F(X509ComparisonTest, Extensions) {
 
 // Test serial generation against OpenSSL
 TEST_F(X509ComparisonTest, BasicSerialGeneration) {
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -CA " + ca_cert_path + " -CAkey " +
-                             ca_key_path + " -out " + out_path_tool;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      ShellEscape(ca_key_path) + " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path + " -CA " +
-      ca_cert_path + " -CAkey " + ca_key_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      ShellEscape(ca_key_path) + " -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1600,12 +1674,14 @@ TEST_F(X509ComparisonTest, SerialGenerationExistingFile) {
   fprintf(srl_file.get(), "1234ABCD\n");
   srl_file.reset();
 
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -CA " + ca_cert_path + " -CAkey " +
-                             ca_key_path + " -out " + out_path_tool;
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      ShellEscape(ca_key_path) + " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path + " -CA " +
-      ca_cert_path + " -CAkey " + ca_key_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      ShellEscape(ca_key_path) + " -out " + ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1639,14 +1715,16 @@ TEST_F(X509ComparisonTest, KeyIDExtensionValid) {
   fprintf(ext_file.get(), "authorityKeyIdentifier=keyid:always\n");
   fclose(ext_file.release());
 
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -signkey " + signkey_path +
-                             " -extfile " + ext_path + " -extensions test_ext" +
-                             " -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -signkey " +
+                             ShellEscape(signkey_path) + " -extfile " +
+                             ShellEscape(ext_path) + " -extensions test_ext" +
+                             " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -signkey " + signkey_path + " -extfile " + ext_path +
-      " -extensions test_ext -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -signkey " + ShellEscape(signkey_path) +
+      " -extfile " + ShellEscape(ext_path) + " -extensions test_ext -out " +
+      ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
@@ -1678,14 +1756,16 @@ TEST_F(X509ComparisonTest, KeyIDExtensionSelfSigned) {
   fclose(ext_file.release());
 
   // Self-sign the certificate (same key for signing and subject)
-  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
-                             in_path + " -signkey " + signkey_path +
-                             " -extfile " + ext_path + " -extensions test_ext" +
-                             " -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -signkey " +
+                             ShellEscape(signkey_path) + " -extfile " +
+                             ShellEscape(ext_path) + " -extensions test_ext" +
+                             " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " x509 -in " + in_path +
-      " -signkey " + signkey_path + " -extfile " + ext_path +
-      " -extensions test_ext -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -signkey " + ShellEscape(signkey_path) +
+      " -extfile " + ShellEscape(ext_path) + " -extensions test_ext -out " +
+      ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
   ExecuteCommand(openssl_command);
