@@ -3667,10 +3667,12 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 
 #if defined(AWSLC_CRYPTO_POLICIES)
 
-// System crypto-policies (opt-in via -DENABLE_CRYPTO_POLICIES). On Amazon Linux
-// 2023 and Fedora the system-wide crypto-policies framework renders an OpenSSL
-// back-end file describing the OS TLS posture. The declarations below locate and
-// read that file.
+// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). On
+// Amazon Linux 2023 and Fedora the system-wide crypto-policies framework
+// renders an OpenSSL back-end file describing the OS TLS posture. When enabled,
+// |SSL_CTX_new| seeds each new |SSL_CTX| from that file after its built-in
+// defaults. This is best-effort: consumers may override afterward, and any
+// failure leaves the built-in defaults in place.
 
 // AWSLC_CRYPTO_POLICY_DEFAULT_FILE is the compile-time default location of the
 // crypto-policies OpenSSL back-end file. Packagers set it with
@@ -3723,7 +3725,10 @@ struct CryptoPolicyConfig {
 // returns true if the whole file was read (even if no recognized keys were
 // present), and false on invalid arguments or if the file could not be opened
 // or read to its end.
-bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
+                                                 CryptoPolicyConfig *out);
 
 // ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
@@ -3733,7 +3738,29 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 // The environment override is ignored in processes running with elevated
 // privileges, where the environment sits on the far side of a privilege boundary
 // from the root-owned default path.
-const char *ssl_crypto_policy_default_path(void);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
+
+// ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
+// back-end file at |path|. It is best-effort and never fails: a missing or
+// malformed file, or a directive AWS-LC rejects, leaves the corresponding
+// built-in default in place. Errors already queued by the caller are preserved;
+// errors this function provokes are not.
+//
+// |is_dtls| selects the TLS.* vs DTLS.* protocol directives. |version_locked|
+// must be true when |ctx| came from one of the legacy version-locked
+// |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
+// protocol floor and ceiling are skipped: the caller pinned a single version and
+// a system-wide default must not silently widen it.
+//
+// The parsed file is cached process-wide, keyed on |path|, so repeated
+// |SSL_CTX_new| calls do not re-read it.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path,
+                                                bool is_dtls,
+                                                bool version_locked);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 
