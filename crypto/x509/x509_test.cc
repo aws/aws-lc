@@ -2171,6 +2171,18 @@ static bssl::UniquePtr<X509> MakeCRLDPLeaf(
   return leaf;
 }
 
+static bssl::UniquePtr<X509_CRL> ReencodeCRL(X509_CRL *crl) {
+  uint8_t *der = nullptr;
+  int len = i2d_X509_CRL(crl, &der);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  if (len <= 0) {
+    return nullptr;
+  }
+
+  const uint8_t *inp = der;
+  return bssl::UniquePtr<X509_CRL>(d2i_X509_CRL(nullptr, &inp, len));
+}
+
 // Helper to create a CRL, optionally with an IDP extension and revoked serials.
 static bssl::UniquePtr<X509_CRL> MakeTestCRL(
     X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
@@ -2242,15 +2254,62 @@ static bssl::UniquePtr<X509_CRL> MakeTestCRL(
   // Re-encode and re-parse so that internal fields like crl->idp and
   // crl->idp_flags are populated from the IDP extension. These are only
   // set during parsing (ASN1_OP_D2I_POST), not programmatic construction.
-  uint8_t *der = nullptr;
-  int der_len = i2d_X509_CRL(crl.get(), &der);
-  if (der_len <= 0) {
+  return ReencodeCRL(crl.get());
+}
+
+// Kinds of single defect |MakeInvalidTestCRL| can introduce. Each makes the
+// CRL score as a "near match" (usable but not fully valid) rather than valid.
+enum class CRLDefect {
+  kExpired,          // nextUpdate before kReferenceTime; drops CRL_SCORE_TIME.
+  kUnknownCritical,  // unhandled critical extension; drops CRL_SCORE_NOCRITICAL.
+};
+
+// Like |MakeTestCRL|, but introduces a single |defect| so the CRL is correctly
+// signed yet fails one validity check, exercising the near-match fallback in
+// |check_all_crls|.
+static bssl::UniquePtr<X509_CRL> MakeInvalidTestCRL(
+    X509 *issuer_cert, EVP_PKEY *key, const char *idp_uri,
+    const std::vector<int> &revoked_serials, CRLDefect defect,
+    int crl_age = 0) {
+  bssl::UniquePtr<X509_CRL> crl =
+      MakeTestCRL(issuer_cert, key, idp_uri, revoked_serials, crl_age);
+  if (!crl) {
     return nullptr;
   }
-  const uint8_t *inp = der;
-  crl.reset(d2i_X509_CRL(nullptr, &inp, der_len));
-  OPENSSL_free(der);
-  return crl;
+  switch (defect) {
+    case CRLDefect::kExpired: {
+      bssl::UniquePtr<ASN1_TIME> expired(ASN1_TIME_new());
+      if (!expired || !ASN1_TIME_adj(expired.get(), kReferenceTime, -1, 0) ||
+          !X509_CRL_set1_nextUpdate(crl.get(), expired.get())) {
+        return nullptr;
+      }
+      break;
+    }
+    case CRLDefect::kUnknownCritical: {
+      static const uint8_t kUnknownOID[] = {0x2b, 0x06, 0x01, 0x04, 0x01,
+                                            0x82, 0x37, 0x15, 0x24};
+      bssl::UniquePtr<ASN1_OBJECT> oid(
+          OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
+      bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
+      if (!oid || !ext_val ||
+          !ASN1_OCTET_STRING_set(ext_val.get(), kUnknownOID,
+                                 sizeof(kUnknownOID))) {
+        return nullptr;
+      }
+      bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_OBJ(
+          nullptr, oid.get(), /*crit=*/1, ext_val.get()));
+      if (!ext || !X509_CRL_add_ext(crl.get(), ext.get(), -1)) {
+        return nullptr;
+      }
+      break;
+    }
+  }
+  // Re-sign to cover the mutation, then re-encode and re-parse so cached
+  // extension flags (EXFLAG_CRITICAL, times, ...) reflect it.
+  if (!X509_CRL_sign(crl.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return ReencodeCRL(crl.get());
 }
 
 // Test that CRL distribution point scope checking (crl_crldp_check) correctly
@@ -2337,10 +2396,13 @@ TEST(X509Test, CRLDistributionPointScope) {
   }
 }
 
-// A CRL whose IDP specifically matches the certificate's CRLDP must be
-// preferred over a broad CRL (no IDP or empty IDP), regardless of freshness
-// or load order.
-TEST(X509Test, CRLSpecificIDPPreferredOverBroadCRL) {
+// When no fully valid CRL is available, |check_all_crls| falls back to the
+// best-scoring "near match" CRL so the specific CRL-validity error (expired,
+// unhandled critical extension, ...) is surfaced through the verify callback
+// instead of the generic X509_V_ERR_UNABLE_TO_GET_CRL. Among several unusable
+// CRLs, the highest-scoring one is selected deterministically, independent of
+// load order.
+TEST(X509Test, CRLNearMatchFallback) {
   bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
   bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
   ASSERT_TRUE(root);
@@ -2361,186 +2423,292 @@ TEST(X509Test, CRLSpecificIDPPreferredOverBroadCRL) {
   auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
   ASSERT_TRUE(leaf);
 
-  // broad_newer_vs_specific_older: clean no-IDP CRL (lastUpdate=-1d) vs
-  // revoking specific CRL (lastUpdate=-2d). The broad CRL is newer.
+  // single_expired_reports_expired: the only CRL is expired. The near-match
+  // fallback must report X509_V_ERR_CRL_HAS_EXPIRED, not the generic
+  // X509_V_ERR_UNABLE_TO_GET_CRL.
   {
-    SCOPED_TRACE("broad_newer_vs_specific_older");
-    auto broad_new = MakeTestCRL(root.get(), key.get(),
-                                  nullptr, {}, /*crl_age=*/-1);
-    auto specific_old = MakeTestCRL(root.get(), key.get(),
-                                    kCRLURI, {kLeafSerial},
-                                    /*crl_age=*/-2);
-    ASSERT_TRUE(broad_new);
-    ASSERT_TRUE(specific_old);
-
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {broad_new.get(), specific_old.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific_old.get(), broad_new.get()},
-                     X509_V_FLAG_CRL_CHECK));
-  }
-
-  // empty_idp_newer_vs_specific_older: clean empty-IDP CRL (lastUpdate=-1d) vs
-  // revoking specific CRL (lastUpdate=-2d). The empty-IDP CRL is newer.
-  {
-    SCOPED_TRACE("empty_idp_newer_vs_specific_older");
-    auto empty_new = MakeTestCRL(root.get(), key.get(),
-                                  "", {}, /*crl_age=*/-1);
-    auto specific_old = MakeTestCRL(root.get(), key.get(),
-                                    kCRLURI, {kLeafSerial},
-                                    /*crl_age=*/-2);
-    ASSERT_TRUE(empty_new);
-    ASSERT_TRUE(specific_old);
-
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {empty_new.get(), specific_old.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific_old.get(), empty_new.get()},
-                     X509_V_FLAG_CRL_CHECK));
-  }
-
-  // broad_same_age_vs_specific_same_age: both lastUpdate=-1d.
-  // Before the fix, load order determined the result.
-  {
-    SCOPED_TRACE("broad_same_age_vs_specific_same_age");
-    auto broad_same = MakeTestCRL(root.get(), key.get(),
-                                   nullptr, {}, /*crl_age=*/-1);
-    auto specific_same = MakeTestCRL(root.get(), key.get(),
-                                     kCRLURI, {kLeafSerial},
-                                     /*crl_age=*/-1);
-    ASSERT_TRUE(broad_same);
-    ASSERT_TRUE(specific_same);
-
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {broad_same.get(), specific_same.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific_same.get(), broad_same.get()},
-                     X509_V_FLAG_CRL_CHECK));
-  }
-
-  // empty_idp_same_age_vs_specific_same_age: both lastUpdate=-1d.
-  {
-    SCOPED_TRACE("empty_idp_same_age_vs_specific_same_age");
-    auto empty_same = MakeTestCRL(root.get(), key.get(),
-                                   "", {}, /*crl_age=*/-1);
-    auto specific_same = MakeTestCRL(root.get(), key.get(),
-                                     kCRLURI, {kLeafSerial},
-                                     /*crl_age=*/-1);
-    ASSERT_TRUE(empty_same);
-    ASSERT_TRUE(specific_same);
-
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {empty_same.get(), specific_same.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific_same.get(), empty_same.get()},
-                     X509_V_FLAG_CRL_CHECK));
-  }
-
-  // specific_expired_vs_broad_in_window: a specific-IDP CRL that revokes the
-  // leaf but has expired (nextUpdate before verification time) should lose to
-  // a time-valid broad CRL. SCOPE_MATCH is intentionally not part of
-  // CRL_SCORE_VALID, so an expired specific CRL cannot outrank a valid broad
-  // CRL via the SCOPE_MATCH bit alone.
-  {
-    SCOPED_TRACE("specific_expired_vs_broad_in_window");
-    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
-                             /*crl_age=*/-1);
-    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
-                                {kLeafSerial}, /*crl_age=*/-1);
-    ASSERT_TRUE(broad);
-    ASSERT_TRUE(specific);
-
-    // Set the specific CRL's nextUpdate to before kReferenceTime so it
-    // appears expired at verification time, then re-sign and re-parse.
-    bssl::UniquePtr<ASN1_TIME> expired(ASN1_TIME_new());
+    SCOPED_TRACE("single_expired_reports_expired");
+    auto expired = MakeInvalidTestCRL(root.get(), key.get(), nullptr, {},
+                                      CRLDefect::kExpired, /*crl_age=*/-1);
     ASSERT_TRUE(expired);
-    ASSERT_TRUE(ASN1_TIME_adj(expired.get(), kReferenceTime, -1, 0));
-    ASSERT_TRUE(X509_CRL_set1_nextUpdate(specific.get(), expired.get()));
-    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
-    uint8_t *der = nullptr;
-    int der_len = i2d_X509_CRL(specific.get(), &der);
-    ASSERT_GT(der_len, 0);
-    const uint8_t *inp = der;
-    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
-    OPENSSL_free(der);
-    ASSERT_TRUE(specific);
 
-    // The broad in-window CRL should be preferred. Since it doesn't list
-    // the revocation, the cert verifies as OK.
-    EXPECT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {broad.get(), specific.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific.get(), broad.get()},
+    EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
+              Verify(leaf.get(), {root.get()}, {root.get()}, {expired.get()},
                      X509_V_FLAG_CRL_CHECK));
   }
 
-  // specific_with_unknown_critical_ext: a specific-IDP CRL that revokes the
-  // leaf but has an unhandled critical extension should lose to a processable
-  // broad CRL. The broad CRL doesn't list the revocation, so the cert should
-  // NOT be reported as revoked — we can't trust the specific CRL we can't
-  // fully process.
+  // single_unknown_critical_reports_critical: the only CRL carries an unhandled
+  // critical extension. The near-match fallback reports
+  // X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION.
   {
-    SCOPED_TRACE("specific_with_unknown_critical_ext");
-    auto broad = MakeTestCRL(root.get(), key.get(), nullptr, {},
-                             /*crl_age=*/-1);
-    auto specific = MakeTestCRL(root.get(), key.get(), kCRLURI,
-                                {kLeafSerial}, /*crl_age=*/-1);
-    ASSERT_TRUE(broad);
-    ASSERT_TRUE(specific);
+    SCOPED_TRACE("single_unknown_critical_reports_critical");
+    auto crit = MakeInvalidTestCRL(root.get(), key.get(), nullptr, {},
+                                   CRLDefect::kUnknownCritical, /*crl_age=*/-1);
+    ASSERT_TRUE(crit);
 
-    // Add an unknown critical extension to the specific CRL, then re-sign
-    // and re-parse.
-    static const uint8_t kUnknownOID[] = {0x2b, 0x06, 0x01, 0x04, 0x01,
-                                          0x82, 0x37, 0x15, 0x24};
-    bssl::UniquePtr<ASN1_OBJECT> oid(
-        OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
-    ASSERT_TRUE(oid);
-    bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
-    ASSERT_TRUE(ext_val);
-    ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_val.get(), kUnknownOID, sizeof(kUnknownOID)));
-    bssl::UniquePtr<X509_EXTENSION> ext(
-        X509_EXTENSION_create_by_OBJ(nullptr, oid.get(), /*crit=*/1,
-                                     ext_val.get()));
-    ASSERT_TRUE(ext);
-    ASSERT_TRUE(X509_CRL_add_ext(specific.get(), ext.get(), -1));
-    ASSERT_TRUE(X509_CRL_sign(specific.get(), key.get(), EVP_sha256()));
-
-    // Re-encode and re-parse to populate internal flags.
-    uint8_t *der = nullptr;
-    int der_len = i2d_X509_CRL(specific.get(), &der);
-    ASSERT_GT(der_len, 0);
-    const uint8_t *inp = der;
-    specific.reset(d2i_X509_CRL(nullptr, &inp, der_len));
-    OPENSSL_free(der);
-    ASSERT_TRUE(specific);
-
-    // The broad CRL should be preferred since the specific one has an
-    // unprocessable critical extension. The broad CRL doesn't revoke the
-    // leaf, so verification should succeed (cert not revoked).
-    EXPECT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {broad.get(), specific.get()},
-                     X509_V_FLAG_CRL_CHECK));
-    EXPECT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {root.get()},
-                     {specific.get(), broad.get()},
+    EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {root.get()}, {crit.get()},
                      X509_V_FLAG_CRL_CHECK));
   }
+
+  // higher_scoring_near_match_wins: no valid CRL. An expired-but-otherwise-clean
+  // CRL (missing only CRL_SCORE_TIME) outscores a time-valid CRL with an
+  // unhandled critical extension (missing CRL_SCORE_NOCRITICAL, a higher-value
+  // bit). The higher-scoring near match is selected regardless of load order, so
+  // the expired CRL's error is what surfaces.
+  {
+    SCOPED_TRACE("higher_scoring_near_match_wins");
+    auto expired = MakeInvalidTestCRL(root.get(), key.get(), nullptr, {},
+                                      CRLDefect::kExpired, /*crl_age=*/-1);
+    auto crit = MakeInvalidTestCRL(root.get(), key.get(), nullptr, {},
+                                   CRLDefect::kUnknownCritical, /*crl_age=*/-1);
+    ASSERT_TRUE(expired);
+    ASSERT_TRUE(crit);
+
+    EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {expired.get(), crit.get()}, X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {crit.get(), expired.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+}
+
+// Per RFC 5280 section 6.3.3, a certificate must be checked against every
+// applicable CRL, not just a single "best" one selected by score/freshness. A
+// certificate found revoked in any valid CRL is revoked, even if some other,
+// higher-scoring or fresher valid CRL does not list it. These cases would have
+// passed (X509_V_OK) under single-CRL selection.
+TEST(X509Test, CheckAllValidCRLsForRevocation) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x3000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+
+  // same_scope_fresher_clean_older_revoking: two broad (no-IDP) CRLs of equal
+  // scope class. The fresher one is clean; the older one revokes the leaf.
+  // Single-CRL selection would pick the fresher (clean) CRL by the freshness
+  // tie-break and miss the revocation.
+  {
+    SCOPED_TRACE("same_scope_fresher_clean_older_revoking");
+    auto clean_fresh =
+        MakeTestCRL(root.get(), key.get(), nullptr, {}, /*crl_age=*/-1);
+    auto revoking_old = MakeTestCRL(root.get(), key.get(), nullptr,
+                                    {kLeafSerial}, /*crl_age=*/-2);
+    ASSERT_TRUE(clean_fresh);
+    ASSERT_TRUE(revoking_old);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {clean_fresh.get(), revoking_old.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {revoking_old.get(), clean_fresh.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // higher_scoring_clean_lower_scoring_revoking: a specific-IDP clean CRL (which
+  // scores higher via CRL_SCORE_IDP_MATCH) and a broad CRL that revokes the
+  // leaf. Single-CRL selection would pick the higher-scoring specific CRL and
+  // miss the revocation carried by the broad CRL.
+  {
+    SCOPED_TRACE("higher_scoring_clean_lower_scoring_revoking");
+    auto specific_clean =
+        MakeTestCRL(root.get(), key.get(), kCRLURI, {}, /*crl_age=*/-1);
+    auto broad_revoking = MakeTestCRL(root.get(), key.get(), nullptr,
+                                      {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(specific_clean);
+    ASSERT_TRUE(broad_revoking);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {specific_clean.get(), broad_revoking.get()},
+                     X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {broad_revoking.get(), specific_clean.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+
+  // not_revoked_when_absent_from_all: several valid CRLs, none listing the
+  // leaf. The loop must examine all of them and conclude the cert is not
+  // revoked (no false positive).
+  {
+    SCOPED_TRACE("not_revoked_when_absent_from_all");
+    auto broad_clean =
+        MakeTestCRL(root.get(), key.get(), nullptr, {}, /*crl_age=*/-1);
+    auto specific_clean =
+        MakeTestCRL(root.get(), key.get(), kCRLURI, {}, /*crl_age=*/-2);
+    ASSERT_TRUE(broad_clean);
+    ASSERT_TRUE(specific_clean);
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                                {broad_clean.get(), specific_clean.get()},
+                                X509_V_FLAG_CRL_CHECK));
+  }
+
+  // invalid_revoking_ignored_valid_clean_wins: a revoking CRL that is NOT valid
+  // (expired) must be excluded from the check-all set, so a valid clean CRL
+  // yields X509_V_OK. We must never honor a revocation from an unusable CRL.
+  {
+    SCOPED_TRACE("invalid_revoking_ignored_valid_clean_wins");
+    auto valid_clean =
+        MakeTestCRL(root.get(), key.get(), nullptr, {}, /*crl_age=*/-1);
+    auto revoking_expired =
+        MakeInvalidTestCRL(root.get(), key.get(), nullptr, {kLeafSerial},
+                           CRLDefect::kExpired, /*crl_age=*/-1);
+    ASSERT_TRUE(valid_clean);
+    ASSERT_TRUE(revoking_expired);
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                                {valid_clean.get(), revoking_expired.get()},
+                                X509_V_FLAG_CRL_CHECK));
+  }
+}
+
+// A candidate CRL that scores as valid but fails |check_crl| (bad signature,
+// unresolved issuer, missing cRLSign) is unusable, not fatal. It must be
+// skipped so another usable same-issuer CRL can still determine the
+// certificate's status — the situation that arises during CA key rollover or
+// when a store merges CRLs from multiple sources. Only when no candidate is
+// usable should verification surface the CRL error.
+TEST(X509Test, CheckAllValidCRLsSkipsUnusable) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  // |wrong_key| is unrelated to |root|, so a CRL signed with it names |root| as
+  // issuer yet fails signature verification — it scores valid (scoring does not
+  // check signatures) but is rejected by |check_crl|.
+  bssl::UniquePtr<EVP_PKEY> wrong_key(PrivateKeyFromPEM(kP256Key));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(wrong_key);
+
+  const int kLeafSerial = 0x3200;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+
+  // bad_revoking_skipped_clean_wins: a bad-signature CRL that revokes the leaf
+  // is skipped, and the valid clean CRL yields X509_V_OK. Before the fix, the
+  // bad CRL aborted the whole verification with a spurious signature error.
+  {
+    SCOPED_TRACE("bad_revoking_skipped_clean_wins");
+    auto clean =
+        MakeTestCRL(root.get(), key.get(), nullptr, {}, /*crl_age=*/-1);
+    auto bad_revoking = MakeTestCRL(root.get(), wrong_key.get(), nullptr,
+                                    {kLeafSerial}, /*crl_age=*/-1);
+    ASSERT_TRUE(clean);
+    ASSERT_TRUE(bad_revoking);
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                                {clean.get(), bad_revoking.get()},
+                                X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                                {bad_revoking.get(), clean.get()},
+                                X509_V_FLAG_CRL_CHECK));
+  }
+
+  // bad_clean_skipped_valid_revoking_wins: a bad-signature clean CRL is skipped,
+  // and a valid CRL that revokes the leaf still reports CERT_REVOKED.
+  {
+    SCOPED_TRACE("bad_clean_skipped_valid_revoking_wins");
+    auto bad_clean =
+        MakeTestCRL(root.get(), wrong_key.get(), nullptr, {}, /*crl_age=*/-1);
+    auto revoking =
+        MakeTestCRL(root.get(), key.get(), nullptr, {kLeafSerial},
+                    /*crl_age=*/-1);
+    ASSERT_TRUE(bad_clean);
+    ASSERT_TRUE(revoking);
+
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {bad_clean.get(), revoking.get()}, X509_V_FLAG_CRL_CHECK));
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(leaf.get(), {root.get()}, {root.get()},
+                     {revoking.get(), bad_clean.get()}, X509_V_FLAG_CRL_CHECK));
+  }
+
+  // all_unusable_reports_error: when every candidate fails check_crl, the CRL
+  // error is still surfaced rather than silently passing.
+  {
+    SCOPED_TRACE("all_unusable_reports_error");
+    auto bad =
+        MakeTestCRL(root.get(), wrong_key.get(), nullptr, {}, /*crl_age=*/-1);
+    ASSERT_TRUE(bad);
+
+    EXPECT_EQ(X509_V_ERR_CRL_SIGNATURE_FAILURE,
+              Verify(leaf.get(), {root.get()}, {root.get()}, {bad.get()},
+                     X509_V_FLAG_CRL_CHECK));
+  }
+}
+
+// The check-all logic must gather candidate CRLs from the store lookup source
+// (ctx->lookup_crls), not only from the context-supplied CRLs.
+TEST(X509Test, CheckAllValidCRLsFromStore) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x3100;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+  auto crl =
+      MakeTestCRL(root.get(), key.get(), kCRLURI, {kLeafSerial}, /*crl_age=*/-1);
+  ASSERT_TRUE(crl);
+
+  // Put the trusted root and the revoking CRL in the store, so the CRL is only
+  // reachable via the store lookup (ctx->crls is left empty).
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+  ASSERT_TRUE(X509_STORE_add_crl(store.get(), crl.get()));
+
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                                  /*chain=*/nullptr));
+
+  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
+  X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CRL_CHECK);
+
+  EXPECT_EQ(0, X509_verify_cert(ctx.get()));
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED, X509_STORE_CTX_get_error(ctx.get()));
 }
 
 TEST(X509Test, TestX509GettersSetters) {
@@ -3241,18 +3409,6 @@ static bssl::UniquePtr<X509> ReencodeCertificate(X509 *cert) {
 
   const uint8_t *inp = der;
   return bssl::UniquePtr<X509>(d2i_X509(nullptr, &inp, len));
-}
-
-static bssl::UniquePtr<X509_CRL> ReencodeCRL(X509_CRL *crl) {
-  uint8_t *der = nullptr;
-  int len = i2d_X509_CRL(crl, &der);
-  bssl::UniquePtr<uint8_t> free_der(der);
-  if (len <= 0) {
-    return nullptr;
-  }
-
-  const uint8_t *inp = der;
-  return bssl::UniquePtr<X509_CRL>(d2i_X509_CRL(nullptr, &inp, len));
 }
 
 static bssl::UniquePtr<X509_REQ> ReencodeCSR(X509_REQ *req) {
