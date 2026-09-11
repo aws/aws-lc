@@ -20,6 +20,7 @@ jobs:
           install_commands: >-
             /github/workspace/util/build_compilation_database.sh
             -DBUILD_AWSLC_PROVIDER=ON
+            -DBUILD_SHARED_LIBS=ON
             -DAWSLC_PROVIDER_OPENSSL_ROOT=/usr
           config_file: '/github/workspace/.clang-tidy'
       - uses: ZedThree/clang-tidy-review/upload@v0.23.1
