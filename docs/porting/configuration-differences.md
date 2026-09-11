@@ -45,12 +45,20 @@ defaults are applied and before the context is returned, so a consumer that
 subsequently calls the relevant setters overrides the seeded values.
 
 The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
-`TLS.MaxProtocol`, `DTLS.MinProtocol`, and `DTLS.MaxProtocol`. Seeding is
-best-effort: a missing or malformed file, or a directive AWS-LC does not support,
-is ignored rather than fatal. A directive AWS-LC cannot satisfy is skipped and
-the built-in default stands. A context created from one of the legacy
-version-locked methods, such as `TLSv1_2_method`, keeps its single pinned version
-and takes no protocol bounds from the policy. See
+`TLS.MaxProtocol`, `DTLS.MinProtocol`, `DTLS.MaxProtocol`, `Groups`, and
+`SignatureAlgorithms`. Seeding is best-effort: a missing or malformed file, or a
+directive AWS-LC does not support, is ignored rather than fatal. A directive
+AWS-LC cannot satisfy is skipped and the built-in default stands. A context
+created from one of the legacy version-locked methods, such as `TLSv1_2_method`,
+keeps its single pinned version and takes no protocol bounds from the policy.
+
+`Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
+implements, in the order the policy gives them, and a directive naming nothing
+AWS-LC implements is dropped. In `Groups`, the OpenSSL modifiers `*` and `?` are
+stripped from the group they mark and `-` drops it. Both directives correspond
+to setters that replace AWS-LC's default list rather than intersect with it, so a
+policy silent on AWS-LC's post-quantum groups (ML-KEM hybrids) and signature
+algorithms (ML-DSA) removes them from the context. See
 [BUILDING.md](../../BUILDING.md) for the build flag and the
 `AWSLC_CRYPTO_POLICY_FILE` override.
 

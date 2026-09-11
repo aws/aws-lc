@@ -141,6 +141,80 @@ uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
   return 0;
 }
 
+// kMaxPolicyIds bounds the algorithm IDs kept from one policy directive. No
+// directive can yield more than the number of groups or signature algorithms
+// AWS-LC implements, which is well under this.
+constexpr size_t kMaxPolicyIds = 64;
+
+// GroupIdFromToken sets |*out| to the AWS-LC group ID named by the
+// crypto-policies token |tok|, of length |len|, and returns false if AWS-LC has
+// no such group.
+bool GroupIdFromToken(uint16_t *out, const char *tok, size_t len) {
+  // OpenSSL 3.5 group-list modifiers, which every stock policy puts on its
+  // first entry: '*' asks for a key share, '?' tolerates an unimplemented
+  // group, '-' removes one. AWS-LC chooses its own key shares and already skips
+  // names it cannot resolve, so the first two need only stripping; '-' must not
+  // put the group back into the list.
+  if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+    tok++;
+    len--;
+  } else if (len > 0 && tok[0] == '-') {
+    return false;
+  }
+
+  // crypto-policies uses the IANA registry name for the NIST P-256 curve.
+  // AWS-LC follows OpenSSL, which knows it as "P-256" and "prime256v1" only, so
+  // without this the most widely deployed group in the list is the one that
+  // throws the whole list away.
+  static const char kSecp256r1[] = "secp256r1";
+  if (len == strlen(kSecp256r1) && OPENSSL_memcmp(tok, kSecp256r1, len) == 0) {
+    tok = "P-256";
+    len = strlen(tok);
+  }
+  return ssl_name_to_group_id(out, tok, len);
+}
+
+// FilterPolicyIds resolves the ':'-separated tokens of |value| through |lookup|
+// and writes the IDs that resolve into |out|, which holds |out_len| entries, in
+// the order the policy gave them. It returns how many were written.
+//
+// The Groups and SignatureAlgorithms setters reject a whole list on the first
+// entry they do not accept, and a stock crypto-policies value always names
+// something AWS-LC does not implement: X448 and the FFDHE groups, Ed448, the
+// SHA-224 pairs, and the RSA-PSS-PSS algorithms. Applying such a value as written
+// therefore discards the operator's whole preference order. Dropping the
+// unsupported tokens keeps the rest of it.
+//
+// Repeats are dropped for the same reason: two spellings of one group, such as
+// "secp256r1" and "prime256v1", resolve to a single ID, and |SSL_CTX_set1_group_ids|
+// rejects a list that names it twice.
+size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
+                       bool (*lookup)(uint16_t *, const char *, size_t)) {
+  size_t out_i = 0;
+  for (const char *tok = value;;) {
+    const char *end = strchr(tok, ':');
+    const size_t len =
+        end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+
+    uint16_t id;
+    if (len > 0 && out_i < out_len && lookup(&id, tok, len)) {
+      bool seen = false;
+      for (size_t i = 0; i < out_i; i++) {
+        seen = seen || out[i] == id;
+      }
+      if (!seen) {
+        out[out_i++] = id;
+      }
+    }
+
+    if (end == nullptr) {
+      break;
+    }
+    tok = end + 1;
+  }
+  return out_i;
+}
+
 // CipherRuleIsUsable reports whether |rule| yields a non-empty cipher list for
 // |ctx| under the same parameters the corresponding public setter would use.
 //
@@ -239,6 +313,26 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
   }
 
   ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
+
+  // SignatureAlgorithms and Groups, each narrowed to the algorithms AWS-LC
+  // implements. One buffer serves both since the directives are applied in turn.
+  uint16_t ids[kMaxPolicyIds];
+  if (cfg.sigalgs[0] != '\0') {
+    const size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs,
+                                     ssl_sigalg_id_from_name);
+    if (n > 0) {
+      // Both preference lists, matching what |SSL_CTX_set1_sigalgs_list| writes.
+      SSL_CTX_set_signing_algorithm_prefs(ctx, ids, n);
+      SSL_CTX_set_verify_algorithm_prefs(ctx, ids, n);
+    }
+  }
+  if (cfg.groups[0] != '\0') {
+    const size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups,
+                                     GroupIdFromToken);
+    if (n > 0) {
+      SSL_CTX_set1_group_ids(ctx, ids, n);
+    }
+  }
 }
 
 }  // namespace
