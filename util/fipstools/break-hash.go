@@ -12,6 +12,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"debug/elf"
+	"debug/pe"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -140,7 +141,80 @@ func doPE(objectBytes []byte, mapPath string) (int, []byte, error) {
 	return int(startOffset), moduleText, nil
 }
 
-func do(outPath, inPath, mapPath string) error {
+func doMingw(objectBytes []byte) (int, []byte, error) {
+	// The MinGW FIPS DLL is not built with a linker .map file, so (unlike
+	// doPE) we locate the module from the PE/COFF symbol table directly, the
+	// same way inject_hash.go does for MinGW. COFF symbol values are offsets
+	// from the start of their section, which translates directly to an on-disk
+	// location via the section's raw-data file offset.
+	object, err := pe.NewFile(bytes.NewReader(objectBytes))
+	if err != nil {
+		return 0, nil, errors.New("failed to parse object: " + err.Error())
+	}
+
+	var textSection *pe.Section
+	var textSectionIndex int
+	for i, section := range object.Sections {
+		if section.Name == ".text" {
+			textSection = section
+			// COFF section numbers are 1-based.
+			textSectionIndex = i + 1
+			break
+		}
+	}
+	if textSection == nil {
+		return 0, nil, errors.New("failed to find .text section in object")
+	}
+
+	symbols := object.Symbols
+	if symbols == nil {
+		return 0, nil, errors.New("no symbol table found in object")
+	}
+
+	var startSeen, endSeen bool
+	var start, end uint64
+	for _, symbol := range symbols {
+		if int(symbol.SectionNumber) != textSectionIndex {
+			continue
+		}
+		switch symbol.Name {
+		case "BORINGSSL_bcm_text_start":
+			if startSeen {
+				return 0, nil, errors.New("duplicate start symbol found")
+			}
+			startSeen = true
+			start = uint64(symbol.Value)
+		case "BORINGSSL_bcm_text_end":
+			if endSeen {
+				return 0, nil, errors.New("duplicate end symbol found")
+			}
+			endSeen = true
+			end = uint64(symbol.Value)
+		}
+	}
+
+	if !startSeen || !endSeen {
+		return 0, nil, errors.New("could not find module in object")
+	}
+	if start >= end || end > uint64(textSection.Size) {
+		return 0, nil, fmt.Errorf("invalid module boundaries: start=0x%x end=0x%x textsize=0x%x", start, end, textSection.Size)
+	}
+
+	// Section.Offset is the file offset of the section's raw data
+	// (PointerToRawData), so the module's on-disk start is that plus the
+	// section-relative symbol offset.
+	fileOffset := uint64(textSection.Offset) + start
+	if fileOffset+(end-start) > uint64(len(objectBytes)) {
+		return 0, nil, errors.New("module extends past end of file")
+	}
+
+	moduleText := make([]byte, end-start)
+	copy(moduleText, objectBytes[fileOffset:fileOffset+(end-start)])
+
+	return int(fileOffset), moduleText, nil
+}
+
+func do(outPath, inPath, mapPath string, mingw bool) error {
 	objectBytes, err := os.ReadFile(inPath)
 	if err != nil {
 		return err
@@ -149,7 +223,9 @@ func do(outPath, inPath, mapPath string) error {
 	var fileOffset int
 	var moduleText []byte
 
-	if mapPath != "" {
+	if mingw {
+		fileOffset, moduleText, err = doMingw(objectBytes)
+	} else if mapPath != "" {
 		fileOffset, moduleText, err = doPE(objectBytes, mapPath)
 	} else {
 		fileOffset, moduleText, err = doELF(objectBytes)
@@ -182,9 +258,10 @@ func do(outPath, inPath, mapPath string) error {
 }
 
 func main() {
-	mapPath := flag.String("map", "", "Path to linker .map file (required for Windows PE/DLL)")
+	mapPath := flag.String("map", "", "Path to linker .map file (required for Windows MSVC PE/DLL)")
+	mingw := flag.Bool("mingw", false, "Whether the FIPS module is a Windows MinGW DLL (uses the PE/COFF symbol table instead of a .map file)")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-map mapfile] <input binary> <output path>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [-map mapfile] [-mingw] <input binary> <output path>\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -195,7 +272,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := do(args[1], args[0], *mapPath); err != nil {
+	if err := do(args[1], args[0], *mapPath, *mingw); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
