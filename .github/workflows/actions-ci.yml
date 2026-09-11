@@ -179,8 +179,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fips: [0, 1]
-        shared: [0, 1]
+        # Every compiler version gets the FIPS static build, the most
+        # compiler-sensitive configuration because delocate rewrites the
+        # compiler's own assembly output. The fips and shared axes exercise build
+        # plumbing rather than codegen, so crossing them with all 17 versions cost
+        # 68 cells and 688 minutes per push. The range endpoints of each compiler
+        # family keep the full grid, where a config-specific compiler bug is most
+        # likely to surface.
+        fips: [1]
+        shared: [0]
         compiler:
           - "gcc9"
           - "gcc10"
@@ -199,6 +206,19 @@ jobs:
           - "clang20"
           - "clang21"
           - "clang22"
+        include:
+          - { compiler: "gcc9", fips: 0, shared: 0 }
+          - { compiler: "gcc9", fips: 0, shared: 1 }
+          - { compiler: "gcc9", fips: 1, shared: 1 }
+          - { compiler: "gcc16", fips: 0, shared: 0 }
+          - { compiler: "gcc16", fips: 0, shared: 1 }
+          - { compiler: "gcc16", fips: 1, shared: 1 }
+          - { compiler: "clang14", fips: 0, shared: 0 }
+          - { compiler: "clang14", fips: 0, shared: 1 }
+          - { compiler: "clang14", fips: 1, shared: 1 }
+          - { compiler: "clang22", fips: 0, shared: 0 }
+          - { compiler: "clang22", fips: 0, shared: 1 }
+          - { compiler: "clang22", fips: 1, shared: 1 }
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
