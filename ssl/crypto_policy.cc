@@ -23,11 +23,6 @@
 
 #if defined(OPENSSL_LINUX)
 #include "../crypto/fipsmodule/cpucap/cpu_getauxval_linux.h"
-// AT_SECURE from the Linux kernel ABI (include/uapi/linux/auxvec.h); the shared
-// helper defines only the entries its own callers use.
-#if !defined(AT_SECURE)
-#define AT_SECURE 23
-#endif
 #endif
 
 BSSL_NAMESPACE_BEGIN
