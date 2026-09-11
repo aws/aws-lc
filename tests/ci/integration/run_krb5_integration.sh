@@ -101,6 +101,7 @@ function krb5_run_tests() {
 
 git clone --depth 1 --branch "${KRB5_GIT_REF}" \
   https://github.com/krb5/krb5.git "${KRB5_SRC_FOLDER}"
+record_repo_commit "${KRB5_SRC_FOLDER}"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" \
          "${KRB5_BUILD_FOLDER}" "${KRB5_INSTALL_FOLDER}"
 ls

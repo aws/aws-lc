@@ -962,12 +962,14 @@ ERR_load_CRYPTO_strings AWS_LC_1.0 PUBLIC
 ERR_load_ERR_strings AWS_LC_1.0 PUBLIC
 ERR_load_RAND_strings AWS_LC_1.0 PUBLIC
 ERR_load_crypto_strings AWS_LC_1.0 PUBLIC
+ERR_num_errors AWS_LC_1.0 PRIVATE
 ERR_peek_error AWS_LC_1.0 PUBLIC
 ERR_peek_error_line AWS_LC_1.0 PUBLIC
 ERR_peek_error_line_data AWS_LC_1.0 PUBLIC
 ERR_peek_last_error AWS_LC_1.0 PUBLIC
 ERR_peek_last_error_line AWS_LC_1.0 PUBLIC
 ERR_peek_last_error_line_data AWS_LC_1.0 PUBLIC
+ERR_pop_to_count AWS_LC_1.0 PRIVATE
 ERR_pop_to_mark AWS_LC_1.0 PUBLIC
 ERR_print_errors AWS_LC_1.0 PUBLIC
 ERR_print_errors_cb AWS_LC_1.0 PUBLIC
@@ -2695,6 +2697,7 @@ d2i_DSA_PUBKEY_fp AWS_LC_1.0 PUBLIC
 d2i_DSA_SIG AWS_LC_1.0 PUBLIC
 d2i_DSAparams AWS_LC_1.0 PUBLIC
 d2i_ECDSA_SIG AWS_LC_1.0 PUBLIC
+d2i_ECPKParameters AWS_LC_1.0 PUBLIC
 d2i_ECPKParameters_bio AWS_LC_1.0 PUBLIC
 d2i_ECParameters AWS_LC_1.0 PUBLIC
 d2i_ECPrivateKey AWS_LC_1.0 PUBLIC
@@ -2850,6 +2853,7 @@ i2d_DSA_PUBKEY_fp AWS_LC_1.0 PUBLIC
 i2d_DSA_SIG AWS_LC_1.0 PUBLIC
 i2d_DSAparams AWS_LC_1.0 PUBLIC
 i2d_ECDSA_SIG AWS_LC_1.0 PUBLIC
+i2d_ECPKParameters AWS_LC_1.0 PUBLIC
 i2d_ECPKParameters_bio AWS_LC_1.0 PUBLIC
 i2d_ECParameters AWS_LC_1.0 PUBLIC
 i2d_ECPrivateKey AWS_LC_1.0 PUBLIC

@@ -83,6 +83,7 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_
 
 # Get OpenSSH at the requested ref.
 git clone --depth 1 --branch "${OPENSSH_REF}" https://github.com/openssh/openssh-portable.git "${OPENSSH_WORKSPACE_FOLDER}"
+record_repo_commit "${OPENSSH_WORKSPACE_FOLDER}"
 ls
 
 # Build AWS-LC as a shared library

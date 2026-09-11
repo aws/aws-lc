@@ -1424,6 +1424,16 @@ TEST(CipherTest, GCMIncrementingIV) {
   }
 }
 
+// The OpenSSL EVP_CTRL_CCM_* control names are aliases of the generic
+// EVP_CTRL_AEAD_* controls, whose behavior is covered by the existing CCM
+// tests.
+static_assert(EVP_CTRL_CCM_SET_IVLEN == EVP_CTRL_AEAD_SET_IVLEN,
+              "EVP_CTRL_CCM_SET_IVLEN must alias EVP_CTRL_AEAD_SET_IVLEN");
+static_assert(EVP_CTRL_CCM_GET_TAG == EVP_CTRL_AEAD_GET_TAG,
+              "EVP_CTRL_CCM_GET_TAG must alias EVP_CTRL_AEAD_GET_TAG");
+static_assert(EVP_CTRL_CCM_SET_TAG == EVP_CTRL_AEAD_SET_TAG,
+              "EVP_CTRL_CCM_SET_TAG must alias EVP_CTRL_AEAD_SET_TAG");
+
 #define CHECK_ERROR(function, err) \
     ERR_clear_error();                 \
     EXPECT_FALSE(function);                          \
