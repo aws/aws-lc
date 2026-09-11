@@ -179,8 +179,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fips: [0, 1]
-        shared: [0, 1]
+        # Every compiler version gets the FIPS static build, the most
+        # compiler-sensitive configuration because delocate rewrites the
+        # compiler's own assembly output. The fips and shared axes exercise build
+        # plumbing rather than codegen, so crossing them with all 17 versions cost
+        # 68 cells and 688 minutes per push. The range endpoints of each compiler
+        # family keep the full grid, where a config-specific compiler bug is most
+        # likely to surface.
+        fips: [1]
+        shared: [0]
         compiler:
           - "gcc9"
           - "gcc10"
@@ -199,6 +206,19 @@ jobs:
           - "clang20"
           - "clang21"
           - "clang22"
+        include:
+          - { compiler: "gcc9", fips: 0, shared: 0 }
+          - { compiler: "gcc9", fips: 0, shared: 1 }
+          - { compiler: "gcc9", fips: 1, shared: 1 }
+          - { compiler: "gcc16", fips: 0, shared: 0 }
+          - { compiler: "gcc16", fips: 0, shared: 1 }
+          - { compiler: "gcc16", fips: 1, shared: 1 }
+          - { compiler: "clang14", fips: 0, shared: 0 }
+          - { compiler: "clang14", fips: 0, shared: 1 }
+          - { compiler: "clang14", fips: 1, shared: 1 }
+          - { compiler: "clang22", fips: 0, shared: 0 }
+          - { compiler: "clang22", fips: 0, shared: 1 }
+          - { compiler: "clang22", fips: 1, shared: 1 }
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
@@ -341,8 +361,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; the family endpoints also get non-FIPS. Same
+        # reasoning as compiler-tests above.
         gcc_version: ["9", "10", "11", "12", "13", "14", "15", "16"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { gcc_version: "9", fips: "0" }
+          - { gcc_version: "16", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -380,6 +405,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # clang22 is a family endpoint, so it keeps both configs.
         clang_version: ["22"]
         fips: ["0", "1"]
     steps:
@@ -417,12 +443,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["14", "15", "16", "17", "18", "19"]
-        fips: ["0", "1"]
-        exclude:
-          # TODO: Broken FIPS build w/ clang 18
-          - clang_version: "18"
-            fips: "1"
+        fips: ["1"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -459,8 +482,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["11", "12", "13"]
-        fips: ["0", "1"]
+        fips: ["1"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -497,8 +521,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; clang7 is a family endpoint so it also gets
+        # non-FIPS.
         clang_version: ["7", "8", "9", "10"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { clang_version: "7", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
