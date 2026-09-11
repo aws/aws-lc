@@ -21,6 +21,15 @@
 #include <unistd.h>
 #endif
 
+#if defined(OPENSSL_LINUX)
+#include "../crypto/fipsmodule/cpucap/cpu_getauxval_linux.h"
+// AT_SECURE from the Linux kernel ABI (include/uapi/linux/auxvec.h); the shared
+// helper defines only the entries its own callers use.
+#if !defined(AT_SECURE)
+#define AT_SECURE 23
+#endif
+#endif
+
 BSSL_NAMESPACE_BEGIN
 
 namespace {
@@ -150,15 +159,17 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
 
 const char *ssl_crypto_policy_default_path(void) {
   // The compile-time default is a root-owned file under /etc; the environment is
-  // not. Honoring the override in a set-uid or set-gid process would let an
-  // unprivileged caller choose the TLS policy that privileged process runs
-  // under, so the override is dropped across a privilege boundary.
-  //
-  // This compares the real and effective ids rather than using glibc's
-  // secure_getenv so that no libc feature detection is needed. It therefore does
-  // not catch the rarer AT_SECURE cases that leave the ids equal, such as file
-  // capabilities; a packager shipping such a binary should build with
-  // -DAWSLC_CRYPTO_POLICY_FILE and treat the compile-time path as the only one.
+  // not. Honoring the override in a process that gained privileges on exec
+  // would let an unprivileged caller choose the TLS policy that privileged
+  // process runs under, so the override is dropped across a privilege boundary.
+#if defined(OPENSSL_HAS_GETAUXVAL)
+  // The kernel sets AT_SECURE for every secure execution and never clears it,
+  // so this also covers what leaves the ids below equal: file capabilities, and
+  // a set-uid program that has already dropped privileges.
+  if (getauxval(AT_SECURE) != 0) {
+    return AWSLC_CRYPTO_POLICY_DEFAULT_FILE;
+  }
+#endif
 #if !defined(OPENSSL_WINDOWS)
   if (getuid() != geteuid() || getgid() != getegid()) {
     return AWSLC_CRYPTO_POLICY_DEFAULT_FILE;
