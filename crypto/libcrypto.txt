@@ -962,12 +962,14 @@ ERR_load_CRYPTO_strings AWS_LC_1.0 PUBLIC
 ERR_load_ERR_strings AWS_LC_1.0 PUBLIC
 ERR_load_RAND_strings AWS_LC_1.0 PUBLIC
 ERR_load_crypto_strings AWS_LC_1.0 PUBLIC
+ERR_num_errors AWS_LC_1.0 PRIVATE
 ERR_peek_error AWS_LC_1.0 PUBLIC
 ERR_peek_error_line AWS_LC_1.0 PUBLIC
 ERR_peek_error_line_data AWS_LC_1.0 PUBLIC
 ERR_peek_last_error AWS_LC_1.0 PUBLIC
 ERR_peek_last_error_line AWS_LC_1.0 PUBLIC
 ERR_peek_last_error_line_data AWS_LC_1.0 PUBLIC
+ERR_pop_to_count AWS_LC_1.0 PRIVATE
 ERR_pop_to_mark AWS_LC_1.0 PUBLIC
 ERR_print_errors AWS_LC_1.0 PUBLIC
 ERR_print_errors_cb AWS_LC_1.0 PUBLIC
