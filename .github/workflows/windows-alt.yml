@@ -329,6 +329,9 @@ jobs:
           echo "GOPATH=${SYSROOT}" >> $GITHUB_ENV
           echo "GOROOT=${SYSROOT}/lib/go" >> $GITHUB_ENV
           echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
+          # Ninja parallelises by default, the Makefiles generators do not;
+          # cmake --build honours this for every generator.
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)" >> $GITHUB_ENV
           cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v7
