@@ -20,6 +20,7 @@ source tests/ci/common_posix_setup.sh
 #    - OPENSSH_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER="${SYS_ROOT}/SCRATCH_AWSLC_OPENSSH_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -50,6 +51,9 @@ function install_aws_lc() {
 
 function openssh_build() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
+  if [ "${OPENSSH_REF}" == "master" ]; then
+    patch -p1 --quiet -i "${SCRIPT_DIR}/openssh_patch/aws-lc-openssh.patch"
+  fi
   autoreconf
 
   if [ "${OPENSSH_REF}" == "master" ] || [[ "${OPENSSH_REF}" == V_10_* ]]; then

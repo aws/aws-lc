@@ -1,0 +1,6 @@
+diff --git a/regress/keygen-comment.sh b/regress/keygen-comment.sh
+--- a/regress/keygen-comment.sh
++++ b/regress/keygen-comment.sh
+@@ -33 +33 @@
+-		ssh-ed25519|*openssh.com) test -z "$oldfmt" || continue ;;
++		ssh-ed25519|ssh-mldsa44-ed25519|*openssh.com) test -z "$oldfmt" || continue ;;
