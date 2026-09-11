@@ -361,8 +361,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; the family endpoints also get non-FIPS. Same
+        # reasoning as compiler-tests above.
         gcc_version: ["9", "10", "11", "12", "13", "14", "15", "16"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { gcc_version: "9", fips: "0" }
+          - { gcc_version: "16", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -400,6 +405,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # clang22 is a family endpoint, so it keeps both configs.
         clang_version: ["22"]
         fips: ["0", "1"]
     steps:
@@ -437,12 +443,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang_version: ["14", "15", "16", "17", "18", "19"]
-        fips: ["0", "1"]
-        exclude:
-          # TODO: Broken FIPS build w/ clang 18
-          - clang_version: "18"
-            fips: "1"
+        # FIPS only; this range holds no family endpoints. clang18 is listed
+        # separately because its FIPS build is broken, so non-FIPS is the only
+        # coverage it has.
+        # TODO: fix the clang 18 FIPS build and fold it back into the list above.
+        clang_version: ["14", "15", "16", "17", "19"]
+        fips: ["1"]
+        include:
+          - { clang_version: "18", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -479,8 +487,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["11", "12", "13"]
-        fips: ["0", "1"]
+        fips: ["1"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -517,8 +526,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; clang7 is a family endpoint so it also gets
+        # non-FIPS.
         clang_version: ["7", "8", "9", "10"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { clang_version: "7", fips: "0" }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
