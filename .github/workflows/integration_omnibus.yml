@@ -219,7 +219,7 @@ jobs:
             allow_failure: false
             run: ./tests/ci/integration/run_librelp_integration.sh v1.13
           # librelp (tracking upstream main - informational, allowed to fail)
-          - name: librelp-master
+          - name: librelp-main
             arch: x86_64
             size: small
             image: ubuntu:22.04
