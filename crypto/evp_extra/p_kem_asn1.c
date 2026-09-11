@@ -193,16 +193,25 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
     return 0;
   }
 
-  // Support multiple ML-KEM private key formats from
+  // Support the three ML-KEM private key formats from
   // https://datatracker.ietf.org/doc/rfc9935/
   // Case 1: seed [0] OCTET STRING
   // Case 2: expandedKey OCTET STRING
-  // Case 3: TODO: both SEQUENCE {seed, expandedKey}
+  // Case 3: both SEQUENCE {seed, expandedKey}
+  //
+  // Section 6 directs implementations to switch on the tag: [0] (0x80) for
+  // seed, OCTET STRING (0x04) for expandedKey, and SEQUENCE (0x30) for both.
+  //
+  // The CHOICE is the entire contents of the privateKey OCTET STRING, so each
+  // case also rejects trailing data after the element it consumed. |CBS_len| on
+  // |key| is checked rather than left to the caller because
+  // |EVP_parse_private_key| does not re-examine |key| after this returns.
 
   if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC)) {
     // Case 1: seed [0] OCTET STRING
     CBS seed;
-    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC)) {
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC) ||
+        CBS_len(key) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -216,7 +225,8 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
   } else if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
     // Case 2: expandedKey OCTET STRING
     CBS expanded_key;
-    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(key) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -226,9 +236,33 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
       return 0;
     }
 
-    return KEM_KEY_set_raw_secret_key(out->pkey.kem_key, CBS_data(&expanded_key));
+    // |KEM_KEY_set_raw_expanded_secret_key| recovers the public key embedded in
+    // the expanded key and validates the pair. Section 8 defers to FIPS 203
+    // section 7.3, which requires a hash check before an expanded key is used.
+    return KEM_KEY_set_raw_expanded_secret_key(out->pkey.kem_key,
+                                               CBS_data(&expanded_key));
+  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_SEQUENCE)) {
+    // Case 3: both SEQUENCE {seed, expandedKey}
+    CBS sequence, seed, expanded_key;
+    if (!CBS_get_asn1(key, &sequence, CBS_ASN1_SEQUENCE) ||
+        !CBS_get_asn1(&sequence, &seed, CBS_ASN1_OCTETSTRING) ||
+        !CBS_get_asn1(&sequence, &expanded_key, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(&sequence) != 0 || CBS_len(key) != 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&seed) != out->pkey.kem_key->kem->keygen_seed_len ||
+        CBS_len(&expanded_key) != out->pkey.kem_key->kem->secret_key_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    // |KEM_KEY_set_raw_keypair_from_both| performs the seed consistency check
+    // required by section 8 and rejects inconsistent key pairs.
+    return KEM_KEY_set_raw_keypair_from_both(out->pkey.kem_key, &seed,
+                                             &expanded_key);
   } else {
-    // Case 3: both SEQUENCE {seed, expandedKey} - not implemented yet
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
