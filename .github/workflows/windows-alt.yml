@@ -139,6 +139,9 @@ jobs:
       # guard). Bump the version on the next VS upgrade.
       CMAKE_GENERATOR: "Visual Studio 18 2026"
       CMAKE_GENERATOR_TOOLSET: "ClangCL,host=x64"
+      # MSBuild builds serially without /m. windows-latest has 4 vCPUs; note this
+      # parallelises across projects, not source files within one.
+      CMAKE_BUILD_PARALLEL_LEVEL: "4"
     steps:
       - if: ${{ matrix.target  == 'x64' }}
         name: Install NASM
@@ -329,6 +332,9 @@ jobs:
           echo "GOPATH=${SYSROOT}" >> $GITHUB_ENV
           echo "GOROOT=${SYSROOT}/lib/go" >> $GITHUB_ENV
           echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
+          # Ninja parallelises by default, the Makefiles generators do not;
+          # cmake --build honours this for every generator.
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)" >> $GITHUB_ENV
           cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v7
