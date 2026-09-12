@@ -14,7 +14,7 @@ DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_ove
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
 DEFINE_STATIC_MUTEX(global_entropy_source_lock)
 
-static int entropy_cpu_get_entropy(uint8_t *entropy, size_t entropy_len) {
+static int entropy_cpu_get_entropy_multiple8(uint8_t *entropy, size_t entropy_len) {
 #if defined(OPENSSL_X86_64)
   if (rdrand_multiple8(entropy, entropy_len) == 1) {
     return 1;
@@ -30,13 +30,13 @@ static int entropy_cpu_get_entropy(uint8_t *entropy, size_t entropy_len) {
 static int entropy_cpu_get_prediction_resistance(
   const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
-  return entropy_cpu_get_entropy(pred_resistance, RAND_PRED_RESISTANCE_LEN);
+  return entropy_cpu_get_entropy_multiple8(pred_resistance, RAND_PRED_RESISTANCE_LEN);
 }
 
 static int entropy_cpu_get_extra_entropy(
   const struct entropy_source_t *entropy_source,
   uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
-  return entropy_cpu_get_entropy(extra_entropy, CTR_DRBG_ENTROPY_LEN);
+  return entropy_cpu_get_entropy_multiple8(extra_entropy, CTR_DRBG_ENTROPY_LEN);
 }
 
 static int entropy_os_get_extra_entropy(
@@ -159,40 +159,57 @@ struct entropy_source_t * get_entropy_source(void) {
   return entropy_source;
 }
 
-int rndr_multiple8(uint8_t *buf, const size_t len) {
+// hw_rng_multiple8_func is the type of a hardware rng wrapper such as
+// |CRYPTO_rndr_multiple8| and |CRYPTO_rdrand_multiple8|. It writes |len| bytes
+// to |buf| and returns 1 on success, 0 otherwise.
+typedef int (*hw_rng_multiple8_func)(uint8_t *buf, size_t len);
+
+// hw_rng_multiple8_with_retry validates |len| and then calls |hw_rng| until it
+// succeeds or |max_retries| calls have been made. |max_retries| must be
+// positive.
+// A hardware rng wrapper will typically execute the underlying instruction
+// multiple times and a failing call can therefore leave a prefix of |buf|
+// written. This is not an issue, because the retry re-generates the entire
+// |buf| and the contents of |buf| are only consumed on success. Retrying the
+// entire request, instead of only the failed instruction execution, is easier
+// to implement on the C-level and it should be a very rare event.
+// Outputs 1 on success, 0 otherwise.
+static int hw_rng_multiple8_with_retry(hw_rng_multiple8_func hw_rng,
+  uint8_t *buf, size_t len, size_t max_retries) {
+
   if (len == 0 || ((len & 0x7) != 0)) {
     return 0;
   }
-  return CRYPTO_rndr_multiple8(buf, len);
+
+  for (size_t tries = 0; tries < max_retries; tries++) {
+    if (hw_rng(buf, len) == 1) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+int hw_rng_multiple8_with_retry_FOR_TESTING(
+  int (*hw_rng)(uint8_t *buf, size_t len), uint8_t *buf, size_t len,
+  size_t max_retries) {
+  return hw_rng_multiple8_with_retry(hw_rng, buf, len, max_retries);
+}
+
+// rndr_multiple8 should only be called if |have_hw_rng_aarch64| returned true.
+int rndr_multiple8(uint8_t *buf, const size_t len) {
+  return hw_rng_multiple8_with_retry(CRYPTO_rndr_multiple8, buf, len,
+                                     RNDR_MAX_RETRIES);
 }
 
 int have_hw_rng_aarch64_for_testing(void) {
   return have_hw_rng_aarch64();
 }
 
-// rdrand maximum retries as suggested by:
-// Intel® Digital Random Number Generator (DRNG) Software Implementation Guide
-// Revision 2.1
-// https://software.intel.com/content/www/us/en/develop/articles/intel-digital-random-number-generator-drng-software-implementation-guide.html
-#define RDRAND_MAX_RETRIES 10
-OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positive)
-
 // rdrand_multiple8 should only be called if |have_hw_rng_x86_64| returned true.
 int rdrand_multiple8(uint8_t *buf, size_t len) {
-  if (len == 0 || ((len & 0x7) != 0)) {
-    return 0;
-  }
-
-  // This retries all rdrand calls for the requested |len|.
-  // |CRYPTO_rdrand_multiple8| will typically execute rdrand multiple times. But
-  // it's easier to implement on the C-level and it should be a very rare event.
-  for (size_t tries = 0; tries < RDRAND_MAX_RETRIES; tries++) {
-    if (CRYPTO_rdrand_multiple8(buf, len) == 1) {
-      return 1;
-    }
-  }
-
-  return 0;
+  return hw_rng_multiple8_with_retry(CRYPTO_rdrand_multiple8, buf, len,
+                                     RDRAND_MAX_RETRIES);
 }
 
 int have_hw_rng_x86_64_for_testing(void) {
