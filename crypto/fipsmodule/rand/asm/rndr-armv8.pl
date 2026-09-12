@@ -40,7 +40,8 @@ CRYPTO_rndr_multiple8:
 .Lrndr_multiple8_loop:
   // A read of rndr sets PSTATE.NZCV to 0b0100 if a random number could not be
   // returned, and to 0b0000 otherwise. The returned value is 0 on failure, but
-  // a genuine random number can be 0 as well. Hence, use the flags.
+  // a genuine random number can be 0 as well. Hence, check the Z flag not the
+  // return value.
   mrs $rndr64, s3_3_c2_c4_0             // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
   b.eq .Lrndr_multiple8_error           // Check if rndr failed
 

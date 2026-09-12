@@ -2813,6 +2813,7 @@ AWS_LC_1.0 {
     get_thread_and_global_tree_drbg_calls_FOR_TESTING;
     have_hw_rng_aarch64_for_testing;
     have_hw_rng_x86_64_for_testing;
+    hw_rng_multiple8_with_retry_FOR_TESTING;
     i2a_ASN1_ENUMERATED;
     i2a_ASN1_INTEGER;
     i2a_ASN1_OBJECT;
