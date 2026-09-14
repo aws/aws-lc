@@ -108,8 +108,8 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   dst->line = src->line;
   // The mark is not copied. A saved state may be restored repeatedly, so a mark
   // carried in the snapshot would re-arm on every restore and let an unrelated
-  // |ERR_pop_to_mark| discard errors it never marked. To drop only your own
-  // errors, use |ERR_num_errors| and |ERR_pop_to_count|.
+  // |ERR_pop_to_mark| discard errors it never marked. To keep your own errors
+  // out of a caller's queue, use |ERR_suppress_errors_begin|.
 }
 
 
