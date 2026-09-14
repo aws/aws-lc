@@ -675,6 +675,27 @@ TEST_F(CryptoPolicyTest, PostQuantumOtherValuesKeepPQDefaults) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// Turning post-quantum off stops the merge; it takes nothing out. A value that
+// only removes is applied to the default list either way, so the post-quantum
+// groups it says nothing about stay, as they would with no Groups directive.
+TEST_F(CryptoPolicyTest, PostQuantumOffKeepsRemovalOnlyGroupsWhole) {
+  const std::string content =
+      "AWSLC.PostQuantum = off\n"
+      "Groups = -SecP256r1MLKEM768\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_FALSE(
+      Contains(ctx->supported_group_list, SSL_GROUP_SECP256R1_MLKEM768));
+  EXPECT_TRUE(Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
 // "off" is matched without regard to case, as config-file tokens do not carry it
 // reliably.
 TEST_F(CryptoPolicyTest, PostQuantumOffIsCaseInsensitive) {
