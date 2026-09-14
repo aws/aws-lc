@@ -1023,12 +1023,12 @@ bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len) {
   // a name would otherwise be visible in the caller's error queue. Fail the probe
   // when the queue cannot be protected: this reports whether a name resolves, and
   // an unresolvable one is what the caller is told either way.
-  if (!ERR_suppress_errors_begin()) {
+  ScopedErrorSuppression suppress;
+  if (!suppress) {
     return false;
   }
   Array<uint16_t> sigalgs;
   const bool ok = parse_sigalgs_list(&sigalgs, buf);
-  ERR_suppress_errors_end();
   // A ':' would parse as several algorithms, so require exactly one.
   if (!ok || sigalgs.size() != 1) {
     return false;
