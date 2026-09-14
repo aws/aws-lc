@@ -541,6 +541,46 @@ TEST_F(CryptoPolicyTest, GroupListModifiers) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// A value that only removes names no group to keep, so the list it removes from
+// is the built-in default. Dropping the directive instead would hand back the one
+// group the operator asked to be rid of.
+TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
+  const std::string content = "Groups = -X25519MLKEM768\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  std::vector<uint16_t> expected;
+  for (uint16_t group : tls1_get_default_grouplist()) {
+    if (group != SSL_GROUP_X25519_MLKEM768) {
+      expected.push_back(group);
+    }
+  }
+  ASSERT_FALSE(expected.empty());
+  EXPECT_EQ(ToVector(ctx->supported_group_list), expected);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A removal AWS-LC cannot resolve leaves the defaults implicit, since spelling
+// them out would freeze today's list into every context the policy touches.
+TEST_F(CryptoPolicyTest, RemovalOfUnknownGroupKeepsDefaults) {
+  const std::string content = "Groups = -ffdhe2048\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(ctx->supported_group_list.empty());
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
 // A directive naming nothing AWS-LC implements is dropped, leaving the built-in
 // defaults in force. An empty configured list is how AWS-LC spells "use the
 // defaults", so this locks the contract rather than distinguishing two states.
