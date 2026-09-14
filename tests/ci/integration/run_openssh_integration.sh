@@ -83,6 +83,39 @@ function openssh_run_tests() {
   popd
 }
 
+# Regenerate the ML-DSA composite unit-test keys under the current keytype name.
+function regenerate_mldsa_testdata() {
+  local keygen="${OPENSSH_INSTALL_FOLDER}/bin/ssh-keygen"
+  local pw="mekmitasdigoat"
+
+  pushd "${OPENSSH_WORKSPACE_FOLDER}/regress/unittests/sshkey/testdata"
+  rm -f mldsa44_ed25519_1 mldsa44_ed25519_1.pub mldsa44_ed25519_1_pw \
+        mldsa44_ed25519_2 mldsa44_ed25519_2.pub mldsa44_ed25519_1-cert.pub \
+        mldsa44_ed25519_1.fp mldsa44_ed25519_2.fp mldsa44_ed25519_1-cert.fp \
+        mldsa44_ed25519_1.fp.bb mldsa44_ed25519_2.fp.bb
+  "${keygen}" -t ssh-mldsa44-ed25519 -C "MLDSA44-ED25519 test key #1" -N "" -f mldsa44_ed25519_1
+  "${keygen}" -t ssh-mldsa44-ed25519 -C "MLDSA44-ED25519 test key #2" -N "" -f mldsa44_ed25519_2
+  cp mldsa44_ed25519_1 mldsa44_ed25519_1_pw
+  "${keygen}" -pf mldsa44_ed25519_1_pw -N "${pw}"
+  "${keygen}" -s rsa_2 -I hugo -n user1,user2 \
+    -Oforce-command=/bin/ls -Ono-port-forwarding -Osource-address=10.0.0.0/8 \
+    -V 19990101:20110101 -z 4 mldsa44_ed25519_1.pub
+  "${keygen}" -s ed25519_1 -I julius -n host1,host2 -h \
+    -V 19990101:20110101 -z 8 mldsa44_ed25519_1.pub
+  "${keygen}" -lf mldsa44_ed25519_1 | awk '{print $2}' > mldsa44_ed25519_1.fp
+  "${keygen}" -lf mldsa44_ed25519_2 | awk '{print $2}' > mldsa44_ed25519_2.fp
+  "${keygen}" -lf mldsa44_ed25519_1-cert.pub | awk '{print $2}' > mldsa44_ed25519_1-cert.fp
+  "${keygen}" -Bf mldsa44_ed25519_1 | awk '{print $2}' > mldsa44_ed25519_1.fp.bb
+  "${keygen}" -Bf mldsa44_ed25519_2 | awk '{print $2}' > mldsa44_ed25519_2.fp.bb
+  popd
+
+  pushd "${OPENSSH_WORKSPACE_FOLDER}/regress/unittests/sshsig/testdata"
+  rm -f mldsa44-ed25519 mldsa44-ed25519.pub mldsa44-ed25519.sig
+  "${keygen}" -t ssh-mldsa44-ed25519 -C "MLDSA44-ED25519 test key" -N "" -f mldsa44-ed25519
+  "${keygen}" -Y sign -f mldsa44-ed25519 -n unittest - < signed-data > mldsa44-ed25519.sig
+  popd
+}
+
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_FOLDER}"
 
 # Get OpenSSH at the requested ref.
@@ -95,6 +128,10 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 install_aws_lc
 
 openssh_build
+
+if [ "${OPENSSH_REF}" == "master" ]; then
+  regenerate_mldsa_testdata
+fi
 
 CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex channel-timeout forward-control agent-restrict connection-timeout"
 if [ "${OPENSSH_REF}" == "V_8_9" ]; then

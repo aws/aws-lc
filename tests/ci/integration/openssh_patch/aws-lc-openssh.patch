@@ -4,3 +4,23 @@ diff --git a/regress/keygen-comment.sh b/regress/keygen-comment.sh
 @@ -33 +33 @@
 -		ssh-ed25519|*openssh.com) test -z "$oldfmt" || continue ;;
 +		ssh-ed25519|ssh-mldsa44-ed25519|*openssh.com) test -z "$oldfmt" || continue ;;
+diff --git a/regress/keytype.sh b/regress/keytype.sh
+--- a/regress/keytype.sh
++++ b/regress/keytype.sh
+@@ -46 +46 @@ kname_to_ktype() {
+-	mldsa44-ed25519) echo ssh-mldsa44-ed25519@openssh.com ;;
++	mldsa44-ed25519) echo ssh-mldsa44-ed25519 ;;
+diff --git a/regress/cert-userkey.sh b/regress/cert-userkey.sh
+--- a/regress/cert-userkey.sh
++++ b/regress/cert-userkey.sh
+@@ -37,0 +38 @@ kname() {
++	mldsa*) n="ssh-$1" ;;
+diff --git a/regress/unittests/sshkey/mktestdata.sh b/regress/unittests/sshkey/mktestdata.sh
+--- a/regress/unittests/sshkey/mktestdata.sh
++++ b/regress/unittests/sshkey/mktestdata.sh
+@@ -71 +71 @@ ssh-keygen -t ed25519 -C "ED25519 test key #1" -N "" -f ed25519_1
+-ssh-keygen -t ssh-mldsa44-ed25519@openssh.com -C "MLDSA44-ED25519 test key #1" -N "" -f mldsa44_ed25519_1
++ssh-keygen -t ssh-mldsa44-ed25519 -C "MLDSA44-ED25519 test key #1" -N "" -f mldsa44_ed25519_1
+@@ -81 +81 @@ ssh-keygen -t ed25519 -C "ED25519 test key #2" -N "" -f ed25519_2
+-ssh-keygen -t ssh-mldsa44-ed25519@openssh.com -C "MLDSA44-ED25519 test key #2" -N "" -f mldsa44_ed25519_2
++ssh-keygen -t ssh-mldsa44-ed25519 -C "MLDSA44-ED25519 test key #2" -N "" -f mldsa44_ed25519_2
