@@ -165,7 +165,7 @@ struct entropy_source_t * get_entropy_source(void) {
 typedef int (*hw_rng_multiple8_func)(uint8_t *buf, size_t len);
 
 // hw_rng_multiple8_with_retry validates |len| and then calls |hw_rng| until it
-// succeeds or |max_retries| calls have been made. |max_retries| must be
+// succeeds or |max_attempts| calls have been made. |max_attempts| must be
 // positive.
 // A hardware rng wrapper will typically execute the underlying instruction
 // multiple times and a failing call can therefore leave a prefix of |buf|
@@ -175,13 +175,13 @@ typedef int (*hw_rng_multiple8_func)(uint8_t *buf, size_t len);
 // to implement on the C-level and it should be a very rare event.
 // Outputs 1 on success, 0 otherwise.
 static int hw_rng_multiple8_with_retry(hw_rng_multiple8_func hw_rng,
-  uint8_t *buf, size_t len, size_t max_retries) {
+  uint8_t *buf, size_t len, size_t max_attempts) {
 
   if (len == 0 || ((len & 0x7) != 0)) {
     return 0;
   }
 
-  for (size_t tries = 0; tries < max_retries; tries++) {
+  for (size_t attempts = 0; attempts < max_attempts; attempts++) {
     if (hw_rng(buf, len) == 1) {
       return 1;
     }
@@ -192,14 +192,14 @@ static int hw_rng_multiple8_with_retry(hw_rng_multiple8_func hw_rng,
 
 int hw_rng_multiple8_with_retry_FOR_TESTING(
   int (*hw_rng)(uint8_t *buf, size_t len), uint8_t *buf, size_t len,
-  size_t max_retries) {
-  return hw_rng_multiple8_with_retry(hw_rng, buf, len, max_retries);
+  size_t max_attempts) {
+  return hw_rng_multiple8_with_retry(hw_rng, buf, len, max_attempts);
 }
 
 // rndr_multiple8 should only be called if |have_hw_rng_aarch64| returned true.
 int rndr_multiple8(uint8_t *buf, const size_t len) {
   return hw_rng_multiple8_with_retry(CRYPTO_rndr_multiple8, buf, len,
-                                     RNDR_MAX_RETRIES);
+                                     RNDR_MAX_ATTEMPTS);
 }
 
 int have_hw_rng_aarch64_for_testing(void) {
@@ -209,7 +209,7 @@ int have_hw_rng_aarch64_for_testing(void) {
 // rdrand_multiple8 should only be called if |have_hw_rng_x86_64| returned true.
 int rdrand_multiple8(uint8_t *buf, size_t len) {
   return hw_rng_multiple8_with_retry(CRYPTO_rdrand_multiple8, buf, len,
-                                     RDRAND_MAX_RETRIES);
+                                     RDRAND_MAX_ATTEMPTS);
 }
 
 int have_hw_rng_x86_64_for_testing(void) {

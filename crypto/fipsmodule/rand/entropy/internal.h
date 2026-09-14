@@ -74,26 +74,26 @@ OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
 // |rndr_multiple8| and |rdrand_multiple8| use, but with an injectable hardware
 // rng |hw_rng|. This allows testing the retry logic on any platform and without
 // depending on transient hardware rng failures actually occurring.
-// |max_retries| must be positive.
+// |max_attempts| must be positive.
 // Outputs 1 on success, 0 otherwise.
 OPENSSL_EXPORT int hw_rng_multiple8_with_retry_FOR_TESTING(
   int (*hw_rng)(uint8_t *buf, size_t len), uint8_t *buf, size_t len,
-  size_t max_retries);
+  size_t max_attempts);
 
 // A read of the rndr system register can fail transiently [1]: if a random
 // number cannot be returned "in a reasonable period of time", PSTATE.NZCV is
 // set to 0b0100 and the returned value is 0. This has been observed in the wild
 // per [2].
 // The Arm architecture does not specify a failure probability. Therefore, use
-// the same retry bound as for rdrand.
+// the same attempt bound as for rdrand.
 // [1] https://developer.arm.com/documentation/ddi0601/2024-09/AArch64-Registers/RNDR--Random-Number
 // [2] https://github.com/aws/aws-lc/issues/3453
-#define RNDR_MAX_RETRIES 10
-OPENSSL_STATIC_ASSERT(RNDR_MAX_RETRIES > 0, rndr_max_retries_must_be_positive)
+#define RNDR_MAX_ATTEMPTS 10
+OPENSSL_STATIC_ASSERT(RNDR_MAX_ATTEMPTS > 0, rndr_max_attempts_must_be_positive)
 
 // rndr_multiple8 writes |len| number of bytes to |buf| generated using the
-// rndr instruction. |len| must be a multiple of 8. Retries up to
-// |RNDR_MAX_RETRIES| times, because a read of rndr is allowed to fail
+// rndr instruction. |len| must be a multiple of 8. Makes up to
+// |RNDR_MAX_ATTEMPTS| attempts, because a read of rndr is allowed to fail
 // transiently.
 // Outputs 1 on success, 0 otherwise.
 OPENSSL_EXPORT int rndr_multiple8(uint8_t *buf, const size_t len);
@@ -126,16 +126,16 @@ OPENSSL_INLINE int have_hw_rng_aarch64(void) {
 
 #endif  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
-// rdrand maximum retries as suggested by:
+// rdrand maximum attempts as suggested by:
 // Intel® Digital Random Number Generator (DRNG) Software Implementation Guide
 // Revision 2.1
 // https://software.intel.com/content/www/us/en/develop/articles/intel-digital-random-number-generator-drng-software-implementation-guide.html
-#define RDRAND_MAX_RETRIES 10
-OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positive)
+#define RDRAND_MAX_ATTEMPTS 10
+OPENSSL_STATIC_ASSERT(RDRAND_MAX_ATTEMPTS > 0, rdrand_max_attempts_must_be_positive)
 
 // rdrand_multiple8 writes |len| number of bytes to |buf| generated using the
-// rdrand instruction. |len| must be a multiple of 8. Retries up to
-// |RDRAND_MAX_RETRIES| times, because a read of rdrand is allowed to fail
+// rdrand instruction. |len| must be a multiple of 8. Makes up to
+// |RDRAND_MAX_ATTEMPTS| attempts, because a read of rdrand is allowed to fail
 // transiently.
 // Outputs 1 on success, 0 otherwise.
 OPENSSL_EXPORT int rdrand_multiple8(uint8_t *buf, size_t len);

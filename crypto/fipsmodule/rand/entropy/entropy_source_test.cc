@@ -52,10 +52,10 @@ static int mocked_hw_rng_multiple8(uint8_t *buf, size_t len) {
   return 1;
 }
 
-// TestHwRngRetryLogic exercises the retry logic with |max_retries| as the retry
-// bound configured for a hardware rng e.g. |RNDR_MAX_RETRIES|.
-static void TestHwRngRetryLogic(size_t max_retries) {
-  ASSERT_GT(max_retries, 0u);
+// TestHwRngRetryLogic exercises the retry logic with |max_attempts| as the
+// attempt bound configured for a hardware rng e.g. |RNDR_MAX_ATTEMPTS|.
+static void TestHwRngRetryLogic(size_t max_attempts) {
+  ASSERT_GT(max_attempts, 0u);
 
   uint8_t buf[MAX_MULTIPLE_FROM_RNG*8];
   const size_t len = sizeof(buf);
@@ -64,37 +64,49 @@ static void TestHwRngRetryLogic(size_t max_retries) {
   mocked_hw_rng = MockedHwRng();
   memset(buf, 0, len);
   ASSERT_TRUE(hw_rng_multiple8_with_retry_FOR_TESTING(
-    mocked_hw_rng_multiple8, buf, len, max_retries));
+    mocked_hw_rng_multiple8, buf, len, max_attempts));
   EXPECT_EQ(1u, mocked_hw_rng.calls);
   for (size_t i = 0; i < len; i++) {
     EXPECT_EQ(kSuccessFill, buf[i]);
   }
 
-  // Succeeding on the last permitted call is still a success.
+  // Succeeding on the last permitted attempt is still a success and the entire
+  // output buffer is written.
   mocked_hw_rng = MockedHwRng();
-  mocked_hw_rng.failures = max_retries - 1;
+  mocked_hw_rng.failures = max_attempts - 1;
   memset(buf, 0, len);
   ASSERT_TRUE(hw_rng_multiple8_with_retry_FOR_TESTING(
-    mocked_hw_rng_multiple8, buf, len, max_retries));
-  EXPECT_EQ(max_retries, mocked_hw_rng.calls);
+    mocked_hw_rng_multiple8, buf, len, max_attempts));
+  EXPECT_EQ(max_attempts, mocked_hw_rng.calls);
+  for (size_t i = 0; i < len; i++) {
+    EXPECT_EQ(kSuccessFill, buf[i]);
+  }
 
-  // Exhausting the retry bound is a failure and no further calls are made.
+  // Exhausting the attempt bound is a failure and no further calls are made.
+  // The output buffer is not scrubbed, so it can retain what the last failing
+  // call wrote; callers must not consume |buf| unless 1 is returned.
   mocked_hw_rng = MockedHwRng();
-  mocked_hw_rng.failures = max_retries + 1;
+  mocked_hw_rng.failures = max_attempts + 1;
+  mocked_hw_rng.bytes_written_on_failure = len;
   memset(buf, 0, len);
   ASSERT_FALSE(hw_rng_multiple8_with_retry_FOR_TESTING(
-    mocked_hw_rng_multiple8, buf, len, max_retries));
-  EXPECT_EQ(max_retries, mocked_hw_rng.calls);
+    mocked_hw_rng_multiple8, buf, len, max_attempts));
+  EXPECT_EQ(max_attempts, mocked_hw_rng.calls);
+  for (size_t i = 0; i < len; i++) {
+    EXPECT_EQ(kFailureFill, buf[i]);
+  }
 
   // A failing call can leave a prefix of the output buffer written. The
-  // succeeding retry must overwrite the entire output buffer.
-  if (max_retries > 1) {
+  // succeeding retry must overwrite the entire output buffer. Zeroing |buf|
+  // first is what makes the check below meaningful: the preceding cases leave
+  // |buf| filled, so without it the check could pass on stale contents.
+  if (max_attempts > 1) {
     mocked_hw_rng = MockedHwRng();
     mocked_hw_rng.failures = 1;
     mocked_hw_rng.bytes_written_on_failure = len / 2;
     memset(buf, 0, len);
     ASSERT_TRUE(hw_rng_multiple8_with_retry_FOR_TESTING(
-      mocked_hw_rng_multiple8, buf, len, max_retries));
+      mocked_hw_rng_multiple8, buf, len, max_attempts));
     EXPECT_EQ(2u, mocked_hw_rng.calls);
     for (size_t i = 0; i < len; i++) {
       EXPECT_EQ(kSuccessFill, buf[i]);
@@ -105,18 +117,18 @@ static void TestHwRngRetryLogic(size_t max_retries) {
   for (size_t bad_len : {0, 1, 7, 9, 15}) {
     mocked_hw_rng = MockedHwRng();
     ASSERT_FALSE(hw_rng_multiple8_with_retry_FOR_TESTING(
-      mocked_hw_rng_multiple8, buf, bad_len, max_retries));
+      mocked_hw_rng_multiple8, buf, bad_len, max_attempts));
     EXPECT_EQ(0u, mocked_hw_rng.calls);
   }
 }
 
 TEST(EntropySourceHw, HwRngRetryLogic) {
   // The retry logic is shared between |rndr_multiple8| and |rdrand_multiple8|,
-  // but each hardware rng configures its own retry bound. A bound of 1 is the
+  // but each hardware rng configures its own attempt bound. A bound of 1 is the
   // boundary case where no retry is permitted.
-  for (size_t max_retries : {1, RNDR_MAX_RETRIES, RDRAND_MAX_RETRIES}) {
-    SCOPED_TRACE(max_retries);
-    TestHwRngRetryLogic(max_retries);
+  for (size_t max_attempts : {1, RNDR_MAX_ATTEMPTS, RDRAND_MAX_ATTEMPTS}) {
+    SCOPED_TRACE(max_attempts);
+    TestHwRngRetryLogic(max_attempts);
   }
 }
 
