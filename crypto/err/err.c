@@ -728,17 +728,20 @@ void ERR_pop_to_count(size_t count) {
   }
 }
 
-void ERR_suppress_errors_begin(void) {
+int ERR_suppress_errors_begin(void) {
   ERR_STATE *const state = err_get_state();
 
   if (state == NULL) {
-    return;
+    return 0;
   }
   state->suppress++;
+  return 1;
 }
 
 void ERR_suppress_errors_end(void) {
-  ERR_STATE *const state = err_get_state();
+  // Read the state rather than have |err_get_state| create one: a scope that
+  // began already has one, and a begin that failed had no state to suppress in.
+  ERR_STATE *const state = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_ERR);
 
   if (state == NULL) {
     return;
