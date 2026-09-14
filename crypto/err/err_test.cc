@@ -339,6 +339,90 @@ TEST(ErrTest, PopToCountPreservesCallerState) {
   EXPECT_EQ(0u, ERR_get_error());
 }
 
+TEST(ErrTest, SuppressErrors) {
+  ERR_clear_error();
+
+  ERR_suppress_errors_begin();
+  for (unsigned i = 1; i <= 4; i++) {
+    ERR_put_error(i, 0 /* unused */, i, "test", i);
+  }
+  EXPECT_EQ(0u, ERR_num_errors());
+  ERR_suppress_errors_end();
+
+  // The scope is over, so errors are recorded again.
+  ERR_put_error(5, 0 /* unused */, 5, "test", 5);
+  EXPECT_EQ(1u, ERR_num_errors());
+  EXPECT_EQ(ERR_GET_LIB(ERR_peek_error()), 5);
+  ERR_clear_error();
+}
+
+// Suppression is what a full queue needs. |ERR_pop_to_count| cannot help there:
+// each error raised inside the scope would evict one of the caller's, and popping
+// afterward does not bring an evicted entry back.
+TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
+  ERR_clear_error();
+  for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
+    ERR_put_error(1, 0 /* unused */, i, "test", 1);
+  }
+  ASSERT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
+
+  ERR_suppress_errors_begin();
+  for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
+    ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  }
+  ERR_suppress_errors_end();
+
+  EXPECT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
+  for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
+    uint32_t packed_error = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+    EXPECT_EQ(ERR_GET_REASON(packed_error), static_cast<int>(i));
+  }
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// Data attaches to the most recent error, so suppressing the |ERR_put_error| but
+// not the |ERR_add_error_data| that follows it would overwrite the data on
+// whatever the caller had queued last.
+TEST(ErrTest, SuppressErrorsLeavesCallerDataAlone) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ERR_add_error_data(1, "data1");
+  ASSERT_TRUE(ERR_set_mark());
+
+  ERR_suppress_errors_begin();
+  ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
+  ERR_add_error_data(1, "data2");
+  ERR_add_error_dataf("data%d", 3);
+  ERR_suppress_errors_end();
+
+  EXPECT_TRUE(ERR_pop_to_mark());
+  int line, flags;
+  const char *file, *data;
+  uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+  EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+  EXPECT_STREQ("test1.c", file);
+  EXPECT_STREQ(data, "data1");
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+TEST(ErrTest, SuppressErrorsNests) {
+  ERR_clear_error();
+
+  ERR_suppress_errors_begin();
+  ERR_suppress_errors_begin();
+  ERR_suppress_errors_end();
+
+  // The outer scope is still open.
+  ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  EXPECT_EQ(0u, ERR_num_errors());
+
+  ERR_suppress_errors_end();
+  ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  EXPECT_EQ(1u, ERR_num_errors());
+  ERR_clear_error();
+}
+
 // Querying the error queue should not affect the OS error.
 #if defined(OPENSSL_WINDOWS)
 TEST(ErrTest, PreservesLastError) {
