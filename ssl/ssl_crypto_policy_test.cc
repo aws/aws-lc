@@ -160,7 +160,6 @@ void FillErrorQueue(unsigned count) {
 // ExpectErrorQueue drains the queue and expects exactly what |FillErrorQueue|
 // put there, in order and with nothing appended.
 void ExpectErrorQueue(unsigned count) {
-  EXPECT_EQ(ERR_num_errors(), static_cast<size_t>(count));
   for (unsigned i = 1; i <= count; i++) {
     SCOPED_TRACE(i);
     const uint32_t packed_error = ERR_get_error();
@@ -711,7 +710,6 @@ TEST_F(CryptoPolicyTest, FullCallerErrorQueueIsPreserved) {
   ASSERT_TRUE(ctx);
 
   FillErrorQueue(ERR_NUM_ERRORS - 1);
-  ASSERT_EQ(ERR_num_errors(), static_cast<size_t>(ERR_NUM_ERRORS - 1));
 
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);

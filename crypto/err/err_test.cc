@@ -346,25 +346,23 @@ TEST(ErrTest, SuppressErrors) {
   for (unsigned i = 1; i <= 4; i++) {
     ERR_put_error(i, 0 /* unused */, i, "test", i);
   }
-  EXPECT_EQ(0u, ERR_num_errors());
+  EXPECT_EQ(0u, ERR_peek_error());
   ERR_suppress_errors_end();
 
   // The scope is over, so errors are recorded again.
   ERR_put_error(5, 0 /* unused */, 5, "test", 5);
-  EXPECT_EQ(1u, ERR_num_errors());
-  EXPECT_EQ(ERR_GET_LIB(ERR_peek_error()), 5);
-  ERR_clear_error();
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 5);
+  EXPECT_EQ(0u, ERR_get_error());
 }
 
-// Suppression is what a full queue needs. |ERR_pop_to_count| cannot help there:
-// each error raised inside the scope would evict one of the caller's, and popping
+// A saturated queue is what suppression is for: each error raised inside the
+// scope would otherwise evict one of the caller's, and trimming the queue
 // afterward does not bring an evicted entry back.
 TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
   ERR_clear_error();
   for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
     ERR_put_error(1, 0 /* unused */, i, "test", 1);
   }
-  ASSERT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
 
   ERR_suppress_errors_begin();
   for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
@@ -372,7 +370,6 @@ TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
   }
   ERR_suppress_errors_end();
 
-  EXPECT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
   for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
     uint32_t packed_error = ERR_get_error();
     EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
@@ -415,12 +412,12 @@ TEST(ErrTest, SuppressErrorsNests) {
 
   // The outer scope is still open.
   ERR_put_error(1, 0 /* unused */, 1, "test", 1);
-  EXPECT_EQ(0u, ERR_num_errors());
+  EXPECT_EQ(0u, ERR_peek_error());
 
   ERR_suppress_errors_end();
   ERR_put_error(2, 0 /* unused */, 2, "test", 2);
-  EXPECT_EQ(1u, ERR_num_errors());
-  ERR_clear_error();
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
+  EXPECT_EQ(0u, ERR_get_error());
 }
 
 // Querying the error queue should not affect the OS error.
