@@ -145,22 +145,41 @@ uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
   return 0;
 }
 
-// CipherRuleIsUsable reports whether |rule| yields a non-empty cipher list for
-// |ctx| under the same parameters the corresponding public setter would use.
+// ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
+// |SSL_CTX_set_cipher_list| does when |config_tls13| is false and
+// |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
+// as it was if any step fails.
 //
-// This check exists because a failing |SSL_CTX_set_cipher_list| is not a no-op:
-// |ssl_create_cipher_list| installs its result, empty or not, before reporting
-// failure, and the |update_cipher_list| call that merges the TLS 1.3 suites back
-// in is then skipped. Applying a rule blind and ignoring the return value would
-// leave |ctx| with no ciphers at all rather than the built-in defaults, so the
-// rule is evaluated into a throwaway list first and only applied if it holds up.
-bool CipherRuleIsUsable(const SSL_CTX *ctx, const char *rule,
-                        bool config_tls13) {
+// Neither public setter is a no-op on failure. |ssl_create_cipher_list| installs
+// its result, empty or not, before reporting that the rule matched nothing, and
+// the |update_cipher_list| that merges the TLS 1.2 and TLS 1.3 lists back
+// together allocates, so it can fail after the first list is already in place.
+// Either way the context is left holding part of a policy it could not apply,
+// which for the first is no ciphers at all. Building both lists aside and moving
+// them in once every step has succeeded is what keeps a failure to the defaults.
+bool ApplyCipherRule(SSL_CTX *ctx, const char *rule, bool config_tls13) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  UniquePtr<SSLCipherPreferenceList> probe;
-  return ssl_create_cipher_list(&probe, has_aes_hw, rule,
-                                false /* not strict */, config_tls13);
+  UniquePtr<SSLCipherPreferenceList> configured;
+  if (!ssl_create_cipher_list(&configured, has_aes_hw, rule,
+                              false /* not strict */, config_tls13)) {
+    return false;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &tls12_list =
+      config_tls13 ? ctx->cipher_list : configured;
+  UniquePtr<SSLCipherPreferenceList> &tls13_list =
+      config_tls13 ? configured : ctx->tls13_cipher_list;
+  UniquePtr<SSLCipherPreferenceList> merged;
+  if (!update_cipher_list(merged, tls12_list, tls13_list)) {
+    return false;
+  }
+
+  if (config_tls13) {
+    ctx->tls13_cipher_list = std::move(configured);
+  }
+  ctx->cipher_list = std::move(merged);
+  return true;
 }
 
 // ApplyPolicyVersionBounds seeds the protocol version floor and ceiling from
@@ -200,11 +219,19 @@ void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
     return;
   }
 
-  if (policy_min != 0) {
-    SSL_CTX_set_min_proto_version(ctx, policy_min);
-  }
-  if (policy_max != 0) {
-    SSL_CTX_set_max_proto_version(ctx, policy_max);
+  // Each setter still refuses a version its method does not support, and the two
+  // are independent, so a pair only one of them accepts would leave the context
+  // with half a policy. Put the bounds back if either refuses.
+  const uint16_t saved_min = ctx->conf_min_version;
+  const uint16_t saved_max = ctx->conf_max_version;
+  const bool saved_min_default = ctx->conf_min_version_use_default;
+  const bool saved_max_default = ctx->conf_max_version_use_default;
+  if ((policy_min != 0 && !SSL_CTX_set_min_proto_version(ctx, policy_min)) ||
+      (policy_max != 0 && !SSL_CTX_set_max_proto_version(ctx, policy_max))) {
+    ctx->conf_min_version = saved_min;
+    ctx->conf_max_version = saved_max;
+    ctx->conf_min_version_use_default = saved_min_default;
+    ctx->conf_max_version_use_default = saved_max_default;
   }
 }
 
@@ -231,15 +258,14 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
       const char *colon = strchr(cs, ':');
       cs = colon != nullptr ? colon + 1 : "";
     }
-    if (*cs != '\0' && CipherRuleIsUsable(ctx, cs, /*config_tls13=*/false)) {
-      SSL_CTX_set_cipher_list(ctx, cs);
+    if (*cs != '\0') {
+      ApplyCipherRule(ctx, cs, /*config_tls13=*/false);
     }
   }
 
   // Ciphersuites (TLS 1.3).
-  if (cfg.ciphersuites[0] != '\0' &&
-      CipherRuleIsUsable(ctx, cfg.ciphersuites, /*config_tls13=*/true)) {
-    SSL_CTX_set_ciphersuites(ctx, cfg.ciphersuites);
+  if (cfg.ciphersuites[0] != '\0') {
+    ApplyCipherRule(ctx, cfg.ciphersuites, /*config_tls13=*/true);
   }
 
   ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
@@ -386,7 +412,12 @@ void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
   // all. Suppressing rather than trimming afterward is what keeps that true for
   // a caller whose queue is already full: there, each error seeding raised would
   // evict one of theirs, and no trim can bring an evicted entry back.
-  ERR_suppress_errors_begin();
+  //
+  // Seeding is what gives way when the scope cannot be opened, since running it
+  // unprotected is the one outcome the caller must not see.
+  if (!ERR_suppress_errors_begin()) {
+    return;
+  }
 
   ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
 

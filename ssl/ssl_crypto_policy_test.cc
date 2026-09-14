@@ -606,6 +606,41 @@ TEST_F(CryptoPolicyTest, UnsatisfiableCiphersuitesKeepsDefaults) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// A rule seeding applies has to leave the two cipher lists merged, as the public
+// setters do. Seeding writes the merge itself so that a failure part way through
+// cannot strip the other list, which puts the merge under test here rather than
+// in the library.
+TEST_F(CryptoPolicyTest, AppliedCipherStringKeepsTLS13Suites) {
+  const std::string content = "CipherString = ECDHE-RSA-AES128-GCM-SHA256\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(CtxHasCipherNamed(ctx.get(), "ECDHE-RSA-AES128-GCM-SHA256"));
+  EXPECT_TRUE(CtxHasCipherNamed(ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+TEST_F(CryptoPolicyTest, AppliedCiphersuitesKeepsTLS12Ciphers) {
+  const std::string content = "Ciphersuites = TLS_AES_256_GCM_SHA384\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(CtxHasCipherNamed(ctx.get(), "TLS_AES_256_GCM_SHA384"));
+  EXPECT_FALSE(CtxHasCipherNamed(ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  EXPECT_TRUE(CtxHasCipherNamed(ctx.get(), "ECDHE-RSA-AES128-GCM-SHA256"));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
 // Seeding must not swallow errors the caller queued beforehand. The cipher rule
 // here resolves to the empty set, so seeding queues errors of its own and the
 // cleanup path is exercised rather than skipped.
