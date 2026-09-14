@@ -39,7 +39,7 @@ OPENSSL_EXPORT void ERR_restore_state(const ERR_SAVE_STATE *state);
 // than run it unprotected, and do not call |ERR_suppress_errors_end|.
 //
 // The queue is left bit-for-bit as it was found, so the caller keeps its
-// entries, its marks, and the pointer from its last |ERR_get_error_line_data|.
+// entries, its marks, and the data strings it has already read out of them.
 // Rejecting the errors is what makes that hold once the queue saturates, where
 // every new error evicts one of the caller's and trimming the queue afterward
 // cannot bring an evicted entry back.
