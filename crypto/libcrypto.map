@@ -989,6 +989,8 @@ AWS_LC_1.0 {
     ERR_save_state;
     ERR_set_error_data;
     ERR_set_mark;
+    ERR_suppress_errors_begin;
+    ERR_suppress_errors_end;
     EVP_AEAD_CTX_aead;
     EVP_AEAD_CTX_cleanup;
     EVP_AEAD_CTX_copy;

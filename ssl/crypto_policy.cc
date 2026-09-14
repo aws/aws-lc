@@ -379,16 +379,14 @@ void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
   // Seeding is best-effort, so the errors its failures queue must not reach the
   // caller. Neither may the caller's own queue be disturbed, since this runs
   // inside |SSL_CTX_new|, which no caller expects to touch the error queue at
-  // all. Cutting the queue back to the length it had leaves everything below the
-  // cut alone: the caller's entries, the data pointer their last
-  // |ERR_get_error_line_data| handed out, and any mark they set. It allocates
-  // nothing, so it has no failure mode, and if seeding queued nothing it does
-  // nothing.
-  const size_t num_errors = ERR_num_errors();
+  // all. Suppressing rather than trimming afterward is what keeps that true for
+  // a caller whose queue is already full: there, each error seeding raised would
+  // evict one of theirs, and no trim can bring an evicted entry back.
+  ERR_suppress_errors_begin();
 
   ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
 
-  ERR_pop_to_count(num_errors);
+  ERR_suppress_errors_end();
 }
 
 BSSL_NAMESPACE_END

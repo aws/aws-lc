@@ -20,6 +20,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include "../crypto/err/internal.h"
 #include "../crypto/test/file_util.h"
 #include "internal.h"
 
@@ -144,6 +145,30 @@ class ScopedEnv {
   bool had_ = false;
   std::string saved_;
 };
+
+// FillErrorQueue replaces the error queue with |count| errors whose reasons run
+// from 1 to |count|, so a later drain can tell which entry is which and whether
+// any went missing.
+void FillErrorQueue(unsigned count) {
+  ERR_clear_error();
+  for (unsigned i = 1; i <= count; i++) {
+    ERR_put_error(ERR_LIB_USER, 0 /* unused */, static_cast<int>(i), "test.c",
+                  i);
+  }
+}
+
+// ExpectErrorQueue drains the queue and expects exactly what |FillErrorQueue|
+// put there, in order and with nothing appended.
+void ExpectErrorQueue(unsigned count) {
+  EXPECT_EQ(ERR_num_errors(), static_cast<size_t>(count));
+  for (unsigned i = 1; i <= count; i++) {
+    SCOPED_TRACE(i);
+    const uint32_t packed_error = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(packed_error), ERR_LIB_USER);
+    EXPECT_EQ(ERR_GET_REASON(packed_error), static_cast<int>(i));
+  }
+  EXPECT_EQ(ERR_get_error(), 0u);
+}
 
 }  // namespace
 
@@ -652,6 +677,51 @@ TEST_F(CryptoPolicyTest, CallerErrorMarkIsPreserved) {
   EXPECT_TRUE(ERR_pop_to_mark());
   EXPECT_EQ(ERR_peek_error(), queued);
   ERR_clear_error();
+}
+
+// A caller arriving at SSL_CTX_new with a full queue is the case no cleanup after
+// the fact can rescue: the ring holds |ERR_NUM_ERRORS| - 1 entries, so the first
+// error seeding raises evicts the caller's oldest, and popping back afterwards
+// cannot return it. Both directives resolve to the empty set, so seeding has more
+// than one failure to report and the whole operation, not just its first step,
+// has to stay quiet.
+TEST_F(CryptoPolicyTest, FullCallerErrorQueueIsPreserved) {
+  const std::string content =
+      "CipherString = @SECLEVEL=2:kEDH:-aDSS\n"
+      "Ciphersuites = TLS_NONEXISTENT_SUITE_SHA256\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  FillErrorQueue(ERR_NUM_ERRORS - 1);
+  ASSERT_EQ(ERR_num_errors(), static_cast<size_t>(ERR_NUM_ERRORS - 1));
+
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  ExpectErrorQueue(ERR_NUM_ERRORS - 1);
+}
+
+// One slot short of full is where a queue that saturates mid-seeding hides:
+// seeding's first error fits, so only its second evicts anything.
+TEST_F(CryptoPolicyTest, NearlyFullCallerErrorQueueIsPreserved) {
+  const std::string content =
+      "CipherString = @SECLEVEL=2:kEDH:-aDSS\n"
+      "Ciphersuites = TLS_NONEXISTENT_SUITE_SHA256\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  FillErrorQueue(ERR_NUM_ERRORS - 2);
+
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  ExpectErrorQueue(ERR_NUM_ERRORS - 2);
 }
 
 // A policy whose floor sits above its ceiling must be dropped whole. The public

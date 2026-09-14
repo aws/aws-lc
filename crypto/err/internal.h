@@ -52,6 +52,21 @@ OPENSSL_EXPORT size_t ERR_num_errors(void);
 // longer marks where the new errors begin.
 OPENSSL_EXPORT void ERR_pop_to_count(size_t count);
 
+// ERR_suppress_errors_begin makes the current thread's error queue reject new
+// errors until the matching |ERR_suppress_errors_end|. Use it around
+// best-effort work whose failures are not the caller's business, where
+// |ERR_num_errors| and |ERR_pop_to_count| do not suffice because the queue may
+// already be full: once it saturates, each new error evicts one of the caller's,
+// and no later trim can bring it back.
+//
+// The queue is left bit-for-bit as it was found, so the caller keeps its
+// entries, its marks, and the pointer from its last |ERR_get_error_line_data|.
+// Scopes nest, and errors raised outside them are unaffected.
+OPENSSL_EXPORT void ERR_suppress_errors_begin(void);
+
+// ERR_suppress_errors_end ends the innermost |ERR_suppress_errors_begin| scope.
+OPENSSL_EXPORT void ERR_suppress_errors_end(void);
+
 
 #if defined(__cplusplus)
 }  // extern C
