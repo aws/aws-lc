@@ -400,8 +400,51 @@ TEST(ErrTest, SuppressErrorsLeavesCallerDataAlone) {
   const char *file, *data;
   uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
   EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+  EXPECT_EQ(ERR_GET_REASON(packed_error), 1);
   EXPECT_STREQ("test1.c", file);
+  EXPECT_EQ(line, 1);
   EXPECT_STREQ(data, "data1");
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// The caller may be holding a string it read without popping the error, which
+// data reaching that error would free under it. Scoped work that attaches data
+// without raising an error of its own writes to exactly that error.
+TEST(ErrTest, SuppressErrorsKeepsReadDataAlive) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ERR_add_error_data(1, "data1");
+
+  int line, flags;
+  const char *file, *data;
+  uint32_t packed_error =
+      ERR_peek_error_line_data(&file, &line, &data, &flags);
+  ASSERT_EQ(ERR_GET_LIB(packed_error), 1);
+  ASSERT_STREQ(data, "data1");
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ERR_add_error_data(1, "data2");
+  ERR_add_error_dataf("data%d", 3);
+  ERR_suppress_errors_end();
+
+  EXPECT_STREQ(data, "data1");
+  ERR_clear_error();
+}
+
+// Ending a scope that never opened would decrement a depth nothing incremented,
+// so the C++ holder ends only what it began and says which it did.
+TEST(ErrTest, ScopedErrorSuppression) {
+  ERR_clear_error();
+
+  {
+    bssl::ScopedErrorSuppression suppress;
+    ASSERT_TRUE(static_cast<bool>(suppress));
+    ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  }
+
+  EXPECT_EQ(0u, ERR_peek_error());
+  ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
   EXPECT_EQ(0u, ERR_get_error());
 }
 
