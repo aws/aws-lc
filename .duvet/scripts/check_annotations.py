@@ -34,15 +34,24 @@ def collect_annotations() -> list[str]:
     (the requirement .toml files themselves) are excluded — we only track the
     citations that live in shippable source.
     """
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        json_path = tmp.name
-    subprocess.run(
-        ["duvet", "report", "--json", json_path],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-    )
-    report = json.loads(Path(json_path).read_text())
+    with tempfile.TemporaryDirectory() as tmpdir:
+        json_path = Path(tmpdir) / "report.json"
+        try:
+            subprocess.run(
+                ["duvet", "report", "--json", str(json_path)],
+                cwd=REPO_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            print("ERROR: `duvet` not found on PATH", file=sys.stderr)
+            raise SystemExit(1)
+        except subprocess.CalledProcessError as e:
+            print("ERROR: `duvet report` failed with:\n" + (e.stderr or e.stdout or ""),
+                  file=sys.stderr)
+            raise SystemExit(1)
+        report = json.loads(json_path.read_text())
 
     rows: list[str] = []
     for ann in report["annotations"]:
