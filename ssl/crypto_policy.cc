@@ -415,13 +415,12 @@ void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path, bool is_dtls,
   //
   // Seeding is what gives way when the scope cannot be opened, since running it
   // unprotected is the one outcome the caller must not see.
-  if (!ERR_suppress_errors_begin()) {
+  ScopedErrorSuppression suppress;
+  if (!suppress) {
     return;
   }
 
   ApplyPolicyToCtx(ctx, path, is_dtls, version_locked);
-
-  ERR_suppress_errors_end();
 }
 
 BSSL_NAMESPACE_END
