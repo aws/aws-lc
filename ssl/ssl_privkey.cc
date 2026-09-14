@@ -1019,12 +1019,12 @@ bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len) {
   OPENSSL_memcpy(buf, name, len);
   buf[len] = '\0';
 
-  // The parser reports a token it does not know by queueing an error. Discard it
-  // so probing a name is not observable in the caller's error queue.
-  const size_t num_errors = ERR_num_errors();
+  // The parser reports a token it does not know by queueing an error, so probing
+  // a name would otherwise be visible in the caller's error queue.
+  ERR_suppress_errors_begin();
   Array<uint16_t> sigalgs;
   const bool ok = parse_sigalgs_list(&sigalgs, buf);
-  ERR_pop_to_count(num_errors);
+  ERR_suppress_errors_end();
   // A ':' would parse as several algorithms, so require exactly one.
   if (!ok || sigalgs.size() != 1) {
     return false;
