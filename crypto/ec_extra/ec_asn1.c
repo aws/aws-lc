@@ -474,6 +474,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len) {
   if (inp == NULL || len < 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
     return NULL;
   }
 

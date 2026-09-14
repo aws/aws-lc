@@ -1829,6 +1829,53 @@ TEST(EVPExtraTest, ECKeygen) {
   }
 }
 
+TEST(EVPExtraTest, ECSignatureContextRejected) {
+  // |EVP_PKEY_CTRL_SIGNING_CONTEXT| previously collided with
+  // |EVP_PKEY_CTRL_PEER_KEY|, so EC treated a signature-context set as a
+  // successful no-op. It must fail: ECDSA does not take a context string.
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
+  ASSERT_TRUE(pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+
+  static const uint8_t kContext[] = {1, 2, 3, 4};
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(
+      ctx.get(), kContext, sizeof(kContext)));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_COMMAND_NOT_SUPPORTED));
+
+  const uint8_t *out_ctx = nullptr;
+  size_t out_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_CTX_get0_signature_context(ctx.get(), &out_ctx, &out_len));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_COMMAND_NOT_SUPPORTED));
+
+  // |EVP_PKEY_CTRL_PEER_KEY| must still work for ECDH after the renumbering.
+  bssl::UniquePtr<EVP_PKEY_CTX> peer_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(peer_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(peer_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(peer_ctx.get(),
+                                                     NID_X9_62_prime256v1));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(peer_ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> peer(raw);
+
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_derive_set_peer(ctx.get(), peer.get()));
+  size_t secret_len = 0;
+  ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), nullptr, &secret_len));
+  EXPECT_GT(secret_len, 0u);
+}
+
 TEST(EVPExtraTest, DHKeygen) {
   // Set up some DH params in an |EVP_PKEY|. There is currently no API to do
   // this from EVP directly.

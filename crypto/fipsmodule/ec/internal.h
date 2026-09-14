@@ -778,20 +778,6 @@ struct ec_key_st {
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
-// d2i_ECPKParameters deserializes the |ECPKParameters| specified in RFC 3279
-// to an |EC_GROUP| from |inp|. Only deserialization of namedCurves or
-// explicitly-encoded versions of namedCurves are supported. If |*out_group| is
-// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
-// also written to |*out_group|. The user continues to maintain the memory
-// assigned to |*out_group| if non-null.
-EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
-                             long len);
-
-// i2d_ECPKParameters serializes an |EC_GROUP| from |outp| according to the
-// |ECPKParameters| specified in RFC 3279. Only serialization of namedCurves
-// are supported.
-int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp);
-
 #if defined(__cplusplus)
 }  // extern C
 #endif

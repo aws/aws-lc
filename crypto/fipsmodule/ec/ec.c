@@ -251,7 +251,7 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
 
   ret = OPENSSL_zalloc(sizeof(EC_GROUP));
   if (ret == NULL) {
-    return NULL;
+    goto err;
   }
   ret->mutable_ec_group = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
