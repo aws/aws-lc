@@ -693,24 +693,6 @@ void ERR_set_error_data(char *data, int flags) {
   }
 }
 
-// err_state_num_errors returns the number of entries in |state|'s queue. Valid
-// entries occupy the ring slots after |bottom| up to and including |top|.
-static size_t err_state_num_errors(const ERR_STATE *state) {
-  if (state->top >= state->bottom) {
-    return state->top - state->bottom;
-  }
-  return ERR_NUM_ERRORS - state->bottom + state->top;
-}
-
-size_t ERR_num_errors(void) {
-  ERR_STATE *const state = err_get_state();
-
-  if (state == NULL) {
-    return 0;
-  }
-  return err_state_num_errors(state);
-}
-
 void ERR_suppress_errors_begin(void) {
   ERR_STATE *const state = err_get_state();
 

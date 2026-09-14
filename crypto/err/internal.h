@@ -30,11 +30,6 @@ OPENSSL_EXPORT ERR_SAVE_STATE *ERR_save_state(void);
 // are not part of a saved state: they are neither captured nor restored.
 OPENSSL_EXPORT void ERR_restore_state(const ERR_SAVE_STATE *state);
 
-// ERR_num_errors returns the number of errors in the current thread's error
-// queue. The queue is a ring holding |ERR_NUM_ERRORS| - 1 entries, so the count
-// saturates there and further errors evict the oldest.
-OPENSSL_EXPORT size_t ERR_num_errors(void);
-
 // ERR_suppress_errors_begin makes the current thread's error queue reject new
 // errors until the matching |ERR_suppress_errors_end|. Use it around
 // best-effort work whose failures are not the caller's business.

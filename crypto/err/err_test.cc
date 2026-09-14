@@ -239,28 +239,6 @@ TEST(ErrTest, SaveAndRestoreDropsMark) {
   EXPECT_EQ(0u, ERR_get_error());
 }
 
-TEST(ErrTest, NumErrors) {
-  ERR_clear_error();
-  EXPECT_EQ(0u, ERR_num_errors());
-
-  for (unsigned i = 1; i <= 3; i++) {
-    ERR_put_error(i, 0 /* unused */, i, "test", i);
-    EXPECT_EQ(static_cast<size_t>(i), ERR_num_errors());
-  }
-
-  ERR_get_error();
-  EXPECT_EQ(2u, ERR_num_errors());
-  ERR_clear_error();
-  EXPECT_EQ(0u, ERR_num_errors());
-
-  // The count saturates at the ring's capacity rather than wrapping to zero.
-  for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
-    ERR_put_error(1, 0 /* unused */, i + 1, "test", 1);
-  }
-  EXPECT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
-  ERR_clear_error();
-}
-
 TEST(ErrTest, SuppressErrors) {
   ERR_clear_error();
 
@@ -268,14 +246,13 @@ TEST(ErrTest, SuppressErrors) {
   for (unsigned i = 1; i <= 4; i++) {
     ERR_put_error(i, 0 /* unused */, i, "test", i);
   }
-  EXPECT_EQ(0u, ERR_num_errors());
+  EXPECT_EQ(0u, ERR_peek_error());
   ERR_suppress_errors_end();
 
   // The scope is over, so errors are recorded again.
   ERR_put_error(5, 0 /* unused */, 5, "test", 5);
-  EXPECT_EQ(1u, ERR_num_errors());
-  EXPECT_EQ(ERR_GET_LIB(ERR_peek_error()), 5);
-  ERR_clear_error();
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 5);
+  EXPECT_EQ(0u, ERR_get_error());
 }
 
 // A saturated queue is what suppression is for: each error raised inside the
@@ -286,7 +263,6 @@ TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
   for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
     ERR_put_error(1, 0 /* unused */, i, "test", 1);
   }
-  ASSERT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
 
   ERR_suppress_errors_begin();
   for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
@@ -294,7 +270,6 @@ TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
   }
   ERR_suppress_errors_end();
 
-  EXPECT_EQ(static_cast<size_t>(ERR_NUM_ERRORS - 1), ERR_num_errors());
   for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
     uint32_t packed_error = ERR_get_error();
     EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
@@ -337,12 +312,12 @@ TEST(ErrTest, SuppressErrorsNests) {
 
   // The outer scope is still open.
   ERR_put_error(1, 0 /* unused */, 1, "test", 1);
-  EXPECT_EQ(0u, ERR_num_errors());
+  EXPECT_EQ(0u, ERR_peek_error());
 
   ERR_suppress_errors_end();
   ERR_put_error(2, 0 /* unused */, 2, "test", 2);
-  EXPECT_EQ(1u, ERR_num_errors());
-  ERR_clear_error();
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
+  EXPECT_EQ(0u, ERR_get_error());
 }
 
 // Querying the error queue should not affect the OS error.
