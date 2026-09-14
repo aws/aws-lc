@@ -44,11 +44,15 @@ OPENSSL_EXPORT void ERR_restore_state(const ERR_SAVE_STATE *state);
 // every new error evicts one of the caller's and trimming the queue afterward
 // cannot bring an evicted entry back.
 //
-// Only new errors are rejected. Anything inside the scope that drains or
-// rewrites the queue -- |ERR_get_error|, |ERR_clear_error|, |ERR_pop_to_mark|,
-// |ERR_restore_state| -- still reaches the caller's entries, as when an |SSL| I/O
-// call is reentered, and surviving that needs |ERR_save_state| and
-// |ERR_restore_state| around the scope.
+// This preservation guarantee requires that the entire scoped call graph
+// neither modifies caller-owned queue state nor relies on reading its own
+// errors. Only new errors and error-data writes are suppressed; other queue
+// operations, including |ERR_get_error|, |ERR_clear_error|, |ERR_set_mark|,
+// |ERR_pop_to_mark|, and |ERR_restore_state|, still reach caller-owned state.
+//
+// |ERR_save_state| and |ERR_restore_state| can recover saved error entries,
+// but do not preserve marks or the lifetime of previously returned error-data
+// pointers. They also do not fix error-driven behavior inside the scope.
 //
 // Scopes nest, and errors raised outside them are unaffected.
 OPENSSL_EXPORT int ERR_suppress_errors_begin(void);
