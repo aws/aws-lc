@@ -331,6 +331,23 @@ TEST(ErrTest, SuppressErrorsKeepsReadDataAlive) {
   ERR_clear_error();
 }
 
+// Ending a scope that never opened would decrement a depth nothing incremented,
+// so the C++ holder ends only what it began and says which it did.
+TEST(ErrTest, ScopedErrorSuppression) {
+  ERR_clear_error();
+
+  {
+    bssl::ScopedErrorSuppression suppress;
+    ASSERT_TRUE(static_cast<bool>(suppress));
+    ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  }
+
+  EXPECT_EQ(0u, ERR_peek_error());
+  ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
 TEST(ErrTest, SuppressErrorsNests) {
   ERR_clear_error();
 

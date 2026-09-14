@@ -71,6 +71,26 @@ BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(ERR_SAVE_STATE, ERR_SAVE_STATE_free)
 
+// ScopedErrorSuppression holds an |ERR_suppress_errors_begin| scope for as long
+// as it is alive. It converts to false when the scope could not be opened, where
+// the guarded work is to be skipped rather than run unsuppressed.
+class ScopedErrorSuppression {
+ public:
+  ScopedErrorSuppression() : active_(ERR_suppress_errors_begin() != 0) {}
+  ~ScopedErrorSuppression() {
+    if (active_) {
+      ERR_suppress_errors_end();
+    }
+  }
+  ScopedErrorSuppression(const ScopedErrorSuppression &) = delete;
+  ScopedErrorSuppression &operator=(const ScopedErrorSuppression &) = delete;
+
+  explicit operator bool() const { return active_; }
+
+ private:
+  const bool active_;
+};
+
 BSSL_NAMESPACE_END
 
 }  // extern C++
