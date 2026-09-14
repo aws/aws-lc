@@ -219,6 +219,48 @@ size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
   return out_i;
 }
 
+// PolicyRemovesGroup reports whether the Groups value |value| takes |group| out
+// with the OpenSSL '-' modifier.
+bool PolicyRemovesGroup(const char *value, uint16_t group) {
+  for (const char *tok = value;;) {
+    const char *end = strchr(tok, ':');
+    const size_t len =
+        end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+    uint16_t id;
+    if (len > 1 && tok[0] == '-' && GroupIdFromToken(&id, tok + 1, len - 1) &&
+        id == group) {
+      return true;
+    }
+    if (end == nullptr) {
+      return false;
+    }
+    tok = end + 1;
+  }
+}
+
+// GroupsFromRemovals fills |out|, which holds |out_len| entries, with AWS-LC's
+// default groups less the ones the Groups value |value| removes, and returns how
+// many were written, or zero if |value| removes no group AWS-LC implements.
+//
+// A value that only removes leaves |FilterPolicyIds| nothing to keep, so without
+// this the setter is skipped and the group the operator took out comes back with
+// the defaults.
+size_t GroupsFromRemovals(uint16_t *out, size_t out_len, const char *value) {
+  bool removed_any = false;
+  size_t out_i = 0;
+  for (uint16_t group : tls1_get_default_grouplist()) {
+    if (PolicyRemovesGroup(value, group)) {
+      removed_any = true;
+      continue;
+    }
+    if (out_i >= out_len) {
+      return 0;
+    }
+    out[out_i++] = group;
+  }
+  return removed_any ? out_i : 0;
+}
+
 // ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
 // |SSL_CTX_set_cipher_list| does when |config_tls13| is false and
 // |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
@@ -352,13 +394,22 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
                                      ssl_sigalg_id_from_name);
     if (n > 0) {
       // Both preference lists, matching what |SSL_CTX_set1_sigalgs_list| writes.
-      SSL_CTX_set_signing_algorithm_prefs(ctx, ids, n);
-      SSL_CTX_set_verify_algorithm_prefs(ctx, ids, n);
+      // Each list is a separate allocation, so the second setter can fail with
+      // the first already in place. Moving the signing list aside costs nothing
+      // and is what lets that failure keep the defaults.
+      Array<uint16_t> saved_signing = std::move(ctx->cert->sigalgs);
+      if (!SSL_CTX_set_signing_algorithm_prefs(ctx, ids, n) ||
+          !SSL_CTX_set_verify_algorithm_prefs(ctx, ids, n)) {
+        ctx->cert->sigalgs = std::move(saved_signing);
+      }
     }
   }
   if (cfg.groups[0] != '\0') {
-    const size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups,
-                                     GroupIdFromToken);
+    size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups,
+                               GroupIdFromToken);
+    if (n == 0) {
+      n = GroupsFromRemovals(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
+    }
     if (n > 0) {
       SSL_CTX_set1_group_ids(ctx, ids, n);
     }
