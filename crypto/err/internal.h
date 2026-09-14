@@ -35,22 +35,23 @@ OPENSSL_EXPORT void ERR_restore_state(const ERR_SAVE_STATE *state);
 // saturates there and further errors evict the oldest.
 OPENSSL_EXPORT size_t ERR_num_errors(void);
 
-// ERR_pop_to_count removes errors from the top of the current thread's error
-// queue until at most |count| remain, normally a count taken with
-// |ERR_num_errors| before running code whose errors are to be discarded.
+// ERR_suppress_errors_begin makes the current thread's error queue reject new
+// errors until the matching |ERR_suppress_errors_end|. Use it around
+// best-effort work whose failures are not the caller's business.
 //
-// It drops those errors without disturbing what the caller had queued: unlike
-// |ERR_clear_error| and |ERR_restore_state| it leaves the surviving entries and
-// the pointer from the last |ERR_get_error_line_data| alone, and unlike
-// |ERR_pop_to_mark| it needs no entry to mark, so it works on an empty queue and
-// leaves a caller's mark as it found it.
+// The queue is left bit-for-bit as it was found, so the caller keeps its
+// entries, its marks, and the pointer from its last |ERR_get_error_line_data|.
+// Rejecting the errors is what makes that hold once the queue saturates, where
+// every new error evicts one of the caller's and trimming the queue afterward
+// cannot bring an evicted entry back.
 //
-// It only removes entries, so it recovers nothing the code in between destroyed.
-// Errors a nested |ERR_clear_error| may wipe, as when an |SSL| I/O call is
-// reentered, still need |ERR_save_state| and |ERR_restore_state|. Likewise, if
-// the queue saturates in between, the evicted entries are gone and |count| no
-// longer marks where the new errors begin.
-OPENSSL_EXPORT void ERR_pop_to_count(size_t count);
+// Scopes nest, and errors raised outside them are unaffected. Errors a nested
+// |ERR_clear_error| may wipe, as when an |SSL| I/O call is reentered, still need
+// |ERR_save_state| and |ERR_restore_state|.
+OPENSSL_EXPORT void ERR_suppress_errors_begin(void);
+
+// ERR_suppress_errors_end ends the innermost |ERR_suppress_errors_begin| scope.
+OPENSSL_EXPORT void ERR_suppress_errors_end(void);
 
 
 #if defined(__cplusplus)
