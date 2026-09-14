@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <thread>
+
 #include <gtest/gtest.h>
 
 #include <openssl/crypto.h>
@@ -342,7 +344,7 @@ TEST(ErrTest, PopToCountPreservesCallerState) {
 TEST(ErrTest, SuppressErrors) {
   ERR_clear_error();
 
-  ERR_suppress_errors_begin();
+  ASSERT_TRUE(ERR_suppress_errors_begin());
   for (unsigned i = 1; i <= 4; i++) {
     ERR_put_error(i, 0 /* unused */, i, "test", i);
   }
@@ -364,7 +366,7 @@ TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
     ERR_put_error(1, 0 /* unused */, i, "test", 1);
   }
 
-  ERR_suppress_errors_begin();
+  ASSERT_TRUE(ERR_suppress_errors_begin());
   for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
     ERR_put_error(2, 0 /* unused */, 2, "test", 2);
   }
@@ -387,7 +389,7 @@ TEST(ErrTest, SuppressErrorsLeavesCallerDataAlone) {
   ERR_add_error_data(1, "data1");
   ASSERT_TRUE(ERR_set_mark());
 
-  ERR_suppress_errors_begin();
+  ASSERT_TRUE(ERR_suppress_errors_begin());
   ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
   ERR_add_error_data(1, "data2");
   ERR_add_error_dataf("data%d", 3);
@@ -406,8 +408,8 @@ TEST(ErrTest, SuppressErrorsLeavesCallerDataAlone) {
 TEST(ErrTest, SuppressErrorsNests) {
   ERR_clear_error();
 
-  ERR_suppress_errors_begin();
-  ERR_suppress_errors_begin();
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ASSERT_TRUE(ERR_suppress_errors_begin());
   ERR_suppress_errors_end();
 
   // The outer scope is still open.
@@ -419,6 +421,21 @@ TEST(ErrTest, SuppressErrorsNests) {
   EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
   EXPECT_EQ(0u, ERR_get_error());
 }
+
+// A scope can be the first thing a thread does with the error queue, which is
+// where |ERR_suppress_errors_begin| has to create the thread's error state and
+// so is the one case where it can fail. Every other test here clears the queue
+// first and therefore never exercises that path.
+#if defined(OPENSSL_THREADS)
+TEST(ErrTest, SuppressErrorsOnFreshThread) {
+  std::thread([] {
+    ASSERT_TRUE(ERR_suppress_errors_begin());
+    ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+    ERR_suppress_errors_end();
+    EXPECT_EQ(0u, ERR_get_error());
+  }).join();
+}
+#endif  // OPENSSL_THREADS
 
 // Querying the error queue should not affect the OS error.
 #if defined(OPENSSL_WINDOWS)
