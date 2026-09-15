@@ -89,8 +89,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # One macOS version, matching macOS-x86 which already runs only
+        # macos-15-intel. macOS has the smallest GitHub-hosted concurrency
+        # ceiling and is the one pool a larger runner group cannot relieve,
+        # because that ceiling is shared between standard and larger runners.
         os:
-          - "macos-14"
           - "macos-15"
     steps:
       - uses: actions/checkout@v7
@@ -139,8 +142,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14"
-          - "macos-15"
+          - "macos-15" # one version, see macOS-ARM above
         clang:
           - 22
           - 0 # default
