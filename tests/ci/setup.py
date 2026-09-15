@@ -20,14 +20,14 @@ setuptools.setup(
 
     install_requires=[
         # CDK dependencies.
-        "aws-cdk-lib==2.255.0",
-        "constructs==10.6.0",
+        "aws-cdk-lib==2.262.1",
+        "constructs==10.7.1",
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==6.0.3",
         # A formatter for Python code.
         "yapf==0.43.0",
         # Introduced by benchmark framework.
-        "boto3==1.42.97",
+        "boto3==1.43.57",
         # Introduced by Android Device Farm CI.
         "requests",
         "arnparse==0.0.2",
