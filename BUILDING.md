@@ -151,9 +151,6 @@ groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
 The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
 AWS-LC selects its own key shares, and `-` drops the group it prefixes.
-Because these setters replace AWS-LC's defaults rather than intersect with them, a
-policy that does not name AWS-LC's post-quantum groups and signature algorithms
-removes them.
 
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's

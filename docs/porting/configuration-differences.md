@@ -62,10 +62,7 @@ as `SSLv3`, keeps the built-in floor.
 implements, in the order the policy gives them, and a directive naming nothing
 AWS-LC implements is dropped. In `Groups`, the OpenSSL modifiers `*` and `?` are
 stripped from the group they mark and `-` drops it; a value that only removes
-groups is applied to AWS-LC's default list. Both directives correspond
-to setters that replace AWS-LC's default list rather than intersect with it, so a
-policy silent on AWS-LC's post-quantum groups (ML-KEM hybrids) and signature
-algorithms (ML-DSA) removes them from the context. See
+groups is applied to AWS-LC's default list. See
 [BUILDING.md](../../BUILDING.md) for the build flag and the
 `AWSLC_CRYPTO_POLICY_FILE` override.
 

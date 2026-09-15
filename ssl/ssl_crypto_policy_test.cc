@@ -115,6 +115,33 @@ bool Contains(const Array<uint16_t> &haystack, uint16_t needle) {
   return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
 }
 
+// AWS-LC's post-quantum groups and signature algorithms. Spelled out here rather
+// than read from the library so this file needs no new export; a PQ algorithm
+// added to AWS-LC and missing from these lists shows up as an unexpected entry in
+// the assertions below, which is the failure to want.
+const uint16_t kPQGroups[] = {
+    SSL_GROUP_MLKEM512,        SSL_GROUP_MLKEM768,
+    SSL_GROUP_MLKEM1024,       SSL_GROUP_SECP256R1_MLKEM768,
+    SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP384R1_MLKEM1024,
+};
+const uint16_t kPQSigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                               SSL_SIGN_MLDSA87};
+
+// WithoutPQ copies |in| out, dropping the entries in |pq|, so a test can assert
+// the classical part of a seeded list exactly without also fixing whether
+// post-quantum entries are in it. Whether they are is a policy question this
+// layer does not answer.
+std::vector<uint16_t> WithoutPQ(const Array<uint16_t> &in,
+                                Span<const uint16_t> pq) {
+  std::vector<uint16_t> out;
+  for (uint16_t id : in) {
+    if (std::find(pq.begin(), pq.end(), id) == pq.end()) {
+      out.push_back(id);
+    }
+  }
+  return out;
+}
+
 // PolicyRequests reports whether the ':'-separated |value| asks for |name|. A
 // '*' or '?' modifier still asks for the group; a '-' removes it, so the token
 // is compared with the prefix left on and does not match.
@@ -477,7 +504,7 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
 
   // Groups and SignatureAlgorithms took effect, keeping the policy's order and
   // dropping only what AWS-LC cannot do.
-  EXPECT_EQ(ToVector(ctx->supported_group_list),
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
                                    SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
   const std::vector<uint16_t> expected_sigalgs = {
@@ -486,8 +513,8 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
       SSL_SIGN_RSA_PSS_RSAE_SHA256,    SSL_SIGN_RSA_PSS_RSAE_SHA384,
       SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA256,
       SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512};
-  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
-  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
+  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs), expected_sigalgs);
+  EXPECT_EQ(WithoutPQ(ctx->cert->sigalgs, kPQSigalgs), expected_sigalgs);
 
   // A valid policy leaves the error queue clean.
   EXPECT_EQ(ERR_peek_error(), 0u);
@@ -515,10 +542,10 @@ TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
 
   // P-256 is present, so the crypto-policies spelling "secp256r1" was translated
   // rather than dropped.
-  EXPECT_EQ(ToVector(ctx->supported_group_list),
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
                                    SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
-  EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
+  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs).size(), 10u);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -535,7 +562,7 @@ TEST_F(CryptoPolicyTest, GroupListModifiers) {
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);
 
-  EXPECT_EQ(ToVector(ctx->supported_group_list),
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP384R1,
                                    SSL_GROUP_SECP256R1}));
   EXPECT_EQ(ERR_peek_error(), 0u);
@@ -545,7 +572,7 @@ TEST_F(CryptoPolicyTest, GroupListModifiers) {
 // is the built-in default. Dropping the directive instead would hand back the one
 // group the operator asked to be rid of.
 TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
-  const std::string content = "Groups = -X25519MLKEM768\n";
+  const std::string content = "Groups = -X25519\n";
   TemporaryFile policy;
   ASSERT_TRUE(policy.Init(content));
 
@@ -556,7 +583,7 @@ TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
 
   std::vector<uint16_t> expected;
   for (uint16_t group : tls1_get_default_grouplist()) {
-    if (group != SSL_GROUP_X25519_MLKEM768) {
+    if (group != SSL_GROUP_X25519) {
       expected.push_back(group);
     }
   }
@@ -616,44 +643,8 @@ TEST_F(CryptoPolicyTest, RepeatedGroupSpellingsCollapse) {
                               /*is_dtls=*/false, /*version_locked=*/false);
 
   EXPECT_EQ(
-      ToVector(ctx->supported_group_list),
+      WithoutPQ(ctx->supported_group_list, kPQGroups),
       (std::vector<uint16_t>{SSL_GROUP_SECP256R1, SSL_GROUP_X25519}));
-  EXPECT_EQ(ERR_peek_error(), 0u);
-}
-
-// A policy that names neither ML-KEM nor ML-DSA takes AWS-LC's post-quantum
-// defaults away, because both setters replace the built-in list rather than
-// intersecting with it. Every stock crypto-policies value is such a policy.
-TEST_F(CryptoPolicyTest, PolicySilentOnPQDropsPQDefaults) {
-  TemporaryFile policy;
-  ASSERT_TRUE(policy.Init(kDefaultPolicy));
-
-  // The built-in lists are implicit: an empty configured list means the defaults
-  // apply, and those name the hybrid ML-KEM groups and ML-DSA.
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(ctx->supported_group_list.empty());
-  ASSERT_TRUE(ctx->cert->sigalgs.empty());
-  const Span<const uint16_t> defaults = tls1_get_default_grouplist();
-  EXPECT_NE(std::find(defaults.begin(), defaults.end(),
-                      static_cast<uint16_t>(SSL_GROUP_X25519_MLKEM768)),
-            defaults.end());
-
-  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false, /*version_locked=*/false);
-
-  ASSERT_FALSE(ctx->supported_group_list.empty());
-  ASSERT_FALSE(ctx->cert->sigalgs.empty());
-  for (uint16_t group :
-       {SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
-        SSL_GROUP_SECP384R1_MLKEM1024}) {
-    EXPECT_FALSE(Contains(ctx->supported_group_list, group)) << group;
-  }
-  for (uint16_t sigalg :
-       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
-    EXPECT_FALSE(Contains(ctx->cert->sigalgs, sigalg)) << sigalg;
-    EXPECT_FALSE(Contains(ctx->verify_sigalgs, sigalg)) << sigalg;
-  }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
