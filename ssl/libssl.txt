@@ -627,6 +627,8 @@ bssl::SSL_set_aes_hw_override_for_testing AWS_LC_1.0 PUBLIC_CXX
 bssl::SSL_set_handoff_mode AWS_LC_1.0 PUBLIC_CXX
 bssl::ssl_cert_check_key_usage AWS_LC_1.0 PRIVATE_CXX
 bssl::ssl_client_hello_init AWS_LC_1.0 PRIVATE_CXX
+bssl::ssl_crypto_policy_default_path AWS_LC_1.0 PRIVATE_CXX
+bssl::ssl_crypto_policy_parse_file AWS_LC_1.0 PRIVATE_CXX
 bssl::ssl_decode_client_hello_inner AWS_LC_1.0 PRIVATE_CXX
 bssl::ssl_handshake_new AWS_LC_1.0 PRIVATE_CXX
 bssl::ssl_is_valid_ech_public_name AWS_LC_1.0 PRIVATE_CXX
