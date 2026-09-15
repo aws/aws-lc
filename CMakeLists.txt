@@ -42,6 +42,7 @@ option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim component
 option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires AWSLC_PROVIDER_OPENSSL_ROOT" OFF)
 set(AWSLC_PROVIDER_OPENSSL_ROOT "" CACHE PATH "Install prefix of an OpenSSL 3.5 or later build, supplying the provider headers BUILD_AWSLC_PROVIDER needs")
 option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
+set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
