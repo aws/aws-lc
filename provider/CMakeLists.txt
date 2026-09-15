@@ -124,6 +124,7 @@ if(BUILD_TESTING AND NOT ANDROID)
   add_executable(awslc_provider_test
     test/test_main.cc
     test/frontend/provider_test.cc
+    test/frontend/reachability_test.cc
     test/frontend/operations/digests/digests_test.cc
     test/frontend/operations/digests/sha2_test.cc)
 
