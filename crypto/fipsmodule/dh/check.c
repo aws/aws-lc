@@ -90,6 +90,9 @@ int DH_check(const DH *dh, int *out_flags) {
     return 0;
   }
 
+  // Keep this below |dh_check_params_fast()| to not rely on
+  // |dh_fast_path_from_safe_group()| maintaining some "always check q"
+  // invariant. The former is just a few word equality checks anyway.
   if (dh_fast_path_from_safe_group(dh)) {
     return 1;
   }
