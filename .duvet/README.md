@@ -62,6 +62,21 @@ python3 .duvet/scripts/check_annotations.py --update
 Adding annotations never fails the check — it just reminds you to refresh the
 baseline. Only removals are treated as regressions.
 
+### Why a custom baseline instead of Duvet's `[report.snapshot]`
+
+Duvet's native snapshot records requirement-coverage state — whether a given
+spec requirement is cited at all, and by which kind (impl/test), at spec-section
+granularity. This check instead snapshots every individual source `//=`
+citation, keyed by `target-section + kind + source-file + line`.
+
+The finer granularity is deliberate for shippable crypto source. A requirement
+can stay "covered" at the section level while the specific citation documenting
+one code path is silently dropped during a refactor — the section-level snapshot
+would not flag that, but this check does, and its failure output names the exact
+`file:line` to restore. The tradeoff is that moving an annotated line requires a
+`--update` to re-baseline; that is intended, since a moved citation is exactly
+the kind of change a reviewer should confirm.
+
 ## TODOs
 
 - Expand annotation coverage of the extracted RFC 8032 requirements (many
