@@ -30,27 +30,36 @@ OPENSSL_EXPORT ERR_SAVE_STATE *ERR_save_state(void);
 // are not part of a saved state: they are neither captured nor restored.
 OPENSSL_EXPORT void ERR_restore_state(const ERR_SAVE_STATE *state);
 
-// ERR_num_errors returns the number of errors in the current thread's error
-// queue. The queue is a ring holding |ERR_NUM_ERRORS| - 1 entries, so the count
-// saturates there and further errors evict the oldest.
-OPENSSL_EXPORT size_t ERR_num_errors(void);
+// ERR_suppress_errors_begin makes the current thread's error queue reject new
+// errors until the matching |ERR_suppress_errors_end|. Use it around
+// best-effort work whose failures are not the caller's business.
+//
+// It returns one on success and zero if the thread has no error state and one
+// cannot be allocated, in which case nothing is suppressed: skip the work rather
+// than run it unprotected, and do not call |ERR_suppress_errors_end|.
+//
+// The queue is left bit-for-bit as it was found, so the caller keeps its
+// entries, its marks, and the data strings it has already read out of them.
+// Rejecting the errors is what makes that hold once the queue saturates, where
+// every new error evicts one of the caller's and trimming the queue afterward
+// cannot bring an evicted entry back.
+//
+// This preservation guarantee requires that the entire scoped call graph
+// neither modifies caller-owned queue state nor relies on reading its own
+// errors. Only new errors and error-data writes are suppressed; other queue
+// operations, including |ERR_get_error|, |ERR_clear_error|, |ERR_set_mark|,
+// |ERR_pop_to_mark|, and |ERR_restore_state|, still reach caller-owned state.
+//
+// |ERR_save_state| and |ERR_restore_state| can recover saved error entries,
+// but do not preserve marks or the lifetime of previously returned error-data
+// pointers. They also do not fix error-driven behavior inside the scope.
+//
+// Scopes nest, and errors raised outside them are unaffected.
+OPENSSL_EXPORT int ERR_suppress_errors_begin(void);
 
-// ERR_pop_to_count removes errors from the top of the current thread's error
-// queue until at most |count| remain, normally a count taken with
-// |ERR_num_errors| before running code whose errors are to be discarded.
-//
-// It drops those errors without disturbing what the caller had queued: unlike
-// |ERR_clear_error| and |ERR_restore_state| it leaves the surviving entries and
-// the pointer from the last |ERR_get_error_line_data| alone, and unlike
-// |ERR_pop_to_mark| it needs no entry to mark, so it works on an empty queue and
-// leaves a caller's mark as it found it.
-//
-// It only removes entries, so it recovers nothing the code in between destroyed.
-// Errors a nested |ERR_clear_error| may wipe, as when an |SSL| I/O call is
-// reentered, still need |ERR_save_state| and |ERR_restore_state|. Likewise, if
-// the queue saturates in between, the evicted entries are gone and |count| no
-// longer marks where the new errors begin.
-OPENSSL_EXPORT void ERR_pop_to_count(size_t count);
+// ERR_suppress_errors_end ends the innermost |ERR_suppress_errors_begin| scope.
+// Call it only after a begin that returned one.
+OPENSSL_EXPORT void ERR_suppress_errors_end(void);
 
 
 #if defined(__cplusplus)
@@ -61,6 +70,26 @@ extern "C++" {
 BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(ERR_SAVE_STATE, ERR_SAVE_STATE_free)
+
+// ScopedErrorSuppression holds an |ERR_suppress_errors_begin| scope for as long
+// as it is alive. It converts to false when the scope could not be opened, where
+// the guarded work is to be skipped rather than run unsuppressed.
+class ScopedErrorSuppression {
+ public:
+  ScopedErrorSuppression() : active_(ERR_suppress_errors_begin() != 0) {}
+  ~ScopedErrorSuppression() {
+    if (active_) {
+      ERR_suppress_errors_end();
+    }
+  }
+  ScopedErrorSuppression(const ScopedErrorSuppression &) = delete;
+  ScopedErrorSuppression &operator=(const ScopedErrorSuppression &) = delete;
+
+  explicit operator bool() const { return active_; }
+
+ private:
+  const bool active_;
+};
 
 BSSL_NAMESPACE_END
 

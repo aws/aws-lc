@@ -969,14 +969,12 @@ AWS_LC_1.0 {
     ERR_load_ERR_strings;
     ERR_load_RAND_strings;
     ERR_load_crypto_strings;
-    ERR_num_errors;
     ERR_peek_error;
     ERR_peek_error_line;
     ERR_peek_error_line_data;
     ERR_peek_last_error;
     ERR_peek_last_error_line;
     ERR_peek_last_error_line_data;
-    ERR_pop_to_count;
     ERR_pop_to_mark;
     ERR_print_errors;
     ERR_print_errors_cb;
@@ -989,6 +987,8 @@ AWS_LC_1.0 {
     ERR_save_state;
     ERR_set_error_data;
     ERR_set_mark;
+    ERR_suppress_errors_begin;
+    ERR_suppress_errors_end;
     EVP_AEAD_CTX_aead;
     EVP_AEAD_CTX_cleanup;
     EVP_AEAD_CTX_copy;
