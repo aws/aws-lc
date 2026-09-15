@@ -579,7 +579,7 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
                        static_cast<int>(read_amount));
     if (ret <= 0) {
-      if (ret == 0 && !BIO_should_read(ssl->rbio.get()) &&
+      if (ret == 0 && !BIO_should_retry(ssl->rbio.get()) &&
           ssl->s3->read_shutdown == ssl_shutdown_none && !SSL_in_init(ssl)) {
         if (ssl->options & SSL_OP_IGNORE_UNEXPECTED_EOF) {
           ssl->s3->read_shutdown = ssl_shutdown_close_notify;
@@ -588,10 +588,15 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
         }
 
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EOF_WHILE_READING);
+        // Unlike a fatal alert, an unexpected transport EOF must not be
+        // reported as |SSL_RECEIVED_SHUTDOWN|. See |SSL_get_shutdown|.
+        ssl->s3->unexpected_eof = true;
         ssl_set_read_error(ssl);
-        return -1;
+        // OpenSSL returns zero, not -1, in this case. |SSL_get_error| still
+        // reports |SSL_ERROR_SSL| because the error queue is non-empty.
+        return 0;
       }
-      
+
       ssl->s3->rwstate = SSL_ERROR_WANT_READ;
       return ret;
     }

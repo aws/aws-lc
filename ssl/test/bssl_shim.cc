@@ -1266,7 +1266,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL) ||
             is_unexpected_eof) {
-          if (n > 0) {
+          if (n != 0) {
             fprintf(stderr, "Invalid SSL_get_error output\n");
             return false;
           }

@@ -640,9 +640,12 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 
 // SSL_OP_IGNORE_UNEXPECTED_EOF configures a connection to treat an unexpected
 // transport EOF (the peer closing the connection without sending a
-// close_notify alert) as a clean shutdown. When set, |SSL_read| reports
-// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SSL| with
-// |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the error stack.
+// close_notify alert) as a clean shutdown. This option only applies after the
+// handshake completes. When set, an unexpected EOF causes |SSL_read| and
+// |SSL_peek| to return zero, with |SSL_get_error| reporting
+// |SSL_ERROR_ZERO_RETURN| and an empty error queue. Otherwise, |SSL_get_error|
+// reports |SSL_ERROR_SSL| with |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the
+// error queue.
 #define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
 
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
@@ -1799,6 +1802,12 @@ OPENSSL_EXPORT int SSL_in_accept_init(const SSL *ssl);
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
 // and has no pending handshake. It returns zero otherwise.
+//
+// As in OpenSSL 3.x, this also returns zero if |ssl| is in an unexpected
+// transport EOF error state, even if the handshake had completed. This does not
+// apply to EOFs ignored with |SSL_OP_IGNORE_UNEXPECTED_EOF|. Note this makes it
+// distinct from |!SSL_in_init|, which reports only whether a handshake is in
+// progress.
 OPENSSL_EXPORT int SSL_is_init_finished(const SSL *ssl);
 
 // SSL_in_init returns one if |ssl| has a pending handshake and zero
