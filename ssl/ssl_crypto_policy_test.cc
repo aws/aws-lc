@@ -72,6 +72,20 @@ const char kDefaultGroups[] =
     "*X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:"
     "ffdhe6144:ffdhe8192";
 
+// The two list directives of Amazon Linux 2023's DEFAULT:PQ, verbatim. It is the
+// stock policy that exercises the whole OpenSSL 3.5 list syntax: two modifiers on
+// one group, a '/' between preference tuples, modifiers on signature algorithms,
+// and each post-quantum algorithm spelled twice.
+const char kPQSubpolicySigalgs[] =
+    "?mldsa44:?mldsa65:?mldsa87:ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:"
+    "ed448:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:"
+    "rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:"
+    "RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224";
+const char kPQSubpolicyGroups[] =
+    "*?X25519MLKEM768:?x25519_mlkem768:?SecP256r1MLKEM768:?p256_mlkem768:"
+    "?SecP384r1MLKEM1024:?p384_mlkem1024/*X25519:secp256r1:X448:secp521r1:"
+    "secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:ffdhe6144:ffdhe8192";
+
 // A path no policy file will ever occupy, used both to make seeding a no-op and
 // as the subject of MissingFileIsIgnored.
 const char kNoSuchPath[] = "/nonexistent/aws-lc/crypto-policy/does-not-exist";
@@ -115,24 +129,24 @@ bool Contains(const Array<uint16_t> &haystack, uint16_t needle) {
   return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
 }
 
-// PolicyRequests reports whether the ':'-separated |value| asks for |name|. A
-// '*' or '?' modifier still asks for the group; a '-' removes it, so the token
-// is compared with the prefix left on and does not match.
+// PolicyRequests reports whether |value|, whose entries are separated by ':' or
+// by the tuple boundary '/', asks for |name|. Any number of '*' and '?' modifiers
+// still ask for the group; a '-' removes it, so the token is compared with the
+// prefix left on and does not match.
 bool PolicyRequests(const char *value, const char *name) {
   for (const char *tok = value;;) {
-    const char *end = strchr(tok, ':');
-    size_t len = end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
-    if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+    size_t len = strcspn(tok, ":/");
+    while (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
       tok++;
       len--;
     }
     if (len == strlen(name) && strncmp(tok, name, len) == 0) {
       return true;
     }
-    if (end == nullptr) {
+    if (tok[len] == '\0') {
       return false;
     }
-    tok = end + 1;
+    tok += len + 1;
   }
 }
 
@@ -560,6 +574,84 @@ TEST_F(CryptoPolicyTest, GroupListModifiers) {
   EXPECT_EQ(ToVector(ctx->supported_group_list),
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP384R1,
                                    SSL_GROUP_SECP256R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A group can carry both modifiers at once, and the entry after a tuple boundary
+// is an entry like any other. Stripping one prefix or splitting on ':' alone
+// drops the group the policy asked for first.
+TEST_F(CryptoPolicyTest, StackedModifiersAndTupleSeparator) {
+  // Post-quantum off so the assertion is the policy's own list, without the
+  // hybrids the defaults would prepend.
+  const std::string content =
+      "Groups = *?secp384r1:?secp521r1/*X25519:secp256r1\n"
+      "AWSLC.PostQuantum = off\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_SECP384R1, SSL_GROUP_SECP521R1,
+                                   SSL_GROUP_X25519, SSL_GROUP_SECP256R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Signature algorithms carry the '?' modifier too. Left on, it drops the
+// algorithm, and for ML-DSA the merge then appends what the policy asked for
+// first, inverting the operator's order.
+TEST_F(CryptoPolicyTest, SigalgListModifiers) {
+  const std::string content =
+      "SignatureAlgorithms = ?mldsa44:ECDSA+SHA256:?ed25519\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  const std::vector<uint16_t> expected = {SSL_SIGN_MLDSA44,
+                                          SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                                          SSL_SIGN_ED25519};
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected);
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Amazon Linux 2023's DEFAULT:PQ as shipped. The policy names post-quantum
+// algorithms, so it is authoritative over them: the hybrids and ML-DSA appear
+// where it put them, not where the merge would.
+TEST_F(CryptoPolicyTest, PQSubpolicyGroupsAndSigalgs) {
+  const std::string content = std::string("Groups = ") + kPQSubpolicyGroups +
+                              "\nSignatureAlgorithms = " + kPQSubpolicySigalgs +
+                              "\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{
+                SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
+                SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
+                SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  const std::vector<uint16_t> expected_sigalgs = {
+      SSL_SIGN_MLDSA44,                SSL_SIGN_MLDSA65,
+      SSL_SIGN_MLDSA87,                SSL_SIGN_ECDSA_SECP256R1_SHA256,
+      SSL_SIGN_ECDSA_SECP384R1_SHA384, SSL_SIGN_ECDSA_SECP521R1_SHA512,
+      SSL_SIGN_ED25519,                SSL_SIGN_RSA_PSS_RSAE_SHA256,
+      SSL_SIGN_RSA_PSS_RSAE_SHA384,    SSL_SIGN_RSA_PSS_RSAE_SHA512,
+      SSL_SIGN_RSA_PKCS1_SHA256,       SSL_SIGN_RSA_PKCS1_SHA384,
+      SSL_SIGN_RSA_PKCS1_SHA512};
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 

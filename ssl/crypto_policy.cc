@@ -153,6 +153,13 @@ uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
 // AWS-LC implements, which is well under this.
 constexpr size_t kMaxPolicyIds = 64;
 
+// kPolicyListSeparators end a token in a Groups or SignatureAlgorithms value.
+// ':' separates entries, and '/' separates the tuples OpenSSL 3.5 draws its key
+// shares from. AWS-LC keeps one flat preference list and chooses its own key
+// shares, so a tuple boundary is just another entry boundary; treating it as
+// part of a name instead loses the entries on both sides of it.
+constexpr char kPolicyListSeparators[] = ":/";
+
 // PolicyAlias maps one spelling the crypto-policies framework uses to the
 // spelling AWS-LC's lookups take. |from| is lowercase and matched without regard
 // to case, which config-file tokens do not carry reliably.
@@ -211,19 +218,28 @@ void ResolveAlias(const char **tok, size_t *len, const PolicyAlias *aliases,
   }
 }
 
+// StripListModifiers advances |*tok| past the OpenSSL 3.5 list modifiers and
+// returns false if they remove the entry.
+//
+// '*' asks for a key share and '?' tolerates an unimplemented algorithm; AWS-LC
+// chooses its own key shares and already skips names it cannot resolve, so both
+// need only stripping. A policy stacks them -- Amazon Linux 2023's PQ subpolicy
+// leads its group list with "*?X25519MLKEM768" -- so one pass per prefix
+// character is not enough. '-' removes the entry, and resolving it here would
+// put it back in the list.
+bool StripListModifiers(const char **tok, size_t *len) {
+  while (*len > 0 && (**tok == '*' || **tok == '?')) {
+    (*tok)++;
+    (*len)--;
+  }
+  return *len == 0 || **tok != '-';
+}
+
 // GroupIdFromToken sets |*out| to the AWS-LC group ID named by the
 // crypto-policies token |tok|, of length |len|, and returns false if AWS-LC has
 // no such group.
 bool GroupIdFromToken(uint16_t *out, const char *tok, size_t len) {
-  // OpenSSL 3.5 group-list modifiers, which every stock policy puts on its
-  // first entry: '*' asks for a key share, '?' tolerates an unimplemented
-  // group, '-' removes one. AWS-LC chooses its own key shares and already skips
-  // names it cannot resolve, so the first two need only stripping; '-' must not
-  // put the group back into the list.
-  if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
-    tok++;
-    len--;
-  } else if (len > 0 && tok[0] == '-') {
+  if (!StripListModifiers(&tok, &len)) {
     return false;
   }
 
@@ -235,6 +251,10 @@ bool GroupIdFromToken(uint16_t *out, const char *tok, size_t len) {
 // the crypto-policies token |tok|, of length |len|, and returns false if AWS-LC
 // has no such algorithm.
 bool SigalgIdFromToken(uint16_t *out, const char *tok, size_t len) {
+  if (!StripListModifiers(&tok, &len)) {
+    return false;
+  }
+
   ResolveAlias(&tok, &len, kSigalgAliases, OPENSSL_ARRAY_SIZE(kSigalgAliases));
   return ssl_sigalg_id_from_name(out, tok, len);
 }
@@ -248,9 +268,9 @@ bool ContainsId(Span<const uint16_t> ids, uint16_t id) {
   return false;
 }
 
-// FilterPolicyIds resolves the ':'-separated tokens of |value| through |lookup|
-// and writes the IDs that resolve into |out|, which holds |out_len| entries, in
-// the order the policy gave them. It returns how many were written.
+// FilterPolicyIds resolves the tokens of |value| through |lookup| and writes the
+// IDs that resolve into |out|, which holds |out_len| entries, in the order the
+// policy gave them. It returns how many were written.
 //
 // The Groups and SignatureAlgorithms setters reject a whole list on the first
 // entry they do not accept, and a stock crypto-policies value always names
@@ -266,9 +286,7 @@ size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
                        bool (*lookup)(uint16_t *, const char *, size_t)) {
   size_t out_i = 0;
   for (const char *tok = value;;) {
-    const char *end = strchr(tok, ':');
-    const size_t len =
-        end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+    const size_t len = strcspn(tok, kPolicyListSeparators);
 
     uint16_t id;
     if (len > 0 && out_i < out_len && lookup(&id, tok, len)) {
@@ -281,10 +299,10 @@ size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
       }
     }
 
-    if (end == nullptr) {
+    if (tok[len] == '\0') {
       break;
     }
-    tok = end + 1;
+    tok += len + 1;
   }
   return out_i;
 }
@@ -319,18 +337,16 @@ bool HybridClassicalComponent(uint16_t *out, uint16_t group) {
 // with the OpenSSL '-' modifier.
 bool PolicyRemovesGroup(const char *value, uint16_t group) {
   for (const char *tok = value;;) {
-    const char *end = strchr(tok, ':');
-    const size_t len =
-        end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+    const size_t len = strcspn(tok, kPolicyListSeparators);
     uint16_t id;
     if (len > 1 && tok[0] == '-' && GroupIdFromToken(&id, tok + 1, len - 1) &&
         id == group) {
       return true;
     }
-    if (end == nullptr) {
+    if (tok[len] == '\0') {
       return false;
     }
-    tok = end + 1;
+    tok += len + 1;
   }
 }
 
