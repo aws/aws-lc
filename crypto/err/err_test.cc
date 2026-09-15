@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <thread>
+
 #include <gtest/gtest.h>
 
 #include <openssl/crypto.h>
@@ -338,6 +340,145 @@ TEST(ErrTest, PopToCountPreservesCallerState) {
   EXPECT_STREQ(data, "data1");
   EXPECT_EQ(0u, ERR_get_error());
 }
+
+TEST(ErrTest, SuppressErrors) {
+  ERR_clear_error();
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  for (unsigned i = 1; i <= 4; i++) {
+    ERR_put_error(i, 0 /* unused */, i, "test", i);
+  }
+  EXPECT_EQ(0u, ERR_peek_error());
+  ERR_suppress_errors_end();
+
+  // The scope is over, so errors are recorded again.
+  ERR_put_error(5, 0 /* unused */, 5, "test", 5);
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 5);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// A saturated queue is what suppression is for: each error raised inside the
+// scope would otherwise evict one of the caller's, and trimming the queue
+// afterward does not bring an evicted entry back.
+TEST(ErrTest, SuppressErrorsPreservesFullQueue) {
+  ERR_clear_error();
+  for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
+    ERR_put_error(1, 0 /* unused */, i, "test", 1);
+  }
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
+    ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  }
+  ERR_suppress_errors_end();
+
+  for (unsigned i = 1; i < ERR_NUM_ERRORS; i++) {
+    uint32_t packed_error = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+    EXPECT_EQ(ERR_GET_REASON(packed_error), static_cast<int>(i));
+  }
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// Data attaches to the most recent error, so suppressing the |ERR_put_error| but
+// not the |ERR_add_error_data| that follows it would overwrite the data on
+// whatever the caller had queued last.
+TEST(ErrTest, SuppressErrorsLeavesCallerDataAlone) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ERR_add_error_data(1, "data1");
+  ASSERT_TRUE(ERR_set_mark());
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ERR_put_error(2, 0 /* unused */, 2, "test2.c", 2);
+  ERR_add_error_data(1, "data2");
+  ERR_add_error_dataf("data%d", 3);
+  ERR_suppress_errors_end();
+
+  EXPECT_TRUE(ERR_pop_to_mark());
+  int line, flags;
+  const char *file, *data;
+  uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+  EXPECT_EQ(ERR_GET_LIB(packed_error), 1);
+  EXPECT_EQ(ERR_GET_REASON(packed_error), 1);
+  EXPECT_STREQ("test1.c", file);
+  EXPECT_EQ(line, 1);
+  EXPECT_STREQ(data, "data1");
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// The caller may be holding a string it read without popping the error, which
+// data reaching that error would free under it. Scoped work that attaches data
+// without raising an error of its own writes to exactly that error.
+TEST(ErrTest, SuppressErrorsKeepsReadDataAlive) {
+  ERR_clear_error();
+  ERR_put_error(1, 0 /* unused */, 1, "test1.c", 1);
+  ERR_add_error_data(1, "data1");
+
+  int line, flags;
+  const char *file, *data;
+  uint32_t packed_error =
+      ERR_peek_error_line_data(&file, &line, &data, &flags);
+  ASSERT_EQ(ERR_GET_LIB(packed_error), 1);
+  ASSERT_STREQ(data, "data1");
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ERR_add_error_data(1, "data2");
+  ERR_add_error_dataf("data%d", 3);
+  ERR_suppress_errors_end();
+
+  EXPECT_STREQ(data, "data1");
+  ERR_clear_error();
+}
+
+// Ending a scope that never opened would decrement a depth nothing incremented,
+// so the C++ holder ends only what it began and says which it did.
+TEST(ErrTest, ScopedErrorSuppression) {
+  ERR_clear_error();
+
+  {
+    bssl::ScopedErrorSuppression suppress;
+    ASSERT_TRUE(static_cast<bool>(suppress));
+    ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  }
+
+  EXPECT_EQ(0u, ERR_peek_error());
+  ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+TEST(ErrTest, SuppressErrorsNests) {
+  ERR_clear_error();
+
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ASSERT_TRUE(ERR_suppress_errors_begin());
+  ERR_suppress_errors_end();
+
+  // The outer scope is still open.
+  ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+  EXPECT_EQ(0u, ERR_peek_error());
+
+  ERR_suppress_errors_end();
+  ERR_put_error(2, 0 /* unused */, 2, "test", 2);
+  EXPECT_EQ(ERR_GET_LIB(ERR_get_error()), 2);
+  EXPECT_EQ(0u, ERR_get_error());
+}
+
+// A scope can be the first thing a thread does with the error queue, which is
+// where |ERR_suppress_errors_begin| has to create the thread's error state and
+// so is the one case where it can fail. Every other test here clears the queue
+// first and therefore never exercises that path.
+#if defined(OPENSSL_THREADS)
+TEST(ErrTest, SuppressErrorsOnFreshThread) {
+  std::thread([] {
+    ASSERT_TRUE(ERR_suppress_errors_begin());
+    ERR_put_error(1, 0 /* unused */, 1, "test", 1);
+    ERR_suppress_errors_end();
+    EXPECT_EQ(0u, ERR_get_error());
+  }).join();
+}
+#endif  // OPENSSL_THREADS
 
 // Querying the error queue should not affect the OS error.
 #if defined(OPENSSL_WINDOWS)

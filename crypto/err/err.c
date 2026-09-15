@@ -68,6 +68,11 @@ typedef struct err_state_st {
   // to_free, if not NULL, contains a pointer owned by this structure that was
   // previously a |data| pointer of one of the elements of |errors|.
   void *to_free;
+
+  // suppress counts the active |ERR_suppress_errors_begin| scopes. While it is
+  // non-zero the queue accepts no new errors. It is a depth rather than a flag
+  // so nested scopes each end where they began.
+  unsigned suppress;
 } ERR_STATE;
 
 extern const uint32_t kOpenSSLReasonValues[];
@@ -103,8 +108,8 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   dst->line = src->line;
   // The mark is not copied. A saved state may be restored repeatedly, so a mark
   // carried in the snapshot would re-arm on every restore and let an unrelated
-  // |ERR_pop_to_mark| discard errors it never marked. To drop only your own
-  // errors, use |ERR_num_errors| and |ERR_pop_to_count|.
+  // |ERR_pop_to_mark| discard errors it never marked. To keep your own errors
+  // out of a caller's queue, use |ERR_suppress_errors_begin|.
 }
 
 
@@ -562,7 +567,10 @@ static void err_set_error_data(char *data) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
-  if (state == NULL || state->top == state->bottom) {
+  // Suppression covers the data too. Without this the caller's own topmost error
+  // would collect data from a suppressed |ERR_add_error_data| that follows a
+  // suppressed |ERR_put_error|.
+  if (state == NULL || state->top == state->bottom || state->suppress != 0) {
     free(data);
     return;
   }
@@ -578,7 +586,7 @@ void ERR_put_error(int library, int unused, int reason, const char *file,
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
-  if (state == NULL) {
+  if (state == NULL || state->suppress != 0) {
     return;
   }
 
@@ -717,6 +725,30 @@ void ERR_pop_to_count(size_t count) {
     } else {
       state->top--;
     }
+  }
+}
+
+int ERR_suppress_errors_begin(void) {
+  ERR_STATE *const state = err_get_state();
+
+  if (state == NULL) {
+    return 0;
+  }
+  state->suppress++;
+  return 1;
+}
+
+void ERR_suppress_errors_end(void) {
+  // Read the state rather than have |err_get_state| create one: a scope that
+  // began already has one, and a begin that failed had no state to suppress in.
+  ERR_STATE *const state = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_ERR);
+
+  if (state == NULL) {
+    return;
+  }
+  assert(state->suppress > 0);
+  if (state->suppress > 0) {
+    state->suppress--;
   }
 }
 
