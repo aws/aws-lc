@@ -4,6 +4,44 @@
 #include "test_util.h"
 #include <openssl/pem.h>
 
+std::string ShellEscape(const std::string &argument) {
+#if defined(OPENSSL_WINDOWS)
+  std::string escaped = "\"";
+  for (char c : argument) {
+    if (c == '"') {
+      escaped += "\\\"";
+    } else {
+      escaped += c;
+    }
+  }
+  escaped += '"';
+  return escaped;
+#else
+  std::string escaped = "'";
+  for (char c : argument) {
+    if (c == '\'') {
+      escaped += "'\\''";
+    } else {
+      escaped += c;
+    }
+  }
+  escaped += '\'';
+  return escaped;
+#endif
+}
+
+TEST(TestUtilTest, ShellEscape) {
+#if defined(OPENSSL_WINDOWS)
+  EXPECT_EQ("\"\"", ShellEscape(""));
+  EXPECT_EQ("\"path with spaces\"", ShellEscape("path with spaces"));
+  EXPECT_EQ("\"a\\\"b\"", ShellEscape("a\"b"));
+#else
+  EXPECT_EQ("''", ShellEscape(""));
+  EXPECT_EQ("'path with spaces'", ShellEscape("path with spaces"));
+  EXPECT_EQ("'a'\\''b'", ShellEscape("a'b"));
+#endif
+}
+
 void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
                                   bssl::UniquePtr<EVP_PKEY> *pkey_p) {
   x509.reset(X509_new());

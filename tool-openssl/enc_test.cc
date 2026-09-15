@@ -329,12 +329,15 @@ TEST_F(EncComparisonTest, EncryptionComparison) {
   std::string key = "0123456789abcdef0123456789abcdef";
   std::string iv = "0123456789abcdef0123456789abcdef";
 
-  std::string tool_command = std::string(tool_executable_path) +
-                             " enc -e -aes-128-cbc -K " + key + " -iv " + iv +
-                             " -in " + in_path + " -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " enc -e -aes-128-cbc -K " + ShellEscape(key) +
+                             " -iv " + ShellEscape(iv) + " -in " +
+                             ShellEscape(in_path) + " -out " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " enc -e -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + in_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " enc -e -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_openssl);
 
   std::string tool_output_str, openssl_output_str;
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
@@ -355,17 +358,20 @@ TEST_F(EncComparisonTest, DecryptionComparison) {
   ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
 
   std::string openssl_encrypt_cmd =
-      std::string(openssl_executable_path) + " enc -e -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + in_path + " -out " + encrypted_path;
+      ShellEscape(openssl_executable_path) + " enc -e -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(encrypted_path);
   ASSERT_EQ(ExecuteCommand(openssl_encrypt_cmd), 0);
 
   // Now test decryption comparison
   std::string tool_command =
-      std::string(tool_executable_path) + " enc -d -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + encrypted_path + " -out " + out_path_tool;
+      ShellEscape(tool_executable_path) + " enc -d -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(encrypted_path) + " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " enc -d -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + encrypted_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " enc -d -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(encrypted_path) + " -out " + ShellEscape(out_path_openssl);
 
   std::string tool_output_str, openssl_output_str;
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
