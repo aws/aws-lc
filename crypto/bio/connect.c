@@ -32,6 +32,9 @@ enum {
   BIO_CONN_S_BEFORE,
   BIO_CONN_S_BLOCKED_CONNECT,
   BIO_CONN_S_OK,
+  // BIO_CONN_S_ERROR is terminal: the connect attempt failed and its socket
+  // error was already consumed. Keep last; |bio_info_cb| sees these values.
+  BIO_CONN_S_ERROR,
 };
 
 typedef struct bio_connect_st {
@@ -198,8 +201,20 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
 
       case BIO_CONN_S_BLOCKED_CONNECT:
         i = bio_sock_error_get_and_clear(bio->num);
+        if (i < 0) {
+          BIO_clear_retry_flags(bio);
+          OPENSSL_PUT_SYSTEM_ERROR();
+          OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
+          ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+          c->state = BIO_CONN_S_ERROR;
+          ret = 0;
+          goto exit_loop;
+        }
         if (i) {
-          if (bio_socket_should_retry(ret)) {
+          // |bio_socket_should_retry| classifies the thread's last socket
+          // error, not its argument, so publish |i| first.
+          bio_socket_set_error(i);
+          if (bio_socket_should_retry(-1)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));
             c->state = BIO_CONN_S_BLOCKED_CONNECT;
             bio->retry_reason = BIO_RR_CONNECT;
@@ -209,6 +224,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             OPENSSL_PUT_SYSTEM_ERROR();
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+            c->state = BIO_CONN_S_ERROR;
             ret = 0;
           }
           goto exit_loop;
@@ -216,6 +232,15 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           c->state = BIO_CONN_S_OK;
         }
         break;
+
+      case BIO_CONN_S_ERROR:
+        // |SO_ERROR| was cleared when this failure was first reported, so
+        // re-reading it would look like success. |errno| is stale too.
+        BIO_clear_retry_flags(bio);
+        OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
+        ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+        ret = 0;
+        goto exit_loop;
 
       case BIO_CONN_S_OK:
         ret = 1;
