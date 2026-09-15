@@ -37,10 +37,14 @@ bool IsAsciiWhitespace(char c) {
 
 // CopyPolicyValue copies the |len| bytes at |value| into |out|, which has
 // capacity |out_size| including the NUL terminator. It returns true on success.
-// An overlong value is rejected rather than truncated, leaving |out| untouched.
+//
+// An overlong value empties |out| rather than truncating it. The last occurrence
+// of a directive is the one the operator chose, so leaving an earlier occurrence
+// in place would apply a policy they had already replaced.
 bool CopyPolicyValue(char *out, size_t out_size, const char *value,
                      size_t len) {
   if (len >= out_size) {
+    out[0] = '\0';
     return false;
   }
   OPENSSL_memcpy(out, value, len);

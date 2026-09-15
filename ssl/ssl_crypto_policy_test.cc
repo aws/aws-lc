@@ -261,6 +261,23 @@ TEST(CryptoPolicyParseTest, OverlongValueIsDroppedNotTruncated) {
   EXPECT_STREQ("TLSv1.2", cfg.tls_min);
 }
 
+// The last occurrence still decides when it is the unrepresentable one, so an
+// earlier value the operator replaced does not come back in its place.
+TEST(CryptoPolicyParseTest, OverlongValueDropsAnEarlierOccurrence) {
+  std::string content = "Groups = X25519\nGroups = ";
+  content.append(AWSLC_CRYPTO_POLICY_MAX_VALUE + 1, 'X');
+  content += "\n";
+
+  TemporaryFile file;
+  if (!WriteTempPolicy(&file, content)) {
+    GTEST_SKIP() << "temporary files unavailable";
+  }
+
+  CryptoPolicyConfig cfg = {};
+  ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
+  EXPECT_STREQ("", cfg.groups);
+}
+
 // A line longer than the read buffer is consumed to its newline rather than
 // split, so its tail cannot be mistaken for a directive of its own.
 TEST(CryptoPolicyParseTest, OverlongLineIsSkippedWhole) {
