@@ -30,9 +30,12 @@ BASELINE = DUVET_DIR / "annotations.baseline"
 def collect_annotations() -> list[str]:
     """Run `duvet report` and return normalized source-code annotation rows.
 
-    A row is `<target_url>#<section>\t<impl|test>\t<source_file>`. SPEC rows
-    (the requirement .toml files themselves) are excluded — we only track the
-    citations that live in shippable source.
+    A row is `<target_url>#<section>\t<impl|test>\t<source_file>\t<line>`. SPEC
+    rows (the requirement .toml files themselves) are excluded — we only track
+    the citations that live in shippable source. The source line is part of the
+    key so two distinct citations to the same (section, kind, file) can't mask
+    each other's removal in the multiset diff (a citation deleted at one line
+    while an unrelated one is added at another would otherwise net to zero).
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         json_path = Path(tmpdir) / "report.json"
@@ -58,7 +61,9 @@ def collect_annotations() -> list[str]:
         if ann.get("type") == "SPEC":
             continue
         kind = "test" if ann.get("type") == "TEST" else "impl"
-        rows.append(f"{ann['target_path']}#{ann['target_section']}\t{kind}\t{ann['source']}")
+        rows.append(
+            f"{ann['target_path']}#{ann['target_section']}\t{kind}\t{ann['source']}\t{ann['line']}"
+        )
     return sorted(rows)
 
 
@@ -81,9 +86,9 @@ def check(rows: list[str]) -> int:
     if removed:
         print("Duvet annotation regression: the following citations were removed or broken:\n", file=sys.stderr)
         for row, count in sorted(removed.items()):
-            url, kind, src = row.split("\t")
+            url, kind, src, line = row.split("\t")
             for _ in range(count):
-                print(f"  - [{kind}] {url}\n      in {src}", file=sys.stderr)
+                print(f"  - [{kind}] {url}\n      in {src}:{line}", file=sys.stderr)
         print(
             "\nRestore the annotation, or if the removal is intentional refresh the baseline:\n"
             "  python3 .duvet/scripts/check_annotations.py --update",
