@@ -637,6 +637,8 @@ AWS_LC_1.0 {
       bssl::SSL_set_handoff_mode*;
       bssl::ssl_cert_check_key_usage*;
       bssl::ssl_client_hello_init*;
+      bssl::ssl_crypto_policy_default_path*;
+      bssl::ssl_crypto_policy_parse_file*;
       bssl::ssl_decode_client_hello_inner*;
       bssl::ssl_handshake_new*;
       bssl::ssl_is_valid_ech_public_name*;
