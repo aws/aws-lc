@@ -352,11 +352,13 @@ int dh_fast_path_from_safe_group(const DH *dh) {
     if (!is_rfc7919) {
       return 0;
     }
+
     // q must be exactly the group's subgroup order, (p-1)/2.
     BIGNUM *expected_q = BN_new();
     if (expected_q == NULL) {
       return 0;
     }
+
     int q_matches = BN_rshift1(expected_q, p) && BN_cmp(q, expected_q) == 0;
     BN_free(expected_q);
     if (!q_matches) {
