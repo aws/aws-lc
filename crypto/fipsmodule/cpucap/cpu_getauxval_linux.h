@@ -14,8 +14,8 @@
 // After including this header (on Linux), OPENSSL_HAS_GETAUXVAL is defined
 // and getauxval(type) is callable -- regardless of whether <sys/auxv.h> was
 // available -- so call sites do not need to special-case the libc.
-// AT_NULL, AT_HWCAP, AT_HWCAP2, and AT_EXECFN are also defined when the
-// system header omits them (for example, glibc < 2.18 lacks AT_HWCAP2).
+// AT_NULL, AT_HWCAP, AT_HWCAP2, AT_EXECFN, and AT_SECURE are also defined when
+// the system header omits them (for example, glibc < 2.18 lacks AT_HWCAP2).
 
 #if defined(OPENSSL_LINUX)
 
@@ -64,6 +64,9 @@
 #endif
 #if !defined(AT_EXECFN)
 #define AT_EXECFN 31
+#endif
+#if !defined(AT_SECURE)
+#define AT_SECURE 23
 #endif
 
 #if !defined(OPENSSL_HAS_GETAUXVAL)
