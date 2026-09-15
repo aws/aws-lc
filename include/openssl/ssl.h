@@ -646,6 +646,13 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 // |SSL_ERROR_ZERO_RETURN| and an empty error queue. Otherwise, |SSL_get_error|
 // reports |SSL_ERROR_SSL| with |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the
 // error queue.
+//
+// An unexpected EOF is detected when |BIO_read| on the read BIO returns zero
+// without setting retry flags (see |BIO_should_retry|). |BIO_eof| is not
+// consulted, unlike OpenSSL 3.x. Custom BIOs must therefore signal a transient
+// lack of data with |BIO_set_retry_read|, not a bare zero return. A negative
+// |BIO_read| return without retry flags is reported as |SSL_ERROR_SYSCALL|,
+// as before.
 #define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
 
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and

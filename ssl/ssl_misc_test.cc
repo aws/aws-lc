@@ -388,7 +388,7 @@ class SSLUnexpectedEOFTest
   }
 
   int Read(SSL *ssl) {
-    char byte;
+    char byte = 0;
     return std::get<1>(GetParam()) ? SSL_peek(ssl, &byte, 1)
                                    : SSL_read(ssl, &byte, 1);
   }
