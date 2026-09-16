@@ -40,7 +40,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install duvet
-        run: cargo install duvet --version 0.4 --locked
+        run: cargo install duvet --version 0.4.3 --locked
 
       # Fails the build if any baselined `//=` citation was removed or broken.
       # Adding annotations never fails; refresh the baseline with
