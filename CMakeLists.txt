@@ -35,6 +35,8 @@ option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-I
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 option(COHABITANT_BINARIES "Install tool binaries with an 'aws-lc-' prefix to avoid conflicts with OpenSSL" OFF)
+option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
+set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
@@ -429,6 +431,20 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
+if(ENABLE_CRYPTO_POLICIES)
+  message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
+  add_definitions(-DAWSLC_CRYPTO_POLICIES)
+  # Optional override of the compile-time default policy file. Packagers can set
+  # this to relocate the system crypto-policies OpenSSL back-end file; tests use
+  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
+  # overrides it at run time.
+  if(AWSLC_CRYPTO_POLICY_FILE)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
+    add_definitions(
+      -DAWSLC_CRYPTO_POLICY_DEFAULT_FILE=\"${AWSLC_CRYPTO_POLICY_FILE}\")
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)
