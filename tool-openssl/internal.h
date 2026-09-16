@@ -175,6 +175,7 @@ int genpkeyTool(const args_list_t &args);
 int genrsaTool(const args_list_t &args);
 int md5Tool(const args_list_t &args);
 int pkcs8Tool(const args_list_t &args);
+int pkcs12Tool(const args_list_t &args);
 int pkeyTool(const args_list_t &args);
 int pkeyutlTool(const args_list_t &args);
 int RehashTool(const args_list_t &args);
