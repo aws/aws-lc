@@ -19,7 +19,6 @@
 
 #include "../../internal.h"
 #include "../cpucap/internal.h"
-#include "../service_indicator/internal.h"
 #include "internal.h"
 
 const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
