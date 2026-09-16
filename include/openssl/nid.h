@@ -4312,6 +4312,11 @@ extern "C" {
 #define NID_SecP384r1MLKEM1024 998
 #define OBJ_SecP384r1MLKEM1024 1L, 3L, 6L, 1L, 4L, 1L, 42235L, 6L
 
+#define SN_ct_precert_scts "ct_precert_scts"
+#define LN_ct_precert_scts "CT Precertificate SCTs"
+#define NID_ct_precert_scts 999
+#define OBJ_ct_precert_scts 1L, 3L, 6L, 1L, 4L, 1L, 11129L, 2L, 4L, 2L
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

@@ -51,6 +51,36 @@ TEST(ObjTest, TestBasic) {
   EXPECT_EQ(OBJ_get_undef(), OBJ_nid2obj(NID_undef));
 }
 
+// NID_ct_precert_scts (RFC 6962, section 3.3) is registered only so that
+// certificate printers show its name instead of a raw OID.
+TEST(ObjTest, CTPrecertSCTs) {
+  static const int kNID = NID_ct_precert_scts;
+  static const char kShortName[] = "ct_precert_scts";
+  static const char kLongName[] = "CT Precertificate SCTs";
+  static const char kText[] = "1.3.6.1.4.1.11129.2.4.2";
+  static const uint8_t kDER[] = {
+      0x2b, 0x06, 0x01, 0x04, 0x01, 0xd6, 0x79, 0x02, 0x04, 0x02,
+  };
+
+  CBS cbs;
+  CBS_init(&cbs, kDER, sizeof(kDER));
+  EXPECT_EQ(kNID, OBJ_cbs2nid(&cbs));
+  EXPECT_EQ(kNID, OBJ_sn2nid(kShortName));
+  EXPECT_EQ(kNID, OBJ_ln2nid(kLongName));
+  EXPECT_EQ(kNID, OBJ_txt2nid(kShortName));
+  EXPECT_EQ(kNID, OBJ_txt2nid(kLongName));
+  EXPECT_EQ(kNID, OBJ_txt2nid(kText));
+
+  EXPECT_STREQ(kShortName, OBJ_nid2sn(kNID));
+  EXPECT_STREQ(kLongName, OBJ_nid2ln(kNID));
+
+  // OBJ_obj2txt prefers the long name over the dotted OID, which is what
+  // X509V3_extensions_print uses for the extension label.
+  char buf[32];
+  ASSERT_GT(OBJ_obj2txt(buf, sizeof(buf), OBJ_nid2obj(kNID), 0), 0);
+  EXPECT_STREQ(kLongName, buf);
+}
+
 // ML-DSA uses the compact "MLDSAxx" short name but the OpenSSL 3.5 long name
 // "ML-DSA-xx" (see crypto/obj/objects.txt). Both spellings must resolve, so
 // that callers written against OpenSSL 3.5 interoperate while existing callers
