@@ -25,6 +25,10 @@ extern "C" {
 // This is an implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
+// |EVP_DigestFinal_ex| does not propagate internal errors, thus, more than
+// one call to |EVP_DigestFinal_ex| should be detected in the EVP_ layer.
+#define EVP_MD_CTX_FINALISED 0x1000
+
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 
 struct evp_pkey_asn1_method_st {
