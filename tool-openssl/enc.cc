@@ -46,14 +46,14 @@ static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
   return ret != 0;
 }
 
-bool encTool(const args_list_t &args) {
+int encTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, out_path, cipher_name;
@@ -73,19 +73,19 @@ bool encTool(const args_list_t &args) {
   // Display enc tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   // Since we do not implement key generation, a raw key is required
   // TODO: remove/modify if we ever implement -k, -kfile, or -S
   if (hex_key.empty()) {
     fprintf(stderr, "Error: A raw key is required\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (encode && decode) {
     fprintf(stderr, "Error: -e and -d are mutually exclusive\n");
-    return false;
+    return kToolExitFailure;
   }
 
   encode = !decode;
@@ -99,7 +99,7 @@ bool encTool(const args_list_t &args) {
     if (!in_file) {
       fprintf(stderr, "Error: unable to load data from '%s'\n",
               in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -112,7 +112,7 @@ bool encTool(const args_list_t &args) {
 
   if (cipher == nullptr) {
     fprintf(stderr, "Error: Unknown cipher %s\n", cipher_name.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   unsigned int iv_length = EVP_CIPHER_iv_length(cipher);
@@ -125,14 +125,14 @@ bool encTool(const args_list_t &args) {
     } else {
       if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
         fprintf(stderr, "Error: Invalid hex IV value\n");
-        return false;
+        return kToolExitFailure;
       }
     }
   } else {
     if (iv_length != 0) {
       fprintf(stderr, "Error: IV is required for cipher %s\n",
               cipher_name.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -141,7 +141,7 @@ bool encTool(const args_list_t &args) {
   if (!hex_key.empty()) {
     if (!HexToBinary(key, hex_key.get(), EVP_CIPHER_key_length(cipher))) {
       fprintf(stderr, "Error: Invalid hex key value\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -152,7 +152,7 @@ bool encTool(const args_list_t &args) {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
       fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -160,7 +160,7 @@ bool encTool(const args_list_t &args) {
   bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
   if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, encode)) {
     fprintf(stderr, "Error: Failed to initialize cipher\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Process the input file
@@ -177,28 +177,28 @@ bool encTool(const args_list_t &args) {
 
     if (ferror(in_file.get())) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
 
     if (!EVP_CipherUpdate(ctx.get(), outbuf, &outlen, inbuf, inlen)) {
       fprintf(stderr, "Error: Cipher update failed\n");
-      return false;
+      return kToolExitFailure;
     }
     if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
       fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
   if (!EVP_CipherFinal_ex(ctx.get(), outbuf, &outlen)) {
     fprintf(stderr, "Error: Cipher final failed\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
     fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
-  return true;
+  return kToolExitSuccess;
 }

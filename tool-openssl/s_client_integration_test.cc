@@ -12,15 +12,15 @@
 // Test -connect
 TEST(SClientIntegrationTest, Connect) {
   args_list_t args = {"-connect", "amazon.com:443"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -connect, -verify, -showcerts
 TEST(SClientIntegrationTest, ConnectVerifyShowcerts) {
   args_list_t args = {"-connect", "amazon.com:443", "-verify", "99", "-showcerts"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -cipher
@@ -30,15 +30,15 @@ TEST(SClientIntegrationTest, Cipher) {
   // separately, leaving -cipher effectively ignored.
   args_list_t args = {"-connect", "amazon.com:443", "-cipher",
                       "ECDHE-RSA-AES128-GCM-SHA256", "-tls1_2"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -tls1_1
 TEST(SClientIntegrationTest, Tls1_1) {
   args_list_t args = {"-connect", "amazon.com:443", "-tls1_1"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -cipher and -tls1_1 together
@@ -47,6 +47,6 @@ TEST(SClientIntegrationTest, CipherAndTls1_1) {
   // prefer the forward-secret ECDHE variant over static-RSA AES128-SHA.
   args_list_t args = {"-connect", "amazon.com:443", "-cipher",
                       "ECDHE-RSA-AES128-SHA", "-tls1_1"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }

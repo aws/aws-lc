@@ -512,12 +512,14 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   return true;
 }
 
-bool dgstTool(const args_list_t &args) {
-  return dgstToolInternal(args, nullptr);
+int dgstTool(const args_list_t &args) {
+  return dgstToolInternal(args, nullptr) ? kToolExitSuccess : kToolExitFailure;
 }
-bool md5Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_md5());
+int md5Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_md5()) ? kToolExitSuccess
+                                           : kToolExitFailure;
 }
-bool sha1Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_sha1());
+int sha1Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_sha1()) ? kToolExitSuccess
+                                            : kToolExitFailure;
 }

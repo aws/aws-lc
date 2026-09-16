@@ -221,7 +221,7 @@ static bool WriteOutput(const std::vector<uint8_t> &data,
   return true;
 }
 
-bool pkeyutlTool(const args_list_t &args) {
+int pkeyutlTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -230,7 +230,7 @@ bool pkeyutlTool(const args_list_t &args) {
                                      kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, out_path, inkey_path, sigfile_path;
@@ -252,47 +252,47 @@ bool pkeyutlTool(const args_list_t &args) {
   // Display help
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   // Validate arguments
   if (!sign && !verify) {
     fprintf(stderr, "Error: must specify either -sign or -verify\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (sign && verify) {
     fprintf(stderr, "Error: cannot specify both -sign and -verify\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (verify && sigfile_path.empty()) {
     fprintf(
         stderr,
         "Error: No signature file specified for verify (-sigfile parameter)\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (!verify && !sigfile_path.empty()) {
     fprintf(stderr,
             "Error: Signature file specified for non-verify operation\n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (inkey_path.empty()) {
     fprintf(stderr, "Error: no key given (-inkey parameter)\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Load the key
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (pubin || verify) {
     if (!LoadPublicKey(inkey_path, pkey)) {
-      return false;
+      return kToolExitFailure;
     }
   } else {
     if (!LoadPrivateKey(inkey_path, passin_arg, pkey)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -300,21 +300,21 @@ bool pkeyutlTool(const args_list_t &args) {
     std::vector<uint8_t> signature;
     std::vector<uint8_t> input_data;
     if (!ReadInputData(in_path, input_data)) {
-      return false;
+      return kToolExitFailure;
     }
 
     // Sanity check for non-raw input
     if (input_data.size() > EVP_MAX_MD_SIZE) {
       fprintf(stderr, "Error: input data looks too long to be a hash\n");
-      return false;
+      return kToolExitFailure;
     }
 
     if (!DoSign(pkey.get(), input_data, pkeyopts, signature)) {
-      return false;
+      return kToolExitFailure;
     }
 
     if (!WriteOutput(signature, out_path)) {
-      return false;
+      return kToolExitFailure;
     }
   } else if (verify) {
     // Read signature from sigfile
@@ -324,17 +324,17 @@ bool pkeyutlTool(const args_list_t &args) {
     if (!sig_file) {
       fprintf(stderr, "Error: unable to open signature file '%s'\n",
               sigfile_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
 
     if (!ReadAll(&signature, sig_file.get())) {
       fprintf(stderr, "Error: error reading signature data\n");
-      return false;
+      return kToolExitFailure;
     }
 
     std::vector<uint8_t> input_data;
     if (!ReadInputData(in_path, input_data)) {
-      return false;
+      return kToolExitFailure;
     }
 
     bool success = DoVerify(pkey.get(), input_data, pkeyopts, signature);
@@ -347,7 +347,7 @@ bool pkeyutlTool(const args_list_t &args) {
       if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
         fprintf(stderr, "Error: failed to open output file '%s'\n",
                 out_path.c_str());
-        return false;
+        return kToolExitFailure;
       }
     }
 
@@ -358,5 +358,5 @@ bool pkeyutlTool(const args_list_t &args) {
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }

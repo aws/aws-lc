@@ -181,7 +181,7 @@ TEST_F(ReqTest, GenerateRSAKey) {
       "-new",          "-newkey", "rsa:3072", "-nodes", "-keyout",
       output_key_path, "-out",    csr_path,   "-subj",  "/CN=test.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
@@ -197,7 +197,7 @@ TEST_F(ReqTest, NewkeyRSADefault) {
                       "-keyout", output_key_path, "-out", csr_path,
                       "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
@@ -216,7 +216,7 @@ TEST_F(ReqTest, KeyLengthVariations) {
                         "-keyout", output_key_path, "-out",          csr_path,
                         "-subj",   "/CN=test.com"};
 
-    ASSERT_TRUE(reqTool(args));
+    ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
     bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
     ASSERT_TRUE(key);
@@ -232,7 +232,7 @@ TEST_F(ReqTest, InvalidKeySizeFallback) {
                       "-keyout", output_key_path, "-out",    csr_path,
                       "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
@@ -250,7 +250,8 @@ TEST_F(ReqTest, DigestAlgorithms) {
                         "-nodes", "-keyout",      output_key_path, "-out",
                         csr_path, "-subj",        "/CN=test.com"};
 
-    EXPECT_TRUE(reqTool(args)) << "Failed with digest: " << digest;
+    EXPECT_EQ(kToolExitSuccess, reqTool(args))
+        << "Failed with digest: " << digest;
   }
 }
 
@@ -259,7 +260,7 @@ TEST_F(ReqTest, EncryptedPrivateKey) {
                       "pass:testpass", "-keyout", output_key_path, "-out",
                       csr_path,        "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   std::string key_content = ReadFileToString(output_key_path);
   EXPECT_TRUE(key_content.find("ENCRYPTED") != std::string::npos);
@@ -274,7 +275,7 @@ TEST_F(ReqTest, DefaultKeyoutPath) {
   args_list_t args = {"-new", "-newkey", "rsa:2048", "-nodes",
                       "-out", csr_path,  "-subj",    "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   // Verify key was written to default privkey.pem
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey("privkey.pem", nullptr));
@@ -298,7 +299,7 @@ TEST_F(ReqTest, SuppressedKeyWrite) {
   args_list_t args = {"-new",   "-config", config_path,   "-out",
                       csr_path, "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   // Verify that privkey.pem was NOT created
   ScopedFILE f(fopen("privkey.pem", "r"));
@@ -322,7 +323,7 @@ TEST_F(ReqTest, ExistingKeyNoWrite) {
                       "-key",   input_key_path, "-out",
                       csr_path, "-subj",        "/CN=primary"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   // Verify that privkey.pem was NOT created
   ScopedFILE f(fopen("privkey.pem", "r"));
@@ -335,7 +336,7 @@ TEST_F(ReqTest, X509SelfSignedCert) {
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto cert = LoadPEMCertificate(cert_path);
   ASSERT_TRUE(cert);
@@ -361,7 +362,7 @@ TEST_F(ReqTest, BasicConfig) {
                       "-keyout", output_key_path, "-out",      csr_path,
                       "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
@@ -387,7 +388,7 @@ TEST_F(ReqTest, NoReqSectionConfig) {
                       "-keyout", output_key_path, "-out",
                       csr_path,  "-subj",         "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
@@ -400,7 +401,7 @@ TEST_F(ReqTest, ExistingKeyFile) {
   // Use existing key for new CSR
   args_list_t use_args = {"-new", "-key",   input_key_path, "-nodes",
                           "-out", csr_path, "-subj",        "/CN=second.com"};
-  ASSERT_TRUE(reqTool(use_args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(use_args));
 }
 
 TEST_F(ReqTest, SubjectNameParsing) {
@@ -413,7 +414,8 @@ TEST_F(ReqTest, SubjectNameParsing) {
                         "-keyout", output_key_path, "-out",     csr_path,
                         "-subj",   subj.c_str()};
 
-    EXPECT_TRUE(reqTool(args)) << "Failed with subject: " << subj;
+    EXPECT_EQ(kToolExitSuccess, reqTool(args))
+        << "Failed with subject: " << subj;
   }
 }
 
@@ -431,7 +433,7 @@ TEST_F(ReqTest, DigestSelectionFromConfig) {
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
                       "-out",     csr_path,  "-subj",     "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, KeyEncryptionFromConfig) {
@@ -449,7 +451,7 @@ TEST_F(ReqTest, KeyEncryptionFromConfig) {
                       output_key_path, "-out",     csr_path,        "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   std::string key_content = ReadFileToString(output_key_path);
   EXPECT_TRUE(key_content.find("ENCRYPTED") != std::string::npos);
@@ -472,7 +474,7 @@ TEST_F(ReqTest, ReqExtensions) {
                       "-keyout",  output_key_path, "-out",      csr_path,
                       "-subj",    "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, X509Extensions) {
@@ -493,7 +495,7 @@ TEST_F(ReqTest, X509Extensions) {
                       "-nodes",      "-keyout",    output_key_path, "-out",
                       cert_path,     "-subj",      "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, ReqExtensionsFromConfig) {
@@ -513,7 +515,7 @@ TEST_F(ReqTest, ReqExtensionsFromConfig) {
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
                       "-out",     csr_path,  "-subj",     "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, X509ExtensionsFromConfig) {
@@ -534,7 +536,7 @@ TEST_F(ReqTest, X509ExtensionsFromConfig) {
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, ReqExtensionsFromEmptyConfig) {
@@ -547,7 +549,7 @@ TEST_F(ReqTest, ReqExtensionsFromEmptyConfig) {
                       "rsa:2048", "-nodes",  "-keyout",   output_key_path,
                       "-out",     csr_path,  "-subj",     "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, X509ExtensionsFromEmptyConfig) {
@@ -561,7 +563,7 @@ TEST_F(ReqTest, X509ExtensionsFromEmptyConfig) {
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 // Misrouting v3_req to the CSR fails because authorityKeyIdentifier needs an
@@ -577,7 +579,7 @@ TEST_F(ReqTest, ExtensionsDoesNotApplyToCSR) {
                       "-out",      csr_path,
                       "-subj",     "/CN=ext-routing.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -606,7 +608,7 @@ TEST_F(ReqTest, ExtensionsDoNotChangeCSRWithoutReqExtensions) {
   args_list_t default_args = {"-new",   "-config",      config_path,
                               "-key",   input_key_path, "-out",
                               csr_path, "-subj",        "/CN=test.com"};
-  ASSERT_TRUE(reqTool(default_args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(default_args));
   auto default_csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(default_csr);
   std::set<int> default_nids = CSRExtensionNIDs(default_csr.get());
@@ -615,7 +617,7 @@ TEST_F(ReqTest, ExtensionsDoNotChangeCSRWithoutReqExtensions) {
                                  "-extensions",  "v3_cert",     "-key",
                                  input_key_path, "-out",        csr_path,
                                  "-subj",        "/CN=test.com"};
-  ASSERT_TRUE(reqTool(extensions_args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(extensions_args));
   auto extensions_csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(extensions_csr);
   std::set<int> extensions_nids = CSRExtensionNIDs(extensions_csr.get());
@@ -638,7 +640,7 @@ TEST_F(ReqTest, ReqextsSelectsCSRExtensions) {
                       "-out",      csr_path,
                       "-subj",     "/CN=reqexts.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -659,7 +661,7 @@ TEST_F(ReqTest, ReqextsOverridesConfigReqExtensions) {
                       "-out",        csr_path,
                       "-subj",       "/CN=override.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -681,7 +683,7 @@ TEST_F(ReqTest, ReqextsWithAuthorityKeyIdentifierFails) {
                       "-out",      csr_path,
                       "-subj",     "/CN=aki.example.com"};
 
-  ASSERT_FALSE(reqTool(args));
+  ASSERT_EQ(kToolExitFailure, reqTool(args));
 }
 
 TEST_F(ReqTest, ReqextsAndExtensionsAreIndependent) {
@@ -693,7 +695,7 @@ TEST_F(ReqTest, ReqextsAndExtensionsAreIndependent) {
       "rsa:2048", "-nodes",      "-keyout",   output_key_path,
       "-out",     csr_path,      "-subj",     "/CN=both.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -713,7 +715,7 @@ TEST_F(ReqTest, ExtensionsAppliesToX509Certificate) {
                       "-keyout",   output_key_path, "-out",
                       cert_path,   "-subj",         "/CN=ca.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto cert = LoadPEMCertificate(cert_path);
   ASSERT_TRUE(cert);
@@ -734,7 +736,7 @@ TEST_F(ReqTest, ReqextsDoesNotApplyToX509Certificate) {
       "-keyout",   output_key_path, "-out",
       cert_path,   "-subj",         "/CN=x509-reqexts.example.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto cert = LoadPEMCertificate(cert_path);
   ASSERT_TRUE(cert);
@@ -766,7 +768,7 @@ TEST_F(ReqTest, UnknownExtensionSectionIsRejected) {
   };
 
   for (const auto &args : testparams) {
-    EXPECT_FALSE(reqTool(args));
+    EXPECT_EQ(kToolExitFailure, reqTool(args));
   }
 }
 
@@ -776,7 +778,7 @@ TEST_F(ReqTest, ReqextsWithoutConfigUsesDefaultExtensions) {
                       "rsa:2048", "-nodes",   "-keyout", output_key_path,
                       "-out",     csr_path,   "-subj",   "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -790,7 +792,7 @@ TEST_F(ReqTest, OutformPEM) {
                       "-outform", "PEM",     "-keyout",  output_key_path,
                       "-out",     csr_path,  "-subj",    "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
   std::string csr_content = ReadFileToString(csr_path);
   EXPECT_TRUE(csr_content.find("-----BEGIN CERTIFICATE REQUEST-----") !=
               std::string::npos);
@@ -804,7 +806,7 @@ TEST_F(ReqTest, OutformDER) {
                       "-outform", "DER",     "-keyout",  output_key_path,
                       "-out",     csr_path,  "-subj",    "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   ScopedFILE file(fopen(csr_path, "rb"));
   ASSERT_TRUE(file);
@@ -818,7 +820,7 @@ TEST_F(ReqTest, OutformDERX509) {
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   ScopedFILE file(fopen(cert_path, "rb"));
   ASSERT_TRUE(file);
@@ -832,7 +834,7 @@ TEST_F(ReqTest, OutformPEMX509) {
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   std::string cert_content = ReadFileToString(cert_path);
   EXPECT_TRUE(cert_content.find("-----BEGIN CERTIFICATE-----") !=
@@ -846,7 +848,7 @@ TEST_F(ReqTest, PassinWithKey) {
                       "-nodes",      "-passin", "pass:testpassword",
                       "-out",        csr_path,  "-subj",
                       "/CN=test.com"};
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 TEST_F(ReqTest, PassinX509) {
@@ -862,7 +864,7 @@ TEST_F(ReqTest, PassinX509) {
                       cert_path,
                       "-subj",
                       "/CN=test.com"};
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 
   auto cert = LoadPEMCertificate(cert_path);
   ASSERT_TRUE(cert);
@@ -871,7 +873,7 @@ TEST_F(ReqTest, PassinX509) {
 TEST_F(ReqTest, StdoutOutput) {
   args_list_t args = {"-new", "-nodes", "-subj", "/CN=test.com"};
 
-  ASSERT_TRUE(reqTool(args));
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
 }
 
 // -------------------- Req Option Usage Error Tests --------------------------
@@ -883,8 +885,8 @@ class ReqOptionUsageErrorsTest : public ReqTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = reqTool(c_args);
-    ASSERT_FALSE(result);
+    int result = reqTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 

@@ -49,29 +49,87 @@ class VerifyTest : public ::testing::Test {
 // Test -CAfile with self-signed certificate
 TEST_F(VerifyTest, SelfSignedCertWithCAfileTest) {
   args_list_t args = {"-CAfile", ca_path, in_path};
-  bool result = VerifyTool(args);
-  ASSERT_TRUE(result);
+  int result = VerifyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test certificate without -CAfile
 TEST_F(VerifyTest, SelfSignedCertWithoutCAfile) {
   args_list_t args = {in_path};
-  bool result = VerifyTool(args);
-  ASSERT_FALSE(result);
+  int result = VerifyTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
 
 // Test certificate with -untrusted
 TEST_F(VerifyTest, SelfSignedCertWithUntrustedChain) {
   args_list_t args = {"-untrusted", chain_path, in_path};
-  bool result = VerifyTool(args);
-  ASSERT_FALSE(result);
+  int result = VerifyTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
 
 // Test certificate with -untrusted and -CAfile
 TEST_F(VerifyTest, SelfSignedCertWithCAFileAndUntrustedChain) {
   args_list_t args = {"-CAfile", ca_path, "-untrusted", chain_path, in_path};
-  bool result = VerifyTool(args);
-  ASSERT_TRUE(result);
+  int result = VerifyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
+}
+
+// ----------------------------- Verify Exit Codes
+// ------------------------------
+//
+// OpenSSL's verify distinguishes option/setup errors (exit 1) from
+// certificates that fail to load or verify (exit 2).
+
+// A certificate that does not chain to the trust store exits with 2.
+TEST_F(VerifyTest, VerificationFailureExitCode) {
+  bssl::UniquePtr<X509> other;
+  CreateAndSignX509Certificate(other, nullptr);
+  ASSERT_TRUE(other);
+  ScopedFILE ca_file(fopen(ca_path, "wb"));
+  ASSERT_TRUE(ca_file);
+  ASSERT_TRUE(PEM_write_X509(ca_file.get(), other.get()));
+  ca_file.reset();
+
+  args_list_t args = {"-CAfile", ca_path, in_path};
+  ASSERT_EQ(2, VerifyTool(args));
+}
+
+// One failing input among several exits with 2.
+TEST_F(VerifyTest, AnyFailingInputExitCode) {
+  char missing_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(missing_path), 0u);
+  RemoveFile(missing_path);
+
+  args_list_t args = {"-CAfile", ca_path, in_path, missing_path};
+  ASSERT_EQ(2, VerifyTool(args));
+}
+
+// An input certificate that cannot be parsed exits with 2.
+TEST_F(VerifyTest, UnparseableInputExitCode) {
+  ScopedFILE in_file(fopen(in_path, "wb"));
+  ASSERT_TRUE(in_file);
+  ASSERT_GT(fputs("not a certificate\n", in_file.get()), 0);
+  in_file.reset();
+
+  args_list_t args = {"-CAfile", ca_path, in_path};
+  ASSERT_EQ(2, VerifyTool(args));
+}
+
+// Trust store and -untrusted setup problems exit with 1.
+TEST_F(VerifyTest, SetupFailureExitCode) {
+  char missing_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(missing_path), 0u);
+  RemoveFile(missing_path);
+
+  args_list_t missing_cafile = {"-CAfile", missing_path, in_path};
+  EXPECT_EQ(kToolExitFailure, VerifyTool(missing_cafile));
+
+  args_list_t missing_untrusted = {"-CAfile", ca_path, "-untrusted",
+                                   missing_path, in_path};
+  EXPECT_EQ(kToolExitFailure, VerifyTool(missing_untrusted));
+
+  args_list_t unknown_option = {"-CAfile", ca_path, "-bogus", in_path};
+  EXPECT_EQ(kToolExitFailure, VerifyTool(unknown_option));
 }
 
 // -------------------- Verify OpenSSL Comparison Tests
@@ -179,4 +237,51 @@ TEST_F(VerifyComparisonTest, CAFileSelfSignedStdin) {
                               openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test that verify's exit status matches OpenSSL: 0 on success, 2 when a
+// certificate fails to verify or load, and 1 for setup errors such as a
+// missing -CAfile.
+TEST_F(VerifyComparisonTest, ExitCodes) {
+  char missing_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(missing_path), 0u);
+  RemoveFile(missing_path);
+
+  char other_ca_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_ca_path), 0u);
+  bssl::UniquePtr<X509> other;
+  CreateAndSignX509Certificate(other, nullptr);
+  ASSERT_TRUE(other);
+  {
+    ScopedFILE other_ca_file(fopen(other_ca_path, "wb"));
+    ASSERT_TRUE(other_ca_file);
+    ASSERT_TRUE(PEM_write_X509(other_ca_file.get(), other.get()));
+  }
+
+  struct {
+    std::string args;
+    int expected_exit;
+  } cases[] = {
+      {std::string("-CAfile ") + ca_path + " " + in_path, 0},
+      {std::string("-CAfile ") + other_ca_path + " " + in_path, 2},
+      {std::string("-CAfile ") + ca_path + " " + in_path + " " + missing_path,
+       2},
+      {std::string("-CAfile ") + missing_path + " " + in_path, 1},
+      {std::string("-CAfile ") + ca_path + " -untrusted " + missing_path + " " +
+           in_path,
+       1},
+  };
+  for (const auto &c : cases) {
+    std::string tool_command = std::string(tool_executable_path) + " verify " +
+                               c.args + " > " + out_path_tool + " 2>&1";
+    std::string openssl_command = std::string(openssl_executable_path) +
+                                  " verify " + c.args + " > " +
+                                  out_path_openssl + " 2>&1";
+    int tool_exit = ExecuteCommandExitCode(tool_command);
+    int openssl_exit = ExecuteCommandExitCode(openssl_command);
+    EXPECT_EQ(c.expected_exit, tool_exit) << "verify " << c.args;
+    EXPECT_EQ(openssl_exit, tool_exit) << "verify " << c.args;
+  }
+
+  RemoveFile(other_ca_path);
 }

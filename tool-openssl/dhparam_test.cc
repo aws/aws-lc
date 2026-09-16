@@ -52,14 +52,15 @@ class DhparamTest : public ::testing::Test {
 // Test help option
 TEST_F(DhparamTest, HelpOption) {
   args_list_t args = {"-help"};
-  EXPECT_TRUE(dhparamTool(args));
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args));
 }
 
 // Test basic parameter generation
 TEST_F(DhparamTest, BasicGeneration) {
   args_list_t args = {"-out", out_path, "512"};
 
-  EXPECT_TRUE(dhparamTool(args)) << "Basic dhparam generation failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args))
+      << "Basic dhparam generation failed";
 
   // Validate it's actually parseable DH parameters in PEM format
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -86,7 +87,7 @@ TEST_F(DhparamTest, GenerateVariousSizes) {
 
   for (unsigned bits : bit_sizes) {
     args_list_t args = {"-out", out_path, std::to_string(bits)};
-    EXPECT_TRUE(dhparamTool(args))
+    EXPECT_EQ(kToolExitSuccess, dhparamTool(args))
         << "Failed to generate " << bits << "-bit parameters";
 
     bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -105,7 +106,7 @@ TEST_F(DhparamTest, GenerateVariousSizes) {
 TEST_F(DhparamTest, NooutFlag) {
   args_list_t args = {"-noout", "-out", out_path, "512"};
 
-  EXPECT_TRUE(dhparamTool(args)) << "dhparam -noout failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args)) << "dhparam -noout failed";
   EXPECT_TRUE(ReadFileToString(out_path).empty())
       << "Output file should be empty with -noout";
 }
@@ -114,7 +115,7 @@ TEST_F(DhparamTest, NooutFlag) {
 TEST_F(DhparamTest, TextOutput) {
   args_list_t args = {"-text", "-noout", "-out", out_path, "512"};
 
-  EXPECT_TRUE(dhparamTool(args)) << "dhparam -text failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args)) << "dhparam -text failed";
 
   std::string output = ReadFileToString(out_path);
   EXPECT_FALSE(output.empty()) << "Text output should not be empty";
@@ -130,7 +131,8 @@ TEST_F(DhparamTest, TextOutput) {
 TEST_F(DhparamTest, TextWithEncodedOutput) {
   args_list_t args = {"-text", "-out", out_path, "512"};
 
-  EXPECT_TRUE(dhparamTool(args)) << "dhparam -text with encoded output failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args))
+      << "dhparam -text with encoded output failed";
 
   std::string output = ReadFileToString(out_path);
   EXPECT_FALSE(output.empty());
@@ -146,7 +148,7 @@ TEST_F(DhparamTest, TextWithEncodedOutput) {
 TEST_F(DhparamTest, DEROutputFormat) {
   args_list_t args = {"-outform", "DER", "-out", out_path, "512"};
 
-  EXPECT_TRUE(dhparamTool(args)) << "dhparam DER output failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(args)) << "dhparam DER output failed";
 
   // Validate it's actually DER format by parsing it
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
@@ -165,11 +167,12 @@ TEST_F(DhparamTest, DEROutputFormat) {
 TEST_F(DhparamTest, ReadPEMParameters) {
   // First generate parameters
   args_list_t gen_args = {"-out", in_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Now read them back
   args_list_t read_args = {"-in", in_path, "-text", "-noout", "-out", out_path};
-  EXPECT_TRUE(dhparamTool(read_args)) << "Failed to read PEM parameters";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(read_args))
+      << "Failed to read PEM parameters";
 
   std::string output = ReadFileToString(out_path);
   EXPECT_NE(output.find("DH Parameters:"), std::string::npos);
@@ -179,12 +182,13 @@ TEST_F(DhparamTest, ReadPEMParameters) {
 TEST_F(DhparamTest, ReadDERParameters) {
   // First generate DER parameters
   args_list_t gen_args = {"-outform", "DER", "-out", in_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Now read them back
   args_list_t read_args = {"-inform", "DER",    "-in",  in_path,
                            "-text",   "-noout", "-out", out_path};
-  EXPECT_TRUE(dhparamTool(read_args)) << "Failed to read DER parameters";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(read_args))
+      << "Failed to read DER parameters";
 
   std::string output = ReadFileToString(out_path);
   EXPECT_NE(output.find("DH Parameters:"), std::string::npos);
@@ -194,12 +198,13 @@ TEST_F(DhparamTest, ReadDERParameters) {
 TEST_F(DhparamTest, ConvertPEMtoDER) {
   // Generate PEM parameters
   args_list_t gen_args = {"-out", in_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Convert to DER
   args_list_t convert_args = {"-in",      in_path, "-inform", "PEM",
                               "-outform", "DER",   "-out",    out_path};
-  EXPECT_TRUE(dhparamTool(convert_args)) << "PEM to DER conversion failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(convert_args))
+      << "PEM to DER conversion failed";
 
   // Verify DER output
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
@@ -212,12 +217,13 @@ TEST_F(DhparamTest, ConvertPEMtoDER) {
 TEST_F(DhparamTest, ConvertDERtoPEM) {
   // Generate DER parameters
   args_list_t gen_args = {"-outform", "DER", "-out", in_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Convert to PEM
   args_list_t convert_args = {"-in",      in_path, "-inform", "DER",
                               "-outform", "PEM",   "-out",    out_path};
-  EXPECT_TRUE(dhparamTool(convert_args)) << "DER to PEM conversion failed";
+  EXPECT_EQ(kToolExitSuccess, dhparamTool(convert_args))
+      << "DER to PEM conversion failed";
 
   // Verify PEM output
   std::string output = ReadFileToString(out_path);
@@ -235,7 +241,7 @@ TEST_F(DhparamTest, ConvertDERtoPEM) {
 TEST_F(DhparamTest, RoundTrip) {
   // Generate and save
   args_list_t gen_args = {"-out", in_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Load the original
   bssl::UniquePtr<BIO> bio1(BIO_new_file(in_path, "r"));
@@ -246,7 +252,7 @@ TEST_F(DhparamTest, RoundTrip) {
 
   // Read and re-save
   args_list_t resave_args = {"-in", in_path, "-out", out_path};
-  ASSERT_TRUE(dhparamTool(resave_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(resave_args));
 
   // Load the re-saved version
   bssl::UniquePtr<BIO> bio2(BIO_new_file(out_path, "r"));
@@ -280,49 +286,54 @@ class DhparamErrorTest : public ::testing::Test {
 // Test invalid bit size (too small)
 TEST_F(DhparamErrorTest, InvalidBitSizeTooSmall) {
   args_list_t args = {"256"};
-  EXPECT_FALSE(dhparamTool(args)) << "Should fail with bit size < 512";
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
+      << "Should fail with bit size < 512";
 }
 
 // Test invalid bit size (non-numeric)
 TEST_F(DhparamErrorTest, InvalidBitSizeNonNumeric) {
   args_list_t args = {"abc"};
-  EXPECT_FALSE(dhparamTool(args)) << "Should fail with non-numeric bit size";
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
+      << "Should fail with non-numeric bit size";
 }
 
 // Test invalid input format
 TEST_F(DhparamErrorTest, InvalidInputFormat) {
   args_list_t args = {"-inform", "INVALID", "512"};
-  EXPECT_FALSE(dhparamTool(args)) << "Should fail with invalid input format";
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
+      << "Should fail with invalid input format";
 }
 
 // Test invalid output format
 TEST_F(DhparamErrorTest, InvalidOutputFormat) {
   args_list_t args = {"-outform", "INVALID", "512"};
-  EXPECT_FALSE(dhparamTool(args)) << "Should fail with invalid output format";
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
+      << "Should fail with invalid output format";
 }
 
 // Test missing input file
 TEST_F(DhparamErrorTest, MissingInputFile) {
   args_list_t args = {"-in", "/nonexistent/file.pem"};
-  EXPECT_FALSE(dhparamTool(args)) << "Should fail with missing input file";
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
+      << "Should fail with missing input file";
 }
 
 // Test conflicting options (both numbits and -in)
 TEST_F(DhparamErrorTest, ConflictingOptions) {
   // Create a temp file for the test
   args_list_t gen_args = {"-out", out_path, "512"};
-  ASSERT_TRUE(dhparamTool(gen_args));
+  ASSERT_EQ(kToolExitSuccess, dhparamTool(gen_args));
 
   // Now try to use both numbits and -in
   args_list_t args = {"-in", out_path, "1024"};
-  EXPECT_FALSE(dhparamTool(args))
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
       << "Should fail when both numbits and -in are specified";
 }
 
 // Test too many arguments
 TEST_F(DhparamErrorTest, TooManyArguments) {
   args_list_t args = {"512", "1024"};
-  EXPECT_FALSE(dhparamTool(args))
+  EXPECT_EQ(kToolExitFailure, dhparamTool(args))
       << "Should fail with multiple numbits arguments";
 }
 

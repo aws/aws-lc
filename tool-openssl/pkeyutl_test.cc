@@ -72,8 +72,8 @@ class PKeyUtlTest : public ::testing::Test {
 TEST_F(PKeyUtlTest, Sign) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in",
                       in_path, "-out",   out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -87,16 +87,16 @@ TEST_F(PKeyUtlTest, Verify) {
   {
     args_list_t args = {"-sign", "-inkey", key_path, "-in",
                         in_path, "-out",   sig_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyutlTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
   }
 
   // Then verify the signature
   {
     args_list_t args = {"-verify", "-pubin",   "-inkey", pubkey_path, "-in",
                         in_path,   "-sigfile", sig_path, "-out",      out_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyutlTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
 
     // Check that the output contains "Signature Verified Successfully"
     std::string output = ReadFileToString(out_path);
@@ -116,8 +116,8 @@ TEST_F(PKeyUtlTest, PassinBasicIntegration) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   struct stat st;
   ASSERT_EQ(stat(out_path, &st), 0);
@@ -129,8 +129,8 @@ TEST_F(PKeyUtlTest, PassinErrorHandling) {
   args_list_t args = {"-sign",   "-inkey",         protected_key_path,
                       "-passin", "invalid:format", "-in",
                       in_path,   "-out",           out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_FALSE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 
   args_list_t args2 = {"-sign",
                        "-inkey",
@@ -141,16 +141,16 @@ TEST_F(PKeyUtlTest, PassinErrorHandling) {
                        in_path,
                        "-out",
                        out_path};
-  bool result2 = pkeyutlTool(args2);
-  ASSERT_FALSE(result2);
+  int result2 = pkeyutlTool(args2);
+  ASSERT_EQ(kToolExitFailure, result2);
 }
 
 // Test that unprotected key works without passin
 TEST_F(PKeyUtlTest, NoPassinRequired) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in",
                       in_path, "-out",   out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -161,8 +161,8 @@ TEST_F(PKeyUtlTest, NoPassinRequired) {
 // Test basic signing operation
 TEST_F(PKeyUtlTest, StdoutOutput) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in", in_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test signing with pkeyopt
@@ -191,8 +191,8 @@ TEST_F(PKeyUtlTest, Pkeyopt) {
                       "rsa_pss_saltlen:-1",
                       "-out",
                       sig_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -209,7 +209,7 @@ TEST_F(PKeyUtlTest, Pkeyopt) {
           "-pkeyopt", "rsa_pss_saltlen:-1",
           "-out",     out_path};
   result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Check that the output contains "Signature Verified Successfully"
   std::string output = ReadFileToString(out_path);
@@ -226,8 +226,8 @@ class PKeyUtlOptionUsageErrorsTest : public PKeyUtlTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = pkeyutlTool(c_args);
-    ASSERT_FALSE(result);
+    int result = pkeyutlTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
