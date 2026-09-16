@@ -3725,7 +3725,10 @@ struct CryptoPolicyConfig {
 // It returns true if the whole file was read (even if no recognized keys were
 // present), and false on invalid arguments or if the file could not be opened
 // or read to its end.
-bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
+                                                 CryptoPolicyConfig *out);
 
 // ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
@@ -3735,7 +3738,9 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out);
 // The environment override is ignored in processes running with elevated
 // privileges, where the environment sits on the far side of a privilege boundary
 // from the root-owned default path.
-const char *ssl_crypto_policy_default_path(void);
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 
