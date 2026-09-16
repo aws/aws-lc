@@ -246,6 +246,53 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
   EXPECT_EQ(awslc_hash, openssl_hash);
 }
 
+// Verify that dgst -verify's exit status matches OpenSSL: 0 on a good
+// signature and nonzero when the signature does not match the input.
+TEST_F(DgstComparisonTest, VerifyExitCode) {
+  std::string sign_command = std::string(awslc_executable_path) +
+                             " dgst -sign " + key_path + " -out " +
+                             sig_path_awslc + " " + in_path;
+  ASSERT_EQ(0, ExecuteCommandExitCode(sign_command));
+
+  // Good signature: both exit 0.
+  std::string awslc_command = std::string(awslc_executable_path) +
+                              " dgst -verify " + pubkey_path + " -signature " +
+                              sig_path_awslc + " " + in_path + " > " +
+                              out_path_awslc + " 2>&1";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " dgst -verify " + pubkey_path +
+                                " -signature " + sig_path_awslc + " " +
+                                in_path + " > " + out_path_openssl + " 2>&1";
+  int awslc_exit = ExecuteCommandExitCode(awslc_command);
+  int openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_EQ(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  // Bad signature: verify the untampered signature against a different file.
+  char other_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_path), 0u);
+  {
+    ScopedFILE other_file(fopen(other_path, "wb"));
+    ASSERT_TRUE(other_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), other_file.get()),
+              strlen(tampered));
+  }
+
+  awslc_command = std::string(awslc_executable_path) + " dgst -verify " +
+                  pubkey_path + " -signature " + sig_path_awslc + " " +
+                  other_path + " > " + out_path_awslc + " 2>&1";
+  openssl_command = std::string(openssl_executable_path) + " dgst -verify " +
+                    pubkey_path + " -signature " + sig_path_awslc + " " +
+                    other_path + " > " + out_path_openssl + " 2>&1";
+  awslc_exit = ExecuteCommandExitCode(awslc_command);
+  openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_NE(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  RemoveFile(other_path);
+}
+
 class MD5ComparisonTest : public DgstComparisonTest {};
 
 TEST_F(MD5ComparisonTest, Digest) {
@@ -364,6 +411,25 @@ TEST_F(DgstTest, Verify) {
   args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
                              in_path};
   EXPECT_EQ(kToolExitSuccess, dgstTool(verify_args));
+}
+
+// A signature that does not match the input exits nonzero, like OpenSSL.
+TEST_F(DgstTest, VerifyFailureExitCode) {
+  args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));
+
+  // Tamper with the signed data so verification fails.
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), in_file.get()),
+              strlen(tampered));
+  }
+
+  args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
+                             in_path};
+  EXPECT_EQ(kToolExitFailure, dgstTool(verify_args));
 }
 
 TEST_F(DgstTest, DigestDefault) {

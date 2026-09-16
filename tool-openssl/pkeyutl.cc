@@ -354,7 +354,9 @@ int pkeyutlTool(const args_list_t &args) {
     if (success) {
       BIO_puts(output_bio.get(), "Signature Verified Successfully\n");
     } else {
+      // Like OpenSSL, a failed or errored verification exits nonzero.
       BIO_puts(output_bio.get(), "Signature Verification Failure\n");
+      return kToolExitFailure;
     }
   }
 

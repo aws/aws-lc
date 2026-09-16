@@ -288,21 +288,24 @@ static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
   int result =
       EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size());
 
+  // Like OpenSSL, only a successful verification exits zero; an invalid
+  // signature or a verification error is reported and exits nonzero.
   if (result > 0) {
     if (BIO_printf(out_bio, "Verified OK\n") <= 0) {
       goto end;
     }
+    return true;
   } else if (result == 0) {
     if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
       goto end;
     }
+    return false;
   } else {
     if (BIO_printf(out_bio, "Error verifying data\n") <= 0) {
       goto end;
     }
+    return false;
   }
-
-  return true;
 
 end:
   fprintf(stderr, "Error writing output to %s.\n", in_path.c_str());

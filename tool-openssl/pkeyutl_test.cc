@@ -105,6 +105,31 @@ TEST_F(PKeyUtlTest, Verify) {
   }
 }
 
+// A signature that does not match the input exits nonzero, like OpenSSL.
+TEST_F(PKeyUtlTest, VerifyFailureExitCode) {
+  {
+    args_list_t args = {"-sign", "-inkey", key_path, "-in",
+                        in_path, "-out",   sig_path};
+    ASSERT_EQ(kToolExitSuccess, pkeyutlTool(args));
+  }
+
+  // Tamper with the signed data so verification fails.
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *tampered = "Different data that was never signed";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), in_file.get()),
+              strlen(tampered));
+  }
+
+  args_list_t args = {"-verify", "-pubin",   "-inkey", pubkey_path, "-in",
+                      in_path,   "-sigfile", sig_path, "-out",      out_path};
+  ASSERT_EQ(kToolExitFailure, pkeyutlTool(args));
+
+  std::string output = ReadFileToString(out_path);
+  ASSERT_NE(output.find("Signature Verification Failure"), std::string::npos);
+}
+
 // Test basic passin integration with password-protected key
 TEST_F(PKeyUtlTest, PassinBasicIntegration) {
   args_list_t args = {"-sign",
@@ -470,4 +495,53 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
             std::string::npos);
 
   RemoveFile(hashed_in_path);
+}
+
+// Verify that pkeyutl -verify's exit status matches OpenSSL: 0 on a good
+// signature and nonzero when the signature does not match the input.
+TEST_F(PKeyUtlComparisonTest, VerifyExitCode) {
+  std::string sign_command = std::string(tool_executable_path) +
+                             " pkeyutl -sign -inkey " + key_path + " -in " +
+                             in_path + " -out " + sig_path_tool;
+  ASSERT_EQ(0, ExecuteCommandExitCode(sign_command));
+
+  // Good signature: both exit 0.
+  std::string tool_command = std::string(tool_executable_path) +
+                             " pkeyutl -verify -pubin -inkey " + pubkey_path +
+                             " -in " + in_path + " -sigfile " + sig_path_tool +
+                             " > " + out_path_tool + " 2>&1";
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      pubkey_path + " -in " + in_path + " -sigfile " + sig_path_tool + " > " +
+      out_path_openssl + " 2>&1";
+  int tool_exit = ExecuteCommandExitCode(tool_command);
+  int openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_EQ(0, tool_exit);
+  EXPECT_EQ(openssl_exit, tool_exit);
+
+  // Bad signature: verify the signature against different input data.
+  char other_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_path), 0u);
+  {
+    ScopedFILE other_file(fopen(other_path, "wb"));
+    ASSERT_TRUE(other_file);
+    const char *tampered = "Other data";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), other_file.get()),
+              strlen(tampered));
+  }
+
+  tool_command = std::string(tool_executable_path) +
+                 " pkeyutl -verify -pubin -inkey " + pubkey_path + " -in " +
+                 other_path + " -sigfile " + sig_path_tool + " > " +
+                 out_path_tool + " 2>&1";
+  openssl_command = std::string(openssl_executable_path) +
+                    " pkeyutl -verify -pubin -inkey " + pubkey_path + " -in " +
+                    other_path + " -sigfile " + sig_path_tool + " > " +
+                    out_path_openssl + " 2>&1";
+  tool_exit = ExecuteCommandExitCode(tool_command);
+  openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_NE(0, tool_exit);
+  EXPECT_EQ(openssl_exit, tool_exit);
+
+  RemoveFile(other_path);
 }
