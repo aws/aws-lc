@@ -33,10 +33,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      # The image compiles CMake from source and depends only on matrix.cmake,
+      # so the four cells sharing a version build an identical copy. Cache the
+      # layers per version so it is compiled once, not by every cell every run.
       - name: Build Docker Image
-        working-directory: .github/docker_images/cmake_build_versions
-        run: |
-          docker build -t "cmake-${{ matrix.cmake.version }}" --build-arg CMAKE_VERSION=${{ matrix.cmake.version }} --build-arg CMAKE_DOWNLOAD_URL=${{ matrix.cmake.url }} --build-arg CMAKE_SHA256=${{ matrix.cmake.hash }} .
+        uses: docker/build-push-action@v7
+        with:
+          context: .github/docker_images/cmake_build_versions
+          load: true
+          provenance: false
+          tags: cmake-${{ matrix.cmake.version }}
+          build-args: |
+            CMAKE_VERSION=${{ matrix.cmake.version }}
+            CMAKE_DOWNLOAD_URL=${{ matrix.cmake.url }}
+            CMAKE_SHA256=${{ matrix.cmake.hash }}
+          cache-from: type=gha,scope=cmake-${{ matrix.cmake.version }}
+          cache-to: type=gha,mode=max,scope=cmake-${{ matrix.cmake.version }}
       - name: ${{ matrix.generator }} (Static)
         run: |
           docker run -v "${{ github.workspace }}:/awslc" "cmake-${{ matrix.cmake.version }}" -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=0 -DFIPS=${{ matrix.fips }}

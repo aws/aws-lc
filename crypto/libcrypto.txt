@@ -980,6 +980,8 @@ ERR_restore_state AWS_LC_1.0 PRIVATE
 ERR_save_state AWS_LC_1.0 PRIVATE
 ERR_set_error_data AWS_LC_1.0 PUBLIC
 ERR_set_mark AWS_LC_1.0 PUBLIC
+ERR_suppress_errors_begin AWS_LC_1.0 PRIVATE
+ERR_suppress_errors_end AWS_LC_1.0 PRIVATE
 EVP_AEAD_CTX_aead AWS_LC_1.0 PUBLIC
 EVP_AEAD_CTX_cleanup AWS_LC_1.0 PUBLIC
 EVP_AEAD_CTX_copy AWS_LC_1.0 PUBLIC
@@ -2804,6 +2806,7 @@ get_public_thread_reseed_calls_since_initialization AWS_LC_1.0 PRIVATE
 get_thread_and_global_tree_drbg_calls_FOR_TESTING AWS_LC_1.0 PRIVATE
 have_hw_rng_aarch64_for_testing AWS_LC_1.0 PRIVATE
 have_hw_rng_x86_64_for_testing AWS_LC_1.0 PRIVATE
+hw_rng_multiple8_with_retry_FOR_TESTING AWS_LC_1.0 PRIVATE
 i2a_ASN1_ENUMERATED AWS_LC_1.0 PUBLIC
 i2a_ASN1_INTEGER AWS_LC_1.0 PUBLIC
 i2a_ASN1_OBJECT AWS_LC_1.0 PUBLIC

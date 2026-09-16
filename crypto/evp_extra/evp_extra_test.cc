@@ -1829,6 +1829,53 @@ TEST(EVPExtraTest, ECKeygen) {
   }
 }
 
+TEST(EVPExtraTest, ECSignatureContextRejected) {
+  // |EVP_PKEY_CTRL_SIGNING_CONTEXT| previously collided with
+  // |EVP_PKEY_CTRL_PEER_KEY|, so EC treated a signature-context set as a
+  // successful no-op. It must fail: ECDSA does not take a context string.
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
+  ASSERT_TRUE(pkey);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+
+  static const uint8_t kContext[] = {1, 2, 3, 4};
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_CTX_set1_signature_context_string(
+      ctx.get(), kContext, sizeof(kContext)));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_COMMAND_NOT_SUPPORTED));
+
+  const uint8_t *out_ctx = nullptr;
+  size_t out_len = 0;
+  ERR_clear_error();
+  EXPECT_FALSE(
+      EVP_PKEY_CTX_get0_signature_context(ctx.get(), &out_ctx, &out_len));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP,
+                          EVP_R_COMMAND_NOT_SUPPORTED));
+
+  // |EVP_PKEY_CTRL_PEER_KEY| must still work for ECDH after the renumbering.
+  bssl::UniquePtr<EVP_PKEY_CTX> peer_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(peer_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(peer_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(peer_ctx.get(),
+                                                     NID_X9_62_prime256v1));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(peer_ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> peer(raw);
+
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_derive_set_peer(ctx.get(), peer.get()));
+  size_t secret_len = 0;
+  ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), nullptr, &secret_len));
+  EXPECT_GT(secret_len, 0u);
+}
+
 TEST(EVPExtraTest, DHKeygen) {
   // Set up some DH params in an |EVP_PKEY|. There is currently no API to do
   // this from EVP directly.
@@ -3132,6 +3179,41 @@ TEST_P(PerKEMTest, KEMCheckKeyTests) {
   EXPECT_FALSE(EVP_PKEY_public_check(no_key_ctx.get()));
   EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_NO_KEY_SET));
   EXPECT_EQ(ERR_peek_error(), 0u);
+
+  ERR_clear_error();
+}
+
+// |EVP_PKEY_kem_check_key| reads |pkey->pkey.kem_key|, which is a union member,
+// so it must reject a key of another type rather than interpreting that type's
+// key pointer as a |KEM_KEY *|.
+TEST(KEMTest, CheckKeyWrongKeyType) {
+  // An X25519 key whose material is filled with a repeating byte: if the type
+  // check is missing, the union read hands |KEM_check_key| a bogus pointer.
+  std::vector<uint8_t> raw(32, 0x41);
+  bssl::UniquePtr<EVP_PKEY> x25519(EVP_PKEY_new_raw_public_key(
+      EVP_PKEY_X25519, nullptr, raw.data(), raw.size()));
+  ASSERT_TRUE(x25519);
+
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_kem_check_key(x25519.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_EXPECTING_A_KEM_KEY));
+
+  // Same for an EC key, which carries a different union member again.
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ec_ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ec_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ec_ctx.get(),
+                                                     NID_X9_62_prime256v1));
+  EVP_PKEY *raw_ec = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ec_ctx.get(), &raw_ec));
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(raw_ec);
+
+  ERR_clear_error();
+  EXPECT_FALSE(EVP_PKEY_kem_check_key(ec_pkey.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_EXPECTING_A_KEM_KEY));
 
   ERR_clear_error();
 }

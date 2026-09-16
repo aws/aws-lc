@@ -987,6 +987,8 @@ AWS_LC_1.0 {
     ERR_save_state;
     ERR_set_error_data;
     ERR_set_mark;
+    ERR_suppress_errors_begin;
+    ERR_suppress_errors_end;
     EVP_AEAD_CTX_aead;
     EVP_AEAD_CTX_cleanup;
     EVP_AEAD_CTX_copy;
@@ -2811,6 +2813,7 @@ AWS_LC_1.0 {
     get_thread_and_global_tree_drbg_calls_FOR_TESTING;
     have_hw_rng_aarch64_for_testing;
     have_hw_rng_x86_64_for_testing;
+    hw_rng_multiple8_with_retry_FOR_TESTING;
     i2a_ASN1_ENUMERATED;
     i2a_ASN1_INTEGER;
     i2a_ASN1_OBJECT;

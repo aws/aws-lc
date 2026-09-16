@@ -12,6 +12,9 @@
 #include <openssl/evp_errors.h>
 #include <openssl/mem.h>
 
+#include "../cpucap/internal.h"
+#include "../service_indicator/internal.h"
+
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 // 2.16.840.1.101.3.4.4.1
 static const uint8_t kOIDMLKEM512[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x01};
@@ -460,6 +463,11 @@ cleanup:
 }
 
 int KEM_check_key(const KEM_KEY *key) {
+  // Callers may reach the encaps/decaps methods below without going through
+  // |EVP_PKEY_encapsulate|/|EVP_PKEY_decapsulate|, which is where DIT would
+  // otherwise be established, so set it here.
+  SET_DIT_AUTO_RESET;
+
   if (key == NULL || key->kem == NULL || key->kem->method == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -470,19 +478,31 @@ int KEM_check_key(const KEM_KEY *key) {
     return 0;
   }
 
+  int ret = 0;
+
+  // The hash inside |kem_check_secret_key| and the encaps/decaps inside
+  // |kem_check_pct| each update the service indicator, so validating one key
+  // would otherwise bump it several times. Lock it for the duration and leave
+  // the approval decision to the caller.
+  FIPS_service_indicator_lock_state();
+
   if (!kem_check_public_key(key)) {
-    return 0;
+    goto end;
   }
 
   if (key->secret_key != NULL) {
     if (!kem_check_secret_key(key)) {
-      return 0;
+      goto end;
     }
 
     if (!kem_check_pct(key)) {
-      return 0;
+      goto end;
     }
   }
 
-  return 1;
+  ret = 1;
+
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }

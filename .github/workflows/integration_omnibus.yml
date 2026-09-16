@@ -218,14 +218,14 @@ jobs:
             compiler: gcc-12
             allow_failure: false
             run: ./tests/ci/integration/run_librelp_integration.sh v1.13
-          # librelp (tracking upstream master - informational, allowed to fail)
-          - name: librelp-master
+          # librelp (tracking upstream main - informational, allowed to fail)
+          - name: librelp-main
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
             allow_failure: true
-            run: ./tests/ci/integration/run_librelp_integration.sh master
+            run: ./tests/ci/integration/run_librelp_integration.sh main
 
           # HAProxy Integration Tests
           - name: haproxy
@@ -496,6 +496,17 @@ jobs:
           - "3.15"
         buildFIPS: [0, 1]
         crtUseSystemCrypto: [0, 1]
+        # Python 3.12+ uses prebuilt CRT wheels, so the linkage selector
+        # does not change the build or tests for these versions.
+        exclude:
+          - version: "3.12"
+            crtUseSystemCrypto: 1
+          - version: "3.13"
+            crtUseSystemCrypto: 1
+          - version: "3.14"
+            crtUseSystemCrypto: 1
+          - version: "3.15"
+            crtUseSystemCrypto: 1
         include:
           - version: main
             buildFIPS: 0

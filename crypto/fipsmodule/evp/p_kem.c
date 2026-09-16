@@ -531,6 +531,14 @@ err:
 // to the secret key in |key| by performing encapsulation and decapsulation
 // and checking that the generated shared secrets are equal.
 int EVP_PKEY_kem_check_key(EVP_PKEY *key) {
+  // |key->pkey| is a union, so the type has to be checked before |kem_key| is
+  // read; otherwise another algorithm's key pointer would be interpreted as a
+  // |KEM_KEY *|. The EVP dispatch this function used to go through did this.
+  if (key != NULL && key->type != EVP_PKEY_KEM) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_KEM_KEY);
+    return 0;
+  }
+
   if (key == NULL || key->pkey.kem_key == NULL ||
       key->pkey.kem_key->public_key == NULL ||
       key->pkey.kem_key->secret_key == NULL) {
