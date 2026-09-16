@@ -1089,7 +1089,49 @@ TEST(DHTest, DHCheckNamedGroupFastPath) {
     ASSERT_TRUE(dh);
     int flags = -1;
     ASSERT_TRUE(DH_check(dh.get(), &flags));
-    EXPECT_TRUE(flags & DH_CHECK_P_NOT_PRIME);
+    // The point is that full validation ran at all; which of the two primality
+    // flags it reports depends on a property of this particular value that the
+    // test has no reason to assert.
+    EXPECT_TRUE(flags & (DH_CHECK_P_NOT_PRIME | DH_CHECK_P_NOT_SAFE_PRIME));
+  }
+
+  // A named modulus with a generator other than 2 is not the named group, so
+  // the fast path must decline on |g| alone. ffdhe2048's own (p, q) with g = 1
+  // makes that observable: full validation rejects the generator, so a nonzero
+  // flag here is proof that the g = 2 gate turned the fast path away.
+  {
+    bssl::UniquePtr<DH> group(DH_get_rfc7919_2048());
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 1));
+    bssl::UniquePtr<DH> dh =
+        NewDHGroup(DH_get0_p(group.get()), DH_get0_q(group.get()), g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    EXPECT_TRUE(flags & DH_CHECK_NOT_SUITABLE_GENERATOR);
+  }
+
+  // An RFC 3526 prime carries no subgroup order, so a supplied q is not part of
+  // the group definition and the fast path must decline regardless of its
+  // value. Pairing MODP-2048 with a bad q makes that observable: 2^q mod p is 4
+  // rather than 1, so full validation rejects the generator.
+  {
+    bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+    ASSERT_TRUE(p);
+    bssl::UniquePtr<BIGNUM> q(BN_new());
+    ASSERT_TRUE(q);
+    ASSERT_TRUE(BN_rshift1(q.get(), p.get()));  // q := (p-1)/2
+    ASSERT_TRUE(BN_add_word(q.get(), 2));       // ... + 2, no longer valid
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 2));
+    bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), q.get(), g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    EXPECT_TRUE(flags & DH_CHECK_NOT_SUITABLE_GENERATOR);
   }
 
   // A recognized modulus with a q that is NOT the group's subgroup order must
