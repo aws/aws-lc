@@ -72,8 +72,8 @@ func init() {
 	flag.StringVar(&includeHeaders, "include", "", "If set, only extract symbols from these comma-separated header basenames (e.g. ssl.h). All other headers are included first with OPENSSL_EXPORT suppressed to establish include guards, preventing transitive re-inclusion.")
 	flag.StringVar(&excludeHeaders, "exclude", "", "Comma-separated header basenames to omit entirely (e.g. ssl.h)")
 	flag.StringVar(&targets, "targets",
-		"OPENSSL_X86_64,OPENSSL_LINUX;OPENSSL_AARCH64,OPENSSL_LINUX;OPENSSL_ARM,OPENSSL_LINUX",
-		"Semicolon-separated list of OPENSSL_* define sets to run the preprocessor with. Each set is comma-separated (e.g. OPENSSL_X86_64,OPENSSL_LINUX). The preprocessor is run once per set and results are unioned to cover all platform-specific #ifdef guards.")
+		"OPENSSL_X86_64,OPENSSL_LINUX;OPENSSL_AARCH64,OPENSSL_LINUX;OPENSSL_ARM,OPENSSL_LINUX;OPENSSL_X86_64,OPENSSL_LINUX,AWSLC_CRYPTO_POLICIES",
+		"Semicolon-separated list of define sets to run the preprocessor with. Each set is comma-separated (e.g. OPENSSL_X86_64,OPENSSL_LINUX). The preprocessor is run once per set and results are unioned, so a symbol declared behind any guard in the list is extracted. Sets cover both target platforms and optional build features (e.g. AWSLC_CRYPTO_POLICIES), whose declarations are invisible to a preprocessor run without them.")
 	flag.StringVar(&internalDirsFlag, "internal-dirs", "", "Comma-separated directories (relative to -source-root) to scan for internal headers with OPENSSL_EXPORT (e.g. crypto,ssl). Symbols found only in these headers are classified as PRIVATE or PRIVATE_CXX.")
 	flag.StringVar(&suppressDirsFlag, "suppress-internal-dirs", "", "Comma-separated directories whose internal headers should be suppressed (included with OPENSSL_EXPORT empty) during internal header processing, without extracting their symbols. Use to prevent transitive includes from leaking symbols (e.g. ssl/internal.h includes crypto/internal.h — suppress crypto when extracting ssl).")
 	flag.BoolVar(&emitVisibility, "emit-visibility", false, "Output 'SYMBOL VISIBILITY' instead of just 'SYMBOL'. Visibility is PUBLIC, PRIVATE, or PRIVATE_CXX.")
