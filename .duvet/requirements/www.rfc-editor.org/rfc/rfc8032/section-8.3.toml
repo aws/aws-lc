@@ -1,0 +1,60 @@
+target = "https://www.rfc-editor.org/rfc/rfc8032#section-8.3"
+
+# Use of Contexts
+#
+#    Contexts can be used to separate uses of the protocol between
+#    different protocols (which is very hard to reliably do otherwise) and
+#    between different uses within the same protocol.  However, the
+#    following SHOULD be kept in mind when using this facility:
+# 
+#       The context SHOULD be a constant string specified by the protocol
+#       using it.  It SHOULD NOT incorporate variable elements from the
+#       message itself.
+# 
+#       Contexts SHOULD NOT be used opportunistically, as that kind of use
+#       is very error prone.  If contexts are used, one SHOULD require all
+#       signature schemes available for use in that purpose support
+#       contexts.
+# 
+#       Contexts are an extra input, which percolate out of APIs; as such,
+#       even if the signature scheme supports contexts, those may not be
+#       available for use.  This problem is compounded by the fact that
+#       many times the application is not invoking the signing and
+#       verification functions directly but via some other protocol.
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+However, the
+following SHOULD be kept in mind when using this facility:
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+The context SHOULD be a constant string specified by the protocol
+using it.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+It SHOULD NOT incorporate variable elements from the
+message itself.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+Contexts SHOULD NOT be used opportunistically, as that kind of use
+is very error prone.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+If contexts are used, one SHOULD require all
+signature schemes available for use in that purpose support
+contexts.
+'''
+
