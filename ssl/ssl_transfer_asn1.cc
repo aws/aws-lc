@@ -1074,6 +1074,14 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     return 0;
   }
 
+  // |SSL_set_max_send_fragment| never produces a value outside this range, and
+  // zero would leave |SSL_write| unable to make progress.
+  if (max_send_fragment < MIN_SAFE_FRAGMENT_SIZE ||
+      max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
+    return 0;
+  }
+
   ssl->version = version;
   ssl->max_send_fragment = max_send_fragment;
 
