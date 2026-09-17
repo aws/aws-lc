@@ -88,17 +88,6 @@ err:
 // group |dh_fast_path_from_safe_group| recognizes.
 #define DH_MAX_KNOWN_GROUP_WORDS (8192 / BN_BITS2)
 
-// dh_matches_words returns one if |bn| equals the value encoded in the
-// |num_words| words of |words|, least significant word first, and zero
-// otherwise. It does not allocate.
-static int dh_matches_words(const BIGNUM *bn, const BN_ULONG *words,
-                            size_t num_words) {
-  BIGNUM expected;
-  BN_init(&expected);
-  bn_set_static_words(&expected, words, num_words);
-  return BN_cmp(bn, &expected) == 0;
-}
-
 // dh_fast_path_from_safe_group returns one if |dh| is one of the well-known
 // standard safe-prime groups (RFC 3526 MODP or RFC 7919 ffdhe), so that
 // |DH_check| may accept it without primality testing, and zero otherwise. It
@@ -116,16 +105,9 @@ static int dh_fast_path_from_safe_group(const DH *dh) {
   // p must match a known group prime. Both families are safe primes p = 2q+1,
   // so recognizing p means both p and (p-1)/2 are prime by definition; that is
   // what lets |DH_check| skip primality testing.
-  const unsigned bits = BN_num_bits(dh->p);
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc7919_prime_words(bits, &num_words);
-  const int is_rfc7919 =
-      words != NULL && dh_matches_words(dh->p, words, num_words);
-  if (!is_rfc7919) {
-    words = dh_rfc3526_prime_words(bits, &num_words);
-    if (words == NULL || !dh_matches_words(dh->p, words, num_words)) {
-      return 0;
-    }
+  const int is_rfc7919 = dh_is_rfc7919_prime(dh->p);
+  if (!is_rfc7919 && !dh_is_rfc3526_prime(dh->p)) {
+    return 0;
   }
 
   if (dh->q == NULL) {
@@ -141,19 +123,19 @@ static int dh_fast_path_from_safe_group(const DH *dh) {
   }
 
   // q must be exactly the group's subgroup order, (p-1)/2. The group's p is
-  // odd, so that is p >> 1, which we derive from the group's own words rather
-  // than allocating a |BIGNUM| to shift into.
-  if (num_words > DH_MAX_KNOWN_GROUP_WORDS) {
+  // odd, so that is p >> 1, which we compute in a stack buffer rather than
+  // allocating a |BIGNUM| to shift into.
+  BN_ULONG p_words[DH_MAX_KNOWN_GROUP_WORDS];
+  BN_ULONG q_words[DH_MAX_KNOWN_GROUP_WORDS];
+  if (!bn_copy_words(p_words, DH_MAX_KNOWN_GROUP_WORDS, dh->p)) {
     return 0;
   }
-  BN_ULONG q_words[DH_MAX_KNOWN_GROUP_WORDS];
-  for (size_t i = 0; i < num_words; i++) {
-    q_words[i] = words[i] >> 1;
-    if (i + 1 < num_words) {
-      q_words[i] |= words[i + 1] << (BN_BITS2 - 1);
-    }
-  }
-  return dh_matches_words(dh->q, q_words, num_words);
+  bn_rshift1_words(q_words, p_words, DH_MAX_KNOWN_GROUP_WORDS);
+
+  BIGNUM expected_q;
+  BN_init(&expected_q);
+  bn_set_static_words(&expected_q, q_words, DH_MAX_KNOWN_GROUP_WORDS);
+  return BN_cmp(dh->q, &expected_q) == 0;
 }
 
 // DH_check confirms that the Diffie-Hellman parameters dh are valid.
