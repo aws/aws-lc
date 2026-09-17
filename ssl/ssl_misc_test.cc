@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <tuple>
+
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
@@ -321,13 +323,20 @@ TEST(SSLTest, QuietShutdown) {
   // Shut down writes so the client gets an EOF.
   EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server.get())));
 
-  // Confirm no close notify was actually sent. Client reads should report a
-  // transport EOF, not a close_notify. (Both have zero return, but
-  // |SSL_get_error| is different.)
+  // Confirm no close notify was actually sent. Client reads should report an
+  // unexpected transport EOF, not a close_notify. As in OpenSSL, |SSL_read|
+  // returns zero but |SSL_get_error| reports |SSL_ERROR_SSL| with
+  // |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the error stack.
   char buf[1];
   int ret = SSL_read(client.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0);
-  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SSL);
+  EXPECT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+  EXPECT_EQ(ERR_GET_REASON(ERR_get_error()),
+            SSL_R_UNEXPECTED_EOF_WHILE_READING);
+  // A truncated connection is not a received shutdown.
+  EXPECT_FALSE(SSL_get_shutdown(client.get()) & SSL_RECEIVED_SHUTDOWN);
+  EXPECT_EQ(SSL_is_init_finished(client.get()), 0);
 
   // The server believes bidirectional shutdown completed, so reads should
   // replay the (simulated) close_notify.
@@ -336,58 +345,158 @@ TEST(SSLTest, QuietShutdown) {
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
 
-// Test that |SSL_OP_IGNORE_UNEXPECTED_EOF| causes an unexpected transport EOF
-// (the peer closing without a close_notify) to be reported as a clean shutdown,
-// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SYSCALL|, for both the client
-// and the server.
-TEST(SSLTest, IgnoreUnexpectedEOF) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx =
-      CreateContextWithTestCertificate(TLS_method());
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-  SSL_CTX_set_options(client_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
-  SSL_CTX_set_options(server_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+class SSLUnexpectedEOFTest
+    : public testing::TestWithParam<std::tuple<int, bool>> {
+ protected:
+  void SetUp() override {
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    for (SSL_CTX *ctx : {client_ctx.get(), server_ctx.get()}) {
+      ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx, std::get<0>(GetParam())));
+      ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx, std::get<0>(GetParam())));
+    }
+    ASSERT_TRUE(ConnectClientAndServer(&client_, &server_, client_ctx.get(),
+                                       server_ctx.get()));
 
-  // Create a fake read BIO that mimics a socket: it returns 0 on read to
-  // signal a transport EOF.
-  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
-  ASSERT_TRUE(method);
-  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
-    BIO_set_init(b, 1);
-    return 1;
-  }));
-  ASSERT_TRUE(BIO_meth_set_read(method.get(),
-                                [](BIO *, char *, int) -> int { return 0; }));
-  ASSERT_TRUE(BIO_meth_set_ctrl(
-      method.get(), [](BIO *, int, long, void *) -> long { return 0; }));
+    // Like a socket BIO, this reports EOF through a zero read return, not
+    // BIO_eof. Retry flags allow the same BIO to model temporary failures.
+    bio_method_.reset(BIO_meth_new(0, nullptr));
+    ASSERT_TRUE(bio_method_);
+    ASSERT_TRUE(BIO_meth_set_create(bio_method_.get(), [](BIO *bio) -> int {
+      BIO_set_init(bio, 1);
+      return 1;
+    }));
+    ASSERT_TRUE(
+        BIO_meth_set_read(bio_method_.get(), [](BIO *bio, char *, int) -> int {
+          BIO_clear_retry_flags(bio);
+          BIO_set_flags(bio, *static_cast<const int *>(BIO_get_data(bio)));
+          return 0;
+        }));
+    ASSERT_TRUE(BIO_meth_set_ctrl(
+        bio_method_.get(), [](BIO *, int, long, void *) -> long { return 0; }));
 
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
+    for (SSL *ssl : {client_.get(), server_.get()}) {
+      bssl::UniquePtr<BIO> bio(BIO_new(bio_method_.get()));
+      ASSERT_TRUE(bio);
+      BIO_set_data(bio.get(), &retry_flags_);
+      EXPECT_EQ(BIO_eof(bio.get()), 0);
+      SSL_set0_rbio(ssl, bio.release());
+    }
+  }
 
-  BIO *eof_bio_client = BIO_new(method.get());
-  BIO *eof_bio_server = BIO_new(method.get());
-  ASSERT_TRUE(eof_bio_client);
-  ASSERT_TRUE(eof_bio_server);
+  int Read(SSL *ssl) {
+    char byte = 0;
+    return std::get<1>(GetParam()) ? SSL_peek(ssl, &byte, 1)
+                                   : SSL_read(ssl, &byte, 1);
+  }
 
-  // Dummy BIOs must mimic a socket BIO (BIO_eof == 0)
-  EXPECT_EQ(BIO_eof(eof_bio_client), 0);
-  EXPECT_EQ(BIO_eof(eof_bio_server), 0);
+  void CheckEOF(SSL *ssl, bool ignore_eof) {
+    for (int attempt = 0; attempt < 3; attempt++) {
+      SCOPED_TRACE(attempt);
+      // AWS-LC replays the original result even after the caller drains the
+      // error queue. The first read's zero return matches OpenSSL 3.x.
+      ERR_clear_error();
+      int ret = Read(ssl);
+      ASSERT_EQ(ret, 0);
+      EXPECT_EQ(SSL_get_error(ssl, ret),
+                ignore_eof ? SSL_ERROR_ZERO_RETURN : SSL_ERROR_SSL);
+      if (!ignore_eof) {
+        EXPECT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+        EXPECT_EQ(ERR_GET_REASON(ERR_get_error()),
+                  SSL_R_UNEXPECTED_EOF_WHILE_READING);
+      }
+      EXPECT_EQ(ERR_peek_error(), 0u);
+      EXPECT_EQ(SSL_get_shutdown(ssl), ignore_eof ? SSL_RECEIVED_SHUTDOWN : 0);
+      EXPECT_EQ(SSL_is_init_finished(ssl), ignore_eof ? 1 : 0);
+      // No handshake is in progress, even after a non-ignored EOF.
+      EXPECT_EQ(SSL_in_init(ssl), 0);
+    }
+  }
 
-  SSL_set0_rbio(client.get(), eof_bio_client);
-  SSL_set0_rbio(server.get(), eof_bio_server);
+  void CheckRetry(int retry_flag, int expected_error) {
+    retry_flags_ = retry_flag | BIO_FLAGS_SHOULD_RETRY;
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      for (SSL *ssl : {client_.get(), server_.get()}) {
+        SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+        if (ignore_eof) {
+          SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+        }
+        for (int attempt = 0; attempt < 2; attempt++) {
+          SCOPED_TRACE(attempt);
+          ERR_clear_error();
+          int ret = Read(ssl);
+          ASSERT_EQ(ret, 0);
+          EXPECT_EQ(SSL_get_error(ssl, ret), expected_error);
+          EXPECT_EQ(ERR_peek_error(), 0u);
+          EXPECT_EQ(SSL_get_shutdown(ssl), 0);
+          EXPECT_EQ(SSL_is_init_finished(ssl), 1);
+          EXPECT_EQ(SSL_in_init(ssl), 0);
+        }
+      }
+    }
+  }
 
-  // With the option set, an unexpected transport EOF is reported as a clean
-  // shutdown, |SSL_ERROR_ZERO_RETURN|, rather than |SSL_ERROR_SYSCALL|.
-  char buf[1];
-  int ret = SSL_read(client.get(), buf, sizeof(buf));
-  EXPECT_EQ(ret, 0);
-  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+  int retry_flags_ = 0;
+  // The method and retry flags must outlive the SSL objects using their BIOs.
+  bssl::UniquePtr<BIO_METHOD> bio_method_;
+  bssl::UniquePtr<SSL> client_, server_;
+};
 
-  ret = SSL_read(server.get(), buf, sizeof(buf));
-  EXPECT_EQ(ret, 0);
-  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
+INSTANTIATE_TEST_SUITE_P(
+    WithVersionAndReadMethod, SSLUnexpectedEOFTest,
+    testing::Combine(testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
+                     testing::Bool()),
+    [](const testing::TestParamInfo<std::tuple<int, bool>> &info) {
+      return std::string(std::get<0>(info.param) == TLS1_2_VERSION ? "TLS12"
+                                                                   : "TLS13") +
+             (std::get<1>(info.param) ? "_Peek" : "_Read");
+    });
+
+TEST_P(SSLUnexpectedEOFTest, UnexpectedEOF) {
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    CheckEOF(ssl, false);
+  }
+}
+
+TEST_P(SSLUnexpectedEOFTest, IgnoreUnexpectedEOF) {
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+    CheckEOF(ssl, true);
+  }
+}
+
+TEST_P(SSLUnexpectedEOFTest, RetryReadIsNotEOF) {
+  CheckRetry(BIO_FLAGS_READ, SSL_ERROR_WANT_READ);
+}
+
+TEST_P(SSLUnexpectedEOFTest, RetryWriteIsNotEOF) {
+  CheckRetry(BIO_FLAGS_WRITE, SSL_ERROR_WANT_WRITE);
+}
+
+TEST_P(SSLUnexpectedEOFTest, QuietShutdownAfterUnexpectedEOF) {
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    CheckEOF(ssl, false);
+
+    SSL_set_quiet_shutdown(ssl, 1);
+    ASSERT_EQ(SSL_shutdown(ssl), 1);
+    EXPECT_EQ(SSL_get_shutdown(ssl), SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
+    EXPECT_EQ(SSL_is_init_finished(ssl), 1);
+    EXPECT_EQ(SSL_in_init(ssl), 0);
+    EXPECT_EQ(ERR_peek_error(), 0u);
+
+    // Quiet shutdown replaces the read error with a simulated close_notify.
+    int ret = Read(ssl);
+    ASSERT_EQ(ret, 0);
+    EXPECT_EQ(SSL_get_error(ssl, ret), SSL_ERROR_ZERO_RETURN);
+    EXPECT_EQ(ERR_peek_error(), 0u);
+  }
 }
 
 
@@ -805,7 +914,7 @@ TEST(SSLTest, IntermittentEmptyRead) {
                                 [](BIO *, char *, int) -> int { return 0; }));
   bssl::UniquePtr<BIO> rbio_empty(BIO_new(method.get()));
   ASSERT_TRUE(rbio_empty);
-  BIO_set_flags(rbio_empty.get(), BIO_FLAGS_READ);
+  BIO_set_retry_read(rbio_empty.get());
 
   // Save off client rbio and use empty read BIO
   bssl::UniquePtr<BIO> client_rbio(SSL_get_rbio(client.get()));
