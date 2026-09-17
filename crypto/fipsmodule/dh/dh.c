@@ -485,15 +485,7 @@ err:
 // (MODP) are both of the form p = 2q+1 with g = 2, so recognising p is enough
 // to know that p and (p-1)/2 are prime; |DH_check| relies on that to skip
 // primality testing. The tables live inside the FIPS module because the check
-// that consumes them does, and so that they are covered by the module's
-// integrity check.
-//
-// Being inside the module means no function may hand a caller a pointer picked
-// from among the tables: the compiler folds such a function into a table of
-// pointers to them, and pointers in the module's read-only data need
-// relocations, which the loader applies to the very bytes the integrity check
-// hashes. So each table below is named by exactly one expression, and the
-// functions at the end of this file do the comparing and copying themselves.
+// that consumes them does.
 
 // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.1,
 // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
