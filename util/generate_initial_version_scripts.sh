@@ -66,8 +66,8 @@ cmake -B "${BUILD_DIR}" -S "${SOURCE_ROOT}" \
   -GNinja
 ninja -C "${BUILD_DIR}" crypto ssl
 
-LIBCRYPTO_SO=$(find "${BUILD_DIR}/crypto" -name 'libcrypto-awslc.so.*.*.*' | head -1)
-LIBSSL_SO=$(find "${BUILD_DIR}/ssl" -name 'libssl-awslc.so.*.*.*' | head -1)
+LIBCRYPTO_SO=$(find "${BUILD_DIR}/crypto" -name 'libcrypto-*.so.*.*.*' | head -1)
+LIBSSL_SO=$(find "${BUILD_DIR}/ssl" -name 'libssl-*.so.*.*.*' | head -1)
 
 if [ -z "${LIBCRYPTO_SO}" ] || [ -z "${LIBSSL_SO}" ]; then
   echo "Error: shared libraries not found after build"

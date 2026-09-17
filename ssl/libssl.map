@@ -79,7 +79,6 @@ AWS_LC_1.0 {
     SSL_CTX_get0_chain_certs;
     SSL_CTX_get0_param;
     SSL_CTX_get0_privatekey;
-    SSL_CTX_get0_security_ex_data;
     SSL_CTX_get_cert_store;
     SSL_CTX_get_ciphers;
     SSL_CTX_get_client_CA_list;
@@ -98,7 +97,6 @@ AWS_LC_1.0 {
     SSL_CTX_get_options;
     SSL_CTX_get_quiet_shutdown;
     SSL_CTX_get_read_ahead;
-    SSL_CTX_get_security_callback;
     SSL_CTX_get_security_level;
     SSL_CTX_get_session_cache_mode;
     SSL_CTX_get_timeout;
@@ -134,7 +132,6 @@ AWS_LC_1.0 {
     SSL_CTX_set0_buffer_pool;
     SSL_CTX_set0_chain;
     SSL_CTX_set0_client_CAs;
-    SSL_CTX_set0_security_ex_data;
     SSL_CTX_set0_verify_cert_store;
     SSL_CTX_set1_cert_store;
     SSL_CTX_set1_chain;
@@ -197,7 +194,6 @@ AWS_LC_1.0 {
     SSL_CTX_set_record_protocol_version;
     SSL_CTX_set_retain_only_sha256_of_client_certs;
     SSL_CTX_set_reverify_on_resume;
-    SSL_CTX_set_security_callback;
     SSL_CTX_set_security_level;
     SSL_CTX_set_select_certificate_cb;
     SSL_CTX_set_session_cache_mode;
@@ -338,16 +334,13 @@ AWS_LC_1.0 {
     SSL_get0_ocsp_response;
     SSL_get0_param;
     SSL_get0_peer_application_settings;
-    SSL_get0_peer_certificate;
     SSL_get0_peer_certificates;
     SSL_get0_peer_delegation_algorithms;
     SSL_get0_peer_verify_algorithms;
-    SSL_get0_security_ex_data;
     SSL_get0_server_requested_CAs;
     SSL_get0_session_id_context;
     SSL_get0_signed_cert_timestamp_list;
     SSL_get0_verified_chain;
-    SSL_get1_peer_certificate;
     SSL_get1_session;
     SSL_get_SSL_CTX;
     SSL_get_all_cipher_names;
@@ -409,8 +402,6 @@ AWS_LC_1.0 {
     SSL_get_read_traffic_secret;
     SSL_get_rfd;
     SSL_get_secure_renegotiation_support;
-    SSL_get_security_callback;
-    SSL_get_security_level;
     SSL_get_selected_srtp_profile;
     SSL_get_server_random;
     SSL_get_server_tmp_key;
@@ -482,7 +473,6 @@ AWS_LC_1.0 {
     SSL_set0_chain;
     SSL_set0_client_CAs;
     SSL_set0_rbio;
-    SSL_set0_security_ex_data;
     SSL_set0_verify_cert_store;
     SSL_set0_wbio;
     SSL_set1_chain;
@@ -545,8 +535,6 @@ AWS_LC_1.0 {
     SSL_set_renegotiate_mode;
     SSL_set_retain_only_sha256_of_client_certs;
     SSL_set_rfd;
-    SSL_set_security_callback;
-    SSL_set_security_level;
     SSL_set_session;
     SSL_set_session_id_context;
     SSL_set_shed_handshake_config;
@@ -622,7 +610,6 @@ AWS_LC_1.0 {
       bssl::HybridGroups*;
       bssl::SSL_CTX_set_aes_hw_override_for_testing*;
       bssl::SSL_CTX_set_handoff_mode*;
-      bssl::SSL_HANDSHAKE*;
       bssl::SSL_SESSION_dup*;
       bssl::SSL_SESSION_parse*;
       bssl::SSL_apply_handback*;
@@ -636,11 +623,9 @@ AWS_LC_1.0 {
       bssl::ssl_cert_check_key_usage*;
       bssl::ssl_client_hello_init*;
       bssl::ssl_decode_client_hello_inner*;
-      bssl::ssl_handshake_new*;
       bssl::ssl_is_valid_ech_public_name*;
       bssl::ssl_session_serialize*;
       bssl::ssl_transfer_supported*;
-      bssl::tls12_check_peer_sigalg*;
       bssl::tls1_get_default_grouplist*;
       bssl::x509_to_buffer*;
       tls_print_all_supported_cipher_suites*;
