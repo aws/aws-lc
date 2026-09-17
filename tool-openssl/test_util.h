@@ -97,6 +97,11 @@ inline int ExecuteCommand(const std::string &command) {
   return system(command.c_str());
 }
 
+// ShellEscape returns |argument| quoted as one command-line argument for the
+// platform shell used by |system|. Shell operators such as pipes and redirects
+// must remain outside the escaped argument.
+std::string ShellEscape(const std::string &argument);
+
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin)
 // ="
 std::string GetHash(const std::string &str);

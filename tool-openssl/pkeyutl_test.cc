@@ -325,12 +325,15 @@ class PKeyUtlComparisonTest : public ::testing::Test {
 
 // Test signing operation against OpenSSL
 TEST_F(PKeyUtlComparisonTest, Sign) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " pkeyutl -sign -inkey " + key_path + " -in " +
-                             in_path + " -out " + sig_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkeyutl -sign -inkey " + key_path + " -in " +
-                                in_path + " -out " + sig_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " pkeyutl -sign -inkey " + ShellEscape(key_path) +
+                             " -in " + ShellEscape(in_path) + " -out " +
+                             ShellEscape(sig_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkeyutl -sign -inkey " +
+                                ShellEscape(key_path) + " -in " +
+                                ShellEscape(in_path) + " -out " +
+                                ShellEscape(sig_path_openssl);
 
   int tool_result = system(tool_command.c_str());
   ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
@@ -339,14 +342,17 @@ TEST_F(PKeyUtlComparisonTest, Sign) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
 
   // Verify both signatures with the public key
-  std::string tool_verify_cmd = std::string(tool_executable_path) +
+  std::string tool_verify_cmd = ShellEscape(tool_executable_path) +
                                 " pkeyutl -verify -pubin -inkey " +
-                                pubkey_path + " -in " + in_path + " -sigfile " +
-                                sig_path_tool + " > " + out_path_tool;
+                                ShellEscape(pubkey_path) + " -in " +
+                                ShellEscape(in_path) + " -sigfile " +
+                                ShellEscape(sig_path_tool) + " > " +
+                                ShellEscape(out_path_tool);
   std::string openssl_verify_cmd =
-      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + in_path + " -sigfile " + sig_path_openssl +
-      " > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(in_path) +
+      " -sigfile " + ShellEscape(sig_path_openssl) + " > " +
+      ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_verify_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_verify_cmd.c_str()), 0);
@@ -368,18 +374,22 @@ TEST_F(PKeyUtlComparisonTest, Sign) {
 
   // Cross-verification testing:
   // 1. AWS-LC signs → OpenSSL verifies
-  std::string cross_verify_1 = std::string(openssl_executable_path) +
-                               " pkeyutl -verify -pubin -inkey " + pubkey_path +
-                               " -in " + in_path + " -sigfile " +
-                               sig_path_tool + " > " + out_path_tool;
+  std::string cross_verify_1 = ShellEscape(openssl_executable_path) +
+                               " pkeyutl -verify -pubin -inkey " +
+                               ShellEscape(pubkey_path) + " -in " +
+                               ShellEscape(in_path) + " -sigfile " +
+                               ShellEscape(sig_path_tool) + " > " +
+                               ShellEscape(out_path_tool);
   ASSERT_EQ(system(cross_verify_1.c_str()), 0)
       << "OpenSSL failed to verify AWS-LC signature";
 
   // 2. OpenSSL signs → AWS-LC verifies
-  std::string cross_verify_2 = std::string(tool_executable_path) +
-                               " pkeyutl -verify -pubin -inkey " + pubkey_path +
-                               " -in " + in_path + " -sigfile " +
-                               sig_path_openssl + " > " + out_path_openssl;
+  std::string cross_verify_2 = ShellEscape(tool_executable_path) +
+                               " pkeyutl -verify -pubin -inkey " +
+                               ShellEscape(pubkey_path) + " -in " +
+                               ShellEscape(in_path) + " -sigfile " +
+                               ShellEscape(sig_path_openssl) + " > " +
+                               ShellEscape(out_path_openssl);
   ASSERT_EQ(system(cross_verify_2.c_str()), 0)
       << "AWS-LC failed to verify OpenSSL signature";
 
@@ -406,26 +416,26 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
   char hashed_in_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(hashed_in_path), 0u);
 
-  std::string hash_command = std::string(openssl_executable_path) +
-                             " dgst -sha256 -binary " + in_path + " > " +
-                             hashed_in_path;
+  std::string hash_command = ShellEscape(openssl_executable_path) +
+                             " dgst -sha256 -binary " + ShellEscape(in_path) +
+                             " > " + ShellEscape(hashed_in_path);
 
   int result = system(hash_command.c_str());
   ASSERT_EQ(result, 0) << "Input command failed: " << hash_command;
 
   // Test signing with pkeyopt
   std::string tool_command =
-      std::string(tool_executable_path) + " pkeyutl -sign -inkey " + key_path +
-      " -in " + hashed_in_path +
+      ShellEscape(tool_executable_path) + " pkeyutl -sign -inkey " +
+      ShellEscape(key_path) + " -in " + ShellEscape(hashed_in_path) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 -out " +
-      sig_path_tool;
+      ShellEscape(sig_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " pkeyutl -sign -inkey " +
-      key_path + " -in " + hashed_in_path +
+      ShellEscape(openssl_executable_path) + " pkeyutl -sign -inkey " +
+      ShellEscape(key_path) + " -in " + ShellEscape(hashed_in_path) +
       " -pkeyopt digest:SHA256   -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 -out " +
-      sig_path_openssl;
+      ShellEscape(sig_path_openssl);
 
 
   std::cout << "AWS-LC command: " << tool_command << std::endl;
@@ -439,17 +449,19 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
 
   // Test verification with pkeyopt
   std::string tool_verify_cmd =
-      std::string(tool_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + hashed_in_path + " -sigfile " + sig_path_tool +
+      ShellEscape(tool_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(hashed_in_path) +
+      " -sigfile " + ShellEscape(sig_path_tool) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 > " +
-      out_path_tool;
+      ShellEscape(out_path_tool);
   std::string openssl_verify_cmd =
-      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + hashed_in_path + " -sigfile " + sig_path_openssl +
+      ShellEscape(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(hashed_in_path) +
+      " -sigfile " + ShellEscape(sig_path_openssl) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 > " +
-      out_path_openssl;
+      ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_verify_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_verify_cmd.c_str()), 0);
