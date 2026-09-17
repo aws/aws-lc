@@ -487,6 +487,13 @@ err:
 // primality testing. The tables live inside the FIPS module because the check
 // that consumes them does, and so that they are covered by the module's
 // integrity check.
+//
+// Being inside the module means no function may hand a caller a pointer picked
+// from among the tables: the compiler folds such a function into a table of
+// pointers to them, and pointers in the module's read-only data need
+// relocations, which the loader applies to the very bytes the integrity check
+// hashes. So each table below is named by exactly one expression, and the
+// functions at the end of this file do the comparing and copying themselves.
 
 // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.1,
 // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
@@ -868,50 +875,87 @@ static const BN_ULONG kMODP8192Data[] = {
     TOBN(0xc90fdaa2, 0x2168c234), TOBN(0xffffffff, 0xffffffff),
 };
 
-const BN_ULONG *dh_rfc7919_prime_words(unsigned bits, size_t *out_num_words) {
-  switch (bits) {
+// dh_p_equals_words returns one if |p| equals the value encoded in the
+// |num_words| words of |words|, least significant word first, and zero
+// otherwise. It does not allocate.
+static int dh_p_equals_words(const BIGNUM *p, const BN_ULONG *words,
+                             size_t num_words) {
+  BIGNUM expected;
+  BN_init(&expected);
+  bn_set_static_words(&expected, words, num_words);
+  return BN_cmp(p, &expected) == 0;
+}
+
+int dh_is_rfc7919_prime(const BIGNUM *p) {
+  switch (BN_num_bits(p)) {
     case 2048:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE2048Data);
-      return kFFDHE2048Data;
+      return dh_p_equals_words(p, kFFDHE2048Data,
+                               OPENSSL_ARRAY_SIZE(kFFDHE2048Data));
     case 3072:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE3072Data);
-      return kFFDHE3072Data;
+      return dh_p_equals_words(p, kFFDHE3072Data,
+                               OPENSSL_ARRAY_SIZE(kFFDHE3072Data));
     case 4096:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE4096Data);
-      return kFFDHE4096Data;
+      return dh_p_equals_words(p, kFFDHE4096Data,
+                               OPENSSL_ARRAY_SIZE(kFFDHE4096Data));
     case 8192:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE8192Data);
-      return kFFDHE8192Data;
+      return dh_p_equals_words(p, kFFDHE8192Data,
+                               OPENSSL_ARRAY_SIZE(kFFDHE8192Data));
     // RFC 7919 also defines ffdhe6144, but AWS-LC has no |DH| for it, so it is
     // not recognised here and still pays for full validation. (MODP-6144 from
-    // RFC 3526 is a different prime and is recognised below.)
+    // RFC 3526 is a different prime and is recognised by
+    // |dh_is_rfc3526_prime|.)
     default:
-      return NULL;
+      return 0;
   }
 }
 
-const BN_ULONG *dh_rfc3526_prime_words(unsigned bits, size_t *out_num_words) {
+int dh_set_rfc3526_prime(BIGNUM *ret, unsigned bits) {
   switch (bits) {
     case 1536:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP1536Data);
-      return kMODP1536Data;
+      return bn_set_words(ret, kMODP1536Data,
+                          OPENSSL_ARRAY_SIZE(kMODP1536Data));
     case 2048:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP2048Data);
-      return kMODP2048Data;
+      return bn_set_words(ret, kMODP2048Data,
+                          OPENSSL_ARRAY_SIZE(kMODP2048Data));
     case 3072:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP3072Data);
-      return kMODP3072Data;
+      return bn_set_words(ret, kMODP3072Data,
+                          OPENSSL_ARRAY_SIZE(kMODP3072Data));
     case 4096:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP4096Data);
-      return kMODP4096Data;
+      return bn_set_words(ret, kMODP4096Data,
+                          OPENSSL_ARRAY_SIZE(kMODP4096Data));
     case 6144:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP6144Data);
-      return kMODP6144Data;
+      return bn_set_words(ret, kMODP6144Data,
+                          OPENSSL_ARRAY_SIZE(kMODP6144Data));
     case 8192:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP8192Data);
-      return kMODP8192Data;
+      return bn_set_words(ret, kMODP8192Data,
+                          OPENSSL_ARRAY_SIZE(kMODP8192Data));
     default:
-      return NULL;
+      return 0;
+  }
+}
+
+int dh_is_rfc3526_prime(const BIGNUM *p) {
+  switch (BN_num_bits(p)) {
+    case 1536:
+      return dh_p_equals_words(p, kMODP1536Data,
+                               OPENSSL_ARRAY_SIZE(kMODP1536Data));
+    case 2048:
+      return dh_p_equals_words(p, kMODP2048Data,
+                               OPENSSL_ARRAY_SIZE(kMODP2048Data));
+    case 3072:
+      return dh_p_equals_words(p, kMODP3072Data,
+                               OPENSSL_ARRAY_SIZE(kMODP3072Data));
+    case 4096:
+      return dh_p_equals_words(p, kMODP4096Data,
+                               OPENSSL_ARRAY_SIZE(kMODP4096Data));
+    case 6144:
+      return dh_p_equals_words(p, kMODP6144Data,
+                               OPENSSL_ARRAY_SIZE(kMODP6144Data));
+    case 8192:
+      return dh_p_equals_words(p, kMODP8192Data,
+                               OPENSSL_ARRAY_SIZE(kMODP8192Data));
+    default:
+      return 0;
   }
 }
 

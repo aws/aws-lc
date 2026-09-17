@@ -11,7 +11,7 @@
 #include "../fipsmodule/dh/internal.h"
 
 
-static BIGNUM *get_params(BIGNUM *ret, const BN_ULONG *words, size_t num_words) {
+static BIGNUM *get_rfc3526_prime(BIGNUM *ret, unsigned bits) {
   BIGNUM *alloc = NULL;
   if (ret == NULL) {
     alloc = BN_new();
@@ -21,7 +21,7 @@ static BIGNUM *get_params(BIGNUM *ret, const BN_ULONG *words, size_t num_words) 
     ret = alloc;
   }
 
-  if (!bn_set_words(ret, words, num_words)) {
+  if (!dh_set_rfc3526_prime(ret, bits)) {
     BN_free(alloc);
     return NULL;
   }
@@ -30,39 +30,27 @@ static BIGNUM *get_params(BIGNUM *ret, const BN_ULONG *words, size_t num_words) 
 }
 
 BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(1536, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 1536);
 }
 
 BIGNUM *BN_get_rfc3526_prime_2048(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(2048, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 2048);
 }
 
 BIGNUM *BN_get_rfc3526_prime_3072(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(3072, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 3072);
 }
 
 BIGNUM *BN_get_rfc3526_prime_4096(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(4096, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 4096);
 }
 
 BIGNUM *BN_get_rfc3526_prime_6144(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(6144, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 6144);
 }
 
 BIGNUM *BN_get_rfc3526_prime_8192(BIGNUM *ret) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(8192, &num_words);
-  return get_params(ret, words, num_words);
+  return get_rfc3526_prime(ret, 8192);
 }
 
 int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator,

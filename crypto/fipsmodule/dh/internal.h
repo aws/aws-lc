@@ -55,15 +55,18 @@ OPENSSL_EXPORT DH *DH_get_rfc7919_3072(void);
 // of memory.
 OPENSSL_EXPORT DH *DH_get_rfc7919_8192(void);
 
-// dh_rfc7919_prime_words returns the words of the |bits|-bit RFC 7919 ffdhe
-// prime, least significant word first, and sets |*out_num_words| to their
-// number. It returns NULL, leaving |*out_num_words| untouched, if |bits| is not
-// the size of a group AWS-LC knows.
-const BN_ULONG *dh_rfc7919_prime_words(unsigned bits, size_t *out_num_words);
+// dh_is_rfc7919_prime returns one if |p| is one of the RFC 7919 ffdhe primes
+// AWS-LC knows, and zero otherwise. It does not allocate.
+int dh_is_rfc7919_prime(const BIGNUM *p);
 
-// dh_rfc3526_prime_words acts like |dh_rfc7919_prime_words|, but returns the
-// |bits|-bit RFC 3526 MODP prime.
-const BN_ULONG *dh_rfc3526_prime_words(unsigned bits, size_t *out_num_words);
+// dh_is_rfc3526_prime acts like |dh_is_rfc7919_prime|, but recognises the RFC
+// 3526 MODP primes.
+int dh_is_rfc3526_prime(const BIGNUM *p);
+
+// dh_set_rfc3526_prime sets |ret| to the |bits|-bit RFC 3526 MODP prime and
+// returns one. It returns zero if |bits| is not the size of one of those primes
+// or on allocation failure.
+int dh_set_rfc3526_prime(BIGNUM *ret, unsigned bits);
 
 #if defined(__cplusplus)
 }
