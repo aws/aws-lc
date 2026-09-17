@@ -144,8 +144,17 @@ and consumers may still override any setting afterward. The `@SECLEVEL=N` prefix
 in `CipherString` is parsed and dropped because AWS-LC does not implement
 OpenSSL security levels.
 
-The file is read once per process, as OpenSSL reads `openssl.cnf`, so a policy
-change takes effect only in processes started afterward.
+A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
+rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
+built-in floor of TLS 1.0, which is below any floor the policy can ask for, so
+the context would offer the versions the policy forbids. A `MinProtocol` older
+than TLS 1.0, such as `SSLv3`, keeps the built-in floor, which is already
+stricter.
+
+AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
+policy change takes effect only in processes started afterward. A read that fails
+is retried on the next `SSL_CTX_new`, so a policy file that appears later is
+picked up.
 
 `AWSLC_CRYPTO_POLICY_FILE` names the policy file, at build time with
 `-DAWSLC_CRYPTO_POLICY_FILE=/path/to/file` and at run time as an environment

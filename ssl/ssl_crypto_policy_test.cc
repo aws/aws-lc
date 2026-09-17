@@ -861,10 +861,44 @@ TEST_F(CryptoPolicyTest, InvertedDTLSVersionBoundsAreIgnored) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-// The policy file is read once per path, so every |SSL_CTX_new| after the first
-// costs no I/O. Overwriting the file in place is therefore not picked up, while
-// a policy at a different path -- which is how the AWSLC_CRYPTO_POLICY_FILE
-// override reaches us -- is.
+// A read that fails is not cached, so the failure costs one context its policy
+// rather than every context the process goes on to create. A transient error is
+// indistinguishable from an absent file at this layer, and caching the negative
+// would let one bad read decide the policy for the life of the process.
+TEST_F(CryptoPolicyTest, FailedReadIsNotCached) {
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init("TLS.MinProtocol = TLSv1.3\n"));
+
+  // Both contexts come first: |SSL_CTX_new| seeds from the fixture's own path,
+  // which would evict the entry under test.
+  bssl::UniquePtr<SSL_CTX> after_failure(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> after_success(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(after_failure);
+  ASSERT_TRUE(after_success);
+
+  ASSERT_EQ(remove(policy.path().c_str()), 0);
+  ssl_ctx_apply_crypto_policy(after_failure.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  ASSERT_EQ(SSL_CTX_get_min_proto_version(after_failure.get()), 0u);
+
+  static const char kFloor[] = "TLS.MinProtocol = TLSv1.3\n";
+  const size_t len = sizeof(kFloor) - 1;
+  ScopedFILE f = policy.Open("w");
+  ASSERT_TRUE(f);
+  ASSERT_EQ(fwrite(kFloor, 1, len, f.get()), len);
+  f.reset();
+
+  // The same path now reads, which a cached failure would have prevented.
+  ssl_ctx_apply_crypto_policy(after_success.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(after_success.get()), TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A policy read whole is read once per path, so every |SSL_CTX_new| after the
+// first costs no I/O. Overwriting the file in place is therefore not picked up,
+// while a policy at a different path -- which is how the
+// AWSLC_CRYPTO_POLICY_FILE override reaches us -- is.
 TEST_F(CryptoPolicyTest, PolicyFileIsReadOncePerPath) {
   static const char kRaisedFloor[] = "TLS.MinProtocol = TLSv1.3\n";
 

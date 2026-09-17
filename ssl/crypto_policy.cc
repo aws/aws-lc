@@ -37,14 +37,12 @@ namespace {
 // is parsed uncached rather than rejected.
 constexpr size_t kMaxCachedPathLen = 1023;
 
-// PolicyCache holds the last policy file parsed, keyed on the path it came
-// from. |valid| distinguishes an empty cache from one holding a negative
-// result.
+// PolicyCache holds the last policy file read whole, keyed on the path it came
+// from.
 struct PolicyCache {
   char path[kMaxCachedPathLen + 1];
   CryptoPolicyConfig cfg;
-  bool present;  // |path| named a readable file
-  bool valid;    // the fields above are filled in
+  bool valid;  // the fields above are filled in
 };
 
 struct CRYPTO_STATIC_MUTEX g_policy_cache_lock = CRYPTO_STATIC_MUTEX_INIT;
@@ -53,11 +51,16 @@ PolicyCache g_policy_cache;  // Guarded by |g_policy_cache_lock|.
 // LoadPolicy fills |out| with the policy at |path|, parsing the file only on a
 // cache miss, and returns whether |path| named a readable file.
 //
-// The file is read once per process for a given path. OpenSSL likewise parses
-// openssl.cnf at library init rather than per |SSL_CTX|, and
+// A policy read whole is read once per process for a given path. OpenSSL
+// likewise parses openssl.cnf at library init rather than per |SSL_CTX|, and
 // update-crypto-policies already requires restarting consumers for a new policy
 // to take effect, so nothing observes the difference. Keying on the path keeps
 // the AWSLC_CRYPTO_POLICY_FILE override live: a changed path misses.
+//
+// Only a successful parse is cached. A transient read error would otherwise
+// decide the policy for every |SSL_CTX| the process goes on to create, and no
+// errno is reliable enough to tell that case from a file that is simply absent.
+// The price is a failing open() per |SSL_CTX_new| on a host that has no policy.
 bool LoadPolicy(const char *path, CryptoPolicyConfig *out) {
   const size_t path_len = strlen(path);
   if (path_len > kMaxCachedPathLen) {
@@ -67,17 +70,18 @@ bool LoadPolicy(const char *path, CryptoPolicyConfig *out) {
   CRYPTO_STATIC_MUTEX_lock_read(&g_policy_cache_lock);
   const bool hit =
       g_policy_cache.valid && strcmp(g_policy_cache.path, path) == 0;
-  const bool present = g_policy_cache.present;
   if (hit) {
     OPENSSL_memcpy(out, &g_policy_cache.cfg, sizeof(*out));
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&g_policy_cache_lock);
   if (hit) {
-    return present;
+    return true;
   }
 
   CryptoPolicyConfig cfg = {};
-  const bool parsed = ssl_crypto_policy_parse_file(path, &cfg);
+  if (!ssl_crypto_policy_parse_file(path, &cfg)) {
+    return false;
+  }
 
   // A concurrent miss on a different path may have populated the cache in the
   // meantime; overwriting it is harmless, since either entry is correct for the
@@ -85,12 +89,11 @@ bool LoadPolicy(const char *path, CryptoPolicyConfig *out) {
   CRYPTO_STATIC_MUTEX_lock_write(&g_policy_cache_lock);
   OPENSSL_memcpy(g_policy_cache.path, path, path_len + 1);
   OPENSSL_memcpy(&g_policy_cache.cfg, &cfg, sizeof(cfg));
-  g_policy_cache.present = parsed;
   g_policy_cache.valid = true;
   CRYPTO_STATIC_MUTEX_unlock_write(&g_policy_cache_lock);
 
   OPENSSL_memcpy(out, &cfg, sizeof(cfg));
-  return parsed;
+  return true;
 }
 
 // IsAsciiWhitespace matches the horizontal and line-ending whitespace that can
