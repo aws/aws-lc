@@ -28,8 +28,8 @@ ignores those along with every back-end belonging to another library.
 | --- | --- |
 | `CipherString` | applied as the TLS 1.2 and below cipher list; an `@SECLEVEL=N` prefix is parsed and dropped |
 | `Ciphersuites` | applied as the TLS 1.3 cipher suites |
-| `TLS.MinProtocol`, `TLS.MaxProtocol` | applied as the version bounds of a TLS context |
-| `DTLS.MinProtocol`, `DTLS.MaxProtocol` | applied as the version bounds of a DTLS context |
+| `TLS.MinProtocol`, `TLS.MaxProtocol` | applied as the version bounds of a TLS context; a `MinProtocol` AWS-LC cannot resolve raises the floor to `MaxProtocol` |
+| `DTLS.MinProtocol`, `DTLS.MaxProtocol` | applied as the version bounds of a DTLS context, under the same rule |
 | `Groups` | filtered to the groups AWS-LC implements, in the policy's order |
 | `SignatureAlgorithms` | filtered to the algorithms AWS-LC implements, in the policy's order |
 | anything else | ignored |
@@ -39,6 +39,12 @@ unparsable line, a value longer than AWS-LC's buffers, and a directive AWS-LC
 cannot satisfy all leave the built-in default in force. A context created from a
 version-locked method such as `TLSv1_2_method` keeps its pinned version and takes
 no bounds from the policy.
+
+A `MinProtocol` is the one directive that does not simply fall back. AWS-LC's
+built-in floor of TLS 1.0 sits below any floor a policy can ask for, so leaving it
+would offer the versions the policy forbids. A `MinProtocol` AWS-LC cannot resolve
+therefore raises the floor to `MaxProtocol`, and one naming a protocol older than
+TLS 1.0 keeps the built-in floor, which is already stricter.
 
 ## List syntax
 
@@ -54,7 +60,7 @@ Groups = *?X25519MLKEM768:?x25519_mlkem768:?SecP256r1MLKEM768:?p256_mlkem768:?Se
 | --- | --- | --- |
 | `*` | send a key share for this group | stripped; AWS-LC selects its own key shares |
 | `?` | tolerate a name the library does not implement | stripped; AWS-LC tolerates every name |
-| `-` | remove the entry | removes it from AWS-LC's default list |
+| `-` | remove the entry | removes the entry, and any ML-KEM hybrid over it |
 | `/` | separate preference tuples | another entry boundary; AWS-LC keeps one flat preference list |
 | a name the library does not implement | rejects the whole list unless the name carries `?` | dropped, keeping the rest of the list |
 
