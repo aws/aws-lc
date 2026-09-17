@@ -340,7 +340,7 @@ static bool ReplaceSerializedSSLField(std::vector<uint8_t> *out,
   bool replaced = false;
   for (size_t i = 0; CBS_len(&inner) != 0; i++) {
     CBS element;
-    unsigned tag;
+    unsigned tag = 0;
     if (!CBS_get_any_asn1_element(&inner, &element, &tag, nullptr)) {
       return false;
     }
