@@ -134,7 +134,10 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
 
   // Only record the peer if |recvfrom| actually returned an address. It leaves
   // |len| at zero otherwise, and |peer| would then hold no address at all.
-  if (!data->connected && ret >= 0 && len > 0 && len <= sizeof(peer)) {
+  // |recvfrom| never returns more than the |sizeof(peer)| passed in, so no upper
+  // bound is checked here; |socklen_t| is signed on some platforms, so comparing
+  // it against |sizeof| would be a signed/unsigned comparison.
+  if (!data->connected && ret >= 0 && len > 0) {
     if (1 != BIO_dgram_set_peer(bp, &peer)) {
       // The operation does not fail if peer not set.
     }
