@@ -132,12 +132,13 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   }
   const int ret = result;
 
-  // Only record the peer if |recvfrom| actually returned an address. It leaves
-  // |len| at zero otherwise, and |peer| would then hold no address at all.
-  // |recvfrom| never returns more than the |sizeof(peer)| passed in, so no upper
-  // bound is checked here; |socklen_t| is signed on some platforms, so comparing
-  // it against |sizeof| would be a signed/unsigned comparison.
-  if (!data->connected && ret >= 0 && len > 0) {
+  // Only record the peer if |recvfrom| actually filled in an address. Platforms
+  // do not agree on how that is signalled: POSIX leaves the contents of |peer|
+  // unspecified and Winsock ignores the address arguments entirely, leaving both
+  // |peer| and |len| untouched. Neither is required to zero |len|, so check the
+  // address family instead. |peer| was zeroed above, so it is |AF_UNSPEC| unless
+  // |recvfrom| wrote an address into it.
+  if (!data->connected && ret >= 0 && peer.sa.sa_family != AF_UNSPEC) {
     if (1 != BIO_dgram_set_peer(bp, &peer)) {
       // The operation does not fail if peer not set.
     }

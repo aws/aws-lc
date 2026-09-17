@@ -11,11 +11,11 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #if !defined(OPENSSL_WINDOWS)
-#include <string.h>
 #include <unistd.h>
 #if !defined(O_BINARY)
 #define O_BINARY 0
@@ -181,6 +181,34 @@ struct CheckModeArguments {
   bool strict = false;
 };
 
+// ReadLine reads up to |max_len| bytes from |file| into |out|, stopping after a
+// newline, and writes the number of bytes read to |*out_len|. The newline, if
+// any, is included in the output and the output is not NUL-terminated.
+//
+// Unlike fgets, |*out_len| is the true number of bytes read, so a line
+// containing NUL bytes cannot be mistaken for a shorter, complete line. That
+// distinction matters because the caller uses the final byte to decide whether
+// a line was fully consumed.
+//
+// It returns false if no bytes could be read, which is either end-of-file or a
+// read error. The caller distinguishes the two with |feof|.
+static bool ReadLine(FILE *file, char *out, size_t max_len, size_t *out_len) {
+  size_t i = 0;
+  while (i < max_len) {
+    const int c = getc(file);
+    if (c == EOF) {
+      break;
+    }
+    out[i++] = static_cast<char>(c);
+    if (c == '\n') {
+      break;
+    }
+  }
+
+  *out_len = i;
+  return i != 0;
+}
+
 // Check reads lines from |source| where each line is in the format of the
 // coreutils *sum utilities. It attempts to verify each hash by reading the
 // file named in the line.
@@ -222,44 +250,36 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
   for (;;) {
     line_no++;
 
-    if (fgets(line, sizeof(line), file) == nullptr) {
+    size_t len;
+    if (!ReadLine(file, line, sizeof(line) - 1 /* NUL */, &len)) {
       if (feof(file)) {
         break;
       }
       fprintf(stderr, "Error reading from input.\n");
       return false;
     }
+    // NUL-terminate for the string operations below. |len| remains the true
+    // number of bytes read.
+    line[len] = 0;
 
-    size_t len = strlen(line);
-
-    if (len == 0) {
-      // The line starts with a NUL byte, so |line[len - 1]| below would read
-      // before the start of the buffer. fgets consumed the rest of the line, so
-      // this is not an overlong line.
-      bad_lines++;
-      if (args.warn) {
-        fprintf(stderr, "%s: %u: improperly formatted line\n",
-                source.is_stdin() ? kStdinName : source.filename().c_str(), line_no);
-      }
-      if (args.strict) {
-        ok = false;
-      }
-      continue;
-    }
+    // A line that does not end in a newline was either truncated to fit in
+    // |line| or ended at the end of the file.
+    const bool complete_line = line[len - 1] == '\n';
 
     if (draining_overlong_line) {
-      if (line[len - 1] == '\n') {
-        draining_overlong_line = false;
-      }
+      draining_overlong_line = !complete_line;
       continue;
     }
 
-    const bool overlong = line[len - 1] != '\n' && !feof(file);
+    const bool overlong = !complete_line && !feof(file);
+    // A NUL byte cannot appear in a valid checksum line, and |line| is treated
+    // as a C string below, so reject such lines up front.
+    const bool contains_nul = memchr(line, 0, len) != nullptr;
 
-    if (len < hex_size + 2 /* spaces */ + 1 /* filename */ ||
+    if (contains_nul || overlong ||
+        len < hex_size + 2 /* spaces */ + 1 /* filename */ ||
         line[hex_size] != ' ' ||
-        line[hex_size + 1] != ' ' ||
-        overlong) {
+        line[hex_size + 1] != ' ') {
       bad_lines++;
       if (args.warn) {
         fprintf(stderr, "%s: %u: improperly formatted line\n",
@@ -274,7 +294,7 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
       continue;
     }
 
-    if (line[len - 1] == '\n') {
+    if (complete_line) {
       line[len - 1] = 0;
       len--;
     }

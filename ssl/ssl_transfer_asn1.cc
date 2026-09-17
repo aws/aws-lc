@@ -1082,6 +1082,14 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     return 0;
   }
 
+  // These fields are serialized from narrower types, so reject anything that
+  // would not round-trip rather than silently truncating it. Otherwise, for
+  // instance, a |version| of 0x10303 would be accepted as TLS 1.2.
+  if (version > UINT16_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
+    return 0;
+  }
+
   ssl->version = version;
   ssl->max_send_fragment = max_send_fragment;
 
@@ -1093,8 +1101,11 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     return 0;
   }
 
+  // As with |version| above, these are serialized from narrower types, so
+  // reject values that would not round-trip.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &mode) ||
-      !CBS_get_asn1_uint64(&ssl_cbs, &options)) {
+      !CBS_get_asn1_uint64(&ssl_cbs, &options) || mode > UINT32_MAX ||
+      options > UINT32_MAX) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
