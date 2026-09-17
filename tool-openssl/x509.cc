@@ -874,8 +874,8 @@ int X509Tool(const args_list_t &args) {
     }
 
     if (ordered_args::HasArgument(parsed_args, "-checkend")) {
-      // Like OpenSSL, -checkend suppresses the certificate output and exits
-      // with 1 when the certificate will expire within the given window.
+      // -checkend prints only its verdict; the certificate itself is not
+      // written.
       return will_expire ? kToolExitFailure : kToolExitSuccess;
     }
 

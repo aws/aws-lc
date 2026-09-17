@@ -413,7 +413,7 @@ TEST_F(DgstTest, Verify) {
   EXPECT_EQ(kToolExitSuccess, dgstTool(verify_args));
 }
 
-// A signature that does not match the input exits nonzero, like OpenSSL.
+// A signature that does not match the input exits nonzero.
 TEST_F(DgstTest, VerifyFailureExitCode) {
   args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
   EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));

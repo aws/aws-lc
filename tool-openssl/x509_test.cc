@@ -233,9 +233,9 @@ TEST_F(X509Test, Outform) {
   ASSERT_EQ(kToolExitSuccess, result);
 }
 
-// Test -checkend. Like OpenSSL, the exit status is 0 when the certificate
-// will not expire within the window and 1 when it will. The test certificate
-// is valid for 30 days.
+// Test -checkend. The exit status is 0 when the certificate will not expire
+// within the window and 1 when it will. The test certificate is valid for 30
+// days.
 TEST_F(X509Test, Checkend) {
   args_list_t args = {"-in", in_path, "-checkend", "3600"};
   int result = X509Tool(args);

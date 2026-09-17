@@ -105,7 +105,7 @@ TEST_F(PKeyUtlTest, Verify) {
   }
 }
 
-// A signature that does not match the input exits nonzero, like OpenSSL.
+// A signature that does not match the input exits nonzero.
 TEST_F(PKeyUtlTest, VerifyFailureExitCode) {
   {
     args_list_t args = {"-sign", "-inkey", key_path, "-in",

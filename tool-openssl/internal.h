@@ -34,10 +34,9 @@ enum Format {
   FORMAT_UNKNOWN = 3
 };
 
-// Tool entry points return the process exit status: |kToolExitSuccess| on
-// success, or a nonzero status on failure. Most tools report all failures as
-// |kToolExitFailure|; some (like verify and x509 -checkend) use additional
-// statuses to match OpenSSL's command-line exit codes.
+// Tool entry points return the process exit status. Most tools return
+// |kToolExitFailure| for every failure; verify and x509 -checkend use
+// additional statuses to match OpenSSL's exit codes.
 constexpr int kToolExitSuccess = 0;
 constexpr int kToolExitFailure = 1;
 
