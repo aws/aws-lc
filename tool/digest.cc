@@ -232,6 +232,21 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
 
     size_t len = strlen(line);
 
+    if (len == 0) {
+      // The line starts with a NUL byte, so |line[len - 1]| below would read
+      // before the start of the buffer. fgets consumed the rest of the line, so
+      // this is not an overlong line.
+      bad_lines++;
+      if (args.warn) {
+        fprintf(stderr, "%s: %u: improperly formatted line\n",
+                source.is_stdin() ? kStdinName : source.filename().c_str(), line_no);
+      }
+      if (args.strict) {
+        ok = false;
+      }
+      continue;
+    }
+
     if (draining_overlong_line) {
       if (line[len - 1] == '\n') {
         draining_overlong_line = false;
