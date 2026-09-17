@@ -6,6 +6,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
@@ -122,8 +124,16 @@ func dnsQueryForHTTPS(domain string) ([][]byte, error) {
 		Type:  httpsType,
 		Class: dnsmessage.ClassINET,
 	}
+	// A random transaction ID makes it harder for an off-path attacker to forge
+	// a response.
+	var idBytes [2]byte
+	if _, err := rand.Read(idBytes[:]); err != nil {
+		return nil, fmt.Errorf("failed to generate a DNS transaction ID: %s", err)
+	}
+	queryID := binary.BigEndian.Uint16(idBytes[:])
 	msg := dnsmessage.Message{
 		Header: dnsmessage.Header{
+			ID:               queryID,
 			RecursionDesired: true,
 		},
 		Questions: []dnsmessage.Question{question},
@@ -156,7 +166,7 @@ func dnsQueryForHTTPS(domain string) ([][]byte, error) {
 		if header.RCode != dnsmessage.RCodeSuccess {
 			return nil, fmt.Errorf("response from DNS has non-success RCode: %s", header.RCode.String())
 		}
-		if header.ID != 0 {
+		if header.ID != queryID {
 			return nil, errors.New("received a DNS response with the wrong ID")
 		}
 		if !header.RecursionAvailable {
