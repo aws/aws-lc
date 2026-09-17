@@ -240,6 +240,14 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
   const size_t hex_size = EVP_MD_size(md) * 2;
   char line[EVP_MAX_MD_SIZE * 2 + 2 /* spaces */ + PATH_MAX + 1 /* newline */ +
             1 /* NUL */];
+  // |EVP_MD_size| is bounded by |EVP_MAX_MD_SIZE|, which is how |line| is
+  // sized, so this cannot trigger. Checking it makes the reads at
+  // |line[hex_size]| below visibly in bounds.
+  if (hex_size > static_cast<size_t>(EVP_MAX_MD_SIZE) * 2) {
+    fprintf(stderr, "Unsupported digest size.\n");
+    return false;
+  }
+
   unsigned bad_lines = 0;
   unsigned parsed_lines = 0;
   unsigned error_lines = 0;
@@ -250,7 +258,7 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
   for (;;) {
     line_no++;
 
-    size_t len;
+    size_t len = 0;
     if (!ReadLine(file, line, sizeof(line) - 1 /* NUL */, &len)) {
       if (feof(file)) {
         break;

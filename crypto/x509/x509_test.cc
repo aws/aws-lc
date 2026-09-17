@@ -4320,8 +4320,8 @@ TEST(X509Test, WriteInfoWithNonRSAKey) {
   ASSERT_TRUE(bio);
   EXPECT_TRUE(PEM_X509_INFO_write_bio(bio.get(), &info, nullptr, nullptr, 0,
                                       nullptr, nullptr));
-  const uint8_t *data;
-  size_t len;
+  const uint8_t *data = nullptr;
+  size_t len = 0;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &len));
   EXPECT_NE(std::string(reinterpret_cast<const char *>(data), len)
                 .find("-----BEGIN RSA PRIVATE KEY-----"),

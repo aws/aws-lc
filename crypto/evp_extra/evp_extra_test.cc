@@ -1482,8 +1482,8 @@ TEST(EVPExtraTest, PrintMLDSAWriteFailure) {
   ASSERT_TRUE(mem);
   ASSERT_TRUE(
       EVP_PKEY_print_private(mem.get(), pkey.get(), /*indent=*/0, nullptr));
-  const uint8_t *data;
-  size_t len;
+  const uint8_t *data = nullptr;
+  size_t len = 0;
   ASSERT_TRUE(BIO_mem_contents(mem.get(), &data, &len));
   const uint8_t *newline =
       static_cast<const uint8_t *>(OPENSSL_memchr(data, '\n', len));
