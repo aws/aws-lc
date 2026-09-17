@@ -4461,8 +4461,12 @@ TEST(X509Test, PEMX509Info) {
 // |PEM_X509_INFO_write_bio| can only serialize RSA private keys. Anything else
 // must fail cleanly instead of passing NULL to |PEM_write_bio_RSAPrivateKey|.
 TEST(X509Test, WriteInfoWithNonRSAKey) {
-  X509_PKEY x_pkey = {};
-  X509_INFO info = {};
+  // These are zeroed rather than brace-initialized because GCC 4.8 reports an
+  // empty initializer list as a missing field initializer.
+  X509_PKEY x_pkey;
+  OPENSSL_memset(&x_pkey, 0, sizeof(x_pkey));
+  X509_INFO info;
+  OPENSSL_memset(&info, 0, sizeof(info));
   info.x_pkey = &x_pkey;
 
   bssl::UniquePtr<EVP_PKEY> ec_key = PrivateKeyFromPEM(kP256Key);
