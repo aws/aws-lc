@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include <cctype>
+#include <ctime>
+#include <limits>
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
@@ -250,6 +252,75 @@ TEST_F(X509Test, Checkend) {
   ASSERT_EQ(1, X509Tool(expiring_out_args));
   std::string out_contents = ReadFileToString(out_path);
   EXPECT_EQ("Certificate will expire\n", out_contents);
+}
+
+struct CheckendRangeCase {
+  int days;
+  int64_t seconds;
+  int expected_exit;
+};
+
+static const CheckendRangeCase kCheckendRangeCases[] = {
+    {30, 0, kToolExitSuccess},          {30, 2678400, kToolExitFailure},
+    {30, 2147483648, kToolExitFailure}, {30, 4294967296, kToolExitFailure},
+    {30000, 0, kToolExitSuccess},       {-30000, 0, kToolExitFailure},
+};
+
+TEST_F(X509Test, CheckendRange) {
+  bssl::UniquePtr<X509> cert;
+  bssl::UniquePtr<EVP_PKEY> key;
+  CreateAndSignX509Certificate(cert, &key);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+
+  for (const auto &test : kCheckendRangeCases) {
+    SCOPED_TRACE(test.days);
+    SCOPED_TRACE(test.seconds);
+    // Use day offsets so constructing the test certificate does not itself
+    // overflow a 32-bit seconds count.
+    ASSERT_TRUE(
+        X509_time_adj_ex(X509_getm_notBefore(cert.get()), -30001, 0, nullptr));
+    ASSERT_TRUE(X509_time_adj_ex(X509_getm_notAfter(cert.get()), test.days, 0,
+                                 nullptr));
+    ASSERT_GT(X509_sign(cert.get(), key.get(), EVP_sha256()), 0);
+    {
+      ScopedFILE cert_file(fopen(in_path, "wb"));
+      ASSERT_TRUE(cert_file);
+      ASSERT_TRUE(PEM_write_X509(cert_file.get(), cert.get()));
+    }
+
+    args_list_t args = {"-in",       in_path,
+                        "-checkend", std::to_string(test.seconds),
+                        "-out",      out_path};
+    EXPECT_EQ(test.expected_exit, X509Tool(args));
+    EXPECT_EQ(test.expected_exit == kToolExitSuccess
+                  ? "Certificate will not expire\n"
+                  : "Certificate will expire\n",
+              ReadFileToString(out_path));
+  }
+}
+
+TEST_F(X509Test, CheckendWindowParsing) {
+  const struct {
+    const char *seconds;
+    int expected_exit;
+    const char *expected_output;
+  } cases[] = {
+      {"0000", kToolExitSuccess, "Certificate will not expire\n"},
+      {"00002678400", kToolExitFailure, "Certificate will expire\n"},
+      {"9223372036854775807", kToolExitFailure, "Certificate will expire\n"},
+      {"9223372036854775808", kToolExitFailure, ""},
+      {"18446744073709551616", kToolExitFailure, ""},
+      {"", kToolExitFailure, ""},
+      {"1x", kToolExitFailure, ""},
+  };
+  for (const auto &test : cases) {
+    SCOPED_TRACE(test.seconds);
+    args_list_t args = {"-in",        in_path, "-checkend",
+                        test.seconds, "-out",  out_path};
+    EXPECT_EQ(test.expected_exit, X509Tool(args));
+    EXPECT_EQ(test.expected_output, ReadFileToString(out_path));
+  }
 }
 
 // Test -req
@@ -1082,22 +1153,49 @@ TEST_F(X509ComparisonTest, Checkend) {
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
-// Test that -checkend's exit status matches OpenSSL: 1 when the certificate
-// will expire within the window, 0 otherwise. The test certificate is valid
-// for 30 days.
+// Compare both the exit status and verdict, including time ranges that do
+// not fit in 32-bit seconds.
 TEST_F(X509ComparisonTest, CheckendExitCode) {
-  for (const char *seconds : {"0", "2678400" /* 31 days */}) {
+  bssl::UniquePtr<EVP_PKEY> key;
+  CreateAndSignX509Certificate(x509, &key);
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(key);
+
+  for (const auto &test : kCheckendRangeCases) {
+    SCOPED_TRACE(test.days);
+    SCOPED_TRACE(test.seconds);
+    // The reference OpenSSL adds the window to a time_t. Its 32-bit builds
+    // cannot represent the large windows tested by CheckendRange above.
+    if (test.seconds >
+        std::numeric_limits<time_t>::max() - std::time(nullptr)) {
+      continue;
+    }
+    ASSERT_TRUE(
+        X509_time_adj_ex(X509_getm_notBefore(x509.get()), -30001, 0, nullptr));
+    ASSERT_TRUE(X509_time_adj_ex(X509_getm_notAfter(x509.get()), test.days, 0,
+                                 nullptr));
+    ASSERT_GT(X509_sign(x509.get(), key.get(), EVP_sha256()), 0);
+    {
+      ScopedFILE cert_file(fopen(in_path, "wb"));
+      ASSERT_TRUE(cert_file);
+      ASSERT_TRUE(PEM_write_X509(cert_file.get(), x509.get()));
+    }
+
     std::string tool_command = std::string(tool_executable_path) +
                                " x509 -in " + in_path + " -noout -checkend " +
-                               seconds + " > " + out_path_tool;
+                               std::to_string(test.seconds) + " > " +
+                               out_path_tool;
     std::string openssl_command =
         std::string(openssl_executable_path) + " x509 -in " + in_path +
-        " -noout -checkend " + seconds + " > " + out_path_openssl;
+        " -noout -checkend " + std::to_string(test.seconds) + " > " +
+        out_path_openssl;
 
     int tool_exit = ExecuteCommandExitCode(tool_command);
     int openssl_exit = ExecuteCommandExitCode(openssl_command);
-    EXPECT_EQ(openssl_exit, tool_exit) << "-checkend " << seconds;
-    EXPECT_EQ(strcmp(seconds, "0") == 0 ? 0 : 1, tool_exit);
+    EXPECT_EQ(test.expected_exit, tool_exit);
+    EXPECT_EQ(openssl_exit, tool_exit);
+    EXPECT_EQ(ReadFileToString(out_path_openssl),
+              ReadFileToString(out_path_tool));
   }
 }
 

@@ -132,6 +132,93 @@ TEST_F(VerifyTest, SetupFailureExitCode) {
   EXPECT_EQ(kToolExitFailure, VerifyTool(unknown_option));
 }
 
+// TempCertPath is a unique temp file path, removed when it goes out of scope.
+struct TempCertPath {
+  ~TempCertPath() { RemoveFile(path); }
+  bool Init() { return createTempFILEpath(path) > 0; }
+  char path[PATH_MAX] = {};
+};
+
+// IssueTestCert extends MakeTestCert (crypto/test/test_util.h) with a
+// validity window around the current time, then signs with |issuer_key|
+// (pass |key| itself to self-sign a root).
+static bssl::UniquePtr<X509> IssueTestCert(const char *issuer,
+                                           const char *subject, EVP_PKEY *key,
+                                           EVP_PKEY *issuer_key, bool is_ca) {
+  bssl::UniquePtr<X509> cert = MakeTestCert(issuer, subject, key, is_ca);
+  if (!cert || !X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0) ||
+      !X509_gmtime_adj(X509_getm_notAfter(cert.get()), 60 * 60 * 24 * 30) ||
+      X509_sign(cert.get(), issuer_key, EVP_sha256()) <= 0) {
+    return nullptr;
+  }
+  return cert;
+}
+
+static bool WriteCertPEM(const char *path, X509 *cert) {
+  ScopedFILE f(fopen(path, "wb"));
+  return f && PEM_write_X509(f.get(), cert);
+}
+
+// Two leaves issued by the same intermediate must both verify from a single
+// VerifyTool call given a root-only -CAfile and an intermediate-only
+// -untrusted; a leaf must fail to verify without the intermediate, and a
+// failing input ahead of the leaves must not short-circuit the loop.
+TEST(VerifyChainTest, SharedUntrustedIntermediateVerifiesBothLeaves) {
+  bssl::UniquePtr<EVP_PKEY> root_key(CreateTestKey(2048));
+  bssl::UniquePtr<EVP_PKEY> mid_key(CreateTestKey(2048));
+  bssl::UniquePtr<EVP_PKEY> leaf1_key(CreateTestKey(2048));
+  bssl::UniquePtr<EVP_PKEY> leaf2_key(CreateTestKey(2048));
+  ASSERT_TRUE(root_key && mid_key && leaf1_key && leaf2_key);
+
+  bssl::UniquePtr<X509> root =
+      IssueTestCert("Root", "Root", root_key.get(), root_key.get(), true);
+  bssl::UniquePtr<X509> mid =
+      IssueTestCert("Root", "Mid", mid_key.get(), root_key.get(), true);
+  bssl::UniquePtr<X509> leaf1 =
+      IssueTestCert("Mid", "Leaf1", leaf1_key.get(), mid_key.get(), false);
+  bssl::UniquePtr<X509> leaf2 =
+      IssueTestCert("Mid", "Leaf2", leaf2_key.get(), mid_key.get(), false);
+  ASSERT_TRUE(root && mid && leaf1 && leaf2);
+
+  TempCertPath ca_path, untrusted_path, leaf1_path, leaf2_path;
+  for (TempCertPath *file :
+       {&ca_path, &untrusted_path, &leaf1_path, &leaf2_path}) {
+    ASSERT_TRUE(file->Init());
+  }
+  ASSERT_TRUE(WriteCertPEM(ca_path.path, root.get()));
+  ASSERT_TRUE(WriteCertPEM(untrusted_path.path, mid.get()));
+  ASSERT_TRUE(WriteCertPEM(leaf1_path.path, leaf1.get()));
+  ASSERT_TRUE(WriteCertPEM(leaf2_path.path, leaf2.get()));
+
+  // The root alone cannot validate a leaf issued by the intermediate.
+  args_list_t no_untrusted = {"-CAfile", ca_path.path, leaf1_path.path};
+  EXPECT_EQ(2, VerifyTool(no_untrusted));
+
+  // Both leaves verify against the shared intermediate in one invocation.
+  args_list_t both = {"-CAfile",           ca_path.path,    "-untrusted",
+                      untrusted_path.path, leaf1_path.path, leaf2_path.path};
+  testing::internal::CaptureStdout();
+  int result = VerifyTool(both);
+  std::string out = testing::internal::GetCapturedStdout();
+  const std::string expected_output =
+      std::string(leaf1_path.path) + ": OK\n" + leaf2_path.path + ": OK\n";
+  EXPECT_EQ(kToolExitSuccess, result);
+  EXPECT_EQ(expected_output, out);
+
+  // A failing input ahead of the leaves must not stop them being checked.
+  char missing_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(missing_path), 0u);
+  RemoveFile(missing_path);
+  args_list_t failing_first = {
+      "-CAfile",    ca_path.path,    "-untrusted",   untrusted_path.path,
+      missing_path, leaf1_path.path, leaf2_path.path};
+  testing::internal::CaptureStdout();
+  result = VerifyTool(failing_first);
+  out = testing::internal::GetCapturedStdout();
+  EXPECT_EQ(2, result);
+  EXPECT_EQ(expected_output, out);
+}
+
 // -------------------- Verify OpenSSL Comparison Tests
 // --------------------------
 

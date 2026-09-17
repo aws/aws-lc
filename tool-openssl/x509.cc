@@ -1,9 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <errno.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <algorithm>
 #include <ctime>
@@ -495,7 +498,12 @@ static bool handleCheckend(X509 *x509, BIO *output_bio,
     return false;
   }
 
-  unsigned checkend_val = std::stoul(arg_value);
+  errno = 0;
+  const int64_t checkend_val = strtoll(arg_value.c_str(), nullptr, 10);
+  if (errno == ERANGE) {
+    fprintf(stderr, "Error: '-checkend' value is too large\n");
+    return false;
+  }
   bssl::UniquePtr<ASN1_TIME> current_time(
       ASN1_TIME_set(nullptr, std::time(nullptr)));
   ASN1_TIME *end_time = X509_getm_notAfter(x509);
@@ -507,8 +515,11 @@ static bool handleCheckend(X509 *x509, BIO *output_bio,
     return false;
   }
 
-  *will_expire =
-      (days_left * 86400 + seconds_left) < static_cast<int>(checkend_val);
+  // The certificate may expire more than INT_MAX seconds in the future or
+  // past. Widen before multiplying, and keep both operands signed.
+  const int64_t remaining_seconds =
+      static_cast<int64_t>(days_left) * 86400 + seconds_left;
+  *will_expire = remaining_seconds < checkend_val;
   BIO_printf(
       output_bio, "%s\n",
       *will_expire ? "Certificate will expire" : "Certificate will not expire");
