@@ -182,6 +182,14 @@ bool ApplyCipherRule(SSL_CTX *ctx, const char *rule, bool config_tls13) {
   return true;
 }
 
+// PolicyNamesOlderProtocol matches the names the crypto-policies OpenSSL
+// back-end renders for protocols older than any AWS-LC implements. The context's
+// own floor already sits above these, so such a floor needs no raising.
+bool PolicyNamesOlderProtocol(const char *tok) {
+  return strcmp(tok, "SSLv2") == 0 || strcmp(tok, "SSLv3") == 0 ||
+         strcmp(tok, "DTLSv0.9") == 0;
+}
+
 // ApplyPolicyVersionBounds seeds the protocol version floor and ceiling from
 // |cfg|, choosing the TLS.* or DTLS.* directives per |is_dtls|.
 void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
@@ -195,10 +203,30 @@ void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
     return;
   }
 
-  const uint16_t policy_min =
-      CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_min : cfg.tls_min, is_dtls);
+  const char *min_tok = is_dtls ? cfg.dtls_min : cfg.tls_min;
+  uint16_t policy_min = CryptoPolicyProtoVersion(min_tok, is_dtls);
   const uint16_t policy_max =
       CryptoPolicyProtoVersion(is_dtls ? cfg.dtls_max : cfg.tls_max, is_dtls);
+
+  // The ceiling the pair is resolved against, and the floor a policy AWS-LC
+  // cannot read gets.
+  const uint16_t effective_max =
+      policy_max != 0 ? policy_max : ctx->conf_max_version;
+
+  // A floor the operator wrote and AWS-LC cannot resolve rises to the ceiling,
+  // the strictest floor that still leaves the context able to handshake. Leaving
+  // it alone fails open: the built-in floor is TLS 1.0 (DTLS 1.0), below every
+  // floor the framework renders, so a name AWS-LC has no version for --
+  // "DTLSv1.3" today, any newer protocol later -- would hand back the versions
+  // the policy exists to forbid.
+  //
+  // An unresolvable ceiling stays unapplied, since lowering a ceiling AWS-LC
+  // cannot read would take away the strongest protocol on offer.
+  if (policy_min == 0 &&
+      (is_dtls ? cfg.dtls_min_present : cfg.tls_min_present) &&
+      !PolicyNamesOlderProtocol(min_tok)) {
+    policy_min = effective_max;
+  }
 
   // The setters check each bound against the method's whole version range and
   // never against each other, so a policy whose floor sits above its ceiling
@@ -213,8 +241,7 @@ void ApplyPolicyVersionBounds(SSL_CTX *ctx, const CryptoPolicyConfig &cfg,
   uint16_t min_proto, max_proto;
   if (!ssl_protocol_version_from_wire(
           &min_proto, policy_min != 0 ? policy_min : ctx->conf_min_version) ||
-      !ssl_protocol_version_from_wire(
-          &max_proto, policy_max != 0 ? policy_max : ctx->conf_max_version) ||
+      !ssl_protocol_version_from_wire(&max_proto, effective_max) ||
       min_proto > max_proto) {
     return;
   }
@@ -354,10 +381,12 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
       CopyPolicyValue(out->ciphersuites, sizeof(out->ciphersuites), val,
                       val_len);
     } else if (key_is("TLS.MinProtocol")) {
+      out->tls_min_present = true;
       CopyPolicyValue(out->tls_min, sizeof(out->tls_min), val, val_len);
     } else if (key_is("TLS.MaxProtocol")) {
       CopyPolicyValue(out->tls_max, sizeof(out->tls_max), val, val_len);
     } else if (key_is("DTLS.MinProtocol")) {
+      out->dtls_min_present = true;
       CopyPolicyValue(out->dtls_min, sizeof(out->dtls_min), val, val_len);
     } else if (key_is("DTLS.MaxProtocol")) {
       CopyPolicyValue(out->dtls_max, sizeof(out->dtls_max), val, val_len);

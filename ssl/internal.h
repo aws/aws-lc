@@ -3723,13 +3723,22 @@ struct CryptoPolicyConfig {
   char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
   char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
   char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
+
+  // Set when the floor directive appeared, whatever became of its value. An
+  // absent floor leaves the context's own, which sits below every floor a policy
+  // can name, so a floor AWS-LC cannot resolve has to be told apart from one the
+  // operator never wrote. The ceilings need no flag: a ceiling left unapplied
+  // keeps the stricter of the two.
+  bool tls_min_present;
+  bool dtls_min_present;
 };
 
 // ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
 // the recognized directives. Blank lines, '#' comments, and '[section]' headers
 // are ignored, as are unrecognized keys; the last occurrence of a key wins. A
 // value too long for its field leaves that field empty, so a directive that
-// cannot be represented reads as absent rather than as its earlier occurrence.
+// cannot be represented reads as absent rather than as its earlier occurrence,
+// except that the floor directives still record that they appeared.
 // It returns true if the whole file was read (even if no recognized keys were
 // present), and false on invalid arguments or if the file could not be opened
 // or read to its end.

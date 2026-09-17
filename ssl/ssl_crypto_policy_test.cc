@@ -336,6 +336,36 @@ TEST_F(CryptoPolicyParseTest, OverlongValueDropsAnEarlierOccurrence) {
   EXPECT_STREQ("", cfg.groups);
 }
 
+// The floor directives record that they appeared even when their value is
+// unrepresentable, so a floor the operator wrote is never read as absent.
+TEST_F(CryptoPolicyParseTest, FloorPresenceOutlivesItsValue) {
+  std::string content = "TLS.MinProtocol = ";
+  content.append(AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1, 'X');
+  content += "\nDTLS.MinProtocol = DTLSv1.3\nTLS.MaxProtocol = TLSv1.3\n";
+
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init(content));
+
+  CryptoPolicyConfig cfg = {};
+  ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
+  EXPECT_STREQ("", cfg.tls_min);
+  EXPECT_TRUE(cfg.tls_min_present);
+  EXPECT_STREQ("DTLSv1.3", cfg.dtls_min);
+  EXPECT_TRUE(cfg.dtls_min_present);
+}
+
+// A file naming no floor leaves the flags clear, which is what an unresolvable
+// floor is told apart from.
+TEST_F(CryptoPolicyParseTest, AbsentFloorLeavesPresenceClear) {
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init("TLS.MaxProtocol = TLSv1.3\n"));
+
+  CryptoPolicyConfig cfg = {};
+  ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
+  EXPECT_FALSE(cfg.tls_min_present);
+  EXPECT_FALSE(cfg.dtls_min_present);
+}
+
 // A line longer than the read buffer is consumed to its newline rather than
 // split, so its tail cannot be mistaken for a directive of its own.
 TEST_F(CryptoPolicyParseTest, OverlongLineIsSkippedWhole) {
@@ -896,6 +926,158 @@ TEST_F(CryptoPolicyTest, OneSidedBoundBelowExistingFloorIsIgnored) {
                               /*is_dtls=*/false, /*version_locked=*/false);
   EXPECT_EQ(ctx->conf_min_version, TLS1_3_VERSION);
   EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A floor AWS-LC cannot resolve rises to the policy's ceiling. Dropping it would
+// leave the built-in TLS 1.0 floor, which is below every floor crypto-policies
+// can render, so the context would offer versions the policy forbids.
+TEST_F(CryptoPolicyTest, UnresolvableFloorRisesToPolicyCeiling) {
+  const std::string content =
+      "TLS.MinProtocol = TLSv1.4\n"
+      "TLS.MaxProtocol = TLSv1.3\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_3_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// With no ceiling to read, the floor rises to the one the context already has.
+TEST_F(CryptoPolicyTest, UnresolvableFloorRisesToContextCeiling) {
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init("TLS.MinProtocol = TLSv1.4\n"));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_3_VERSION);
+  // The policy named no ceiling, so that bound still defers to the method.
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A ceiling below the newest protocol the method offers is the bound the floor
+// rises to, so the resulting pair is never inverted and the policy is applied
+// whole.
+TEST_F(CryptoPolicyTest, UnresolvableFloorRisesToLowerCeiling) {
+  const std::string content =
+      "TLS.MinProtocol = not-a-protocol\n"
+      "TLS.MaxProtocol = TLSv1.2\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_2_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// DTLSv1.3 is the case a host can hand AWS-LC today: crypto-policies renders the
+// name and AWS-LC has no constant for it.
+TEST_F(CryptoPolicyTest, UnresolvableDTLSFloorRisesToCeiling) {
+  const std::string with_ceiling =
+      "DTLS.MinProtocol = DTLSv1.3\n"
+      "DTLS.MaxProtocol = DTLSv1.2\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(with_ceiling));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/true, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), DTLS1_2_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), DTLS1_2_VERSION);
+
+  TemporaryFile floor_only;
+  ASSERT_TRUE(floor_only.Init("DTLS.MinProtocol = DTLSv1.3\n"));
+  bssl::UniquePtr<SSL_CTX> bare(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(bare);
+  ssl_ctx_apply_crypto_policy(bare.get(), floor_only.path().c_str(),
+                              /*is_dtls=*/true, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(bare.get()), DTLS1_2_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(bare.get()), 0u);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A floor naming a protocol older than AWS-LC implements, as the LEGACY policy
+// once did, keeps the built-in floor. That floor is already stricter, so raising
+// it to the ceiling would refuse versions the operator asked for.
+TEST_F(CryptoPolicyTest, FloorNamingOlderProtocolKeepsBuiltinFloor) {
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init("TLS.MinProtocol = SSLv3\n"));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_min_version, TLS1_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A floor too long to store leaves an empty field, which the presence flag is
+// what tells apart from a policy that named no floor at all.
+TEST_F(CryptoPolicyTest, OverlongFloorRisesToCeiling) {
+  std::string content = "TLS.MinProtocol = ";
+  content.append(AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1, 'X');
+  content += "\nTLS.MaxProtocol = TLSv1.2\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_2_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The two bounds are treated differently on purpose: a ceiling AWS-LC cannot
+// resolve is left unapplied, since lowering it would take away the strongest
+// protocol the context offers.
+TEST_F(CryptoPolicyTest, UnresolvableCeilingIsLeftAlone) {
+  const std::string content =
+      "TLS.MinProtocol = TLSv1.2\n"
+      "TLS.MaxProtocol = TLSv1.4\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), TLS1_2_VERSION);
+  EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_3_VERSION);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Raising the floor is still skipped for a version-locked method, which the
+// caller pinned to one version and where any bound at all widens the pin.
+TEST_F(CryptoPolicyTest, VersionLockedMethodKeepsItsPinWithUnresolvableFloor) {
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init("TLS.MinProtocol = TLSv1.4\n"));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLSv1_2_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/true);
+  EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), 0u);
+  EXPECT_EQ(ctx->conf_min_version, TLS1_2_VERSION);
+  EXPECT_EQ(ctx->conf_max_version, TLS1_2_VERSION);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
