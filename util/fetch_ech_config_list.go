@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/net/dns/dnsmessage"
@@ -147,6 +148,12 @@ func dnsQueryForHTTPS(domain string) ([][]byte, error) {
 		return nil, fmt.Errorf("failed to send the DNS query: %s", err)
 	}
 
+	// Responses that do not match our transaction ID are discarded below, so
+	// bound the time spent waiting for the matching one.
+	if err = conn.SetReadDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		return nil, fmt.Errorf("failed to set a read deadline: %s", err)
+	}
+
 	for {
 		response := make([]byte, 512)
 		n, err := conn.Read(response)
@@ -155,19 +162,21 @@ func dnsQueryForHTTPS(domain string) ([][]byte, error) {
 		}
 		response = response[:n]
 
+		// Discard anything that is not an answer to our query, rather than
+		// failing, so that a single forged packet cannot turn an off-path
+		// spoofing attempt into a failed lookup. The read deadline set above
+		// bounds the loop. Everything after this point is checked against the
+		// response we did ask for, so those failures are still fatal.
 		var p dnsmessage.Parser
 		header, err := p.Start(response)
-		if err != nil {
-			return nil, err
+		if err != nil || header.ID != queryID {
+			continue
 		}
 		if !header.Response {
 			return nil, errors.New("received DNS message is not a response")
 		}
 		if header.RCode != dnsmessage.RCodeSuccess {
 			return nil, fmt.Errorf("response from DNS has non-success RCode: %s", header.RCode.String())
-		}
-		if header.ID != queryID {
-			return nil, errors.New("received a DNS response with the wrong ID")
 		}
 		if !header.RecursionAvailable {
 			return nil, errors.New("server does not support recursion")

@@ -290,7 +290,9 @@ static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) 
     if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    print_hex(bp, pkey->pkey.pqdsa_key->private_key, bit_len, off);
+    if (!print_hex(bp, pkey->pkey.pqdsa_key->private_key, bit_len, off)) {
+      return 0;
+    }
   } else {
     if (pkey->pkey.pqdsa_key->public_key == NULL) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
