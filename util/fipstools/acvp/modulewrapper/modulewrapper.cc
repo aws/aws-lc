@@ -4068,6 +4068,14 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
     // Prepare |pre| exactly how |ml_dsa_sign| is doing. The maximum |context| size
     // for ML-DSA is 255 bytes. We append a 0 and the size as two additional bytes
     // before |context| to become the prefix string.
+    //
+    // Reject any context longer than 255 bytes, matching the validation in
+    // |mld_prepare_domain_separation_prefix|. The internal signing path we use
+    // here does not perform this check, so without it a larger |context| would
+    // overflow the fixed 257-byte |pre| buffer.
+    if (context.size() > 255) {
+      return false;
+    }
     uint8_t pre[257];
     pre[0] = 0;
     pre[1] = context.size();
