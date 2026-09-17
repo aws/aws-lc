@@ -306,9 +306,14 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
     } else if (xi->x_pkey->dec_pkey) {
       // Add DSA/DH
       // normal optionally encrypted stuff
-      if (PEM_write_bio_RSAPrivateKey(bp,
-                                    EVP_PKEY_get0_RSA(xi->x_pkey->dec_pkey),
-                                      enc, kstr, klen, cb, u) <= 0) {
+      RSA *rsa = EVP_PKEY_get0_RSA(xi->x_pkey->dec_pkey);
+      if (rsa == NULL) {
+        // Only RSA private keys can be written here. Anything else would pass
+        // NULL to |PEM_write_bio_RSAPrivateKey|.
+        OPENSSL_PUT_ERROR(PEM, PEM_R_ERROR_CONVERTING_PRIVATE_KEY);
+        goto err;
+      }
+      if (PEM_write_bio_RSAPrivateKey(bp, rsa, enc, kstr, klen, cb, u) <= 0) {
         goto err;
       }
     }
