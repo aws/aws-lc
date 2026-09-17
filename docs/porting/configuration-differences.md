@@ -48,7 +48,15 @@ The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
 `TLS.MaxProtocol`, `DTLS.MinProtocol`, and `DTLS.MaxProtocol`. Seeding is
 best-effort: a missing or malformed file, or a directive AWS-LC does not support,
 is ignored rather than fatal. A directive AWS-LC cannot satisfy is skipped and
-the built-in default stands. A context created from one of the legacy
+the built-in default stands.
+
+A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
+rises to the policy's `MaxProtocol`. The built-in floor of TLS 1.0 sits below any
+floor a policy can ask for, so skipping the directive would leave the context
+offering the versions the policy forbids. A `MinProtocol` older than TLS 1.0, such
+as `SSLv3`, keeps the built-in floor.
+
+A context created from one of the legacy
 version-locked methods, such as `TLSv1_2_method`, keeps its single pinned version
 and takes no protocol bounds from the policy. See
 [BUILDING.md](../../BUILDING.md) for the build flag and the
