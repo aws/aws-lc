@@ -108,7 +108,9 @@ TEST_F(VerifyTest, AnyFailingInputExitCode) {
 TEST_F(VerifyTest, UnparseableInputExitCode) {
   ScopedFILE in_file(fopen(in_path, "wb"));
   ASSERT_TRUE(in_file);
-  ASSERT_GT(fputs("not a certificate\n", in_file.get()), 0);
+  const char *garbage = "not a certificate\n";
+  ASSERT_EQ(fwrite(garbage, 1, strlen(garbage), in_file.get()),
+            strlen(garbage));
   in_file.reset();
 
   args_list_t args = {"-CAfile", ca_path, in_path};
