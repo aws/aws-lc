@@ -6,6 +6,7 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
+#include "../bn/internal.h"
 #include "internal.h"
 
 int dh_check_params_fast(const DH *dh) {
@@ -83,11 +84,72 @@ err:
 }
 
 
+// DH_MAX_KNOWN_GROUP_WORDS is the number of words in the modulus of the largest
+// group |dh_fast_path_from_safe_group| recognizes.
+#define DH_MAX_KNOWN_GROUP_WORDS (8192 / BN_BITS2)
+
+// dh_fast_path_from_safe_group returns one if |dh| is one of the well-known
+// standard safe-prime groups (RFC 3526 MODP or RFC 7919 ffdhe), so that
+// |DH_check| may accept it without primality testing, and zero otherwise. It
+// requires g = 2 and p to match a known group prime. A subgroup order q is
+// optional: if present, it is accepted only when the matched group defines one
+// (RFC 7919) and it equals (p-1)/2; a q that is not part of the group
+// definition returns zero so that |DH_check| performs its full validation.
+static int dh_fast_path_from_safe_group(const DH *dh) {
+  // Every group we recognize (RFC 3526 MODP and RFC 7919 ffdhe) uses g = 2. A
+  // different generator is not the named group, so let the full checks run.
+  if (!BN_is_word(dh->g, 2)) {
+    return 0;
+  }
+
+  // p must match a known group prime. Both families are safe primes p = 2q+1,
+  // so recognizing p means both p and (p-1)/2 are prime by definition; that is
+  // what lets |DH_check| skip primality testing.
+  const int is_rfc7919 = dh_is_rfc7919_prime(dh->p);
+  if (!is_rfc7919 && !dh_is_rfc3526_prime(dh->p)) {
+    return 0;
+  }
+
+  if (dh->q == NULL) {
+    return 1;
+  }
+
+  // A subgroup order is only part of the RFC 7919 group definitions (where
+  // q = (p-1)/2 and g = 2 lies in that subgroup). For an RFC 3526 prime a
+  // supplied q is not something the group definition vouches for, so we do not
+  // fast-path it.
+  if (!is_rfc7919) {
+    return 0;
+  }
+
+  // q must be exactly the group's subgroup order, (p-1)/2. The group's p is
+  // odd, so that is p >> 1, which we compute in a stack buffer rather than
+  // allocating a |BIGNUM| to shift into.
+  BN_ULONG p_words[DH_MAX_KNOWN_GROUP_WORDS];
+  BN_ULONG q_words[DH_MAX_KNOWN_GROUP_WORDS];
+  if (!bn_copy_words(p_words, DH_MAX_KNOWN_GROUP_WORDS, dh->p)) {
+    return 0;
+  }
+  bn_rshift1_words(q_words, p_words, DH_MAX_KNOWN_GROUP_WORDS);
+
+  BIGNUM expected_q;
+  BN_init(&expected_q);
+  bn_set_static_words(&expected_q, q_words, DH_MAX_KNOWN_GROUP_WORDS);
+  return BN_cmp(dh->q, &expected_q) == 0;
+}
+
 // DH_check confirms that the Diffie-Hellman parameters dh are valid.
 int DH_check(const DH *dh, int *out_flags) {
   *out_flags = 0;
   if (!dh_check_params_fast(dh)) {
     return 0;
+  }
+
+  // Keep this below |dh_check_params_fast()|, so that |DH_check| does not
+  // depend on |dh_fast_path_from_safe_group()| to bound the sizes and signs of
+  // p, q and g. |dh_check_params_fast()| is only a few word comparisons anyway.
+  if (dh_fast_path_from_safe_group(dh)) {
+    return 1;
   }
 
   // Check that p is a safe prime.

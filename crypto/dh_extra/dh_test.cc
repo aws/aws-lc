@@ -1023,6 +1023,140 @@ TEST(DHTest, DHCheckForStandardParams) {
   EXPECT_EQ(flags, 0);
 }
 
+TEST(DHTest, DHCheckNamedGroupFastPath) {
+  auto make_bare_group = [](BIGNUM *p) -> bssl::UniquePtr<DH> {
+    bssl::UniquePtr<BIGNUM> p_owner(p);
+    if (p_owner == nullptr) {
+      return nullptr;
+    }
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    if (g == nullptr || !BN_set_word(g.get(), 2)) {
+      return nullptr;
+    }
+    // NewDHGroup does not take ownership; it dups the inputs.
+    return NewDHGroup(p_owner.get(), /*q=*/nullptr, g.get());
+  };
+
+  // All RFC 3526 MODP moduli, as a bare (p, g=2) group.
+  BIGNUM *(*const kRFC3526[])(BIGNUM *) = {
+      BN_get_rfc3526_prime_1536, BN_get_rfc3526_prime_2048,
+      BN_get_rfc3526_prime_3072, BN_get_rfc3526_prime_4096,
+      BN_get_rfc3526_prime_6144, BN_get_rfc3526_prime_8192,
+  };
+  for (auto getter : kRFC3526) {
+    bssl::UniquePtr<DH> dh = make_bare_group(getter(nullptr));
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    EXPECT_EQ(flags, 0);
+  }
+
+  // All RFC 7919 ffdhe groups. Tested twice: once in their native form (which
+  // carries q = (p-1)/2 and g = 2), and once as a bare (p, g=2) group. Both are
+  // accepted by the fast path with flags == 0.
+  DH *(*const kRFC7919[])(void) = {
+      DH_get_rfc7919_2048, DH_get_rfc7919_3072, DH_get_rfc7919_4096,
+      DH_get_rfc7919_8192,
+  };
+  for (auto getter : kRFC7919) {
+    bssl::UniquePtr<DH> group(getter());
+    ASSERT_TRUE(group);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(group.get(), &flags));
+    EXPECT_EQ(flags, 0);
+
+    bssl::UniquePtr<DH> bare = make_bare_group(BN_dup(DH_get0_p(group.get())));
+    ASSERT_TRUE(bare);
+    flags = -1;
+    ASSERT_TRUE(DH_check(bare.get(), &flags));
+    EXPECT_EQ(flags, 0);
+  }
+
+  // A modulus that is one bit off from a named group must NOT be accepted by
+  // the fast path. DH_check should fall through to full validation and flag it
+  // as composite. This guards against the fast path masking bad parameters.
+  {
+    bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+    ASSERT_TRUE(p);
+    // Clear a bit that is set in the real prime so the value stays odd but is
+    // no longer the named prime (and is composite).
+    ASSERT_TRUE(BN_is_bit_set(p.get(), 5));
+    ASSERT_TRUE(BN_clear_bit(p.get(), 5));
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 2));
+    bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    // The point is that full validation ran at all; which of the two primality
+    // flags it reports depends on a property of this particular value that the
+    // test has no reason to assert.
+    EXPECT_TRUE(flags & (DH_CHECK_P_NOT_PRIME | DH_CHECK_P_NOT_SAFE_PRIME));
+  }
+
+  // A named modulus with a generator other than 2 is not the named group, so
+  // the fast path must decline on |g| alone. ffdhe2048's own (p, q) with g = 1
+  // makes that observable: full validation rejects the generator, so a nonzero
+  // flag here is proof that the g = 2 gate turned the fast path away.
+  {
+    bssl::UniquePtr<DH> group(DH_get_rfc7919_2048());
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 1));
+    bssl::UniquePtr<DH> dh =
+        NewDHGroup(DH_get0_p(group.get()), DH_get0_q(group.get()), g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    EXPECT_TRUE(flags & DH_CHECK_NOT_SUITABLE_GENERATOR);
+  }
+
+  // An RFC 3526 prime carries no subgroup order, so a supplied q is not part of
+  // the group definition and the fast path must decline regardless of its
+  // value. Pairing MODP-2048 with a bad q makes that observable: 2^q mod p is 4
+  // rather than 1, so full validation rejects the generator.
+  {
+    bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+    ASSERT_TRUE(p);
+    bssl::UniquePtr<BIGNUM> q(BN_new());
+    ASSERT_TRUE(q);
+    ASSERT_TRUE(BN_rshift1(q.get(), p.get()));  // q := (p-1)/2
+    ASSERT_TRUE(BN_add_word(q.get(), 2));       // ... + 2, no longer valid
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 2));
+    bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), q.get(), g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    EXPECT_TRUE(flags & DH_CHECK_NOT_SUITABLE_GENERATOR);
+  }
+
+  // A recognized modulus with a q that is NOT the group's subgroup order must
+  // not be waved through by the fast path. Here we perturb ffdhe2048's q so it
+  // no longer equals (p-1)/2; the fast path must decline and full validation
+  // must reject it (q no longer divides p-1 and is composite).
+  {
+    bssl::UniquePtr<DH> group(DH_get_rfc7919_2048());
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> q(BN_dup(DH_get0_q(group.get())));
+    ASSERT_TRUE(q);
+    ASSERT_TRUE(BN_add_word(q.get(), 2));  // q := (p-1)/2 + 2, no longer valid
+    bssl::UniquePtr<BIGNUM> g(BN_new());
+    ASSERT_TRUE(g);
+    ASSERT_TRUE(BN_set_word(g.get(), 2));
+    bssl::UniquePtr<DH> dh =
+        NewDHGroup(DH_get0_p(group.get()), q.get(), g.get());
+    ASSERT_TRUE(dh);
+    int flags = -1;
+    ASSERT_TRUE(DH_check(dh.get(), &flags));
+    // If the fast path had wrongly accepted this, flags would be 0.
+    EXPECT_TRUE(flags & DH_CHECK_INVALID_Q_VALUE);
+  }
+}
+
 TEST(DHTest, DHMarshalPubKey) {
   const char* dh512_pem =
     "-----BEGIN DH PARAMETERS-----\n"
