@@ -4,6 +4,7 @@
 #include <openssl/aead.h>
 
 #include <assert.h>
+#include <limits.h>
 
 #include <openssl/cipher.h>
 #include <openssl/err.h>
@@ -518,6 +519,12 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   }
 
   if (!cipher_ctx->iv_set || !cipher_ctx->key_set) {
+    return -1;
+  }
+
+  if (len > INT_MAX) {
+    // This function signature can only express up to |INT_MAX| bytes, matching
+    // the guard in the AES-GCM handler.
     return -1;
   }
 
