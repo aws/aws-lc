@@ -285,24 +285,17 @@ static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
     return false;
   }
 
-  int result =
-      EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size());
-
-  if (result > 0) {
+  if (EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size()) ==
+      1) {
     if (BIO_printf(out_bio, "Verified OK\n") <= 0) {
       goto end;
     }
-  } else if (result == 0) {
-    if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
-      goto end;
-    }
-  } else {
-    if (BIO_printf(out_bio, "Error verifying data\n") <= 0) {
-      goto end;
-    }
+    return true;
   }
-
-  return true;
+  if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
+    goto end;
+  }
+  return false;
 
 end:
   fprintf(stderr, "Error writing output to %s.\n", in_path.c_str());
@@ -512,12 +505,14 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   return true;
 }
 
-bool dgstTool(const args_list_t &args) {
-  return dgstToolInternal(args, nullptr);
+int dgstTool(const args_list_t &args) {
+  return dgstToolInternal(args, nullptr) ? kToolExitSuccess : kToolExitFailure;
 }
-bool md5Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_md5());
+int md5Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_md5()) ? kToolExitSuccess
+                                           : kToolExitFailure;
 }
-bool sha1Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_sha1());
+int sha1Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_sha1()) ? kToolExitSuccess
+                                            : kToolExitFailure;
 }

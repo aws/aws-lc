@@ -12,6 +12,12 @@
 // TO-DO: We do not support using a default trust store, therefore -CAfile must
 // be a required argument. Once support for default trust stores is added,
 // make it an optional argument.
+
+// OpenSSL's verify exits with 2 when any input certificate fails to load or
+// verify, and with 1 for option or trust store setup errors (including an
+// unreadable -untrusted file).
+static const int kVerifyExitFailure = 2;
+
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-CAfile", kRequiredArgument,
@@ -96,38 +102,51 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
-static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
+// load_untrusted reads the PEM certificate bundle at |chainfile| into a new
+// stack. It returns nullptr on error.
+static bssl::UniquePtr<STACK_OF(X509)> load_untrusted(const char *chainfile) {
   bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  if (!chain) {
+    return nullptr;
+  }
+  ScopedFILE chain_file(fopen(chainfile, "rb"));
+  if (!chain_file) {
+    fprintf(stderr, "error %s: reading chain certificates failed\n", chainfile);
+    return nullptr;
+  }
+  bssl::UniquePtr<BIO> chain_bio(BIO_new_fp(chain_file.get(), BIO_NOCLOSE));
+  if (!chain_bio) {
+    return nullptr;
+  }
+  size_t count = 0;
+  while (1) {
+    bssl::UniquePtr<X509> chain_cert(
+        PEM_read_bio_X509(chain_bio.get(), NULL, NULL, NULL));
+    if (chain_cert.get() == nullptr) {
+      uint32_t error = ERR_peek_last_error();
+      if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
+          ERR_GET_REASON(error) == PEM_R_NO_START_LINE && count > 0) {
+        ERR_clear_error();
+        break;
+      }
+      fprintf(stderr, "error %s: reading chain certificates failed\n",
+              chainfile);
+      return nullptr;
+    }
+    if (!bssl::PushToStack(chain.get(), std::move(chain_cert))) {
+      return nullptr;
+    }
+    count++;
+  }
+  return chain;
+}
+
+// check verifies the certificate in |certfile| (or stdin if null) against
+// |ctx|, using |chain| (which may be null) as untrusted intermediates. It
+// returns 1 if the certificate verified and 0 otherwise.
+static int check(X509_STORE *ctx, STACK_OF(X509) *chain, const char *certfile) {
   bssl::UniquePtr<X509> cert;
   int i = 0, ret = 0;
-
-  if (chainfile) {
-    ScopedFILE chain_file(fopen(chainfile, "rb"));
-    if (!chain_file) {
-      fprintf(stderr, "error %s: reading certificate failed\n", certfile);
-      return 0;
-    }
-    bssl::UniquePtr<BIO> chain_bio(BIO_new_fp(chain_file.get(), BIO_NOCLOSE));
-    size_t count = 0;
-    while(1) {
-      bssl::UniquePtr<X509> chain_cert(PEM_read_bio_X509(chain_bio.get(), NULL, NULL, NULL));
-      if (chain_cert.get() == nullptr) {
-        uint32_t error = ERR_peek_last_error();
-        if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
-            ERR_GET_REASON(error) == PEM_R_NO_START_LINE && count > 0) {
-          ERR_clear_error();
-          break;
-        }
-        fprintf(stderr, "error %s: reading chain certificates failed\n",
-                chainfile);
-        return 0;
-      }
-      if(!sk_X509_push(chain.get(), chain_cert.release())) {
-        return 0;
-      }
-      count++;
-    }
-  }
 
   if (certfile) {
     ScopedFILE cert_file(fopen(certfile, "rb"));
@@ -153,7 +172,7 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
     return 0;
   }
 
-  if (!X509_STORE_CTX_init(store_ctx.get(), ctx, cert.get(), chain.get())) {
+  if (!X509_STORE_CTX_init(store_ctx.get(), ctx, cert.get(), chain)) {
     fprintf(stderr,
                "error %s: X.509 store context initialization failed\n",
                (certfile == nullptr) ? "stdin" : certfile);
@@ -173,13 +192,13 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
   return ret;
 }
 
-bool VerifyTool(const args_list_t &args) {
+int VerifyTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if (HasArgument(parsed_args, "-help") || parsed_args.size() == 0) {
@@ -189,7 +208,7 @@ bool VerifyTool(const args_list_t &args) {
             "If no files are specified, the tool will read from stdin.\n\n"
             "Valid options are:\n");
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   std::string cafile;
@@ -199,27 +218,33 @@ bool VerifyTool(const args_list_t &args) {
   // Initialize certificate verification store
   if (!store.get()) {
     fprintf(stderr, "Error: Unable to setup certificate verification store.");
-    return false;
+    return kToolExitFailure;
   }
   X509_STORE_set_verify_cb(store.get(), cb);
 
   ERR_clear_error();
 
-  int ret = 1;
+  bool all_ok = true;
 
   std::string chain_file;
   GetString(&chain_file, "-untrusted", "", parsed_args);
-  const char *chain = chain_file.empty() ? NULL : chain_file.c_str();
-
-  // No additional file or certs provided, read from stdin
-  if (extra_args.size() == 0) {
-    ret &= check(store.get(), chain, NULL);
-  } else {
-    // Certs provided as files
-    for (size_t i = 0; i < extra_args.size(); i++) {
-      ret &= check(store.get(), chain, extra_args[i].c_str());
+  bssl::UniquePtr<STACK_OF(X509)> chain;
+  if (!chain_file.empty()) {
+    chain = load_untrusted(chain_file.c_str());
+    if (!chain) {
+      return kToolExitFailure;
     }
   }
 
-  return ret == 1;
+  // No additional file or certs provided, read from stdin
+  if (extra_args.size() == 0) {
+    all_ok = check(store.get(), chain.get(), NULL) == 1;
+  } else {
+    // Certs provided as files
+    for (size_t i = 0; i < extra_args.size(); i++) {
+      all_ok &= check(store.get(), chain.get(), extra_args[i].c_str()) == 1;
+    }
+  }
+
+  return all_ok ? kToolExitSuccess : kVerifyExitFailure;
 }

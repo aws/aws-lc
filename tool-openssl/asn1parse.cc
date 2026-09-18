@@ -16,14 +16,14 @@ using ossl_free = decltype(&OPENSSL_free);
 using ossl_uint8_ptr = std::unique_ptr<uint8_t, ossl_free>;
 using ossl_char_ptr = std::unique_ptr<char, ossl_free>;
 
-bool asn1parseTool(const args_list_t &args) {
+int asn1parseTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
                                      kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, inform_str;
@@ -42,7 +42,7 @@ bool asn1parseTool(const args_list_t &args) {
   // Display asn1parse tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if (isStringUpperCaseEqual(inform_str, "DER")) {
@@ -57,7 +57,7 @@ bool asn1parseTool(const args_list_t &args) {
 
   if (in_path.empty()) {
     fprintf(stderr, "Error: missing required argument '-in'\n");
-    return false;
+    return kToolExitFailure;
   }
 
   input_bio.reset(in_path.empty() ? BIO_new_fp(stdin, BIO_NOCLOSE)
@@ -135,9 +135,9 @@ bool asn1parseTool(const args_list_t &args) {
     goto err;
   }
 
-  return true;
+  return kToolExitSuccess;
 
 err:
   ERR_print_errors_fp(stderr);
-  return false;
+  return kToolExitFailure;
 }

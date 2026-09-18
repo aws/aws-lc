@@ -66,8 +66,8 @@ class PKeyTest : public ::testing::Test {
 // Test -in and -out
 TEST_F(PKeyTest, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -80,8 +80,8 @@ TEST_F(PKeyTest, InOut) {
 // Test -inform DER
 TEST_F(PKeyTest, InformDER) {
   args_list_t args = {"-in", der_key_path, "-inform", "DER", "-out", out_path};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -94,8 +94,8 @@ TEST_F(PKeyTest, InformDER) {
 // Test -outform DER
 TEST_F(PKeyTest, OutformDER) {
   args_list_t args = {"-in", in_path, "-outform", "DER", "-out", out_path};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -108,8 +108,8 @@ TEST_F(PKeyTest, OutformDER) {
 // Test -pubout
 TEST_F(PKeyTest, Pubout) {
   args_list_t args = {"-in", in_path, "-pubout", "-out", out_path};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -124,8 +124,8 @@ TEST_F(PKeyTest, Pubin) {
   // First create a public key file
   {
     args_list_t args = {"-in", in_path, "-pubout", "-out", out_path};
-    bool result = pkeyTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
   }
 
   // Then test reading it with -pubin
@@ -134,8 +134,8 @@ TEST_F(PKeyTest, Pubin) {
     ASSERT_GT(createTempFILEpath(temp_out), 0u);
 
     args_list_t args = {"-in", out_path, "-pubin", "-out", temp_out};
-    bool result = pkeyTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
 
     ScopedFILE out_file(fopen(temp_out, "rb"));
     ASSERT_TRUE(out_file);
@@ -150,15 +150,15 @@ TEST_F(PKeyTest, Pubin) {
 // Test -text
 TEST_F(PKeyTest, Text) {
   args_list_t args = {"-in", in_path, "-text", "-noout"};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -text_pub
 TEST_F(PKeyTest, TextPub) {
   args_list_t args = {"-in", in_path, "-text_pub", "-noout"};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // -------------------- PKey Option Usage Error Tests --------------------------
@@ -170,8 +170,8 @@ class PKeyOptionUsageErrorsTest : public PKeyTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = pkeyTool(c_args);
-    ASSERT_FALSE(result);
+    int result = pkeyTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
@@ -190,8 +190,8 @@ TEST_F(PKeyOptionUsageErrorsTest, InvalidFormatOptionsTest) {
 #if !defined(OPENSSL_WINDOWS)
 TEST_F(PKeyTest, PrivateKeyFilePermissions) {
   args_list_t args = {"-in", in_path, "-out", out_path};
-  bool result = pkeyTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   struct stat st;
   ASSERT_EQ(0, stat(out_path, &st));

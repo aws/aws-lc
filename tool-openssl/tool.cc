@@ -119,10 +119,9 @@ int main(int argc, char **argv) {
     args.emplace_back(argv[i]);
   }
 
-  if (!tool(args)) {
+  int ret = tool(args);
+  if (ret != kToolExitSuccess) {
     ERR_print_errors_fp(stderr);
-    return 1;
   }
-
-  return 0;
+  return ret;
 }

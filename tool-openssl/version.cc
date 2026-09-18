@@ -19,7 +19,7 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}
 };
 
-bool VersionTool(const args_list_t &args) {
+int VersionTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -27,12 +27,12 @@ bool VersionTool(const args_list_t &args) {
                                      kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   bool all = false;
@@ -44,7 +44,7 @@ bool VersionTool(const args_list_t &args) {
 
   if (platform) {
     printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
-    return true;
+    return kToolExitSuccess;
   }
 
   printf("%s\n", OPENSSL_VERSION_TEXT);
@@ -57,7 +57,7 @@ bool VersionTool(const args_list_t &args) {
     printf("%s\n", OpenSSL_version(OPENSSL_PLATFORM));
     printf("%s\n", OpenSSL_version(OPENSSL_CFLAGS));
     printf("%s\n", OpenSSL_version(OPENSSL_DIR));
-    return true;
+    return kToolExitSuccess;
   }
 
   if (fips) {
@@ -68,8 +68,8 @@ bool VersionTool(const args_list_t &args) {
     } else {
       printf("FIPS: disabled\n");
     }
-    return true;
+    return kToolExitSuccess;
   }
 
-  return true;
+  return kToolExitSuccess;
 }

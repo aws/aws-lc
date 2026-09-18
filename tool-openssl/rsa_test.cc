@@ -53,8 +53,8 @@ class RSATest : public ::testing::Test {
 // Test -in and -out
 TEST_F(RSATest, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
-  bool result = rsaTool(args);
-  ASSERT_TRUE(result);
+  int result = rsaTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -67,15 +67,15 @@ TEST_F(RSATest, InOut) {
 // Test -modulus
 TEST_F(RSATest, Modulus) {
   args_list_t args = {"-in", in_path, "-modulus"};
-  bool result = rsaTool(args);
-  ASSERT_TRUE(result);
+  int result = rsaTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -noout
 TEST_F(RSATest, Noout) {
   args_list_t args = {"-in", in_path, "-noout"};
-  bool result = rsaTool(args);
-  ASSERT_TRUE(result);
+  int result = rsaTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 
@@ -88,16 +88,16 @@ class RSAOptionUsageErrorsTest : public RSATest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = rsaTool(c_args);
-    ASSERT_FALSE(result);
+    int result = rsaTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
 // Test invalid file path
 TEST_F(RSAOptionUsageErrorsTest, InvalidFilePathTest) {
   args_list_t args = {"-in", "/nonexistent/path/to/key.pem"};
-  bool result = rsaTool(args);
-  ASSERT_FALSE(result);
+  int result = rsaTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
 
 // -------------------- RSA Functional Unit Tests -----------------------------
@@ -134,7 +134,7 @@ class RSAFunctionalTest : public ::testing::Test {
 // Test PEM to PEM conversion (default)
 TEST_F(RSAFunctionalTest, PEMtoPEMConversion) {
   args_list_t args = {"-in", in_path, "-out", out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -149,7 +149,7 @@ TEST_F(RSAFunctionalTest, PEMtoPEMConversion) {
 // Test PEM to DER conversion
 TEST_F(RSAFunctionalTest, PEMtoDERConversion) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-outform", "DER"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -178,7 +178,7 @@ TEST_F(RSAFunctionalTest, DERtoPEMConversion) {
 
   args_list_t args = {"-in",  der_in_path, "-inform",  "DER",
                       "-out", out_path,    "-outform", "PEM"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -195,7 +195,7 @@ TEST_F(RSAFunctionalTest, DERtoPEMConversion) {
 // Test public key output
 TEST_F(RSAFunctionalTest, PublicKeyOutput) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-pubout"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -226,7 +226,7 @@ TEST_F(RSAFunctionalTest, PublicKeyInputOutput) {
   }
 
   args_list_t args = {"-in", pub_path, "-pubin", "-out", out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -256,7 +256,7 @@ TEST_F(RSAFunctionalTest, PublicKeyDERtoPEM) {
 
   args_list_t args = {"-in",  der_pub_path, "-inform",  "DER", "-pubin",
                       "-out", out_path,     "-outform", "PEM"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -275,14 +275,14 @@ TEST_F(RSAFunctionalTest, PublicKeyDERtoPEM) {
 // Test modulus output
 TEST_F(RSAFunctionalTest, ModulusOutput) {
   args_list_t args = {"-in", in_path, "-modulus", "-noout"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
   // The output goes to stdout, just verify the command succeeds
 }
 
 // Test modulus with output file
 TEST_F(RSAFunctionalTest, ModulusWithOutput) {
   args_list_t args = {"-in", in_path, "-modulus", "-out", out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   // Read output and verify it contains "Modulus="
   std::string output = ReadFileToString(out_path);
@@ -308,7 +308,7 @@ TEST_F(RSAFunctionalTest, ModulusWithOutput) {
 // Test noout option prevents key output
 TEST_F(RSAFunctionalTest, NooutPreventsKeyOutput) {
   args_list_t args = {"-in", in_path, "-noout", "-out", out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   // Output file should be empty or not contain a key
   std::string output = ReadFileToString(out_path);
@@ -318,7 +318,7 @@ TEST_F(RSAFunctionalTest, NooutPreventsKeyOutput) {
 // Test combined modulus and key output
 TEST_F(RSAFunctionalTest, ModulusAndKeyOutput) {
   args_list_t args = {"-in", in_path, "-modulus", "-out", out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   std::string output = ReadFileToString(out_path);
 
@@ -332,7 +332,7 @@ TEST_F(RSAFunctionalTest, ModulusAndKeyOutput) {
 TEST_F(RSAFunctionalTest, PublicKeyDEROutput) {
   args_list_t args = {"-in", in_path, "-pubout", "-outform",
                       "DER", "-out",  out_path};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -348,31 +348,31 @@ TEST_F(RSAFunctionalTest, PublicKeyDEROutput) {
 // Test invalid inform value
 TEST_F(RSAFunctionalTest, InvalidInformValue) {
   args_list_t args = {"-in", in_path, "-inform", "INVALID", "-out", out_path};
-  ASSERT_FALSE(rsaTool(args));
+  ASSERT_EQ(kToolExitFailure, rsaTool(args));
 }
 
 // Test invalid outform value
 TEST_F(RSAFunctionalTest, InvalidOutformValue) {
   args_list_t args = {"-in", in_path, "-outform", "INVALID", "-out", out_path};
-  ASSERT_FALSE(rsaTool(args));
+  ASSERT_EQ(kToolExitFailure, rsaTool(args));
 }
 
 // Test help option
 TEST_F(RSAFunctionalTest, HelpOption) {
   args_list_t args = {"-help"};
-  ASSERT_TRUE(rsaTool(args));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
 }
 
 // Test case insensitive format arguments
 TEST_F(RSAFunctionalTest, CaseInsensitiveFormats) {
   args_list_t args1 = {"-in", in_path, "-out", out_path, "-outform", "der"};
-  ASSERT_TRUE(rsaTool(args1));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args1));
 
   args_list_t args2 = {"-in", in_path, "-out", out_path, "-outform", "pem"};
-  ASSERT_TRUE(rsaTool(args2));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args2));
 
   args_list_t args3 = {"-in", in_path, "-out", out_path, "-outform", "DeR"};
-  ASSERT_TRUE(rsaTool(args3));
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args3));
 }
 
 // -------------------- RSA OpenSSL Comparison Tests --------------------------

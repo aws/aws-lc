@@ -88,29 +88,29 @@ class CRLTest : public ::testing::Test {
 // Test -in
 TEST_F(CRLTest, In) {
   args_list_t args = {"-in", in_path};
-  bool result = CRLTool(args);
-  ASSERT_TRUE(result);
+  int result = CRLTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -hash
 TEST_F(CRLTest, Hash) {
   args_list_t args = {"-in", in_path, "-hash"};
-  bool result = CRLTool(args);
-  ASSERT_TRUE(result);
+  int result = CRLTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -fingerprint
 TEST_F(CRLTest, Fingerprint) {
   args_list_t args = {"-in", in_path, "-fingerprint"};
-  bool result = CRLTool(args);
-  ASSERT_TRUE(result);
+  int result = CRLTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -noout
 TEST_F(CRLTest, Noout) {
   args_list_t args = {"-in", in_path, "-noout"};
-  bool result = CRLTool(args);
-  ASSERT_TRUE(result);
+  int result = CRLTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // -------------------- CRL OpenSSL Comparison Tests --------------------------
