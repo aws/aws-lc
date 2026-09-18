@@ -6,6 +6,7 @@
 #include <openssl/pem.h>
 #include <fstream>
 #include <iterator>
+#include <ostream>
 
 #if defined(OPENSSL_WINDOWS)
 #include <direct.h>
@@ -474,6 +475,15 @@ struct VerifyTrustCase {
   int reject_nid;
   int expected_exit_code;
 };
+
+// Without a printer, gtest falls back to hex-dumping the raw bytes of each
+// parameter, including the struct's uninitialized padding, which Valgrind
+// reports as a use of uninitialised values.
+static void PrintTo(const VerifyTrustCase &c, std::ostream *os) {
+  *os << "{purpose=" << (c.purpose ? c.purpose : "(none)")
+      << ", trust_nid=" << c.trust_nid << ", reject_nid=" << c.reject_nid
+      << ", expected_exit_code=" << c.expected_exit_code << "}";
+}
 
 class VerifyTrustTest : public VerifyChainTest,
                         public ::testing::WithParamInterface<VerifyTrustCase> {
