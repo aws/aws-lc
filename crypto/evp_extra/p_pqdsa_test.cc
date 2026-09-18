@@ -2852,6 +2852,47 @@ static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
                         msg.size());
 }
 
+// RunMLDSAExternalMuSignCase exercises a Wycheproof ML-DSA signing case that
+// provides only the pre-hashed message representative "mu" (no "msg"). These
+// are NIST ACVP-derived KATs for the external-mu (pre-hash) mode. For ML-DSA
+// the raw EVP_PKEY_sign / EVP_PKEY_verify path treats its input as the 64-byte
+// external mu, so we can (1) verify the known-good KAT signature over mu and
+// (2) round-trip our own signature over mu. |signing_key| is the private key
+// derived by the caller from the seed or expanded private key.
+static void RunMLDSAExternalMuSignCase(FileTest *t, EVP_PKEY *signing_key,
+                                       const WycheproofResult &result) {
+  std::vector<uint8_t> mu, expected_sig;
+  ASSERT_TRUE(t->GetBytes(&mu, "mu"));
+  ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(signing_key, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // (1) Verify the known-good KAT signature over mu.
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+  int verify_kat = EVP_PKEY_verify(ctx.get(), expected_sig.data(),
+                                   expected_sig.size(), mu.data(), mu.size());
+  if (result.IsValid()) {
+    EXPECT_TRUE(verify_kat)
+        << "External-mu verification failed for a valid KAT signature";
+  } else {
+    EXPECT_FALSE(verify_kat)
+        << "External-mu verification succeeded for an invalid KAT signature";
+    return;
+  }
+
+  // (2) Round-trip: sign mu ourselves and verify our signature over mu.
+  std::vector<uint8_t> sig(expected_sig.size());
+  size_t sig_len = sig.size();
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+  ASSERT_TRUE(
+      EVP_PKEY_sign(ctx.get(), sig.data(), &sig_len, mu.data(), mu.size()));
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+  EXPECT_TRUE(
+      EVP_PKEY_verify(ctx.get(), sig.data(), sig_len, mu.data(), mu.size()))
+      << "Round-trip external-mu verification failed";
+}
+
 TEST_P(WycheproofMLDSATest, Verify) {
   std::string test_path =
       std::string(kWycheproofMLDSAPath) + GetParam().verify_test;
@@ -2931,16 +2972,12 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     // signing succeeds/fails, not that it reproduces a specific signature.
     t->IgnoreAttribute("rnd");
     // Some cases carry only "mu" (the pre-hashed message representative) with no
-    // "msg"; these are internal KATs that exercise signing from mu directly,
-    // which this message-based EVP_DigestSign path cannot drive. Skip them.
-    if (!t->HasAttribute("msg")) {
+    // "msg". They are handled via the external-mu path below.
+    bool is_external_mu = !t->HasAttribute("msg");
+    if (!is_external_mu) {
+      ASSERT_TRUE(t->GetBytes(&msg, "msg"));
       t->IgnoreAttribute("mu");
-      t->IgnoreAttribute("flags");
-      t->IgnoreAttribute("result");
-      return;
     }
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
-    t->IgnoreAttribute("mu");
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -2977,6 +3014,14 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     }
     ASSERT_TRUE(sec_pkey_from_raw.get());
 
+    if (is_external_mu) {
+      // The helper fully handles this case over mu; return before the
+      // message-based signing path below, which has no "msg" to sign.
+      EVP_PKEY *key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
+      ASSERT_NO_FATAL_FAILURE(RunMLDSAExternalMuSignCase(t, key, result));
+      return;
+    }
+
     std::vector<uint8_t> sig(expected_sig.size());
     EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
     int sign_result =
@@ -3007,16 +3052,12 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
     // signing succeeds/fails, not that it reproduces a specific signature.
     t->IgnoreAttribute("rnd");
     // Some cases carry only "mu" (the pre-hashed message representative) with no
-    // "msg"; these are internal KATs that exercise signing from mu directly,
-    // which this message-based EVP_DigestSign path cannot drive. Skip them.
-    if (!t->HasAttribute("msg")) {
+    // "msg". They are handled via the external-mu path below.
+    bool is_external_mu = !t->HasAttribute("msg");
+    if (!is_external_mu) {
+      ASSERT_TRUE(t->GetBytes(&msg, "msg"));
       t->IgnoreAttribute("mu");
-      t->IgnoreAttribute("flags");
-      t->IgnoreAttribute("result");
-      return;
     }
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
-    t->IgnoreAttribute("mu");
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -3037,6 +3078,14 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
       return;
     }
     ASSERT_TRUE(sec_pkey_from_expanded.get());
+
+    if (is_external_mu) {
+      // The helper fully handles this case over mu; return before the
+      // message-based signing path below, which has no "msg" to sign.
+      ASSERT_NO_FATAL_FAILURE(
+          RunMLDSAExternalMuSignCase(t, sec_pkey_from_expanded.get(), result));
+      return;
+    }
 
     std::vector<uint8_t> sig(expected_sig.size());
     int sign_result = SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig,
