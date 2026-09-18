@@ -679,7 +679,9 @@ static int bio_read_all(BIO *bio, uint8_t **out, size_t *out_len,
     if (n == 0) {
       *out_len = done;
       return 1;
-    } else if (n == -1) {
+    } else if (n < 0) {
+      // |BIO_read| may report failure with any negative value, not just -1.
+      // Adding such a value to |done| would underflow it.
       OPENSSL_free(*out);
       return 0;
     }
