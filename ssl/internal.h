@@ -249,6 +249,13 @@ class Array {
   size_t size_ = 0;
 };
 
+// CleanseArray zeroizes the contents of |array|, so that key material does not
+// linger in the heap allocation after it is released. It does not release the
+// array itself.
+inline void CleanseArray(Array<uint8_t> *array) {
+  OPENSSL_cleanse(array->data(), array->size());
+}
+
 // GrowableArray<T> is an array that owns elements of |T|, backed by an
 // Array<T>. When necessary, pushing will automatically trigger a resize.
 //
@@ -1812,6 +1819,9 @@ enum handback_t {
 // |SSL_request_handshake_hints| and related functions.
 struct SSL_HANDSHAKE_HINTS {
   static constexpr bool kAllowUniquePtr = true;
+
+  // The destructor zeroizes the fields that carry key material.
+  ~SSL_HANDSHAKE_HINTS();
 
   Array<uint8_t> server_random_tls12;
   Array<uint8_t> server_random_tls13;
