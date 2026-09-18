@@ -1449,14 +1449,14 @@ static int RotateSerial(const std::string &serialfile,
   return 1;
 }
 
-bool caTool(const args_list_t &args) {
+int caTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
                                      kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, outfile, config_path, start_date, end_date, outdir,
@@ -1885,5 +1885,5 @@ err:
   if (!ret) {
     ERR_print_errors_fp(stderr);
   }
-  return ret;
+  return ret ? kToolExitSuccess : kToolExitFailure;
 }

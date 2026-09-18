@@ -11,15 +11,15 @@
 // Test without connect but with help
 TEST(SClientTest, NoConnect) {
   args_list_t args = {};
-  bool result = SClientTool(args);
-  ASSERT_FALSE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
 
 // Test -help
 TEST(SClientTest, Help) {
   args_list_t args = {"-help"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test that s_client returns false (not crash) for unresolvable hostname. This
@@ -27,6 +27,6 @@ TEST(SClientTest, Help) {
 // rather than moving to s_client_integration_test.cc.
 TEST(SClientTest, UnresolvableHost) {
   args_list_t args = {"-connect", "this.host.does.not.exist.invalid:443"};
-  bool result = SClientTool(args);
-  ASSERT_FALSE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }

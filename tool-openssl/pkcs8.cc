@@ -121,7 +121,7 @@ static const argument_t kArguments[] = {
     {"-passout", kOptionalArgument, "Output file passphrase source"},
     {"", kOptionalArgument, ""}};
 
-bool pkcs8Tool(const args_list_t &args) {
+int pkcs8Tool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -143,13 +143,13 @@ bool pkcs8Tool(const args_list_t &args) {
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
                                      kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   GetBoolArgument(&help, "-help", parsed_args);
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   GetString(&in_path, "-in", "", parsed_args);
@@ -157,7 +157,7 @@ bool pkcs8Tool(const args_list_t &args) {
   GetString(&inform, "-inform", "PEM", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
   if (!validate_format(inform) || !validate_format(outform)) {
-    return false;
+    return kToolExitFailure;
   }
 
   GetBoolArgument(&topk8, "-topk8", parsed_args);
@@ -169,7 +169,7 @@ bool pkcs8Tool(const args_list_t &args) {
   std::string v2_prf;
   GetString(&v2_prf, "-v2prf", "", parsed_args);
   if (!v2_prf.empty() && !validate_prf(v2_prf)) {
-    return false;
+    return kToolExitFailure;
   }
 
   GetString(&passin_arg.get(), "-passin", "", parsed_args);
@@ -179,14 +179,14 @@ bool pkcs8Tool(const args_list_t &args) {
   // file)
   if (!pass_util::ExtractPasswords(passin_arg, passout_arg)) {
     fprintf(stderr, "Error extracting passwords\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Check for contradictory arguments
   if (nocrypt && !passin_arg.empty() && !passout_arg.empty()) {
     fprintf(stderr,
             "Error: -nocrypt cannot be used with both -passin and -passout\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Read from stdin if no -in path provided
@@ -197,7 +197,7 @@ bool pkcs8Tool(const args_list_t &args) {
     in.reset(BIO_new_file(in_path.c_str(), "rb"));
     if (!in) {
       fprintf(stderr, "Cannot open input file\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -212,7 +212,7 @@ bool pkcs8Tool(const args_list_t &args) {
         break;
       default:
         fprintf(stderr, "Unable to load PEM file\n");
-        return false;
+        return kToolExitFailure;
     }
   }
 
@@ -224,7 +224,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
   if (!out) {
     fprintf(stderr, "Cannot open output file\n");
-    return false;
+    return kToolExitFailure;
   }
 
   pkey.reset(
@@ -242,7 +242,7 @@ bool pkcs8Tool(const args_list_t &args) {
     } else {
       fprintf(stderr, "Unable to load private key\n");
     }
-    return false;
+    return kToolExitFailure;
   }
 
   bool result = false;
@@ -263,7 +263,7 @@ bool pkcs8Tool(const args_list_t &args) {
 
     if (!nocrypt && cipher == nullptr) {
       fprintf(stderr, "Unsupported PKCS#8 cipher: %s\n", v2_cipher.c_str());
-      return false;
+      return kToolExitFailure;
     }
 
     result = (outform == "PEM")
@@ -281,9 +281,9 @@ bool pkcs8Tool(const args_list_t &args) {
 
   if (!result) {
     fprintf(stderr, "Error writing private key\n");
-    return false;
+    return kToolExitFailure;
   }
 
   BIO_flush(out.get());
-  return true;
+  return kToolExitSuccess;
 }

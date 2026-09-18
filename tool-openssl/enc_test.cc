@@ -35,8 +35,8 @@ class EncTest : public ::testing::Test {
 // Test help option
 TEST_F(EncTest, Help) {
   args_list_t args = {"-help"};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test basic encryption with AES-128-CBC
@@ -46,8 +46,8 @@ TEST_F(EncTest, BasicEncryption) {
                       "-iv",  "0123456789abcdef0123456789abcdef",
                       "-in",  in_path,
                       "-out", out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify output file exists and has content
   struct stat st;
@@ -63,8 +63,8 @@ TEST_F(EncTest, BasicDecryption) {
                               "-iv",  "0123456789abcdef0123456789abcdef",
                               "-in",  in_path,
                               "-out", out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -77,7 +77,7 @@ TEST_F(EncTest, BasicDecryption) {
                               "-in",  out_path,
                               "-out", decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify decrypted content matches original
   std::string original = ReadFileToString(in_path);
@@ -95,8 +95,8 @@ TEST_F(EncTest, ExplicitDecryption) {
                               "-iv",  "0123456789abcdef0123456789abcdef",
                               "-in",  in_path,
                               "-out", out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -109,7 +109,7 @@ TEST_F(EncTest, ExplicitDecryption) {
                               "-in",  out_path,
                               "-out", decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   RemoveFile(decrypt_path);
 }
@@ -126,8 +126,8 @@ TEST_F(EncTest, DecryptionDefaultCipher) {
                               in_path,
                               "-out",
                               out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -144,7 +144,7 @@ TEST_F(EncTest, DecryptionDefaultCipher) {
                               "-out",
                               decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   RemoveFile(decrypt_path);
 }
@@ -160,8 +160,8 @@ TEST_F(EncTest, DefaultCipher) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test encryption without -e flag (should default to encrypt)
@@ -175,8 +175,8 @@ TEST_F(EncTest, DefaultEncrypt) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // -------------------- Enc Option Usage Error Tests --------------------------
@@ -188,8 +188,8 @@ class EncOptionUsageErrorsTest : public EncTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = encTool(c_args);
-    ASSERT_FALSE(result);
+    int result = encTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 

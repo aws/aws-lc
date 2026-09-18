@@ -335,14 +335,14 @@ static const argument_t kArguments[] = {
         { "", kOptionalArgument, "" }
 };
 
-bool RehashTool(const args_list_t &args) {
+int RehashTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
     kArguments) || extra_args.size() > 1) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string directory_path;
@@ -360,7 +360,7 @@ bool RehashTool(const args_list_t &args) {
       "removes any existing symbolic links that match the regex \n" \
       "[0-9a-f]{8}.([r])?[0-9]+ in that directory. \n");
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (extra_args.empty()) { // No directory path provided on command line
@@ -379,7 +379,7 @@ bool RehashTool(const args_list_t &args) {
   if (realpath(directory_path.c_str(), resolved_path) == nullptr) {
     fprintf(stderr, "Error: Unable to resolve directory path: %s\n",
             strerror(errno));
-    return false;
+    return kToolExitFailure;
   }
   directory_path = resolved_path;
 
@@ -388,19 +388,19 @@ bool RehashTool(const args_list_t &args) {
   if (stat(directory_path.c_str(), &path_stat) != 0) {
     fprintf(stderr, "Error: Cannot access directory '%s': %s\n",
             directory_path.c_str(), strerror(errno));
-    return false;
+    return kToolExitFailure;
   }
   if (!S_ISDIR(path_stat.st_mode)) {
     fprintf(stderr, "Error: '%s' is not a directory\n",
             directory_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   // Verify write access to directory
   if (access(directory_path.c_str(), W_OK) != 0) {
     fprintf(stderr, "Error: Don't have write permission for '%s'\n",
             directory_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   regex_t regex;
@@ -408,7 +408,7 @@ bool RehashTool(const args_list_t &args) {
   if (ret) {
     regfree(&regex);
     fprintf(stderr, "Could not compile regex\n");
-    return false;
+    return kToolExitFailure;
   }
   // Process directory
   process_directory(directory_path, regex);
@@ -416,15 +416,15 @@ bool RehashTool(const args_list_t &args) {
   regfree(&regex);
   cleanup_hash_table();
 
-  return status_flag;
+  return status_flag ? kToolExitSuccess : kToolExitFailure;
 }
 
 #else
 #include <stdio.h>
 #include <stdbool.h>
 
-bool RehashTool(const args_list_t &args) {
+int RehashTool(const args_list_t &args) {
   fprintf(stderr, "RehashTool: Not implemented for windows\n");
-  return false;
+  return kToolExitFailure;
 }
 #endif

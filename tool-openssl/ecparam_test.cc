@@ -109,7 +109,8 @@ class EcparamTest : public ::testing::Test {
 TEST_F(EcparamTest, Basic) {
   args_list_t args = {"-name", "prime256v1", "-out", out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args))
+      << "Basic ecparam functionality failed";
 
   // Validate it's actually parseable EC parameters in PEM format
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -127,7 +128,8 @@ TEST_F(EcparamTest, Basic) {
 TEST_F(EcparamTest, secp256r1) {
   args_list_t args = {"-name", "secp256r1", "-out", out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args))
+      << "Basic ecparam functionality failed";
 
   // Validate it's actually parseable EC parameters in PEM format
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -144,7 +146,7 @@ TEST_F(EcparamTest, secp256r1) {
 TEST_F(EcparamTest, Noout) {
   args_list_t args = {"-name", "prime256v1", "-noout", "-out", out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -noout failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args)) << "Ecparam -noout failed";
   EXPECT_TRUE(ReadFileToString(out_path).empty())
       << "Output file should be empty with -noout";
 }
@@ -153,7 +155,7 @@ TEST_F(EcparamTest, NooutException) {
   args_list_t args = {"-name",  "prime256v1", "-genkey",
                       "-noout", "-out",       out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args)) << "Ecparam -genkey failed";
 
   // Validate it's actually a parseable EC key
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -175,7 +177,7 @@ TEST_F(EcparamTest, NooutException) {
 TEST_F(EcparamTest, Genkey) {
   args_list_t args = {"-name", "prime256v1", "-genkey", "-out", out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args)) << "Ecparam -genkey failed";
 
   // Validate it's actually a parseable EC key
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -198,7 +200,7 @@ TEST_F(EcparamTest, ConvForm) {
   args_list_t args = {"-name",      "prime256v1", "-genkey", "-conv_form",
                       "compressed", "-out",       out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -conv_form failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args)) << "Ecparam -conv_form failed";
 
   // Validate it's a parseable EC key with compressed point format
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -220,7 +222,7 @@ TEST_F(EcparamTest, Outform) {
   args_list_t args = {"-name", "prime256v1", "-outform",
                       "DER",   "-out",       out_path};
 
-  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -outform failed";
+  EXPECT_EQ(kToolExitSuccess, ecparamTool(args)) << "Ecparam -outform failed";
 
   // Validate it's actually DER format by parsing it
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
@@ -237,7 +239,7 @@ TEST_F(EcparamTest, Outform) {
 class EcparamOptionUsageErrorsTest : public ::testing::Test {
  protected:
   void TestOptionUsageErrors(const args_list_t &args) {
-    EXPECT_FALSE(ecparamTool(args));
+    EXPECT_EQ(kToolExitFailure, ecparamTool(args));
   }
 };
 

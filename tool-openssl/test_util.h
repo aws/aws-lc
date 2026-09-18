@@ -5,7 +5,11 @@
 #define TEST_UTIL_H
 
 #include <gtest/gtest.h>
+#include <openssl/base.h>
 #include <sys/stat.h>
+#if !defined(OPENSSL_WINDOWS)
+#include <sys/wait.h>
+#endif
 #include <cctype>
 #include <cstring>
 #include <fstream>
@@ -95,6 +99,20 @@ inline void RemoveFile(const char *path) {
 
 inline int ExecuteCommand(const std::string &command) {
   return system(command.c_str());
+}
+
+// ExecuteCommandExitCode runs |command| and returns the process exit code, or
+// -1 if the command could not be run or did not exit normally.
+inline int ExecuteCommandExitCode(const std::string &command) {
+  int status = system(command.c_str());
+#if defined(OPENSSL_WINDOWS)
+  return status;
+#else
+  if (status == -1 || !WIFEXITED(status)) {
+    return -1;
+  }
+  return WEXITSTATUS(status);
+#endif
 }
 
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin)
