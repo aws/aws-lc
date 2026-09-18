@@ -72,6 +72,20 @@ const char kDefaultGroups[] =
     "*X25519:secp256r1:X448:secp521r1:secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:"
     "ffdhe6144:ffdhe8192";
 
+// The two list directives of Amazon Linux 2023's DEFAULT:PQ, verbatim. It is the
+// stock policy that exercises the whole OpenSSL 3.5 list syntax: two modifiers on
+// one group, a '/' between preference tuples, modifiers on signature algorithms,
+// and each post-quantum algorithm spelled twice.
+const char kPQSubpolicySigalgs[] =
+    "?mldsa44:?mldsa65:?mldsa87:ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:"
+    "ed448:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:"
+    "rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:"
+    "RSA+SHA384:RSA+SHA512:ECDSA+SHA224:RSA+SHA224";
+const char kPQSubpolicyGroups[] =
+    "*?X25519MLKEM768:?x25519_mlkem768:?SecP256r1MLKEM768:?p256_mlkem768:"
+    "?SecP384r1MLKEM1024:?p384_mlkem1024/*X25519:secp256r1:X448:secp521r1:"
+    "secp384r1:ffdhe2048:ffdhe3072:ffdhe4096:ffdhe6144:ffdhe8192";
+
 // A path no policy file will ever occupy, used both to make seeding a no-op and
 // as the subject of MissingFileIsIgnored.
 const char kNoSuchPath[] = "/nonexistent/aws-lc/crypto-policy/does-not-exist";
@@ -115,51 +129,24 @@ bool Contains(const Array<uint16_t> &haystack, uint16_t needle) {
   return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
 }
 
-// AWS-LC's post-quantum groups and signature algorithms. Spelled out here rather
-// than read from the library so this file needs no new export; a PQ algorithm
-// added to AWS-LC and missing from these lists shows up as an unexpected entry in
-// the assertions below, which is the failure to want.
-const uint16_t kPQGroups[] = {
-    SSL_GROUP_MLKEM512,        SSL_GROUP_MLKEM768,
-    SSL_GROUP_MLKEM1024,       SSL_GROUP_SECP256R1_MLKEM768,
-    SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP384R1_MLKEM1024,
-};
-const uint16_t kPQSigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
-                               SSL_SIGN_MLDSA87};
-
-// WithoutPQ copies |in| out, dropping the entries in |pq|, so a test can assert
-// the classical part of a seeded list exactly without also fixing whether
-// post-quantum entries are in it. Whether they are is a policy question this
-// layer does not answer.
-std::vector<uint16_t> WithoutPQ(const Array<uint16_t> &in,
-                                Span<const uint16_t> pq) {
-  std::vector<uint16_t> out;
-  for (uint16_t id : in) {
-    if (std::find(pq.begin(), pq.end(), id) == pq.end()) {
-      out.push_back(id);
-    }
-  }
-  return out;
-}
-
-// PolicyRequests reports whether the ':'-separated |value| asks for |name|. A
-// '*' or '?' modifier still asks for the group; a '-' removes it, so the token
-// is compared with the prefix left on and does not match.
+// PolicyRequests reports whether |value|, whose entries are separated by ':' or
+// by the tuple boundary '/', asks for |name|. Any number of '*' and '?' modifiers
+// still ask for the group; a '-' removes it, so the token is compared with the
+// prefix left on and does not match.
 bool PolicyRequests(const char *value, const char *name) {
   for (const char *tok = value;;) {
-    const char *end = strchr(tok, ':');
-    size_t len = end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
-    if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+    size_t len = strcspn(tok, ":/");
+    while (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
       tok++;
       len--;
     }
     if (len == strlen(name) && strncmp(tok, name, len) == 0) {
       return true;
     }
-    if (end == nullptr) {
+    if (tok[len] == '\0') {
       return false;
     }
-    tok = end + 1;
+    tok += len + 1;
   }
 }
 
@@ -258,6 +245,16 @@ TEST_F(CryptoPolicyParseTest, FullPolicy) {
   EXPECT_STREQ("TLSv1.3", cfg.tls_max);
   EXPECT_STREQ("DTLSv1.2", cfg.dtls_min);
   EXPECT_STREQ("DTLSv1.2", cfg.dtls_max);
+  EXPECT_STREQ("", cfg.post_quantum);
+}
+
+TEST_F(CryptoPolicyParseTest, PostQuantumDirective) {
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init("AWSLC.PostQuantum = off\n"));
+
+  CryptoPolicyConfig cfg = {};
+  ASSERT_TRUE(ssl_crypto_policy_parse_file(file.path().c_str(), &cfg));
+  EXPECT_STREQ("off", cfg.post_quantum);
 }
 
 TEST_F(CryptoPolicyParseTest, MissingFileFails) {
@@ -503,18 +500,25 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   EXPECT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
 
   // Groups and SignatureAlgorithms took effect, keeping the policy's order and
-  // dropping only what AWS-LC cannot do.
-  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
-            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
-                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  // dropping only what AWS-LC cannot do. This policy says nothing about
+  // post-quantum algorithms, so AWS-LC's own are kept: the hybrids ahead of the
+  // classical groups and ML-DSA after the classical algorithms, as in the
+  // built-in defaults.
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{
+                SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
+                SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
+                SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
   const std::vector<uint16_t> expected_sigalgs = {
       SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_ECDSA_SECP384R1_SHA384,
       SSL_SIGN_ECDSA_SECP521R1_SHA512, SSL_SIGN_ED25519,
       SSL_SIGN_RSA_PSS_RSAE_SHA256,    SSL_SIGN_RSA_PSS_RSAE_SHA384,
       SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA256,
-      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512};
-  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs), expected_sigalgs);
-  EXPECT_EQ(WithoutPQ(ctx->cert->sigalgs, kPQSigalgs), expected_sigalgs);
+      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512,
+      SSL_SIGN_MLDSA44,                SSL_SIGN_MLDSA65,
+      SSL_SIGN_MLDSA87};
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
 
   // A valid policy leaves the error queue clean.
   EXPECT_EQ(ERR_peek_error(), 0u);
@@ -542,18 +546,23 @@ TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
 
   // P-256 is present, so the crypto-policies spelling "secp256r1" was translated
   // rather than dropped.
-  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
-            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
-                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
-  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs).size(), 10u);
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{
+                SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
+                SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
+                SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ctx->verify_sigalgs.size(), 13u);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
 // The OpenSSL 3.5 group-list modifiers. '*' and '?' decorate a group that is
 // still wanted, so keeping the prefix would drop it; '-' excludes one.
 TEST_F(CryptoPolicyTest, GroupListModifiers) {
+  // Post-quantum off so the assertion is the policy's own list, without the
+  // hybrids the defaults would prepend.
   const std::string content =
-      "Groups = *X25519:?secp384r1:-secp521r1:secp256r1\n";
+      "Groups = *X25519:?secp384r1:-secp521r1:secp256r1\n"
+      "AWSLC.PostQuantum = off\n";
   TemporaryFile policy;
   ASSERT_TRUE(policy.Init(content));
 
@@ -562,9 +571,87 @@ TEST_F(CryptoPolicyTest, GroupListModifiers) {
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);
 
-  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP384R1,
                                    SSL_GROUP_SECP256R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A group can carry both modifiers at once, and the entry after a tuple boundary
+// is an entry like any other. Stripping one prefix or splitting on ':' alone
+// drops the group the policy asked for first.
+TEST_F(CryptoPolicyTest, StackedModifiersAndTupleSeparator) {
+  // Post-quantum off so the assertion is the policy's own list, without the
+  // hybrids the defaults would prepend.
+  const std::string content =
+      "Groups = *?secp384r1:?secp521r1/*X25519:secp256r1\n"
+      "AWSLC.PostQuantum = off\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_SECP384R1, SSL_GROUP_SECP521R1,
+                                   SSL_GROUP_X25519, SSL_GROUP_SECP256R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Signature algorithms carry the '?' modifier too. Left on, it drops the
+// algorithm, and for ML-DSA the merge then appends what the policy asked for
+// first, inverting the operator's order.
+TEST_F(CryptoPolicyTest, SigalgListModifiers) {
+  const std::string content =
+      "SignatureAlgorithms = ?mldsa44:ECDSA+SHA256:?ed25519\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  const std::vector<uint16_t> expected = {SSL_SIGN_MLDSA44,
+                                          SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                                          SSL_SIGN_ED25519};
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected);
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Amazon Linux 2023's DEFAULT:PQ as shipped. The policy names post-quantum
+// algorithms, so it is authoritative over them: the hybrids and ML-DSA appear
+// where it put them, not where the merge would.
+TEST_F(CryptoPolicyTest, PQSubpolicyGroupsAndSigalgs) {
+  const std::string content = std::string("Groups = ") + kPQSubpolicyGroups +
+                              "\nSignatureAlgorithms = " + kPQSubpolicySigalgs +
+                              "\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{
+                SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
+                SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
+                SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  const std::vector<uint16_t> expected_sigalgs = {
+      SSL_SIGN_MLDSA44,                SSL_SIGN_MLDSA65,
+      SSL_SIGN_MLDSA87,                SSL_SIGN_ECDSA_SECP256R1_SHA256,
+      SSL_SIGN_ECDSA_SECP384R1_SHA384, SSL_SIGN_ECDSA_SECP521R1_SHA512,
+      SSL_SIGN_ED25519,                SSL_SIGN_RSA_PSS_RSAE_SHA256,
+      SSL_SIGN_RSA_PSS_RSAE_SHA384,    SSL_SIGN_RSA_PSS_RSAE_SHA512,
+      SSL_SIGN_RSA_PKCS1_SHA256,       SSL_SIGN_RSA_PKCS1_SHA384,
+      SSL_SIGN_RSA_PKCS1_SHA512};
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -609,8 +696,9 @@ TEST_F(CryptoPolicyTest, RemovalOfUnknownGroupKeepsDefaults) {
 }
 
 // A directive naming nothing AWS-LC implements is dropped, leaving the built-in
-// defaults in force. An empty configured list is how AWS-LC spells "use the
-// defaults", so this locks the contract rather than distinguishing two states.
+// defaults in force. In particular no post-quantum algorithm is merged into an
+// otherwise empty result, which would leave the context offering ML-DSA and
+// nothing else.
 TEST_F(CryptoPolicyTest, WhollyUnsupportedDirectivesKeepDefaults) {
   const std::string content =
       "Groups = X448:ffdhe2048:ffdhe3072\n"
@@ -642,9 +730,222 @@ TEST_F(CryptoPolicyTest, RepeatedGroupSpellingsCollapse) {
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);
 
-  EXPECT_EQ(
-      WithoutPQ(ctx->supported_group_list, kPQGroups),
-      (std::vector<uint16_t>{SSL_GROUP_SECP256R1, SSL_GROUP_X25519}));
+  // The P-384 hybrid is not restored: the policy dropped P-384, and restoring it
+  // would put P-384 key exchange back under another name.
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519_MLKEM768,
+                                   SSL_GROUP_SECP256R1_MLKEM768,
+                                   SSL_GROUP_SECP256R1, SSL_GROUP_X25519}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Every stock crypto-policies value predates ML-KEM and ML-DSA and so names
+// neither. Since both setters replace AWS-LC's list rather than intersecting with
+// it, such a policy would otherwise strip post-quantum support from every
+// context that seeds from it.
+TEST_F(CryptoPolicyTest, PolicySilentOnPQKeepsPQDefaults) {
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(kDefaultPolicy));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  for (uint16_t group :
+       {SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
+        SSL_GROUP_SECP384R1_MLKEM1024}) {
+    EXPECT_TRUE(Contains(ctx->supported_group_list, group)) << group;
+  }
+  for (uint16_t sigalg :
+       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
+    EXPECT_TRUE(Contains(ctx->cert->sigalgs, sigalg)) << sigalg;
+    EXPECT_TRUE(Contains(ctx->verify_sigalgs, sigalg)) << sigalg;
+  }
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The only way to turn post-quantum off through the policy. The crypto-policies
+// directives are plain preference lists with no syntax for excluding an
+// algorithm, so silence cannot mean "no".
+TEST_F(CryptoPolicyTest, PostQuantumOffDropsPQDefaults) {
+  const std::string content =
+      std::string(kDefaultPolicy) + "AWSLC.PostQuantum = off\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
+  for (uint16_t sigalg :
+       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
+    EXPECT_FALSE(Contains(ctx->cert->sigalgs, sigalg)) << sigalg;
+  }
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Any other value, including a misspelling, leaves the defaults in force. Turning
+// post-quantum off is the surprising outcome, so it takes the exact spelling.
+TEST_F(CryptoPolicyTest, PostQuantumOtherValuesKeepPQDefaults) {
+  for (const char *value : {"on", "ON", "yes", "0", "false", ""}) {
+    SCOPED_TRACE(value);
+    const std::string content = std::string(kDefaultPolicy) +
+                               "AWSLC.PostQuantum = " + value + "\n";
+    TemporaryFile policy;
+    ASSERT_TRUE(policy.Init(content));
+
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+    ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                                /*is_dtls=*/false, /*version_locked=*/false);
+
+    EXPECT_TRUE(
+        Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
+    EXPECT_TRUE(Contains(ctx->cert->sigalgs, SSL_SIGN_MLDSA65));
+  }
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Turning post-quantum off stops the merge; it takes nothing out. A value that
+// only removes is applied to the default list either way, so the post-quantum
+// groups it says nothing about stay, as they would with no Groups directive.
+TEST_F(CryptoPolicyTest, PostQuantumOffKeepsRemovalOnlyGroupsWhole) {
+  const std::string content =
+      "AWSLC.PostQuantum = off\n"
+      "Groups = -SecP256r1MLKEM768\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_FALSE(
+      Contains(ctx->supported_group_list, SSL_GROUP_SECP256R1_MLKEM768));
+  EXPECT_TRUE(Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// "off" is matched without regard to case, as config-file tokens do not carry it
+// reliably.
+TEST_F(CryptoPolicyTest, PostQuantumOffIsCaseInsensitive) {
+  const std::string content =
+      std::string(kDefaultPolicy) + "AWSLC.PostQuantum = OFF\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_FALSE(Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
+  EXPECT_FALSE(Contains(ctx->cert->sigalgs, SSL_SIGN_MLDSA65));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Only the hybrids whose classical half the policy kept come back. An operator
+// who dropped a curve did not ask for it back inside a hybrid.
+TEST_F(CryptoPolicyTest, HybridNeedsItsClassicalHalf) {
+  const std::string content = "Groups = secp384r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_SECP384R1_MLKEM1024,
+                                   SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A policy that names one post-quantum group has an opinion about them, so the
+// others are not added back.
+TEST_F(CryptoPolicyTest, PolicyNamingPQGroupIsAuthoritative) {
+  const std::string content =
+      "Groups = X25519MLKEM768:X25519:secp256r1:secp384r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519_MLKEM768, SSL_GROUP_X25519,
+                                   SSL_GROUP_SECP256R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Removing a hybrid with the '-' modifier is an opinion about it too, so it
+// must not come back with the defaults. The other hybrids do.
+TEST_F(CryptoPolicyTest, PolicyRemovingPQGroupKeepsItOut) {
+  const std::string content =
+      "Groups = X25519:secp256r1:secp384r1:-X25519MLKEM768\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_FALSE(Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
+  EXPECT_TRUE(
+      Contains(ctx->supported_group_list, SSL_GROUP_SECP256R1_MLKEM768));
+  EXPECT_TRUE(Contains(ctx->supported_group_list, SSL_GROUP_X25519));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+TEST_F(CryptoPolicyTest, PolicyNamingMLDSAIsAuthoritative) {
+  const std::string content = "SignatureAlgorithms = mldsa65:ECDSA+SHA256\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
+            (std::vector<uint16_t>{SSL_SIGN_MLDSA65,
+                                   SSL_SIGN_ECDSA_SECP256R1_SHA256}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The crypto-policies framework hyphenates the post-quantum names and does not
+// fix their case, so these spellings must resolve for a PQ-aware policy to be
+// recognized as one at all.
+TEST_F(CryptoPolicyTest, CryptoPoliciesPQSpellingsResolve) {
+  const std::string content =
+      "Groups = X25519-MLKEM768:SECP256R1-MLKEM768:secp384r1-mlkem1024\n"
+      "SignatureAlgorithms = ML-DSA-44:ml-dsa-65:ML-DSA-87\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519_MLKEM768,
+                                   SSL_GROUP_SECP256R1_MLKEM768,
+                                   SSL_GROUP_SECP384R1_MLKEM1024}));
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
+            (std::vector<uint16_t>{SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                                   SSL_SIGN_MLDSA87}));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 

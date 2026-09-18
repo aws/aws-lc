@@ -60,11 +60,26 @@ as `SSLv3`, keeps the built-in floor.
 
 `Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
 implements, in the order the policy gives them, and a directive naming nothing
-AWS-LC implements is dropped. In `Groups`, the OpenSSL modifiers `*` and `?` are
-stripped from the group they mark and `-` drops it; a value that only removes
-groups is applied to AWS-LC's default list. See
-[BUILDING.md](../../BUILDING.md) for the build flag and the
-`AWSLC_CRYPTO_POLICY_FILE` override.
+AWS-LC implements is dropped. The OpenSSL 3.5 list modifiers `*` and `?` are
+stripped from the entry they mark and `-` drops it, and `/` bounds an entry as `:`
+does; a `Groups` value that only removes groups is applied to AWS-LC's default
+list.
+
+AWS-LC's post-quantum groups (the ML-KEM hybrids) and signature algorithms
+(ML-DSA) are kept unless the policy speaks about post-quantum algorithms, which
+Amazon Linux 2023's `DEFAULT` does not. Both setters replace AWS-LC's default list
+rather than intersect with it, so seeding would otherwise strip post-quantum
+support from every context. A policy that names any post-quantum algorithm is
+authoritative and nothing is added back; a hybrid comes back only when the policy
+keeps its classical half, and one the policy removes with `-` stays out.
+`AWSLC.PostQuantum = off`, a directive of AWS-LC's own, waives the defaults
+entirely, since the directives the framework writes are preference lists with no
+syntax for excluding an algorithm.
+
+See [BUILDING.md](../../BUILDING.md) for the build flag and the
+`AWSLC_CRYPTO_POLICY_FILE` override, and
+[docs/crypto-policies.md](../crypto-policies.md) for how this compares with the
+`crypto-policies` framework's own expectations and with OpenSSL on the same host.
 
 
 <table border=0 cellspacing=0 cellpadding=0
