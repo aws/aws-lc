@@ -842,6 +842,10 @@ ssl_session_st::ssl_session_st(const SSL_X509_METHOD *method)
 ssl_session_st::~ssl_session_st() {
   CRYPTO_free_ex_data(&g_ex_data_class, this, &ex_data);
   x509_method->session_clear(this);
+  // Zeroize key material so it does not linger in freed memory. The master
+  // secret (TLS 1.2 and below) or resumption PSK (TLS 1.3) lives in |secret|,
+  // and every |SSL_SESSION_dup| copy is scrubbed by this same path.
+  OPENSSL_cleanse(secret, sizeof(secret));
 }
 
 SSL_SESSION *SSL_SESSION_new(const SSL_CTX *ctx) {

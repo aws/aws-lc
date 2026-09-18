@@ -1783,4 +1783,73 @@ TEST_P(InvalidTransferEncoding, FailsDeserialization) {
   ASSERT_FALSE(ssl);
 }
 
+// Key material must be zeroized when the object holding it is released, so that
+// it does not stay readable in freed heap memory. See CWE-214. The objects
+// below are constructed in caller-owned storage, so their bytes can still be
+// inspected after the destructor has run. |ssl_session_st| is not covered
+// here because its destructor is private to |RefCounted|.
+namespace {
+
+size_t OffsetIn(const uint8_t *storage, const void *field) {
+  return reinterpret_cast<uintptr_t>(field) -
+         reinterpret_cast<uintptr_t>(storage);
+}
+
+void ExpectZeroized(const uint8_t *storage, size_t offset, size_t len) {
+  std::vector<uint8_t> zeros(len, 0);
+  EXPECT_EQ(Bytes(storage + offset, len), Bytes(zeros));
+}
+
+}  // namespace
+
+TEST(SSLZeroizeTest, HandshakeSecrets) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  alignas(SSL_HANDSHAKE) uint8_t storage[sizeof(SSL_HANDSHAKE)];
+  SSL_HANDSHAKE *hs = new (storage) SSL_HANDSHAKE(ssl.get());
+  hs->ResizeSecrets(SSL_MAX_MD_SIZE);
+  std::vector<Span<uint8_t>> secrets = {
+      hs->secret(),
+      hs->early_traffic_secret(),
+      hs->client_handshake_secret(),
+      hs->server_handshake_secret(),
+      hs->client_traffic_secret_0(),
+      hs->server_traffic_secret_0(),
+      hs->expected_client_finished(),
+  };
+  std::vector<size_t> offsets;
+  for (Span<uint8_t> secret : secrets) {
+    OPENSSL_memset(secret.data(), 0xab, secret.size());
+    offsets.push_back(OffsetIn(storage, secret.data()));
+  }
+  hs->~SSL_HANDSHAKE();
+
+  for (size_t offset : offsets) {
+    ExpectZeroized(storage, offset, SSL_MAX_MD_SIZE);
+  }
+}
+
+TEST(SSLZeroizeTest, TrafficSecrets) {
+  alignas(SSL3_STATE) uint8_t storage[sizeof(SSL3_STATE)];
+  SSL3_STATE *s3 = new (storage) SSL3_STATE();
+  uint8_t *fields[] = {
+      s3->write_traffic_secret,
+      s3->read_traffic_secret,
+      s3->exporter_secret,
+  };
+  std::vector<size_t> offsets;
+  for (uint8_t *field : fields) {
+    OPENSSL_memset(field, 0xab, SSL_MAX_MD_SIZE);
+    offsets.push_back(OffsetIn(storage, field));
+  }
+  s3->~SSL3_STATE();
+
+  for (size_t offset : offsets) {
+    ExpectZeroized(storage, offset, SSL_MAX_MD_SIZE);
+  }
+}
+
 BSSL_NAMESPACE_END
