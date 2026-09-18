@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -30,10 +31,12 @@ namespace {
 
 // The Amazon Linux 2023 / Fedora DEFAULT policy, copied byte for byte from
 // /usr/share/crypto-policies/DEFAULT/opensslcnf.txt with a comment line added.
-// Trimming it to what AWS-LC implements would defeat its purpose: the
-// Ciphersuites value names a suite AWS-LC does not have, and the Groups value
-// carries crypto-policies' '*' key-share marker, so a tidier fixture would not
-// exercise the code that has to tolerate either.
+// Trimming it to what AWS-LC implements would defeat its purpose: Ciphersuites
+// names a suite AWS-LC lacks, Groups carries crypto-policies' '*' key-share
+// marker, and Groups and SignatureAlgorithms both name algorithms AWS-LC does
+// not implement (X448 and the FFDHE groups; Ed448, the RSA-PSS-PSS algorithms,
+// the SHA-224 pairs). A tidier fixture would exercise none of the filtering
+// those directives need to take effect at all.
 const char kDefaultPolicy[] =
     "# crypto-policies OpenSSL back-end (test fixture)\n"
     "CipherString = @SECLEVEL=2:kEECDH:kRSA:kEDH:kPSK:kDHEPSK:kECDHEPSK:"
@@ -101,6 +104,63 @@ std::vector<std::string> CipherNames(const SSL_CTX *ctx) {
     names.push_back(SSL_CIPHER_get_name(sk_SSL_CIPHER_value(ciphers, i)));
   }
   return names;
+}
+
+// ToVector copies an |Array| out so gtest can print and compare it.
+std::vector<uint16_t> ToVector(const Array<uint16_t> &in) {
+  return std::vector<uint16_t>(in.begin(), in.end());
+}
+
+bool Contains(const Array<uint16_t> &haystack, uint16_t needle) {
+  return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+}
+
+// AWS-LC's post-quantum groups and signature algorithms. Spelled out here rather
+// than read from the library so this file needs no new export; a PQ algorithm
+// added to AWS-LC and missing from these lists shows up as an unexpected entry in
+// the assertions below, which is the failure to want.
+const uint16_t kPQGroups[] = {
+    SSL_GROUP_MLKEM512,        SSL_GROUP_MLKEM768,
+    SSL_GROUP_MLKEM1024,       SSL_GROUP_SECP256R1_MLKEM768,
+    SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP384R1_MLKEM1024,
+};
+const uint16_t kPQSigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                               SSL_SIGN_MLDSA87};
+
+// WithoutPQ copies |in| out, dropping the entries in |pq|, so a test can assert
+// the classical part of a seeded list exactly without also fixing whether
+// post-quantum entries are in it. Whether they are is a policy question this
+// layer does not answer.
+std::vector<uint16_t> WithoutPQ(const Array<uint16_t> &in,
+                                Span<const uint16_t> pq) {
+  std::vector<uint16_t> out;
+  for (uint16_t id : in) {
+    if (std::find(pq.begin(), pq.end(), id) == pq.end()) {
+      out.push_back(id);
+    }
+  }
+  return out;
+}
+
+// PolicyRequests reports whether the ':'-separated |value| asks for |name|. A
+// '*' or '?' modifier still asks for the group; a '-' removes it, so the token
+// is compared with the prefix left on and does not match.
+bool PolicyRequests(const char *value, const char *name) {
+  for (const char *tok = value;;) {
+    const char *end = strchr(tok, ':');
+    size_t len = end != nullptr ? static_cast<size_t>(end - tok) : strlen(tok);
+    if (len > 0 && (tok[0] == '*' || tok[0] == '?')) {
+      tok++;
+      len--;
+    }
+    if (len == strlen(name) && strncmp(tok, name, len) == 0) {
+      return true;
+    }
+    if (end == nullptr) {
+      return false;
+    }
+    tok = end + 1;
+  }
 }
 
 bool CtxHasCipherNamed(const SSL_CTX *ctx, const char *name) {
@@ -442,7 +502,149 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), TLS1_3_VERSION);
   EXPECT_GT(sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())), 0u);
 
+  // Groups and SignatureAlgorithms took effect, keeping the policy's order and
+  // dropping only what AWS-LC cannot do.
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  const std::vector<uint16_t> expected_sigalgs = {
+      SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_ECDSA_SECP384R1_SHA384,
+      SSL_SIGN_ECDSA_SECP521R1_SHA512, SSL_SIGN_ED25519,
+      SSL_SIGN_RSA_PSS_RSAE_SHA256,    SSL_SIGN_RSA_PSS_RSAE_SHA384,
+      SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA256,
+      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512};
+  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs), expected_sigalgs);
+  EXPECT_EQ(WithoutPQ(ctx->cert->sigalgs, kPQSigalgs), expected_sigalgs);
+
   // A valid policy leaves the error queue clean.
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The two directives that need filtering. Without it a stock policy value is
+// rejected whole and the directive silently does nothing, which is what the
+// negative controls here assert about the unfiltered value.
+TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
+  bssl::UniquePtr<SSL_CTX> raw(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(raw);
+  EXPECT_FALSE(SSL_CTX_set1_groups_list(raw.get(), kDefaultGroups));
+  EXPECT_FALSE(SSL_CTX_set1_sigalgs_list(raw.get(), kDefaultSigalgs));
+  ERR_clear_error();
+
+  const std::string content = std::string("Groups = ") + kDefaultGroups + "\n" +
+                              "SignatureAlgorithms = " + kDefaultSigalgs + "\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // P-256 is present, so the crypto-policies spelling "secp256r1" was translated
+  // rather than dropped.
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
+                                   SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
+  EXPECT_EQ(WithoutPQ(ctx->verify_sigalgs, kPQSigalgs).size(), 10u);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// The OpenSSL 3.5 group-list modifiers. '*' and '?' decorate a group that is
+// still wanted, so keeping the prefix would drop it; '-' excludes one.
+TEST_F(CryptoPolicyTest, GroupListModifiers) {
+  const std::string content =
+      "Groups = *X25519:?secp384r1:-secp521r1:secp256r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(WithoutPQ(ctx->supported_group_list, kPQGroups),
+            (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP384R1,
+                                   SSL_GROUP_SECP256R1}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A value that only removes names no group to keep, so the list it removes from
+// is the built-in default. Dropping the directive instead would hand back the one
+// group the operator asked to be rid of.
+TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
+  const std::string content = "Groups = -X25519\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  std::vector<uint16_t> expected;
+  for (uint16_t group : tls1_get_default_grouplist()) {
+    if (group != SSL_GROUP_X25519) {
+      expected.push_back(group);
+    }
+  }
+  ASSERT_FALSE(expected.empty());
+  EXPECT_EQ(ToVector(ctx->supported_group_list), expected);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A removal AWS-LC cannot resolve leaves the defaults implicit, since spelling
+// them out would freeze today's list into every context the policy touches.
+TEST_F(CryptoPolicyTest, RemovalOfUnknownGroupKeepsDefaults) {
+  const std::string content = "Groups = -ffdhe2048\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(ctx->supported_group_list.empty());
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A directive naming nothing AWS-LC implements is dropped, leaving the built-in
+// defaults in force. An empty configured list is how AWS-LC spells "use the
+// defaults", so this locks the contract rather than distinguishing two states.
+TEST_F(CryptoPolicyTest, WhollyUnsupportedDirectivesKeepDefaults) {
+  const std::string content =
+      "Groups = X448:ffdhe2048:ffdhe3072\n"
+      "SignatureAlgorithms = ed448:ECDSA+SHA224:rsa_pss_pss_sha256\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(ctx->supported_group_list.empty());
+  EXPECT_TRUE(ctx->cert->sigalgs.empty());
+  EXPECT_TRUE(ctx->verify_sigalgs.empty());
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Two spellings of one group collapse to a single entry. |SSL_CTX_set1_group_ids|
+// rejects a list naming the same ID twice, so without this the whole directive
+// would be dropped.
+TEST_F(CryptoPolicyTest, RepeatedGroupSpellingsCollapse) {
+  const std::string content = "Groups = secp256r1:prime256v1:P-256:X25519\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(
+      WithoutPQ(ctx->supported_group_list, kPQGroups),
+      (std::vector<uint16_t>{SSL_GROUP_SECP256R1, SSL_GROUP_X25519}));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -1170,6 +1372,49 @@ TEST_F(CryptoPolicySystemTest, SeedsVersionBoundsAndCiphers) {
             SSL_CTX_get_min_proto_version(ref.get()));
   EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()),
             SSL_CTX_get_max_proto_version(ref.get()));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A fixture is written to be resolvable, so nothing above notices when
+// crypto-policies spells a group in a way AWS-LC cannot read. Every group and
+// signature algorithm the system policy asks for that AWS-LC implements must
+// survive into the seeded context.
+TEST_F(CryptoPolicySystemTest, SeedsGroupsAndSigalgs) {
+  static const struct {
+    const char *name;
+    uint16_t id;
+  } kGroups[] = {
+      {"X25519", SSL_GROUP_X25519},
+      {"secp256r1", SSL_GROUP_SECP256R1},
+      {"secp384r1", SSL_GROUP_SECP384R1},
+      {"secp521r1", SSL_GROUP_SECP521R1},
+  };
+  static const struct {
+    const char *name;
+    uint16_t id;
+  } kSigalgs[] = {
+      {"ECDSA+SHA256", SSL_SIGN_ECDSA_SECP256R1_SHA256},
+      {"ECDSA+SHA384", SSL_SIGN_ECDSA_SECP384R1_SHA384},
+      {"ECDSA+SHA512", SSL_SIGN_ECDSA_SECP521R1_SHA512},
+      {"ed25519", SSL_SIGN_ED25519},
+      {"rsa_pss_rsae_sha256", SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      {"RSA+SHA256", SSL_SIGN_RSA_PKCS1_SHA256},
+  };
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  for (const auto &group : kGroups) {
+    if (PolicyRequests(cfg_.groups, group.name)) {
+      EXPECT_TRUE(Contains(ctx->supported_group_list, group.id)) << group.name;
+    }
+  }
+  for (const auto &sigalg : kSigalgs) {
+    if (PolicyRequests(cfg_.sigalgs, sigalg.name)) {
+      EXPECT_TRUE(Contains(ctx->verify_sigalgs, sigalg.id)) << sigalg.name;
+      EXPECT_TRUE(Contains(ctx->cert->sigalgs, sigalg.id)) << sigalg.name;
+    }
+  }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
