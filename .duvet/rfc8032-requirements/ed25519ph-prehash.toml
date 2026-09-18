@@ -1,0 +1,12 @@
+target = "https://www.rfc-editor.org/rfc/rfc8032#section-5.1"
+
+# Ed25519ph (HashEdDSA) pre-hash behavior. This is descriptive prose in the
+# RFC, not an RFC-2119 keyword statement, so `duvet extract` does not surface
+# it — we pin it by hand because getting the pre-hash wrong (double-hashing,
+# or hashing an already-digested input) produces signatures no compliant
+# verifier accepts. aws-lc covers it with ED25519ph_sign and the §7.3 KATs.
+[[spec]]
+level = "MUST"
+quote = '''
+For Ed25519ph, phflag=1 and PH is SHA512 instead.
+'''
