@@ -1445,7 +1445,7 @@ TEST_P(WycheproofKEMTest, DecapsNoSeed) {
   std::string test_path =
       std::string(kWycheproofV1Path) + GetParam().decaps_noseed_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
-    std::vector<uint8_t> dk, ciphertext;
+    std::vector<uint8_t> dk, ciphertext, expected_k;
     std::string param_set;
 
     ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
@@ -1453,6 +1453,14 @@ TEST_P(WycheproofKEMTest, DecapsNoSeed) {
 
     ASSERT_TRUE(t->GetBytes(&dk, "dk"));
     ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
+    // "K" (the expected shared secret) is only present on valid cases.
+    bool has_k = t->HasAttribute("K");
+    if (has_k) {
+      ASSERT_TRUE(t->GetBytes(&expected_k, "K"));
+    }
+    // "ek" (the encapsulation key) is not needed to decapsulate; the raw
+    // decapsulation key "dk" is self-contained.
+    t->IgnoreAttribute("ek");
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -1495,6 +1503,10 @@ TEST_P(WycheproofKEMTest, DecapsNoSeed) {
     if (result.IsValid()) {
       EXPECT_TRUE(decaps_result)
           << "Expected decapsulation to succeed for valid test case";
+      if (has_k) {
+        EXPECT_EQ(Bytes(shared_secret.data(), shared_secret_len),
+                  Bytes(expected_k));
+      }
     } else {
       EXPECT_FALSE(decaps_result)
           << "Expected decapsulation to fail for flags: "

@@ -2861,14 +2861,12 @@ TEST_P(WycheproofMLDSATest, Verify) {
     // objects
     // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf#algorithm.2
     std::vector<uint8_t> msg_ctx;
-    std::string flags;
 
     ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
     ASSERT_TRUE(t->GetInstructionBytes(&pk_der, "publicKeyDer"));
 
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     ASSERT_TRUE(t->GetBytes(&sig, "sig"));
-    ASSERT_TRUE(t->GetAttribute(&flags, "flags"));
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -2917,15 +2915,32 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     std::vector<uint8_t> msg, pk, sk_pkcs8, sk_seed, expected_sig;
     std::vector<uint8_t> msg_ctx;
 
-    ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    // publicKey is optional - it's omitted for some invalid-key test groups,
+    // and this test derives keys from the private seed/pkcs8 regardless.
+    if (t->HasInstruction("publicKey")) {
+      ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    }
     // privateKeyPkcs8 is optional - some test groups only have privateSeed
     bool has_pkcs8 = t->HasInstruction("privateKeyPkcs8");
     if (has_pkcs8) {
       ASSERT_TRUE(t->GetInstructionBytes(&sk_pkcs8, "privateKeyPkcs8"));
     }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_seed, "privateSeed"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
+    // "rnd" (the signing randomness) is not consumed: this test checks that
+    // signing succeeds/fails, not that it reproduces a specific signature.
+    t->IgnoreAttribute("rnd");
+    // Some cases carry only "mu" (the pre-hashed message representative) with no
+    // "msg"; these are internal KATs that exercise signing from mu directly,
+    // which this message-based EVP_DigestSign path cannot drive. Skip them.
+    if (!t->HasAttribute("msg")) {
+      t->IgnoreAttribute("mu");
+      t->IgnoreAttribute("flags");
+      t->IgnoreAttribute("result");
+      return;
+    }
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    t->IgnoreAttribute("mu");
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -2945,10 +2960,11 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
       sec_pkey_from_der.reset(EVP_parse_private_key(&cbs));
     }
 
-    bool expect_invalid_public_key =
+    bool expect_invalid_key =
         (!result.IsValid() && (result.HasFlag("IncorrectPublicKeyLength") ||
+                               result.HasFlag("IncorrectPrivateKeyLength") ||
                                result.HasFlag("InvalidPrivateKey")));
-    if (expect_invalid_public_key) {
+    if (expect_invalid_key) {
       if (has_pkcs8) {
         EXPECT_FALSE(sec_pkey_from_der.get());
       }
@@ -2986,8 +3002,21 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
       ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
     }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_expanded, "privateKey"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
+    // "rnd" (the signing randomness) is not consumed: this test checks that
+    // signing succeeds/fails, not that it reproduces a specific signature.
+    t->IgnoreAttribute("rnd");
+    // Some cases carry only "mu" (the pre-hashed message representative) with no
+    // "msg"; these are internal KATs that exercise signing from mu directly,
+    // which this message-based EVP_DigestSign path cannot drive. Skip them.
+    if (!t->HasAttribute("msg")) {
+      t->IgnoreAttribute("mu");
+      t->IgnoreAttribute("flags");
+      t->IgnoreAttribute("result");
+      return;
+    }
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    t->IgnoreAttribute("mu");
 
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
