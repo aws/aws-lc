@@ -150,6 +150,8 @@ if(BUILD_TESTING)
         tool_util.cc
         verify.cc
         verify_test.cc
+        version.cc
+        version_test.cc
         x509.cc
         x509_test.cc
     )

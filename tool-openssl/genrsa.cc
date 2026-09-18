@@ -107,7 +107,7 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
   return bio;
 }
 
-bool genrsaTool(const args_list_t &args) {
+int genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args{};
   std::string out_path;
@@ -159,7 +159,7 @@ bool genrsaTool(const args_list_t &args) {
       goto err;
     }
     DisplayHelp(bio.get());
-    return true;  // Help display is a successful exit
+    return kToolExitSuccess;  // Help display is a successful exit
   }
 
   if (!passout_arg.empty()) {
@@ -216,12 +216,12 @@ bool genrsaTool(const args_list_t &args) {
     goto err;
   }
 
-  return true;
+  return kToolExitSuccess;
 
 err:
   ERR_print_errors_fp(stderr);
   if (bio) {
     BIO_flush(bio.get());
   }
-  return false;
+  return kToolExitFailure;
 }

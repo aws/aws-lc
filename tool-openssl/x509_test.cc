@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include <cctype>
+#include <ctime>
+#include <limits>
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
@@ -127,8 +129,8 @@ class X509Test : public ::testing::Test {
 // Test -in and -out
 TEST_F(X509Test, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
@@ -141,80 +143,80 @@ TEST_F(X509Test, InOut) {
 // Test -modulus
 TEST_F(X509Test, Modulus) {
   args_list_t args = {"-in", in_path, "-modulus"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -subject
 TEST_F(X509Test, Subject) {
   args_list_t args = {"-in", in_path, "-subject"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -subject_hash and -subject_hash_old
 TEST_F(X509Test, SubjectHash) {
   args_list_t args = {"-in", in_path, "-subject_hash"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   args = {"-in", in_path, "-subject_hash_old"};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -fingerprint
 TEST_F(X509Test, Fingerprint) {
   args_list_t args = {"-in", in_path, "-fingerprint"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test signkey
 TEST_F(X509Test, Signkey) {
   args_list_t args = {"-in", in_path, "-signkey", signkey_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -days
 TEST_F(X509Test, Days) {
   args_list_t args = {"-in",      in_path,      "-out",  out_path,
                       "-signkey", signkey_path, "-days", "365"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -dates
 TEST_F(X509Test, Dates) {
   args_list_t args = {"-in", in_path, "-dates"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -enddate
 TEST_F(X509Test, Enddate) {
   args_list_t args = {"-in", in_path, "-enddate"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -inform
 TEST_F(X509Test, Inform) {
   args_list_t args = {"-in", der_cert_path, "-inform", "DER"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   args = {"-in", in_path, "-inform", "PEM"};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -outform
 TEST_F(X509Test, Outform) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-outform", "DER"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   ScopedFILE out_file(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
@@ -223,50 +225,133 @@ TEST_F(X509Test, Outform) {
 
   args = {"-in", in_path, "-out", out_path, "-outform", "PEM"};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   out_file.reset(fopen(out_path, "rb"));
   ASSERT_TRUE(out_file);
   parsed_x509.reset(PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
-// Test -checkend
+// Test -checkend. The exit status is 0 when the certificate will not expire
+// within the window and 1 when it will. The test certificate is valid for 30
+// days.
 TEST_F(X509Test, Checkend) {
   args_list_t args = {"-in", in_path, "-checkend", "3600"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
+
+  args_list_t expiring_args = {"-in", in_path, "-checkend",
+                               std::to_string(60 * 60 * 24 * 31L)};
+  ASSERT_EQ(1, X509Tool(expiring_args));
+
+  // -checkend writes only its verdict, never the certificate, to -out.
+  args_list_t expiring_out_args = {
+      "-in",  in_path, "-checkend", std::to_string(60 * 60 * 24 * 31L),
+      "-out", out_path};
+  ASSERT_EQ(1, X509Tool(expiring_out_args));
+  std::string out_contents = ReadFileToString(out_path);
+  EXPECT_EQ("Certificate will expire\n", out_contents);
+}
+
+struct CheckendRangeCase {
+  int days;
+  int64_t seconds;
+  int expected_exit;
+};
+
+static const CheckendRangeCase kCheckendRangeCases[] = {
+    {30, 0, kToolExitSuccess},          {30, 2678400, kToolExitFailure},
+    {30, 2147483648, kToolExitFailure}, {30, 4294967296, kToolExitFailure},
+    {30000, 0, kToolExitSuccess},       {-30000, 0, kToolExitFailure},
+};
+
+TEST_F(X509Test, CheckendRange) {
+  bssl::UniquePtr<X509> cert;
+  bssl::UniquePtr<EVP_PKEY> key;
+  CreateAndSignX509Certificate(cert, &key);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+
+  for (const auto &test : kCheckendRangeCases) {
+    SCOPED_TRACE(test.days);
+    SCOPED_TRACE(test.seconds);
+    // Use day offsets so constructing the test certificate does not itself
+    // overflow a 32-bit seconds count.
+    ASSERT_TRUE(
+        X509_time_adj_ex(X509_getm_notBefore(cert.get()), -30001, 0, nullptr));
+    ASSERT_TRUE(X509_time_adj_ex(X509_getm_notAfter(cert.get()), test.days, 0,
+                                 nullptr));
+    ASSERT_GT(X509_sign(cert.get(), key.get(), EVP_sha256()), 0);
+    {
+      ScopedFILE cert_file(fopen(in_path, "wb"));
+      ASSERT_TRUE(cert_file);
+      ASSERT_TRUE(PEM_write_X509(cert_file.get(), cert.get()));
+    }
+
+    args_list_t args = {"-in",       in_path,
+                        "-checkend", std::to_string(test.seconds),
+                        "-out",      out_path};
+    EXPECT_EQ(test.expected_exit, X509Tool(args));
+    EXPECT_EQ(test.expected_exit == kToolExitSuccess
+                  ? "Certificate will not expire\n"
+                  : "Certificate will expire\n",
+              ReadFileToString(out_path));
+  }
+}
+
+TEST_F(X509Test, CheckendWindowParsing) {
+  const struct {
+    const char *seconds;
+    int expected_exit;
+    const char *expected_output;
+  } cases[] = {
+      {"0000", kToolExitSuccess, "Certificate will not expire\n"},
+      {"00002678400", kToolExitFailure, "Certificate will expire\n"},
+      {"9223372036854775807", kToolExitFailure, "Certificate will expire\n"},
+      {"9223372036854775808", kToolExitFailure, ""},
+      {"18446744073709551616", kToolExitFailure, ""},
+      {"", kToolExitFailure, ""},
+      {"1x", kToolExitFailure, ""},
+  };
+  for (const auto &test : cases) {
+    SCOPED_TRACE(test.seconds);
+    args_list_t args = {"-in",        in_path, "-checkend",
+                        test.seconds, "-out",  out_path};
+    EXPECT_EQ(test.expected_exit, X509Tool(args));
+    EXPECT_EQ(test.expected_output, ReadFileToString(out_path));
+  }
 }
 
 // Test -req
 TEST_F(X509Test, Req) {
   args_list_t args = {"-in",        csr_path, "-req",  "-signkey",
                       signkey_path, "-out",   out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -pubkey
 TEST_F(X509Test, Pubkey) {
   args_list_t args = {"-in", in_path, "-pubkey"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -CA and -CAkey
 TEST_F(X509Test, CA) {
   args_list_t args = {"-in",        in_path,  "-CA",
                       ca_cert_path, "-CAkey", ca_key_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   args = {"-in", in_path, "-CA", ca_cert_path};  // use key in CA file
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   args = {"-in", csr_path, "-req", "-CA", ca_cert_path, "-CAkey", ca_key_path};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -extfile and -extensions
@@ -282,8 +367,8 @@ TEST_F(X509Test, Extension) {
   args_list_t args = {"-in",      csr_path,      "-req",
                       "-signkey", signkey_path,  "-extfile",
                       ext_path,   "-extensions", "test_ext"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Test extfile without -extensions (default section)
   ext_file.reset(fopen(ext_path, "w"));
@@ -296,7 +381,7 @@ TEST_F(X509Test, Extension) {
   args = {"-in",        csr_path,   "-req",  "-signkey",
           signkey_path, "-extfile", ext_path};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Test extfile with extensions variable pointing to section
   ext_file.reset(fopen(ext_path, "w"));
@@ -308,7 +393,7 @@ TEST_F(X509Test, Extension) {
 
   args = {"-in", in_path, "-signkey", signkey_path, "-extfile", ext_path};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   RemoveFile(ext_path);
 }
@@ -318,8 +403,8 @@ TEST_F(X509Test, PassinSignkey) {
   args_list_t args = {"-in",      in_path,
                       "-signkey", protected_signkey_path,
                       "-passin",  "pass:testpassword"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -passin with -CA (key in CA file)
@@ -327,8 +412,8 @@ TEST_F(X509Test, PassinCA) {
   args_list_t args = {"-in",     in_path,
                       "-CA",     protected_ca_cert_path,
                       "-passin", "pass:testpassword"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -passin with -CA and -CAkey
@@ -337,8 +422,8 @@ TEST_F(X509Test, PassinCAkey) {
                       "-CA",     ca_cert_path,
                       "-CAkey",  protected_ca_key_path,
                       "-passin", "pass:testpassword"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test -passin with -req and -signkey
@@ -346,8 +431,8 @@ TEST_F(X509Test, PassinReqSignkey) {
   args_list_t args = {
       "-in",     csr_path,           "-req", "-signkey", protected_signkey_path,
       "-passin", "pass:testpassword"};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test SetSerial functionality with CA certificate
@@ -355,8 +440,8 @@ TEST_F(X509Test, SetSerial) {
   // Test 1: First certificate with CA - should create .srl file
   args_list_t args = {"-in",    in_path,     "-CA",  ca_cert_path,
                       "-CAkey", ca_key_path, "-out", out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Check that .srl file was created
   std::string srl_path =
@@ -391,7 +476,7 @@ TEST_F(X509Test, SetSerial) {
   args = {"-in",    in_path,     "-CA",  ca_cert_path,
           "-CAkey", ca_key_path, "-out", out_path};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Read updated serial number
   std::string serial2 = ReadFileToString(srl_path.c_str());
@@ -426,8 +511,8 @@ TEST_F(X509Test, BasicSerialGeneration) {
   // Test self-signed certificates - should generate random serials
   args_list_t args = {"-in",        in_path, "-signkey",
                       signkey_path, "-out",  out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
 
   auto cert1 = LoadPEMCertificate(out_path);
@@ -435,7 +520,7 @@ TEST_F(X509Test, BasicSerialGeneration) {
 
   args = {"-in", in_path, "-signkey", signkey_path, "-out", out_path};
   result = X509Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   auto cert2 = LoadPEMCertificate(out_path);
   ASSERT_TRUE(cert2);
@@ -465,8 +550,8 @@ TEST_F(X509Test, SerialGenerationExistingFile) {
   // Generate certificate with CA - should read from existing .srl file
   args_list_t args = {"-in",    in_path,     "-CA",  ca_cert_path,
                       "-CAkey", ca_key_path, "-out", out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Read updated serial number from .srl file
   std::string new_serial = ReadFileToString(srl_path.c_str());
@@ -511,8 +596,8 @@ TEST_F(X509Test, AKIDSerialWithCA) {
   args_list_t args = {"-in",         in_path,     "-CA",      ca_cert_path,
                       "-CAkey",      ca_key_path, "-extfile", ext_path,
                       "-extensions", "test_ext",  "-out",     out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the certificate serial matches the .srl file content
   auto cert = LoadPEMCertificate(out_path);
@@ -553,8 +638,8 @@ TEST_F(X509Test, AKIDSerialSelfSigned) {
   args_list_t args = {"-in",      in_path,  "-signkey",    signkey_path,
                       "-extfile", ext_path, "-extensions", "test_ext",
                       "-out",     out_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
+  int result = X509Tool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the certificate serial matches the .srl file content
   auto cert = LoadPEMCertificate(out_path);
@@ -580,8 +665,8 @@ class X509OptionUsageErrorsTest : public X509Test {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = X509Tool(c_args);
-    ASSERT_FALSE(result);
+    int result = X509Tool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
@@ -1066,6 +1151,52 @@ TEST_F(X509ComparisonTest, Checkend) {
                               openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Compare both the exit status and verdict, including time ranges that do
+// not fit in 32-bit seconds.
+TEST_F(X509ComparisonTest, CheckendExitCode) {
+  bssl::UniquePtr<EVP_PKEY> key;
+  CreateAndSignX509Certificate(x509, &key);
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(key);
+
+  for (const auto &test : kCheckendRangeCases) {
+    SCOPED_TRACE(test.days);
+    SCOPED_TRACE(test.seconds);
+    // The reference OpenSSL adds the window to a time_t. Its 32-bit builds
+    // cannot represent the large windows tested by CheckendRange above.
+    if (test.seconds >
+        std::numeric_limits<time_t>::max() - std::time(nullptr)) {
+      continue;
+    }
+    ASSERT_TRUE(
+        X509_time_adj_ex(X509_getm_notBefore(x509.get()), -30001, 0, nullptr));
+    ASSERT_TRUE(X509_time_adj_ex(X509_getm_notAfter(x509.get()), test.days, 0,
+                                 nullptr));
+    ASSERT_GT(X509_sign(x509.get(), key.get(), EVP_sha256()), 0);
+    {
+      ScopedFILE cert_file(fopen(in_path, "wb"));
+      ASSERT_TRUE(cert_file);
+      ASSERT_TRUE(PEM_write_X509(cert_file.get(), x509.get()));
+    }
+
+    std::string tool_command = std::string(tool_executable_path) +
+                               " x509 -in " + in_path + " -noout -checkend " +
+                               std::to_string(test.seconds) + " > " +
+                               out_path_tool;
+    std::string openssl_command =
+        std::string(openssl_executable_path) + " x509 -in " + in_path +
+        " -noout -checkend " + std::to_string(test.seconds) + " > " +
+        out_path_openssl;
+
+    int tool_exit = ExecuteCommandExitCode(tool_command);
+    int openssl_exit = ExecuteCommandExitCode(openssl_command);
+    EXPECT_EQ(test.expected_exit, tool_exit);
+    EXPECT_EQ(openssl_exit, tool_exit);
+    EXPECT_EQ(ReadFileToString(out_path_openssl),
+              ReadFileToString(out_path_tool));
+  }
 }
 
 // Test against OpenSSL output "openssl x509 -req -in csr_file -signkey

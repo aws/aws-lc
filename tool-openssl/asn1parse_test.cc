@@ -266,12 +266,12 @@ TEST_P(CorpusTest, AwsLcParseAsExpected) {
   const auto &param = GetParam();
 
   args_list_t args = {"-in", in_path, "-inform", param.format};
-  bool ok = asn1parseTool(args);
+  int ok = asn1parseTool(args);
 
   if (param.awslc_success) {
-    EXPECT_TRUE(ok) << "Expected success for: " << param.name;
+    EXPECT_EQ(kToolExitSuccess, ok) << "Expected success for: " << param.name;
   } else {
-    EXPECT_FALSE(ok) << "Expected failure for: " << param.name;
+    EXPECT_EQ(kToolExitFailure, ok) << "Expected failure for: " << param.name;
   }
 }
 

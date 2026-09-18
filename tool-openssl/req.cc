@@ -542,7 +542,7 @@ static bool WritePrivateKey(std::string &out_path, Password &passout,
   return true;
 }
 
-bool reqTool(const args_list_t &args) {
+int reqTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -550,7 +550,7 @@ bool reqTool(const args_list_t &args) {
                                      kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
@@ -579,14 +579,14 @@ bool reqTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (!new_flag && !x509_flag && newkey.empty()) {
     fprintf(stderr,
             "Error: Missing required options, -x509, -new, or -newkey must be "
             "specified. \n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (!newkey.empty() && !key_file_path.empty()) {
@@ -602,13 +602,13 @@ bool reqTool(const args_list_t &args) {
       fprintf(
           stderr,
           "Error: '-outform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
   bssl::UniquePtr<CONF> req_conf(nullptr);
   if (!config_path.empty() && !LoadConfig(config_path, req_conf)) {
-    return false;
+    return kToolExitFailure;
   }
 
   std::string req_section = REQ_SECTION;
@@ -635,7 +635,7 @@ bool reqTool(const args_list_t &args) {
   if (req_conf.get() &&
       (!CheckExtensionSection(req_conf.get(), cert_ext_section) ||
        !CheckExtensionSection(req_conf.get(), req_ext_section))) {
-    return false;
+    return kToolExitFailure;
   }
 
   const EVP_MD *digest = nullptr;
@@ -659,7 +659,7 @@ bool reqTool(const args_list_t &args) {
   if (digest == nullptr) {
     fprintf(stderr, "Error: unsupported digest algorithm: %s\n",
             digest_name.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   bool encrypt_key = true;
@@ -683,7 +683,7 @@ bool reqTool(const args_list_t &args) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (!key_file_path.empty()) {
     if (!LoadPrivateKey(key_file_path, passin, pkey)) {
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Before generating key, check if config has a default key length specified
@@ -718,7 +718,7 @@ bool reqTool(const args_list_t &args) {
 
     if (!pkey) {
       fprintf(stderr, "Error: Failed to generate private key.\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -744,7 +744,7 @@ bool reqTool(const args_list_t &args) {
     }
 
     if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -769,25 +769,25 @@ bool reqTool(const args_list_t &args) {
       !MakeCertificateRequest(req.get(), pkey.get(), subj, req_conf.get(),
                               req_section, !x509_flag, no_prompt)) {
     fprintf(stderr, "Failed to create certificate request\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Convert CSR to certificate
   if (x509_flag) {
     if (cert == NULL) {
       fprintf(stderr, "Failed to create X509 structure\n");
-      return false;
+      return kToolExitFailure;
     }
 
     if (!X509_set_version(cert.get(), X509_VERSION_3)) {
       fprintf(stderr, "Failed to set certificate version\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Generate random serial number
     if (!GenerateSerial(cert.get())) {
       fprintf(stderr, "Failed to generate serial number\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set subject and issuer from CSR
@@ -796,47 +796,47 @@ bool reqTool(const args_list_t &args) {
         !X509_set_issuer_name(cert.get(),
                               X509_REQ_get_subject_name(req.get()))) {
       fprintf(stderr, "Failed to set subject/issuer\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set expiration to be 'days' days from now
     if (!X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0)) {
       fprintf(stderr, "Failed to set notBefore field\n");
-      return false;
+      return kToolExitFailure;
     }
     if (!X509_time_adj_ex(X509_getm_notAfter(cert.get()), days, 0, NULL)) {
       fprintf(stderr, "Failed to set notAfter field\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Copy public key from CSR
     EVP_PKEY *tmppkey = X509_REQ_get0_pubkey(req.get());
     if (!tmppkey || !X509_set_pubkey(cert.get(), tmppkey)) {
       fprintf(stderr, "Failed to set public key\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Add extensions to certificate
     if (!AddCertExtensions(cert.get(), req_conf.get(), cert_ext_section)) {
       fprintf(stderr, "Failed to add extensions to certificate\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Sign the certificate
     if (!X509_sign(cert.get(), pkey.get(), digest)) {
       fprintf(stderr, "Failed to sign certificate\n");
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Add extensions to request
     if (!AddReqExtensions(req.get(), req_conf.get(), req_ext_section)) {
       fprintf(stderr, "Failed to add extensions to CSR\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Sign the request
     if (!X509_REQ_sign(req.get(), pkey.get(), digest)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -845,11 +845,11 @@ bool reqTool(const args_list_t &args) {
     out_bio.reset(BIO_new(BIO_s_file()));
     if (!out_bio) {
       fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
     if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
       fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Default to stdout
@@ -861,27 +861,27 @@ bool reqTool(const args_list_t &args) {
     if (isStringUpperCaseEqual(outform, "DER")) {
       if (!i2d_X509_bio(out_bio.get(), cert.get())) {
         fprintf(stderr, "Error: Failed to write certificate\n");
-        return false;
+        return kToolExitFailure;
       }
     } else {
       if (!PEM_write_bio_X509(out_bio.get(), cert.get())) {
         fprintf(stderr, "Error: Failed to write certificate\n");
-        return false;
+        return kToolExitFailure;
       }
     }
   } else {
     if (isStringUpperCaseEqual(outform, "DER")) {
       if (!i2d_X509_REQ_bio(out_bio.get(), req.get())) {
         fprintf(stderr, "Error: Failed to write certificate request\n");
-        return false;
+        return kToolExitFailure;
       }
     } else {
       if (!PEM_write_bio_X509_REQ(out_bio.get(), req.get())) {
         fprintf(stderr, "Error: Failed to write certificate request\n");
-        return false;
+        return kToolExitFailure;
       }
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }

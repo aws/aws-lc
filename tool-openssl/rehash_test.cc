@@ -188,23 +188,23 @@ TEST_F(RehashTest, EntryCollision) {
 // Test -help
 TEST_F(RehashTest, RehashHelp) {
   args_list_t args = {"-help"};
-  bool result = RehashTool(args);
-  ASSERT_TRUE(result);
+  int result = RehashTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 TEST_F(RehashTest, InvalidDirectory) {
   errno = 0;
   args_list_t args = {"/random/dir"};
-  bool result = RehashTool(args);
-  ASSERT_FALSE(result);
+  int result = RehashTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
   ASSERT_EQ(errno, ENOENT);
 }
 
 TEST_F(RehashTest, MoreThanOneDirectory) {
   errno = 0;
   args_list_t args = {"/random/dir", "/random/dir2"};
-  bool result = RehashTool(args);
-  ASSERT_FALSE(result);
+  int result = RehashTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
   // errno should not be set
   ASSERT_EQ(errno, 0);
 }
@@ -216,8 +216,8 @@ TEST_F(RehashTest, MoreThanOneDirectory) {
 // We do not verify the number suffix.
 TEST_F(RehashTest, ValidDirectory) {
   args_list_t args = {test_dir};
-  bool result = RehashTool(args);
-  ASSERT_TRUE(result);
+  int result = RehashTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Get hashes for certs and CRLs
   ScopedFILE cert_file(fopen(cert1_path.get(), "rb"));
