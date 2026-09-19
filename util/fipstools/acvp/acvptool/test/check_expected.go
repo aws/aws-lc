@@ -29,10 +29,17 @@ var (
 )
 
 type invocation struct {
-	toolPath     string
-	wrapperPath  string
-	inPath       string
-	expectedPath string
+	toolPath           string
+	wrapperPath        string
+	inPath             string
+	expectedPath       string
+	expectedVectorSets []vectorSetDescriptor
+}
+
+type vectorSetDescriptor struct {
+	Algorithm string `json:"algorithm"`
+	Mode      string `json:"mode"`
+	Revision  string `json:"revision"`
 }
 
 func main() {
@@ -68,9 +75,10 @@ func main() {
 
 	decoder := json.NewDecoder(testsFile)
 	var tests []struct {
-		Wrapper string
-		In      string
-		Out     string // Optional, may be empty.
+		Wrapper            string
+		In                 string
+		Out                string // Optional, may be empty.
+		ExpectedVectorSets []vectorSetDescriptor
 	}
 	if err := decoder.Decode(&tests); err != nil {
 		log.Fatal(err)
@@ -91,10 +99,11 @@ func main() {
 			log.Fatalf("wrapper %q not specified on command line", test.Wrapper)
 		}
 		work <- invocation{
-			toolPath:     *toolPath,
-			wrapperPath:  wrapper,
-			inPath:       test.In,
-			expectedPath: test.Out,
+			toolPath:           *toolPath,
+			wrapperPath:        wrapper,
+			inPath:             test.In,
+			expectedPath:       test.Out,
+			expectedVectorSets: test.ExpectedVectorSets,
 		}
 	}
 
@@ -144,6 +153,9 @@ func doTest(test invocation) error {
 		}
 		testInputFile = tempFile.Name()
 	}
+	if err := checkExpectedVectorSets(testInputFile, test.expectedVectorSets); err != nil {
+		return fmt.Errorf("Invalid vector-set inventory in %q: %s", test.inPath, err)
+	}
 	cmd := exec.Command(test.toolPath, "-wrapper", test.wrapperPath, "-json", testInputFile)
 	result, err := cmd.CombinedOutput()
 	if err != nil {
@@ -184,6 +196,59 @@ func doTest(test invocation) error {
 			writeUpdate(test.expectedPath, result)
 		}
 		return fmt.Errorf("Mismatch for %q", test.expectedPath)
+	}
+
+	return nil
+}
+
+func checkExpectedVectorSets(path string, expected []vectorSetDescriptor) error {
+	if len(expected) == 0 {
+		return nil
+	}
+
+	input, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+
+	var elements []json.RawMessage
+	if err := json.NewDecoder(input).Decode(&elements); err != nil {
+		return err
+	}
+	if len(elements) < 2 {
+		return fmt.Errorf("input has fewer than two elements")
+	}
+
+	actual := make([]vectorSetDescriptor, 0, len(elements)-1)
+	for i, element := range elements[1:] {
+		var descriptor vectorSetDescriptor
+		if err := json.Unmarshal(element, &descriptor); err != nil {
+			return fmt.Errorf("failed to parse vector set %d: %s", i+1, err)
+		}
+		if len(descriptor.Algorithm) == 0 || len(descriptor.Mode) == 0 || len(descriptor.Revision) == 0 {
+			return fmt.Errorf("vector set %d has incomplete descriptor: %+v", i+1, descriptor)
+		}
+		actual = append(actual, descriptor)
+	}
+
+	counts := make(map[vectorSetDescriptor]int)
+	for i, descriptor := range expected {
+		if len(descriptor.Algorithm) == 0 || len(descriptor.Mode) == 0 || len(descriptor.Revision) == 0 {
+			return fmt.Errorf("expected vector set %d has incomplete descriptor: %+v", i+1, descriptor)
+		}
+		counts[descriptor]++
+	}
+	for _, descriptor := range actual {
+		counts[descriptor]--
+	}
+	for _, count := range counts {
+		if count != 0 {
+			return fmt.Errorf("got %+v, expected %+v", actual, expected)
+		}
+	}
+	if len(actual) != len(expected) {
+		return fmt.Errorf("got %+v, expected %+v", actual, expected)
 	}
 
 	return nil
