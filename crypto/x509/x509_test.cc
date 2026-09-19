@@ -3797,6 +3797,8 @@ TEST(X509Test, TestFromBuffer) {
   bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
   ASSERT_TRUE(root);
 
+  X509_get0_uids(root.get(), nullptr, nullptr);
+  ASSERT_NE(nullptr, root->cert_info);
   const uint8_t *enc_pointer = root->cert_info->enc.enc;
   const uint8_t *buf_pointer = CRYPTO_BUFFER_data(buf.get());
   ASSERT_GE(enc_pointer, buf_pointer);

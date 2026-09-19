@@ -1,5 +1,5 @@
-// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project 1999.
-// Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+// Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
+// 1999. Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 #include <limits.h>
@@ -8,8 +8,8 @@
 
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
 #include <openssl/mem.h>
+#include <openssl/obj.h>
 #include <openssl/x509.h>
 
 #include "internal.h"
@@ -77,6 +77,9 @@ static void *s2i_skey_id(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
   if (ctx->subject_req) {
     pk = ctx->subject_req->req_info->pubkey->public_key;
   } else {
+    if (!x509_ensure_legacy(ctx->subject_cert)) {
+      goto err;
+    }
     pk = ctx->subject_cert->cert_info->key->public_key;
   }
 
