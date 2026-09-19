@@ -31,6 +31,14 @@ struct DigestSpec {
 };
 
 constexpr DigestSpec kDigests[] = {
+    {"SHA2-224",
+     {"SHA2-224", "SHA-224", "SHA224", "2.16.840.1.101.3.4.2.4"},
+     28,
+     64,
+     0,
+     1,
+     "abc",
+     "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7"},
     {"SHA2-256",
      {"SHA2-256", "SHA-256", "SHA256", "2.16.840.1.101.3.4.2.1"},
      32,
@@ -80,11 +88,8 @@ TEST_P(Sha2Test, ResolvesUnderEveryAdvertisedName) {
   }
 }
 
-// The four algorithm-level parameters our get_params slot answers. ALGID_ABSENT is
-// the one with teeth: it decides whether the DigestAlgorithmIdentifier omits its
-// parameters field, so reporting it wrongly yields DER that differs byte for byte
-// from the default provider's for every CMS digestAlgorithms entry and every RSA
-// DigestInfo.
+// ALGID_ABSENT is the one with teeth: it changes the DER OpenSSL emits for this
+// digest inside PKI structures, so it must match the default provider's value.
 TEST_P(Sha2Test, ReportsExpectedParams) {
   MdPtr md = FetchRequired();
   ASSERT_TRUE(md);
