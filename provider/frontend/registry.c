@@ -29,6 +29,20 @@ static const OSSL_ALGORITHM awslc_prov_digests[] = {
     // PROV_NAMES_SHA2_256
     AWSLC_PROV_ALG("SHA2-256:SHA-256:SHA256:2.16.840.1.101.3.4.2.1", sha256,
                    "AWS-LC SHA2-256 implementation"),
+    // PROV_NAMES_SHA2_384
+    AWSLC_PROV_ALG("SHA2-384:SHA-384:SHA384:2.16.840.1.101.3.4.2.2", sha384,
+                   "AWS-LC SHA2-384 implementation"),
+    // PROV_NAMES_SHA2_512
+    AWSLC_PROV_ALG("SHA2-512:SHA-512:SHA512:2.16.840.1.101.3.4.2.3", sha512,
+                   "AWS-LC SHA2-512 implementation"),
+    // PROV_NAMES_SHA2_512_224
+    AWSLC_PROV_ALG(
+        "SHA2-512/224:SHA-512/224:SHA512-224:2.16.840.1.101.3.4.2.5",
+        sha512_224, "AWS-LC SHA2-512/224 implementation"),
+    // PROV_NAMES_SHA2_512_256
+    AWSLC_PROV_ALG(
+        "SHA2-512/256:SHA-512/256:SHA512-256:2.16.840.1.101.3.4.2.6",
+        sha512_256, "AWS-LC SHA2-512/256 implementation"),
     {NULL, NULL, NULL, NULL}};
 
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
