@@ -658,6 +658,9 @@ TEST_F(CryptoPolicyTest, PQSubpolicyGroupsAndSigalgs) {
 // A value that only removes names no group to keep, so the list it removes from
 // is the built-in default. Dropping the directive instead would hand back the one
 // group the operator asked to be rid of.
+//
+// X25519MLKEM768 goes with X25519 because it performs X25519 key exchange, which
+// the operator just forbade.
 TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
   const std::string content = "Groups = -X25519\n";
   TemporaryFile policy;
@@ -670,12 +673,48 @@ TEST_F(CryptoPolicyTest, RemovalOnlyGroupsRemoves) {
 
   std::vector<uint16_t> expected;
   for (uint16_t group : tls1_get_default_grouplist()) {
-    if (group != SSL_GROUP_X25519) {
+    if (group != SSL_GROUP_X25519 && group != SSL_GROUP_X25519_MLKEM768) {
       expected.push_back(group);
     }
   }
   ASSERT_FALSE(expected.empty());
   EXPECT_EQ(ToVector(ctx->supported_group_list), expected);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A removal is honored alongside the groups the same value keeps. Reading it only
+// when nothing else resolves would make the removal depend on the rest of the
+// list, which is not what the '-' modifier says.
+TEST_F(CryptoPolicyTest, RemovalAmongNamedGroupsApplies) {
+  const std::string content = "Groups = X25519:secp256r1:-secp256r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  // Only the hybrid over X25519 is merged back, since P-256 is out.
+  EXPECT_EQ(ToVector(ctx->supported_group_list),
+            (std::vector<uint16_t>{SSL_GROUP_X25519_MLKEM768, SSL_GROUP_X25519}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// Removing every classical curve removes every hybrid with it, leaving no group at
+// all. AWS-LC reads an empty configured list as "use the defaults", so such a
+// policy cannot be expressed and is left unapplied rather than half-applied.
+TEST_F(CryptoPolicyTest, RemovalOfEveryGroupKeepsDefaults) {
+  const std::string content = "Groups = -X25519:-secp256r1:-secp384r1\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_TRUE(ctx->supported_group_list.empty());
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 

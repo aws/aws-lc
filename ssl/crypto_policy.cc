@@ -333,9 +333,9 @@ bool HybridClassicalComponent(uint16_t *out, uint16_t group) {
   return false;
 }
 
-// PolicyRemovesGroup reports whether the Groups value |value| takes |group| out
-// with the OpenSSL '-' modifier.
-bool PolicyRemovesGroup(const char *value, uint16_t group) {
+// ValueNamesRemoval reports whether the Groups value |value| names |group| with
+// the OpenSSL '-' modifier.
+bool ValueNamesRemoval(const char *value, uint16_t group) {
   for (const char *tok = value;;) {
     const size_t len = strcspn(tok, kPolicyListSeparators);
     uint16_t id;
@@ -350,27 +350,60 @@ bool PolicyRemovesGroup(const char *value, uint16_t group) {
   }
 }
 
-// GroupsFromRemovals fills |out|, which holds |out_len| entries, with AWS-LC's
-// default groups less the ones the Groups value |value| removes, and returns how
-// many were written, or zero if |value| removes no group AWS-LC implements.
+// PolicyRemovesGroup reports whether the Groups value |value| takes |group| out.
 //
-// A value that only removes leaves |FilterPolicyIds| nothing to keep, so without
-// this the setter is skipped and the group the operator took out comes back with
-// the defaults.
-size_t GroupsFromRemovals(uint16_t *out, size_t out_len, const char *value) {
-  bool removed_any = false;
-  size_t out_i = 0;
-  for (uint16_t group : tls1_get_default_grouplist()) {
-    if (PolicyRemovesGroup(value, group)) {
-      removed_any = true;
-      continue;
+// A hybrid goes out with its classical half. Removing X25519 forbids X25519 key
+// exchange, and X25519MLKEM768 still performs it on the wire, so leaving the
+// hybrid in place would make the removal cosmetic.
+bool PolicyRemovesGroup(const char *value, uint16_t group) {
+  uint16_t classical;
+  return ValueNamesRemoval(value, group) ||
+         (HybridClassicalComponent(&classical, group) &&
+          ValueNamesRemoval(value, classical));
+}
+
+// DropRemovedGroups compacts |ids|, which holds |n| entries, down to the ones the
+// Groups value |value| does not remove, and returns how many are left.
+size_t DropRemovedGroups(uint16_t *ids, size_t n, const char *value) {
+  size_t kept = 0;
+  for (size_t i = 0; i < n; i++) {
+    if (!PolicyRemovesGroup(value, ids[i])) {
+      ids[kept++] = ids[i];
     }
-    if (out_i >= out_len) {
-      return 0;
-    }
-    out[out_i++] = group;
   }
-  return removed_any ? out_i : 0;
+  return kept;
+}
+
+// PolicyGroupIds fills |out|, which holds |out_len| entries, with the groups the
+// Groups value |value| leaves in force and returns how many were written, or zero
+// to leave AWS-LC's defaults implicit.
+//
+// The groups |value| names are its preference order, and its '-' entries come out
+// of that order. A value that only removes is applied to the default list, since
+// skipping the directive would hand back the group the operator took out.
+//
+// A value that removes every group also gets zero: an empty configured list is how
+// AWS-LC spells "use the defaults", so a policy leaving no group at all is one this
+// layer cannot express and does not apply.
+size_t PolicyGroupIds(uint16_t *out, size_t out_len, const char *value) {
+  size_t n = FilterPolicyIds(out, out_len, value, GroupIdFromToken);
+  const bool named_any = n != 0;
+  if (!named_any) {
+    for (uint16_t group : tls1_get_default_grouplist()) {
+      if (n >= out_len) {
+        return 0;
+      }
+      out[n++] = group;
+    }
+  }
+
+  const size_t kept = DropRemovedGroups(out, n, value);
+  // A value that removed nothing from the defaults asked for nothing this layer
+  // can act on, so the defaults stay implicit rather than frozen into |ctx|.
+  if (kept == 0 || (!named_any && kept == n)) {
+    return 0;
+  }
+  return kept;
 }
 
 // MergeDefaultPQGroups restores AWS-LC's default post-quantum groups at the front
@@ -620,11 +653,7 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
     }
   }
   if (cfg.groups[0] != '\0') {
-    size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups,
-                               GroupIdFromToken);
-    if (n == 0) {
-      n = GroupsFromRemovals(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
-    }
+    size_t n = PolicyGroupIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
     if (keep_pq) {
       n = MergeDefaultPQGroups(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
     }

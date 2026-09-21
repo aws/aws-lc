@@ -150,7 +150,9 @@ policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
 groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
 The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
-AWS-LC selects its own key shares, and `-` drops the group it prefixes.
+AWS-LC selects its own key shares, and `-` drops the group it prefixes whatever
+else the value names. A value that leaves no group at all is not applied, since
+AWS-LC reads an empty group list as a request for its defaults.
 
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
@@ -170,9 +172,9 @@ off, add AWS-LC's own directive to the policy file:
 AWSLC.PostQuantum = off
 ```
 
-Hybrid groups come back only when the policy keeps their classical half, so
-removing `secp384r1` also removes `SecP384r1MLKEM1024`. A group the policy
-removes with `-` stays out.
+A hybrid group needs its classical half, so removing `secp384r1` also removes
+`SecP384r1MLKEM1024`, whether the policy names the hybrid or not. A group the
+policy removes with `-` stays out.
 
 AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
 policy change takes effect only in processes started afterward. A read that fails
