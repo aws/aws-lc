@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <errno.h>
+#include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -51,6 +52,10 @@ static const argument_t kArguments[] = {
      "Prints out value of the modulus of the public key contained in the "
      "certificate"},
     {"-subject", kBooleanArgument, "Prints the subject name"},
+    {"-nameopt", kOptionalArgument,
+     "Subject/issuer name printing format for -subject and -text. One of: "
+     "compat, oneline, RFC2253, multiline. Default matches modern OpenSSL "
+     "for -subject; -text's rendering is unchanged unless -nameopt is given"},
     {"-subject_hash", kBooleanArgument, "Prints subject hash value"},
     {"-subject_hash_old", kBooleanArgument,
      "Prints old OpenSSL style (MD5) subject hash value"},
@@ -448,16 +453,81 @@ static bool handlePubkey(X509 *x509, BIO *output_bio) {
   return true;
 }
 
-static bool handleSubject(X509 *x509, BIO *output_bio) {
+// Match modern OpenSSL's tight "TAG=value" format. The previous default,
+// XN_FLAG_ONELINE (also OpenSSL 1.1.1's default), spaces the '=' and breaks
+// callers extracting a common name with `sed 's/.*CN=//'`.
+static const unsigned long kDefaultNameFlags =
+    XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_SN | ASN1_STRFLGS_ESC_CTRL |
+    ASN1_STRFLGS_UTF8_CONVERT | ASN1_STRFLGS_DUMP_UNKNOWN |
+    ASN1_STRFLGS_DUMP_DER;
+
+struct NameoptPreset {
+  const char *name;
+  unsigned long flags;
+};
+
+// Support named presets, not OpenSSL's individual comma-separated flags.
+static const NameoptPreset kNameoptPresets[] = {
+    {"compat", XN_FLAG_COMPAT},
+    {"oneline", XN_FLAG_ONELINE},
+    {"RFC2253", XN_FLAG_RFC2253},
+    {"multiline", XN_FLAG_MULTILINE},
+};
+
+static bool LookupNameoptFlags(const std::string &value,
+                               unsigned long *out_flags) {
+  for (const auto &preset : kNameoptPresets) {
+    if (OPENSSL_strcasecmp(value.c_str(), preset.name) == 0) {
+      *out_flags = preset.flags;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool PrintNameLine(BIO *output_bio, const char *title, X509_NAME *name,
+                          unsigned long flags) {
+  if (BIO_printf(output_bio, "%s", title) < 0) {
+    return false;
+  }
+
+  if (flags == XN_FLAG_COMPAT) {
+    // X509_NAME_print_ex's XN_FLAG_COMPAT case renders via X509_NAME_print,
+    // which reformats X509_NAME_oneline's slashes into commas; print
+    // X509_NAME_oneline directly instead, matching real OpenSSL's "compat".
+    char *oneline = X509_NAME_oneline(name, nullptr, 0);
+    if (!oneline) {
+      fprintf(stderr, "Error: unable to print name\n");
+      return false;
+    }
+    bool ok = BIO_printf(output_bio, "%s\n", oneline) >= 0;
+    OPENSSL_free(oneline);
+    return ok;
+  }
+
+  // Multiline output starts on the line after the title, and is indented.
+  int indent = 0;
+  if ((flags & XN_FLAG_SEP_MASK) == XN_FLAG_SEP_MULTILINE) {
+    indent = 4;
+    if (BIO_printf(output_bio, "\n") < 0) {
+      return false;
+    }
+  }
+  if (X509_NAME_print_ex(output_bio, name, indent, flags) < 0) {
+    fprintf(stderr, "Error: unable to print name\n");
+    return false;
+  }
+  return BIO_printf(output_bio, "\n") >= 0;
+}
+
+static bool handleSubject(X509 *x509, BIO *output_bio,
+                          unsigned long name_flags) {
   X509_NAME *subject_name = X509_get_subject_name(x509);
   if (!subject_name) {
     fprintf(stderr, "Error: unable to obtain subject from certificate\n");
     return false;
   }
-  BIO_printf(output_bio, "subject=");
-  X509_NAME_print_ex(output_bio, subject_name, 0, XN_FLAG_ONELINE);
-  BIO_printf(output_bio, "\n");
-  return true;
+  return PrintNameLine(output_bio, "subject=", subject_name, name_flags);
 }
 
 static bool handleFingerprint(X509 *x509, BIO *output_bio) {
@@ -529,7 +599,8 @@ static bool handleCheckend(X509 *x509, BIO *output_bio,
 static bool ProcessArgument(const std::string &arg_name,
                             const std::string &arg_value, X509 *x509,
                             bssl::UniquePtr<BIO> &output_bio,
-                            bool *dates_processed, bool *will_expire) {
+                            bool *dates_processed, bool *will_expire,
+                            unsigned long name_flags, bool nameopt_explicit) {
   if (arg_name == "-modulus") {
     return handleModulus(x509, output_bio.get());
   }
@@ -537,11 +608,21 @@ static bool ProcessArgument(const std::string &arg_name,
     return handlePubkey(x509, output_bio.get());
   }
   if (arg_name == "-text") {
-    X509_print(output_bio.get(), x509);
+    // Preserve this tool's original -text rendering (X509_print's
+    // XN_FLAG_COMPAT/X509_FLAG_COMPAT defaults) unless -nameopt was given
+    // explicitly, in which case it also governs -text's Issuer/Subject
+    // lines, matching real OpenSSL's -text combined with -nameopt.
+    bool ok = nameopt_explicit ? X509_print_ex(output_bio.get(), x509,
+                                               name_flags, X509_FLAG_COMPAT)
+                               : X509_print(output_bio.get(), x509);
+    if (!ok) {
+      fprintf(stderr, "Error: unable to print certificate\n");
+      return false;
+    }
     return true;
   }
   if (arg_name == "-subject") {
-    return handleSubject(x509, output_bio.get());
+    return handleSubject(x509, output_bio.get(), name_flags);
   }
   if (arg_name == "-subject_hash") {
     const uint32_t hash_value = X509_subject_name_hash(x509);
@@ -585,7 +666,7 @@ int X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, days_str, inform, outform,
-      ca_file_path, ca_key_path, ext_file_path, ext_section;
+      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
   Password passin;
@@ -603,6 +684,7 @@ int X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ca_key_path, "-CAkey", "", parsed_args);
   ordered_args::GetString(&ext_file_path, "-extfile", "", parsed_args);
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
+  ordered_args::GetString(&nameopt_str, "-nameopt", "", parsed_args);
   ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
 
   // Display x509 tool option summary
@@ -695,6 +777,17 @@ int X509Tool(const args_list_t &args) {
           "Error: '-outform' option must specify a valid encoding DER|PEM\n");
       return kToolExitFailure;
     }
+  }
+
+  // Check -nameopt is a supported preset
+  const bool nameopt_explicit =
+      ordered_args::HasArgument(parsed_args, "-nameopt");
+  unsigned long name_flags = kDefaultNameFlags;
+  if (nameopt_explicit && !LookupNameoptFlags(nameopt_str, &name_flags)) {
+    fprintf(stderr,
+            "Error: '-nameopt' option must specify one of compat, "
+            "oneline, RFC2253, multiline\n");
+    return kToolExitFailure;
   }
 
   // Extract password
@@ -863,12 +956,13 @@ int X509Tool(const args_list_t &args) {
       if (arg_name == "-in" || arg_name == "-out" || arg_name == "-inform" ||
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
-          arg_name == "-CAkey") {
+          arg_name == "-CAkey" || arg_name == "-nameopt") {
         continue;
       }
 
       if (!ProcessArgument(arg_name, arg_value, x509.get(), output_bio,
-                           &dates_processed, &will_expire)) {
+                           &dates_processed, &will_expire, name_flags,
+                           nameopt_explicit)) {
         return kToolExitFailure;
       }
     }
