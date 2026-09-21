@@ -3673,10 +3673,12 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 
 #if defined(AWSLC_CRYPTO_POLICIES)
 
-// System crypto-policies (opt-in via -DENABLE_CRYPTO_POLICIES). On Amazon Linux
-// 2023 and Fedora the system-wide crypto-policies framework renders an OpenSSL
-// back-end file describing the OS TLS posture. The declarations below locate and
-// read that file.
+// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). On
+// Amazon Linux 2023 and Fedora the system-wide crypto-policies framework
+// renders an OpenSSL back-end file describing the OS TLS posture. When enabled,
+// |SSL_CTX_new| seeds each new |SSL_CTX| from that file after its built-in
+// defaults. This is best-effort: consumers may override afterward, and any
+// failure leaves the built-in defaults in place.
 
 // AWSLC_CRYPTO_POLICY_DEFAULT_FILE is the compile-time default location of the
 // crypto-policies OpenSSL back-end file. Packagers set it with
@@ -3721,13 +3723,22 @@ struct CryptoPolicyConfig {
   char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
   char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
   char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
+
+  // Set when the floor directive appeared, whatever became of its value. An
+  // absent floor leaves the context's own, which sits below every floor a policy
+  // can name, so a floor AWS-LC cannot resolve has to be told apart from one the
+  // operator never wrote. The ceilings need no flag: a ceiling left unapplied
+  // keeps the stricter of the two.
+  bool tls_min_present;
+  bool dtls_min_present;
 };
 
 // ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
 // the recognized directives. Blank lines, '#' comments, and '[section]' headers
 // are ignored, as are unrecognized keys; the last occurrence of a key wins. A
 // value too long for its field leaves that field empty, so a directive that
-// cannot be represented reads as absent rather than as its earlier occurrence.
+// cannot be represented reads as absent rather than as its earlier occurrence,
+// except that the floor directives still record that they appeared.
 // It returns true if the whole file was read (even if no recognized keys were
 // present), and false on invalid arguments or if the file could not be opened
 // or read to its end.
@@ -3747,6 +3758,26 @@ OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
 //
 // Marked with OPENSSL_EXPORT to make it available for unit tests.
 OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
+
+// ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
+// back-end file at |path|. It is best-effort and never fails: a missing or
+// malformed file, or a directive AWS-LC rejects, leaves the corresponding
+// built-in default in place. Errors already queued by the caller are preserved;
+// errors this function provokes are not.
+//
+// |is_dtls| selects the TLS.* vs DTLS.* protocol directives. |version_locked|
+// must be true when |ctx| came from one of the legacy version-locked
+// |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
+// protocol floor and ceiling are skipped: the caller pinned a single version and
+// a system-wide default must not silently widen it.
+//
+// The parsed file is cached process-wide, keyed on |path|, so repeated
+// |SSL_CTX_new| calls do not re-read it.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path,
+                                                bool is_dtls,
+                                                bool version_locked);
 
 #endif  // AWSLC_CRYPTO_POLICIES
 
