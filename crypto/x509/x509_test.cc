@@ -4196,6 +4196,12 @@ static bssl::UniquePtr<X509> FindIssuerInDir(X509 *leaf, const char *path) {
 // followed by ':'). Regression test: both directories of a two-entry list
 // must be searched.
 TEST(X509Test, HashDirMultipleDirectories) {
+#if defined(OPENSSL_ANDROID)
+  // Android app processes cannot create files under /tmp, which
+  // |createTempDirPath| uses. See |BIOTest.CloseFlags|.
+  GTEST_SKIP();
+#endif
+
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
   ScopedCertDir dir_a, dir_b;
