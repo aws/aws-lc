@@ -665,6 +665,17 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
 
 }  // namespace
 
+size_t ssl_crypto_policy_named_group_ids(uint16_t *out, size_t max_out,
+                                         const char *value) {
+  const size_t n = FilterPolicyIds(out, max_out, value, GroupIdFromToken);
+  return DropRemovedGroups(out, n, value);
+}
+
+size_t ssl_crypto_policy_named_sigalg_ids(uint16_t *out, size_t max_out,
+                                          const char *value) {
+  return FilterPolicyIds(out, max_out, value, SigalgIdFromToken);
+}
+
 bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
   if (path == nullptr || out == nullptr) {
     return false;

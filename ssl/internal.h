@@ -3773,6 +3773,21 @@ OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
 // rejects the whole list on the first token it does not know.
 bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len);
 
+// ssl_crypto_policy_named_group_ids and ssl_crypto_policy_named_sigalg_ids
+// resolve the tokens of a Groups or SignatureAlgorithms value the way seeding
+// does, writing the IDs the value asks for and AWS-LC implements to |out|, which
+// holds |max_out| entries, and returning how many were written. A group the value
+// removes is not one it asks for.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests, which read the
+// system policy file with it rather than assuming how it spells an algorithm.
+OPENSSL_EXPORT size_t ssl_crypto_policy_named_group_ids(uint16_t *out,
+                                                        size_t max_out,
+                                                        const char *value);
+OPENSSL_EXPORT size_t ssl_crypto_policy_named_sigalg_ids(uint16_t *out,
+                                                         size_t max_out,
+                                                         const char *value);
+
 // ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
 // back-end file at |path|. It is best-effort and never fails: a missing or
 // malformed file, or a directive AWS-LC rejects, leaves the corresponding

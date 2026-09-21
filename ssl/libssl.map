@@ -638,6 +638,8 @@ AWS_LC_1.0 {
       bssl::ssl_cert_check_key_usage*;
       bssl::ssl_client_hello_init*;
       bssl::ssl_crypto_policy_default_path*;
+      bssl::ssl_crypto_policy_named_group_ids*;
+      bssl::ssl_crypto_policy_named_sigalg_ids*;
       bssl::ssl_crypto_policy_parse_file*;
       bssl::ssl_ctx_apply_crypto_policy*;
       bssl::ssl_decode_client_hello_inner*;
