@@ -62,16 +62,27 @@ inline std::string ReadFileToString(const std::string &file_path) {
   return output_buffer.str();
 }
 
+inline int ExecuteCommand(const std::string &command) {
+#if defined(OPENSSL_WINDOWS)
+  // cmd.exe strips the first and last quotes from a command beginning with a
+  // quoted executable. Add outer quotes to preserve the executable and args.
+  if (!command.empty() && command.front() == '"') {
+    return system(("\"" + command + "\"").c_str());
+  }
+#endif
+  return system(command.c_str());
+}
+
 inline void RunCommandsAndCompareOutput(const std::string &tool_command,
                                         const std::string &openssl_command,
                                         const std::string &out_path_tool,
                                         const std::string &out_path_openssl,
                                         std::string &tool_output_str,
                                         std::string &openssl_output_str) {
-  int tool_result = system(tool_command.c_str());
+  int tool_result = ExecuteCommand(tool_command);
   ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
 
-  int openssl_result = system(openssl_command.c_str());
+  int openssl_result = ExecuteCommand(openssl_command);
   ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
 
   std::ifstream tool_output(out_path_tool);
@@ -97,14 +108,11 @@ inline void RemoveFile(const char *path) {
   }
 }
 
-inline int ExecuteCommand(const std::string &command) {
-  return system(command.c_str());
-}
 
 // ExecuteCommandExitCode runs |command| and returns the process exit code, or
 // -1 if the command could not be run or did not exit normally.
 inline int ExecuteCommandExitCode(const std::string &command) {
-  int status = system(command.c_str());
+  int status = ExecuteCommand(command);
 #if defined(OPENSSL_WINDOWS)
   return status;
 #else

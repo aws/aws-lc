@@ -1347,6 +1347,13 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
                  : dh-std-kdf
                  : dh-cofactor-kdf
 
+# RFC 6962 Certificate Transparency extension OID (see
+# https://www.rfc-editor.org/rfc/rfc6962.html#section-3.3). Only the Signed
+# Certificate Timestamp List extension's OID is registered here, so that it
+# prints with its name instead of a raw OID; this does not add SCT parsing,
+# validation, or a pretty-printer for its contents.
+1 3 6 1 4 1 11129 2 4 2 : ct_precert_scts : CT Precertificate SCTs
+
 # See RFC 8410.
 1 3 101 110 : X25519
 1 3 101 111 : X448
