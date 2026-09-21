@@ -187,11 +187,12 @@ static bssl::UniquePtr<STACK_OF(X509)> load_untrusted(const char *chainfile) {
   return chain;
 }
 
-// check verifies the certificate in |certfile| (or stdin if null) against
+// check_impl verifies the certificate in |certfile| (or stdin if null) against
 // |ctx|, using |chain| (which may be null) as untrusted intermediates. It
-// returns 1 if the certificate verified and 0 otherwise.
-static int check(X509_STORE *ctx, STACK_OF(X509) *chain, const char *certfile) {
-  ERR_clear_error();
+// returns 1 if the certificate verified and 0 otherwise, leaving any errors on
+// the error queue.
+static int check_impl(X509_STORE *ctx, STACK_OF(X509) *chain,
+                      const char *certfile) {
   bssl::UniquePtr<X509> cert;
   int i = 0, ret = 0;
 
@@ -241,6 +242,18 @@ static int check(X509_STORE *ctx, STACK_OF(X509) *chain, const char *certfile) {
                (certfile == nullptr) ? "stdin" : certfile);
   }
 
+  return ret;
+}
+
+// check wraps |check_impl| and, as in OpenSSL's verify, prints the error queue
+// for a failed input immediately so that it is reported before the next input
+// is checked.
+static int check(X509_STORE *ctx, STACK_OF(X509) *chain, const char *certfile) {
+  ERR_clear_error();
+  int ret = check_impl(ctx, chain, certfile);
+  if (ret != 1) {
+    ERR_print_errors_fp(stderr);
+  }
   return ret;
 }
 
@@ -321,11 +334,7 @@ int VerifyTool(const args_list_t &args) {
   } else {
     // Certs provided as files
     for (size_t i = 0; i < extra_args.size(); i++) {
-      if (check(store.get(), chain.get(), extra_args[i].c_str()) != 1) {
-        // Report this input's errors before the next check clears the queue.
-        ERR_print_errors_fp(stderr);
-        all_ok = false;
-      }
+      all_ok &= check(store.get(), chain.get(), extra_args[i].c_str()) == 1;
     }
   }
 
