@@ -6,7 +6,9 @@
 #include <openssl/pem.h>
 #include <cctype>
 #include <ctime>
+#include <functional>
 #include <limits>
+#include <sstream>
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
@@ -715,7 +717,10 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgs) {
 TEST_F(X509OptionUsageErrorsTest, InvalidArgs) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-inform", "RANDOM"},
-      {"-in", in_path, "-out", out_path, "-outform", "RANDOM"}};
+      {"-in", in_path, "-out", out_path, "-outform", "RANDOM"},
+      {"-in", in_path, "-nameopt", ""},
+      {"-in", in_path, "-nameopt", "bogus"},
+      {"-in", in_path, "-subject", "-nameopt", "oneline,-esc_msb"}};
   for (const auto &args : testparams) {
     TestOptionUsageErrors(args);
   }
@@ -1831,4 +1836,352 @@ TEST_F(X509ComparisonTest, KeyIDExtensionSelfSigned) {
       CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 30));
 
   RemoveFile(ext_path);
+}
+
+// -------------------- -nameopt and -text name/label tests --------------------
+
+// ConfigureCertFn populates |name| (and may add extensions to |x509|)
+// before the certificate returned by BuildSelfSignedCert is signed.
+using ConfigureCertFn = std::function<bool(X509 *x509, X509_NAME *name)>;
+
+// BuildSelfSignedCert creates a minimal self-signed RSA-2048/SHA-256
+// certificate. |configure| fills in the empty subject/issuer name and may add
+// extensions before signing. Returns null on failure.
+static bssl::UniquePtr<X509> BuildSelfSignedCert(
+    const ConfigureCertFn &configure) {
+  bssl::UniquePtr<X509> x509(X509_new());
+  if (!x509 || !X509_set_version(x509.get(), X509_VERSION_3)) {
+    return nullptr;
+  }
+  if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
+      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * 30L)) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!rsa || !bn || !pkey || !BN_set_word(bn.get(), RSA_F4) ||
+      !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
+      !EVP_PKEY_assign_RSA(pkey.get(), rsa.release()) ||
+      !X509_set_pubkey(x509.get(), pkey.get())) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  if (!name || !configure(x509.get(), name.get())) {
+    return nullptr;
+  }
+  if (!X509_set_subject_name(x509.get(), name.get()) ||
+      !X509_set_issuer_name(x509.get(), name.get())) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
+  if (!serial || !ASN1_INTEGER_set(serial.get(), 1) ||
+      !X509_set_serialNumber(x509.get(), serial.get())) {
+    return nullptr;
+  }
+
+  if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
+    return nullptr;
+  }
+  return x509;
+}
+
+// WriteCertToFile PEM-encodes |x509| to |path|.
+static bool WriteCertToFile(X509 *x509, const char *path) {
+  ScopedFILE file(fopen(path, "wb"));
+  return file && PEM_write_X509(file.get(), x509);
+}
+
+// AddRawExtension adds an extension with type |obj| and raw OCTET STRING
+// content |data| to |x509|. This synthesizes extensions AWS-LC has no
+// |X509V3_EXT_METHOD| for, such as the CT SCT list.
+static bool AddRawExtension(X509 *x509, const ASN1_OBJECT *obj, bool critical,
+                            const uint8_t *data, size_t data_len) {
+  bssl::UniquePtr<ASN1_OCTET_STRING> value(ASN1_OCTET_STRING_new());
+  if (!value ||
+      !ASN1_OCTET_STRING_set(value.get(), data, static_cast<int>(data_len))) {
+    return false;
+  }
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_OBJ(
+      nullptr, obj, critical ? 1 : 0, value.get()));
+  return ext && X509_add_ext(x509, ext.get(), -1);
+}
+
+// ContainsExtensionLabelLine returns true if |output| contains a line that,
+// after trimming whitespace, is exactly "|label|:", as callers grepping -text
+// output for an extension header expect.
+static bool ContainsExtensionLabelLine(const std::string &output,
+                                       const std::string &label) {
+  const std::string expected = label + ":";
+  std::istringstream stream(output);
+  std::string line;
+  while (std::getline(stream, line)) {
+    if (trim(line) == expected) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ExtractLastCNValue emulates `openssl x509 -noout -subject | sed 's/.*CN=//'`:
+// it returns the text after the last "CN=" on the first line of |output|.
+static std::string ExtractLastCNValue(const std::string &output) {
+  size_t line_end = output.find('\n');
+  std::string line =
+      line_end == std::string::npos ? output : output.substr(0, line_end);
+  size_t cn_pos = line.rfind("CN=");
+  return cn_pos == std::string::npos ? line : line.substr(cn_pos + 3);
+}
+
+// Scripts commonly extract the leaf CN with `sed 's/.*CN=//'`, which only
+// works when -subject prints tight "TAG=value" pairs. The previous
+// XN_FLAG_ONELINE default printed "CN = value" and broke this, including for
+// subjects with multiple CNs and a multi-valued RDN as built here.
+TEST_F(X509Test, SubjectMultiRDNCommonNameFallback) {
+  bssl::UniquePtr<X509> x509 = BuildSelfSignedCert([](X509 * /*cert*/,
+                                                      X509_NAME *name) {
+    return X509_NAME_add_entry_by_NID(
+               name, NID_countryName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("US"), -1, -1, 0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_organizationName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Example, Inc."), -1, -1,
+               0) &&
+           // OU and the first CN form one multi-valued RDN ("+"
+           // grouped).
+           X509_NAME_add_entry_by_NID(
+               name, NID_organizationalUnitName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Eng"), -1, -1, 0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_commonName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("First"), -1, -1, -1) &&
+           // The second, trailing CN is its own (final) RDN.
+           X509_NAME_add_entry_by_NID(
+               name, NID_commonName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Second"), -1, -1, 0);
+  });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  args_list_t args = {"-in", in_path, "-noout", "-subject", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  std::string output = ReadFileToString(out_path);
+  EXPECT_EQ("subject=C=US, O=Example, Inc., OU=Eng + CN=First, CN=Second\n",
+            output);
+  EXPECT_EQ("Second", ExtractLastCNValue(output));
+}
+
+// SAN entries in -text are printed by GENERAL_NAMES' i2v method, not
+// X509_NAME_print_ex, and so must be unaffected by the -subject default change.
+TEST_F(X509Test, TextSubjectAltNameCallerPattern) {
+  bssl::UniquePtr<X509> x509 = BuildSelfSignedCert([](X509 *cert,
+                                                      X509_NAME *name) {
+    if (!X509_NAME_add_entry_by_NID(
+            name, NID_commonName, MBSTRING_UTF8,
+            reinterpret_cast<const unsigned char *>("san-test"), -1, -1, 0)) {
+      return false;
+    }
+    X509V3_CTX ctx;
+    X509V3_set_ctx_nodb(&ctx);
+    X509V3_set_ctx(&ctx, cert, cert, nullptr, nullptr, 0);
+    bssl::UniquePtr<X509_EXTENSION> ext(X509V3_EXT_conf_nid(
+        nullptr, &ctx, NID_subject_alt_name,
+        const_cast<char *>("DNS:example.com,DNS:www.example.com")));
+    return ext && X509_add_ext(cert, ext.get(), -1) != 0;
+  });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  args_list_t args = {"-in", in_path, "-noout", "-text", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  std::string output = ReadFileToString(out_path);
+  EXPECT_NE(std::string::npos, output.find("X509v3 Subject Alternative Name:"));
+  EXPECT_NE(std::string::npos,
+            output.find("DNS:example.com, DNS:www.example.com"));
+}
+
+// -text labels the SCT list extension (NID_ct_precert_scts) by name rather
+// than raw OID. Only the OID is registered; its contents are still printed by
+// the generic unknown-extension fallback. 1.3.101.77 is an unregistered
+// control OID that must continue to print in dotted form.
+TEST_F(X509Test, TextCTPrecertSCTsLabelAndUnregisteredOID) {
+  bssl::UniquePtr<X509> x509 = BuildSelfSignedCert([](X509 *cert,
+                                                      X509_NAME *name) {
+    if (!X509_NAME_add_entry_by_NID(
+            name, NID_commonName, MBSTRING_UTF8,
+            reinterpret_cast<const unsigned char *>("sct-test"), -1, -1, 0)) {
+      return false;
+    }
+
+    static const uint8_t kSCTPayload[] = {0x01, 0x02, 0x03};
+    if (!AddRawExtension(cert, OBJ_nid2obj(NID_ct_precert_scts),
+                         /*critical=*/false, kSCTPayload,
+                         sizeof(kSCTPayload))) {
+      return false;
+    }
+
+    bssl::UniquePtr<ASN1_OBJECT> unregistered_oid(
+        OBJ_txt2obj("1.3.101.77", /*dont_search_names=*/1));
+    static const uint8_t kOtherPayload[] = {0x0a, 0x0b, 0x0c};
+    return unregistered_oid &&
+           AddRawExtension(cert, unregistered_oid.get(),
+                           /*critical=*/false, kOtherPayload,
+                           sizeof(kOtherPayload));
+  });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  args_list_t args = {"-in", in_path, "-noout", "-text", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  std::string output = ReadFileToString(out_path);
+  EXPECT_TRUE(ContainsExtensionLabelLine(output, "CT Precertificate SCTs"))
+      << output;
+  EXPECT_TRUE(ContainsExtensionLabelLine(output, "1.3.101.77")) << output;
+}
+
+// Exact output for each -nameopt preset, verified against OpenSSL 3.6.4.
+// "compat" differs: X509_NAME_oneline does not mark multi-valued RDNs
+// with '+'.
+TEST_F(X509Test, SubjectNameoptPresets) {
+  bssl::UniquePtr<X509> x509 = BuildSelfSignedCert([](X509 * /*cert*/,
+                                                      X509_NAME *name) {
+    return X509_NAME_add_entry_by_NID(
+               name, NID_countryName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("US"), -1, -1, 0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_organizationName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Example, Inc."), -1, -1,
+               0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_organizationalUnitName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Eng"), -1, -1, 0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_commonName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("First"), -1, -1, -1) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_commonName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Second"), -1, -1, 0);
+  });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  const struct {
+    const char *nameopt;  // nullptr means "omit -nameopt".
+    const char *expected;
+  } kCases[] = {
+      {nullptr,
+       "subject=C=US, O=Example, Inc., OU=Eng + CN=First, CN=Second\n"},
+      {"oneline",
+       "subject=C = US, O = \"Example, Inc.\", OU = Eng + CN = First, CN = "
+       "Second\n"},
+      {"RFC2253", "subject=CN=Second,CN=First+OU=Eng,O=Example\\, Inc.,C=US\n"},
+      {"compat", "subject=/C=US/O=Example, Inc./OU=Eng/CN=First/CN=Second\n"},
+      {"multiline",
+       "subject=\n"
+       "    countryName               = US\n"
+       "    organizationName          = Example, Inc.\n"
+       "    organizationalUnitName    = Eng + commonName                = "
+       "First\n"
+       "    commonName                = Second\n"},
+  };
+
+  for (const auto &c : kCases) {
+    SCOPED_TRACE(c.nameopt ? c.nameopt : "(default)");
+    args_list_t args = {"-in", in_path, "-noout", "-subject", "-out", out_path};
+    if (c.nameopt != nullptr) {
+      args.push_back("-nameopt");
+      args.push_back(c.nameopt);
+    }
+    ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+    EXPECT_EQ(c.expected, ReadFileToString(out_path));
+  }
+}
+
+TEST_F(X509Test, NameoptPresetsAreCaseInsensitive) {
+  for (const auto &names : {std::make_pair("compat", "CoMpAt"),
+                            std::make_pair("oneline", "ONELINE"),
+                            std::make_pair("RFC2253", "rfc2253"),
+                            std::make_pair("multiline", "MultiLine")}) {
+    for (const char *option : {"-subject", "-text"}) {
+      SCOPED_TRACE(names.second);
+      SCOPED_TRACE(option);
+      args_list_t args = {"-in",  in_path,  "-noout",   option,
+                          "-out", out_path, "-nameopt", names.first};
+      ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+      const std::string expected = ReadFileToString(out_path);
+      args.back() = names.second;
+      ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+      EXPECT_EQ(expected, ReadFileToString(out_path));
+    }
+  }
+}
+
+// -nameopt also governs -text's Issuer/Subject lines when given
+// explicitly; with no -nameopt, -text's rendering is unchanged.
+TEST_F(X509Test, TextNameoptAffectsSubjectIssuer) {
+  bssl::UniquePtr<X509> x509 = BuildSelfSignedCert([](X509 * /*cert*/,
+                                                      X509_NAME *name) {
+    return X509_NAME_add_entry_by_NID(
+               name, NID_organizationName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("Example, Inc."), -1, -1,
+               0) &&
+           X509_NAME_add_entry_by_NID(
+               name, NID_commonName, MBSTRING_UTF8,
+               reinterpret_cast<const unsigned char *>("text-test"), -1, -1, 0);
+  });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  args_list_t default_args = {"-in",   in_path, "-noout",
+                              "-text", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(default_args));
+  std::string default_output = ReadFileToString(out_path);
+  EXPECT_NE(std::string::npos,
+            default_output.find("Subject: O=Example, Inc., CN=text-test"));
+
+  args_list_t rfc_args = {"-in",      in_path,   "-noout", "-text",
+                          "-nameopt", "RFC2253", "-out",   out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(rfc_args));
+  std::string rfc_output = ReadFileToString(out_path);
+  EXPECT_NE(std::string::npos, rfc_output.find("Subject: CN=text-test"));
+}
+
+// The default -nameopt must escape control characters so a crafted subject
+// cannot inject extra lines into the single-line "subject=" output.
+TEST_F(X509Test, SubjectControlCharactersEscaped) {
+  bssl::UniquePtr<X509> x509 =
+      BuildSelfSignedCert([](X509 * /*cert*/, X509_NAME *name) {
+        return X509_NAME_add_entry_by_NID(
+            name, NID_commonName, MBSTRING_UTF8,
+            reinterpret_cast<const unsigned char *>("line1\nline2\rline3"), -1,
+            -1, 0);
+      });
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(WriteCertToFile(x509.get(), in_path));
+
+  args_list_t args = {"-in", in_path, "-noout", "-subject", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  std::string output = ReadFileToString(out_path);
+  ASSERT_FALSE(output.empty());
+  // Exactly one newline, and it is the final byte: the raw newline/CR bytes
+  // must not have split "subject=" output across physical lines.
+  EXPECT_EQ(output.size() - 1, output.find('\n'));
+  // Nor may the raw bytes appear unescaped anywhere in the output.
+  EXPECT_EQ(std::string::npos, output.find("line1\nline2"));
+  EXPECT_EQ(std::string::npos, output.find("line2\rline3"));
+
+  // The control bytes must instead show up hex-escaped
+  // (ASN1_STRFLGS_ESC_CTRL: backslash + 2 hex digits).
+  const char kBackslash = static_cast<char>(0x5C);
+  std::string escaped_newline = std::string("line1") + kBackslash + "0Aline2";
+  std::string escaped_cr = std::string("line2") + kBackslash + "0Dline3";
+  EXPECT_NE(std::string::npos, output.find(escaped_newline));
+  EXPECT_NE(std::string::npos, output.find(escaped_cr));
 }

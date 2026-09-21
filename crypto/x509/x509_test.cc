@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: ISC
 
 #include <limits.h>
+#include <stdio.h>
 
 #include <algorithm>
 #include <functional>
@@ -34,6 +35,12 @@
 
 #if defined(OPENSSL_THREADS)
 #include <thread>
+#endif
+
+#if defined(OPENSSL_WINDOWS)
+#include <direct.h>
+#else
+#include <unistd.h>
 #endif
 
 static const char kX509ExtensionsCert[] = R"(
@@ -4115,6 +4122,166 @@ TEST(X509Test, NameHash) {
     EXPECT_EQ(t.hash_old, X509_NAME_hash_old(name.get()));
   }
 }
+
+// ScopedCertDir is a temp directory of CA certs named per
+// |X509_LOOKUP_hash_dir|'s "HASH.0" convention. It removes everything it
+// created on destruction, even from partial setup.
+struct ScopedCertDir {
+  char path[PATH_MAX];
+  std::vector<std::string> files;
+
+  ScopedCertDir() {
+    if (createTempDirPath(path) == 0) {
+      path[0] = '\0';
+    }
+  }
+  ScopedCertDir(const ScopedCertDir &) = delete;
+  ScopedCertDir &operator=(const ScopedCertDir &) = delete;
+  ~ScopedCertDir() {
+    for (const auto &file : files) {
+      remove(file.c_str());
+    }
+    if (path[0] != '\0') {
+#if defined(OPENSSL_WINDOWS)
+      _rmdir(path);
+#else
+      rmdir(path);
+#endif
+    }
+  }
+
+  // Signs |cert| with |key| and writes it under this directory's hash-based
+  // filename.
+  bool AddCert(X509 *cert, EVP_PKEY *key) {
+    if (path[0] == '\0' || !X509_sign(cert, key, EVP_sha256())) {
+      return false;
+    }
+    uint32_t hash = X509_NAME_hash(X509_get_subject_name(cert));
+    char file[PATH_MAX];
+    int n = snprintf(file, sizeof(file), "%s/%08lx.0", path,
+                     static_cast<unsigned long>(hash));
+    if (hash == 0 || n < 0 || static_cast<size_t>(n) >= sizeof(file)) {
+      return false;
+    }
+    FILE *f = fopen(file, "wb");
+    if (f == nullptr) {
+      return false;
+    }
+    files.push_back(file);
+    const bool ok = PEM_write_X509(f, cert) == 1;
+    const int close_result = fclose(f);
+    return ok && close_result == 0;
+  }
+};
+
+// Looks up |leaf|'s issuer via a fresh |X509_LOOKUP_hash_dir| configured
+// with |path|, as |X509_STORE_load_locations| would. Returns the issuer, or
+// null if none was found.
+static bssl::UniquePtr<X509> FindIssuerInDir(X509 *leaf, const char *path) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  if (!store || X509_STORE_load_locations(store.get(), nullptr, path) != 1) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  if (!ctx || !X509_STORE_CTX_init(ctx.get(), store.get(), leaf, nullptr)) {
+    return nullptr;
+  }
+  X509 *issuer = nullptr;
+  X509_STORE_CTX_get1_issuer(&issuer, ctx.get(), leaf);
+  return bssl::UniquePtr<X509>(issuer);
+}
+
+// |add_cert_dir| splits |path| into multiple directories on ':' (';' on
+// Windows, since a Windows directory itself may start with a drive letter
+// followed by ':'). Regression test: both directories of a two-entry list
+// must be searched.
+TEST(X509Test, HashDirMultipleDirectories) {
+#if defined(OPENSSL_ANDROID)
+  // Android app processes cannot create files under /tmp, which
+  // |createTempDirPath| uses. See |BIOTest.CloseFlags|.
+  GTEST_SKIP();
+#endif
+
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  ScopedCertDir dir_a, dir_b;
+  ASSERT_TRUE(dir_a.path[0]);
+  ASSERT_TRUE(dir_b.path[0]);
+
+  bssl::UniquePtr<X509> root_a =
+      MakeTestCert("Root A", "Root A", key.get(), /*is_ca=*/true);
+  bssl::UniquePtr<X509> root_b =
+      MakeTestCert("Root B", "Root B", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root_a);
+  ASSERT_TRUE(root_b);
+  ASSERT_TRUE(dir_a.AddCert(root_a.get(), key.get()));
+  ASSERT_TRUE(dir_b.AddCert(root_b.get(), key.get()));
+
+  bssl::UniquePtr<X509> leaf_a =
+      MakeTestCert("Root A", "Leaf A", key.get(), /*is_ca=*/false);
+  bssl::UniquePtr<X509> leaf_b =
+      MakeTestCert("Root B", "Leaf B", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_a);
+  ASSERT_TRUE(leaf_b);
+  ASSERT_TRUE(X509_sign(leaf_a.get(), key.get(), EVP_sha256()));
+  ASSERT_TRUE(X509_sign(leaf_b.get(), key.get(), EVP_sha256()));
+
+#if defined(OPENSSL_WINDOWS)
+  std::string path = std::string(dir_a.path) + ";" + dir_b.path;
+#else
+  std::string path = std::string(dir_a.path) + ":" + dir_b.path;
+#endif
+
+  bssl::UniquePtr<X509> found_a = FindIssuerInDir(leaf_a.get(), path.c_str());
+  bssl::UniquePtr<X509> found_b = FindIssuerInDir(leaf_b.get(), path.c_str());
+  ASSERT_TRUE(found_a);
+  ASSERT_TRUE(found_b);
+  EXPECT_EQ(0, X509_NAME_cmp(X509_get_subject_name(found_a.get()),
+                             X509_get_subject_name(root_a.get())));
+  EXPECT_EQ(0, X509_NAME_cmp(X509_get_subject_name(found_b.get()),
+                             X509_get_subject_name(root_b.get())));
+}
+
+#if defined(OPENSSL_WINDOWS)
+// An unused drive letter must not cause lookup in a matching directory on
+// the current drive. No drive mappings or working directories are changed.
+TEST(X509Test, HashDirDoesNotSplitDriveLetter) {
+  ScopedCertDir dir;
+  ASSERT_NE('\0', dir.path[0]);
+  char cwd[PATH_MAX];
+  ASSERT_NE(nullptr, _getcwd(cwd, sizeof(cwd)));
+  if (dir.path[1] != ':' || OPENSSL_strncasecmp(dir.path, cwd, 2) != 0) {
+    GTEST_SKIP() << "Temp directory must be on the current drive";
+  }
+  DWORD drives = GetLogicalDrives();
+  ASSERT_NE(0u, drives);
+  char fake_drive = 0;
+  for (char c = 'A'; c <= 'Z'; c++) {
+    if (!(drives & (1u << (c - 'A')))) {
+      fake_drive = c;
+      break;
+    }
+  }
+  if (fake_drive == 0) {
+    GTEST_SKIP() << "No unused drive letter available";
+  }
+
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> decoy =
+      MakeTestCert("Decoy", "Decoy", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(decoy);
+  ASSERT_TRUE(dir.AddCert(decoy.get(), key.get()));
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Decoy", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  ASSERT_TRUE(FindIssuerInDir(leaf.get(), dir.path));
+  std::string fake_path = std::string(1, fake_drive) + ":" + (dir.path + 2);
+  EXPECT_FALSE(FindIssuerInDir(leaf.get(), fake_path.c_str()));
+}
+#endif  // OPENSSL_WINDOWS
 
 TEST(X509Test, NoBasicConstraintsCertSign) {
   bssl::UniquePtr<X509> root(CertFromPEM(kSANTypesRoot));
