@@ -1,7 +1,6 @@
 // Copyright (c) 2016, Google Inc.
 // SPDX-License-Identifier: ISC
 
-#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 
@@ -4159,7 +4158,8 @@ struct ScopedCertDir {
     }
     uint32_t hash = X509_NAME_hash(X509_get_subject_name(cert));
     char file[PATH_MAX];
-    int n = snprintf(file, sizeof(file), "%s/%08" PRIx32 ".0", path, hash);
+    int n = snprintf(file, sizeof(file), "%s/%08lx.0", path,
+                     static_cast<unsigned long>(hash));
     if (hash == 0 || n < 0 || static_cast<size_t>(n) >= sizeof(file)) {
       return false;
     }
