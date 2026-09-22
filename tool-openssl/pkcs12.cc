@@ -170,13 +170,13 @@ int pkcs12Tool(const args_list_t &args) {
   EVP_PKEY *raw_key = nullptr;
   CBS pkcs12_cbs;
   CBS_init(&pkcs12_cbs, input_bytes.data(), input_bytes.size());
-  const char *password_cstr =
-      passin_arg.empty() ? nullptr : passin_arg.get().c_str();
   // This verifies the MAC and decrypts every bag before returning success,
   // and rolls |certs| back on failure, so bad input never yields partial
-  // output.
-  if (!PKCS12_get_key_and_certs(&raw_key, certs.get(), &pkcs12_cbs,
-                                password_cstr)) {
+  // output. The password buffer is borrowed from |passin_arg|, whose
+  // destructor cleanses it.
+  if (!PKCS12_get_key_and_certs(
+          &raw_key, certs.get(), &pkcs12_cbs,
+          passin_arg.empty() ? nullptr : passin_arg.get().c_str())) {
     // A bad password gets a one-line diagnostic; ERR_LIB_PKCS12 has no
     // registered strings, so dumping the queue would only add noise. Other
     // failures (malformed data, missing MAC, unsupported PBE) dump the queue
