@@ -22,6 +22,7 @@ add_executable(
     genrsa.cc
     pass_util.cc
     pkcs8.cc
+    pkcs12.cc
     pkey.cc
     pkeyutl.cc
     rehash.cc
@@ -135,6 +136,8 @@ if(BUILD_TESTING)
         pass_util_test.cc
         pkcs8.cc
         pkcs8_test.cc
+        pkcs12.cc
+        pkcs12_test.cc
         pkey.cc
         pkey_test.cc
         pkeyutl.cc
