@@ -130,6 +130,10 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN], const uint8_t *key,
   poly1305_update_length(&ctx, ad_len);
   poly1305_update_length(&ctx, ciphertext_total);
   CRYPTO_poly1305_finish(&ctx, tag);
+  // Wipe the derived one-time Poly1305 key and authentication state; they are
+  // intermediate secret key material and must not be left on the stack.
+  OPENSSL_cleanse(poly1305_key, sizeof(poly1305_key));
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
 }
 
 static int chacha20_poly1305_seal_scatter(
@@ -184,6 +188,8 @@ static int chacha20_poly1305_seal_scatter(
       }
       offset = 0;
     }
+    // |block| holds ChaCha20 keystream used to encrypt |extra_in|; wipe it.
+    OPENSSL_cleanse(block, sizeof(block));
   }
 
   union chacha20_poly1305_seal_data data;
@@ -202,6 +208,9 @@ static int chacha20_poly1305_seal_scatter(
 
   OPENSSL_memcpy(out_tag + extra_in_len, data.out.tag, tag_len);
   *out_tag_len = extra_in_len + tag_len;
+  // In the asm path |data.in.key| held a full copy of the AEAD key; wipe the
+  // whole union before returning.
+  OPENSSL_cleanse(&data, sizeof(data));
   return 1;
 }
 
@@ -283,10 +292,14 @@ static int chacha20_poly1305_open_gather(const uint8_t *key, uint8_t *out,
   }
 
   if (CRYPTO_memcmp(data.out.tag, in_tag, tag_len) != 0) {
+    OPENSSL_cleanse(&data, sizeof(data));
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
+  // In the asm path |data.in.key| held a full copy of the AEAD key; wipe the
+  // whole union before returning.
+  OPENSSL_cleanse(&data, sizeof(data));
   return 1;
 }
 
