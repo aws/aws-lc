@@ -1286,6 +1286,7 @@ EVP_VerifyFinal AWS_LC_1.0 PUBLIC
 EVP_VerifyInit AWS_LC_1.0 PUBLIC
 EVP_VerifyInit_ex AWS_LC_1.0 PUBLIC
 EVP_VerifyUpdate AWS_LC_1.0 PUBLIC
+EVP_add_cipher AWS_LC_1.0 PUBLIC
 EVP_add_cipher_alias AWS_LC_1.0 PUBLIC
 EVP_add_digest AWS_LC_1.0 PUBLIC
 EVP_aead_aes_128_cbc_sha1_tls AWS_LC_1.0 PUBLIC

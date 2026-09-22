@@ -956,7 +956,7 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
   </td>
  </tr>
  <tr>
-  <td rowspan=2>
+  <td rowspan=3>
   <p>
     <span>
         <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/cipher.h#L559-L573">
@@ -977,6 +977,14 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
     </a>
     .
   </p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>EVP_add_cipher</span></p>
+  </td>
+  <td>
+  <p><span>Does nothing. Returns one if the cipher is non-NULL and zero otherwise.</span></p>
   </td>
  </tr>
  <tr>

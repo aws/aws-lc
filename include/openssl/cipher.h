@@ -541,6 +541,13 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
 // with AWS-LC.
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
+// EVP_add_cipher returns one if |cipher| is non-NULL and zero otherwise. It
+// exists only for compatibility with OpenSSL, which requires ciphers to be
+// registered before they can be found by name. AWS-LC's cipher lookup
+// functions, such as |EVP_get_cipherbyname|, do not use a registry and support
+// a fixed set of ciphers, so this function has no other effect.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher(const EVP_CIPHER *cipher);
+
 // EVP_add_cipher_alias does nothing and returns one.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
                                                            const char *b);
