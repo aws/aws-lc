@@ -114,20 +114,23 @@ int bio_sock_error_get_and_clear(int sock) {
   return error;
 }
 
-void bio_socket_set_error(int error) {
+int bio_socket_error_is_retryable(int error) {
 #if defined(OPENSSL_WINDOWS)
-  WSASetLastError(error);
+  return error == WSAEWOULDBLOCK;
 #else
-  errno = error;
+  // On POSIX platforms, sockets and fds are the same.
+  return bio_errno_is_retryable(error);
 #endif
 }
 
 int bio_socket_should_retry(int return_value) {
+  if (return_value != -1) {
+    return 0;
+  }
 #if defined(OPENSSL_WINDOWS)
-  return return_value == -1 && (WSAGetLastError() == WSAEWOULDBLOCK);
+  return bio_socket_error_is_retryable(WSAGetLastError());
 #else
-  // On POSIX platforms, sockets and fds are the same.
-  return bio_errno_should_retry(return_value);
+  return bio_socket_error_is_retryable(errno);
 #endif
 }
 

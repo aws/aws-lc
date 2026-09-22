@@ -32,8 +32,8 @@ enum {
   BIO_CONN_S_BEFORE,
   BIO_CONN_S_BLOCKED_CONNECT,
   BIO_CONN_S_OK,
-  // BIO_CONN_S_ERROR is terminal: the connect attempt failed and its socket
-  // error was already consumed. Keep last; |bio_info_cb| sees these values.
+  // BIO_CONN_S_ERROR is terminal: the connect attempt failed and its error
+  // was already reported. Keep last; |bio_info_cb| sees these values.
   BIO_CONN_S_ERROR,
 };
 
@@ -192,6 +192,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             OPENSSL_PUT_ERROR(BIO, BIO_R_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":",
                                c->param_port);
+            c->state = BIO_CONN_S_ERROR;
           }
           goto exit_loop;
         } else {
@@ -211,17 +212,14 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           goto exit_loop;
         }
         if (i) {
-          // |bio_socket_should_retry| classifies the thread's last socket
-          // error, not its argument, so publish |i| first.
-          bio_socket_set_error(i);
-          if (bio_socket_should_retry(-1)) {
+          if (bio_socket_error_is_retryable(i)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));
             c->state = BIO_CONN_S_BLOCKED_CONNECT;
             bio->retry_reason = BIO_RR_CONNECT;
             ret = -1;
           } else {
             BIO_clear_retry_flags(bio);
-            OPENSSL_PUT_SYSTEM_ERROR();
+            OPENSSL_PUT_ERROR(SYS, i);
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
             c->state = BIO_CONN_S_ERROR;
@@ -234,10 +232,11 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         break;
 
       case BIO_CONN_S_ERROR:
-        // |SO_ERROR| was cleared when this failure was first reported, so
-        // re-reading it would look like success. |errno| is stale too.
+        // The original error was already reported. Do not start a new connection
+        // or re-read |SO_ERROR|, which may have been cleared. |errno| is stale too.
         BIO_clear_retry_flags(bio);
-        OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
+        OPENSSL_PUT_ERROR(BIO, c->nbio ? BIO_R_NBIO_CONNECT_ERROR
+                                     : BIO_R_CONNECT_ERROR);
         ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
         ret = 0;
         goto exit_loop;

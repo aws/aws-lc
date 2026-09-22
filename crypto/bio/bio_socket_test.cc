@@ -468,7 +468,7 @@ TEST(BIOTest, SocketConnect) {
   ASSERT_EQ(Bytes(kTestMessage, sizeof(kTestMessage)), Bytes(buf, sizeof(buf)));
 }
 
-TEST(BIOTest, SocketNonBlockingConnectFailure) {
+static void TestSocketConnectFailure(bool non_blocking) {
   sockaddr_in sin;
   OPENSSL_cleanse(&sin, sizeof(sin));
   sin.sin_family = AF_INET;
@@ -491,25 +491,27 @@ TEST(BIOTest, SocketNonBlockingConnectFailure) {
 
   const bssl::UniquePtr<BIO> bio(BIO_new_connect(hostname));
   ASSERT_TRUE(bio);
-  ASSERT_TRUE(BIO_set_nbio(bio.get(), 1));
+  ASSERT_TRUE(BIO_set_nbio(bio.get(), non_blocking));
 
+  ERR_clear_error();
   ASSERT_EQ(-1, BIO_do_connect(bio.get()));
-  ASSERT_TRUE(BIO_should_retry(bio.get()));
-
   const int fd = BIO_get_fd(bio.get(), nullptr);
   ASSERT_NE(-1, fd);
-  ASSERT_TRUE(WaitForSocket(fd, WaitType::kConnect)) << LastSocketError();
 
-  // A successful readiness call need not clear the retryable socket error left
-  // by connect. Ensure the connect BIO uses SO_ERROR, not this stale value.
+  if (non_blocking) {
+    ASSERT_TRUE(BIO_should_retry(bio.get()));
+    ASSERT_TRUE(WaitForSocket(fd, WaitType::kConnect)) << LastSocketError();
+
+    // A successful readiness call need not clear the retryable socket error left
+    // by connect. Ensure the connect BIO uses SO_ERROR, not this stale value.
 #if defined(OPENSSL_WINDOWS)
-  SetLastSocketError(WSAEWOULDBLOCK);
+    SetLastSocketError(WSAEWOULDBLOCK);
 #else
-  SetLastSocketError(EINPROGRESS);
+    SetLastSocketError(EINPROGRESS);
 #endif
-  ERR_clear_error();
-
-  EXPECT_EQ(0, BIO_do_connect(bio.get()));
+    ERR_clear_error();
+    EXPECT_EQ(0, BIO_do_connect(bio.get()));
+  }
   EXPECT_FALSE(BIO_should_retry(bio.get()));
 
   uint32_t error = ERR_get_error();
@@ -519,24 +521,54 @@ TEST(BIOTest, SocketNonBlockingConnectFailure) {
 #if !defined(OPENSSL_WINDOWS)
   EXPECT_EQ(ECONNREFUSED, ERR_GET_REASON(error));
 #endif
+  const int reason =
+      non_blocking ? BIO_R_NBIO_CONNECT_ERROR : BIO_R_CONNECT_ERROR;
   error = ERR_get_error();
   EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
-  EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
+  EXPECT_EQ(reason, ERR_GET_REASON(error));
   EXPECT_EQ(0u, ERR_get_error());
 
-  // Reading SO_ERROR above cleared it, so a further attempt must keep failing
-  // rather than read the now-clear error as a completed connection.
-  EXPECT_EQ(0, BIO_do_connect(bio.get()));
+  // Even if the peer starts listening, the failed BIO must not silently create
+  // a new socket or interpret a cleared SO_ERROR as a successful connection.
+  bound_sock = Bind(AF_INET, SOCK_STREAM, addr.addr(), addr.len);
+  ASSERT_TRUE(bound_sock.is_valid()) << LastSocketError();
+  ASSERT_EQ(0, listen(bound_sock.get(), 1)) << LastSocketError();
+  ASSERT_EQ(0, BIO_do_connect(bio.get()));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+  EXPECT_EQ(fd, BIO_get_fd(bio.get(), nullptr));
+  error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+  EXPECT_EQ(reason, ERR_GET_REASON(error));
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // Reading and writing must also fail without reporting a stale system error.
+  char buf[4];
+  EXPECT_EQ(0, BIO_read(bio.get(), buf, sizeof(buf)));
   EXPECT_FALSE(BIO_should_retry(bio.get()));
   error = ERR_get_error();
   EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
-  EXPECT_EQ(BIO_R_NBIO_CONNECT_ERROR, ERR_GET_REASON(error));
+  EXPECT_EQ(reason, ERR_GET_REASON(error));
   EXPECT_EQ(0u, ERR_get_error());
 
-  // Writing to a BIO whose connection never completed must fail too.
-  EXPECT_GE(0, BIO_write(bio.get(), "test", 4));
+  EXPECT_EQ(0, BIO_write(bio.get(), "test", 4));
   EXPECT_FALSE(BIO_should_retry(bio.get()));
+  error = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+  EXPECT_EQ(reason, ERR_GET_REASON(error));
+  EXPECT_EQ(0u, ERR_get_error());
+
+  // An explicit reset closes the failed socket and permits a fresh connection.
+  ASSERT_EQ(0, BIO_reset(bio.get()));
+  EXPECT_EQ(-1, BIO_get_fd(bio.get(), nullptr));
+  ASSERT_TRUE(BIO_set_nbio(bio.get(), 0));
+  ASSERT_EQ(1, BIO_do_connect(bio.get())) << LastSocketError();
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+  EXPECT_EQ(0u, ERR_get_error());
 }
+
+TEST(BIOTest, SocketConnectFailure) { TestSocketConnectFailure(false); }
+
+TEST(BIOTest, SocketNonBlockingConnectFailure) { TestSocketConnectFailure(true); }
 
 TEST(BIOTest, SocketNonBlocking) {
   OwnedSocket listening_sock = ListenLoopback(SOCK_STREAM);
