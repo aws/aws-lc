@@ -18,8 +18,6 @@
 #include "../rsa/internal.h"
 #include "../../rsa_extra/internal.h"
 
-#define NO_PSS_SALT_LEN_RESTRICTION -1
-
 typedef struct {
   // Key gen parameters
   int nbits;
@@ -32,7 +30,7 @@ typedef struct {
   const EVP_MD *mgf1md;
   // PSS salt length
   int saltlen;
-  // Minimum salt length or NO_PSS_SALT_LEN_RESTRICTION.
+  // Minimum salt length or RSA_PSS_NO_SALTLEN_MINIMUM.
   int min_saltlen;
   // tbuf is a buffer which is either NULL, or is the size of the RSA modulus.
   // It's used to store the output of RSA operations.
@@ -53,10 +51,10 @@ static int pkey_ctx_is_pss(EVP_PKEY_CTX *ctx) {
 
 // This method checks if the NID of |s_md| is the same as the NID of |k_md| when
 // |pkey_ctx_is_pss(ctx)| is true and there is PSS restriction, which means
-// |min_saltlen| != |NO_PSS_SALT_LEN_RESTRICTION|.
+// |min_saltlen| != |RSA_PSS_NO_SALTLEN_MINIMUM|.
 static int pss_hash_algorithm_match(EVP_PKEY_CTX *ctx, int min_saltlen,
                                     const EVP_MD *k_md, const EVP_MD *s_md) {
-  if (pkey_ctx_is_pss(ctx) && min_saltlen != NO_PSS_SALT_LEN_RESTRICTION) {
+  if (pkey_ctx_is_pss(ctx) && min_saltlen != RSA_PSS_NO_SALTLEN_MINIMUM) {
     if (k_md != NULL && s_md != NULL) {
       return EVP_MD_type(k_md) == EVP_MD_type(s_md);
     } else {
@@ -103,11 +101,8 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
   // See if minimum salt length exceeds maximum possible.
   // 8.1.1. Step1 https://tools.ietf.org/html/rfc8017#section-8.1.1
   // 9.1.1. Step3 https://tools.ietf.org/html/rfc8017#section-9.1.1
-  max_saltlen = RSA_size(rsa) - EVP_MD_size(md) - 2;
-  if ((RSA_bits(rsa) & 0x7) == 1) {
-    max_saltlen--;
-  }
-  if (min_saltlen > max_saltlen) {
+  max_saltlen = rsa_pss_max_saltlen(rsa, EVP_MD_size(md));
+  if (max_saltlen < 0 || min_saltlen > max_saltlen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PSS_SALT_LEN);
     return 0;
   }
@@ -152,7 +147,7 @@ static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
     rctx->pad_mode = RSA_PKCS1_PADDING;
   }
   rctx->saltlen = RSA_PSS_SALTLEN_AUTO;
-  rctx->min_saltlen = NO_PSS_SALT_LEN_RESTRICTION;
+  rctx->min_saltlen = RSA_PSS_NO_SALTLEN_MINIMUM;
 
   ctx->data = rctx;
 
@@ -484,7 +479,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
           return 0;
         }
         int min_saltlen = rctx->min_saltlen;
-        if (min_saltlen != NO_PSS_SALT_LEN_RESTRICTION) {
+        if (min_saltlen != RSA_PSS_NO_SALTLEN_MINIMUM) {
           // |RSA_PSS_SALTLEN_AUTO| is checked against |min_saltlen| when the
           // salt is recovered on verify.
           if ((p1 == RSA_PSS_SALTLEN_DIGEST &&

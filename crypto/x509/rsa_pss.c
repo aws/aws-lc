@@ -165,7 +165,8 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
     saltlen = EVP_MD_size(sigmd);
   } else if (saltlen == RSA_PSS_SALTLEN_AUTO) {
     // TODO(davidben): Forbid this mode. The world has largely standardized on
-    // salt length matching hash length.
+    // salt length matching hash length. Until then, keep this calculation in
+    // sync with |rsa_pss_max_saltlen|.
     saltlen = EVP_PKEY_size(pk) - EVP_MD_size(sigmd) - 2;
     if (((EVP_PKEY_bits(pk) - 1) & 0x7) == 0) {
       saltlen--;

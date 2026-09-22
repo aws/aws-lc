@@ -229,6 +229,11 @@ int is_public_component_of_rsa_key_good(const RSA *key);
 // RSA_PSS_NO_SALTLEN_MINIMUM, like any negative value, imposes no minimum.
 #define RSA_PSS_NO_SALTLEN_MINIMUM (-1)
 
+// rsa_pss_max_saltlen returns the maximum PSS salt length usable with |rsa| and
+// a |hLen|-byte digest, or a negative value if |rsa| is too small. This is the
+// value |RSA_PSS_SALTLEN_AUTO| resolves to when signing.
+int rsa_pss_max_saltlen(const RSA *rsa, size_t hLen);
+
 // rsa_verify_PKCS1_PSS_mgf1 behaves like |RSA_verify_PKCS1_PSS_mgf1|, except
 // that a non-negative |min_sLen| also requires the recovered salt to be at
 // least |min_sLen| bytes. This only constrains |RSA_PSS_SALTLEN_AUTO|, since

@@ -16,6 +16,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -157,6 +158,22 @@ err:
 }
 
 static const uint8_t kPSSZeroes[] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+int rsa_pss_max_saltlen(const RSA *rsa, size_t hLen) {
+  size_t emLen = RSA_size(rsa);
+  if ((RSA_bits(rsa) & 0x7) == 1) {
+    assert(emLen >= 1);
+    emLen--;
+  }
+  if (emLen < hLen || emLen - hLen < 2) {
+    return -1;
+  }
+  const size_t max_saltlen = emLen - hLen - 2;
+  if (max_saltlen > INT_MAX) {
+    return -1;
+  }
+  return (int)max_saltlen;
+}
 
 int rsa_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
                               const EVP_MD *Hash, const EVP_MD *mgf1Hash,
@@ -309,7 +326,8 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     emLen--;
   }
 
-  if (emLen < hLen + 2) {
+  const int max_saltlen = rsa_pss_max_saltlen(rsa, hLen);
+  if (max_saltlen < 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }
@@ -322,7 +340,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   if (sLenRequested == RSA_PSS_SALTLEN_DIGEST) {
     sLen = hLen;
   } else if (sLenRequested == RSA_PSS_SALTLEN_AUTO) {
-    sLen = emLen - hLen - 2;
+    sLen = (size_t)max_saltlen;
   } else if (sLenRequested < 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
@@ -330,7 +348,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     sLen = (size_t)sLenRequested;
   }
 
-  if (emLen - hLen - 2 < sLen) {
+  if ((size_t)max_saltlen < sLen) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }
