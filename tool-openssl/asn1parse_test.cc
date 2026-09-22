@@ -322,12 +322,16 @@ TEST_P(CorpusComparisonTest, asn1parseCompare) {
     GTEST_SKIP() << "Skipping test: negative aws-lc test-case, or expected "
                     "mismatch on output";
   }
-  std::string tool_command = std::string(tool_executable_path) +
-                             " asn1parse -inform " + param.format + " -in " +
-                             in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " asn1parse -inform " + param.format + " -in " +
-                                in_path + " > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " asn1parse -inform " +
+                             ShellEscape(param.format) + " -in " +
+                             ShellEscape(in_path) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " asn1parse -inform " +
+                                ShellEscape(param.format) + " -in " +
+                                ShellEscape(in_path) + " > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
