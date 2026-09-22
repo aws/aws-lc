@@ -7,13 +7,23 @@
 std::string ShellEscape(const std::string &argument) {
 #if defined(OPENSSL_WINDOWS)
   std::string escaped = "\"";
+  size_t backslashes = 0;
   for (char c : argument) {
-    if (c == '"') {
-      escaped += "\\\"";
-    } else {
-      escaped += c;
+    if (c == '\\') {
+      backslashes++;
+      continue;
     }
+    if (c == '"') {
+      // Double backslashes before a quote, then escape the quote.
+      escaped.append(2 * backslashes + 1, '\\');
+    } else {
+      escaped.append(backslashes, '\\');
+    }
+    escaped += c;
+    backslashes = 0;
   }
+  // Double trailing backslashes so they do not escape the closing quote.
+  escaped.append(2 * backslashes, '\\');
   escaped += '"';
   return escaped;
 #else
@@ -35,6 +45,9 @@ TEST(TestUtilTest, ShellEscape) {
   EXPECT_EQ("\"\"", ShellEscape(""));
   EXPECT_EQ("\"path with spaces\"", ShellEscape("path with spaces"));
   EXPECT_EQ("\"a\\\"b\"", ShellEscape("a\"b"));
+  EXPECT_EQ("\"a\\\\\\\"b\"", ShellEscape("a\\\"b"));
+  EXPECT_EQ("\"C:\\temp\\\\\"", ShellEscape("C:\\temp\\"));
+  EXPECT_EQ("\"C:\\temp\\\\\\\\\"", ShellEscape("C:\\temp\\\\"));
 #else
   EXPECT_EQ("''", ShellEscape(""));
   EXPECT_EQ("'path with spaces'", ShellEscape("path with spaces"));
