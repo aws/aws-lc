@@ -154,7 +154,9 @@ TEST(Ed25519Test, NonCanonicalPublicKey) {
   EXPECT_FALSE(ED25519_check_public_key(kYEqP));
 
   // R = (0, 1), S = 0 is a valid signature for A = identity: [0]B - [k]O = O.
-  // Non-canonical encodings of the identity would also verify if decoded.
+  // If decoding accepted the non-canonical encodings of A = identity, this
+  // signature would also verify: [k]O = O even though the encoded key changes k.
+  // The checks below must therefore fail during public-key decoding.
   static const uint8_t kIdentitySig[64] = {0x01};
   static const uint8_t kMsg[] = {'t', 'e', 's', 't'};
   EXPECT_TRUE(ED25519_verify(kMsg, sizeof(kMsg), kIdentitySig, kIdentity));
