@@ -869,12 +869,14 @@ class VerifyComparisonTest : public ::testing::Test {
 // Test against OpenSSL with -CAfile & self-signed cert fed in as a file
 // "openssl verify -CAfile cert.pem cert.pem"
 TEST_F(VerifyComparisonTest, CAFileSelfSigned) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " verify -CAfile " + ca_path + " " + in_path +
-                             " &> " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " verify -CAfile " + ca_path + " " + in_path +
-                                " &> " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " verify -CAfile " + ShellEscape(ca_path) + " " +
+                             ShellEscape(in_path) + " &> " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " verify -CAfile " + ShellEscape(ca_path) +
+                                " " + ShellEscape(in_path) + " &> " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -886,12 +888,15 @@ TEST_F(VerifyComparisonTest, CAFileSelfSigned) {
 // Test against OpenSSL with -CAfile & 2 self-signed cert fed in as files
 // "openssl verify -CAfile cert.pem cert.pem cert.pem"
 TEST_F(VerifyComparisonTest, CAFileMultipleFiles) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " verify -CAfile " + ca_path + " " + in_path +
-                             " " + in_path + " &> " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " verify -CAfile " + ca_path + " " + in_path +
-                                " " + in_path + " &> " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " verify -CAfile " + ShellEscape(ca_path) + " " +
+                             ShellEscape(in_path) + " " + ShellEscape(in_path) +
+                             " &> " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " verify -CAfile " + ShellEscape(ca_path) +
+                                " " + ShellEscape(in_path) + " " +
+                                ShellEscape(in_path) + " &> " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -903,14 +908,14 @@ TEST_F(VerifyComparisonTest, CAFileMultipleFiles) {
 // Test against OpenSSL with -CAfile & self-signed cert fed through stdin
 // "cat cert.pem | openssl verify -CAfile cert.pem"
 TEST_F(VerifyComparisonTest, CAFileSelfSignedStdin) {
-  std::string tool_command = "cat " + std::string(ca_path) + " | " +
-                             std::string(tool_executable_path) +
-                             " verify -CAfile " + ca_path + " &> " +
-                             out_path_tool;
-  std::string openssl_command = "cat " + std::string(ca_path) + " | " +
-                                std::string(openssl_executable_path) +
-                                " verify -CAfile " + ca_path + " &> " +
-                                out_path_openssl;
+  std::string tool_command = "cat " + ShellEscape(ca_path) + " | " +
+                             ShellEscape(tool_executable_path) +
+                             " verify -CAfile " + ShellEscape(ca_path) +
+                             " &> " + ShellEscape(out_path_tool);
+  std::string openssl_command = "cat " + ShellEscape(ca_path) + " | " +
+                                ShellEscape(openssl_executable_path) +
+                                " verify -CAfile " + ShellEscape(ca_path) +
+                                " &> " + ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
