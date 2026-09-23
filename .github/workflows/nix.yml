@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   nixflake:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,6 +20,7 @@ jobs:
       - run: nix build
       - run: nix flake check
   nixfmt:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

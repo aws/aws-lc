@@ -15,6 +15,7 @@ env:
 
 jobs:
   get-failing-integrations:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: get-failing-integrations
     if: >-
       github.event.workflow_run.event == 'schedule' &&
@@ -55,6 +56,7 @@ jobs:
           if-no-files-found: ignore
 
   reason:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: reason (${{ matrix.target.dir }})
     needs: get-failing-integrations
     if: needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != ''
@@ -121,6 +123,7 @@ jobs:
           if-no-files-found: ignore
 
   upload:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: upload (${{ matrix.target.dir }})
     needs: [get-failing-integrations, reason]
     if: ${{ always() && needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != '' }}

@@ -28,6 +28,7 @@ permissions:
 jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
   sanity-test-run:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: >
       github.actor != 'acl-ci[bot]' ||
       contains(github.event.pull_request.labels.*.name, 'ci-approved')
@@ -45,6 +46,7 @@ jobs:
           ninja -C test_build_dir run_tests
 
   macOS-x86:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
@@ -66,6 +68,7 @@ jobs:
         run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-x86-FIPS:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
@@ -87,6 +90,7 @@ jobs:
         run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   macOS-ARM:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
@@ -112,6 +116,7 @@ jobs:
         run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   windows:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
@@ -139,6 +144,7 @@ jobs:
           ./tests/ci/run_windows_tests.bat auto arm64
 
   macOS-ARM-FIPS:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
@@ -175,6 +181,7 @@ jobs:
         run: python3 tests/ci/test_results_summary.py "${{ github.workspace }}/gtest_reports" >> $GITHUB_STEP_SUMMARY
 
   compiler-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: >-
       x86-64 - ${{ matrix.compiler }} -
       ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} -
@@ -254,6 +261,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   sanitizer-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: sanitizer - ${{ matrix.arch.name }} - ${{ matrix.config.name }} [${{ matrix.shard_index }}/${{ matrix.config.total_shards }}]
     needs: [sanity-test-run]
     if: github.repository_owner == 'aws'
@@ -324,6 +332,7 @@ jobs:
         run: ./build/ssl/ssl_test
 
   musl-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: musl - ${{ matrix.config.arch }}
     needs: [sanity-test-run]
     env:
@@ -355,6 +364,7 @@ jobs:
         run: cmake --build ./build --target crypto
 
   arm-gcc-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - gcc${{ matrix.gcc_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
@@ -402,6 +412,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   arm-clang-2604-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
@@ -437,6 +448,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   arm-clang-2404-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
@@ -476,6 +488,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   arm-clang-2204-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang ${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
@@ -515,6 +528,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   arm-clang-2004-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     name: arm64 - clang ${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
@@ -557,6 +571,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   gcc-14-hardened:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     env:
@@ -600,6 +615,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   pedantic-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: pedantic - ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
     needs: [sanity-test-run]
     env:
@@ -643,6 +659,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   gcc-4_8:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     needs: [sanity-test-run]
     runs-on: ubuntu-latest
     env:
@@ -658,6 +675,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}:/awslc" "gcc-4.8"
 
   alpine-linux-x86:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     needs: [sanity-test-run]
     strategy:
       fail-fast: false

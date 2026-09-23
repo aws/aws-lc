@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   authorization-check:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     outputs:
       approval-env: ${{ steps.authz.outputs.approval-env }}
     runs-on:
@@ -42,6 +43,7 @@ jobs:
       - run: "true"
 
   device-farm:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: android-${{ matrix.fips && 'fips-' || '' }}${{ matrix.release && 'release' || 'debug' }}-${{ matrix.shared && 'shared' || 'static' }}
     needs: [authorization-check, maintainer-approval]
     runs-on:

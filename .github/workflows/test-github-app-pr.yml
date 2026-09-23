@@ -11,6 +11,7 @@ permissions:
 jobs:
   open-pr:
     # CRITICAL: Prevents an infinite loop by blocking the App from triggering its own workflow
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.actor != 'acl-ci[bot]'
     runs-on: ubuntu-latest
     steps:

@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   graviton2:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: graviton2-${{ matrix.name }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -45,6 +46,7 @@ jobs:
             ${{ matrix.run }}
 
   graviton4:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: graviton4-${{ matrix.name }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -81,6 +83,7 @@ jobs:
   # https://github.com/google/sanitizers/issues/703, and fixed in https://reviews.llvm.org/D60243 which is pending a review.
   # To reduce the total time, these tests are broken into 4 distinct parts
   asan-ssl-part1:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
@@ -105,6 +108,7 @@ jobs:
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part2:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
@@ -131,6 +135,7 @@ jobs:
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part3:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
@@ -157,6 +162,7 @@ jobs:
             ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part4:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
@@ -182,6 +188,7 @@ jobs:
 
   # Build and test aws-lc without Perl/Go.
   minimal_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: minimal-ubuntu:22.04-clang-7-aarch64
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
