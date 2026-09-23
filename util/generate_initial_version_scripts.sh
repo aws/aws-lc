@@ -29,13 +29,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CC_FLAG="${CC:-cc}"
 
-# Keep the intermediate symbol lists in a private directory. Fixed paths under
-# /tmp let any local user pre-create them as symlinks or rewrite the contents
-# between the write below and the read in write_registry.
+# Keep the intermediate symbol lists and the validation build in a private
+# directory. Fixed paths under /tmp let any local user pre-create them as
+# symlinks or rewrite the contents between the write below and the read in
+# write_registry.
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 CRYPTO_HEADERSYMS="${TMP_DIR}/libcrypto_headersyms.txt"
 SSL_HEADERSYMS="${TMP_DIR}/libssl_headersyms.txt"
+BUILD_DIR="${TMP_DIR}/build"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -57,8 +59,6 @@ CRYPTO_MAP="${SOURCE_ROOT}/crypto/libcrypto.map"
 SSL_MAP="${SOURCE_ROOT}/ssl/libssl.map"
 
 echo "Step 1: Building shared libraries for validation..."
-BUILD_DIR="$(mktemp -d)"
-rm -rf "${BUILD_DIR}"
 # This build only produces libraries to validate the extracted symbols against
 # (via read_public_symbols -validate-against). Symbol versioning is explicitly off
 # because enabling it would require the .map files to already exist

@@ -4458,45 +4458,53 @@ TEST(X509Test, PEMX509Info) {
   EXPECT_EQ(2 * OPENSSL_ARRAY_SIZE(kExpected), sk_X509_INFO_num(infos.get()));
 }
 
-// |PEM_X509_INFO_write_bio| can only serialize RSA private keys. Anything else
-// must fail cleanly instead of passing NULL to |PEM_write_bio_RSAPrivateKey|.
-TEST(X509Test, WriteInfoWithNonRSAKey) {
-  // These are zeroed rather than brace-initialized because GCC 4.8 reports an
-  // empty initializer list as a missing field initializer.
-  X509_PKEY x_pkey;
-  OPENSSL_memset(&x_pkey, 0, sizeof(x_pkey));
-  X509_INFO info;
-  OPENSSL_memset(&info, 0, sizeof(info));
-  info.x_pkey = &x_pkey;
+// |PEM_X509_INFO_write_bio| writes the legacy, per-algorithm PEM types, so the
+// key types |PEM_X509_INFO_read_bio| understands all round-trip. It used to
+// assume the key was RSA and pass NULL to |PEM_write_bio_RSAPrivateKey|.
+TEST(X509Test, WriteInfoWithKey) {
+  const struct {
+    const char *pem;
+    const char *expected_header;
+  } kTests[] = {
+      {kRSAKey, "-----BEGIN RSA PRIVATE KEY-----"},
+      {kP256Key, "-----BEGIN EC PRIVATE KEY-----"},
+  };
 
-  bssl::UniquePtr<EVP_PKEY> ec_key = PrivateKeyFromPEM(kP256Key);
-  ASSERT_TRUE(ec_key);
-  x_pkey.dec_pkey = ec_key.get();
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.expected_header);
 
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  ASSERT_TRUE(bio);
-  EXPECT_FALSE(PEM_X509_INFO_write_bio(bio.get(), &info, nullptr, nullptr, 0,
-                                       nullptr, nullptr));
-  // |EVP_PKEY_get0_RSA| pushes its own error first, so check the most recent.
-  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_PEM,
-                          PEM_R_ERROR_CONVERTING_PRIVATE_KEY));
-  ERR_clear_error();
+    bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(test.pem);
+    ASSERT_TRUE(key);
 
-  // An RSA key is still written.
-  bssl::UniquePtr<EVP_PKEY> rsa_key = PrivateKeyFromPEM(kRSAKey);
-  ASSERT_TRUE(rsa_key);
-  x_pkey.dec_pkey = rsa_key.get();
+    // These are zeroed rather than brace-initialized because GCC 4.8 reports an
+    // empty initializer list as a missing field initializer.
+    X509_PKEY x_pkey;
+    OPENSSL_memset(&x_pkey, 0, sizeof(x_pkey));
+    X509_INFO info;
+    OPENSSL_memset(&info, 0, sizeof(info));
+    info.x_pkey = &x_pkey;
+    x_pkey.dec_pkey = key.get();
 
-  bio.reset(BIO_new(BIO_s_mem()));
-  ASSERT_TRUE(bio);
-  EXPECT_TRUE(PEM_X509_INFO_write_bio(bio.get(), &info, nullptr, nullptr, 0,
-                                      nullptr, nullptr));
-  const uint8_t *data = nullptr;
-  size_t len = 0;
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &len));
-  EXPECT_NE(std::string(reinterpret_cast<const char *>(data), len)
-                .find("-----BEGIN RSA PRIVATE KEY-----"),
-            std::string::npos);
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(PEM_X509_INFO_write_bio(bio.get(), &info, nullptr, nullptr, 0,
+                                        nullptr, nullptr));
+    const uint8_t *data = nullptr;
+    size_t len = 0;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &len));
+    EXPECT_NE(std::string(reinterpret_cast<const char *>(data), len)
+                  .find(test.expected_header),
+              std::string::npos);
+
+    // The output reads back as the same key.
+    bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+        PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+    ASSERT_TRUE(infos);
+    ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+    const X509_INFO *read_info = sk_X509_INFO_value(infos.get(), 0);
+    ASSERT_TRUE(read_info->x_pkey);
+    EXPECT_EQ(1, EVP_PKEY_cmp(key.get(), read_info->x_pkey->dec_pkey));
+  }
 }
 
 TEST(X509Test, ReadBIOEmpty) {

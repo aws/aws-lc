@@ -11,19 +11,14 @@
 #include <utility>
 #include <vector>
 
-#if defined(OPENSSL_WINDOWS)
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#else
-#include <unistd.h>
-#endif
-
+#include "../crypto/test/test_util.h"
 #include "internal.h"
 
 namespace {
 
 // ScopedTempFile is a temporary file that is removed when it goes out of scope.
+// It uses |createTempFILEpath| rather than a hard-coded directory so that the
+// tests work on platforms without a writable /tmp, such as Android.
 class ScopedTempFile {
  public:
   ScopedTempFile() = default;
@@ -39,31 +34,13 @@ class ScopedTempFile {
   // Init creates the file and writes |content| to it. It returns true on
   // success.
   bool Init(const std::string &content) {
-    ScopedFILE file;
-#if defined(OPENSSL_WINDOWS)
-    char temp_dir[MAX_PATH];
-    if (GetTempPathA(sizeof(temp_dir), temp_dir) == 0) {
-      return false;
-    }
-    char path[MAX_PATH];
-    if (GetTempFileNameA(temp_dir, "dgst", 0, path) == 0) {
+    char path[PATH_MAX];
+    if (createTempFILEpath(path) == 0) {
       return false;
     }
     path_ = path;
-    file.reset(fopen(path, "wb"));
-#else
-    char path[] = "/tmp/aws_lc_digest_test.XXXXXX";
-    const int fd = mkstemp(path);
-    if (fd < 0) {
-      return false;
-    }
-    path_ = path;
-    file.reset(fdopen(fd, "wb"));
-    if (!file) {
-      close(fd);
-      return false;
-    }
-#endif
+
+    ScopedFILE file(fopen(path, "wb"));
     return file &&
            fwrite(content.data(), 1, content.size(), file.get()) ==
                content.size() &&

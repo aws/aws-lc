@@ -190,8 +190,9 @@ struct CheckModeArguments {
 // distinction matters because the caller uses the final byte to decide whether
 // a line was fully consumed.
 //
-// It returns false if no bytes could be read, which is either end-of-file or a
-// read error. The caller distinguishes the two with |feof|.
+// It returns false if no bytes could be read or if the read failed partway
+// through a line, which is either end-of-file or a read error. The caller
+// distinguishes the two with |feof|.
 static bool ReadLine(FILE *file, char *out, size_t max_len, size_t *out_len) {
   size_t i = 0;
   while (i < max_len) {
@@ -206,7 +207,9 @@ static bool ReadLine(FILE *file, char *out, size_t max_len, size_t *out_len) {
   }
 
   *out_len = i;
-  return i != 0;
+  // A read error must not be reported as a short, complete line, so check
+  // |ferror| even when some bytes were read.
+  return i != 0 && !ferror(file);
 }
 
 // Check reads lines from |source| where each line is in the format of the
