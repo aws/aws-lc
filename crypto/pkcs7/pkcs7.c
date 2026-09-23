@@ -682,6 +682,32 @@ err:
   return 0;
 }
 
+// pkcs7_chain_has_digest returns one if |bio|'s chain already contains an MD
+// filter for |nid|, and zero otherwise.
+//
+// Duplicate entries in digestAlgorithms are redundant: both
+// |pkcs7_find_digest| and |pkcs7_signature_verify| resolve a digest by NID and
+// use the first matching BIO, so a second BIO for an algorithm already in the
+// chain is never read. Adding one anyway costs an extra full pass over the
+// content, which an attacker-supplied structure can repeat up to the
+// digestAlgorithms bound. Unlike |pkcs7_find_digest|, this helper does not
+// touch the error queue, since a miss is the common, expected case.
+static int pkcs7_chain_has_digest(BIO *bio, int nid) {
+  while (bio != NULL) {
+    bio = BIO_find_type(bio, BIO_TYPE_MD);
+    if (bio == NULL) {
+      return 0;
+    }
+    EVP_MD_CTX *mdc = NULL;
+    if (BIO_get_md_ctx(bio, &mdc) && mdc != NULL &&
+        EVP_MD_CTX_type(mdc) == nid) {
+      return 1;
+    }
+    bio = BIO_next(bio);
+  }
+  return 0;
+}
+
 static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
                               int keylen) {
   GUARD_PTR(ri);
@@ -777,8 +803,20 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto err;
   }
+  // |md_sk| comes from parsed input and may name the same digest more than
+  // once. Only add a BIO for algorithms not already in the chain: duplicates
+  // would each hash the entire content again without ever being read. Note
+  // |md_sk| itself is left untouched so the structure re-encodes unchanged.
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
-    if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
+    X509_ALGOR *alg = sk_X509_ALGOR_value(md_sk, i);
+    if (alg == NULL || alg->algorithm == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
+      goto err;
+    }
+    if (pkcs7_chain_has_digest(out, OBJ_obj2nid(alg->algorithm))) {
+      continue;
+    }
+    if (!pkcs7_bio_add_digest(&out, alg)) {
       goto err;
     }
   }
