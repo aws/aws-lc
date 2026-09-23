@@ -2673,6 +2673,44 @@ TEST(ASN1Test, TimeOverflow) {
   EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MIN, LONG_MIN));
 }
 
+// A [UNIVERSAL 0] element with non-zero content is malformed BER: RFC/X.690
+// reserves that tag for the end-of-contents marker, which must be exactly
+// 00 00. |ASN1_parse| must not treat such an element as EOC, otherwise the
+// enclosing indefinite-length parent truncates and later siblings are
+// mis-rendered.
+TEST(ASN1Test, ParseMalformedUniversalZeroDoesNotTruncateParent) {
+  // Layout (offsets in bytes):
+  //   0-1  : 30 80              indefinite-length SEQUENCE
+  //   2-8  : 00 05 AABBCCDDEE   malformed [UNIVERSAL 0], 5 content bytes
+  //   9-11 : 02 01 01           INTEGER 1 (real sibling)
+  //   12-13: 00 00              real end-of-contents
+  static const uint8_t kBlob[] = {
+      0x30, 0x80,
+      0x00, 0x05, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+      0x02, 0x01, 0x01,
+      0x00, 0x00,
+  };
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(ASN1_parse(bio.get(), kBlob, sizeof(kBlob), /*indent=*/0));
+
+  const uint8_t *out = nullptr;
+  size_t out_len = 0;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &out_len));
+  const std::string text(reinterpret_cast<const char *>(out), out_len);
+
+  // The sibling INTEGER at offset 9 must render as a child of the SEQUENCE
+  // (depth 1). Without the guard on the EOC signal, the parent SEQUENCE
+  // truncates at the fake EOC (offset 2) and the INTEGER instead renders at
+  // depth 0 as a top-level sibling of the SEQUENCE.
+  EXPECT_NE(std::string::npos, text.find("    9:d=1")) << text;
+  EXPECT_EQ(std::string::npos, text.find("    9:d=0")) << text;
+  // And it must be labelled INTEGER with value 01 so we know it wasn't parsed
+  // as some other tag due to the malformed neighbour bleeding into it.
+  EXPECT_NE(std::string::npos, text.find("INTEGER           :01")) << text;
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
