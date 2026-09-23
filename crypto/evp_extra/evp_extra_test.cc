@@ -2467,7 +2467,6 @@ TEST(EVPExtraTest, RestrictedPssAutoSaltlenHonorsMinimum) {
 
   bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(pkey.get()));
   ASSERT_TRUE(rsa);
-  static const uint8_t kMsg[] = {'t', 'e', 's', 't'};
   uint8_t digest[EVP_MAX_MD_SIZE];
   unsigned digest_len = 0;
   ASSERT_TRUE(EVP_Digest(kMsg, sizeof(kMsg), digest, &digest_len, EVP_sha256(),
