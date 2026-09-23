@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   mingw:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
@@ -56,6 +57,7 @@ jobs:
     #  - __attribute__((visibility("default"))) is a no-op on PE, so a symbol
     #    only decorated for export under _MSC_VER never leaves the DLL, and
     #    consumers fail to link against it.
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
@@ -96,6 +98,7 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
   clang:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
@@ -125,6 +128,7 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
   clang-cl-msbuild:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     strategy:
       fail-fast: false
@@ -172,6 +176,7 @@ jobs:
         name: Run tests
         run: cmake --build ./build --target run_tests
   clang-cl-ninja:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     strategy:
       fail-fast: false
@@ -233,6 +238,7 @@ jobs:
           $env:PATH = "$buildFips;$buildFips\crypto;$buildFips\ssl;$env:PATH"
           cmake --build ./build-fips --target run_tests
   cross-mingw:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-22.04
     steps:
@@ -263,6 +269,7 @@ jobs:
     # mirroring the default aws-lc-rs setup. This catches command-line quoting
     # regressions the Windows-native clang-cl-ninja job misses because cmd.exe
     # and /bin/sh tokenize arguments differently (see aws/aws-lc-rs#981).
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -294,6 +301,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=util/x86_64-windows-clang-cl-toolchain.cmake
           cmake --build build --target all
   msys2:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
     if: github.repository_owner == 'aws'
     runs-on: windows-latest

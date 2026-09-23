@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   aws-lc-provider-linux:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:

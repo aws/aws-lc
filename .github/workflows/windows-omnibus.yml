@@ -13,6 +13,7 @@ permissions:
   contents: read
 jobs:
     windows2022_mscvc_compilers:
+      environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
       name: windows-${{ matrix.image }}-x86_64
       runs-on:
         - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

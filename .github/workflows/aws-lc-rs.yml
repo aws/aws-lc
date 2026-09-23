@@ -16,6 +16,7 @@ permissions:
 jobs:
   # Full bindings pre-generation test on Linux (x86_64-unknown-linux-gnu)
   aws-lc-rs-linux:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -81,6 +82,7 @@ jobs:
 
   # Full bindings pre-generation test on macOS (aarch64-apple-darwin)
   aws-lc-rs-macos:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: macos-latest
     steps:
@@ -149,6 +151,7 @@ jobs:
 
   # iOS cross-compilation build test (aarch64-apple-ios)
   aws-lc-rs-ios-aarch64:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: aws-lc-rs iOS aarch64 cross-compilation
     runs-on: macos-14
@@ -178,6 +181,7 @@ jobs:
 
   # Full bindings pre-generation test on Windows (x86_64-pc-windows-msvc)
   aws-lc-rs-windows:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
@@ -253,6 +257,7 @@ jobs:
 
   # Cross-compile to Windows from Linux using cargo-xwin (clang-cl + lld-link)
   aws-lc-rs-windows-cross:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     name: aws-lc-rs-windows-cross (${{ matrix.name }})
@@ -361,6 +366,7 @@ jobs:
 
   # CMake Rust bindings generation tests
   cmake-rust-bindings:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     strategy:
       fail-fast: false

@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   integrations:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: ${{ matrix.name }}-${{ matrix.arch }}${{ matrix.allow_failure && '-allow-failure' || '' }}
     continue-on-error: ${{ matrix.allow_failure || false }}
     runs-on:
@@ -477,6 +478,7 @@ jobs:
           if-no-files-found: ignore
 
   python:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -541,6 +543,7 @@ jobs:
           if-no-files-found: ignore
 
   ruby:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -583,6 +586,7 @@ jobs:
           if-no-files-found: ignore
 
   report-failures:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: report-failures
     needs: [integrations, python, ruby]
     if: ${{ always() && github.event_name == 'schedule' }}

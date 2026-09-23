@@ -32,6 +32,7 @@ permissions:
   contents: read
 jobs:
   define_matrix:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -77,6 +78,7 @@ jobs:
           echo EOF >> "$GITHUB_OUTPUT"
 
   formal_verification:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: fv-${{ matrix.name }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

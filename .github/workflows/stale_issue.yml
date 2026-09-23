@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   cleanup:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-latest
     name: Stale issue job
     steps:

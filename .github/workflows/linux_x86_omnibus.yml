@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   pre_push_checker:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -38,6 +39,7 @@ jobs:
             (cd util && go run ./doc.go)
 
   c99_cplusplus98_checker:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -56,6 +58,7 @@ jobs:
             ./tests/coding_guidelines/c99_cplusplus98_test.sh
 
   sde_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: sde-tests
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -76,6 +79,7 @@ jobs:
           options: --privileged
 
   asan_sde_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: asan-sde-tests
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -96,6 +100,7 @@ jobs:
           options: --privileged
 
   install_shared_and_static:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -115,6 +120,7 @@ jobs:
 
   # Build and test aws-lc without Perl/Go.
   minimal_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: minimal-${{ matrix.image }}-${{ matrix.compiler }}-x86_64
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -154,6 +160,7 @@ jobs:
             ./tests/ci/run_minimal_tests.sh
 
   legacy_build:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -172,6 +179,7 @@ jobs:
             ./tests/ci/run_legacy_build.sh
 
   legacy_avx_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: legacy-${{ matrix.avx_config.type }}-${{ matrix.config.image }}-${{ matrix.config.build32 && 'x86' || 'x86_64' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

@@ -19,6 +19,7 @@ permissions:
 jobs:
   # no-op step so that we can enable security-review / report as a required PR check
   register-check:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -34,6 +35,7 @@ jobs:
             -f description="No PR to review"
 
   authorize:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     outputs:
