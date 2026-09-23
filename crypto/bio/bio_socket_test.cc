@@ -498,8 +498,10 @@ static void TestSocketConnectFailure(bool non_blocking) {
   const int fd = BIO_get_fd(bio.get(), nullptr);
   ASSERT_NE(-1, fd);
 
-  if (non_blocking) {
-    ASSERT_TRUE(BIO_should_retry(bio.get()));
+  // Some platforms (e.g. BSDs) refuse a non-blocking loopback connect
+  // immediately.
+  const bool blocked = non_blocking && BIO_should_retry(bio.get());
+  if (blocked) {
     ASSERT_TRUE(WaitForSocket(fd, WaitType::kConnect)) << LastSocketError();
 
     // A successful readiness call need not clear the retryable socket error left
@@ -521,8 +523,8 @@ static void TestSocketConnectFailure(bool non_blocking) {
 #if !defined(OPENSSL_WINDOWS)
   EXPECT_EQ(ECONNREFUSED, ERR_GET_REASON(error));
 #endif
-  const int reason =
-      non_blocking ? BIO_R_NBIO_CONNECT_ERROR : BIO_R_CONNECT_ERROR;
+  // The reason depends on how the connect failed, not the NBIO setting.
+  const int reason = blocked ? BIO_R_NBIO_CONNECT_ERROR : BIO_R_CONNECT_ERROR;
   error = ERR_get_error();
   EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
   EXPECT_EQ(reason, ERR_GET_REASON(error));

@@ -44,6 +44,9 @@ typedef struct bio_connect_st {
   char *param_port;
   int nbio;
 
+  // error_reason is the |BIO_R_*| reason reported in |BIO_CONN_S_ERROR|.
+  int error_reason;
+
   unsigned short port;
 
   struct sockaddr_storage them;
@@ -193,6 +196,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             ERR_add_error_data(4, "host=", c->param_hostname, ":",
                                c->param_port);
             c->state = BIO_CONN_S_ERROR;
+            c->error_reason = BIO_R_CONNECT_ERROR;
           }
           goto exit_loop;
         } else {
@@ -208,6 +212,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
           c->state = BIO_CONN_S_ERROR;
+          c->error_reason = BIO_R_NBIO_CONNECT_ERROR;
           ret = 0;
           goto exit_loop;
         }
@@ -223,6 +228,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
             c->state = BIO_CONN_S_ERROR;
+            c->error_reason = BIO_R_NBIO_CONNECT_ERROR;
             ret = 0;
           }
           goto exit_loop;
@@ -235,8 +241,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         // The original error was already reported. Do not start a new connection
         // or re-read |SO_ERROR|, which may have been cleared. |errno| is stale too.
         BIO_clear_retry_flags(bio);
-        OPENSSL_PUT_ERROR(BIO, c->nbio ? BIO_R_NBIO_CONNECT_ERROR
-                                     : BIO_R_CONNECT_ERROR);
+        OPENSSL_PUT_ERROR(BIO, c->error_reason);
         ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
         ret = 0;
         goto exit_loop;
