@@ -5,6 +5,7 @@
 #include <openssl/x509.h>
 
 #include <assert.h>
+#include <limits.h>
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
@@ -238,14 +239,18 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 
   int saltlen = 20;
   if (pss->saltLength != NULL) {
-    saltlen = ASN1_INTEGER_get(pss->saltLength);
-
-    // Could perform more salt length sanity checks but the main
-    // RSA routines will trap other invalid values anyway.
-    if (saltlen < 0) {
+    int64_t salt64;
+    // Read the full-width value with an unambiguous success/failure result
+    // (|ASN1_INTEGER_get| collapses both overflow and a genuine -1 to -1), then
+    // reject anything that would not survive the narrowing to |int| exactly.
+    // Negative lengths are rejected here so an attacker-supplied certificate
+    // cannot select the low-level -1/-2 special salt modes.
+    if (!ASN1_INTEGER_get_int64(&salt64, pss->saltLength) ||  //
+        salt64 < 0 || salt64 > INT_MAX) {
       OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
       goto err;
     }
+    saltlen = (int)salt64;
   }
 
   // low-level routines support only trailer field 0xbc (value 1)
