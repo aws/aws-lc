@@ -6,7 +6,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/bn.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -51,17 +50,15 @@ int dh_compute_key_padded_no_self_test(unsigned char *out,
 OPENSSL_EXPORT DH *DH_get_rfc7919_3072(void);
 
 // DH_get_rfc7919_8192 returns the group `ffdhe8192` from
-// https://tools.ietf.org/html/rfc7919#appendix-A.4. It returns NULL if out
+// https://tools.ietf.org/html/rfc7919#appendix-A.5. It returns NULL if out
 // of memory.
 OPENSSL_EXPORT DH *DH_get_rfc7919_8192(void);
 
-// dh_is_rfc7919_prime returns one if |p| is one of the RFC 7919 ffdhe primes
-// AWS-LC knows, and zero otherwise. It does not allocate.
-int dh_is_rfc7919_prime(const BIGNUM *p);
-
-// dh_is_rfc3526_prime acts like |dh_is_rfc7919_prime|, but recognises the RFC
-// 3526 MODP primes.
-int dh_is_rfc3526_prime(const BIGNUM *p);
+// dh_is_known_safe_prime_group returns one if |p| is one of the standard
+// safe-prime moduli AWS-LC recognises -- an RFC 7919 ffdhe prime or an RFC 3526
+// MODP prime -- and |q|, if not NULL, is that group's subgroup order, (p-1)/2.
+// It returns zero otherwise. It does not allocate.
+int dh_is_known_safe_prime_group(const BIGNUM *p, const BIGNUM *q);
 
 // dh_set_rfc3526_prime sets |ret| to the |bits|-bit RFC 3526 MODP prime and
 // returns one. It returns zero if |bits| is not the size of one of those primes
