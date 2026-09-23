@@ -244,6 +244,35 @@ static int vm_ube_read_generation(uint64_t *out) {
   return 0;
 }
 
+// Bit 63 is reserved to mark a synthesized "transient failure" generation
+// number (see vm_ube_transient_poison). A real vmclock/sysgenid counter is a
+// slow per-snapshot increment and never reaches 2^63, so a poison value never
+// collides with -- or is mistaken for -- a genuine generation number.
+#define VM_UBE_TRANSIENT_POISON_BIT (UINT64_C(1) << 63)
+
+// vm_ube_transient_poison returns a fresh generation number to hand back on a
+// transient read failure. Each call returns a distinct value (a monotonic
+// counter) with bit 63 set, so it differs both from any real generation number
+// and from the previous poison. The UBE layer's ordinary "generation number
+// changed" path then forces a conservative reseed for this call -- see ube.c --
+// with no dedicated failure state threaded up the stack. The counter is
+// incremented atomically; mirror the fence's C11-atomics gating so the legacy
+// gcc 4.1 build (which predates <stdatomic.h>) falls back to __sync builtins.
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 201112L
+static uint64_t vm_ube_transient_poison(void) {
+  static _Atomic uint64_t transient_seq;
+  uint64_t n = atomic_fetch_add(&transient_seq, 1) + 1;
+  return VM_UBE_TRANSIENT_POISON_BIT | n;
+}
+#else
+static uint64_t vm_ube_transient_poison(void) {
+  static uint64_t transient_seq;
+  uint64_t n = (uint64_t)__sync_add_and_fetch(&transient_seq, 1);
+  return VM_UBE_TRANSIENT_POISON_BIT | n;
+}
+#endif
+
 int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
   CRYPTO_once(&vm_ube_init, do_vm_ube_init);
 
@@ -254,15 +283,16 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
     case VM_UBE_STATE_SUCCESS_INITIALISE:
       if (vm_ube_read_generation(vm_ube_generation_number) != 1) {
         // A backend that initialized successfully but cannot produce a
-        // consistent read this call (e.g. a momentarily wedged vmclock
-        // seqlock) is a *transient* failure -- distinct from a permanent
-        // initialization failure. Return -1 so the UBE layer forces a
-        // conservative reseed for this call without irreversibly disabling all
-        // UBE detection for the process (see ube.c). The value is zeroed so a
-        // caller that ignores the distinction still never sees a stale/torn
-        // number.
-        *vm_ube_generation_number = 0;
-        return -1;
+        // consistent read this call (e.g. a momentarily wedged vmclock seqlock)
+        // is a *transient* failure -- distinct from a permanent initialization
+        // failure. Rather than thread a dedicated failure state up the stack,
+        // hand back a poison generation number: it is guaranteed to differ from
+        // the caller's cached value, so the UBE layer treats it as a generation
+        // change and reseeds conservatively for this call without disabling
+        // detection. Detection recovers automatically on the next consistent
+        // read.
+        *vm_ube_generation_number = vm_ube_transient_poison();
+        return 1;
       }
       return 1;
     default:

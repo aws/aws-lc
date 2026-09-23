@@ -133,9 +133,9 @@ static void ube_state_initialize(void) {
                           &(ube_global_state.cached_vm_ube_gn));
 
   // Only a permanent failure (0) disables detection. A transient VM UBE read
-  // failure (-1) here just leaves the cached generation number at 0; the next
-  // successful read will differ and be treated as a UBE, forcing a reseed --
-  // conservative and correct, without disabling detection for the process.
+  // failure caches a poison generation number here; the next consistent read
+  // will differ and be treated as a UBE, forcing a reseed -- conservative and
+  // correct, without disabling detection for the process.
   if (ret_fork_gn == 0 || ret_vm_ube_gn == 0) {
     ube_failed();
   }
@@ -158,14 +158,16 @@ static void ube_update_state(struct detection_gn *current_detection_gn) {
 // ube_get_detection_generation_numbers loads the current detection generation
 // numbers into |current_detection_gn|.
 //
-// Returns tri-state:
+// Returns:
 //   1  Success.
 //   0  Permanent failure: a detection method we expected to be available is in
 //      fact not. The caller must disable detection (|ube_failed|).
-//  -1  Transient failure: a method initialized successfully but could not
-//      produce a consistent read this call (e.g. a momentarily wedged vmclock
-//      seqlock). The caller must reseed conservatively for this call but must
-//      NOT disable detection.
+//
+// A transient VM UBE read failure (e.g. a momentarily wedged vmclock seqlock)
+// is not a distinct outcome here: the VM UBE layer folds it into a poison
+// generation number that differs from the cached value, so it surfaces through
+// the normal "generation number changed" path and forces a conservative reseed
+// without disabling detection.
 static int ube_get_detection_generation_numbers(
   struct detection_gn *current_detection_gn) {
 
@@ -179,17 +181,12 @@ static int ube_get_detection_generation_numbers(
   int ret_vm_ube_gn = get_vm_ube_generation_number(
                           &(current_detection_gn->current_vm_ube_gn));
 
-  // A permanent failure of any method takes precedence: detection is no longer
-  // trustworthy and must be disabled by the caller.
+  // A permanent failure of any method: detection is no longer trustworthy and
+  // must be disabled by the caller. (A transient VM UBE read failure is not seen
+  // here -- it arrives as a poison generation number, handled by the caller's
+  // normal generation-changed path.)
   if (ret_detect_gn == 0 || ret_vm_ube_gn == 0) {
     return 0;
-  }
-
-  // Otherwise, a transient VM UBE read failure (-1) means we could not read a
-  // consistent value this call. Signal a conservative reseed without disabling
-  // detection.
-  if (ret_vm_ube_gn == -1) {
-    return -1;
   }
 
   return 1;
@@ -249,13 +246,6 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
     ube_failed();
     return 0;
   }
-  if (ret_gn == -1) {
-    // Transient read failure (e.g. a momentarily wedged vmclock seqlock). Force
-    // a conservative reseed for this call, but do NOT disable detection --
-    // |ube_failed| is CRYPTO_once-guarded and would irreversibly turn off all
-    // UBE detection (including fork) for the entire process.
-    return 0;
-  }
   CRYPTO_STATIC_MUTEX_lock_read(&ube_lock);
   if (ube_is_detected(&current_detection_gn) == 0) {
     // No UBE detected, so just grab UBE generation number from the state.
@@ -278,12 +268,6 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   ret_gn = ube_get_detection_generation_numbers(&current_detection_gn);
   if (ret_gn == 0) {
     ube_failed();
-    CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
-    return 0;
-  }
-  if (ret_gn == -1) {
-    // Transient read failure: reseed conservatively without disabling
-    // detection (see the first call site above).
     CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
     return 0;
   }

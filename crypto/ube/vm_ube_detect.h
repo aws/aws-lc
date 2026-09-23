@@ -21,10 +21,10 @@ extern "C" {
 // VM UBE-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_vm_ube_generation provides the VM UBE generation number for
-// the current process. The VM UBE generation number is a non-zero,
-// strictly-monotonic counter with the property that, if queried in an address
-// space and then again in a subsequently resumed snapshot/VM, the resumed
-// address space will observe a greater value.
+// the current process. For a genuine reading the VM UBE generation number is a
+// non-zero, strictly-monotonic counter with the property that, if queried in an
+// address space and then again in a subsequently resumed snapshot/VM, the
+// resumed address space will observe a greater value.
 //
 // Two detection mechanisms are supported:
 //   1. vmclock — Uses /dev/vmclock0 (preferred). See
@@ -35,18 +35,23 @@ extern "C" {
 // vmclock is preferred when available. If neither is available, the function
 // reports that VM UBE detection is not supported.
 //
-// Return values are tri-state:
-//   1  Success. |*vm_ube_generation_number| holds the current generation
-//      number, or 0 if no VM UBE interface is present (not supported).
+// Return values:
+//   1  |*vm_ube_generation_number| holds a usable value:
+//        - the current generation number for a consistent read;
+//        - 0 if no VM UBE interface is present (not supported);
+//        - a "poison" value with bit 63 set (see below) if a backend
+//          initialized successfully but could not produce a consistent read
+//          this call (a transient failure, e.g. a momentarily wedged vmclock
+//          seqlock). A poison value is guaranteed to differ from the caller's
+//          cached generation number and from any genuine counter, so the caller
+//          reseeds conservatively for this call via its ordinary
+//          "generation number changed" path; detection recovers on the next
+//          consistent read. Callers must not interpret the magnitude of the
+//          generation number -- only whether it changed.
 //   0  Permanent failure: a VM UBE interface is present but could not be
 //      initialized. (Not currently returned on Linux -- an uninitializable
 //      device degrades to "not supported" -- but reserved for callers that
 //      must distinguish it.)
-//  -1  Transient failure: a backend initialized successfully but could not
-//      produce a consistent read this call (e.g. a momentarily wedged vmclock
-//      seqlock). |*vm_ube_generation_number| is set to 0. Callers must treat
-//      this as "reseed conservatively for this call" and retry later, NOT as a
-//      permanent loss of detection.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
                                           uint64_t *vm_ube_generation_number);
 

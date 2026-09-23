@@ -148,10 +148,17 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockRetrievalTesting) {
 
 // A wedged seqlock (stuck at an odd value, i.e. a write perpetually "in
 // progress") must not spin the reader forever. |CRYPTO_get_vm_ube_generation|
-// must give up after a bounded number of retries and report failure (return 0),
-// which the DRBG layer treats as "reseed conservatively". Once the seqlock is
-// released (even value again), reads must succeed.
+// must give up after a bounded number of retries and, rather than hang, hand
+// back a "poison" generation number: it still returns 1 (success), but the
+// value has bit 63 set and differs from any real counter and from the previous
+// poison, so the DRBG layer sees a generation change and reseeds
+// conservatively. Once the seqlock is released (even value again), reads must
+// succeed with the real value.
 TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
+  // Bit 63 marks a synthesized transient-failure generation number; see
+  // VM_UBE_TRANSIENT_POISON_BIT in vm_ube_detect.c.
+  const uint64_t kPoisonBit = (uint64_t)1 << 63;
+
   vmclock_test_s vmc_test;
   ASSERT_TRUE(init_vmclock_test(&vmc_test));
 
@@ -165,14 +172,21 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
   // irrelevant; the reader must never observe a consistent seq_count.
   ASSERT_TRUE(set_vmclock_seq_count(&vmc_test, 0x7FFFFFFF));
 
-  // The read must terminate (bounded retries) and report a *transient* failure
-  // (-1) rather than hang. -1 (not 0) is essential: the UBE layer maps a 0
-  // return to permanent, process-wide disabling of all detection, whereas -1
-  // means "reseed conservatively this call, retry later". This test hanging
-  // *is* the failure signal for the unbounded-loop bug.
+  // The read must terminate (bounded retries) rather than hang -- this test
+  // hanging *is* the failure signal for the unbounded-loop bug. It returns 1
+  // with a poison value: bit 63 set (so it never collides with a real counter)
+  // and different from the cached baseline (so the UBE layer reseeds).
   gen = 0xdeadbeef;
-  ASSERT_EQ(-1, CRYPTO_get_vm_ube_generation(&gen));
-  ASSERT_EQ((uint64_t)0, gen);
+  ASSERT_EQ(1, CRYPTO_get_vm_ube_generation(&gen));
+  ASSERT_NE((uint64_t)0, gen & kPoisonBit);
+  ASSERT_NE((uint64_t)100, gen);
+
+  // A second wedged read yields a *different* poison, so repeated transient
+  // failures each present as a generation change and keep reseeding.
+  uint64_t gen2 = 0;
+  ASSERT_EQ(1, CRYPTO_get_vm_ube_generation(&gen2));
+  ASSERT_NE((uint64_t)0, gen2 & kPoisonBit);
+  ASSERT_NE(gen, gen2);
 
   // Release the seqlock. Reset seq_count to an even value first: the seqlock
   // was left odd (0x7FFFFFFF), and set_vmclock_generation() applies two
