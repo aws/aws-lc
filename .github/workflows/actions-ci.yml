@@ -4,6 +4,7 @@ on:
     branches: ["main", "fips-*"]
   pull_request:
     branches: ["*"]
+    types: [opened, synchronize, reopened, labeled]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -27,6 +28,9 @@ permissions:
 jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
   sanity-test-run:
+    if: >
+      github.actor != 'acl-ci[bot]' ||
+      contains(github.event.pull_request.labels.*.name, 'ci-approved')
     runs-on: ubuntu-latest
     env:
       AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 100
