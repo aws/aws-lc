@@ -442,23 +442,14 @@ static bool deserialize_buffer_view_from_buf_ptr_offset(CBS &cbs,
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return 0;
   }
-  uint8_t *view_ptr = buffer->buf_ptr() + offset;
-  if (view_ptr < buffer->buf_ptr() ||  // does the start of the view fall before
-                                       // the buffer
-      view_ptr > (buffer->buf_ptr() +
-                  buffer->buf_size()) ||  // does the the start of the view fall
-                                          // after the end of the buffer
-      (view_ptr + size) <
-          buffer->buf_ptr() ||  // does the end of the view fall
-                                // before the start of the buffer
-      (view_ptr + size) > (buffer->buf_ptr() +
-                           buffer->buf_size())  // does the end of the view fall
-                                                // after the end of the buffer
-
-  ) {
+  // Validate the counters as integers before any pointer arithmetic. Forming
+  // |buf_ptr() + offset| or |view_ptr + size| first can result in pointer
+  // overflow and defeat the checks.
+  if (offset > buffer->buf_size() || size > buffer->buf_size() - offset) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
+  uint8_t *view_ptr = buffer->buf_ptr() + offset;
   view = MakeSpan(view_ptr, size);
   return true;
 }
