@@ -1060,6 +1060,8 @@ static long callback(BIO *b, int state, int res) {
 TEST(BIOTest, InvokeConnectCallback) {
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
   GTEST_SKIP() << "InvokeConnectCallback does not run on iOS";
+#elif defined(OPENSSL_WASM)
+  GTEST_SKIP() << "InvokeConnectCallback requires socket support";
 #endif
 
   ASSERT_EQ(callback_invoked, 0);
