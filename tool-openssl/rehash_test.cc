@@ -7,13 +7,18 @@
 #include "test_util.h"
 
 #if !defined(OPENSSL_WINDOWS)
+#include <dirent.h>
 #include <openssl/pem.h>
+
+#include <map>
+#include <set>
 
 struct FreeOpenSSLChar {
   void operator()(char *v) { OPENSSL_free(v); }
 };
 
 using ScopedCharBuffer = std::unique_ptr<char, FreeOpenSSLChar>;
+using ScopedDIR = std::unique_ptr<DIR, int (*)(DIR *)>;
 
 // Test fixture class
 class RehashTest : public ::testing::Test {
@@ -65,11 +70,18 @@ class RehashTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    RemoveFile(cert1_path.get());
-    RemoveFile(cert2_path.get());
-    RemoveFile(crl1_path.get());
-    RemoveFile(crl2_path.get());
-    rmdir(test_dir);
+    // Remove generated links too, including after a failed assertion.
+    ScopedDIR dir(opendir(test_dir), closedir);
+    ASSERT_TRUE(dir);
+    while (struct dirent *entry = readdir(dir.get())) {
+      std::string name = entry->d_name;
+      if (name != "." && name != "..") {
+        EXPECT_EQ(0, unlink((std::string(test_dir) + "/" + name).c_str()));
+      }
+    }
+    dir.reset();
+    EXPECT_EQ(0, rmdir(test_dir));
+    cleanup_hash_table();
   }
 
   // Helper function to create test entries
@@ -87,6 +99,92 @@ class RehashTest : public ::testing::Test {
       entry = entry->next;
     }
     return count;
+  }
+
+  using LinkContents = std::multiset<std::pair<std::string, std::string>>;
+
+  std::string Path(const std::string &name) {
+    return std::string(test_dir) + "/" + name;
+  }
+
+  void WriteFile(const std::string &name, const std::string &contents) {
+    ScopedFILE file(fopen(Path(name).c_str(), "wb"));
+    ASSERT_TRUE(file);
+    ASSERT_EQ(contents.size(),
+              fwrite(contents.data(), 1, contents.size(), file.get()));
+  }
+
+  void ReadInputs(std::map<std::string, std::string> *inputs) {
+    inputs->clear();
+    ScopedDIR dir(opendir(test_dir), closedir);
+    ASSERT_TRUE(dir);
+    while (struct dirent *entry = readdir(dir.get())) {
+      struct stat st;
+      ASSERT_EQ(0, lstat(Path(entry->d_name).c_str(), &st));
+      if (S_ISREG(st.st_mode)) {
+        inputs->emplace(entry->d_name, ReadFileToString(Path(entry->d_name)));
+      }
+    }
+  }
+
+  // Compare resolved contents per hash/type, not suffix assignments or the
+  // filenames chosen among duplicates: readdir order is unspecified.
+  void ReadLinks(LinkContents *links) {
+    links->clear();
+    ScopedDIR dir(opendir(test_dir), closedir);
+    ASSERT_TRUE(dir);
+    while (struct dirent *entry = readdir(dir.get())) {
+      std::string name = entry->d_name;
+      struct stat st;
+      ASSERT_EQ(0, lstat(Path(name).c_str(), &st));
+      if (!S_ISLNK(st.st_mode)) {
+        continue;
+      }
+      ASSERT_GE(name.size(), 10u);
+      ASSERT_EQ(8u, name.find('.'));
+      ASSERT_EQ(8u, name.find_first_not_of("0123456789abcdef"));
+      size_t suffix = name[9] == 'r' ? 10 : 9;
+      ASSERT_LT(suffix, name.size());
+      ASSERT_EQ(std::string::npos,
+                name.find_first_not_of("0123456789", suffix));
+      char target[PATH_MAX];
+      ssize_t len = readlink(Path(name).c_str(), target, sizeof(target));
+      ASSERT_GT(len, 0);
+      ASSERT_LT(static_cast<size_t>(len), sizeof(target));
+      std::string filename(target, len);
+      ASSERT_EQ(std::string::npos, filename.find('/'));
+      ASSERT_EQ(0, lstat(Path(filename).c_str(), &st));
+      ASSERT_TRUE(S_ISREG(st.st_mode));
+      std::string contents = ReadFileToString(Path(name));
+      ASSERT_FALSE(contents.empty());
+      EXPECT_EQ(ReadFileToString(Path(filename)), contents);
+      links->emplace(name.substr(0, suffix), contents);
+    }
+  }
+
+  LinkContents ExpectedLinks(bool compat) {
+    // Fixed name hashes corroborated with OpenSSL 1.1.1w. The certificate
+    // subject is O=Org,CN=Name; the CRL issuer is CN=Test CA (UTF8Strings).
+    LinkContents expected;
+    for (const auto *path : {cert1_path.get(), cert2_path.get()}) {
+      expected.emplace("80417837.", ReadFileToString(path));
+      if (compat) {
+        expected.emplace("55f64dd4.", ReadFileToString(path));
+      }
+    }
+    for (const auto *path : {crl1_path.get(), crl2_path.get()}) {
+      expected.emplace("3387b84d.r", ReadFileToString(path));
+      if (compat) {
+        expected.emplace("5ab8aa71.r", ReadFileToString(path));
+      }
+    }
+    return expected;
+  }
+
+  void ExpectLinks(const LinkContents &expected) {
+    LinkContents actual;
+    ASSERT_NO_FATAL_FAILURE(ReadLinks(&actual));
+    EXPECT_EQ(expected, actual);
   }
 
   ScopedCharBuffer cert1_path;
@@ -185,11 +283,181 @@ TEST_F(RehashTest, EntryCollision) {
   cleanup_hash_table();
 }
 
+TEST_F(RehashTest, CompatDirectory) {
+  const auto expected = ExpectedLinks(true);
+  std::map<std::string, std::string> before, after;
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&before));
+  ASSERT_EQ(kToolExitSuccess, RehashTool({"-compat", test_dir}));
+  ExpectLinks(expected);
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&after));
+  EXPECT_EQ(before, after);
+}
+
+TEST_F(RehashTest, CompatDuplicatesCollisionsAndReruns) {
+  const auto modern = ExpectedLinks(false);
+  const auto compat = ExpectedLinks(true);
+  ASSERT_NO_FATAL_FAILURE(
+      WriteFile("duplicate.crt", ReadFileToString(cert1_path.get())));
+  ASSERT_NO_FATAL_FAILURE(
+      WriteFile("duplicate.crl", ReadFileToString(crl1_path.get())));
+  std::map<std::string, std::string> before, after;
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&before));
+
+  ASSERT_EQ(kToolExitSuccess, RehashTool({test_dir}));
+  ExpectLinks(modern);
+  for (int i = 0; i < 2; i++) {
+    ASSERT_EQ(kToolExitSuccess, RehashTool({"-compat", test_dir}));
+    ExpectLinks(compat);
+  }
+  // The default invocation must remove legacy links and forget the mode from
+  // the preceding calls in this same process.
+  ASSERT_EQ(kToolExitSuccess, RehashTool({test_dir}));
+  ExpectLinks(modern);
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&after));
+  EXPECT_EQ(before, after);
+}
+
+TEST_F(RehashTest, CompatNameNamespaces) {
+  bssl::UniquePtr<X509> cert;
+  bssl::UniquePtr<EVP_PKEY> key;
+  CreateAndSignX509Certificate(cert, &key);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
+  ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+      name.get(), "CN", MBSTRING_UTF8,
+      reinterpret_cast<const uint8_t *>("Test Name"), -1, -1, 0));
+  // Leave the issuer as O=Org,CN=Name to distinguish subject from issuer.
+  ASSERT_TRUE(X509_set_subject_name(cert.get(), name.get()));
+  ASSERT_TRUE(X509_sign(cert.get(), key.get(), EVP_sha256()));
+  bssl::UniquePtr<X509_CRL> crl(createTestCRL());
+  ASSERT_TRUE(crl);
+  ASSERT_TRUE(X509_CRL_set_issuer_name(crl.get(), name.get()));
+  ASSERT_TRUE(X509_CRL_sign(crl.get(), key.get(), EVP_sha256()));
+  ScopedFILE cert_file(fopen(cert1_path.get(), "wb"));
+  ScopedFILE crl_file(fopen(crl1_path.get(), "wb"));
+  ASSERT_TRUE(cert_file);
+  ASSERT_TRUE(crl_file);
+  ASSERT_TRUE(PEM_write_X509(cert_file.get(), cert.get()));
+  ASSERT_TRUE(PEM_write_X509_CRL(crl_file.get(), crl.get()));
+  cert_file.reset();
+  crl_file.reset();
+  ASSERT_EQ(0, unlink(cert2_path.get()));
+  ASSERT_EQ(0, unlink(crl2_path.get()));
+
+  // These fixed values also appear in X509Test.NameHash. Certificates and
+  // CRLs with the same name must occupy separate .N and .rN namespaces.
+  LinkContents expected = {
+      {"c90fba01.", ReadFileToString(cert1_path.get())},
+      {"8c0d4fea.", ReadFileToString(cert1_path.get())},
+      {"c90fba01.r", ReadFileToString(crl1_path.get())},
+      {"8c0d4fea.r", ReadFileToString(crl1_path.get())},
+  };
+  ASSERT_EQ(kToolExitSuccess, RehashTool({"-compat", test_dir}));
+  ExpectLinks(expected);
+}
+
+TEST_F(RehashTest, CompatExtensionsAndNonCertificates) {
+  const auto expected = ExpectedLinks(true);
+  ASSERT_NO_FATAL_FAILURE(
+      WriteFile("ignored.der", ReadFileToString(cert1_path.get())));
+  ASSERT_NO_FATAL_FAILURE(WriteFile("notes.txt", "not a certificate\n"));
+  ASSERT_NO_FATAL_FAILURE(WriteFile("invalid.pem", "not a certificate\n"));
+  ASSERT_NO_FATAL_FAILURE(WriteFile(
+      "bundle.pem",
+      ReadFileToString(cert1_path.get()) + ReadFileToString(cert2_path.get())));
+  ASSERT_EQ(0, rename(cert1_path.get(), Path("cert1.crt").c_str()));
+  ASSERT_EQ(0, rename(cert2_path.get(), Path("cert2.CER").c_str()));
+  ASSERT_EQ(0, rename(crl1_path.get(), Path("crl1.crl").c_str()));
+  ASSERT_EQ(0, symlink("missing.pem", Path("deadbeef.7").c_str()));
+  ASSERT_EQ(0, symlink("missing.crl", Path("deadbeef.r7").c_str()));
+  ASSERT_EQ(0, symlink("cert1.crt", Path("preserved-link").c_str()));
+  std::map<std::string, std::string> before, after;
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&before));
+  ASSERT_EQ(kToolExitSuccess, RehashTool({"-compat", test_dir}));
+  EXPECT_EQ(before["cert1.crt"], ReadFileToString(Path("preserved-link")));
+  ASSERT_EQ(0, unlink(Path("preserved-link").c_str()));
+  ExpectLinks(expected);
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&after));
+  EXPECT_EQ(before, after);
+}
+
+TEST_F(RehashTest, CompatInvalidArgumentsAndPaths) {
+  struct {
+    args_list_t args;
+    const char *diagnostic;
+  } tests[] = {
+      {{"-compat", "-unknown", test_dir}, "Unknown flag: -unknown"},
+      {{"-compat", test_dir, test_dir}, "-help"},
+      {{"-compat", "true", test_dir}, "-help"},
+      {{"-compat", Path("missing")}, "Unable to resolve directory path"},
+      {{"-compat", cert1_path.get()}, "is not a directory"},
+  };
+  for (const auto &test : tests) {
+    testing::internal::CaptureStderr();
+    int result = RehashTool(test.args);
+    std::string err = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(kToolExitFailure, result);
+    EXPECT_NE(std::string::npos, err.find(test.diagnostic)) << err;
+    ExpectLinks({});
+  }
+}
+
+TEST_F(RehashTest, CompatLinkFailureAndRecovery) {
+  const auto expected = ExpectedLinks(true);
+  // An ordinary file at a legacy link name must not be overwritten, and
+  // failure to create that link must be reported even if modern links succeed.
+  ASSERT_NO_FATAL_FAILURE(WriteFile("55f64dd4.0", "keep this file\n"));
+  testing::internal::CaptureStderr();
+  int result = RehashTool({"-compat", test_dir});
+  std::string err = testing::internal::GetCapturedStderr();
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_NE(std::string::npos, err.find("Error creating symlink '55f64dd4.0'"));
+  EXPECT_EQ("keep this file\n", ReadFileToString(Path("55f64dd4.0")));
+  ASSERT_EQ(0, unlink(Path("55f64dd4.0").c_str()));
+  ASSERT_EQ(kToolExitSuccess, RehashTool({"-compat", test_dir}));
+  ExpectLinks(expected);
+  ASSERT_EQ(kToolExitSuccess, RehashTool({test_dir}));
+  ExpectLinks(ExpectedLinks(false));
+}
+
+TEST_F(RehashTest, CompatComparison) {
+  const char *tool = getenv("AWSLC_TOOL_PATH");
+  const char *reference = getenv("OPENSSL_TOOL_PATH");
+  if (tool == nullptr || reference == nullptr) {
+    GTEST_SKIP() << "AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH are required";
+  }
+  ASSERT_NO_FATAL_FAILURE(
+      WriteFile("duplicate.pem", ReadFileToString(cert1_path.get())));
+  ASSERT_NO_FATAL_FAILURE(
+      WriteFile("duplicate.crl", ReadFileToString(crl1_path.get())));
+  std::map<std::string, std::string> before, after;
+  ASSERT_NO_FATAL_FAILURE(ReadInputs(&before));
+  for (const char *executable : {reference, tool}) {
+    for (bool compat : {false, true, true, false}) {
+      SCOPED_TRACE(executable);
+      SCOPED_TRACE(compat);
+      std::string command = ShellEscape(executable) + " rehash " +
+                            (compat ? "-compat " : "") + ShellEscape(test_dir);
+      ASSERT_EQ(kToolExitSuccess, ExecuteCommandExitCode(command));
+      ExpectLinks(ExpectedLinks(compat));
+      ASSERT_NO_FATAL_FAILURE(ReadInputs(&after));
+      EXPECT_EQ(before, after);
+    }
+  }
+}
+
 // Test -help
 TEST_F(RehashTest, RehashHelp) {
   args_list_t args = {"-help"};
+  testing::internal::CaptureStderr();
   int result = RehashTool(args);
+  std::string help = testing::internal::GetCapturedStderr();
   ASSERT_EQ(kToolExitSuccess, result);
+  EXPECT_NE(std::string::npos, help.find("-compat"));
+  EXPECT_NE(std::string::npos, help.find("SHA-1"));
+  EXPECT_NE(std::string::npos, help.find("MD5"));
 }
 
 TEST_F(RehashTest, InvalidDirectory) {
