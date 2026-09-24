@@ -70,6 +70,7 @@ class RehashTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    cleanup_hash_table();
     // Remove generated links too, including after a failed assertion.
     ScopedDIR dir(opendir(test_dir), closedir);
     ASSERT_TRUE(dir);
@@ -81,7 +82,6 @@ class RehashTest : public ::testing::Test {
     }
     dir.reset();
     EXPECT_EQ(0, rmdir(test_dir));
-    cleanup_hash_table();
   }
 
   // Helper function to create test entries
