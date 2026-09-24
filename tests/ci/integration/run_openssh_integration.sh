@@ -51,9 +51,6 @@ function install_aws_lc() {
 
 function openssh_build() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
-  if [ "${OPENSSH_REF}" == "master" ]; then
-    patch -p1 --quiet -i "${SCRIPT_DIR}/openssh_patch/aws-lc-openssh.patch"
-  fi
   autoreconf
 
   if [ "${OPENSSH_REF}" == "master" ] || [[ "${OPENSSH_REF}" == V_10_* ]]; then
