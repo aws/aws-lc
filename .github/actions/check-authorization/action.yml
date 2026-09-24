@@ -22,22 +22,24 @@ runs:
             return "auto-approve";
           }
           
+          const prPusher = context.payload.sender.login;
+          
           try {
             const permissionResponse = await github.rest.repos.getCollaboratorPermissionLevel({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              username: context.payload.pull_request.user.login,
+              username: prPusher,
             });
             const permission = permissionResponse.data.permission;
             const hasWriteAccess = ['write', 'admin'].includes(permission);
             if (!hasWriteAccess) {
-              console.log(`User ${context.payload.pull_request.user.login} does not have write access to the repository (permission: ${permission})`);
+              console.log(`User ${prPusher} does not have write access to the repository (permission: ${permission})`);
               return "manual-approval"
             } else {
-              console.log(`Verifed ${context.payload.pull_request.user.login} has write access. Auto Approving PR Checks.`)
+              console.log(`Verified ${prPusher} has write access. Auto Approving PR Checks.`)
               return "auto-approve"
             }
           } catch (error) {
-            console.log(`${context.payload.pull_request.user.login} does not have write access. Requiring Manual Approval to run PR Checks.`)
+            console.log(`${prPusher} does not have write access. Requiring Manual Approval to run PR Checks.`)
             return "manual-approval"
           }
