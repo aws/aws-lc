@@ -12,10 +12,12 @@
 #if !defined(OPENSSL_NO_SOCK)
 
 #include <errno.h>
+// Older glibc versions require <time.h> before <fcntl.h> so struct timespec is
+// complete when <fcntl.h> includes <sys/stat.h>.
+#include <time.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <netdb.h>
