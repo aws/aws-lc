@@ -18,6 +18,37 @@ else
 fi
 echo "$BUILD_ID"
 
+# Only trusted runs may write to the canonical EFS corpus and crash-artifact
+# store that other runs depend on. Untrusted fork-PR builds execute unreviewed
+# code and must not mutate that shared state. The fuzz CDK stack enforces this
+# at the network layer: PR builds mount only a read-replica EFS holding a copy
+# of the corpus (never the crash-artifact tree) and have no route to the
+# canonical filesystem (see tests/ci/cdk/cdk/aws_lc_github_fuzz_ci_stack.py).
+# The checks below are defense in depth and also drive the trusted -> replica
+# corpus sync.
+#
+# A run may write only when the canonical corpus (EFS) is mounted AND the run
+# was not triggered by a pull-request event. Defaulting an unset event to
+# "allowed" keeps trusted push builds (including batch child builds, where the
+# webhook variables may be absent) writing as before.
+CORPUS_WRITE_ALLOWED=false
+if [ -v CODEBUILD_FUZZING_ROOT ]; then
+  case "${CODEBUILD_WEBHOOK_EVENT:-}" in
+    PULL_REQUEST_*) CORPUS_WRITE_ALLOWED=false ;;
+    *) CORPUS_WRITE_ALLOWED=true ;;
+  esac
+fi
+echo "CORPUS_WRITE_ALLOWED=${CORPUS_WRITE_ALLOWED}"
+
+# Trusted builds also mount the read-replica EFS and sync the corpus to it so
+# PR builds get a warm seed corpus. Only the corpus subtree is synced, never
+# the crash-artifact tree.
+if [ -v CODEBUILD_FUZZING_REPLICA_ROOT ]; then
+  REPLICA_CORPUS_ROOT="${CODEBUILD_FUZZING_REPLICA_ROOT}/fuzzing"
+else
+  REPLICA_CORPUS_ROOT=""
+fi
+
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"
@@ -91,9 +122,6 @@ function run_fuzz_test {
   mv ./*.log  "${LOCAL_FUZZ_RUN_LOGS}/."
 
   if [ "$FUZZ_RUN_FAILURE" == 1 ]; then
-    FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
-    mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
-
     if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
       for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
         base64 $ARTIFACT
@@ -102,12 +130,22 @@ function run_fuzz_test {
       done
     fi
 
-    cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
-    cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+    if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+      # Persist crash artifacts to the shared EFS store (trusted runs only).
+      FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
+      mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
+      cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
+      cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+      echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${SHARED_FAILURE_ROOT} in EFS"
+    else
+      # Untrusted / local runs do not touch the shared store; crash inputs
+      # remain in the build's local artifacts (and, for cryptofuzz, in the
+      # base64 output above) so the failure can still be reproduced.
+      echo "${FUZZ_NAME} failed, see the above output for details. Crash artifacts are in ${LOCAL_ARTIFACTS_FOLDER} (not persisted to shared storage for untrusted/local runs)"
+    fi
 
     # If this fuzz run has failed the below metrics won't make a lot of sense, it could fail on the first input and
     # publish a TestCount of 1 which makes all the metrics look weird
-    echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${SHARED_FAILURE_ROOT} in EFS"
     exit 1
   else
     echo "Fuzz test ${FUZZ_NAME} finished successfully, not copying run logs and run corpus"
@@ -117,8 +155,28 @@ function run_fuzz_test {
 
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus, the first folder is
   # where to merge the new corpus (SHARED_FUZZ_TEST_CORPUS), the second two are where to read new inputs from
-  # (LOCAL_RUN_CORPUS and SRC_CORPUS).
-  time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+  # (LOCAL_RUN_CORPUS and SRC_CORPUS). Only trusted runs write back to the shared corpus; untrusted / local runs skip
+  # this so they cannot mutate the shared fuzzing state that other runs depend on.
+  if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+    time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+
+    # Sync the updated corpus to the read-replica EFS so untrusted PR builds
+    # get a warm seed corpus. Only this corpus subtree is mirrored one-way;
+    # the crash-artifact tree (SHARED_FAILURE_ROOT) is never synced, and
+    # nothing ever flows from the replica back to the canonical corpus.
+    if [ -n "$REPLICA_CORPUS_ROOT" ]; then
+      REPLICA_FUZZ_TEST_CORPUS="${REPLICA_CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
+      mkdir -p "$REPLICA_FUZZ_TEST_CORPUS"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "${SHARED_FUZZ_TEST_CORPUS}/" "${REPLICA_FUZZ_TEST_CORPUS}/"
+      else
+        rm -rf "${REPLICA_FUZZ_TEST_CORPUS:?}"/*
+        cp -r "${SHARED_FUZZ_TEST_CORPUS}/." "${REPLICA_FUZZ_TEST_CORPUS}/"
+      fi
+    fi
+  else
+    echo "Skipping shared corpus merge-back for untrusted/local run"
+  fi
 
   # Calculate interesting metrics and post results to CloudWatch, this checks the shared (EFS) corpus after the new test
   # run corpus has been merged in
