@@ -15,6 +15,7 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -526,6 +527,46 @@ TEST_F(CATest, OutputToStdout) {
 
   ASSERT_EQ(kToolExitSuccess, caTool(args));
 }
+
+#if !defined(OPENSSL_WINDOWS)
+// A failure writing the issued certificate (here: a broken pipe on stdout)
+// fails the tool and leaves the index unrotated, so the database never claims
+// an issuance whose certificate was lost.
+TEST_F(CATest, CertificateWriteFailureLeavesDatabaseUnchanged) {
+  CreateBasicConfig();
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path
+      // No -out argument, so the certificate goes to stdout.
+  };
+
+  ASSERT_TRUE(ReadFileToString(db_path).empty());
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  close(pipefd[0]);  // No reader: writes and flushes below fail with EPIPE.
+
+  auto old_sigpipe = signal(SIGPIPE, SIG_IGN);
+  fflush(stdout);
+  int old_stdout = dup(STDOUT_FILENO);
+  ASSERT_GE(old_stdout, 0);
+  ASSERT_GE(dup2(pipefd[1], STDOUT_FILENO), 0);
+  close(pipefd[1]);
+
+  int result = caTool(args);
+
+  dup2(old_stdout, STDOUT_FILENO);
+  close(old_stdout);
+  signal(SIGPIPE, old_sigpipe);
+  // Clear the error indicator the failed writes left on |stdout|.
+  clearerr(stdout);
+
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_TRUE(ReadFileToString(db_path).empty());
+}
+#endif  // !OPENSSL_WINDOWS
 
 // Configuration file handling tests
 TEST_F(CATest, MissingConfigFile) {
