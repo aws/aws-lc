@@ -3273,10 +3273,9 @@ static bool RsaPssSaltLenRejected(X509 *cert, EVP_PKEY *pkey,
   }
   bool rejected = false;
   uint32_t err = 0;
-    if (ERR_GET_LIB(err) == ERR_LIB_X509 &&
-        ERR_GET_REASON(err) == X509_R_INVALID_PSS_PARAMETERS) {
-      rejected = true;
-    }
+  if (ERR_GET_LIB(err) == ERR_LIB_X509 &&
+      ERR_GET_REASON(err) == X509_R_INVALID_PSS_PARAMETERS) {
+    rejected = true;
   }
   return rejected;
 }
