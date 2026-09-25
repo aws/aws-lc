@@ -54,6 +54,22 @@ if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install (FILES $<TARGET_FILE_DIR:bssl>/bssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
+if(BUILD_TESTING)
+  add_executable(
+    bssl_tool_test
+
+    digest.cc
+    digest_test.cc
+    fd.cc
+  )
+
+  target_add_awslc_include_paths(TARGET bssl_tool_test SCOPE PRIVATE)
+  target_compile_options(bssl_tool_test PUBLIC -DINTERNAL_TOOL)
+  target_link_libraries(bssl_tool_test boringssl_gtest_main crypto)
+  add_dependencies(all_tests bssl_tool_test)
+  set_test_location(bssl_tool_test)
+endif()
+
 function(build_benchmark target_name install_path)
   find_library(libcrypto-${target_name} crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
   find_library(libdecrepit-${target_name} decrepit PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)

@@ -29,6 +29,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CC_FLAG="${CC:-cc}"
 
+# Keep the intermediate symbol lists and the validation build in a private
+# directory. Fixed paths under /tmp let any local user pre-create them as
+# symlinks or rewrite the contents between the write below and the read in
+# write_registry.
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
+CRYPTO_HEADERSYMS="${TMP_DIR}/libcrypto_headersyms.txt"
+SSL_HEADERSYMS="${TMP_DIR}/libssl_headersyms.txt"
+BUILD_DIR="${TMP_DIR}/build"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cc) CC_FLAG="$2"; shift 2 ;;
@@ -49,8 +59,6 @@ CRYPTO_MAP="${SOURCE_ROOT}/crypto/libcrypto.map"
 SSL_MAP="${SOURCE_ROOT}/ssl/libssl.map"
 
 echo "Step 1: Building shared libraries for validation..."
-BUILD_DIR="$(mktemp -d)"
-rm -rf "${BUILD_DIR}"
 # This build only produces libraries to validate the extracted symbols against
 # (via read_public_symbols -validate-against). Symbol versioning is explicitly off
 # because enabling it would require the .map files to already exist
@@ -87,7 +95,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -internal-dirs crypto,third_party/jitterentropy \
   -emit-visibility \
   -validate-against "${LIBCRYPTO_SO}" \
-  -out /tmp/libcrypto_headersyms.txt 2>&1
+  -out "${CRYPTO_HEADERSYMS}" 2>&1
 
 # libssl: ssl.h only + ssl internal headers (suppress crypto internals)
 go run "${SOURCE_ROOT}/util/read_public_symbols" \
@@ -99,7 +107,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -suppress-internal-dirs crypto \
   -emit-visibility \
   -validate-against "${LIBSSL_SO}" \
-  -out /tmp/libssl_headersyms.txt 2>&1
+  -out "${SSL_HEADERSYMS}" 2>&1
 
 echo ""
 echo "Step 3: Writing symbol registry files (${INITIAL_VERSION})..."
@@ -123,8 +131,8 @@ write_registry() {
   fi
 }
 
-write_registry /tmp/libcrypto_headersyms.txt "${CRYPTO_REGISTRY}"
-write_registry /tmp/libssl_headersyms.txt "${SSL_REGISTRY}"
+write_registry "${CRYPTO_HEADERSYMS}" "${CRYPTO_REGISTRY}"
+write_registry "${SSL_HEADERSYMS}" "${SSL_REGISTRY}"
 
 echo ""
 echo "Step 4: Generating version scripts from registry..."
