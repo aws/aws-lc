@@ -148,6 +148,336 @@ uint16_t CryptoPolicyProtoVersion(const char *tok, bool is_dtls) {
   return 0;
 }
 
+// kMaxPolicyIds bounds the algorithm IDs kept from one policy directive. No
+// directive can yield more than the number of groups or signature algorithms
+// AWS-LC implements, which is well under this.
+constexpr size_t kMaxPolicyIds = 64;
+
+// kPolicyListSeparators end a token in a Groups or SignatureAlgorithms value.
+// ':' separates entries, and '/' separates the tuples OpenSSL 3.5 draws its key
+// shares from. AWS-LC keeps one flat preference list and chooses its own key
+// shares, so a tuple boundary is just another entry boundary; treating it as
+// part of a name instead loses the entries on both sides of it.
+constexpr char kPolicyListSeparators[] = ":/";
+
+// PolicyAlias maps one spelling the crypto-policies framework uses to the
+// spelling AWS-LC's lookups take. |from| is lowercase and matched without regard
+// to case, which config-file tokens do not carry reliably.
+struct PolicyAlias {
+  const char *from;
+  const char *to;
+};
+
+// crypto-policies uses the IANA registry name for the NIST P-256 curve, which
+// AWS-LC knows only as "P-256" and "prime256v1", and hyphenates the ML-KEM
+// hybrids. Without these the most widely deployed group in the list, and every
+// post-quantum group, resolve to nothing.
+const PolicyAlias kGroupAliases[] = {
+    {"secp256r1", "P-256"},
+    {"x25519-mlkem768", "X25519MLKEM768"},
+    {"secp256r1-mlkem768", "SecP256r1MLKEM768"},
+    {"secp384r1-mlkem1024", "SecP384r1MLKEM1024"},
+};
+
+// crypto-policies spells ML-DSA with the FIPS 204 parameter-set names.
+const PolicyAlias kSigalgAliases[] = {
+    {"ml-dsa-44", "mldsa44"},
+    {"ml-dsa-65", "mldsa65"},
+    {"ml-dsa-87", "mldsa87"},
+};
+
+// kPolicyMLDSASigalgs are AWS-LC's default ML-DSA signature algorithms.
+const uint16_t kPolicyMLDSASigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
+                                        SSL_SIGN_MLDSA87};
+
+bool EqualsIgnoreAsciiCase(const char *tok, size_t len, const char *lower) {
+  if (strlen(lower) != len) {
+    return false;
+  }
+  for (size_t i = 0; i < len; i++) {
+    char c = tok[i];
+    if (c >= 'A' && c <= 'Z') {
+      c = static_cast<char>(c + ('a' - 'A'));
+    }
+    if (c != lower[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ResolveAlias rewrites |*tok| and |*len| through |aliases| if one matches.
+void ResolveAlias(const char **tok, size_t *len, const PolicyAlias *aliases,
+                  size_t num_aliases) {
+  for (size_t i = 0; i < num_aliases; i++) {
+    if (EqualsIgnoreAsciiCase(*tok, *len, aliases[i].from)) {
+      *tok = aliases[i].to;
+      *len = strlen(aliases[i].to);
+      return;
+    }
+  }
+}
+
+// StripListModifiers advances |*tok| past the OpenSSL 3.5 list modifiers and
+// returns false if they remove the entry.
+//
+// '*' asks for a key share and '?' tolerates an unimplemented algorithm; AWS-LC
+// chooses its own key shares and already skips names it cannot resolve, so both
+// need only stripping. A policy stacks them -- Amazon Linux 2023's PQ subpolicy
+// leads its group list with "*?X25519MLKEM768" -- so one pass per prefix
+// character is not enough. '-' removes the entry, and resolving it here would
+// put it back in the list.
+bool StripListModifiers(const char **tok, size_t *len) {
+  while (*len > 0 && (**tok == '*' || **tok == '?')) {
+    (*tok)++;
+    (*len)--;
+  }
+  return *len == 0 || **tok != '-';
+}
+
+// GroupIdFromToken sets |*out| to the AWS-LC group ID named by the
+// crypto-policies token |tok|, of length |len|, and returns false if AWS-LC has
+// no such group.
+bool GroupIdFromToken(uint16_t *out, const char *tok, size_t len) {
+  if (!StripListModifiers(&tok, &len)) {
+    return false;
+  }
+
+  ResolveAlias(&tok, &len, kGroupAliases, OPENSSL_ARRAY_SIZE(kGroupAliases));
+  return ssl_name_to_group_id(out, tok, len);
+}
+
+// SigalgIdFromToken sets |*out| to the AWS-LC signature algorithm ID named by
+// the crypto-policies token |tok|, of length |len|, and returns false if AWS-LC
+// has no such algorithm.
+bool SigalgIdFromToken(uint16_t *out, const char *tok, size_t len) {
+  if (!StripListModifiers(&tok, &len)) {
+    return false;
+  }
+
+  ResolveAlias(&tok, &len, kSigalgAliases, OPENSSL_ARRAY_SIZE(kSigalgAliases));
+  return ssl_sigalg_id_from_name(out, tok, len);
+}
+
+bool ContainsId(Span<const uint16_t> ids, uint16_t id) {
+  for (uint16_t candidate : ids) {
+    if (candidate == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// FilterPolicyIds resolves the tokens of |value| through |lookup| and writes the
+// IDs that resolve into |out|, which holds |out_len| entries, in the order the
+// policy gave them. It returns how many were written.
+//
+// The Groups and SignatureAlgorithms setters reject a whole list on the first
+// entry they do not accept, and a stock crypto-policies value always names
+// something AWS-LC does not implement: X448 and the FFDHE groups, Ed448, the
+// SHA-224 pairs, and the RSA-PSS-PSS algorithms. Applying such a value as written
+// therefore discards the operator's whole preference order. Dropping the
+// unsupported tokens keeps the rest of it.
+//
+// Repeats are dropped for the same reason: two spellings of one group, such as
+// "secp256r1" and "prime256v1", resolve to a single ID, and |SSL_CTX_set1_group_ids|
+// rejects a list that names it twice.
+size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
+                       bool (*lookup)(uint16_t *, const char *, size_t)) {
+  size_t out_i = 0;
+  for (const char *tok = value;;) {
+    const size_t len = strcspn(tok, kPolicyListSeparators);
+
+    uint16_t id;
+    if (len > 0 && out_i < out_len && lookup(&id, tok, len)) {
+      bool seen = false;
+      for (size_t i = 0; i < out_i; i++) {
+        seen = seen || out[i] == id;
+      }
+      if (!seen) {
+        out[out_i++] = id;
+      }
+    }
+
+    if (tok[len] == '\0') {
+      break;
+    }
+    tok += len + 1;
+  }
+  return out_i;
+}
+
+// PolicyKeepsPQDefaults reports whether |cfg| leaves AWS-LC's post-quantum
+// defaults in force. Only AWS-LC's own AWSLC.PostQuantum directive waives them
+// wholesale: a crypto-policies list can remove a group it names, but nothing in
+// the directives the framework writes says "no post-quantum".
+bool PolicyKeepsPQDefaults(const CryptoPolicyConfig &cfg) {
+  return !EqualsIgnoreAsciiCase(cfg.post_quantum, strlen(cfg.post_quantum),
+                                "off");
+}
+
+// HybridClassicalComponent sets |*out| to the non-post-quantum half of the
+// hybrid group |group| and returns false if |group| is not a hybrid.
+bool HybridClassicalComponent(uint16_t *out, uint16_t group) {
+  for (const HybridGroup &hybrid : HybridGroups()) {
+    if (hybrid.group_id != group) {
+      continue;
+    }
+    for (uint16_t component : hybrid.component_group_ids) {
+      if (!ContainsId(PQGroups(), component)) {
+        *out = component;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ValueNamesRemoval reports whether the Groups value |value| names |group| with
+// the OpenSSL '-' modifier.
+bool ValueNamesRemoval(const char *value, uint16_t group) {
+  for (const char *tok = value;;) {
+    const size_t len = strcspn(tok, kPolicyListSeparators);
+    uint16_t id;
+    if (len > 1 && tok[0] == '-' && GroupIdFromToken(&id, tok + 1, len - 1) &&
+        id == group) {
+      return true;
+    }
+    if (tok[len] == '\0') {
+      return false;
+    }
+    tok += len + 1;
+  }
+}
+
+// PolicyRemovesGroup reports whether the Groups value |value| takes |group| out.
+//
+// A hybrid goes out with its classical half. Removing X25519 forbids X25519 key
+// exchange, and X25519MLKEM768 still performs it on the wire, so leaving the
+// hybrid in place would make the removal cosmetic.
+bool PolicyRemovesGroup(const char *value, uint16_t group) {
+  uint16_t classical;
+  return ValueNamesRemoval(value, group) ||
+         (HybridClassicalComponent(&classical, group) &&
+          ValueNamesRemoval(value, classical));
+}
+
+// DropRemovedGroups compacts |ids|, which holds |n| entries, down to the ones the
+// Groups value |value| does not remove, and returns how many are left.
+size_t DropRemovedGroups(uint16_t *ids, size_t n, const char *value) {
+  size_t kept = 0;
+  for (size_t i = 0; i < n; i++) {
+    if (!PolicyRemovesGroup(value, ids[i])) {
+      ids[kept++] = ids[i];
+    }
+  }
+  return kept;
+}
+
+// PolicyGroupIds fills |out|, which holds |out_len| entries, with the groups the
+// Groups value |value| leaves in force and returns how many were written, or zero
+// to leave AWS-LC's defaults implicit.
+//
+// The groups |value| names are its preference order, and its '-' entries come out
+// of that order. A value that only removes is applied to the default list, since
+// skipping the directive would hand back the group the operator took out.
+//
+// A value that removes every group also gets zero: an empty configured list is how
+// AWS-LC spells "use the defaults", so a policy leaving no group at all is one this
+// layer cannot express and does not apply.
+size_t PolicyGroupIds(uint16_t *out, size_t out_len, const char *value) {
+  size_t n = FilterPolicyIds(out, out_len, value, GroupIdFromToken);
+  const bool named_any = n != 0;
+  if (!named_any) {
+    for (uint16_t group : tls1_get_default_grouplist()) {
+      if (n >= out_len) {
+        return 0;
+      }
+      out[n++] = group;
+    }
+  }
+
+  const size_t kept = DropRemovedGroups(out, n, value);
+  // A value that removed nothing from the defaults asked for nothing this layer
+  // can act on, so the defaults stay implicit rather than frozen into |ctx|.
+  if (kept == 0 || (!named_any && kept == n)) {
+    return 0;
+  }
+  return kept;
+}
+
+// MergeDefaultPQGroups restores AWS-LC's default post-quantum groups at the front
+// of |ids|, which holds |n| of |cap| entries and came from the Groups value
+// |value|, and returns the new count.
+//
+// The group setter replaces AWS-LC's defaults rather than intersecting with them,
+// so without this a policy written before ML-KEM existed silently downgrades
+// every context. A policy naming any post-quantum group has an opinion about
+// them and is left alone, as does one that names a group only to remove it.
+//
+// A hybrid whose classical half the policy dropped is not restored: an operator
+// who removed P-384 did not ask for P-384 key exchange back under another name.
+size_t MergeDefaultPQGroups(uint16_t *ids, size_t n, size_t cap,
+                            const char *value) {
+  if (n == 0) {
+    return n;
+  }
+  for (size_t i = 0; i < n; i++) {
+    if (ContainsId(PQGroups(), ids[i])) {
+      return n;
+    }
+  }
+
+  uint16_t add[kMaxPolicyIds];
+  size_t num_add = 0;
+  for (uint16_t group : tls1_get_default_grouplist()) {
+    if (!ContainsId(PQGroups(), group)) {
+      continue;
+    }
+    uint16_t classical;
+    if (HybridClassicalComponent(&classical, group) &&
+        !ContainsId(MakeConstSpan(ids, n), classical)) {
+      continue;
+    }
+    if (PolicyRemovesGroup(value, group)) {
+      continue;
+    }
+    if (num_add < OPENSSL_ARRAY_SIZE(add)) {
+      add[num_add++] = group;
+    }
+  }
+  if (num_add == 0 || n + num_add > cap) {
+    return n;
+  }
+
+  OPENSSL_memmove(ids + num_add, ids, n * sizeof(uint16_t));
+  OPENSSL_memcpy(ids, add, num_add * sizeof(uint16_t));
+  return n + num_add;
+}
+
+// MergeDefaultPQSigalgs restores AWS-LC's default ML-DSA algorithms at the end of
+// |ids|, which holds |n| of |cap| entries, and returns the new count. As with
+// groups, a policy naming any of them is left alone.
+//
+// They go last because that is where AWS-LC's own default list puts them.
+size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap) {
+  if (n == 0) {
+    return n;
+  }
+  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
+    if (ContainsId(MakeConstSpan(ids, n), sigalg)) {
+      return n;
+    }
+  }
+  if (n + OPENSSL_ARRAY_SIZE(kPolicyMLDSASigalgs) > cap) {
+    return n;
+  }
+  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
+    ids[n++] = sigalg;
+  }
+  return n;
+}
+
 // ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
 // |SSL_CTX_set_cipher_list| does when |config_tls13| is false and
 // |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
@@ -299,9 +629,52 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
   }
 
   ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
+
+  // SignatureAlgorithms and Groups, each narrowed to the algorithms AWS-LC
+  // implements. One buffer serves both since the directives are applied in turn.
+  uint16_t ids[kMaxPolicyIds];
+  const bool keep_pq = PolicyKeepsPQDefaults(cfg);
+  if (cfg.sigalgs[0] != '\0') {
+    size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs,
+                               SigalgIdFromToken);
+    if (keep_pq) {
+      n = MergeDefaultPQSigalgs(ids, n, OPENSSL_ARRAY_SIZE(ids));
+    }
+    if (n > 0) {
+      // Both preference lists, matching what |SSL_CTX_set1_sigalgs_list| writes.
+      // Each list is a separate allocation, so the second setter can fail with
+      // the first already in place. Moving the signing list aside costs nothing
+      // and is what lets that failure keep the defaults.
+      Array<uint16_t> saved_signing = std::move(ctx->cert->sigalgs);
+      if (!SSL_CTX_set_signing_algorithm_prefs(ctx, ids, n) ||
+          !SSL_CTX_set_verify_algorithm_prefs(ctx, ids, n)) {
+        ctx->cert->sigalgs = std::move(saved_signing);
+      }
+    }
+  }
+  if (cfg.groups[0] != '\0') {
+    size_t n = PolicyGroupIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
+    if (keep_pq) {
+      n = MergeDefaultPQGroups(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
+    }
+    if (n > 0) {
+      SSL_CTX_set1_group_ids(ctx, ids, n);
+    }
+  }
 }
 
 }  // namespace
+
+size_t ssl_crypto_policy_named_group_ids(uint16_t *out, size_t max_out,
+                                         const char *value) {
+  const size_t n = FilterPolicyIds(out, max_out, value, GroupIdFromToken);
+  return DropRemovedGroups(out, n, value);
+}
+
+size_t ssl_crypto_policy_named_sigalg_ids(uint16_t *out, size_t max_out,
+                                          const char *value) {
+  return FilterPolicyIds(out, max_out, value, SigalgIdFromToken);
+}
 
 bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
   if (path == nullptr || out == nullptr) {
@@ -397,6 +770,9 @@ bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {
       CopyPolicyValue(out->sigalgs, sizeof(out->sigalgs), val, val_len);
     } else if (key_is("Groups")) {
       CopyPolicyValue(out->groups, sizeof(out->groups), val, val_len);
+    } else if (key_is("AWSLC.PostQuantum")) {
+      CopyPolicyValue(out->post_quantum, sizeof(out->post_quantum), val,
+                      val_len);
     }
   }
 

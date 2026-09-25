@@ -137,12 +137,22 @@ policy without per-application code changes.
 
 When enabled, `SSL_CTX_new` reads
 `/etc/crypto-policies/back-ends/opensslcnf.config` after applying AWS-LC's
-built-in defaults and applies the `CipherString`, `Ciphersuites`, and
-`TLS`/`DTLS` `MinProtocol`/`MaxProtocol` directives. This is best-effort: a
-missing or malformed file, or a directive AWS-LC does not support, is ignored,
-and consumers may still override any setting afterward. The `@SECLEVEL=N` prefix
-in `CipherString` is parsed and dropped because AWS-LC does not implement
-OpenSSL security levels.
+built-in defaults and applies the `CipherString`, `Ciphersuites`,
+`TLS`/`DTLS` `MinProtocol`/`MaxProtocol`, `Groups`, and `SignatureAlgorithms`
+directives. This is best-effort: a missing or malformed file, or a directive
+AWS-LC does not support, is ignored, and consumers may still override any setting
+afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
+because AWS-LC does not implement OpenSSL security levels.
+
+`Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
+implements before being applied, keeping the operator's preference order. A stock
+policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
+groups, and the corresponding setters reject a whole list on the first name they
+do not recognize; without narrowing, the directive would have no effect at all.
+The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
+AWS-LC selects its own key shares, and `-` drops the group it prefixes whatever
+else the value names. A value that leaves no group at all is not applied, since
+AWS-LC reads an empty group list as a request for its defaults.
 
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
@@ -150,6 +160,21 @@ built-in floor of TLS 1.0, which is below any floor the policy can ask for, so
 the context would offer the versions the policy forbids. A `MinProtocol` older
 than TLS 1.0, such as `SSLv3`, keeps the built-in floor, which is already
 stricter.
+
+AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
+Every policy the framework ships today predates ML-KEM and ML-DSA, and the
+setters replace AWS-LC's defaults rather than intersect with them, so seeding
+would otherwise downgrade every context. A policy that names any post-quantum
+algorithm is taken at its word and nothing is added back. To turn post-quantum
+off, add AWS-LC's own directive to the policy file:
+
+```
+AWSLC.PostQuantum = off
+```
+
+A hybrid group needs its classical half, so removing `secp384r1` also removes
+`SecP384r1MLKEM1024`, whether the policy names the hybrid or not. A group the
+policy removes with `-` stays out.
 
 AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
 policy change takes effect only in processes started afterward. A read that fails
