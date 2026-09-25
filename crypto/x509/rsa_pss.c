@@ -239,7 +239,7 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 
   int saltlen = 20;
   if (pss->saltLength != NULL) {
-    int64_t salt64;
+    int64_t salt64 = 0;
     // Read the full-width value with an unambiguous success/failure result
     // (|ASN1_INTEGER_get| collapses both overflow and a genuine -1 to -1), then
     // reject anything that would not survive the narrowing to |int| exactly.
