@@ -3192,6 +3192,141 @@ TEST(X509Test, TestPSSMD5MGF1Digest) {
   ERR_clear_error();
 }
 
+// MakeRsaPssSigAlg builds an RSASSA-PSS |X509_ALGOR| with SHA-256 as both the
+// message and MGF1 digest and the given |saltLength| (NULL omits the field).
+// Takes ownership of |saltLength|; returns NULL on failure.
+static bssl::UniquePtr<X509_ALGOR> MakeRsaPssSigAlg(
+    bssl::UniquePtr<ASN1_INTEGER> saltLength) {
+  bssl::UniquePtr<RSA_PSS_PARAMS> pss(RSA_PSS_PARAMS_new());
+  if (!pss) {
+    return nullptr;
+  }
+
+  // hashAlgorithm = SHA-256.
+  pss->hashAlgorithm = X509_ALGOR_new();
+  if (pss->hashAlgorithm == nullptr ||
+      !X509_ALGOR_set_md(pss->hashAlgorithm, EVP_sha256())) {
+    return nullptr;
+  }
+
+  // maskGenAlgorithm = MGF1 with SHA-256; the digest is packed into the MGF1
+  // parameter, as rsa_pss.c's encoder does.
+  bssl::UniquePtr<X509_ALGOR> mgf1_md(X509_ALGOR_new());
+  ASN1_STRING *packed = nullptr;
+  if (!mgf1_md || !X509_ALGOR_set_md(mgf1_md.get(), EVP_sha256()) ||
+      !ASN1_item_pack(mgf1_md.get(), ASN1_ITEM_rptr(X509_ALGOR), &packed)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_STRING> packed_cleanup(packed);
+  pss->maskGenAlgorithm = X509_ALGOR_new();
+  if (pss->maskGenAlgorithm == nullptr ||
+      !X509_ALGOR_set0(pss->maskGenAlgorithm, OBJ_nid2obj(NID_mgf1),
+                       V_ASN1_SEQUENCE, packed)) {
+    return nullptr;
+  }
+  packed_cleanup.release();  // Now owned by |maskGenAlgorithm|.
+
+  pss->saltLength = saltLength.release();  // Now owned by |pss|; may be NULL.
+
+  ASN1_STRING *os = nullptr;
+  if (!ASN1_item_pack(pss.get(), ASN1_ITEM_rptr(RSA_PSS_PARAMS), &os)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_STRING> os_cleanup(os);
+  bssl::UniquePtr<X509_ALGOR> sigalg(X509_ALGOR_new());
+  if (!sigalg || !X509_ALGOR_set0(sigalg.get(), OBJ_nid2obj(NID_rsassaPss),
+                                  V_ASN1_SEQUENCE, os)) {
+    return nullptr;
+  }
+  os_cleanup.release();  // Now owned by |sigalg|.
+  return sigalg;
+}
+
+// RsaPssSaltLenRejected installs a crafted RSASSA-PSS algorithm with
+// |saltLength| on |cert| and runs the public |X509_verify| path, which decodes
+// saltLength in x509_rsa_pss_to_ctx before any signature math. Returns true iff
+// verification failed with |X509_R_INVALID_PSS_PARAMETERS| (rejected at decode);
+// an accepted length returns false, even if verification then fails for another
+// reason. Takes ownership of |saltLength|.
+static bool RsaPssSaltLenRejected(X509 *cert, EVP_PKEY *pkey,
+                                  bssl::UniquePtr<ASN1_INTEGER> saltLength) {
+  bssl::UniquePtr<X509_ALGOR> sigalg(MakeRsaPssSigAlg(std::move(saltLength)));
+  if (!sigalg) {
+    return false;
+  }
+  // |X509_verify| requires the outer and TBS signature algorithms to compare
+  // equal. Install two |X509_ALGOR_dup| copies so both are normalized the same
+  // way: a manually packed parameter and a parsed one do not compare equal.
+  bssl::UniquePtr<X509_ALGOR> outer(X509_ALGOR_dup(sigalg.get()));
+  bssl::UniquePtr<X509_ALGOR> inner(X509_ALGOR_dup(sigalg.get()));
+  if (!outer || !inner) {
+    return false;
+  }
+  X509_ALGOR_free(cert->sig_alg);
+  cert->sig_alg = outer.release();  // Now owned by |cert|.
+  X509_ALGOR_free(cert->cert_info->signature);
+  cert->cert_info->signature = inner.release();  // Now owned by |cert|.
+
+  ERR_clear_error();
+  if (X509_verify(cert, pkey)) {
+    return false;  // Accepted and verified.
+  }
+  bool rejected = false;
+  uint32_t err = 0;
+  if (ERR_GET_LIB(err) == ERR_LIB_X509 &&
+      ERR_GET_REASON(err) == X509_R_INVALID_PSS_PARAMETERS) {
+    rejected = true;
+  }
+  return rejected;
+}
+
+// SaltLenInteger returns an |ASN1_INTEGER| holding |v|, or NULL on failure.
+static bssl::UniquePtr<ASN1_INTEGER> SaltLenInteger(int64_t v) {
+  bssl::UniquePtr<ASN1_INTEGER> salt(ASN1_INTEGER_new());
+  if (!salt || !ASN1_INTEGER_set_int64(salt.get(), v)) {
+    return nullptr;
+  }
+  return salt;
+}
+
+TEST(X509Test, RsaPssSaltLengthDecoding) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExampleRsassaPssCert));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  // Valid salt lengths, including zero and an omitted field (the default), must
+  // get past PSS decoding. They may fail the later signature check, but must not
+  // be rejected as invalid PSS parameters.
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(32)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(0)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), nullptr));
+
+  // Negative salt lengths must be rejected; otherwise they select the low-level
+  // -1 (digest) or -2 (auto-recovery) special modes.
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-2)));
+
+  // Salt lengths above INT_MAX must be rejected, not narrowed to |int|. In
+  // particular (1 << 32) | 20 shares its low 32 bits with a valid-looking 20,
+  // which the buggy narrowing would have accepted.
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger(static_cast<int64_t>(INT_MAX) + 1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger((static_cast<int64_t>(1) << 32) | 20)));
+  EXPECT_TRUE(
+      RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(INT64_MAX)));
+
+  // A salt length too large for |int64_t| (2^64) must also be rejected:
+  // |ASN1_INTEGER_get_int64| fails rather than reinterpreting the value.
+  bssl::UniquePtr<ASN1_INTEGER> huge(ASN1_INTEGER_new());
+  ASSERT_TRUE(huge);
+  static const uint8_t k2Pow64[] = {0x01, 0x00, 0x00, 0x00, 0x00,
+                                    0x00, 0x00, 0x00, 0x00};
+  ASSERT_TRUE(ASN1_STRING_set(huge.get(), k2Pow64, sizeof(k2Pow64)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), std::move(huge)));
+}
+
 TEST(X509Test, TestEd25519) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kEd25519Cert));
   ASSERT_TRUE(cert);
