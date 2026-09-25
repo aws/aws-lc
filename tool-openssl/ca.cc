@@ -790,16 +790,24 @@ static int DoX509Sign(bssl::UniquePtr<X509> &x, bssl::UniquePtr<EVP_PKEY> &pkey,
   return X509_sign_ctx(x.get(), mctx.get());
 }
 
-static void WriteNewCertificate(bssl::UniquePtr<BIO> &bp, X509 *x,
-                                int output_der, int notext) {
+// The caller commits the serial and index files after this returns, so a lost
+// write must not pass for a successful issuance. The flush is what surfaces a
+// full disk, since the BIO's fclose discards that error.
+static int WriteNewCertificate(bssl::UniquePtr<BIO> &bp, X509 *x,
+                               int output_der, int notext) {
   if (output_der) {
-    (void)i2d_X509_bio(bp.get(), x);
-    return;
+    if (!i2d_X509_bio(bp.get(), x)) {
+      return 0;
+    }
+  } else {
+    if (!notext && !X509_print(bp.get(), x)) {
+      return 0;
+    }
+    if (!PEM_write_bio_X509(bp.get(), x)) {
+      return 0;
+    }
   }
-  if (!notext) {
-    X509_print(bp.get(), x);
-  }
-  PEM_write_bio_X509(bp.get(), x);
+  return BIO_flush(bp.get()) > 0;
 }
 
 static int old_entry_print(bssl::UniquePtr<BIO> &bio_err,
@@ -1861,8 +1869,16 @@ int caTool(const args_list_t &args) {
         perror(new_cert);
         goto err;
       }
-      WriteNewCertificate(new_cert_bio, xi, 0, notext);
-      WriteNewCertificate(outfile_bio, xi, 0, notext);
+      if (!WriteNewCertificate(new_cert_bio, xi, 0, notext)) {
+        fprintf(stderr, "Error writing certificate to '%s': %s\n", new_cert,
+                strerror(errno));
+        goto err;
+      }
+      if (!WriteNewCertificate(outfile_bio, xi, 0, notext)) {
+        fprintf(stderr, "Error writing certificate to '%s': %s\n",
+                outfile.empty() ? "stdout" : outfile.c_str(), strerror(errno));
+        goto err;
+      }
     }
   }
 
