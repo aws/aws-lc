@@ -138,11 +138,6 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
           objbuf = "";
         }
       }
-      // |OBJ_nid2sn| and |OBJ_nid2ln| return NULL when the OID was registered
-      // by the application without that name.
-      if (objbuf == NULL) {
-        return -1;
-      }
       objlen = strlen(objbuf);
       if (!maybe_write(out, objbuf, objlen)) {
         return -1;
