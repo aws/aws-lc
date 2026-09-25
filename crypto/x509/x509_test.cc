@@ -6847,6 +6847,40 @@ TEST(X509Test, NamePrint) {
   }
 }
 
+TEST(X509Test, NamePrintMissingAttributeName) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid_no_ln =
+      OBJ_create("1.2.840.113554.4.1.72585.1010", "short name only", nullptr);
+  ASSERT_NE(NID_undef, nid_no_ln);
+  int nid_no_sn =
+      OBJ_create("1.2.840.113554.4.1.72585.1011", nullptr, "long name only");
+  ASSERT_NE(NID_undef, nid_no_sn);
+
+  const struct {
+    int nid;
+    unsigned long flags;
+  } kTests[] = {
+      {nid_no_ln, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_LN},
+      {nid_no_sn, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.nid);
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+        name.get(), t.nid, V_ASN1_PRINTABLESTRING,
+        reinterpret_cast<const uint8_t *>("value"), 5, /*loc=*/-1, /*set=*/0));
+
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    EXPECT_EQ(X509_NAME_print_ex(bio.get(), name.get(), /*indent=*/0, t.flags),
+              -1);
+    EXPECT_EQ(X509_NAME_print_ex(nullptr, name.get(), /*indent=*/0, t.flags),
+              -1);
+  }
+}
+
 // kRareRSAPEM is a certificate with the rare |nid_rsa|.
 static const char kRareRSAPEM[] = R"(
 -----BEGIN CERTIFICATE-----
