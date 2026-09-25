@@ -13,7 +13,6 @@ target = "https://www.rfc-editor.org/rfc/rfc8032#section-8.5"
 #    cases, either the amount of data signed is not large or the protocol
 #    is in the position to do digesting in ways better than just
 #    prehashing (e.g., tree hashing or splitting the data).  The
-# 
 #    prehashing also makes the functions greatly more vulnerable to
 #    weaknesses in hash functions used.  These variants SHOULD NOT be
 #    used.
