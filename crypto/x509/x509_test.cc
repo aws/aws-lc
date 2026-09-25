@@ -3192,10 +3192,9 @@ TEST(X509Test, TestPSSMD5MGF1Digest) {
   ERR_clear_error();
 }
 
-// MakeRsaPssSigAlg builds an RSASSA-PSS |X509_ALGOR| that uses SHA-256 for both
-// the message digest and the MGF1 digest, and carries |saltLength| (which may
-// be NULL to omit the field and take the default). Ownership of |saltLength| is
-// transferred to the returned algorithm. Returns NULL on allocation failure.
+// MakeRsaPssSigAlg builds an RSASSA-PSS |X509_ALGOR| with SHA-256 as both the
+// message and MGF1 digest and the given |saltLength| (NULL omits the field).
+// Takes ownership of |saltLength|; returns NULL on failure.
 static bssl::UniquePtr<X509_ALGOR> MakeRsaPssSigAlg(
     bssl::UniquePtr<ASN1_INTEGER> saltLength) {
   bssl::UniquePtr<RSA_PSS_PARAMS> pss(RSA_PSS_PARAMS_new());
@@ -3210,9 +3209,8 @@ static bssl::UniquePtr<X509_ALGOR> MakeRsaPssSigAlg(
     return nullptr;
   }
 
-  // maskGenAlgorithm = MGF1 with SHA-256. The inner digest AlgorithmIdentifier
-  // is packed into the parameter of the outer MGF1 AlgorithmIdentifier, exactly
-  // as the encoder in rsa_pss.c does.
+  // maskGenAlgorithm = MGF1 with SHA-256; the digest is packed into the MGF1
+  // parameter, as rsa_pss.c's encoder does.
   bssl::UniquePtr<X509_ALGOR> mgf1_md(X509_ALGOR_new());
   ASN1_STRING *packed = nullptr;
   if (!mgf1_md || !X509_ALGOR_set_md(mgf1_md.get(), EVP_sha256()) ||
@@ -3244,20 +3242,44 @@ static bssl::UniquePtr<X509_ALGOR> MakeRsaPssSigAlg(
   return sigalg;
 }
 
-// RsaPssSaltLenAccepted runs an RSASSA-PSS signature algorithm carrying
-// |saltLength| through |x509_rsa_pss_to_ctx| and reports whether the parameters
-// were accepted. This exercises the saltLength decoding path in isolation,
-// before any signature math runs. |saltLength| ownership is transferred.
-static bool RsaPssSaltLenAccepted(EVP_PKEY *pkey,
+// RsaPssSaltLenRejected installs a crafted RSASSA-PSS algorithm with
+// |saltLength| on |cert| and runs the public |X509_verify| path, which decodes
+// saltLength in x509_rsa_pss_to_ctx before any signature math. Returns true iff
+// verification failed with |X509_R_INVALID_PSS_PARAMETERS| (rejected at decode);
+// an accepted length returns false, even if verification then fails for another
+// reason. Takes ownership of |saltLength|.
+static bool RsaPssSaltLenRejected(X509 *cert, EVP_PKEY *pkey,
                                   bssl::UniquePtr<ASN1_INTEGER> saltLength) {
   bssl::UniquePtr<X509_ALGOR> sigalg(MakeRsaPssSigAlg(std::move(saltLength)));
   if (!sigalg) {
     return false;
   }
-  bssl::ScopedEVP_MD_CTX ctx;
-  bool ok = x509_rsa_pss_to_ctx(ctx.get(), sigalg.get(), pkey) == 1;
+  // |X509_verify| requires the outer and TBS signature algorithms to compare
+  // equal. Install two |X509_ALGOR_dup| copies so both are normalized the same
+  // way: a manually packed parameter and a parsed one do not compare equal.
+  bssl::UniquePtr<X509_ALGOR> outer(X509_ALGOR_dup(sigalg.get()));
+  bssl::UniquePtr<X509_ALGOR> inner(X509_ALGOR_dup(sigalg.get()));
+  if (!outer || !inner) {
+    return false;
+  }
+  X509_ALGOR_free(cert->sig_alg);
+  cert->sig_alg = outer.release();  // Now owned by |cert|.
+  X509_ALGOR_free(cert->cert_info->signature);
+  cert->cert_info->signature = inner.release();  // Now owned by |cert|.
+
   ERR_clear_error();
-  return ok;
+  if (X509_verify(cert, pkey)) {
+    return false;  // Accepted and verified.
+  }
+  bool rejected = false;
+  uint32_t err;
+  while ((err = ERR_get_error()) != 0) {
+    if (ERR_GET_LIB(err) == ERR_LIB_X509 &&
+        ERR_GET_REASON(err) == X509_R_INVALID_PSS_PARAMETERS) {
+      rejected = true;
+    }
+  }
+  return rejected;
 }
 
 // SaltLenInteger returns an |ASN1_INTEGER| holding |v|, or NULL on failure.
@@ -3270,42 +3292,41 @@ static bssl::UniquePtr<ASN1_INTEGER> SaltLenInteger(int64_t v) {
 }
 
 TEST(X509Test, RsaPssSaltLengthDecoding) {
-  bssl::UniquePtr<EVP_PKEY> pkey(PrivateKeyFromPEM(kRSAKey));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExampleRsassaPssCert));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
 
-  // Sanity check: the harness produces parameters that are accepted for valid
-  // salt lengths, including the boundary value zero and an omitted field (which
-  // takes the default salt length).
-  EXPECT_TRUE(RsaPssSaltLenAccepted(pkey.get(), SaltLenInteger(32)));
-  EXPECT_TRUE(RsaPssSaltLenAccepted(pkey.get(), SaltLenInteger(0)));
-  EXPECT_TRUE(RsaPssSaltLenAccepted(pkey.get(), nullptr));
+  // Valid salt lengths, including zero and an omitted field (the default), must
+  // get past PSS decoding. They may fail the later signature check, but must not
+  // be rejected as invalid PSS parameters.
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(32)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(0)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), nullptr));
 
-  // A negative salt length must be rejected. Otherwise it would select the
-  // low-level -1 (digest) or -2 (salt auto-recovery) special modes, the latter
-  // of which skips exact salt-length enforcement.
-  EXPECT_FALSE(RsaPssSaltLenAccepted(pkey.get(), SaltLenInteger(-1)));
-  EXPECT_FALSE(RsaPssSaltLenAccepted(pkey.get(), SaltLenInteger(-2)));
+  // Negative salt lengths must be rejected; otherwise they select the low-level
+  // -1 (digest) or -2 (auto-recovery) special modes.
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-2)));
 
-  // A salt length larger than INT_MAX must be rejected rather than silently
-  // truncated to a smaller in-range value by the narrowing to |int|. In
-  // particular INT_MAX + 2^32 has the same low 32 bits as a small, valid-looking
-  // salt length, which the buggy narrowing would have accepted.
-  EXPECT_FALSE(RsaPssSaltLenAccepted(
-      pkey.get(), SaltLenInteger(static_cast<int64_t>(INT_MAX) + 1)));
-  EXPECT_FALSE(RsaPssSaltLenAccepted(
-      pkey.get(), SaltLenInteger(static_cast<int64_t>(1) << 32 | 20)));
-  EXPECT_FALSE(
-      RsaPssSaltLenAccepted(pkey.get(), SaltLenInteger(INT64_MAX)));
+  // Salt lengths above INT_MAX must be rejected, not narrowed to |int|. In
+  // particular (1 << 32) | 20 shares its low 32 bits with a valid-looking 20,
+  // which the buggy narrowing would have accepted.
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger(static_cast<int64_t>(INT_MAX) + 1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger((static_cast<int64_t>(1) << 32) | 20)));
+  EXPECT_TRUE(
+      RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(INT64_MAX)));
 
-  // A salt length too large to even fit in |int64_t| (here 2^64) must also be
-  // rejected: |ASN1_INTEGER_get_int64| fails and the value is refused rather
-  // than being reinterpreted.
+  // A salt length too large for |int64_t| (2^64) must also be rejected:
+  // |ASN1_INTEGER_get_int64| fails rather than reinterpreting the value.
   bssl::UniquePtr<ASN1_INTEGER> huge(ASN1_INTEGER_new());
   ASSERT_TRUE(huge);
   static const uint8_t k2Pow64[] = {0x01, 0x00, 0x00, 0x00, 0x00,
                                     0x00, 0x00, 0x00, 0x00};
   ASSERT_TRUE(ASN1_STRING_set(huge.get(), k2Pow64, sizeof(k2Pow64)));
-  EXPECT_FALSE(RsaPssSaltLenAccepted(pkey.get(), std::move(huge)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), std::move(huge)));
 }
 
 TEST(X509Test, TestEd25519) {
