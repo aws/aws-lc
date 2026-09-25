@@ -31,6 +31,14 @@ function record_integration() {
     "${integration}" "${2:-}" "${GITHUB_SHA:-}" > "${INTEGRATION_FAILURE_FILE}"
 }
 
+# Publish an AWS-LC CloudWatch metric, tolerating the absence of credentials.
+# Pull request runs deliberately have none, and an upstream-version reminder is
+# not worth failing a test over.
+function put_aws_lc_metric() {
+  aws cloudwatch put-metric-data --namespace AWS-LC --metric-name "$1" --value "$2" \
+    || echo "Could not publish metric $1; continuing."
+}
+
 # Append the cloned repository's URL and exact commit to the failure artifact.
 # A URL is required only for repositories without an origin remote.
 function record_repo_commit() {
