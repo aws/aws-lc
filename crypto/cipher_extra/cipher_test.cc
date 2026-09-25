@@ -16,6 +16,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
+#include <openssl/obj.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
@@ -1063,6 +1064,22 @@ TEST(CipherTest, GetCipher) {
   EXPECT_FALSE(EVP_CIPHER_key_length(nullptr));
   EXPECT_FALSE(EVP_CIPHER_iv_length(nullptr));
 }
+
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+// |EVP_add_cipher| is a no-op that exists for OpenSSL compatibility. Callers
+// such as aioquic register ciphers with it at startup and then look them up.
+TEST(CipherTest, AddCipher) {
+  const EVP_CIPHER *ciphers[] = {EVP_aes_128_ecb(), EVP_aes_128_gcm(),
+                                 EVP_aes_256_ecb(), EVP_aes_256_gcm()};
+  for (const EVP_CIPHER *cipher : ciphers) {
+    EXPECT_EQ(1, EVP_add_cipher(cipher));
+    EXPECT_EQ(cipher, EVP_get_cipherbynid(EVP_CIPHER_nid(cipher)));
+    EXPECT_EQ(cipher,
+              EVP_get_cipherbyname(OBJ_nid2sn(EVP_CIPHER_nid(cipher))));
+  }
+  EXPECT_EQ(0, EVP_add_cipher(nullptr));
+}
+OPENSSL_END_ALLOW_DEPRECATED
 
 // Test the AES-GCM EVP_CIPHER's internal IV management APIs. OpenSSH uses these
 // APIs.

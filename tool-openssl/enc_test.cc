@@ -35,8 +35,8 @@ class EncTest : public ::testing::Test {
 // Test help option
 TEST_F(EncTest, Help) {
   args_list_t args = {"-help"};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test basic encryption with AES-128-CBC
@@ -46,8 +46,8 @@ TEST_F(EncTest, BasicEncryption) {
                       "-iv",  "0123456789abcdef0123456789abcdef",
                       "-in",  in_path,
                       "-out", out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify output file exists and has content
   struct stat st;
@@ -63,8 +63,8 @@ TEST_F(EncTest, BasicDecryption) {
                               "-iv",  "0123456789abcdef0123456789abcdef",
                               "-in",  in_path,
                               "-out", out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -77,7 +77,7 @@ TEST_F(EncTest, BasicDecryption) {
                               "-in",  out_path,
                               "-out", decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify decrypted content matches original
   std::string original = ReadFileToString(in_path);
@@ -95,8 +95,8 @@ TEST_F(EncTest, ExplicitDecryption) {
                               "-iv",  "0123456789abcdef0123456789abcdef",
                               "-in",  in_path,
                               "-out", out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -109,7 +109,7 @@ TEST_F(EncTest, ExplicitDecryption) {
                               "-in",  out_path,
                               "-out", decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   RemoveFile(decrypt_path);
 }
@@ -126,8 +126,8 @@ TEST_F(EncTest, DecryptionDefaultCipher) {
                               in_path,
                               "-out",
                               out_path};
-  bool result = encTool(encrypt_args);
-  ASSERT_TRUE(result);
+  int result = encTool(encrypt_args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Create temp file for decrypted output
   char decrypt_path[PATH_MAX];
@@ -144,7 +144,7 @@ TEST_F(EncTest, DecryptionDefaultCipher) {
                               "-out",
                               decrypt_path};
   result = encTool(decrypt_args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   RemoveFile(decrypt_path);
 }
@@ -160,8 +160,8 @@ TEST_F(EncTest, DefaultCipher) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test encryption without -e flag (should default to encrypt)
@@ -175,8 +175,8 @@ TEST_F(EncTest, DefaultEncrypt) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = encTool(args);
-  ASSERT_TRUE(result);
+  int result = encTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // -------------------- Enc Option Usage Error Tests --------------------------
@@ -188,8 +188,8 @@ class EncOptionUsageErrorsTest : public EncTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = encTool(c_args);
-    ASSERT_FALSE(result);
+    int result = encTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
@@ -329,12 +329,15 @@ TEST_F(EncComparisonTest, EncryptionComparison) {
   std::string key = "0123456789abcdef0123456789abcdef";
   std::string iv = "0123456789abcdef0123456789abcdef";
 
-  std::string tool_command = std::string(tool_executable_path) +
-                             " enc -e -aes-128-cbc -K " + key + " -iv " + iv +
-                             " -in " + in_path + " -out " + out_path_tool;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " enc -e -aes-128-cbc -K " + ShellEscape(key) +
+                             " -iv " + ShellEscape(iv) + " -in " +
+                             ShellEscape(in_path) + " -out " +
+                             ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " enc -e -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + in_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " enc -e -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(out_path_openssl);
 
   std::string tool_output_str, openssl_output_str;
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
@@ -355,17 +358,20 @@ TEST_F(EncComparisonTest, DecryptionComparison) {
   ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
 
   std::string openssl_encrypt_cmd =
-      std::string(openssl_executable_path) + " enc -e -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + in_path + " -out " + encrypted_path;
+      ShellEscape(openssl_executable_path) + " enc -e -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(in_path) + " -out " + ShellEscape(encrypted_path);
   ASSERT_EQ(ExecuteCommand(openssl_encrypt_cmd), 0);
 
   // Now test decryption comparison
   std::string tool_command =
-      std::string(tool_executable_path) + " enc -d -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + encrypted_path + " -out " + out_path_tool;
+      ShellEscape(tool_executable_path) + " enc -d -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(encrypted_path) + " -out " + ShellEscape(out_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " enc -d -aes-128-cbc -K " + key +
-      " -iv " + iv + " -in " + encrypted_path + " -out " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " enc -d -aes-128-cbc -K " +
+      ShellEscape(key) + " -iv " + ShellEscape(iv) + " -in " +
+      ShellEscape(encrypted_path) + " -out " + ShellEscape(out_path_openssl);
 
   std::string tool_output_str, openssl_output_str;
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,

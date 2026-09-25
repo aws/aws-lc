@@ -469,6 +469,11 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure && hashFiles('integration-failure.txt') != ''
+        env:
+          MATRIX: ${{ toJSON(matrix) }}
+        run: echo "job=$(jq -c . <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
@@ -533,6 +538,12 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && hashFiles('integration-failure.txt') != ''
+        env:
+          MATRIX: ${{ toJSON(matrix) }}
+        run: |
+          echo "job=$(jq -c '{size: "medium", image: "ubuntu:22.04", compiler: "gcc-12", ipv6: true} + .' <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
@@ -575,6 +586,12 @@ jobs:
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && hashFiles('integration-failure.txt') != ''
+        env:
+          MATRIX: ${{ toJSON(matrix) }}
+        run: |
+          echo "job=$(jq -c '{size: "medium", image: "ubuntu:24.04", compiler: "gcc-13", ipv6: true} + .' <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:

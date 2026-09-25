@@ -1,9 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <errno.h>
+#include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <algorithm>
 #include <ctime>
@@ -48,6 +52,10 @@ static const argument_t kArguments[] = {
      "Prints out value of the modulus of the public key contained in the "
      "certificate"},
     {"-subject", kBooleanArgument, "Prints the subject name"},
+    {"-nameopt", kOptionalArgument,
+     "Subject/issuer name printing format for -subject and -text. One of: "
+     "compat, oneline, RFC2253, multiline. Default matches modern OpenSSL "
+     "for -subject; -text's rendering is unchanged unless -nameopt is given"},
     {"-subject_hash", kBooleanArgument, "Prints subject hash value"},
     {"-subject_hash_old", kBooleanArgument,
      "Prints old OpenSSL style (MD5) subject hash value"},
@@ -445,16 +453,81 @@ static bool handlePubkey(X509 *x509, BIO *output_bio) {
   return true;
 }
 
-static bool handleSubject(X509 *x509, BIO *output_bio) {
+// Match modern OpenSSL's tight "TAG=value" format. The previous default,
+// XN_FLAG_ONELINE (also OpenSSL 1.1.1's default), spaces the '=' and breaks
+// callers extracting a common name with `sed 's/.*CN=//'`.
+static const unsigned long kDefaultNameFlags =
+    XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_SN | ASN1_STRFLGS_ESC_CTRL |
+    ASN1_STRFLGS_UTF8_CONVERT | ASN1_STRFLGS_DUMP_UNKNOWN |
+    ASN1_STRFLGS_DUMP_DER;
+
+struct NameoptPreset {
+  const char *name;
+  unsigned long flags;
+};
+
+// Support named presets, not OpenSSL's individual comma-separated flags.
+static const NameoptPreset kNameoptPresets[] = {
+    {"compat", XN_FLAG_COMPAT},
+    {"oneline", XN_FLAG_ONELINE},
+    {"RFC2253", XN_FLAG_RFC2253},
+    {"multiline", XN_FLAG_MULTILINE},
+};
+
+static bool LookupNameoptFlags(const std::string &value,
+                               unsigned long *out_flags) {
+  for (const auto &preset : kNameoptPresets) {
+    if (OPENSSL_strcasecmp(value.c_str(), preset.name) == 0) {
+      *out_flags = preset.flags;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool PrintNameLine(BIO *output_bio, const char *title, X509_NAME *name,
+                          unsigned long flags) {
+  if (BIO_printf(output_bio, "%s", title) < 0) {
+    return false;
+  }
+
+  if (flags == XN_FLAG_COMPAT) {
+    // X509_NAME_print_ex's XN_FLAG_COMPAT case renders via X509_NAME_print,
+    // which reformats X509_NAME_oneline's slashes into commas; print
+    // X509_NAME_oneline directly instead, matching real OpenSSL's "compat".
+    char *oneline = X509_NAME_oneline(name, nullptr, 0);
+    if (!oneline) {
+      fprintf(stderr, "Error: unable to print name\n");
+      return false;
+    }
+    bool ok = BIO_printf(output_bio, "%s\n", oneline) >= 0;
+    OPENSSL_free(oneline);
+    return ok;
+  }
+
+  // Multiline output starts on the line after the title, and is indented.
+  int indent = 0;
+  if ((flags & XN_FLAG_SEP_MASK) == XN_FLAG_SEP_MULTILINE) {
+    indent = 4;
+    if (BIO_printf(output_bio, "\n") < 0) {
+      return false;
+    }
+  }
+  if (X509_NAME_print_ex(output_bio, name, indent, flags) < 0) {
+    fprintf(stderr, "Error: unable to print name\n");
+    return false;
+  }
+  return BIO_printf(output_bio, "\n") >= 0;
+}
+
+static bool handleSubject(X509 *x509, BIO *output_bio,
+                          unsigned long name_flags) {
   X509_NAME *subject_name = X509_get_subject_name(x509);
   if (!subject_name) {
     fprintf(stderr, "Error: unable to obtain subject from certificate\n");
     return false;
   }
-  BIO_printf(output_bio, "subject=");
-  X509_NAME_print_ex(output_bio, subject_name, 0, XN_FLAG_ONELINE);
-  BIO_printf(output_bio, "\n");
-  return true;
+  return PrintNameLine(output_bio, "subject=", subject_name, name_flags);
 }
 
 static bool handleFingerprint(X509 *x509, BIO *output_bio) {
@@ -485,15 +558,22 @@ static bool handleDates(X509 *x509, BIO *output_bio) {
   return true;
 }
 
+// handleCheckend prints whether the certificate expires within |arg_value|
+// seconds and sets |*will_expire| accordingly. It returns false only on error.
 static bool handleCheckend(X509 *x509, BIO *output_bio,
-                           const std::string &arg_value) {
+                           const std::string &arg_value, bool *will_expire) {
   if (!IsNumeric(arg_value)) {
     fprintf(stderr,
             "Error: '-checkend' option must include a non-negative integer\n");
     return false;
   }
 
-  unsigned checkend_val = std::stoul(arg_value);
+  errno = 0;
+  const int64_t checkend_val = strtoll(arg_value.c_str(), nullptr, 10);
+  if (errno == ERANGE) {
+    fprintf(stderr, "Error: '-checkend' value is too large\n");
+    return false;
+  }
   bssl::UniquePtr<ASN1_TIME> current_time(
       ASN1_TIME_set(nullptr, std::time(nullptr)));
   ASN1_TIME *end_time = X509_getm_notAfter(x509);
@@ -505,17 +585,22 @@ static bool handleCheckend(X509 *x509, BIO *output_bio,
     return false;
   }
 
-  BIO_printf(output_bio, "%s\n",
-             (days_left * 86400 + seconds_left) < static_cast<int>(checkend_val)
-                 ? "Certificate will expire"
-                 : "Certificate will not expire");
+  // The certificate may expire more than INT_MAX seconds in the future or
+  // past. Widen before multiplying, and keep both operands signed.
+  const int64_t remaining_seconds =
+      static_cast<int64_t>(days_left) * 86400 + seconds_left;
+  *will_expire = remaining_seconds < checkend_val;
+  BIO_printf(
+      output_bio, "%s\n",
+      *will_expire ? "Certificate will expire" : "Certificate will not expire");
   return true;
 }
 
 static bool ProcessArgument(const std::string &arg_name,
                             const std::string &arg_value, X509 *x509,
                             bssl::UniquePtr<BIO> &output_bio,
-                            bool *dates_processed) {
+                            bool *dates_processed, bool *will_expire,
+                            unsigned long name_flags, bool nameopt_explicit) {
   if (arg_name == "-modulus") {
     return handleModulus(x509, output_bio.get());
   }
@@ -523,11 +608,21 @@ static bool ProcessArgument(const std::string &arg_name,
     return handlePubkey(x509, output_bio.get());
   }
   if (arg_name == "-text") {
-    X509_print(output_bio.get(), x509);
+    // Preserve this tool's original -text rendering (X509_print's
+    // XN_FLAG_COMPAT/X509_FLAG_COMPAT defaults) unless -nameopt was given
+    // explicitly, in which case it also governs -text's Issuer/Subject
+    // lines, matching real OpenSSL's -text combined with -nameopt.
+    bool ok = nameopt_explicit ? X509_print_ex(output_bio.get(), x509,
+                                               name_flags, X509_FLAG_COMPAT)
+                               : X509_print(output_bio.get(), x509);
+    if (!ok) {
+      fprintf(stderr, "Error: unable to print certificate\n");
+      return false;
+    }
     return true;
   }
   if (arg_name == "-subject") {
-    return handleSubject(x509, output_bio.get());
+    return handleSubject(x509, output_bio.get(), name_flags);
   }
   if (arg_name == "-subject_hash") {
     const uint32_t hash_value = X509_subject_name_hash(x509);
@@ -553,13 +648,13 @@ static bool ProcessArgument(const std::string &arg_name,
     return true;
   }
   if (arg_name == "-checkend") {
-    return handleCheckend(x509, output_bio.get(), arg_value);
+    return handleCheckend(x509, output_bio.get(), arg_value, will_expire);
   }
   return true;
 }
 
 // Map arguments using tool/args.cc
-bool X509Tool(const args_list_t &args) {
+int X509Tool(const args_list_t &args) {
   // Use the ordered argument list instead of the standard map
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -567,11 +662,11 @@ bool X509Tool(const args_list_t &args) {
                                                    args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, out_path, signkey_path, days_str, inform, outform,
-      ca_file_path, ca_key_path, ext_file_path, ext_section;
+      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
   Password passin;
@@ -589,12 +684,13 @@ bool X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ca_key_path, "-CAkey", "", parsed_args);
   ordered_args::GetString(&ext_file_path, "-extfile", "", parsed_args);
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
+  ordered_args::GetString(&nameopt_str, "-nameopt", "", parsed_args);
   ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
@@ -603,7 +699,7 @@ bool X509Tool(const args_list_t &args) {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
       fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -612,13 +708,13 @@ bool X509Tool(const args_list_t &args) {
     fprintf(
         stderr,
         "Error: '-req' option must be used with '-signkey' or '-CA' option\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // -CAkey must include -CA
   if (!ca_key_path.empty() && ca_file_path.empty()) {
     fprintf(stderr, "Error: '-CAkey' option must be used with '-CA' option\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Check for mutually exclusive options
@@ -626,28 +722,28 @@ bool X509Tool(const args_list_t &args) {
     fprintf(stderr,
             "Error: '-req' option cannot be used with '-dates' and '-checkend' "
             "options\n");
-    return false;
+    return kToolExitFailure;
   }
   if (!signkey_path.empty() &&
       (dates || ordered_args::HasArgument(parsed_args, "-checkend"))) {
     fprintf(stderr,
             "Error: '-signkey' option cannot be used with '-dates' and "
             "'-checkend' options\n");
-    return false;
+    return kToolExitFailure;
   }
   if (!signkey_path.empty() &&
       (!ca_file_path.empty() || !ca_key_path.empty())) {
     fprintf(stderr,
             "Error: '-signkey' option cannot be used with '-CA' and "
             "'-CAkey'options\n");
-    return false;
+    return kToolExitFailure;
   }
   if (ordered_args::HasArgument(parsed_args, "-days") &&
       (dates || ordered_args::HasArgument(parsed_args, "-checkend"))) {
     fprintf(stderr,
             "Error: '-days' option cannot be used with '-dates' and "
             "'-checkend' options\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Check that -days argument is valid, int > 0
@@ -656,7 +752,7 @@ bool X509Tool(const args_list_t &args) {
     if (!IsNumeric(days_str) || std::stoul(days_str) == 0) {
       fprintf(stderr,
               "Error: '-days' option must include a positive integer\n");
-      return false;
+      return kToolExitFailure;
     }
     days.reset(new unsigned(std::stoul(days_str)));
   }
@@ -668,7 +764,7 @@ bool X509Tool(const args_list_t &args) {
       fprintf(
           stderr,
           "Error: '-inform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -679,14 +775,25 @@ bool X509Tool(const args_list_t &args) {
       fprintf(
           stderr,
           "Error: '-outform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
+  }
+
+  // Check -nameopt is a supported preset
+  const bool nameopt_explicit =
+      ordered_args::HasArgument(parsed_args, "-nameopt");
+  unsigned long name_flags = kDefaultNameFlags;
+  if (nameopt_explicit && !LookupNameoptFlags(nameopt_str, &name_flags)) {
+    fprintf(stderr,
+            "Error: '-nameopt' option must specify one of compat, "
+            "oneline, RFC2253, multiline\n");
+    return kToolExitFailure;
   }
 
   // Extract password
   if (!passin.empty() && !pass_util::ExtractPassword(passin)) {
     fprintf(stderr, "Error: Failed to extract password\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Read from stdin if no -in path provided
@@ -698,7 +805,7 @@ bool X509Tool(const args_list_t &args) {
     if (!in_file) {
       fprintf(stderr, "Error: unable to load certificate from '%s'\n",
               in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -707,11 +814,11 @@ bool X509Tool(const args_list_t &args) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (!ca_file_path.empty()) {
     if (!LoadCA(ca, pkey, ca_file_path, ca_key_path, passin)) {
-      return false;
+      return kToolExitFailure;
     }
   } else if (!signkey_path.empty()) {
     if (!LoadPrivateKey(pkey, signkey_path, passin)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -726,21 +833,21 @@ bool X509Tool(const args_list_t &args) {
     if (!csr) {
       fprintf(stderr, "Error: error parsing CSR from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
-      return false;
+      return kToolExitFailure;
     }
 
     // Create and sign certificate based on CSR
     bssl::UniquePtr<X509> x509(X509_new());
     if (!x509) {
       fprintf(stderr, "Error: unable to create new X509 certificate\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set the subject from CSR
     if (!X509_set_subject_name(x509.get(),
                                X509_REQ_get_subject_name(csr.get()))) {
       fprintf(stderr, "Error: unable to set subject name from CSR\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set the public key from CSR
@@ -751,11 +858,11 @@ bool X509Tool(const args_list_t &args) {
       bssl::UniquePtr<EVP_PKEY> csr_pkey(X509_REQ_get_pubkey(csr.get()));
       if (!csr_pkey || !X509_set_pubkey(x509.get(), csr_pkey.get())) {
         fprintf(stderr, "Error: unable to set public key from CSR\n");
-        return false;
+        return kToolExitFailure;
       }
     } else if (!X509_set_pubkey(x509.get(), pkey.get())) {
       fprintf(stderr, "Error: unable to set public key from provided key\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set issuer name
@@ -765,7 +872,7 @@ bool X509Tool(const args_list_t &args) {
 
     if (!X509_set_issuer_name(x509.get(), issuer)) {
       fprintf(stderr, "Error: unable to set issuer name\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set validity period, default 30 days if not specified
@@ -774,7 +881,7 @@ bool X509Tool(const args_list_t &args) {
         !X509_gmtime_adj(X509_getm_notAfter(x509.get()),
                          60 * 60 * 24 * valid_days)) {
       fprintf(stderr, "Error: unable to set validity period\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Sign the certificate with the provided key
@@ -782,18 +889,18 @@ bool X509Tool(const args_list_t &args) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
                                             ext_section)) {
-        return false;
+        return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
                                             ext_section)) {
-        return false;
+        return kToolExitFailure;
       }
     }
 
     if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Parse x509 certificate from input file
@@ -808,18 +915,18 @@ bool X509Tool(const args_list_t &args) {
       fprintf(stderr, "Error: error parsing certificate from '%s'\n",
               in_path.c_str());
       ERR_print_errors_fp(stderr);
-      return false;
+      return kToolExitFailure;
     }
 
     if (!signkey_path.empty() && !X509_set_pubkey(x509.get(), pkey.get())) {
       fprintf(stderr, "Error: unable to set public key using a provided key\n");
-      return false;
+      return kToolExitFailure;
     }
 
     if (!ca_file_path.empty()) {
       if (!X509_set_issuer_name(x509.get(), X509_get_subject_name(ca.get()))) {
         fprintf(stderr, "Error: unable to set issuer name\n");
-        return false;
+        return kToolExitFailure;
       }
     }
 
@@ -828,18 +935,19 @@ bool X509Tool(const args_list_t &args) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
                                             ext_section)) {
-        return false;
+        return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
                                             ext_section)) {
-        return false;
+        return kToolExitFailure;
       }
     }
 
     // Process arguments in the order they were provided
     bool dates_processed = false;
+    bool will_expire = false;
     for (const auto &arg_pair : parsed_args) {
       const std::string &arg_name = arg_pair.first;
       const std::string &arg_value = arg_pair.second;
@@ -848,21 +956,28 @@ bool X509Tool(const args_list_t &args) {
       if (arg_name == "-in" || arg_name == "-out" || arg_name == "-inform" ||
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
-          arg_name == "-CAkey") {
+          arg_name == "-CAkey" || arg_name == "-nameopt") {
         continue;
       }
 
       if (!ProcessArgument(arg_name, arg_value, x509.get(), output_bio,
-                           &dates_processed)) {
-        return false;
+                           &dates_processed, &will_expire, name_flags,
+                           nameopt_explicit)) {
+        return kToolExitFailure;
       }
     }
 
-    if (!noout && !ordered_args::HasArgument(parsed_args, "-checkend")) {
+    if (ordered_args::HasArgument(parsed_args, "-checkend")) {
+      // -checkend prints only its verdict; the certificate itself is not
+      // written.
+      return will_expire ? kToolExitFailure : kToolExitSuccess;
+    }
+
+    if (!noout) {
       if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
-        return false;
+        return kToolExitFailure;
       }
     }
   }
-  return true;
+  return kToolExitSuccess;
 }

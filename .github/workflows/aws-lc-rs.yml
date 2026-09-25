@@ -34,7 +34,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: 'rustfmt'
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.20'
       - name: Install ripgrep
@@ -99,7 +99,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: 'rustfmt'
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.20'
       - name: Install Bash and ripgrep
@@ -199,7 +199,7 @@ jobs:
           target: x86_64-pc-windows-msvc
           components: 'rustfmt'
       - uses: ilammy/setup-nasm@v1
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.20'
       - name: No-prefix build
@@ -285,7 +285,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.20'
       - name: Install dependencies
@@ -390,7 +390,7 @@ jobs:
           components: 'rustfmt'
       - uses: ilammy/setup-nasm@v1
         if: runner.os == 'Windows'
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.20'
       - name: Install bindgen-cli

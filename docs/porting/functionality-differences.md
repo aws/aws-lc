@@ -15,6 +15,14 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
 
 **If you have a valid use case for any missing functionality or if anything is not clarified in our documentation, feel free to [cut an issue](https://github.com/aws/aws-lc/issues/new?assignees=&labels=&projects=&template=general-issue.md&title=) or create a PR to let us know.**
 
+Note on the opt-in `-DENABLE_CRYPTO_POLICIES` build (off by default): when AWS-LC
+seeds an `SSL_CTX` from the system `crypto-policies` OpenSSL back-end, the
+`@SECLEVEL=N` prefix of the `CipherString` directive is parsed and ignored
+because AWS-LC has no security levels. Only the remaining cipher list is applied,
+so the key-size and hash constraints implied by a security level are not
+enforced. See
+[configuration-differences.md](configuration-differences.md) for details.
+
 ### libssl No-ops
 
 <table border=0 cellspacing=0 cellpadding=0
@@ -948,7 +956,7 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
   </td>
  </tr>
  <tr>
-  <td rowspan=2>
+  <td rowspan=3>
   <p>
     <span>
         <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/cipher.h#L559-L573">
@@ -969,6 +977,14 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
     </a>
     .
   </p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>EVP_add_cipher</span></p>
+  </td>
+  <td>
+  <p><span>Does nothing. Returns one if the cipher is non-NULL and zero otherwise.</span></p>
   </td>
  </tr>
  <tr>

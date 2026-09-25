@@ -57,6 +57,30 @@
     "target_arch": "x86"
   },
   {
+    "comment": "AEAD concurrency natively on down-level dispatch paths (skipped under SDE): no AVX-512/VAES/VPCLMULQDQ",
+    "cmd": ["crypto/crypto_test", "--gtest_filter=All/PerAEADTest.ConcurrentStability/*"],
+    "env": ["OPENSSL_ia32cap=~0:~0x60000010000"],
+    "skip_sde": true,
+    "skip_valgrind": true,
+    "target_arch": "x86"
+  },
+  {
+    "comment": "AEAD concurrency natively on down-level dispatch paths (skipped under SDE): no AES-NI/PCLMUL/AVX/AVX2/AVX-512",
+    "cmd": ["crypto/crypto_test", "--gtest_filter=All/PerAEADTest.ConcurrentStability/*"],
+    "env": ["OPENSSL_ia32cap=~0x1200000200000000:~0x60000010020"],
+    "skip_sde": true,
+    "skip_valgrind": true,
+    "target_arch": "x86"
+  },
+  {
+    "comment": "AEAD concurrency natively on down-level dispatch paths (skipped under SDE): additionally no SSSE3",
+    "cmd": ["crypto/crypto_test", "--gtest_filter=All/PerAEADTest.ConcurrentStability/*"],
+    "env": ["OPENSSL_ia32cap=~0x1200020200000000:~0x60000010020"],
+    "skip_sde": true,
+    "skip_valgrind": true,
+    "target_arch": "x86"
+  },
+  {
     "cmd": ["crypto/urandom_test"],
     "skip_valgrind": true
   },

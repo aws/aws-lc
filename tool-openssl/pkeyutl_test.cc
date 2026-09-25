@@ -72,8 +72,8 @@ class PKeyUtlTest : public ::testing::Test {
 TEST_F(PKeyUtlTest, Sign) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in",
                       in_path, "-out",   out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -87,22 +87,47 @@ TEST_F(PKeyUtlTest, Verify) {
   {
     args_list_t args = {"-sign", "-inkey", key_path, "-in",
                         in_path, "-out",   sig_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyutlTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
   }
 
   // Then verify the signature
   {
     args_list_t args = {"-verify", "-pubin",   "-inkey", pubkey_path, "-in",
                         in_path,   "-sigfile", sig_path, "-out",      out_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
+    int result = pkeyutlTool(args);
+    ASSERT_EQ(kToolExitSuccess, result);
 
     // Check that the output contains "Signature Verified Successfully"
     std::string output = ReadFileToString(out_path);
     ASSERT_NE(output.find("Signature Verified Successfully"),
               std::string::npos);
   }
+}
+
+// A signature that does not match the input exits nonzero.
+TEST_F(PKeyUtlTest, VerifyFailureExitCode) {
+  {
+    args_list_t args = {"-sign", "-inkey", key_path, "-in",
+                        in_path, "-out",   sig_path};
+    ASSERT_EQ(kToolExitSuccess, pkeyutlTool(args));
+  }
+
+  // Tamper with the signed data so verification fails.
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *tampered = "Different data that was never signed";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), in_file.get()),
+              strlen(tampered));
+  }
+
+  args_list_t args = {"-verify", "-pubin",   "-inkey", pubkey_path, "-in",
+                      in_path,   "-sigfile", sig_path, "-out",      out_path};
+  ASSERT_EQ(kToolExitFailure, pkeyutlTool(args));
+
+  std::string output = ReadFileToString(out_path);
+  ASSERT_NE(output.find("Signature Verification Failure"), std::string::npos);
 }
 
 // Test basic passin integration with password-protected key
@@ -116,8 +141,8 @@ TEST_F(PKeyUtlTest, PassinBasicIntegration) {
                       in_path,
                       "-out",
                       out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   struct stat st;
   ASSERT_EQ(stat(out_path, &st), 0);
@@ -129,8 +154,8 @@ TEST_F(PKeyUtlTest, PassinErrorHandling) {
   args_list_t args = {"-sign",   "-inkey",         protected_key_path,
                       "-passin", "invalid:format", "-in",
                       in_path,   "-out",           out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_FALSE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 
   args_list_t args2 = {"-sign",
                        "-inkey",
@@ -141,16 +166,16 @@ TEST_F(PKeyUtlTest, PassinErrorHandling) {
                        in_path,
                        "-out",
                        out_path};
-  bool result2 = pkeyutlTool(args2);
-  ASSERT_FALSE(result2);
+  int result2 = pkeyutlTool(args2);
+  ASSERT_EQ(kToolExitFailure, result2);
 }
 
 // Test that unprotected key works without passin
 TEST_F(PKeyUtlTest, NoPassinRequired) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in",
                       in_path, "-out",   out_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -161,8 +186,8 @@ TEST_F(PKeyUtlTest, NoPassinRequired) {
 // Test basic signing operation
 TEST_F(PKeyUtlTest, StdoutOutput) {
   args_list_t args = {"-sign", "-inkey", key_path, "-in", in_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 // Test signing with pkeyopt
@@ -191,8 +216,8 @@ TEST_F(PKeyUtlTest, Pkeyopt) {
                       "rsa_pss_saltlen:-1",
                       "-out",
                       sig_path};
-  bool result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  int result = pkeyutlTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Verify the signature file was created and has content
   struct stat st;
@@ -209,7 +234,7 @@ TEST_F(PKeyUtlTest, Pkeyopt) {
           "-pkeyopt", "rsa_pss_saltlen:-1",
           "-out",     out_path};
   result = pkeyutlTool(args);
-  ASSERT_TRUE(result);
+  ASSERT_EQ(kToolExitSuccess, result);
 
   // Check that the output contains "Signature Verified Successfully"
   std::string output = ReadFileToString(out_path);
@@ -226,8 +251,8 @@ class PKeyUtlOptionUsageErrorsTest : public PKeyUtlTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = pkeyutlTool(c_args);
-    ASSERT_FALSE(result);
+    int result = pkeyutlTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
@@ -325,12 +350,15 @@ class PKeyUtlComparisonTest : public ::testing::Test {
 
 // Test signing operation against OpenSSL
 TEST_F(PKeyUtlComparisonTest, Sign) {
-  std::string tool_command = std::string(tool_executable_path) +
-                             " pkeyutl -sign -inkey " + key_path + " -in " +
-                             in_path + " -out " + sig_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " pkeyutl -sign -inkey " + key_path + " -in " +
-                                in_path + " -out " + sig_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " pkeyutl -sign -inkey " + ShellEscape(key_path) +
+                             " -in " + ShellEscape(in_path) + " -out " +
+                             ShellEscape(sig_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " pkeyutl -sign -inkey " +
+                                ShellEscape(key_path) + " -in " +
+                                ShellEscape(in_path) + " -out " +
+                                ShellEscape(sig_path_openssl);
 
   int tool_result = system(tool_command.c_str());
   ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
@@ -339,14 +367,17 @@ TEST_F(PKeyUtlComparisonTest, Sign) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
 
   // Verify both signatures with the public key
-  std::string tool_verify_cmd = std::string(tool_executable_path) +
+  std::string tool_verify_cmd = ShellEscape(tool_executable_path) +
                                 " pkeyutl -verify -pubin -inkey " +
-                                pubkey_path + " -in " + in_path + " -sigfile " +
-                                sig_path_tool + " > " + out_path_tool;
+                                ShellEscape(pubkey_path) + " -in " +
+                                ShellEscape(in_path) + " -sigfile " +
+                                ShellEscape(sig_path_tool) + " > " +
+                                ShellEscape(out_path_tool);
   std::string openssl_verify_cmd =
-      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + in_path + " -sigfile " + sig_path_openssl +
-      " > " + out_path_openssl;
+      ShellEscape(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(in_path) +
+      " -sigfile " + ShellEscape(sig_path_openssl) + " > " +
+      ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_verify_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_verify_cmd.c_str()), 0);
@@ -368,18 +399,22 @@ TEST_F(PKeyUtlComparisonTest, Sign) {
 
   // Cross-verification testing:
   // 1. AWS-LC signs → OpenSSL verifies
-  std::string cross_verify_1 = std::string(openssl_executable_path) +
-                               " pkeyutl -verify -pubin -inkey " + pubkey_path +
-                               " -in " + in_path + " -sigfile " +
-                               sig_path_tool + " > " + out_path_tool;
+  std::string cross_verify_1 = ShellEscape(openssl_executable_path) +
+                               " pkeyutl -verify -pubin -inkey " +
+                               ShellEscape(pubkey_path) + " -in " +
+                               ShellEscape(in_path) + " -sigfile " +
+                               ShellEscape(sig_path_tool) + " > " +
+                               ShellEscape(out_path_tool);
   ASSERT_EQ(system(cross_verify_1.c_str()), 0)
       << "OpenSSL failed to verify AWS-LC signature";
 
   // 2. OpenSSL signs → AWS-LC verifies
-  std::string cross_verify_2 = std::string(tool_executable_path) +
-                               " pkeyutl -verify -pubin -inkey " + pubkey_path +
-                               " -in " + in_path + " -sigfile " +
-                               sig_path_openssl + " > " + out_path_openssl;
+  std::string cross_verify_2 = ShellEscape(tool_executable_path) +
+                               " pkeyutl -verify -pubin -inkey " +
+                               ShellEscape(pubkey_path) + " -in " +
+                               ShellEscape(in_path) + " -sigfile " +
+                               ShellEscape(sig_path_openssl) + " > " +
+                               ShellEscape(out_path_openssl);
   ASSERT_EQ(system(cross_verify_2.c_str()), 0)
       << "AWS-LC failed to verify OpenSSL signature";
 
@@ -406,26 +441,26 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
   char hashed_in_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(hashed_in_path), 0u);
 
-  std::string hash_command = std::string(openssl_executable_path) +
-                             " dgst -sha256 -binary " + in_path + " > " +
-                             hashed_in_path;
+  std::string hash_command = ShellEscape(openssl_executable_path) +
+                             " dgst -sha256 -binary " + ShellEscape(in_path) +
+                             " > " + ShellEscape(hashed_in_path);
 
   int result = system(hash_command.c_str());
   ASSERT_EQ(result, 0) << "Input command failed: " << hash_command;
 
   // Test signing with pkeyopt
   std::string tool_command =
-      std::string(tool_executable_path) + " pkeyutl -sign -inkey " + key_path +
-      " -in " + hashed_in_path +
+      ShellEscape(tool_executable_path) + " pkeyutl -sign -inkey " +
+      ShellEscape(key_path) + " -in " + ShellEscape(hashed_in_path) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 -out " +
-      sig_path_tool;
+      ShellEscape(sig_path_tool);
   std::string openssl_command =
-      std::string(openssl_executable_path) + " pkeyutl -sign -inkey " +
-      key_path + " -in " + hashed_in_path +
+      ShellEscape(openssl_executable_path) + " pkeyutl -sign -inkey " +
+      ShellEscape(key_path) + " -in " + ShellEscape(hashed_in_path) +
       " -pkeyopt digest:SHA256   -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 -out " +
-      sig_path_openssl;
+      ShellEscape(sig_path_openssl);
 
 
   std::cout << "AWS-LC command: " << tool_command << std::endl;
@@ -439,17 +474,19 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
 
   // Test verification with pkeyopt
   std::string tool_verify_cmd =
-      std::string(tool_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + hashed_in_path + " -sigfile " + sig_path_tool +
+      ShellEscape(tool_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(hashed_in_path) +
+      " -sigfile " + ShellEscape(sig_path_tool) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 > " +
-      out_path_tool;
+      ShellEscape(out_path_tool);
   std::string openssl_verify_cmd =
-      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
-      pubkey_path + " -in " + hashed_in_path + " -sigfile " + sig_path_openssl +
+      ShellEscape(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      ShellEscape(pubkey_path) + " -in " + ShellEscape(hashed_in_path) +
+      " -sigfile " + ShellEscape(sig_path_openssl) +
       " -pkeyopt digest:SHA256 -pkeyopt rsa_padding_mode:pss"
       " -pkeyopt rsa_pss_saltlen:0 > " +
-      out_path_openssl;
+      ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_verify_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_verify_cmd.c_str()), 0);
@@ -470,4 +507,53 @@ TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
             std::string::npos);
 
   RemoveFile(hashed_in_path);
+}
+
+// Verify that pkeyutl -verify's exit status matches OpenSSL: 0 on a good
+// signature and nonzero when the signature does not match the input.
+TEST_F(PKeyUtlComparisonTest, VerifyExitCode) {
+  std::string sign_command = std::string(tool_executable_path) +
+                             " pkeyutl -sign -inkey " + key_path + " -in " +
+                             in_path + " -out " + sig_path_tool;
+  ASSERT_EQ(0, ExecuteCommandExitCode(sign_command));
+
+  // Good signature: both exit 0.
+  std::string tool_command = std::string(tool_executable_path) +
+                             " pkeyutl -verify -pubin -inkey " + pubkey_path +
+                             " -in " + in_path + " -sigfile " + sig_path_tool +
+                             " > " + out_path_tool + " 2>&1";
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " +
+      pubkey_path + " -in " + in_path + " -sigfile " + sig_path_tool + " > " +
+      out_path_openssl + " 2>&1";
+  int tool_exit = ExecuteCommandExitCode(tool_command);
+  int openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_EQ(0, tool_exit);
+  EXPECT_EQ(openssl_exit, tool_exit);
+
+  // Bad signature: verify the signature against different input data.
+  char other_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_path), 0u);
+  {
+    ScopedFILE other_file(fopen(other_path, "wb"));
+    ASSERT_TRUE(other_file);
+    const char *tampered = "Other data";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), other_file.get()),
+              strlen(tampered));
+  }
+
+  tool_command = std::string(tool_executable_path) +
+                 " pkeyutl -verify -pubin -inkey " + pubkey_path + " -in " +
+                 other_path + " -sigfile " + sig_path_tool + " > " +
+                 out_path_tool + " 2>&1";
+  openssl_command = std::string(openssl_executable_path) +
+                    " pkeyutl -verify -pubin -inkey " + pubkey_path + " -in " +
+                    other_path + " -sigfile " + sig_path_tool + " > " +
+                    out_path_openssl + " 2>&1";
+  tool_exit = ExecuteCommandExitCode(tool_command);
+  openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_NE(0, tool_exit);
+  EXPECT_EQ(openssl_exit, tool_exit);
+
+  RemoveFile(other_path);
 }
