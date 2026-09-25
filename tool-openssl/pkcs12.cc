@@ -91,8 +91,7 @@ static bssl::UniquePtr<BIO> OpenOutput(const std::string &path) {
     out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
     // Output is owner-only regardless of whether a key ends up in it.
-    SetUmaskForPrivateKey();
-    out.reset(BIO_new_file(path.c_str(), "wb"));
+    out = NewPrivateFileBIO(path);
   }
   if (!out) {
     fprintf(stderr, "Error: unable to open output '%s'\n",
