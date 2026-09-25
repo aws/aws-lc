@@ -44,10 +44,36 @@ jobs:
       vs2019: ${{ steps.images.outputs.vs2019 }}
       vs2022: ${{ steps.images.outputs.vs2022 }}
       sde: ${{ steps.images.outputs.sde }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Enable long paths
         run: git config --global core.longpaths true
       - uses: actions/checkout@v7
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build stops after the container builds.
+      #
+      # The configure-aws-credentials composite action is bash only, so this job
+      # assumes the role directly rather than through it.
+      - name: Query Environment
+        id: env
+        shell: pwsh
+        run: |
+          "aws_account_id=$env:AWS_ACCOUNT_ID" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Retrieve OIDC Role Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Retrieve Image Build Role Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImageBuildRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+          role-chaining: true
       - name: Load dependency pins
         shell: pwsh
         run: |
@@ -140,6 +166,7 @@ jobs:
           --target ltsc2022_sde
           ./.github/docker_images/aws-lc/windows
       - name: Push Container to Staging
+        if: ${{ github.event_name != 'pull_request' }}
         shell: pwsh
         run: |
           docker push ${{ steps.images.outputs.ltsc2022 }}

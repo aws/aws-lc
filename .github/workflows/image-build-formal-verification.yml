@@ -112,7 +112,27 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJSON(needs.define_images.outputs.images).* }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      # This job checks aws-lc-verification out over the workspace root, so the
+      # local configure-aws-credentials action is never on disk here. Assume the
+      # staging role directly, and do it before that checkout runs.
+      - name: Query Environment
+        id: env
+        run: echo "aws_account_id=${AWS_ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
+      - name: Retrieve OIDC Role Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Retrieve Image Build Role Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImageBuildRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+          role-chaining: true
       - uses: actions/checkout@v7
         with:
           repository: awslabs/aws-lc-verification
