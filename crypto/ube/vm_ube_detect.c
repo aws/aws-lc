@@ -58,19 +58,24 @@ static void vm_ube_acquire_fence(void) {
 #define VMCLOCK_SEQLOCK_MAX_RETRIES 1024
 
 static CRYPTO_once_t vm_ube_init = CRYPTO_ONCE_INIT;
-static int vm_ube_state = 0;
-static int vm_ube_backend = VM_UBE_BACKEND_NONE;
 
-// SysGenID generation number pointer
-static volatile uint32_t *sgn_addr = NULL;
+// vm_ube_state_st holds all VM UBE detection state. Exactly one instance
+// (|vm_ube|) exists; |do_vm_ube_init| populates it once via |CRYPTO_once| and
+// it is read-only thereafter.
+struct vm_ube_state_st {
+  int state;                                  // VM_UBE_STATE_*
+  int backend;                                // VM_UBE_BACKEND_*
+  volatile uint32_t *sysgenid_addr;           // SysGenID counter mapping
+  volatile struct vmclock_abi *vmclock_addr;  // vmclock region mapping
+};
+static struct vm_ube_state_st vm_ube = {
+    VM_UBE_STATE_NOT_SUPPORTED, VM_UBE_BACKEND_NONE, NULL, NULL,
+};
 
-// vmclock mapped region
-static volatile struct vmclock_abi *vmclock_addr = NULL;
-
-// try_vmclock_init attempts to initialize the vmclock backend and returns a
-// VM_UBE_BACKEND_* result code. Anything other than INITIALISED lets the caller
-// fall through to the next backend.
-static int try_vmclock_init(void) {
+// try_vmclock_init attempts to initialize the vmclock backend into |st| and
+// returns a VM_UBE_BACKEND_* result code. Anything other than INITIALISED lets
+// the caller fall through to the next backend.
+static int try_vmclock_init(struct vm_ube_state_st *st) {
   struct stat buff;
   if (stat(CRYPTO_get_vmclock_path(), &buff) != 0) {
     return VM_UBE_BACKEND_NOT_PRESENT;
@@ -111,11 +116,11 @@ static int try_vmclock_init(void) {
     return VM_UBE_BACKEND_UNAVAILABLE;
   }
 
-  vmclock_addr = vmc;
+  st->vmclock_addr = vmc;
   return VM_UBE_BACKEND_INITIALISED;
 }
 
-static int try_sysgenid_init(void) {
+static int try_sysgenid_init(struct vm_ube_state_st *st) {
   struct stat buff;
   if (stat(CRYPTO_get_sysgenid_path(), &buff) != 0) {
     return VM_UBE_BACKEND_NOT_PRESENT;
@@ -133,46 +138,46 @@ static int try_sysgenid_init(void) {
     return VM_UBE_BACKEND_UNAVAILABLE;
   }
 
-  sgn_addr = addr;
+  st->sysgenid_addr = addr;
   return VM_UBE_BACKEND_INITIALISED;
 }
 
 static void do_vm_ube_init(void) {
-  vm_ube_state = VM_UBE_STATE_NOT_SUPPORTED;
-  vm_ube_backend = VM_UBE_BACKEND_NONE;
-  sgn_addr = NULL;
-  vmclock_addr = NULL;
+  vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
+  vm_ube.backend = VM_UBE_BACKEND_NONE;
+  vm_ube.sysgenid_addr = NULL;
+  vm_ube.vmclock_addr = NULL;
 
   // Try vmclock first (preferred). If it is present but unusable, fall through
   // to sysgenid rather than giving up -- both can coexist during the transition.
-  if (try_vmclock_init() == VM_UBE_BACKEND_INITIALISED) {
-    vm_ube_backend = VM_UBE_BACKEND_VMCLOCK;
-    vm_ube_state = VM_UBE_STATE_SUCCESS_INITIALISE;
+  if (try_vmclock_init(&vm_ube) == VM_UBE_BACKEND_INITIALISED) {
+    vm_ube.backend = VM_UBE_BACKEND_VMCLOCK;
+    vm_ube.state = VM_UBE_STATE_SUCCESS_INITIALISE;
     return;
   }
 
-  if (try_sysgenid_init() == VM_UBE_BACKEND_INITIALISED) {
-    vm_ube_backend = VM_UBE_BACKEND_SYSGENID;
-    vm_ube_state = VM_UBE_STATE_SUCCESS_INITIALISE;
+  if (try_sysgenid_init(&vm_ube) == VM_UBE_BACKEND_INITIALISED) {
+    vm_ube.backend = VM_UBE_BACKEND_SYSGENID;
+    vm_ube.state = VM_UBE_STATE_SUCCESS_INITIALISE;
     return;
   }
 
   // No backend initialized -- degrade to "not supported", not a hard failure
   // (see the state note above for why a hard failure would be worse).
-  vm_ube_state = VM_UBE_STATE_NOT_SUPPORTED;
+  vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
 }
 
 #if defined(AWSLC_VM_UBE_TESTING)
 // See vm_ube_detect.h. Re-runs init against the current stand-in file(s);
 // single-threaded test use only.
 void HAZMAT_reinit_vm_ube_FOR_TESTING(void) {
-  if (vmclock_addr != NULL) {
-    munmap((void *)vmclock_addr, sizeof(struct vmclock_abi));
-    vmclock_addr = NULL;
+  if (vm_ube.vmclock_addr != NULL) {
+    munmap((void *)vm_ube.vmclock_addr, sizeof(struct vmclock_abi));
+    vm_ube.vmclock_addr = NULL;
   }
-  if (sgn_addr != NULL) {
-    munmap((void *)sgn_addr, sizeof(uint32_t));
-    sgn_addr = NULL;
+  if (vm_ube.sysgenid_addr != NULL) {
+    munmap((void *)vm_ube.sysgenid_addr, sizeof(uint32_t));
+    vm_ube.sysgenid_addr = NULL;
   }
   do_vm_ube_init();
 }
@@ -182,17 +187,18 @@ void HAZMAT_reinit_vm_ube_FOR_TESTING(void) {
 // seqlock protocol described in the vmclock specification. On success it writes
 // the value to |*out| and returns 1. It returns 0 if it cannot obtain a
 // consistent read within |VMCLOCK_SEQLOCK_MAX_RETRIES| attempts.
-static int vm_ube_read_vmclock_gn(uint64_t *out) {
+static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
+                                  uint64_t *out) {
   for (size_t i = 0; i < VMCLOCK_SEQLOCK_MAX_RETRIES; i++) {
-    uint32_t seq = vmclock_addr->seq_count & ~1u;
+    uint32_t seq = st->vmclock_addr->seq_count & ~1u;
     // Keep the first |seq_count| read ordered before the counter read.
     vm_ube_acquire_fence();
 
-    uint64_t value = vmclock_addr->vm_generation_counter;
+    uint64_t value = st->vmclock_addr->vm_generation_counter;
 
     // Keep the second |seq_count| read ordered after the counter read.
     vm_ube_acquire_fence();
-    if (seq == vmclock_addr->seq_count) {
+    if (seq == st->vmclock_addr->seq_count) {
       *out = value;
       return 1;
     }
@@ -200,19 +206,21 @@ static int vm_ube_read_vmclock_gn(uint64_t *out) {
   return 0;
 }
 
-static int vm_ube_read_sysgenid_gn(uint64_t *out) {
-  *out = (uint64_t)*sgn_addr;
+static int vm_ube_read_sysgenid_gn(const struct vm_ube_state_st *st,
+                                   uint64_t *out) {
+  *out = (uint64_t)*st->sysgenid_addr;
   return 1;
 }
 
-// vm_ube_read_generation reads the active backend's generation number into
+// vm_ube_read_generation reads |st|'s active backend generation number into
 // |*out|. Returns 1 on success and 0 on failure.
-static int vm_ube_read_generation(uint64_t *out) {
-  if (vm_ube_backend == VM_UBE_BACKEND_VMCLOCK) {
-    return vm_ube_read_vmclock_gn(out);
+static int vm_ube_read_generation(const struct vm_ube_state_st *st,
+                                  uint64_t *out) {
+  if (st->backend == VM_UBE_BACKEND_VMCLOCK) {
+    return vm_ube_read_vmclock_gn(st, out);
   }
-  if (vm_ube_backend == VM_UBE_BACKEND_SYSGENID) {
-    return vm_ube_read_sysgenid_gn(out);
+  if (st->backend == VM_UBE_BACKEND_SYSGENID) {
+    return vm_ube_read_sysgenid_gn(st, out);
   }
   return 0;
 }
@@ -245,12 +253,12 @@ static uint64_t vm_ube_transient_poison(void) {
 int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
   CRYPTO_once(&vm_ube_init, do_vm_ube_init);
 
-  switch (vm_ube_state) {
+  switch (vm_ube.state) {
     case VM_UBE_STATE_NOT_SUPPORTED:
       *vm_ube_generation_number = 0;
       return 1;
     case VM_UBE_STATE_SUCCESS_INITIALISE:
-      if (vm_ube_read_generation(vm_ube_generation_number) != 1) {
+      if (vm_ube_read_generation(&vm_ube, vm_ube_generation_number) != 1) {
         // Initialized but no consistent read this call (e.g. a wedged seqlock):
         // a transient failure. Hand back a poison value so the UBE layer reseeds
         // conservatively; detection recovers on the next consistent read.
@@ -266,7 +274,7 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
 int CRYPTO_get_vm_ube_active(void) {
   CRYPTO_once(&vm_ube_init, do_vm_ube_init);
 
-  if (vm_ube_state == VM_UBE_STATE_SUCCESS_INITIALISE) {
+  if (vm_ube.state == VM_UBE_STATE_SUCCESS_INITIALISE) {
     return 1;
   }
 
@@ -276,7 +284,7 @@ int CRYPTO_get_vm_ube_active(void) {
 int CRYPTO_get_vm_ube_supported(void) {
   CRYPTO_once(&vm_ube_init, do_vm_ube_init);
 
-  if (vm_ube_state == VM_UBE_STATE_NOT_SUPPORTED) {
+  if (vm_ube.state == VM_UBE_STATE_NOT_SUPPORTED) {
     return 0;
   }
 
