@@ -133,6 +133,8 @@ int ecparamTool(const args_list_t &args) {
   // Set up output BIO
   if (out_path.empty()) {
     out_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else if (genkey) {
+    out_bio = NewPrivateFileBIO(out_path);
   } else {
     out_bio.reset(BIO_new_file(out_path.c_str(),
                                output_format == FORMAT_DER ? "wb" : "w"));
@@ -158,7 +160,6 @@ int ecparamTool(const args_list_t &args) {
     // Set point conversion form on the key
     EC_KEY_set_conv_form(eckey.get(), point_form);
 
-    SetUmaskForPrivateKey();
     if (output_format == FORMAT_PEM) {
       if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr,
                                       nullptr, 0, nullptr, nullptr)) {

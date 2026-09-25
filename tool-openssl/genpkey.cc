@@ -68,10 +68,8 @@ int genpkeyTool(const args_list_t &args) {
   if (out_path.empty()) {
     out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
-    out.reset(BIO_new(BIO_s_file()));
-    if (!BIO_write_filename(out.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: failed to open output file '%s'\n",
-              out_path.c_str());
+    out = NewPrivateFileBIO(out_path);
+    if (!out) {
       return kToolExitFailure;
     }
   }
