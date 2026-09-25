@@ -1112,23 +1112,12 @@ static void RunWycheproofDecryptTest(
     int ret =
         EVP_PKEY_decrypt(ctx.get(), out.data(), &len, ct.data(), ct.size());
     // BoringSSL does not enforce policies on weak keys and leaves it to the
-    // caller.
-    bool is_valid = result.IsValid({"SmallModulus"});
-
-    // AWS-LC enforces FIPS 800-56B Rev. 2 §7.1.2.1 which requires 1 < c < (n-1).
-    // But Wycheproof mistakenly marks some vectors with c values outside this range as valid.
-    if (is_valid) {
-      const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
-      const BIGNUM *n = RSA_get0_n(rsa);
-      bssl::UniquePtr<BIGNUM> c(BN_bin2bn(ct.data(), ct.size(), nullptr));
-      bssl::UniquePtr<BIGNUM> n_minus_one(BN_dup(n));
-      ASSERT_TRUE(c && n_minus_one);
-      ASSERT_TRUE(BN_sub_word(n_minus_one.get(), 1));
-      if (BN_is_zero(c.get()) || BN_is_one(c.get()) ||
-          BN_cmp(c.get(), n_minus_one.get()) >= 0) {
-        is_valid = false;
-      }
-    }
+    // caller. AWS-LC enforces FIPS 800-56B Rev. 2 §7.1.2.1, which requires
+    // 1 < c < (n-1); Wycheproof marks the out-of-range ciphertexts as
+    // "acceptable" with the "SmallIntegerCiphertext" flag. Those vectors also
+    // carry other flags (e.g. "Constructed"), so IsValid still returns false
+    // for them and AWS-LC is expected to reject, matching our enforcement.
+    bool is_valid = result.IsValid({"SmallModulus", "SmallIntegerCiphertext"});
 
     EXPECT_EQ(ret, is_valid ? 1 : 0);
     if (is_valid) {
