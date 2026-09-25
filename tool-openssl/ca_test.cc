@@ -15,6 +15,7 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -526,6 +527,84 @@ TEST_F(CATest, OutputToStdout) {
 
   ASSERT_EQ(kToolExitSuccess, caTool(args));
 }
+
+#if !defined(OPENSSL_WINDOWS)
+// A failure writing the issued certificate (here: a broken pipe on stdout)
+// fails the tool and leaves the index unrotated, so the database never claims
+// an issuance whose certificate was lost.
+TEST_F(CATest, CertificateWriteFailureLeavesDatabaseUnchanged) {
+  CreateBasicConfig();
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path
+      // No -out argument, so the certificate goes to stdout.
+  };
+
+  ASSERT_TRUE(ReadFileToString(db_path).empty());
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  close(pipefd[0]);  // No reader: writes and flushes below fail with EPIPE.
+
+  auto old_sigpipe = signal(SIGPIPE, SIG_IGN);
+  fflush(stdout);
+  int old_stdout = dup(STDOUT_FILENO);
+  ASSERT_GE(old_stdout, 0);
+  ASSERT_GE(dup2(pipefd[1], STDOUT_FILENO), 0);
+  close(pipefd[1]);
+
+  int result = caTool(args);
+
+  dup2(old_stdout, STDOUT_FILENO);
+  close(old_stdout);
+  signal(SIGPIPE, old_sigpipe);
+  // Clear the error indicator the failed writes left on |stdout|.
+  clearerr(stdout);
+
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_TRUE(ReadFileToString(db_path).empty());
+  EXPECT_EQ("01\n", ReadFileToString(serial_path));
+}
+
+// Isolates the explicit flush. Routing -out at a reader-less pipe by path gives
+// the tool a fresh, fully buffered stream, and -notext keeps the certificate
+// under one buffer, so no write syscall happens until the flush. Dropping the
+// BIO_flush makes this case pass silently, because the BIO's fclose discards
+// the error.
+TEST_F(CATest, CertificateFlushFailureIsReported) {
+  CreateBasicConfig();
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  close(pipefd[0]);  // No reader: the flush below fails with EPIPE.
+
+  char out_path[32];
+  snprintf(out_path, sizeof(out_path), "/dev/fd/%d", pipefd[1]);
+  if (access(out_path, W_OK) != 0) {
+    close(pipefd[1]);
+    GTEST_SKIP() << "no /dev/fd support";
+  }
+
+  args_list_t args = {
+      "-config", config_path,
+      "-notext",
+      "-selfsign",
+      "-in", csr_path,
+      "-out", out_path
+  };
+
+  auto old_sigpipe = signal(SIGPIPE, SIG_IGN);
+  int result = caTool(args);
+  signal(SIGPIPE, old_sigpipe);
+  close(pipefd[1]);
+
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_TRUE(ReadFileToString(db_path).empty());
+  EXPECT_EQ("01\n", ReadFileToString(serial_path));
+}
+#endif  // !OPENSSL_WINDOWS
 
 // Configuration file handling tests
 TEST_F(CATest, MissingConfigFile) {
