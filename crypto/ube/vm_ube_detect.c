@@ -44,13 +44,6 @@ static void vm_ube_acquire_fence(void) {
 #define VM_UBE_BACKEND_VMCLOCK 0x01
 #define VM_UBE_BACKEND_SYSGENID 0x02
 
-// Result of attempting to initialize a single detection backend.
-#define VM_UBE_BACKEND_NOT_PRESENT 0x00   // device file does not exist
-#define VM_UBE_BACKEND_INITIALISED 0x01   // device present and usable
-#define VM_UBE_BACKEND_UNAVAILABLE 0x02   // device present but not usable by us
-                                          // (e.g. EACCES, mmap failure, or the
-                                          // device is not a valid vmclock)
-
 // Iteration budget for a contended or wedged seqlock, not a guarantee a VMM
 // update completes. Exhausting it reports a transient read failure (see
 // vm_ube_read_vmclock_gn) so a stuck |seq_count| can't spin |RAND_bytes|
@@ -72,21 +65,17 @@ static struct vm_ube_state_st vm_ube = {
     VM_UBE_STATE_NOT_SUPPORTED, VM_UBE_BACKEND_NONE, NULL, NULL,
 };
 
-// try_vmclock_init attempts to initialize the vmclock backend into |st| and
-// returns a VM_UBE_BACKEND_* result code. Anything other than INITIALISED lets
-// the caller fall through to the next backend.
+// try_vmclock_init attempts to initialize the vmclock backend into |st|. It
+// returns 1 on success and 0 otherwise. All failure modes are equivalent to the
+// caller (fall through to the next backend), so they are not distinguished: an
+// absent device (|open| ENOENT), a device present but not usable by this
+// process (|open| EACCES on a root-only node, |mmap| failure), and a device
+// that is not a valid vmclock (bad magic, or the generation-counter flag unset)
+// all return 0.
 static int try_vmclock_init(struct vm_ube_state_st *st) {
-  struct stat buff;
-  if (stat(CRYPTO_get_vmclock_path(), &buff) != 0) {
-    return VM_UBE_BACKEND_NOT_PRESENT;
-  }
-
-  // Node exists but may not be usable by us: e.g. a root-only /dev/vmclock0
-  // gives EACCES to an unprivileged process. Not an error -- report unavailable
-  // and let detection fall through.
   int fd = open(CRYPTO_get_vmclock_path(), O_RDONLY);
   if (fd == -1) {
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   void *addr = mmap(NULL, sizeof(struct vmclock_abi), PROT_READ, MAP_SHARED,
@@ -94,7 +83,7 @@ static int try_vmclock_init(struct vm_ube_state_st *st) {
   close(fd);
 
   if (addr == MAP_FAILED) {
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   volatile struct vmclock_abi *vmc = (volatile struct vmclock_abi *)addr;
@@ -104,7 +93,7 @@ static int try_vmclock_init(struct vm_ube_state_st *st) {
   // (see vmclock_abi.h).
   if (vmc->magic != VMCLOCK_MAGIC) {
     munmap(addr, sizeof(struct vmclock_abi));
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   // |flags| is seqlock-protected, but this runs once at init against a freshly
@@ -113,35 +102,41 @@ static int try_vmclock_init(struct vm_ube_state_st *st) {
   uint64_t flags = vmc->flags;
   if (!(flags & VMCLOCK_FLAG_VM_GEN_COUNTER_PRESENT)) {
     munmap(addr, sizeof(struct vmclock_abi));
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   st->vmclock_addr = vmc;
-  return VM_UBE_BACKEND_INITIALISED;
+  return 1;
 }
 
+// try_sysgenid_init attempts to initialize the SysGenID backend into |st|.
+// Returns 1 on success and 0 otherwise (absent, or present but unusable). Like
+// vmclock, the failure modes are not distinguished -- see |do_vm_ube_init| for
+// why an unusable device degrades rather than forcing a per-call reseed.
 static int try_sysgenid_init(struct vm_ube_state_st *st) {
-  struct stat buff;
-  if (stat(CRYPTO_get_sysgenid_path(), &buff) != 0) {
-    return VM_UBE_BACKEND_NOT_PRESENT;
-  }
-
   int fd = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd == -1) {
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   void *addr = mmap(NULL, sizeof(uint32_t), PROT_READ, MAP_SHARED, fd, 0);
   close(fd);
 
   if (addr == MAP_FAILED) {
-    return VM_UBE_BACKEND_UNAVAILABLE;
+    return 0;
   }
 
   st->sysgenid_addr = addr;
-  return VM_UBE_BACKEND_INITIALISED;
+  return 1;
 }
 
+// VM UBE detection is a *non-required* detector: unlike fork detection, its
+// unavailability must not force a reseed on every RAND_bytes call (VM devices
+// are often absent, e.g. sysgenid is Lambda-specific). So any device that is
+// absent or present-but-unusable degrades to NOT_SUPPORTED -- there is no
+// "present but failed" state that reports permanent failure up the stack. That
+// keeps the required fork detector working and avoids the per-call reseed tax
+// for what is usually just a permissions issue on a root-only device.
 static void do_vm_ube_init(void) {
   vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
   vm_ube.backend = VM_UBE_BACKEND_NONE;
@@ -150,20 +145,19 @@ static void do_vm_ube_init(void) {
 
   // Try vmclock first (preferred). If it is present but unusable, fall through
   // to sysgenid rather than giving up -- both can coexist during the transition.
-  if (try_vmclock_init(&vm_ube) == VM_UBE_BACKEND_INITIALISED) {
+  if (try_vmclock_init(&vm_ube)) {
     vm_ube.backend = VM_UBE_BACKEND_VMCLOCK;
     vm_ube.state = VM_UBE_STATE_SUCCESS_INITIALISE;
     return;
   }
 
-  if (try_sysgenid_init(&vm_ube) == VM_UBE_BACKEND_INITIALISED) {
+  if (try_sysgenid_init(&vm_ube)) {
     vm_ube.backend = VM_UBE_BACKEND_SYSGENID;
     vm_ube.state = VM_UBE_STATE_SUCCESS_INITIALISE;
     return;
   }
 
-  // No backend initialized -- degrade to "not supported", not a hard failure
-  // (see the state note above for why a hard failure would be worse).
+  // No backend initialized -- degrade to "not supported" (see note above).
   vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
 }
 
