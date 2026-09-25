@@ -149,10 +149,15 @@ implements before being applied, keeping the operator's preference order. A stoc
 policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
 groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
-The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
-AWS-LC selects its own key shares, and `-` drops the group it prefixes whatever
-else the value names. A value that leaves no group at all is not applied, since
-AWS-LC reads an empty group list as a request for its defaults.
+The OpenSSL 3.5 list modifiers are honored: `*` and `?` are stripped, since AWS-LC
+selects its own key shares and tolerates every name, `-` drops the entry it
+prefixes whatever else the value names, and `/` bounds an entry like `:` does,
+since AWS-LC keeps one flat preference list.
+[docs/crypto-policies.md](docs/crypto-policies.md) sets this against what OpenSSL
+does with the same file.
+
+A `Groups` value that leaves no group at all is not applied, since AWS-LC reads an
+empty group list as a request for its defaults.
 
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
@@ -161,12 +166,12 @@ the context would offer the versions the policy forbids. A `MinProtocol` older
 than TLS 1.0, such as `SSLv3`, keeps the built-in floor, which is already
 stricter.
 
-AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
-Every policy the framework ships today predates ML-KEM and ML-DSA, and the
-setters replace AWS-LC's defaults rather than intersect with them, so seeding
-would otherwise downgrade every context. A policy that names any post-quantum
-algorithm is taken at its word and nothing is added back. To turn post-quantum
-off, add AWS-LC's own directive to the policy file:
+AWS-LC's post-quantum algorithms survive a policy that says nothing about them,
+which includes Amazon Linux 2023's `DEFAULT`. The setters replace AWS-LC's
+defaults rather than intersect with them, so seeding would otherwise downgrade
+every context. A policy that names any post-quantum algorithm is taken at its
+word and nothing is added back. To turn post-quantum off, add AWS-LC's own
+directive to the policy file:
 
 ```
 AWSLC.PostQuantum = off
