@@ -44,7 +44,7 @@ OPENSSL_EXPORT void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn)
 // vm_ube detection.
 // |allow_mocked_ube_detection_FOR_TESTING| must have been invoked (once
 // per-process) to allow mocking the vm_ube generation number.
-OPENSSL_EXPORT void set_vm_ube_generation_number_FOR_TESTING(uint32_t vm_ube_gn);
+OPENSSL_EXPORT void set_vm_ube_generation_number_FOR_TESTING(uint64_t vm_ube_gn);
 
 // allow_mocked_ube_detection_FOR_TESTING allows mocking UBE detection even
 // though real detection is not available. This function must be called in
