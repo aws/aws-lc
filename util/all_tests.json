@@ -177,5 +177,10 @@
       "tool-openssl/tool_openssl_test"
     ],
     "shard": true
+  },
+  {
+    "cmd": [
+      "tool/bssl_tool_test"
+    ]
   }
 ]

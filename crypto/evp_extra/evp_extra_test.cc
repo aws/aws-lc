@@ -1470,6 +1470,57 @@ TEST(EVPExtraTest, Print) {
 
 #endif
 
+// A write failure while dumping the key material must be reported, not
+// swallowed, so that callers do not mistake truncated output for success.
+TEST(EVPExtraTest, PrintMLDSAWriteFailure) {
+  bssl::UniquePtr<EVP_PKEY> pkey = ParsePrivateKey(
+      EVP_PKEY_PQDSA, kExampleMLDSA65KeyDER, sizeof(kExampleMLDSA65KeyDER));
+  ASSERT_TRUE(pkey);
+
+  // Print once successfully to learn how many bytes precede the hex dump.
+  bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(mem);
+  ASSERT_TRUE(
+      EVP_PKEY_print_private(mem.get(), pkey.get(), /*indent=*/0, nullptr));
+  const uint8_t *data = nullptr;
+  size_t len = 0;
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &data, &len));
+  const uint8_t *newline =
+      static_cast<const uint8_t *>(OPENSSL_memchr(data, '\n', len));
+  ASSERT_TRUE(newline);
+  size_t budget = static_cast<size_t>(newline - data) + 1;
+  ASSERT_LT(budget, len);
+
+  // A BIO that accepts |budget| bytes and then fails every write. With the
+  // budget set to the length of the header, the header is written and the first
+  // write of the hex dump fails.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_write(
+      method.get(), [](BIO *b, const char *in, int len_arg) -> int {
+        size_t *remaining = static_cast<size_t *>(BIO_get_data(b));
+        if (len_arg < 0 || static_cast<size_t>(len_arg) > *remaining) {
+          return -1;
+        }
+        *remaining -= static_cast<size_t>(len_arg);
+        return len_arg;
+      }));
+
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+  BIO_set_data(bio.get(), &budget);
+
+  EXPECT_FALSE(
+      EVP_PKEY_print_private(bio.get(), pkey.get(), /*indent=*/0, nullptr));
+  // The header was written, so the failure came from the hex dump.
+  EXPECT_EQ(budget, 0u);
+  ERR_clear_error();
+}
+
 // Tests loading a bad key in PKCS8 format.
 TEST(EVPExtraTest, BadECKey) {
   const uint8_t *derp = kExampleBadECKeyDER;

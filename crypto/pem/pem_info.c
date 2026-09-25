@@ -304,11 +304,15 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
         goto err;
       }
     } else if (xi->x_pkey->dec_pkey) {
-      // Add DSA/DH
       // normal optionally encrypted stuff
-      if (PEM_write_bio_RSAPrivateKey(bp,
-                                    EVP_PKEY_get0_RSA(xi->x_pkey->dec_pkey),
-                                      enc, kstr, klen, cb, u) <= 0) {
+      //
+      // |PEM_write_bio_PrivateKey_traditional| writes the legacy, per-algorithm
+      // PEM types, so RSA, DSA, and EC keys round-trip through
+      // |PEM_X509_INFO_read_bio|. Unlike |PEM_write_bio_RSAPrivateKey|, it does
+      // not require the key to be RSA and reports an error for key types it
+      // cannot serialize.
+      if (PEM_write_bio_PrivateKey_traditional(bp, xi->x_pkey->dec_pkey, enc,
+                                               kstr, klen, cb, u) <= 0) {
         goto err;
       }
     }

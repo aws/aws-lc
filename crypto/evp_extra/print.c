@@ -269,26 +269,41 @@ static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) 
     return 0;
   }
 
+  if (pkey->pkey.pqdsa_key == NULL || pkey->pkey.pqdsa_key->pqdsa == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   if (!BIO_indent(bp, off, 128)) {
     return 0;
   }
 
   const PQDSA *pqdsa = pkey->pkey.pqdsa_key->pqdsa;
-  int bit_len = 0;
 
+  // |private_key_len| and |public_key_len| are byte counts. The printed size is
+  // in bits, to match how the other key types are printed.
   if (ptype == 2) {
-    bit_len = pqdsa->private_key_len;
-    if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
+    if (pkey->pkey.pqdsa_key->private_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
       return 0;
     }
-    print_hex(bp, pkey->pkey.pqdsa_key->private_key, bit_len, off);
+    const size_t key_len = pqdsa->private_key_len;
+    if (BIO_printf(bp, "Private-Key: (%d bit)\n", (int)(key_len * 8)) <= 0) {
+      return 0;
+    }
+    if (!print_hex(bp, pkey->pkey.pqdsa_key->private_key, key_len, off)) {
+      return 0;
+    }
   } else {
-    bit_len = pqdsa->public_key_len;
-    if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
+    if (pkey->pkey.pqdsa_key->public_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
       return 0;
     }
-    int ret = print_hex(bp, pkey->pkey.pqdsa_key->public_key, bit_len, off);
-    if (!ret) {
+    const size_t key_len = pqdsa->public_key_len;
+    if (BIO_printf(bp, "Public-Key: (%d bit)\n", (int)(key_len * 8)) <= 0) {
+      return 0;
+    }
+    if (!print_hex(bp, pkey->pkey.pqdsa_key->public_key, key_len, off)) {
       return 0;
     }
   }
