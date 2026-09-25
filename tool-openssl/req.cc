@@ -509,19 +509,10 @@ static bool GenerateSerial(X509 *cert) {
 static bool WritePrivateKey(std::string &out_path, Password &passout,
                             bssl::UniquePtr<EVP_PKEY> &pkey,
                             const EVP_CIPHER *cipher) {
-  bssl::UniquePtr<BIO> out_bio;
-  SetUmaskForPrivateKey();
-
   fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
 
-  out_bio.reset(BIO_new(BIO_s_file()));
+  bssl::UniquePtr<BIO> out_bio = NewPrivateFileBIO(out_path);
   if (!out_bio) {
-    fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
-    return false;
-  }
-
-  if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
-    fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
     return false;
   }
 
