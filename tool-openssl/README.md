@@ -28,6 +28,12 @@ Exit status follows OpenSSL: 1 for option or trust store setup errors (including
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
 
+## rehash
+
+`openssl rehash [-compat] [cert-directory]` indexes PEM certificates and CRLs in files ending in `.pem`, `.crt`, `.cer`, or `.crl`. By default it creates modern SHA-1 name-hash links. `-compat` creates both modern SHA-1 and legacy MD5 name-hash links for certificate subjects and CRL issuers. These hashes are directory lookup identifiers, not certificate fingerprints or signature algorithms.
+
+Certificate links use `<hash>.<n>` and CRL links use `<hash>.r<n>`. Existing generated links are removed and rebuilt, and duplicate objects are skipped within each hash/type namespace. Running without `-compat` after a compatibility run restores modern-only links. Input files are not modified. Rehash remains unsupported on Windows.
+
 ## pkcs12 (import only)
 
 `pkcs12` supports importing a bundle and extracting its certificates and private key:
