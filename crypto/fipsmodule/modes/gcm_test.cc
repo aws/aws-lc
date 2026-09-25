@@ -19,6 +19,104 @@
 #include "internal.h"
 
 
+#if defined(GHASH_ASM_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+static bool VAESAVX2Capable() {
+  return CRYPTO_is_VAES_capable() && CRYPTO_is_VPCLMULQDQ_capable() &&
+         CRYPTO_is_AVX2_capable();
+}
+
+// The generic GCM tests only reach the AVX2 implementation on CPUs without
+// AVX512, so check it directly against the portable code on any CPU that can
+// run it.
+TEST(GCMTest, VAESAVX2MatchesReference) {
+  if (!VAESAVX2Capable() || !hwaes_capable()) {
+    GTEST_SKIP() << "VAES/VPCLMULQDQ/AVX2 not supported";
+  }
+
+  // Enough blocks to exercise the main loop plus every tail length.
+  static const size_t kMaxBlocks = 67;
+  std::vector<uint8_t> in(16 * kMaxBlocks);
+  for (size_t i = 0; i < in.size(); i++) {
+    in[i] = static_cast<uint8_t>(i * 7 + 3);
+  }
+
+  for (unsigned key_bits : {128u, 192u, 256u}) {
+    SCOPED_TRACE(key_bits);
+    uint8_t key[32];
+    for (size_t i = 0; i < sizeof(key); i++) {
+      key[i] = static_cast<uint8_t>(0xa0 + i);
+    }
+    AES_KEY aes_key;
+    ASSERT_EQ(0, aes_hw_set_encrypt_key(key, key_bits, &aes_key));
+
+    uint8_t h_bytes[16] = {0};
+    aes_hw_encrypt(h_bytes, h_bytes, &aes_key);
+    const uint64_t H[2] = {CRYPTO_load_u64_be(h_bytes),
+                           CRYPTO_load_u64_be(h_bytes + 8)};
+    alignas(16) u128 htable_avx2[16], htable_ref[16];
+    gcm_init_vpclmulqdq_avx2(htable_avx2, H);
+    gcm_init_nohw(htable_ref, H);
+
+    for (size_t blocks = 1; blocks <= kMaxBlocks; blocks++) {
+      SCOPED_TRACE(blocks);
+      const size_t len = 16 * blocks;
+      // Start near the 32-bit counter boundary to check that only the low
+      // word wraps.
+      uint8_t iv[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                        0xff, 0xff, 0xff, 0xf0};
+      uint8_t xi_init[16];
+      for (size_t i = 0; i < sizeof(xi_init); i++) {
+        xi_init[i] = static_cast<uint8_t>(0x55 ^ (i + blocks));
+      }
+
+      // Reference: CTR encryption followed by portable GHASH.
+      std::vector<uint8_t> ref_ct(len);
+      aes_hw_ctr32_encrypt_blocks(in.data(), ref_ct.data(), blocks, &aes_key,
+                                  iv);
+      uint8_t ref_xi[16];
+      OPENSSL_memcpy(ref_xi, xi_init, sizeof(ref_xi));
+      gcm_ghash_nohw(ref_xi, htable_ref, ref_ct.data(), len);
+
+      uint8_t xi[16];
+      std::vector<uint8_t> ct(len);
+      OPENSSL_memcpy(xi, xi_init, sizeof(xi));
+      aes_gcm_enc_update_vaes_avx2(in.data(), ct.data(), len, &aes_key, iv,
+                                   htable_avx2, xi);
+      EXPECT_EQ(Bytes(ref_ct), Bytes(ct));
+      EXPECT_EQ(Bytes(ref_xi), Bytes(xi));
+
+      std::vector<uint8_t> pt(len);
+      OPENSSL_memcpy(xi, xi_init, sizeof(xi));
+      aes_gcm_dec_update_vaes_avx2(ct.data(), pt.data(), len, &aes_key, iv,
+                                   htable_avx2, xi);
+      EXPECT_EQ(Bytes(in.data(), len), Bytes(pt));
+      EXPECT_EQ(Bytes(ref_xi), Bytes(xi));
+
+      // In-place operation.
+      std::vector<uint8_t> buf(in.begin(), in.begin() + len);
+      OPENSSL_memcpy(xi, xi_init, sizeof(xi));
+      aes_gcm_enc_update_vaes_avx2(buf.data(), buf.data(), len, &aes_key, iv,
+                                   htable_avx2, xi);
+      EXPECT_EQ(Bytes(ref_ct), Bytes(buf));
+      EXPECT_EQ(Bytes(ref_xi), Bytes(xi));
+
+      // GHASH alone.
+      OPENSSL_memcpy(xi, xi_init, sizeof(xi));
+      gcm_ghash_vpclmulqdq_avx2(xi, htable_avx2, ref_ct.data(), len);
+      EXPECT_EQ(Bytes(ref_xi), Bytes(xi));
+    }
+
+    uint8_t xi[16], ref_xi[16];
+    OPENSSL_memset(xi, 0x3c, sizeof(xi));
+    OPENSSL_memcpy(ref_xi, xi, sizeof(xi));
+    gcm_gmult_vpclmulqdq_avx2(xi, htable_avx2);
+    gcm_gmult_nohw(ref_xi, htable_ref);
+    EXPECT_EQ(Bytes(ref_xi), Bytes(xi));
+  }
+}
+#endif  // GHASH_ASM_X86_64 && !MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+
 TEST(GCMTest, TestVectors) {
   FileTestGTest("crypto/fipsmodule/modes/gcm_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> key, plaintext, additional_data, nonce, ciphertext,
@@ -169,29 +267,33 @@ TEST(GCMTest, ABI) {
         }
       }
     }
-    if (crypto_gcm_avx2_enabled()) {
-      AES_KEY aes_key;
-      static const uint8_t kKey[16] = {0};
-      uint8_t iv[16] = {0};
-
+#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+    // Test the AVX2 implementation whenever the CPU supports it, even if the
+    // AVX512 implementation would be preferred.
+    if (VAESAVX2Capable()) {
       CHECK_ABI_SEH(gcm_init_vpclmulqdq_avx2, Htable, kH);
       CHECK_ABI_SEH(gcm_gmult_vpclmulqdq_avx2, X, Htable);
       for (size_t blocks : kBlockCounts) {
         CHECK_ABI_SEH(gcm_ghash_vpclmulqdq_avx2, X, Htable, buf, 16 * blocks);
       }
 
-      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
-      for (size_t blocks : kBlockCounts) {
-        CHECK_ABI_SEH(aes_gcm_enc_update_vaes_avx2, buf, buf, blocks * 16,
-                      &aes_key, iv, Htable, X);
-      }
-      aes_hw_set_decrypt_key(kKey, 128, &aes_key);
-      for (size_t blocks : kBlockCounts) {
-        CHECK_ABI_SEH(aes_gcm_dec_update_vaes_avx2, buf, buf, blocks * 16,
-                      &aes_key, iv, Htable, X);
+      if (hwaes_capable()) {
+        AES_KEY aes_key;
+        static const uint8_t kKey[16] = {0};
+        uint8_t iv[16] = {0};
+
+        // Both directions use the encryption key schedule (CTR mode).
+        aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+        for (size_t blocks : kBlockCounts) {
+          CHECK_ABI_SEH(aes_gcm_enc_update_vaes_avx2, buf, buf, blocks * 16,
+                        &aes_key, iv, Htable, X);
+          CHECK_ABI_SEH(aes_gcm_dec_update_vaes_avx2, buf, buf, blocks * 16,
+                        &aes_key, iv, Htable, X);
+        }
       }
     }
-#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64

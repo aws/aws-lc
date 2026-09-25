@@ -51,8 +51,13 @@ else {
     @argregs = ( "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9" );
 }
 
+# This file contains no AVX-512 code, so it is gated on the AVX2 flag rather
+# than MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. That keeps it available in builds,
+# such as OPENSSL_SMALL, that only drop AVX-512. The VAES and VPCLMULQDQ
+# instructions are emitted as raw bytes (see |vaesni| and |vpclmulqdq| below),
+# so assemblers that predate them can still build this file.
 my $avx2vaes = 1;
-for (@ARGV) { $avx2vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
+for (@ARGV) { $avx2vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2/); }
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
 my $dir = $1;
@@ -169,8 +174,12 @@ ___
     return $code;
 }
 
+# The .text directive is deliberately emitted outside the #ifndef guard: when
+# the guard elides the body, some NASM versions reject an object with no
+# sections (nasm.us bug 3392738).
 $code = <<___;
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.text
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 .section .rodata
 .align 16
 
@@ -1061,7 +1070,10 @@ $code .= _begin_func "aes_gcm_dec_update_vaes_avx2", 1;
 $code .= _aes_gcm_update 0;
 $code .= _end_func;
 
+# The Windows unwind tables reference labels in the functions above, so emit
+# them before closing the guard rather than at the end of the file.
 $code .= <<___;
+.seh_emit_tables
 #endif
 ___
 

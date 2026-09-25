@@ -9,7 +9,9 @@ default	rel
 %define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
-%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+section	.text code align=64
+
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 section	.rdata rdata align=8
 ALIGN	16
 
@@ -40,7 +42,7 @@ $L$inc_2blocks:
 	DQ	2,0
 	DQ	2,0
 
-section	.text code align=64
+section	.text
 
 global	gcm_init_vpclmulqdq_avx2
 
@@ -1425,7 +1427,6 @@ $L$done__func2:
 $L$SEH_end_aes_gcm_dec_update_vaes_avx2_16:
 
 
-%endif
 section	.pdata rdata align=4
 ALIGN	4
 	DD	$L$SEH_begin_gcm_init_vpclmulqdq_avx2_1 wrt ..imagebase
@@ -1586,6 +1587,7 @@ $L$SEH_info_aes_gcm_dec_update_vaes_avx2_0:
 	DB	112
 	DB	$L$SEH_prolog_aes_gcm_dec_update_vaes_avx2_2-$L$SEH_begin_aes_gcm_dec_update_vaes_avx2_1
 	DB	96
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

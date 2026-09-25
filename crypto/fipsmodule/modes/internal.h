@@ -260,7 +260,10 @@ void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 
-// AVX2 + VAES + VPCLMULQDQ functions (for CPUs like AMD Zen 3)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+// AVX2 + VAES + VPCLMULQDQ functions (for CPUs like AMD Zen 3). Unlike
+// |aesni_gcm_encrypt|, the |aes_gcm_*_update_vaes_avx2| functions process all
+// of |len|, which must be a multiple of 16, and do not update |ivec|.
 void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16],
@@ -271,6 +274,7 @@ void aes_gcm_enc_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
 void aes_gcm_dec_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
                                   const AES_KEY *key, const uint8_t ivec[16],
                                   const u128 Htable[16], uint8_t Xi[16]);
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
 
 #if  !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);

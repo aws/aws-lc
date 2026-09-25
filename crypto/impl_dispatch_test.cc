@@ -41,8 +41,12 @@ class ImplDispatchTest : public ::testing::Test {
         CRYPTO_is_SHAEXT_capable();
 #endif
 
+    // These mirror crypto_gcm_avx512_enabled and crypto_gcm_avx2_enabled,
+    // including their build-time gating, so each is true iff that GCM
+    // implementation is used.
     vaes_vpclmulqdq_avx512_ =
-#if !defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_WINDOWS) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   // crypto_gcm_avx512_enabled excludes Windows
         CRYPTO_is_AVX512_capable() &&
         CRYPTO_is_VAES_capable() &&
@@ -52,9 +56,14 @@ class ImplDispatchTest : public ::testing::Test {
 #endif
 
     vaes_vpclmulqdq_avx2_ =
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+        !vaes_vpclmulqdq_avx512_ &&
         CRYPTO_is_VAES_capable() &&
         CRYPTO_is_VPCLMULQDQ_capable() &&
         CRYPTO_is_AVX2_capable();
+#else
+        false;
+#endif
 
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
@@ -190,21 +199,16 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
-           (!is_x86_64_ || is_assembler_too_old || is_assembler_too_old_avx512 ||
+           (!is_x86_64_ || is_assembler_too_old ||
             !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
           {kFlag_aesni_gcm_encrypt,
            is_x86_64_ && aes_hw_ && avx_movbe_ &&
            !is_assembler_too_old &&
-           (is_assembler_too_old_avx512 ||
-            !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_))},
+           !(vaes_vpclmulqdq_avx512_ || vaes_vpclmulqdq_avx2_)},
           {kFlag_aes_gcm_enc_update_vaes_avx2,
-           is_x86_64_ && aes_hw_ &&
-           !is_assembler_too_old_avx512 &&
-           vaes_vpclmulqdq_avx2_ && !vaes_vpclmulqdq_avx512_},
+           aes_hw_ && vaes_vpclmulqdq_avx2_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aes_hw_ &&
-           !is_assembler_too_old_avx512 &&
-           vaes_vpclmulqdq_avx512_},
+           aes_hw_ && vaes_vpclmulqdq_avx512_},
 #else // AARCH64
           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            !aes_gcm_pmull_ && !aes_gcm_8x_},
