@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include <algorithm>
@@ -37,6 +39,15 @@
 // We don't support this default config file interface. For fields that are not
 // overriden by user input, we hardcode default values (e.g. X509 extensions,
 // -keyout defaults to privkey.pem, etc.)
+//
+// 4. -batch mirrors OpenSSL's apps/req.c (verified against apps/req.c in
+// tags openssl-3.0.16 and OpenSSL_1_1_1w, which agree): it only changes
+// anything when prompting would otherwise happen, i.e. -subj is empty and
+// the config's "prompt" is not "no" (see BuildBatchSubject below); building
+// the request never reads standard input in that case. This is separate
+// from -passin/-passout stdin, which -batch does not affect, matching
+// OpenSSL. -subj and prompt=no already avoid prompting today, so -batch has
+// no effect in those cases.
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
@@ -69,6 +80,10 @@ static const argument_t kArguments[] = {
      "This option outputs a certificate instead of"
      "a certificate request. If the -newkey option is not given it "
      "will generate a new private key with 2048 bits length"},
+    {"-batch", kBooleanArgument,
+     "Do not prompt for DN/attributes: use config values/defaults, omitting "
+     "unset fields. Without -config, use built-in DN defaults. Does not "
+     "change -subj, prompt=no, or explicit password-source reads."},
     {"-subj", kOptionalArgument,
      "Sets subject name for new request. The arg must "
      "be formatted as /type0=value0/type1=value1/type2=.... "
@@ -163,9 +178,230 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   return pkey;
 }
 
+// Resolves |name|'s value the way OpenSSL's build_data() does under
+// -batch, using the exact config entry name that matched (never a long/
+// short alias, so e.g. a config's "CN" and "commonName" lines resolve
+// independently): an empty "<name>_value" behaves like blank input and
+// falls back to "<name>_default" (which, unlike "_value", is used
+// literally even if it is "."); a "_value" of "." omits the field. Sets
+// |*out_value| to the resolved value, or NULL to omit the field. Returns
+// false for invalid "_min"/"_max" bounds or a length violation, which -batch
+// treats as fatal instead of reprompting.
+static bool ResolveBatchFieldValue(CONF *conf, const char *section,
+                                   const char *name, const char **out_value) {
+  // OpenSSL's prompt_info() builds these keys in a 100-byte buffer and fails
+  // with "Name '<name>' too long" if any does not fit. Match that rather than
+  // treating an unrepresentable key as unset, which would silently drop a
+  // configured value or bound. "_default" is the longest suffix.
+  char key[100];
+  if (strlen(name) + strlen("_default") + 1 > sizeof(key)) {
+    fprintf(stderr, "Name '%s' too long\n", name);
+    return false;
+  }
+  auto lookup = [&](const char *suffix) -> const char * {
+    snprintf(key, sizeof(key), "%s%s", name, suffix);
+    return NCONF_get_string(conf, section, key);
+  };
+
+  *out_value = nullptr;
+  const char *value = lookup("_value");
+  if (value != nullptr && value[0] == '\0') {
+    value = nullptr;  // "" behaves like blank input.
+  }
+
+  const char *resolved = nullptr;
+  if (value != nullptr) {
+    if (strcmp(value, ".") == 0) {
+      return true;  // Explicit blank marker: omit.
+    }
+    resolved = value;
+  } else {
+    const char *def = lookup("_default");
+    if (def == nullptr || def[0] == '\0') {
+      return true;  // No value, no default: omit.
+    }
+    resolved = def;  // "." stays literal here, unlike "_value"'s ".".
+  }
+
+  // Unset bounds impose no constraint. Unlike OpenSSL's numeric-prefix
+  // parsing, reject malformed bounds rather than silently weakening them.
+  auto get_bound = [&](const char *suffix, long *out) -> bool {
+    const char *bound = lookup(suffix);
+    if (bound == nullptr) {
+      *out = -1;
+      return true;
+    }
+    char *endptr = nullptr;
+    errno = 0;
+    long parsed = strtol(bound, &endptr, 10);
+    if (errno == ERANGE || endptr == bound || *endptr != '\0') {
+      fprintf(stderr,
+              "Error: -batch length bound %s%s must be an in-range integer\n",
+              name, suffix);
+      return false;
+    }
+    *out = parsed;
+    return true;
+  };
+  long n_min = -1;
+  long n_max = -1;
+  if (!get_bound("_min", &n_min) || !get_bound("_max", &n_max)) {
+    return false;
+  }
+  // Same checks and messages as OpenSSL's req_check_len().
+  long len = static_cast<long>(strlen(resolved));
+  if (n_min > 0 && len < n_min) {
+    fprintf(stderr, "String too short, must be at least %ld bytes long\n",
+            n_min);
+    return false;
+  }
+  if (n_max >= 0 && len > n_max) {
+    fprintf(stderr, "String too long, must be at most %ld bytes long\n", n_max);
+    return false;
+  }
+
+  *out_value = resolved;
+  return true;
+}
+
+// Match apps/req.c in OpenSSL_1_1_1w and openssl-3.0.16: batch mode uses
+// configured fields in file order, with values/defaults rather than labels.
+// Retain this tool's supported field set and built-in DN defaults when no
+// config is provided. The existing prompt=no and -subj paths are unchanged.
+static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
+                                                    const std::string &section,
+                                                    bool is_csr,
+                                                    unsigned long chtype) {
+  bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
+  if (!subj) {
+    fprintf(stderr, "Error getting subject name from request\n");
+    return nullptr;
+  }
+
+  if (conf == nullptr) {
+    for (const auto &field : subject_fields) {
+      if (field.default_value[0] != '\0' &&
+          !X509_NAME_add_entry_by_NID(
+              subj.get(), field.nid, chtype,
+              reinterpret_cast<const unsigned char *>(field.default_value), -1,
+              -1, 0)) {
+        fprintf(stderr, "Error adding %s to subject\n", field.field_ln);
+        return nullptr;
+      }
+    }
+    if (X509_NAME_entry_count(subj.get()) == 0) {
+      fprintf(stderr, "Error: At least one subject field must be provided.\n");
+      return nullptr;
+    }
+    return subj;
+  }
+
+  const char *dn_section = NCONF_get_string(conf, section.c_str(), REQ_DN_OPT);
+  const STACK_OF(CONF_VALUE) *dn_entries =
+      dn_section != nullptr ? NCONF_get_section(conf, dn_section) : nullptr;
+  if (dn_entries == nullptr) {
+    fprintf(stderr, "Error: -batch requires a distinguished_name section\n");
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < sk_CONF_VALUE_num(dn_entries); i++) {
+    const CONF_VALUE *entry = sk_CONF_VALUE_value(dn_entries, i);
+    // Like OpenSSL, everything through the first ':', ',' or '.' is an
+    // instance prefix distinguishing repeated fields (e.g.
+    // "0.organizationName"). This also applies to dotted OIDs, so
+    // "2.5.4.3" resolves as "5.4.3" and is ignored, as in OpenSSL. The
+    // complete name is still used for value/bound lookups.
+    const char *type = entry->name;
+    const char *separator = strpbrk(type, ":,.");
+    if (separator != nullptr && separator[1] != '\0') {
+      type = separator + 1;
+    }
+    int nid = OBJ_txt2nid(type);
+    const ReqField *field = nullptr;
+    for (const auto &candidate : subject_fields) {
+      if (candidate.nid == nid) {
+        field = &candidate;
+        break;
+      }
+    }
+    if (field == nullptr) {
+      continue;  // Metadata, or not one of this tool's supported fields.
+    }
+
+    const char *value = nullptr;
+    if (!ResolveBatchFieldValue(conf, dn_section, entry->name, &value)) {
+      return nullptr;
+    }
+    if (value != nullptr &&
+        !X509_NAME_add_entry_by_NID(
+            subj.get(), field->nid, chtype,
+            reinterpret_cast<const unsigned char *>(value), -1, -1, 0)) {
+      fprintf(stderr, "Error adding %s to subject\n", field->field_ln);
+      return nullptr;
+    }
+  }
+
+  if (X509_NAME_entry_count(subj.get()) == 0) {
+    fprintf(stderr, "Error: At least one subject field must be provided.\n");
+    return nullptr;
+  }
+
+  const char *attr_section =
+      NCONF_get_string(conf, section.c_str(), REQ_ATTRIBUTES_OPT);
+  if (attr_section == nullptr) {
+    return subj;  // No attributes section configured: not an error.
+  }
+  const STACK_OF(CONF_VALUE) *attr_entries =
+      NCONF_get_section(conf, attr_section);
+  if (attr_entries == nullptr) {
+    fprintf(stderr, "Error: Unable to get '%s' section\n", attr_section);
+    return nullptr;
+  }
+  if (!is_csr) {
+    return subj;
+  }
+
+  for (size_t i = 0; i < sk_CONF_VALUE_num(attr_entries); i++) {
+    const CONF_VALUE *entry = sk_CONF_VALUE_value(attr_entries, i);
+    int nid = OBJ_txt2nid(entry->name);
+    const ReqField *field = nullptr;
+    for (const auto &candidate : extra_attributes) {
+      if (candidate.nid == nid) {
+        field = &candidate;
+        break;
+      }
+    }
+    if (field == nullptr) {
+      continue;
+    }
+
+    const char *value = nullptr;
+    if (!ResolveBatchFieldValue(conf, attr_section, entry->name, &value)) {
+      return nullptr;
+    }
+    if (value == nullptr) {
+      continue;
+    }
+    bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
+        nullptr, field->nid, MBSTRING_ASC,
+        reinterpret_cast<const unsigned char *>(value), -1));
+    if (!x509_attr || !X509_REQ_add1_attr(req, x509_attr.get())) {
+      fprintf(stderr, "Error adding attribute %s to request\n",
+              field->field_ln);
+      return nullptr;
+    }
+  }
+
+  return subj;
+}
+
 static bssl::UniquePtr<X509_NAME> BuildSubject(
     X509_REQ *req, CONF *req_conf, const std::string &req_section, bool is_csr,
-    bool no_prompt, unsigned long chtype = MBSTRING_ASC) {
+    bool no_prompt, bool batch, unsigned long chtype = MBSTRING_ASC) {
+  if (batch && !no_prompt) {
+    return BuildBatchSubject(req, req_conf, req_section, is_csr, chtype);
+  }
+
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
   if (!subj) {
@@ -290,7 +526,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
                                    std::string &subject_name, CONF *req_conf,
                                    const std::string &req_section, bool is_csr,
-                                   bool no_prompt) {
+                                   bool no_prompt, bool batch) {
   bssl::UniquePtr<X509_NAME> name;
 
   // version 1
@@ -299,12 +535,12 @@ static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
   }
 
   if (subject_name.empty()) {  // Prompt the user
-    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt);
+    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt, batch);
   } else {  // Parse user provided string
     name = ParseSubjectName(subject_name);
-    if (!name) {
-      return false;
-    }
+  }
+  if (!name) {
+    return false;
   }
 
   if (!X509_REQ_set_subject_name(req, name.get())) {
@@ -557,12 +793,14 @@ int reqTool(const args_list_t &args) {
       outform, cert_ext_section, req_ext_section, digest_name;
   Password passin, passout;
   unsigned int days;
-  bool help = false, new_flag = false, x509_flag = false, nodes = false;
+  bool help = false, new_flag = false, x509_flag = false, nodes = false,
+       batch = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
   GetBoolArgument(&new_flag, "-new", parsed_args);
   GetBoolArgument(&x509_flag, "-x509", parsed_args);
   GetBoolArgument(&nodes, "-nodes", parsed_args);
+  GetBoolArgument(&batch, "-batch", parsed_args);
   GetString(&newkey, "-newkey", "", parsed_args);
   GetUnsigned(&days, "-days", 30u, parsed_args);
   GetString(&subj, "-subj", "", parsed_args);
@@ -767,7 +1005,7 @@ int reqTool(const args_list_t &args) {
   // Always create a CSR first
   if (req == NULL ||
       !MakeCertificateRequest(req.get(), pkey.get(), subj, req_conf.get(),
-                              req_section, !x509_flag, no_prompt)) {
+                              req_section, !x509_flag, no_prompt, batch)) {
     fprintf(stderr, "Failed to create certificate request\n");
     return kToolExitFailure;
   }
