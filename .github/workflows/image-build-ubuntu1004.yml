@@ -36,10 +36,20 @@ jobs:
       instance-size:medium
     outputs:
       ubuntu1004: ${{ steps.images.outputs.ubuntu1004 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - name: Load dependency pins
         run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .github/docker_images/dependencies.env >> "$GITHUB_ENV"
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -85,7 +95,8 @@ jobs:
           build-args: |
             RUST_STANDALONE_TARBALL=${{ env.RUST_STANDALONE_TARBALL }}
           tags: ${{ steps.images.outputs.ubuntu1004 }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container
         with:
