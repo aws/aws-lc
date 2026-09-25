@@ -102,6 +102,19 @@ static const TestCorpus kTestCorpora[] = {
     // Indefinite-length SEQUENCE with no end-of-contents marker.
     TestCorpus{"MalformedMissingEoc", "3080020101", DER_STRING, true, true},
 
+    // Malformed [UNIVERSAL 0] with content masquerading as EOC inside an
+    // indefinite-length SEQUENCE. A real EOC is exactly the two bytes 00 00.
+    // Here the fake EOC (tag [UNIVERSAL 0], length 5) is followed by a real
+    // sibling INTEGER and a proper terminating EOC. The parser must not treat
+    // the fake EOC as end-of-contents, otherwise the parent SEQUENCE would
+    // truncate and the sibling would be mis-attributed.
+    //   30 80              indefinite SEQUENCE
+    //     00 05 AABBCCDDEE malformed [UNIVERSAL 0], 5 content bytes
+    //     02 01 01         INTEGER 1
+    //     00 00            real EOC
+    TestCorpus{"BerMalformedUniversalZero",
+               "30800005AABBCCDDEE0201010000", DER_STRING, true, false},
+
     // Definite-length SEQUENCE whose length says 5, but only 3 bytes follow, 2
     // bytes missing
     TestCorpus{"MalformedTruncatedLength", "3005020101", DER_STRING, false,
