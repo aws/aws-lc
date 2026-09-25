@@ -83,11 +83,40 @@ err:
 }
 
 
+// dh_is_known_safe_group returns one if |dh| is one of the well-known standard
+// safe-prime groups (RFC 3526 MODP or RFC 7919 ffdhe), so that |DH_check| may
+// accept it without primality testing, and zero otherwise.
+//
+// Both families are safe primes p = 2q+1 with g = 2, so recognizing p means
+// both p and (p-1)/2 are prime -- stated outright by RFC 7919 appendix A, and
+// true of the RFC 3526 primes by their construction as Sophie Germain primes in
+// RFC 2412 appendix E.2. Every one of these primes is also 7 mod 8, so 2 is a
+// quadratic residue and therefore generates the subgroup of order (p-1)/2. That
+// is what lets |DH_check| skip both primality testing and the generator check.
+static int dh_is_known_safe_group(const DH *dh) {
+  // A different generator is not the named group, so let the full checks run.
+  if (!BN_is_word(dh->g, 2)) {
+    return 0;
+  }
+
+  // A subgroup order is optional. If supplied it must be the group's own, so
+  // that |DH_check|'s q checks would all have passed; any other value falls
+  // through to full validation.
+  return dh_is_known_safe_prime_group(dh->p, dh->q);
+}
+
 // DH_check confirms that the Diffie-Hellman parameters dh are valid.
 int DH_check(const DH *dh, int *out_flags) {
   *out_flags = 0;
   if (!dh_check_params_fast(dh)) {
     return 0;
+  }
+
+  // Keep this below |dh_check_params_fast()|, so that |DH_check| does not
+  // depend on |dh_is_known_safe_group()| to bound the sizes and signs of p, q
+  // and g. |dh_check_params_fast()| is only a few word comparisons anyway.
+  if (dh_is_known_safe_group(dh)) {
+    return 1;
   }
 
   // Check that p is a safe prime.
