@@ -78,6 +78,11 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                             x.repository_arn for x in ecr_repos
                         ], [x.repository_arn for x in pull_through_caches])],
                     ),
+                    # Every job on these runners shares this role, including
+                    # jobs that build a pull request. Staging is the only
+                    # repository they may write to; images reach the production
+                    # repositories through AwsLcGitHubActionDockerImagePromotionRole,
+                    # which a pull request cannot assume.
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
                         actions=[
@@ -86,7 +91,7 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                             "ecr:PutImage",
                             "ecr:UploadLayerPart",
                         ],
-                        resources=[x.repository_arn for x in ecr_repos[3:]],
+                        resources=[self.staging_repo.repository_arn],
                     ),
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
