@@ -27,10 +27,10 @@ extern "C" {
 // resumed address space will observe a greater value.
 //
 // Two detection mechanisms are supported:
-//   1. vmclock — Uses /dev/vmclock0 (preferred). See
-//      https://uapi-group.org/specifications/specs/vmclock/ for details.
-//   2. SysGenID — Uses /dev/sysgenid (fallback). See
-//      https://lkml.org/lkml/2021/3/8/677 for details.
+//   1. vmclock -- /dev/vmclock0 (preferred). See
+//      https://uapi-group.org/specifications/specs/vmclock/
+//   2. SysGenID -- /dev/sysgenid (fallback). See
+//      https://lkml.org/lkml/2021/3/8/677
 //
 // vmclock is preferred when available. If neither is available, the function
 // reports that VM UBE detection is not supported.
@@ -39,19 +39,14 @@ extern "C" {
 //   1  |*vm_ube_generation_number| holds a usable value:
 //        - the current generation number for a consistent read;
 //        - 0 if no VM UBE interface is present (not supported);
-//        - a "poison" value with bit 63 set (see below) if a backend
-//          initialized successfully but could not produce a consistent read
-//          this call (a transient failure, e.g. a momentarily wedged vmclock
-//          seqlock). A poison value is guaranteed to differ from the caller's
-//          cached generation number and from any genuine counter, so the caller
-//          reseeds conservatively for this call via its ordinary
-//          "generation number changed" path; detection recovers on the next
-//          consistent read. Callers must not interpret the magnitude of the
-//          generation number -- only whether it changed.
-//   0  Permanent failure: a VM UBE interface is present but could not be
-//      initialized. (Not currently returned on Linux -- an uninitializable
-//      device degrades to "not supported" -- but reserved for callers that
-//      must distinguish it.)
+//        - a "poison" value (bit 63 set) on a transient read failure (e.g. a
+//          wedged vmclock seqlock). It differs from any cached or genuine
+//          counter, so the caller reseeds via its normal "changed" path and
+//          recovers on the next consistent read.
+//      Callers must only test whether the value changed, not its magnitude.
+//   0  Permanent failure: an interface is present but uninitializable. Not
+//      returned on Linux (degrades to "not supported"), but reserved for
+//      callers that must distinguish it.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
                                           uint64_t *vm_ube_generation_number);
 
@@ -85,12 +80,10 @@ OPENSSL_EXPORT int HAZMAT_init_vmclock_file(void);
 #endif
 
 #if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
-// HAZMAT_reinit_vm_ube_FOR_TESTING should only be used for testing. It unmaps
-// any active backend mapping and re-runs VM UBE backend initialization against
-// the current on-disk state of the stand-in device file(s). This lets tests
-// exercise initialization outcomes (e.g. a device that is present but corrupt
-// or inaccessible) that the once-per-process init path cannot otherwise reach.
-// It must only be called from a single-threaded test context.
+// HAZMAT_reinit_vm_ube_FOR_TESTING (testing only) unmaps any active backend and
+// re-runs init against the current stand-in file(s), so tests can exercise init
+// outcomes (corrupt or inaccessible device) the once-per-process path can't
+// reach. Single-threaded test context only.
 OPENSSL_EXPORT void HAZMAT_reinit_vm_ube_FOR_TESTING(void);
 #endif
 

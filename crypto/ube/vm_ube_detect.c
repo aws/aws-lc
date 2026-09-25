@@ -16,13 +16,10 @@
 #include "../internal.h"
 #include "vmclock_abi.h"
 
-// vm_ube_acquire_fence is an acquire memory barrier for the vmclock seqlock
-// reader. We cannot unconditionally use C11 <stdatomic.h>: the legacy build
-// (tests/ci/run_legacy_build.sh) compiles this file with gcc 4.1 under
-// -std=gnu99, which predates both C11 atomics and __atomic builtins. Mirror the
-// tree's C11 gating (see crypto/internal.h) and fall back to __sync_synchronize
-// -- a full barrier available since gcc 4.1 -- when C11 atomics are absent. A
-// full barrier is stronger than the acquire we need, so it is always correct.
+// Acquire barrier for the vmclock seqlock reader. C11 <stdatomic.h> isn't always
+// available (the legacy gcc 4.1 build predates it), so mirror the tree's C11
+// gating (crypto/internal.h) and fall back to __sync_synchronize -- a full
+// barrier, stronger than the acquire we need, so always correct.
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
 #include <stdatomic.h>
@@ -54,11 +51,10 @@ static void vm_ube_acquire_fence(void) {
                                           // (e.g. EACCES, mmap failure, or the
                                           // device is not a valid vmclock)
 
-// Upper bound on seqlock read retries. The vmclock seqcount only advances
-// while the VMM is mid-update, which is momentary, so a handful of retries is
-// always sufficient in practice. The bound exists purely so that a wedged or
-// corrupt |seq_count| (e.g. one stuck at an odd value) cannot spin this
-// function -- and therefore |RAND_bytes| -- forever.
+// Iteration budget for a contended or wedged seqlock, not a guarantee a VMM
+// update completes. Exhausting it reports a transient read failure (see
+// vm_ube_read_vmclock_gn) so a stuck |seq_count| can't spin |RAND_bytes|
+// forever.
 #define VMCLOCK_SEQLOCK_MAX_RETRIES 1024
 
 static CRYPTO_once_t vm_ube_init = CRYPTO_ONCE_INIT;
@@ -71,21 +67,18 @@ static volatile uint32_t *sgn_addr = NULL;
 // vmclock mapped region
 static volatile struct vmclock_abi *vmclock_addr = NULL;
 
-// try_vmclock_init attempts to initialize the vmclock backend. It returns one
-// of the VM_UBE_BACKEND_* result codes. A non-present device, or a device that
-// is present but not usable by this process (open/mmap failure such as EACCES,
-// bad magic, or missing generation-counter flag), both leave the caller free to
-// try the next backend and ultimately degrade to "not supported".
+// try_vmclock_init attempts to initialize the vmclock backend and returns a
+// VM_UBE_BACKEND_* result code. Anything other than INITIALISED lets the caller
+// fall through to the next backend.
 static int try_vmclock_init(void) {
   struct stat buff;
   if (stat(CRYPTO_get_vmclock_path(), &buff) != 0) {
     return VM_UBE_BACKEND_NOT_PRESENT;
   }
 
-  // The device node exists but may not be usable by this process. A common
-  // case is /dev/vmclock0 being root-only (crw-------): an unprivileged process
-  // will get EACCES here. That is not an error -- we simply cannot use vmclock,
-  // so report it as unavailable and let detection fall through / degrade.
+  // Node exists but may not be usable by us: e.g. a root-only /dev/vmclock0
+  // gives EACCES to an unprivileged process. Not an error -- report unavailable
+  // and let detection fall through.
   int fd = open(CRYPTO_get_vmclock_path(), O_RDONLY);
   if (fd == -1) {
     return VM_UBE_BACKEND_UNAVAILABLE;
@@ -101,19 +94,17 @@ static int try_vmclock_init(void) {
 
   volatile struct vmclock_abi *vmc = (volatile struct vmclock_abi *)addr;
 
-  // |magic| is a constant field (never touched by the seqlock), so it is safe
-  // to read directly. On a big-endian host this comparison fails and we treat
-  // the device as unavailable; see the note in vmclock_abi.h.
+  // |magic| is constant (never touched by the seqlock), so read it directly.
+  // On big-endian this comparison fails and we treat the device as unavailable
+  // (see vmclock_abi.h).
   if (vmc->magic != VMCLOCK_MAGIC) {
     munmap(addr, sizeof(struct vmclock_abi));
     return VM_UBE_BACKEND_UNAVAILABLE;
   }
 
-  // |flags| lives in the seqlock-protected region, but this runs once at
-  // init from |CRYPTO_once| against a freshly mapped device, so a concurrent
-  // VMM update racing this single read is not a concern. Even if |flags| were
-  // read torn, the only consequence is mis-detecting the feature bit, which
-  // fails closed to the next backend -- never a wrong generation number.
+  // |flags| is seqlock-protected, but this runs once at init against a freshly
+  // mapped device. A torn read would at worst mis-detect the feature bit and
+  // fall through to the next backend -- never a wrong generation number.
   uint64_t flags = vmc->flags;
   if (!(flags & VMCLOCK_FLAG_VM_GEN_COUNTER_PRESENT)) {
     munmap(addr, sizeof(struct vmclock_abi));
@@ -152,13 +143,8 @@ static void do_vm_ube_init(void) {
   sgn_addr = NULL;
   vmclock_addr = NULL;
 
-  // Try vmclock first (preferred). Crucially, if vmclock is present but not
-  // usable by us -- e.g. |open|/|mmap| fails (EACCES on a root-only device),
-  // or the VMM exposes the device without the generation-counter flag -- we
-  // must still fall through to sysgenid. On a host that carries both devices
-  // during the sysgenid -> vmclock transition, letting a vmclock hiccup disable
-  // detection outright would silently drop UBE reseeding, which is the whole
-  // reason this code exists.
+  // Try vmclock first (preferred). If it is present but unusable, fall through
+  // to sysgenid rather than giving up -- both can coexist during the transition.
   if (try_vmclock_init() == VM_UBE_BACKEND_INITIALISED) {
     vm_ube_backend = VM_UBE_BACKEND_VMCLOCK;
     vm_ube_state = VM_UBE_STATE_SUCCESS_INITIALISE;
@@ -171,25 +157,14 @@ static void do_vm_ube_init(void) {
     return;
   }
 
-  // No backend initialized. Whether a device was entirely absent
-  // (NOT_PRESENT) or was present but not usable by this process (UNAVAILABLE),
-  // VM UBE detection is simply not available here -- degrade to "not
-  // supported". This is intentionally NOT a hard failure: a hard failure
-  // propagates up through ube.c and disables *all* UBE detection (including the
-  // independent fork detection) and forces the DRBG to reseed on every request.
-  // A common trigger is an unprivileged process on a host where /dev/vmclock0
-  // is root-only; that process must still get fork detection and normal reseed
-  // behaviour.
+  // No backend initialized -- degrade to "not supported", not a hard failure
+  // (see the state note above for why a hard failure would be worse).
   vm_ube_state = VM_UBE_STATE_NOT_SUPPORTED;
 }
 
 #if defined(AWSLC_VM_UBE_TESTING)
-// HAZMAT_reinit_vm_ube_FOR_TESTING re-runs backend initialization against the
-// current on-disk state of the stand-in device file(s). It exists so tests can
-// observe |do_vm_ube_init|'s behaviour for a device that is present but not
-// usable at init time (e.g. corrupt contents or EACCES) -- something the normal
-// once-per-process |CRYPTO_once| path, already completed against a valid file,
-// cannot exercise. It must only be called from a single-threaded test context.
+// See vm_ube_detect.h. Re-runs init against the current stand-in file(s);
+// single-threaded test use only.
 void HAZMAT_reinit_vm_ube_FOR_TESTING(void) {
   if (vmclock_addr != NULL) {
     munmap((void *)vmclock_addr, sizeof(struct vmclock_abi));
@@ -210,14 +185,12 @@ void HAZMAT_reinit_vm_ube_FOR_TESTING(void) {
 static int vm_ube_read_vmclock_gn(uint64_t *out) {
   for (size_t i = 0; i < VMCLOCK_SEQLOCK_MAX_RETRIES; i++) {
     uint32_t seq = vmclock_addr->seq_count & ~1u;
-    // Acquire fence pairs with the VMM's release fence: it ensures the
-    // |seq_count| read is not reordered after the |vm_generation_counter| read.
+    // Keep the first |seq_count| read ordered before the counter read.
     vm_ube_acquire_fence();
 
     uint64_t value = vmclock_addr->vm_generation_counter;
 
-    // Acquire fence ensures the second |seq_count| read is not reordered before
-    // the |vm_generation_counter| read.
+    // Keep the second |seq_count| read ordered after the counter read.
     vm_ube_acquire_fence();
     if (seq == vmclock_addr->seq_count) {
       *out = value;
@@ -244,20 +217,16 @@ static int vm_ube_read_generation(uint64_t *out) {
   return 0;
 }
 
-// Bit 63 is reserved to mark a synthesized "transient failure" generation
-// number (see vm_ube_transient_poison). A real vmclock/sysgenid counter is a
-// slow per-snapshot increment and never reaches 2^63, so a poison value never
-// collides with -- or is mistaken for -- a genuine generation number.
+// Bit 63 marks a synthesized "transient failure" generation number. A real
+// counter increments slowly per snapshot and never reaches 2^63, so a poison
+// value never collides with a genuine one.
 #define VM_UBE_TRANSIENT_POISON_BIT (UINT64_C(1) << 63)
 
-// vm_ube_transient_poison returns a fresh generation number to hand back on a
-// transient read failure. Each call returns a distinct value (a monotonic
-// counter) with bit 63 set, so it differs both from any real generation number
-// and from the previous poison. The UBE layer's ordinary "generation number
-// changed" path then forces a conservative reseed for this call -- see ube.c --
-// with no dedicated failure state threaded up the stack. The counter is
-// incremented atomically; mirror the fence's C11-atomics gating so the legacy
-// gcc 4.1 build (which predates <stdatomic.h>) falls back to __sync builtins.
+// vm_ube_transient_poison returns a distinct poison value on each call (a
+// monotonic counter with bit 63 set), so it differs from any real counter and
+// from the previous poison. This drives the UBE layer's normal "changed" path
+// (a conservative reseed) without a dedicated failure state. Atomic, gated for
+// gcc 4.1 like the fence above.
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
 static uint64_t vm_ube_transient_poison(void) {
@@ -282,15 +251,9 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
       return 1;
     case VM_UBE_STATE_SUCCESS_INITIALISE:
       if (vm_ube_read_generation(vm_ube_generation_number) != 1) {
-        // A backend that initialized successfully but cannot produce a
-        // consistent read this call (e.g. a momentarily wedged vmclock seqlock)
-        // is a *transient* failure -- distinct from a permanent initialization
-        // failure. Rather than thread a dedicated failure state up the stack,
-        // hand back a poison generation number: it is guaranteed to differ from
-        // the caller's cached value, so the UBE layer treats it as a generation
-        // change and reseeds conservatively for this call without disabling
-        // detection. Detection recovers automatically on the next consistent
-        // read.
+        // Initialized but no consistent read this call (e.g. a wedged seqlock):
+        // a transient failure. Hand back a poison value so the UBE layer reseeds
+        // conservatively; detection recovers on the next consistent read.
         *vm_ube_generation_number = vm_ube_transient_poison();
         return 1;
       }
@@ -380,21 +343,11 @@ int HAZMAT_init_vmclock_file(void) {
     return 0;
   }
 
-  // Only initialize the file if it does not already contain a valid vmclock
-  // (magic not yet set); otherwise leave it untouched. This is required for
-  // correctness under the test runner: all_tests.go launches several
-  // crypto_test processes concurrently against the same stand-in file, and
-  // every process calls this at startup. Unconditionally rewriting the struct
-  // would reset |vm_generation_counter| to 0 in the middle of another process's
-  // VmUbeGenerationTest, which had just written a value and was about to read
-  // it back -- yielding a consistent read of the wrong (0) value.
-  //
-  // Note this differs from HAZMAT_init_sysgenid_file's empty-file check: the CI
-  // pre-creates the stand-in file zero-filled (dd), so it is never empty. A
-  // zero sysgenid value is valid, but vmclock additionally needs |magic| set,
-  // so we gate on the magic instead. Once any process has written the magic,
-  // later-starting processes see it and leave the file (and its generation
-  // counter) alone.
+  // Initialize only if the file has no valid vmclock yet (magic unset); leave it
+  // otherwise. Concurrent crypto_test processes share this stand-in file, so
+  // rewriting it would reset |vm_generation_counter| mid-test in another
+  // process. (sysgenid keys off an empty file instead, but CI dd-fills this one,
+  // so vmclock keys off magic.)
   uint32_t existing_magic = 0;
   if ((ssize_t)sizeof(existing_magic) ==
           read(fd, &existing_magic, sizeof(existing_magic)) &&

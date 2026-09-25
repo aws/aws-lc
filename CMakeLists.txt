@@ -372,6 +372,10 @@ install(DIRECTORY include/openssl
 # that enables only one backend must NOT try to create the other's file, which
 # would point at the real /dev node and fail.
 #
+# The unused backend points at a child path under the stand-in file (a regular
+# file), so it resolves to ENOTDIR and never probes the host's real /dev node --
+# keeping the test outcome independent of the underlying system.
+#
 # Because vmclock is preferred over sysgenid at runtime, enabling both in a
 # single build only exercises vmclock. To exercise the sysgenid path (including
 # the vmclock->sysgenid fallback), build with TEST_SYSGENID_PATH alone.
@@ -382,11 +386,15 @@ if (TEST_SYSGENID_PATH OR TEST_VMCLOCK_PATH)
     message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
     add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
     add_definitions(-DAWSLC_TEST_SYSGENID=1)
+  else()
+    add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_VMCLOCK_PATH}/unused-sysgenid\")
   endif()
   if (TEST_VMCLOCK_PATH)
     message(STATUS "Setting AWSLC_VMCLOCK_PATH=${TEST_VMCLOCK_PATH}")
     add_definitions(-DAWSLC_VMCLOCK_PATH=\"${TEST_VMCLOCK_PATH}\")
     add_definitions(-DAWSLC_TEST_VMCLOCK=1)
+  else()
+    add_definitions(-DAWSLC_VMCLOCK_PATH=\"${TEST_SYSGENID_PATH}/unused-vmclock\")
   endif()
 endif()
 

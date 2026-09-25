@@ -13,21 +13,17 @@
 extern "C" {
 #endif
 
-// This mirrors the Linux kernel's vmclock ABI (struct vmclock_abi in
-// include/uapi/linux/vmclock-abi.h). See
-// https://uapi-group.org/specifications/specs/vmclock/ for the specification.
+// Mirrors the Linux kernel's struct vmclock_abi
+// (include/uapi/linux/vmclock-abi.h). Spec:
+// https://uapi-group.org/specifications/specs/vmclock/
 //
-// The on-device representation is little-endian. We read the fields natively
-// (see vm_ube_detect.c), so on a big-endian host the |magic| comparison will
-// fail and we fall through to another detection backend. This is intentional:
-// we would rather disable vmclock on big-endian than byte-swap an interface we
-// cannot exercise there.
+// The layout is little-endian and read natively, so on big-endian the |magic|
+// check fails and we fall through to another backend -- intentional; we don't
+// byte-swap an interface we can't exercise there.
 //
-// The field layout is defined so that every member is naturally aligned; the
-// kernel struct is not packed and neither is this. The OPENSSL_STATIC_ASSERTs
-// below pin the size and the offsets we actually dereference so that an
-// accidental edit to this struct fails the build instead of silently shifting
-// |vm_generation_counter|.
+// Members are naturally aligned (struct not packed, matching the kernel). The
+// static asserts below pin the size and the offsets we dereference so an edit
+// can't silently shift |vm_generation_counter|.
 
 #define VMCLOCK_MAGIC 0x4b4c4356 /* "VCLK" */
 

@@ -206,12 +206,18 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   vmclock_test_s vmc_test;
   ASSERT_TRUE(init_vmclock_test(&vmc_test));
 
+  // Bit 63 marks a synthesized transient-failure ("poison") generation number;
+  // see VM_UBE_TRANSIENT_POISON_BIT in vm_ube_detect.c. The two whole values
+  // below keep bit 63 *clear* so a poison return is unambiguously distinct from
+  // both a whole value and any torn mix of their halves.
+  const uint64_t kPoisonBit = (uint64_t)1 << 63;
+
   // Two values whose 32-bit halves are distinct bit patterns. Any torn read
   // that mixes a low half from one write with a high half from the other
-  // yields a value equal to neither kValueA nor kValueB (e.g. 0xAAAAAAAA55555555
-  // or 0x55555555AAAAAAAA).
-  const uint64_t kValueA = 0xAAAAAAAAAAAAAAAAULL;
-  const uint64_t kValueB = 0x5555555555555555ULL;
+  // yields a value equal to neither kValueA nor kValueB (e.g. 0x2AAAAAAA15555555
+  // or 0x155555552AAAAAAA), all with bit 63 clear.
+  const uint64_t kValueA = 0x2AAAAAAA2AAAAAAAULL;
+  const uint64_t kValueB = 0x1555555515555555ULL;
 
   // Start from a whole value.
   ASSERT_TRUE(set_vmclock_generation(&vmc_test, kValueA));
@@ -244,12 +250,15 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
     }
   });
 
-  // Read many times. Every successful read must be a whole value; a failed
-  // read (0 return) is acceptable (writer happened to keep the lock held past
-  // the retry bound) but must never be a torn value. We record any torn read
-  // and stop, but must NOT return before join()ing the writer -- letting a
-  // std::thread destruct while joinable calls std::terminate() and would mask
-  // the real failure.
+  // Read many times. |CRYPTO_get_vm_ube_generation| always returns 1, but the
+  // value is one of three things: a whole value (kValueA/kValueB), a poison
+  // value (bit 63 set) when the reader could not obtain a consistent read
+  // within the retry bound, or -- if the seqlock were broken -- a torn mix of
+  // the two halves. The poison case is acceptable (the writer happened to keep
+  // the lock held past the retry bound); a torn value is the failure we are
+  // guarding against. We record any torn read and stop, but must NOT return
+  // before join()ing the writer -- letting a std::thread destruct while
+  // joinable calls std::terminate() and would mask the real failure.
   // 20k iterations is enough to land in the writer's torn window many times
   // over (the writer flips continuously) while keeping runtime low even on a
   // loaded CI host, where each read may spin up to the seqlock retry bound.
@@ -259,6 +268,10 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   for (size_t i = 0; i < 20000 && !torn_read; i++) {
     uint64_t gen = 0;
     if (CRYPTO_get_vm_ube_generation(&gen) == 1) {
+      if (gen & kPoisonBit) {
+        // Retry bound exhausted this call; not a torn read. Retry later.
+        continue;
+      }
       if (gen != kValueA && gen != kValueB) {
         torn_read = true;
         torn_value = gen;

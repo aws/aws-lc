@@ -132,10 +132,9 @@ static void ube_state_initialize(void) {
   int ret_vm_ube_gn = get_vm_ube_generation_number(
                           &(ube_global_state.cached_vm_ube_gn));
 
-  // Only a permanent failure (0) disables detection. A transient VM UBE read
-  // failure caches a poison generation number here; the next consistent read
-  // will differ and be treated as a UBE, forcing a reseed -- conservative and
-  // correct, without disabling detection for the process.
+  // Only a permanent failure (0) disables detection. A transient VM UBE failure
+  // caches a poison number here; the next consistent read differs and forces a
+  // reseed -- conservative, without disabling detection.
   if (ret_fork_gn == 0 || ret_vm_ube_gn == 0) {
     ube_failed();
   }
@@ -158,16 +157,10 @@ static void ube_update_state(struct detection_gn *current_detection_gn) {
 // ube_get_detection_generation_numbers loads the current detection generation
 // numbers into |current_detection_gn|.
 //
-// Returns:
-//   1  Success.
-//   0  Permanent failure: a detection method we expected to be available is in
-//      fact not. The caller must disable detection (|ube_failed|).
-//
-// A transient VM UBE read failure (e.g. a momentarily wedged vmclock seqlock)
-// is not a distinct outcome here: the VM UBE layer folds it into a poison
-// generation number that differs from the cached value, so it surfaces through
-// the normal "generation number changed" path and forces a conservative reseed
-// without disabling detection.
+// Returns 1 on success, or 0 on permanent failure (an expected detection method
+// is gone; caller must |ube_failed|). A transient VM UBE read failure is not
+// seen here -- it arrives as a poison number handled by the normal "changed"
+// path.
 static int ube_get_detection_generation_numbers(
   struct detection_gn *current_detection_gn) {
 
@@ -181,10 +174,7 @@ static int ube_get_detection_generation_numbers(
   int ret_vm_ube_gn = get_vm_ube_generation_number(
                           &(current_detection_gn->current_vm_ube_gn));
 
-  // A permanent failure of any method: detection is no longer trustworthy and
-  // must be disabled by the caller. (A transient VM UBE read failure is not seen
-  // here -- it arrives as a poison generation number, handled by the caller's
-  // normal generation-changed path.)
+  // Permanent failure of any method: caller must disable detection.
   if (ret_detect_gn == 0 || ret_vm_ube_gn == 0) {
     return 0;
   }
