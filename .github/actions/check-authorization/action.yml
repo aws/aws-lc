@@ -24,7 +24,7 @@ runs:
           
           const prAuthor = context.payload.pull_request.user.login;
           const prPusher = context.payload.sender.login;
-          const usersToCheck = [...new Set([prAuthor, prPusher])];
+          const usersToCheck = [prAuthor, prPusher];
           
           for (const username of usersToCheck) {
             try {
