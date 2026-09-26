@@ -70,10 +70,18 @@ bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
                                    SSL_CLIENT_HELLO *out_client_hello) {
   if (!ech_client_hello_buf.empty()) {
     // If the backing buffer is non-empty, the ClientHelloInner has been set.
+    // |ssl_decode_client_hello_inner| framed it with |init_message|, so skip as
+    // many bytes as that wrote.
+    const size_t header_len =
+        SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+    if (ech_client_hello_buf.size() < header_len) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
     out_msg->is_v2_hello = false;
     out_msg->type = SSL3_MT_CLIENT_HELLO;
     out_msg->raw = CBS(ech_client_hello_buf);
-    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(4);
+    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(header_len);
   } else if (!ssl->method->get_message(ssl, out_msg)) {
     // The message has already been read, so this cannot fail.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
