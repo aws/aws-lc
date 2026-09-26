@@ -1,79 +1,73 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// Front side: SHA-256's dispatch slots and their OSSL_PARAM plumbing. This file
-// sees OpenSSL's headers, so it must not include any AWS-LC header; the transform
-// arrives through the backend interface.
+// Front side: SHA-2 dispatch slots and OSSL_PARAM plumbing.
 //
-// Each slot is declared through its own OSSL_FUNC_digest_*_fn typedef so its
-// signature is checked against what the core calls it with, rather than only
-// against the (void (*)(void)) cast in the dispatch table, which would erase a
-// drift to a neighbouring slot's shape.
-
-#include <openssl/core_dispatch.h>
-#include <openssl/core_names.h>
-#include <openssl/params.h>
+// Shared behavior is ordinary C at the family level. Each algorithm then has
+// thin, typed wrappers naming its own backend entry points.
 
 #include "internal/backend.h"
 #include "internal/backend/digests.h"
 #include "internal/frontend/digests.h"
 
-static OSSL_FUNC_digest_newctx_fn awslc_prov_sha256_newctx;
-static OSSL_FUNC_digest_freectx_fn awslc_prov_sha256_freectx;
-static OSSL_FUNC_digest_dupctx_fn awslc_prov_sha256_dupctx;
-static OSSL_FUNC_digest_copyctx_fn awslc_prov_sha256_copyctx;
-static OSSL_FUNC_digest_init_fn awslc_prov_sha256_init_op;
-static OSSL_FUNC_digest_update_fn awslc_prov_sha256_update_op;
-static OSSL_FUNC_digest_final_fn awslc_prov_sha256_final_op;
-static OSSL_FUNC_digest_get_params_fn awslc_prov_sha256_get_params;
-static OSSL_FUNC_digest_gettable_params_fn awslc_prov_sha256_gettable_params;
+// Changes the DER OpenSSL emits for this digest inside PKI structures. The value
+// must match the OpenSSL default provider's, or our encodings differ from it.
+#define AWSLC_PROV_SHA2_FLAGS AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT
 
-static void *awslc_prov_sha256_newctx(void *provctx) {
-  (void)provctx;
-  return awslc_prov_zalloc(awslc_prov_sha256_ctx_size());
-}
+typedef int (*awslc_prov_sha2_init_fn)(void *ctx);
+typedef int (*awslc_prov_sha2_update_fn)(void *ctx, const void *data,
+                                         size_t len);
+typedef int (*awslc_prov_sha2_final_fn)(void *ctx, unsigned char *out,
+                                        size_t out_size);
+typedef int (*awslc_prov_sha2_copy_fn)(void *dst, const void *src);
 
-static void awslc_prov_sha256_freectx(void *dctx) {
+static void awslc_prov_sha2_freectx(void *dctx, size_t ctx_size) {
   if (dctx == NULL) {
     return;
   }
-  awslc_prov_clear_free(dctx, awslc_prov_sha256_ctx_size());
+  awslc_prov_clear_free(dctx, ctx_size);
 }
 
-static void *awslc_prov_sha256_dupctx(void *dctx) {
+static void *awslc_prov_sha2_dupctx(void *dctx, size_t ctx_size,
+                                    awslc_prov_sha2_copy_fn copy) {
   void *duplicate = NULL;
 
   if (dctx == NULL) {
     return NULL;
   }
-  duplicate = awslc_prov_zalloc(awslc_prov_sha256_ctx_size());
+  duplicate = awslc_prov_zalloc(ctx_size);
   if (duplicate == NULL) {
     return NULL;
   }
-  if (!awslc_prov_sha256_copy(duplicate, dctx)) {
-    awslc_prov_clear_free(duplicate, awslc_prov_sha256_ctx_size());
+  if (!copy(duplicate, dctx)) {
+    awslc_prov_clear_free(duplicate, ctx_size);
     return NULL;
   }
   return duplicate;
 }
 
-static void awslc_prov_sha256_copyctx(void *outctx, void *inctx) {
+static void awslc_prov_sha2_copyctx(void *outctx, void *inctx,
+                                    awslc_prov_sha2_copy_fn copy) {
   if (outctx == NULL || inctx == NULL) {
     return;
   }
-  (void)awslc_prov_sha256_copy(outctx, inctx);
+  (void)copy(outctx, inctx);
 }
 
-static int awslc_prov_sha256_init_op(void *dctx, const OSSL_PARAM params[]) {
+// The init params are forwarded signature-operation params, not a digest-scoped
+// array. No digest can honor keys such as pad-mode or saltlen, so ignore them.
+static int awslc_prov_sha2_init_op(void *dctx, const OSSL_PARAM params[],
+                                   awslc_prov_sha2_init_fn init) {
   (void)params;
   if (dctx == NULL) {
     return 0;
   }
-  return awslc_prov_sha256_init(dctx);
+  return init(dctx);
 }
 
-static int awslc_prov_sha256_update_op(void *dctx, const unsigned char *in,
-                                       size_t inl) {
+static int awslc_prov_sha2_update_op(void *dctx, const unsigned char *in,
+                                     size_t inl,
+                                     awslc_prov_sha2_update_fn update) {
   if (dctx == NULL) {
     return 0;
   }
@@ -86,75 +80,115 @@ static int awslc_prov_sha256_update_op(void *dctx, const unsigned char *in,
   if (in == NULL) {
     return 0;
   }
-  return awslc_prov_sha256_update(dctx, in, inl);
+  return update(dctx, in, inl);
+}
+
+static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl,
+                                    size_t outsz,
+                                    awslc_prov_sha2_final_fn final_fn,
+                                    size_t digest_size) {
+  if (dctx == NULL || out == NULL || outl == NULL) {
+    return 0;
+  }
+  if (!final_fn(dctx, out, outsz)) {
+    return 0;
+  }
+  *outl = digest_size;
+  return 1;
+}
+
+static int awslc_prov_sha2_get_params(OSSL_PARAM params[],
+                                      size_t block_size, size_t digest_size) {
+  return awslc_prov_digest_get_params(params, block_size, digest_size,
+                                      AWSLC_PROV_SHA2_FLAGS);
+}
+
+// SHA-224
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha224);
+
+static void *awslc_prov_sha224_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_zalloc(awslc_prov_sha224_ctx_size());
+}
+
+static void awslc_prov_sha224_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha224_ctx_size());
+}
+
+static void *awslc_prov_sha224_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha224_ctx_size(),
+                                awslc_prov_sha224_copy);
+}
+
+static void awslc_prov_sha224_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha224_copy);
+}
+
+static int awslc_prov_sha224_init_op(void *dctx, const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha224_init);
+}
+
+static int awslc_prov_sha224_update_op(void *dctx, const unsigned char *in,
+                                       size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl, awslc_prov_sha224_update);
+}
+
+static int awslc_prov_sha224_final_op(void *dctx, unsigned char *out,
+                                      size_t *outl, size_t outsz) {
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha224_final,
+                                  awslc_prov_sha224_digest_size());
+}
+
+static int awslc_prov_sha224_get_params(OSSL_PARAM params[]) {
+  return awslc_prov_sha2_get_params(params, awslc_prov_sha224_block_size(),
+                                    awslc_prov_sha224_digest_size());
+}
+
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha224);
+
+// SHA-256
+
+AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(sha256);
+
+static void *awslc_prov_sha256_newctx(void *provctx) {
+  (void)provctx;
+  return awslc_prov_zalloc(awslc_prov_sha256_ctx_size());
+}
+
+static void awslc_prov_sha256_freectx(void *dctx) {
+  awslc_prov_sha2_freectx(dctx, awslc_prov_sha256_ctx_size());
+}
+
+static void *awslc_prov_sha256_dupctx(void *dctx) {
+  return awslc_prov_sha2_dupctx(dctx, awslc_prov_sha256_ctx_size(),
+                                awslc_prov_sha256_copy);
+}
+
+static void awslc_prov_sha256_copyctx(void *outctx, void *inctx) {
+  awslc_prov_sha2_copyctx(outctx, inctx, awslc_prov_sha256_copy);
+}
+
+static int awslc_prov_sha256_init_op(void *dctx, const OSSL_PARAM params[]) {
+  return awslc_prov_sha2_init_op(dctx, params, awslc_prov_sha256_init);
+}
+
+static int awslc_prov_sha256_update_op(void *dctx, const unsigned char *in,
+                                       size_t inl) {
+  return awslc_prov_sha2_update_op(dctx, in, inl, awslc_prov_sha256_update);
 }
 
 static int awslc_prov_sha256_final_op(void *dctx, unsigned char *out,
                                       size_t *outl, size_t outsz) {
-  if (dctx == NULL || out == NULL || outl == NULL) {
-    return 0;
-  }
-  // The backend enforces outsz against the digest length, because AWS-LC's
-  // SHA256_Final takes no size argument and would write past a short buffer.
-  if (!awslc_prov_sha256_final(dctx, out, outsz)) {
-    return 0;
-  }
-  *outl = awslc_prov_sha256_digest_size();
-  return 1;
-}
-
-static const OSSL_PARAM awslc_prov_sha256_gettable[] = {
-    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_BLOCK_SIZE, NULL),
-    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_SIZE, NULL),
-    OSSL_PARAM_int(OSSL_DIGEST_PARAM_XOF, NULL),
-    OSSL_PARAM_int(OSSL_DIGEST_PARAM_ALGID_ABSENT, NULL),
-    OSSL_PARAM_END};
-
-static const OSSL_PARAM *awslc_prov_sha256_gettable_params(void *provctx) {
-  (void)provctx;
-  return awslc_prov_sha256_gettable;
+  return awslc_prov_sha2_final_op(dctx, out, outl, outsz,
+                                  awslc_prov_sha256_final,
+                                  awslc_prov_sha256_digest_size());
 }
 
 static int awslc_prov_sha256_get_params(OSSL_PARAM params[]) {
-  OSSL_PARAM *p = NULL;
-
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
-  if (p != NULL && !OSSL_PARAM_set_size_t(p, awslc_prov_sha256_block_size())) {
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_SIZE);
-  if (p != NULL && !OSSL_PARAM_set_size_t(p, awslc_prov_sha256_digest_size())) {
-    return 0;
-  }
-  // Not an extendable-output function, so a caller asking for a length of its own
-  // choosing must be refused rather than served a truncated digest.
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_XOF);
-  if (p != NULL && !OSSL_PARAM_set_int(p, 0)) {
-    return 0;
-  }
-  // An AlgorithmIdentifier is the ASN.1 structure naming a digest inside DER: an
-  // OID plus an OPTIONAL parameters field. Hashes take no parameters, so 1 means
-  // "omit that field entirely" while 0 means "include it holding an explicit
-  // NULL". Both are valid DER, so this has to match what everyone else emits: 1
-  // is correct for SHA-2 and is what OpenSSL's own SHA-2 reports, and reporting 0
-  // would make our CMS and RSA DigestInfo encodings differ from the default
-  // provider's by a trailing 05 00.
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_ALGID_ABSENT);
-  if (p != NULL && !OSSL_PARAM_set_int(p, 1)) {
-    return 0;
-  }
-  return 1;
+  return awslc_prov_sha2_get_params(params, awslc_prov_sha256_block_size(),
+                                    awslc_prov_sha256_digest_size());
 }
 
-const OSSL_DISPATCH awslc_prov_sha256_functions[] = {
-    {OSSL_FUNC_DIGEST_NEWCTX, (void (*)(void))awslc_prov_sha256_newctx},
-    {OSSL_FUNC_DIGEST_INIT, (void (*)(void))awslc_prov_sha256_init_op},
-    {OSSL_FUNC_DIGEST_UPDATE, (void (*)(void))awslc_prov_sha256_update_op},
-    {OSSL_FUNC_DIGEST_FINAL, (void (*)(void))awslc_prov_sha256_final_op},
-    {OSSL_FUNC_DIGEST_FREECTX, (void (*)(void))awslc_prov_sha256_freectx},
-    {OSSL_FUNC_DIGEST_DUPCTX, (void (*)(void))awslc_prov_sha256_dupctx},
-    {OSSL_FUNC_DIGEST_COPYCTX, (void (*)(void))awslc_prov_sha256_copyctx},
-    {OSSL_FUNC_DIGEST_GET_PARAMS, (void (*)(void))awslc_prov_sha256_get_params},
-    {OSSL_FUNC_DIGEST_GETTABLE_PARAMS,
-     (void (*)(void))awslc_prov_sha256_gettable_params},
-    OSSL_DISPATCH_END};
+AWSLC_PROV_FIXED_DIGEST_DISPATCH_TABLE(sha256);
