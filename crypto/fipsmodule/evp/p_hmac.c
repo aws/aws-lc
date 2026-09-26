@@ -143,7 +143,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
 }
 
 int used_for_hmac(EVP_MD_CTX *ctx) {
-  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
+  return ctx->flags & EVP_MD_CTX_HMAC && ctx->pctx != NULL;
 }
 
 HMAC_KEY *HMAC_KEY_new(void) {
