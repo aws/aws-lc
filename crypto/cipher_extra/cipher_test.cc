@@ -1808,6 +1808,22 @@ TEST(CipherTest, CopyErrorPathReleasesCipherData) {
                                 key.data(), nullptr, 1));
 }
 
+// Regression test: an RC2 key length above the 128-byte maximum must be
+// clamped, not narrowed to a negative |int| that bypasses the clamp and drives
+// an out-of-bounds write in the key expansion.
+TEST(CipherTest, RC2OversizedKeyLengthClamped) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_rc2_cbc(), nullptr, nullptr,
+                                 nullptr));
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), 0x80000000u));
+  uint8_t key[128] = {0};  // >=128 so the clamped read stays in bounds
+  uint8_t iv[8] = {0};
+  // cipher==NULL preserves the custom key length; re-passing it would reset to
+  // the 16-byte default.
+  EXPECT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key, iv));
+}
+
 struct CipherInfo {
   const char *name;
   const EVP_CIPHER *(*func)(void);
