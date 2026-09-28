@@ -72,6 +72,11 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 
     case ASN1_OP_D2I_PRE:
       x509_invalidate_cache(ret);
+      // Application data describes the certificate that was here, so it cannot
+      // follow a different one. This runs the registered free callbacks at
+      // parse time, as OpenSSL does.
+      CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+      CRYPTO_new_ex_data(&ret->ex_data);
       break;
 
     case ASN1_OP_D2I_POST: {
