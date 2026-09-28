@@ -836,6 +836,20 @@ int X509Tool(const args_list_t &args) {
       return kToolExitFailure;
     }
 
+    // Verify proof of possession
+    bssl::UniquePtr<EVP_PKEY> req_pubkey(X509_REQ_get_pubkey(csr.get()));
+    if (!req_pubkey) {
+      fprintf(stderr, "Error: unable to get public key from CSR\n");
+      ERR_print_errors_fp(stderr);
+      return kToolExitFailure;
+    }
+
+    if (X509_REQ_verify(csr.get(), req_pubkey.get()) <= 0) {
+      fprintf(stderr, "Error: certificate request signature verification failed\n");
+      ERR_print_errors_fp(stderr);
+      return kToolExitFailure;
+    }
+
     // Create and sign certificate based on CSR
     bssl::UniquePtr<X509> x509(X509_new());
     if (!x509) {

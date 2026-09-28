@@ -333,6 +333,66 @@ TEST_F(X509Test, Req) {
   ASSERT_EQ(kToolExitSuccess, result);
 }
 
+// Builds a CSR whose signature does NOT match its advertised public key: it
+// carries key A's public key but is signed with key B's private key. Such a
+// request fails proof of possession and must be rejected under -req.
+static void CreateMismatchedCSR(const char *path) {
+  bssl::UniquePtr<EVP_PKEY> advertised(EVP_PKEY_new());
+  bssl::UniquePtr<EVP_PKEY> signer(EVP_PKEY_new());
+  ASSERT_TRUE(advertised);
+  ASSERT_TRUE(signer);
+  for (EVP_PKEY *k : {advertised.get(), signer.get()}) {
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    ASSERT_TRUE(rsa);
+    ASSERT_TRUE(bn);
+    ASSERT_TRUE(BN_set_word(bn.get(), RSA_F4));
+    ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(k, rsa.release()));
+  }
+
+  bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
+  ASSERT_TRUE(csr);
+  ASSERT_TRUE(X509_REQ_set_pubkey(csr.get(), advertised.get()));
+  // Sign with the wrong key so the signature does not correspond to the
+  // advertised public key.
+  ASSERT_TRUE(X509_REQ_sign(csr.get(), signer.get(), EVP_sha256()));
+
+  ScopedFILE csr_file(fopen(path, "wb"));
+  ASSERT_TRUE(csr_file);
+  ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
+}
+
+// -req with -CA must reject a CSR whose signature doesn't match its key. This
+// is the core proof-of-possession case: the CSR's own public key is used for
+// the issued certificate, so a bad request signature means the requester may
+// not hold the corresponding private key.
+TEST_F(X509Test, ReqCARejectsBadSignature) {
+  char bad_csr_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
+  CreateMismatchedCSR(bad_csr_path);
+
+  args_list_t args = {"-in",        bad_csr_path, "-req", "-CA",
+                      ca_cert_path, "-CAkey",     ca_key_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  RemoveFile(bad_csr_path);
+}
+
+// Verification is unconditional: even with -signkey (which replaces the public
+// key), the request signature is still checked, matching OpenSSL. This also
+// pins the check's placement before the public-key swap.
+TEST_F(X509Test, ReqSignkeyRejectsBadSignature) {
+  char bad_csr_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
+  CreateMismatchedCSR(bad_csr_path);
+
+  args_list_t args = {"-in", bad_csr_path, "-req", "-signkey", signkey_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  RemoveFile(bad_csr_path);
+}
+
 // Test -pubkey
 TEST_F(X509Test, Pubkey) {
   args_list_t args = {"-in", in_path, "-pubkey"};
