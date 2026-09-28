@@ -55,9 +55,9 @@ OPENSSL_EXPORT DH *DH_get_rfc7919_3072(void);
 OPENSSL_EXPORT DH *DH_get_rfc7919_8192(void);
 
 // dh_is_known_safe_prime_group returns one if |p| is one of the standard
-// safe-prime moduli AWS-LC recognises -- an RFC 7919 ffdhe prime or an RFC 3526
-// MODP prime -- and |q|, if not NULL, is that group's subgroup order, (p-1)/2.
-// It returns zero otherwise. It does not allocate.
+// safe-prime moduli AWS-LC recognises (RFC 7919 ffdhe prime or RFC 3526 MODP
+// prime), and |q|, if not NULL, is that group's subgroup order, (p-1)/2. It
+// returns zero otherwise.
 int dh_is_known_safe_prime_group(const BIGNUM *p, const BIGNUM *q);
 
 // dh_set_rfc3526_prime sets |ret| to the |bits|-bit RFC 3526 MODP prime and
