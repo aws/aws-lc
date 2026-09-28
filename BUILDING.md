@@ -150,9 +150,9 @@ policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
 groups, and the corresponding setters reject a whole list on the first name they
 do not recognize; without narrowing, the directive would have no effect at all.
 The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
-AWS-LC selects its own key shares, and `-` drops the group it prefixes whatever
-else the value names. A value that leaves no group at all is not applied, since
-AWS-LC reads an empty group list as a request for its defaults.
+AWS-LC selects its own key shares, and `-` drops the group. A removal is applied
+to AWS-LC's default list. An empty group list will result in AWS-LC's default list
+being used.
 
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
@@ -165,16 +165,23 @@ AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
 Every policy the framework ships today predates ML-KEM and ML-DSA, and the
 setters replace AWS-LC's defaults rather than intersect with them, so seeding
 would otherwise downgrade every context. A policy that names any post-quantum
-algorithm is taken at its word and nothing is added back. To turn post-quantum
-off, add AWS-LC's own directive to the policy file:
+algorithm is taken at its word and nothing is added back.
+
+To turn post-quantum off, put AWS-LC's own directive in a drop-in file:
 
 ```
+# /etc/crypto-policies/local.d/opensslcnf-awslc.config
 AWSLC.PostQuantum = off
 ```
 
+Then run `update-crypto-policies`, which appends the drop-in to the generated
+back-end file. Do not write the directive into that generated file yourself. The
+framework rewrites it on every policy change and package update, which would
+discard the directive.
+
 A hybrid group needs its classical half, so removing `secp384r1` also removes
-`SecP384r1MLKEM1024`, whether the policy names the hybrid or not. A group the
-policy removes with `-` stays out.
+`SecP384r1MLKEM1024`, whether the policy names the hybrid or not. An algorithm the
+policy removes with `-` stays out, in either directive.
 
 AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
 policy change takes effect only in processes started afterward. A read that fails

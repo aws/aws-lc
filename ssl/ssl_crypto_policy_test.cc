@@ -942,6 +942,24 @@ TEST_F(CryptoPolicyTest, PolicyNamingMLDSAIsAuthoritative) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// Removing an ML-DSA algorithm with the '-' modifier keeps that one out, the
+// same way it does for groups. The rest still come back with the defaults.
+TEST_F(CryptoPolicyTest, PolicyRemovingMLDSASigalgKeepsItOut) {
+  const std::string content = "SignatureAlgorithms = ECDSA+SHA256:-mldsa44\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
+            (std::vector<uint16_t>{SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                                   SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
 // The crypto-policies framework hyphenates the post-quantum names and does not
 // fix their case, so these spellings must resolve for a PQ-aware policy to be
 // recognized as one at all.

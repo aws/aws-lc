@@ -63,19 +63,18 @@ implements, in the order the policy gives them, and a directive naming nothing
 AWS-LC implements is dropped.
 
 In `Groups`, the OpenSSL modifiers `*` and `?` are stripped from the group they
-mark, and `-` drops the group it marks whatever else the value names. A value that
-only removes groups is applied to AWS-LC's default list. A value that leaves no
-group at all is not applied, since AWS-LC reads an empty group list as a request
-for its defaults.
+mark, and `-` drops the group. A removal is applied to AWS-LC's default list. An
+empty group list will result in AWS-LC's default list being used.
 
 AWS-LC's post-quantum groups (the ML-KEM hybrids) and signature algorithms
 (ML-DSA) are kept unless the policy speaks about post-quantum algorithms. Every
 policy the `crypto-policies` framework ships today predates them, and both setters
 replace AWS-LC's default list rather than intersect with it, so seeding would
 otherwise strip post-quantum support from every context. A policy that names any
-post-quantum algorithm is authoritative and nothing is added back. A hybrid needs
-its classical half, so removing that half removes the hybrid whether the policy
-names it or not, and one the policy removes with `-` stays out.
+post-quantum algorithm is authoritative and nothing is added back. An algorithm
+the policy removes with `-` stays out, in either directive. A hybrid needs its
+classical half, so removing that half removes the hybrid whether the policy names
+it or not.
 `AWSLC.PostQuantum = off`, a directive of AWS-LC's own, waives the defaults
 entirely, since the directives the framework writes are preference lists with no
 syntax for excluding an algorithm.

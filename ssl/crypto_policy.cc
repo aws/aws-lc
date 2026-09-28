@@ -333,14 +333,15 @@ bool HybridClassicalComponent(uint16_t *out, uint16_t group) {
   return false;
 }
 
-// ValueNamesRemoval reports whether the Groups value |value| names |group| with
-// the OpenSSL '-' modifier.
-bool ValueNamesRemoval(const char *value, uint16_t group) {
+// ValueNamesRemoval reports whether |value| names |id| with the OpenSSL '-'
+// modifier, resolving its tokens through |lookup|.
+bool ValueNamesRemoval(const char *value, uint16_t id,
+                       bool (*lookup)(uint16_t *, const char *, size_t)) {
   for (const char *tok = value;;) {
     const size_t len = strcspn(tok, kPolicyListSeparators);
-    uint16_t id;
-    if (len > 1 && tok[0] == '-' && GroupIdFromToken(&id, tok + 1, len - 1) &&
-        id == group) {
+    uint16_t candidate;
+    if (len > 1 && tok[0] == '-' && lookup(&candidate, tok + 1, len - 1) &&
+        candidate == id) {
       return true;
     }
     if (tok[len] == '\0') {
@@ -357,9 +358,9 @@ bool ValueNamesRemoval(const char *value, uint16_t group) {
 // hybrid in place would make the removal cosmetic.
 bool PolicyRemovesGroup(const char *value, uint16_t group) {
   uint16_t classical;
-  return ValueNamesRemoval(value, group) ||
+  return ValueNamesRemoval(value, group, GroupIdFromToken) ||
          (HybridClassicalComponent(&classical, group) &&
-          ValueNamesRemoval(value, classical));
+          ValueNamesRemoval(value, classical, GroupIdFromToken));
 }
 
 // DropRemovedGroups compacts |ids|, which holds |n| entries, down to the ones the
@@ -456,11 +457,13 @@ size_t MergeDefaultPQGroups(uint16_t *ids, size_t n, size_t cap,
 }
 
 // MergeDefaultPQSigalgs restores AWS-LC's default ML-DSA algorithms at the end of
-// |ids|, which holds |n| of |cap| entries, and returns the new count. As with
-// groups, a policy naming any of them is left alone.
+// |ids|, which holds |n| of |cap| entries and came from the SignatureAlgorithms
+// value |value|, and returns the new count. As with groups, a policy naming any of
+// them is left alone, and one it names only to remove stays out.
 //
 // They go last because that is where AWS-LC's own default list puts them.
-size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap) {
+size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap,
+                             const char *value) {
   if (n == 0) {
     return n;
   }
@@ -469,13 +472,20 @@ size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap) {
       return n;
     }
   }
-  if (n + OPENSSL_ARRAY_SIZE(kPolicyMLDSASigalgs) > cap) {
+
+  uint16_t add[OPENSSL_ARRAY_SIZE(kPolicyMLDSASigalgs)];
+  size_t num_add = 0;
+  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
+    if (!ValueNamesRemoval(value, sigalg, SigalgIdFromToken)) {
+      add[num_add++] = sigalg;
+    }
+  }
+  if (num_add == 0 || n + num_add > cap) {
     return n;
   }
-  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
-    ids[n++] = sigalg;
-  }
-  return n;
+
+  OPENSSL_memcpy(ids + n, add, num_add * sizeof(uint16_t));
+  return n + num_add;
 }
 
 // ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
@@ -638,7 +648,7 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
     size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs,
                                SigalgIdFromToken);
     if (keep_pq) {
-      n = MergeDefaultPQSigalgs(ids, n, OPENSSL_ARRAY_SIZE(ids));
+      n = MergeDefaultPQSigalgs(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs);
     }
     if (n > 0) {
       // Both preference lists, matching what |SSL_CTX_set1_sigalgs_list| writes.
