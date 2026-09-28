@@ -943,94 +943,15 @@ OPENSSL_STATIC_ASSERT(OPENSSL_ARRAY_SIZE(kMODP8192Data) ==
                           DH_MAX_KNOWN_GROUP_WORDS,
                       MODP8192_does_not_match_DH_MAX_KNOWN_GROUP_WORDS)
 
-// dh_p_equals_words returns one if |p| equals the value encoded in the
-// |num_words| words of |words|, least significant word first, and zero
-// otherwise. It does not allocate.
-static int dh_p_equals_words(const BIGNUM *p, const BN_ULONG *words,
-                             size_t num_words) {
+// dh_group_matches returns one if |p| equals the value encoded in the
+// |num_words| words of |words|, least significant word first, and |q|, if not
+// NULL, is (p-1)/2. It returns zero otherwise. It does not allocate.
+static int dh_group_matches(const BIGNUM *p, const BIGNUM *q,
+                            const BN_ULONG *words, size_t num_words) {
   BIGNUM expected;
   BN_init(&expected);
   bn_set_static_words(&expected, words, num_words);
-  return BN_cmp(p, &expected) == 0;
-}
-
-// dh_rfc7919_prime_words returns the words of the |bits|-bit RFC 7919 ffdhe
-// prime, least significant word first, and sets |*out_num_words| to their
-// number. It returns NULL, leaving |*out_num_words| untouched, if |bits| is not
-// the size of one of those primes.
-static const BN_ULONG *dh_rfc7919_prime_words(unsigned bits,
-                                              size_t *out_num_words) {
-  switch (bits) {
-    case 2048:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE2048Data);
-      return kFFDHE2048Data;
-    case 3072:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE3072Data);
-      return kFFDHE3072Data;
-    case 4096:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE4096Data);
-      return kFFDHE4096Data;
-    case 6144:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE6144Data);
-      return kFFDHE6144Data;
-    case 8192:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kFFDHE8192Data);
-      return kFFDHE8192Data;
-    default:
-      return NULL;
-  }
-}
-
-// dh_rfc3526_prime_words acts like |dh_rfc7919_prime_words|, but returns the
-// |bits|-bit RFC 3526 MODP prime.
-static const BN_ULONG *dh_rfc3526_prime_words(unsigned bits,
-                                              size_t *out_num_words) {
-  switch (bits) {
-    case 1536:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP1536Data);
-      return kMODP1536Data;
-    case 2048:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP2048Data);
-      return kMODP2048Data;
-    case 3072:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP3072Data);
-      return kMODP3072Data;
-    case 4096:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP4096Data);
-      return kMODP4096Data;
-    case 6144:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP6144Data);
-      return kMODP6144Data;
-    case 8192:
-      *out_num_words = OPENSSL_ARRAY_SIZE(kMODP8192Data);
-      return kMODP8192Data;
-    default:
-      return NULL;
-  }
-}
-
-// dh_known_safe_prime_words returns the words of |p|, least significant word
-// first, if |p| is one of the safe primes recognised here, and sets
-// |*out_num_words| to their number. It returns NULL otherwise.
-static const BN_ULONG *dh_known_safe_prime_words(const BIGNUM *p,
-                                                 size_t *out_num_words) {
-  const unsigned bits = BN_num_bits(p);
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc7919_prime_words(bits, &num_words);
-  if (words == NULL || !dh_p_equals_words(p, words, num_words)) {
-    words = dh_rfc3526_prime_words(bits, &num_words);
-    if (words == NULL || !dh_p_equals_words(p, words, num_words)) {
-      return NULL;
-    }
-  }
-  *out_num_words = num_words;
-  return words;
-}
-
-int dh_is_known_safe_prime_group(const BIGNUM *p, const BIGNUM *q) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_known_safe_prime_words(p, &num_words);
-  if (words == NULL) {
+  if (BN_cmp(p, &expected) != 0) {
     return 0;
   }
   if (q == NULL) {
@@ -1052,10 +973,89 @@ int dh_is_known_safe_prime_group(const BIGNUM *p, const BIGNUM *q) {
   return BN_cmp(q, &expected_q) == 0;
 }
 
+// The lookups below select a prime by size with a |switch| whose every case
+// makes its own call. A |switch| that merely returned the address of one of the
+// tables would let the compiler turn it into a lookup table of pointers, which
+// needs relocations and therefore cannot live in the FIPS module.
+
+// dh_is_rfc7919_group acts like |dh_is_known_safe_prime_group|, but only
+// recognises the RFC 7919 ffdhe groups.
+static int dh_is_rfc7919_group(const BIGNUM *p, const BIGNUM *q) {
+  switch (BN_num_bits(p)) {
+    case 2048:
+      return dh_group_matches(p, q, kFFDHE2048Data,
+                              OPENSSL_ARRAY_SIZE(kFFDHE2048Data));
+    case 3072:
+      return dh_group_matches(p, q, kFFDHE3072Data,
+                              OPENSSL_ARRAY_SIZE(kFFDHE3072Data));
+    case 4096:
+      return dh_group_matches(p, q, kFFDHE4096Data,
+                              OPENSSL_ARRAY_SIZE(kFFDHE4096Data));
+    case 6144:
+      return dh_group_matches(p, q, kFFDHE6144Data,
+                              OPENSSL_ARRAY_SIZE(kFFDHE6144Data));
+    case 8192:
+      return dh_group_matches(p, q, kFFDHE8192Data,
+                              OPENSSL_ARRAY_SIZE(kFFDHE8192Data));
+    default:
+      return 0;
+  }
+}
+
+// dh_is_rfc3526_group acts like |dh_is_known_safe_prime_group|, but only
+// recognises the RFC 3526 MODP groups.
+static int dh_is_rfc3526_group(const BIGNUM *p, const BIGNUM *q) {
+  switch (BN_num_bits(p)) {
+    case 1536:
+      return dh_group_matches(p, q, kMODP1536Data,
+                              OPENSSL_ARRAY_SIZE(kMODP1536Data));
+    case 2048:
+      return dh_group_matches(p, q, kMODP2048Data,
+                              OPENSSL_ARRAY_SIZE(kMODP2048Data));
+    case 3072:
+      return dh_group_matches(p, q, kMODP3072Data,
+                              OPENSSL_ARRAY_SIZE(kMODP3072Data));
+    case 4096:
+      return dh_group_matches(p, q, kMODP4096Data,
+                              OPENSSL_ARRAY_SIZE(kMODP4096Data));
+    case 6144:
+      return dh_group_matches(p, q, kMODP6144Data,
+                              OPENSSL_ARRAY_SIZE(kMODP6144Data));
+    case 8192:
+      return dh_group_matches(p, q, kMODP8192Data,
+                              OPENSSL_ARRAY_SIZE(kMODP8192Data));
+    default:
+      return 0;
+  }
+}
+
+int dh_is_known_safe_prime_group(const BIGNUM *p, const BIGNUM *q) {
+  return dh_is_rfc7919_group(p, q) || dh_is_rfc3526_group(p, q);
+}
+
 int dh_set_rfc3526_prime(BIGNUM *ret, unsigned bits) {
-  size_t num_words = 0;
-  const BN_ULONG *words = dh_rfc3526_prime_words(bits, &num_words);
-  return words != NULL && bn_set_words(ret, words, num_words);
+  switch (bits) {
+    case 1536:
+      return bn_set_words(ret, kMODP1536Data,
+                          OPENSSL_ARRAY_SIZE(kMODP1536Data));
+    case 2048:
+      return bn_set_words(ret, kMODP2048Data,
+                          OPENSSL_ARRAY_SIZE(kMODP2048Data));
+    case 3072:
+      return bn_set_words(ret, kMODP3072Data,
+                          OPENSSL_ARRAY_SIZE(kMODP3072Data));
+    case 4096:
+      return bn_set_words(ret, kMODP4096Data,
+                          OPENSSL_ARRAY_SIZE(kMODP4096Data));
+    case 6144:
+      return bn_set_words(ret, kMODP6144Data,
+                          OPENSSL_ARRAY_SIZE(kMODP6144Data));
+    case 8192:
+      return bn_set_words(ret, kMODP8192Data,
+                          OPENSSL_ARRAY_SIZE(kMODP8192Data));
+    default:
+      return 0;
+  }
 }
 
 DH *DH_get_rfc7919_2048(void) {
