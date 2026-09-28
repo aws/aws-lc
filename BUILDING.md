@@ -154,6 +154,10 @@ AWS-LC selects its own key shares, and `-` drops the group. A removal is applied
 to AWS-LC's default list. An empty group list will result in AWS-LC's default list
 being used.
 
+`SignatureAlgorithms` carries the same modifiers and is read the same way. AWS-LC
+signs with a different default list than it accepts, so a removal there is applied
+to each of them.
+
 A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
 rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
 built-in floor of TLS 1.0, which is below any floor the policy can ask for, so

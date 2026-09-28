@@ -66,6 +66,10 @@ In `Groups`, the OpenSSL modifiers `*` and `?` are stripped from the group they
 mark, and `-` drops the group. A removal is applied to AWS-LC's default list. An
 empty group list will result in AWS-LC's default list being used.
 
+`SignatureAlgorithms` takes the same modifiers, on the algorithm each marks. A
+removal there is applied to AWS-LC's default lists for signing and for verifying,
+which are not the same list.
+
 AWS-LC's post-quantum groups (the ML-KEM hybrids) and signature algorithms
 (ML-DSA) are kept unless the policy speaks about post-quantum algorithms. Every
 policy the `crypto-policies` framework ships today predates them, and both setters

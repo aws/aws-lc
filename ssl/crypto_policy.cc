@@ -375,6 +375,47 @@ size_t DropRemovedGroups(uint16_t *ids, size_t n, const char *value) {
   return kept;
 }
 
+// DropRemovedSigalgs compacts |ids|, which holds |n| entries, down to the ones
+// the SignatureAlgorithms value |value| does not remove, and returns how many
+// are left.
+size_t DropRemovedSigalgs(uint16_t *ids, size_t n, const char *value) {
+  size_t kept = 0;
+  for (size_t i = 0; i < n; i++) {
+    if (!ValueNamesRemoval(value, ids[i], SigalgIdFromToken)) {
+      ids[kept++] = ids[i];
+    }
+  }
+  return kept;
+}
+
+// PolicySigalgIds fills |out|, which holds |out_len| entries, with the
+// signature algorithms the SignatureAlgorithms value |value| leaves in force,
+// starting from |defaults| when the value names none of its own, and returns
+// how many were written, or zero to leave AWS-LC's defaults implicit.
+//
+// This is |PolicyGroupIds| for signature algorithms, and for the same reason: a
+// value that only removes has to be applied to the default list, or the
+// algorithm the operator took out comes back.
+size_t PolicySigalgIds(uint16_t *out, size_t out_len, const char *value,
+                       Span<const uint16_t> defaults) {
+  size_t n = FilterPolicyIds(out, out_len, value, SigalgIdFromToken);
+  const bool named_any = n != 0;
+  if (!named_any) {
+    for (uint16_t sigalg : defaults) {
+      if (n >= out_len) {
+        return 0;
+      }
+      out[n++] = sigalg;
+    }
+  }
+
+  const size_t kept = DropRemovedSigalgs(out, n, value);
+  if (kept == 0 || (!named_any && kept == n)) {
+    return 0;
+  }
+  return kept;
+}
+
 // PolicyGroupIds fills |out|, which holds |out_len| entries, with the groups the
 // Groups value |value| leaves in force and returns how many were written, or zero
 // to leave AWS-LC's defaults implicit.
@@ -641,28 +682,44 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
   ApplyPolicyVersionBounds(ctx, cfg, is_dtls, version_locked);
 
   // SignatureAlgorithms and Groups, each narrowed to the algorithms AWS-LC
-  // implements. One buffer serves both since the directives are applied in turn.
-  uint16_t ids[kMaxPolicyIds];
+  // implements.
   const bool keep_pq = PolicyKeepsPQDefaults(cfg);
   if (cfg.sigalgs[0] != '\0') {
-    size_t n = FilterPolicyIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs,
-                               SigalgIdFromToken);
+    // Both preference lists get the policy, matching what
+    // |SSL_CTX_set1_sigalgs_list| writes. Each resolves on its own: AWS-LC
+    // signs with a different default list than it accepts, so a value that only
+    // removes reaches a different set of algorithms in each.
+    uint16_t sign_ids[kMaxPolicyIds], verify_ids[kMaxPolicyIds];
+    size_t sign_n =
+        PolicySigalgIds(sign_ids, OPENSSL_ARRAY_SIZE(sign_ids), cfg.sigalgs,
+                        tls12_get_default_sign_sigalgs());
+    size_t verify_n =
+        PolicySigalgIds(verify_ids, OPENSSL_ARRAY_SIZE(verify_ids), cfg.sigalgs,
+                        tls12_get_default_verify_sigalgs());
     if (keep_pq) {
-      n = MergeDefaultPQSigalgs(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.sigalgs);
+      sign_n = MergeDefaultPQSigalgs(sign_ids, sign_n,
+                                     OPENSSL_ARRAY_SIZE(sign_ids), cfg.sigalgs);
+      verify_n = MergeDefaultPQSigalgs(
+          verify_ids, verify_n, OPENSSL_ARRAY_SIZE(verify_ids), cfg.sigalgs);
     }
-    if (n > 0) {
-      // Both preference lists, matching what |SSL_CTX_set1_sigalgs_list| writes.
-      // Each list is a separate allocation, so the second setter can fail with
-      // the first already in place. Moving the signing list aside costs nothing
-      // and is what lets that failure keep the defaults.
-      Array<uint16_t> saved_signing = std::move(ctx->cert->sigalgs);
-      if (!SSL_CTX_set_signing_algorithm_prefs(ctx, ids, n) ||
-          !SSL_CTX_set_verify_algorithm_prefs(ctx, ids, n)) {
-        ctx->cert->sigalgs = std::move(saved_signing);
-      }
+    // Each list is a separate allocation, so the verify setter can fail with
+    // the signing list already in place. Moving the signing list aside costs
+    // nothing and is what lets that failure keep the defaults.
+    Array<uint16_t> saved_signing;
+    bool ok = true;
+    if (sign_n > 0) {
+      saved_signing = std::move(ctx->cert->sigalgs);
+      ok = SSL_CTX_set_signing_algorithm_prefs(ctx, sign_ids, sign_n);
+    }
+    if (ok && verify_n > 0) {
+      ok = SSL_CTX_set_verify_algorithm_prefs(ctx, verify_ids, verify_n);
+    }
+    if (!ok && sign_n > 0) {
+      ctx->cert->sigalgs = std::move(saved_signing);
     }
   }
   if (cfg.groups[0] != '\0') {
+    uint16_t ids[kMaxPolicyIds];
     size_t n = PolicyGroupIds(ids, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
     if (keep_pq) {
       n = MergeDefaultPQGroups(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
@@ -683,7 +740,8 @@ size_t ssl_crypto_policy_named_group_ids(uint16_t *out, size_t max_out,
 
 size_t ssl_crypto_policy_named_sigalg_ids(uint16_t *out, size_t max_out,
                                           const char *value) {
-  return FilterPolicyIds(out, max_out, value, SigalgIdFromToken);
+  const size_t n = FilterPolicyIds(out, max_out, value, SigalgIdFromToken);
+  return DropRemovedSigalgs(out, n, value);
 }
 
 bool ssl_crypto_policy_parse_file(const char *path, CryptoPolicyConfig *out) {

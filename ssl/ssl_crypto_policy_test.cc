@@ -960,6 +960,75 @@ TEST_F(CryptoPolicyTest, PolicyRemovingMLDSASigalgKeepsItOut) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
+// A value that only removes names nothing to seed from, so the removal is
+// applied to AWS-LC's defaults. Skipping the directive would hand back the
+// algorithm the operator took out.
+TEST_F(CryptoPolicyTest, PolicyRemovalOnlySigalgValueDropsFromDefaults) {
+  const std::string content = "SignatureAlgorithms = -mldsa44\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  std::vector<uint16_t> want_sign;
+  for (uint16_t sigalg : tls12_get_default_sign_sigalgs()) {
+    if (sigalg != SSL_SIGN_MLDSA44) {
+      want_sign.push_back(sigalg);
+    }
+  }
+  std::vector<uint16_t> want_verify;
+  for (uint16_t sigalg : tls12_get_default_verify_sigalgs()) {
+    if (sigalg != SSL_SIGN_MLDSA44) {
+      want_verify.push_back(sigalg);
+    }
+  }
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs), want_sign);
+  EXPECT_EQ(ToVector(ctx->verify_sigalgs), want_verify);
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// AWS-LC signs with a different default list than it accepts, and Ed25519 is
+// only in the signing one. A removal reaches the list that has it and leaves
+// the other list implicit.
+TEST_F(CryptoPolicyTest, PolicyRemovalOnlySigalgValueReachesEachDefaultList) {
+  const std::string content = "SignatureAlgorithms = -ed25519\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_FALSE(Contains(ctx->cert->sigalgs, SSL_SIGN_ED25519));
+  EXPECT_EQ(ctx->cert->sigalgs.size(),
+            tls12_get_default_sign_sigalgs().size() - 1);
+  EXPECT_TRUE(ctx->verify_sigalgs.empty());
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
+// A '-' entry takes its algorithm out of the list the value names, the same way
+// it does for groups. The other two ML-DSA defaults come back as usual.
+TEST_F(CryptoPolicyTest, PolicyRemovingANamedSigalgKeepsItOut) {
+  const std::string content =
+      "SignatureAlgorithms = ECDSA+SHA256:mldsa44:-mldsa44\n";
+  TemporaryFile policy;
+  ASSERT_TRUE(policy.Init(content));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
+                              /*is_dtls=*/false, /*version_locked=*/false);
+
+  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
+            (std::vector<uint16_t>{SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                                   SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}));
+  EXPECT_EQ(ERR_peek_error(), 0u);
+}
+
 // The crypto-policies framework hyphenates the post-quantum names and does not
 // fix their case, so these spellings must resolve for a PQ-aware policy to be
 // recognized as one at all.

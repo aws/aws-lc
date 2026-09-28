@@ -2483,6 +2483,13 @@ Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs);
 // peer signature to |out|. It returns true on success and false on error.
 bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out);
 
+// tls12_get_default_sign_sigalgs and tls12_get_default_verify_sigalgs return the
+// signature algorithms AWS-LC signs with and accepts from a peer when nothing is
+// configured. The two lists differ, so a caller adjusting the defaults has to
+// adjust each of them.
+OPENSSL_EXPORT Span<const uint16_t> tls12_get_default_sign_sigalgs(void);
+OPENSSL_EXPORT Span<const uint16_t> tls12_get_default_verify_sigalgs(void);
+
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
 // signature. It returns true on success and false on error, setting
 // |*out_alert| to an alert to send.
@@ -3776,8 +3783,8 @@ bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len);
 // ssl_crypto_policy_named_group_ids and ssl_crypto_policy_named_sigalg_ids
 // resolve the tokens of a Groups or SignatureAlgorithms value the way seeding
 // does, writing the IDs the value asks for and AWS-LC implements to |out|, which
-// holds |max_out| entries, and returning how many were written. A group the value
-// removes is not one it asks for.
+// holds |max_out| entries, and returning how many were written. An algorithm the
+// value removes is not one it asks for.
 //
 // Marked with OPENSSL_EXPORT to make it available for unit tests, which read the
 // system policy file with it rather than assuming how it spells an algorithm.
