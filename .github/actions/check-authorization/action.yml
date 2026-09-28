@@ -22,22 +22,29 @@ runs:
             return "auto-approve";
           }
           
-          try {
-            const permissionResponse = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: context.payload.pull_request.user.login,
-            });
-            const permission = permissionResponse.data.permission;
-            const hasWriteAccess = ['write', 'admin'].includes(permission);
-            if (!hasWriteAccess) {
-              console.log(`User ${context.payload.pull_request.user.login} does not have write access to the repository (permission: ${permission})`);
-              return "manual-approval"
-            } else {
-              console.log(`Verifed ${context.payload.pull_request.user.login} has write access. Auto Approving PR Checks.`)
-              return "auto-approve"
+          const prAuthor = context.payload.pull_request.user.login;
+          const prPusher = context.payload.sender.login;
+          const usersToCheck = [prAuthor, prPusher];
+          
+          for (const username of usersToCheck) {
+            try {
+              const permissionResponse = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username,
+              });
+              const permission = permissionResponse.data.permission;
+              const hasWriteAccess = ['write', 'admin'].includes(permission);
+              if (!hasWriteAccess) {
+                console.log(`User ${username} does not have write access to the repository (permission: ${permission}). Requiring Manual Approval to run PR Checks.`);
+                return "manual-approval";
+              }
+              console.log(`Verified ${username} has write access.`);
+            } catch (error) {
+              console.log(`Could not verify write access for ${username}. Requiring Manual Approval to run PR Checks.`);
+              return "manual-approval";
             }
-          } catch (error) {
-            console.log(`${context.payload.pull_request.user.login} does not have write access. Requiring Manual Approval to run PR Checks.`)
-            return "manual-approval"
           }
+          
+          console.log(`Verified all of [${usersToCheck.join(", ")}] have write access. Auto Approving PR Checks.`);
+          return "auto-approve";
