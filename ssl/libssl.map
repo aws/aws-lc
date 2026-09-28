@@ -625,12 +625,16 @@ AWS_LC_1.0 {
       bssl::ssl_cert_check_key_usage*;
       bssl::ssl_client_hello_init*;
       bssl::ssl_crypto_policy_default_path*;
+      bssl::ssl_crypto_policy_named_group_ids*;
+      bssl::ssl_crypto_policy_named_sigalg_ids*;
       bssl::ssl_crypto_policy_parse_file*;
       bssl::ssl_ctx_apply_crypto_policy*;
       bssl::ssl_decode_client_hello_inner*;
       bssl::ssl_is_valid_ech_public_name*;
       bssl::ssl_session_serialize*;
       bssl::ssl_transfer_supported*;
+      bssl::tls12_get_default_sign_sigalgs*;
+      bssl::tls12_get_default_verify_sigalgs*;
       bssl::tls1_get_default_grouplist*;
       bssl::x509_to_buffer*;
       tls_print_all_supported_cipher_suites*;

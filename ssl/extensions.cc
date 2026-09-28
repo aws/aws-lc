@@ -432,6 +432,14 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
 
+Span<const uint16_t> tls12_get_default_sign_sigalgs(void) {
+  return Span<const uint16_t>(kSignSignatureAlgorithms);
+}
+
+Span<const uint16_t> tls12_get_default_verify_sigalgs(void) {
+  return Span<const uint16_t>(kVerifySignatureAlgorithms);
+}
+
 static Span<const uint16_t> tls12_get_verify_sigalgs(const SSL_HANDSHAKE *hs) {
   if (hs->config->verify_sigalgs.empty()) {
     return Span<const uint16_t>(kVerifySignatureAlgorithms);
