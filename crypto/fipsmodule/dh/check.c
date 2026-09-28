@@ -88,11 +88,10 @@ err:
 // accept it without primality testing, and zero otherwise.
 //
 // Both families are safe primes p = 2q+1 with g = 2, so recognizing p means
-// both p and (p-1)/2 are prime -- stated outright by RFC 7919 appendix A, and
-// true of the RFC 3526 primes by their construction as Sophie Germain primes in
-// RFC 2412 appendix E.2. Every one of these primes is also 7 mod 8, so 2 is a
-// quadratic residue and therefore generates the subgroup of order (p-1)/2. That
-// is what lets |DH_check| skip both primality testing and the generator check.
+// both p and (p-1)/2 are prime by their construction as Sophie Germain primes.
+// Every one of these primes is also 7 mod 8, so 2 is a quadratic residue and
+// therefore generates the subgroup of order (p-1)/2. That is what lets
+// |DH_check| skip both primality testing and the generator check.
 static int dh_is_known_safe_group(const DH *dh) {
   // A different generator is not the named group, so let the full checks run.
   if (!BN_is_word(dh->g, 2)) {
