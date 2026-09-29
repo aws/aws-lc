@@ -219,6 +219,39 @@ TEST_F(ubeGenerationNumberTest, MockedVmUbeHighBitsOnlyChange) {
   ASSERT_EQ(generation_number, before + 1);
 }
 
+// A transient VM UBE read failure surfaces to the orchestration layer as a
+// "poison" generation number (bit 63 set; see vm_ube_transient_poison in
+// vm_ube_detect.c), never as 0. This is a regression guard: establishing the
+// cached baseline from such a failed read must not swallow the first real UBE.
+// A poison baseline -> a first consistent read of 0 -> a real
+// 0->1 change must each be detected as exactly one UBE. (In mocked mode the
+// poison value is injected directly, since the mock bypasses the real seqlock
+// read path in vm_ube_detect.c.)
+TEST_F(ubeGenerationNumberTest, MockedVmUbePoisonBaselineDoesNotSwallowFirstUbe) {
+  allowMockedUbe();
+
+  const uint64_t kPoison = 0x8000000000000001ULL;  // bit 63 set
+
+  // Init-time transient failure: the cached vm_ube generation is a poison value.
+  uint64_t g0 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(kPoison);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g0));
+
+  // First consistent read returns the real counter, which is 0 (no UBE yet).
+  // Poison != 0, so recovering the baseline counts as one conservative UBE.
+  uint64_t g1 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(0);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g1));
+  ASSERT_EQ(g1, g0 + 1);
+
+  // The first *real* UBE (0 -> 1) must still be detected, not swallowed by the
+  // baseline having been established from the failed read.
+  uint64_t g2 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(1);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g2));
+  ASSERT_EQ(g2, g1 + 1);
+}
+
 TEST_F(ubeGenerationNumberTest, ExpectedSupportTests) {
   uint64_t generation_number = 0;
   // Operating systems where we expect UBE detection to be enabled.
