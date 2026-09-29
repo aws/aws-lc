@@ -31,6 +31,11 @@ struct rand_thread_local_state {
   // generation_number caches the UBE generation number.
   uint64_t generation_number;
 
+  // generation_number_is_transient is 1 if |generation_number| came from a
+  // transient VM UBE reading (a poison value). Consulted by the mid-generation
+  // validity check; see |rand_ensure_valid_state|.
+  int generation_number_is_transient;
+
   // Entropy source. UBE unique state.
   struct entropy_source_t *entropy_source;
 
@@ -278,9 +283,18 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
   // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
   // this error is if snapshotting the address space while executing
   // |RAND_bytes| and while VM UBE is active.
+  //
+  // A transient VM UBE reading also advances the generation number but is a
+  // false alarm, not a real UBE. Suppress the abort when either the entry
+  // baseline or this exit read was transient; a genuine mid-generation UBE
+  // (neither transient, yet the number changed) still fails closed.
   uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
-      current_generation_number != state->generation_number) {
+  int transient = 0;
+  if (CRYPTO_get_ube_generation_number_with_transient(
+          &current_generation_number, &transient) == 1 &&
+      current_generation_number != state->generation_number &&
+      state->generation_number_is_transient != 1 &&
+      transient != 1) {
     return 0;
   }
 #endif
@@ -301,9 +315,14 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
 static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
 
   uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+  int transient = 0;
+  if (CRYPTO_get_ube_generation_number_with_transient(
+          &current_generation_number, &transient) != 1) {
     return 0;
   }
+
+  // Record whether this baseline read was transient (see rand_ensure_valid_state).
+  state->generation_number_is_transient = transient;
 
   if (current_generation_number != state->generation_number) {
     state->generation_number = current_generation_number;
@@ -419,10 +438,14 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
   state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
   uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+  int transient = 0;
+  if (CRYPTO_get_ube_generation_number_with_transient(
+          &current_generation_number, &transient) != 1) {
     state->generation_number = 0;
+    state->generation_number_is_transient = 0;
   } else {
     state->generation_number = current_generation_number;
+    state->generation_number_is_transient = transient;
   }
   CRYPTO_MUTEX_init(&state->state_clear_lock);
 

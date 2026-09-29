@@ -200,9 +200,13 @@ static int ube_is_detected(struct detection_gn *current_detection_gn) {
   return 0;
 }
 
-int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
+int CRYPTO_get_ube_generation_number_with_transient(
+  uint64_t *current_generation_number, int *out_transient) {
 
   GUARD_PTR(current_generation_number);
+  GUARD_PTR(out_transient);
+
+  *out_transient = 0;
 
   CRYPTO_once(&ube_state_initialize_once, ube_state_initialize);
 
@@ -236,6 +240,10 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
     ube_failed();
     return 0;
   }
+  // A transient VM UBE read surfaces as a poison generation number (bit 63);
+  // report it so the DRBG can distinguish it from a real UBE.
+  *out_transient =
+      (current_detection_gn.current_vm_ube_gn & VM_UBE_TRANSIENT_POISON_BIT) != 0;
   CRYPTO_STATIC_MUTEX_lock_read(&ube_lock);
   if (ube_is_detected(&current_detection_gn) == 0) {
     // No UBE detected, so just grab UBE generation number from the state.
@@ -261,6 +269,9 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
     CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
     return 0;
   }
+  // Re-read may have refreshed the vm_ube value; recompute the transient flag.
+  *out_transient =
+      (current_detection_gn.current_vm_ube_gn & VM_UBE_TRANSIENT_POISON_BIT) != 0;
   if (ube_is_detected(&current_detection_gn) == 0) {
     // Another thread already updated the global state. Just load the UBE
     // generation number instead.
@@ -275,6 +286,12 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
 
   return 1;
+}
+
+int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
+  int transient = 0;
+  return CRYPTO_get_ube_generation_number_with_transient(
+      current_generation_number, &transient);
 }
 
 // Synchronize writing to |allow_mocked_detection|. But only to more easily

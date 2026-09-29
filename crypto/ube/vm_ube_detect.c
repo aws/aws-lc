@@ -238,11 +238,9 @@ static int vm_ube_read_generation(const struct vm_ube_state_st *st,
   return 0;
 }
 
-// Bit 63 marks a synthesized "transient failure" generation number. A real
-// counter increments slowly per snapshot and never reaches 2^63, so a poison
-// value never collides with a genuine one.
-#define VM_UBE_TRANSIENT_POISON_BIT (UINT64_C(1) << 63)
-
+// VM_UBE_TRANSIENT_POISON_BIT is defined in vm_ube_detect.h so consumers (the
+// DRBG's mid-generation check) can recognize a transient reading.
+//
 // vm_ube_transient_poison returns a distinct poison value on each call (a
 // monotonic counter with bit 63 set), so it differs from any real counter and
 // from the previous poison. This drives the UBE layer's normal "changed" path

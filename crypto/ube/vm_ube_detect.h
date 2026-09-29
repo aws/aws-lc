@@ -18,6 +18,14 @@ extern "C" {
   #define AWSLC_VMCLOCK_PATH "/dev/vmclock0"
 #endif
 
+// VM_UBE_TRANSIENT_POISON_BIT marks a synthesized "transient failure" VM UBE
+// generation number (see CRYPTO_get_vm_ube_generation). A real counter
+// increments slowly per snapshot and never reaches 2^63, so a poison value
+// never collides with a genuine one. Consumers that must distinguish a
+// transient reading from a real generation change (e.g. the DRBG's
+// mid-generation validity check) test this bit.
+#define VM_UBE_TRANSIENT_POISON_BIT (UINT64_C(1) << 63)
+
 // VM UBE-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_vm_ube_generation provides the VM UBE generation number for

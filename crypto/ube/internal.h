@@ -31,6 +31,19 @@ extern "C" {
 // entries will immediately return.
 OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number);
 
+// CRYPTO_get_ube_generation_number_with_transient behaves like
+// |CRYPTO_get_ube_generation_number| and additionally reports, in
+// |*out_transient|, whether the current VM UBE reading was a transient failure
+// (a momentarily unreadable vmclock seqlock, surfaced as a poison generation
+// number; see VM_UBE_TRANSIENT_POISON_BIT). A transient reading still advances
+// the generation number -- forcing a conservative reseed via the normal
+// "changed" path -- but it is a false alarm, not a real UBE. The DRBG uses the
+// flag to suppress its mid-generation abort check (|rand_ensure_valid_state|),
+// which must fire only on a genuine mid-generation UBE. |*out_transient| is set
+// to 0 whenever the function returns 0.
+OPENSSL_EXPORT int CRYPTO_get_ube_generation_number_with_transient(
+    uint64_t *current_generation_number, int *out_transient);
+
 // set_fork_ube_generation_number_FOR_TESTING sets the fork generation number to
 // the value |fork_gn|. This value will be the fork generation value used by the
 // UBE logic, overriding the generation number from the real fork detection.

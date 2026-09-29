@@ -660,6 +660,7 @@ AWS_LC_1.0 {
     CRYPTO_get_sysgenid_path;
     CRYPTO_get_thread_local;
     CRYPTO_get_ube_generation_number;
+    CRYPTO_get_ube_generation_number_with_transient;
     CRYPTO_get_vm_ube_active;
     CRYPTO_get_vm_ube_generation;
     CRYPTO_get_vm_ube_supported;
