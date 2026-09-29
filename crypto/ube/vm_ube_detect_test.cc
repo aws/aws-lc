@@ -97,9 +97,9 @@ static int init_vmclock_test(vmclock_test_s* vmc_test) {
 static int set_vmclock_generation(vmclock_test_s* vmc_test, uint64_t val) {
   // Use seqlock protocol: increment seq_count to odd, write, increment to even
   vmc_test->addr->seq_count++;
-  __atomic_thread_fence(__ATOMIC_RELEASE);
+  std::atomic_thread_fence(std::memory_order_release);
   vmc_test->addr->vm_generation_counter = val;
-  __atomic_thread_fence(__ATOMIC_RELEASE);
+  std::atomic_thread_fence(std::memory_order_release);
   vmc_test->addr->seq_count++;
   if (0 != msync(vmc_test->addr, sizeof(struct vmclock_abi), MS_SYNC)) {
     return 0;
@@ -237,14 +237,14 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
 
       // Enter the write section: make seq_count odd.
       abi->seq_count++;
-      __atomic_thread_fence(__ATOMIC_RELEASE);
+      std::atomic_thread_fence(std::memory_order_release);
 
       // Write the two halves separately, leaving a window where the 64-bit
       // value is a torn mix of the previous and next values.
       *lo = (uint32_t)(next & 0xFFFFFFFFULL);
       *hi = (uint32_t)(next >> 32);
 
-      __atomic_thread_fence(__ATOMIC_RELEASE);
+      std::atomic_thread_fence(std::memory_order_release);
       // Leave the write section: make seq_count even.
       abi->seq_count++;
     }

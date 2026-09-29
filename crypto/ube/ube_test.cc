@@ -208,7 +208,7 @@ TEST_F(ubeGenerationNumberTest, MockedVmUbeHighBitsOnlyChange) {
   allowMockedUbe();
 
   uint64_t generation_number = 0;
-  set_vm_ube_generation_number_FOR_TESTING(0x0000000000000000ULL + 0x100000000ULL);
+  set_vm_ube_generation_number_FOR_TESTING(0x100000000ULL);
   ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
 
   uint64_t before = generation_number;

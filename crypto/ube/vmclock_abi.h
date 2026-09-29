@@ -17,9 +17,10 @@ extern "C" {
 // (include/uapi/linux/vmclock-abi.h). Spec:
 // https://uapi-group.org/specifications/specs/vmclock/
 //
-// The layout is little-endian and read natively, so on big-endian the |magic|
-// check fails and we fall through to another backend -- intentional; we don't
-// byte-swap an interface we can't exercise there.
+// The layout is little-endian and read natively, so vmclock is disabled at
+// compile time on big-endian hosts (see the OPENSSL_BIG_ENDIAN guard in
+// vm_ube_detect.c) -- intentional; we don't byte-swap an interface we can't
+// exercise there.
 //
 // Members are naturally aligned (struct not packed, matching the kernel). The
 // static asserts below pin the size and the offsets we dereference so an edit

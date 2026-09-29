@@ -317,6 +317,11 @@ interface is found, the mechanism is ignored.
 VM snapshots taken on active hosts can potentially be unsafe to use.
 See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
 
+The process must be able to open and map the selected device read-only.
+Configure device permissions accordingly, and for containers the corresponding
+device access rules. A root-only `/dev/vmclock0` is not usable by an
+unprivileged process; AWS-LC will try SysGenID instead.
+
 ## Testing VM UBE Detection
 
 The device nodes are not generally available in build/test environments, so
@@ -331,6 +336,10 @@ runtime, enabling both in a single build only exercises vmclock; to exercise the
 SysGenID path (including the vmclock-to-SysGenID fallback), build with
 `-DTEST_SYSGENID_PATH` alone. The CI scripts under `tests/ci/` build each backend
 in a separate configuration for this reason.
+
+Note this covers the fallback when vmclock is *absent*, not the rejection of a
+present-but-invalid or inaccessible vmclock while a valid SysGenID is available;
+that two-backend case is not currently exercised.
 
 # FIPS Mode
 

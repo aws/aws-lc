@@ -45,10 +45,11 @@ static void vm_ube_acquire_fence(void) {
 #define VM_UBE_BACKEND_SYSGENID 0x02
 
 // Iteration budget for a contended or wedged seqlock, not a guarantee a VMM
-// update completes. Exhausting it reports a transient read failure (see
-// vm_ube_read_vmclock_gn) so a stuck |seq_count| can't spin |RAND_bytes|
-// forever.
-#define VMCLOCK_SEQLOCK_MAX_RETRIES 1024
+// update completes. A VMM update flips the seqcount only momentarily, so a
+// small budget is ample; it exists only so a stuck |seq_count| can't spin
+// |RAND_bytes| forever. Exhausting it reports a transient read failure (see
+// vm_ube_read_vmclock_gn).
+#define VMCLOCK_SEQLOCK_MAX_RETRIES 64
 
 static CRYPTO_once_t vm_ube_init = CRYPTO_ONCE_INIT;
 
@@ -70,9 +71,16 @@ static struct vm_ube_state_st vm_ube = {
 // caller (fall through to the next backend), so they are not distinguished: an
 // absent device (|open| ENOENT), a device present but not usable by this
 // process (|open| EACCES on a root-only node, |mmap| failure), and a device
-// that is not a valid vmclock (bad magic, or the generation-counter flag unset)
-// all return 0.
+// that is not a valid vmclock (bad magic, too-small size, or the
+// generation-counter flag unset) all return 0.
 static int try_vmclock_init(struct vm_ube_state_st *st) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  // vmclock's on-device layout is little-endian and we read it natively, so it
+  // cannot work on a big-endian host (see vmclock_abi.h). Disable it here at
+  // compile time rather than relying on a runtime magic mismatch.
+  (void)st;
+  return 0;
+#else
   int fd = open(CRYPTO_get_vmclock_path(), O_RDONLY);
   if (fd == -1) {
     return 0;
@@ -88,10 +96,19 @@ static int try_vmclock_init(struct vm_ube_state_st *st) {
 
   volatile struct vmclock_abi *vmc = (volatile struct vmclock_abi *)addr;
 
-  // |magic| is constant (never touched by the seqlock), so read it directly.
-  // On big-endian this comparison fails and we treat the device as unavailable
-  // (see vmclock_abi.h).
+  // |magic| is a constant field (never touched by the seqlock), so read it
+  // directly.
   if (vmc->magic != VMCLOCK_MAGIC) {
+    munmap(addr, sizeof(struct vmclock_abi));
+    return 0;
+  }
+
+  // The ABI is size-delimited. Before trusting the feature flag, confirm the
+  // provider's region actually spans |vm_generation_counter| -- hardening
+  // against a malformed or older provider, not the normal Linux node. |size| is
+  // also a constant field, so it is safe to read directly.
+  if (vmc->size < offsetof(struct vmclock_abi, vm_generation_counter) +
+                      sizeof(vmc->vm_generation_counter)) {
     munmap(addr, sizeof(struct vmclock_abi));
     return 0;
   }
@@ -107,6 +124,7 @@ static int try_vmclock_init(struct vm_ube_state_st *st) {
 
   st->vmclock_addr = vmc;
   return 1;
+#endif
 }
 
 // try_sysgenid_init attempts to initialize the SysGenID backend into |st|.
@@ -202,6 +220,7 @@ static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
 
 static int vm_ube_read_sysgenid_gn(const struct vm_ube_state_st *st,
                                    uint64_t *out) {
+  // SysGenID's counter is only 32-bit; zero-extend to the 64-bit UBE width.
   *out = (uint64_t)*st->sysgenid_addr;
   return 1;
 }
