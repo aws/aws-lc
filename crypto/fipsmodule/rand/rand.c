@@ -302,6 +302,22 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
   return 1;
 }
 
+// rand_ensure_valid_state_FOR_TESTING exposes |rand_ensure_valid_state| (a pure
+// predicate -- the abort() lives in its caller) so tests can drive its branches
+// deterministically. It builds a state with the given cached generation
+// baseline and transient flag and returns the verdict: 1 = valid (RAND_bytes
+// would continue), 0 = invalid (the caller would abort). Tests set the current
+// UBE generation via the mock (set_vm_ube_generation_number_FOR_TESTING); a
+// poison mock value exercises the transient path. Under AWSLC_VM_UBE_TESTING the
+// underlying check is a no-op and this always returns 1.
+int rand_ensure_valid_state_FOR_TESTING(uint64_t baseline_generation_number,
+                                        int baseline_is_transient) {
+  struct rand_thread_local_state state;
+  state.generation_number = baseline_generation_number;
+  state.generation_number_is_transient = baseline_is_transient;
+  return rand_ensure_valid_state(&state);
+}
+
 // rand_check_ctr_drbg_uniqueness computes whether |state| must be randomized
 // to ensure uniqueness.
 //

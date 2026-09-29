@@ -3030,6 +3030,7 @@ AWS_LC_1.0 {
     pmbtoken_exp1_get_h_for_testing;
     pmbtoken_exp2_get_h_for_testing;
     pmbtoken_pst1_get_h_for_testing;
+    rand_ensure_valid_state_FOR_TESTING;
     rand_thread_local_state_clear_all_FOR_TESTING;
     rdrand_multiple8;
     rndr_multiple8;

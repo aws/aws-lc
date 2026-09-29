@@ -3023,6 +3023,7 @@ override_entropy_source_method_FOR_TESTING AWS_LC_1.0 PRIVATE
 pmbtoken_exp1_get_h_for_testing AWS_LC_1.0 PRIVATE
 pmbtoken_exp2_get_h_for_testing AWS_LC_1.0 PRIVATE
 pmbtoken_pst1_get_h_for_testing AWS_LC_1.0 PRIVATE
+rand_ensure_valid_state_FOR_TESTING AWS_LC_1.0 PRIVATE
 rand_thread_local_state_clear_all_FOR_TESTING AWS_LC_1.0 PRIVATE
 rdrand_multiple8 AWS_LC_1.0 PRIVATE
 rndr_multiple8 AWS_LC_1.0 PRIVATE
