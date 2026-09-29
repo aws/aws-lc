@@ -40,14 +40,9 @@
 // overriden by user input, we hardcode default values (e.g. X509 extensions,
 // -keyout defaults to privkey.pem, etc.)
 //
-// 4. -batch mirrors OpenSSL's apps/req.c (verified against apps/req.c in
-// tags openssl-3.0.16 and OpenSSL_1_1_1w, which agree): it only changes
-// anything when prompting would otherwise happen, i.e. -subj is empty and
-// the config's "prompt" is not "no" (see BuildBatchSubject below); building
-// the request never reads standard input in that case. This is separate
-// from -passin/-passout stdin, which -batch does not affect, matching
-// OpenSSL. -subj and prompt=no already avoid prompting today, so -batch has
-// no effect in those cases.
+// 4. -batch only changes behavior when subject or attribute prompts would
+// otherwise occur. It does not affect -subj, prompt=no, or password reads
+// from stdin.
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
@@ -178,21 +173,13 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   return pkey;
 }
 
-// Resolves |name|'s value the way OpenSSL's build_data() does under
-// -batch, using the exact config entry name that matched (never a long/
-// short alias, so e.g. a config's "CN" and "commonName" lines resolve
-// independently): an empty "<name>_value" behaves like blank input and
-// falls back to "<name>_default" (which, unlike "_value", is used
-// literally even if it is "."); a "_value" of "." omits the field. Sets
-// |*out_value| to the resolved value, or NULL to omit the field. Returns
-// false for invalid "_min"/"_max" bounds or a length violation, which -batch
-// treats as fatal instead of reprompting.
+// Resolves a batch field using its exact config entry name. An empty _value
+// falls back to _default, while a _value of "." omits the field. Defaults are
+// literal. Invalid bounds and length violations fail rather than reprompt.
 static bool ResolveBatchFieldValue(CONF *conf, const char *section,
                                    const char *name, const char **out_value) {
-  // OpenSSL's prompt_info() builds these keys in a 100-byte buffer and fails
-  // with "Name '<name>' too long" if any does not fit. Match that rather than
-  // treating an unrepresentable key as unset, which would silently drop a
-  // configured value or bound. "_default" is the longest suffix.
+  // OpenSSL uses a 100-byte buffer for these keys. _default is the longest
+  // suffix, so checking it covers every lookup below.
   char key[100];
   if (strlen(name) + strlen("_default") + 1 > sizeof(key)) {
     fprintf(stderr, "Name '%s' too long\n", name);
@@ -206,25 +193,24 @@ static bool ResolveBatchFieldValue(CONF *conf, const char *section,
   *out_value = nullptr;
   const char *value = lookup("_value");
   if (value != nullptr && value[0] == '\0') {
-    value = nullptr;  // "" behaves like blank input.
+    value = nullptr;  // Treat an empty value like blank input.
   }
 
   const char *resolved = nullptr;
   if (value != nullptr) {
     if (strcmp(value, ".") == 0) {
-      return true;  // Explicit blank marker: omit.
+      return true;
     }
     resolved = value;
   } else {
     const char *def = lookup("_default");
     if (def == nullptr || def[0] == '\0') {
-      return true;  // No value, no default: omit.
+      return true;
     }
-    resolved = def;  // "." stays literal here, unlike "_value"'s ".".
+    resolved = def;
   }
 
-  // Unset bounds impose no constraint. Unlike OpenSSL's numeric-prefix
-  // parsing, reject malformed bounds rather than silently weakening them.
+  // Reject malformed bounds rather than accepting a numeric prefix.
   auto get_bound = [&](const char *suffix, long *out) -> bool {
     const char *bound = lookup(suffix);
     if (bound == nullptr) {
@@ -248,7 +234,7 @@ static bool ResolveBatchFieldValue(CONF *conf, const char *section,
   if (!get_bound("_min", &n_min) || !get_bound("_max", &n_max)) {
     return false;
   }
-  // Same checks and messages as OpenSSL's req_check_len().
+
   long len = static_cast<long>(strlen(resolved));
   if (n_min > 0 && len < n_min) {
     fprintf(stderr, "String too short, must be at least %ld bytes long\n",
@@ -264,10 +250,8 @@ static bool ResolveBatchFieldValue(CONF *conf, const char *section,
   return true;
 }
 
-// Match apps/req.c in OpenSSL_1_1_1w and openssl-3.0.16: batch mode uses
-// configured fields in file order, with values/defaults rather than labels.
-// Retain this tool's supported field set and built-in DN defaults when no
-// config is provided. The existing prompt=no and -subj paths are unchanged.
+// Builds a batch subject from supported config fields in file order. Without
+// a config, this tool's built-in DN defaults are used.
 static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
                                                     const std::string &section,
                                                     bool is_csr,
@@ -306,11 +290,8 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
 
   for (size_t i = 0; i < sk_CONF_VALUE_num(dn_entries); i++) {
     const CONF_VALUE *entry = sk_CONF_VALUE_value(dn_entries, i);
-    // Like OpenSSL, everything through the first ':', ',' or '.' is an
-    // instance prefix distinguishing repeated fields (e.g.
-    // "0.organizationName"). This also applies to dotted OIDs, so
-    // "2.5.4.3" resolves as "5.4.3" and is ignored, as in OpenSSL. The
-    // complete name is still used for value/bound lookups.
+    // Strip an instance prefix through the first ':', ',', or '.'. The full
+    // entry name is still used for value and bound lookups.
     const char *type = entry->name;
     const char *separator = strpbrk(type, ":,.");
     if (separator != nullptr && separator[1] != '\0') {
@@ -325,7 +306,7 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
       }
     }
     if (field == nullptr) {
-      continue;  // Metadata, or not one of this tool's supported fields.
+      continue;
     }
 
     const char *value = nullptr;
@@ -349,7 +330,7 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
   const char *attr_section =
       NCONF_get_string(conf, section.c_str(), REQ_ATTRIBUTES_OPT);
   if (attr_section == nullptr) {
-    return subj;  // No attributes section configured: not an error.
+    return subj;
   }
   const STACK_OF(CONF_VALUE) *attr_entries =
       NCONF_get_section(conf, attr_section);

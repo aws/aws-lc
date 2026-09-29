@@ -6,6 +6,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
 #include <openssl/stack.h>
@@ -19,29 +20,23 @@
 #include <vector>
 #include "internal.h"
 
-// Imports PKCS#12 or exports PEM keys/certificates with -export. There are no
-// interactive password prompts: an omitted password means the empty password.
-// -legacy is a no-op; the library already supports legacy PBEs. Export uses
-// OpenSSL 1.1.1's 3DES-key/RC2-40-cert/SHA1-MAC defaults: PKCS12_create cannot
-// produce OpenSSL 3's PBES2/AES bags. Explicit PBES2 requests fail, never
-// downgrade. Unsupported options (including -chain, -caname, -macalg, -nomac,
-// -twopass, -info and -nomacver) fail argument parsing. -clcerts/-cacerts are
-// unsupported: PKCS12_get_key_and_certs does not expose the localKeyID used to
-// select them. Export-only options require -export, preserving import's strict
-// validation.
-
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-in", kOptionalArgument,
      "Input PKCS#12 file, or PEM for -export (default stdin)"},
     {"-export", kBooleanArgument, "Create a DER PKCS#12 file from PEM input"},
+    // Options through -nomaciter are rejected unless -export is present.
     {"-inkey", kOptionalArgument, "Export: PEM private key (default from -in)"},
     {"-certfile", kOptionalArgument, "Export: additional PEM certificates"},
     {"-name", kOptionalArgument, "Export: friendlyName for the key and leaf"},
+    // PKCS12_create rejects PBES2/AES NIDs rather than substituting a legacy
+    // PBE.
     {"-keypbe", kOptionalArgument,
-     "Export: PBE-SHA1-3DES (default), PBE-SHA1-RC2-40, or NONE"},
+     "Export: PBE-SHA1-3DES (default), PBE-SHA1-RC2-40, PBE-SHA1-RC4-128, "
+     "or NONE"},
     {"-certpbe", kOptionalArgument,
-     "Export: PBE-SHA1-RC2-40 (default), PBE-SHA1-3DES, or NONE"},
+     "Export: PBE-SHA1-RC2-40 (default), PBE-SHA1-3DES, PBE-SHA1-RC4-128, "
+     "or NONE"},
     {"-descert", kBooleanArgument, "Export: encrypt certificates with 3DES"},
     {"-iter", kOptionalArgument,
      "Export: positive encryption and MAC iteration count (default 2048)"},
@@ -50,12 +45,14 @@ static const argument_t kArguments[] = {
      "Export: accepted as a no-op, matching OpenSSL 3"},
     {"-nomaciter", kBooleanArgument, "Export: set MAC iterations to 1"},
     {"-out", kOptionalArgument, "Output file (default stdout)"},
+    // -clcerts and -cacerts are unsupported because the parser does not expose
+    // the localKeyID bag attribute used to classify certificates.
     {"-nokeys", kBooleanArgument, "Do not output the private key"},
     {"-nocerts", kBooleanArgument, "Do not output certificates"},
     {"-nodes", kBooleanArgument,
-     "Do not encrypt the output private key (overrides -passout)"},
+     "Import: do not encrypt the output key; export: ignored with a warning"},
     {"-noout", kBooleanArgument,
-     "Do not output certificates or keys; only parse and authenticate"},
+     "Import: only parse and authenticate; export: invalid"},
     {"-passin", kOptionalArgument,
      "Input password source (decrypts the PEM key with -export)"},
     {"-password", kOptionalArgument,
@@ -63,6 +60,7 @@ static const argument_t kArguments[] = {
     {"-passout", kOptionalArgument,
      "Export password source; for import, encrypts the output PEM key with "
      "AES-256-CBC (required unless -nokeys or -nodes)"},
+    // Legacy PBE decryption is already enabled, so -legacy is a no-op.
     {"-legacy", kBooleanArgument,
      "Accepted for OpenSSL 3 script compatibility; has no effect"},
     {"", kOptionalArgument, ""}};
@@ -157,21 +155,14 @@ static bool ReadCertificates(BIO *in, STACK_OF(X509) *certs,
 }
 
 static bool ParsePBE(int *nid, const std::string &name) {
-  if (OPENSSL_strcasecmp(name.c_str(), "PBE-SHA1-3DES") == 0) {
-    *nid = NID_pbe_WithSHA1And3_Key_TripleDES_CBC;
-  } else if (OPENSSL_strcasecmp(name.c_str(), "PBE-SHA1-RC2-40") == 0) {
-    *nid = NID_pbe_WithSHA1And40BitRC2_CBC;
-  } else if (name == "NONE") {
+  if (name == "NONE") {
     *nid = -1;
-  } else {
-    if (EVP_get_cipherbyname(name.c_str()) != nullptr) {
-      fprintf(stderr,
-              "Error: unsupported PBES2 export algorithm '%s': "
-              "PKCS12_create only supports legacy PBE schemes\n",
-              name.c_str());
-    } else {
-      fprintf(stderr, "Error: unknown PBE algorithm '%s'\n", name.c_str());
-    }
+    return true;
+  }
+  // PKCS12_create rejects NIDs it cannot produce before opening the output.
+  *nid = OBJ_txt2nid(name.c_str());
+  if (*nid == NID_undef) {
+    fprintf(stderr, "Error: unknown PBE algorithm '%s'\n", name.c_str());
     return false;
   }
   return true;
@@ -250,8 +241,7 @@ static int ExportPKCS12(const ordered_args::ordered_args_map_t &args,
 
   Password passin, passout;
   GetExportString(&passin.get(), "-passin", args);
-  // apps/pkcs12.c in OpenSSL_1_1_1w and openssl-3.0.16 resolves -password
-  // after parsing: it overrides -passout on export, never -passin.
+  // Like OpenSSL, -password overrides -passout on export, never -passin.
   if (HasArgument(args, "-password")) {
     GetExportString(&passout.get(), "-password", args);
   } else {

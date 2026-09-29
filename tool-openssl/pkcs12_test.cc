@@ -5,10 +5,10 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
-#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/nid.h>
+#include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
 #include <openssl/stack.h>
@@ -927,83 +927,53 @@ TEST_F(PKCS12ComparisonTest, NodesImportMatchesOpenSSL) {
   EXPECT_EQ(1, EVP_PKEY_cmp(tool_key.get(), key.get()));
 }
 
-// -export tests. AWS-LC exposes no accessor for embedded PBE/iteration
-// counts, so ParseExportedAlgorithms walks the DER directly with CBS -- a
-// minimal, test-only walk of the shapes PKCS12_create produces, not a
-// general parser.
+// AWS-LC has no accessor for embedded PKCS#12 algorithms or iterations, so
+// these tests walk only the DER shapes emitted by PKCS12_create.
 
 namespace {
 
-const uint8_t kPbeSha1Rc2_40Oid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
-                                     0x0d, 0x01, 0x0c, 0x01, 0x06};
-const uint8_t kPbeSha1_3DesOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
-                                    0x0d, 0x01, 0x0c, 0x01, 0x03};
-const uint8_t kPkcs7DataOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
-                                 0x0d, 0x01, 0x07, 0x01};
-const uint8_t kPkcs7EncryptedDataOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
-                                          0x0d, 0x01, 0x07, 0x06};
-const uint8_t kKeyBagOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
-                              0x01, 0x0c, 0x0a, 0x01, 0x01};
-const uint8_t kPkcs8ShroudedKeyBagOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
-                                           0x01, 0x0c, 0x0a, 0x01, 0x02};
-const uint8_t kCertBagOid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
-                               0x01, 0x0c, 0x0a, 0x01, 0x03};
-const uint8_t kSha1Oid[] = {0x2b, 0x0e, 0x03, 0x02, 0x1a};
-
-template <size_t N>
-std::vector<uint8_t> OidBytes(const uint8_t (&oid)[N]) {
-  return std::vector<uint8_t>(oid, oid + N);
-}
-
-std::vector<uint8_t> CBSToVector(const CBS *cbs) {
-  return std::vector<uint8_t>(CBS_data(cbs), CBS_data(cbs) + CBS_len(cbs));
-}
-
-// Reads the PBEParameter { salt OCTET STRING, iterations INTEGER } that
-// follows a PBE OID inside an AlgorithmIdentifier.
-bool ReadPbeIterations(CBS *algorithm_identifier_tail,
-                       uint64_t *out_iterations) {
-  CBS pbe_param, salt;
-  return CBS_get_asn1(algorithm_identifier_tail, &pbe_param,
-                      CBS_ASN1_SEQUENCE) &&
-         CBS_get_asn1(&pbe_param, &salt, CBS_ASN1_OCTETSTRING) &&
-         CBS_get_asn1_uint64(&pbe_param, out_iterations);
+bool ReadPbeAlgorithm(CBS *algorithm, int *out_nid, uint64_t *out_iterations) {
+  CBS oid, params, salt;
+  if (!CBS_get_asn1(algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBS_get_asn1(algorithm, &params, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&params, &salt, CBS_ASN1_OCTETSTRING) ||
+      !CBS_get_asn1_uint64(&params, out_iterations)) {
+    return false;
+  }
+  *out_nid = OBJ_cbs2nid(&oid);
+  return true;
 }
 
 struct Pkcs12AlgorithmInfo {
   bool cert_present = false;
   bool cert_encrypted = false;
-  std::vector<uint8_t> cert_pbe_oid;
+  int cert_pbe_nid = NID_undef;
   uint64_t cert_iterations = 0;
 
   bool key_present = false;
   bool key_encrypted = false;
-  std::vector<uint8_t> key_pbe_oid;
+  int key_pbe_nid = NID_undef;
   uint64_t key_iterations = 0;
 
   bool mac_present = false;
-  std::vector<uint8_t> mac_digest_oid;
+  int mac_digest_nid = NID_undef;
   uint64_t mac_iterations = 0;
 };
 
-// Walks the DER structure PKCS12_create produces (crypto/pkcs8/pkcs8_x509.c)
-// to recover which PBE algorithms and iteration counts were actually used.
 bool ParseExportedAlgorithms(const std::vector<uint8_t> &der,
                              Pkcs12AlgorithmInfo *out) {
-  CBS cbs, pfx;
+  CBS cbs, pfx, auth_safe;
   CBS_init(&cbs, der.data(), der.size());
   uint64_t version = 0;
-  CBS auth_safe;
   if (!CBS_get_asn1(&cbs, &pfx, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pfx, &version) ||
       !CBS_get_asn1(&pfx, &auth_safe, CBS_ASN1_SEQUENCE)) {
     return false;
   }
 
-  // auth_safe: ContentInfo { OID(data), [0]{ OCTET STRING { SEQUENCE OF
-  // ContentInfo } } }
   CBS auth_safe_oid, auth_safe_wrapper, auth_safe_octets, content_infos;
   if (!CBS_get_asn1(&auth_safe, &auth_safe_oid, CBS_ASN1_OBJECT) ||
+      OBJ_cbs2nid(&auth_safe_oid) != NID_pkcs7_data ||
       !CBS_get_asn1(&auth_safe, &auth_safe_wrapper,
                     CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
       !CBS_get_asn1(&auth_safe_wrapper, &auth_safe_octets,
@@ -1013,102 +983,94 @@ bool ParseExportedAlgorithms(const std::vector<uint8_t> &der,
   }
 
   while (CBS_len(&content_infos) > 0) {
-    CBS ci, ci_oid, ci_wrapper;
-    if (!CBS_get_asn1(&content_infos, &ci, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&ci, &ci_oid, CBS_ASN1_OBJECT) ||
-        !CBS_get_asn1(&ci, &ci_wrapper,
+    CBS content_info, content_type, content;
+    if (!CBS_get_asn1(&content_infos, &content_info, CBS_ASN1_SEQUENCE) ||
+        !CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT) ||
+        !CBS_get_asn1(&content_info, &content,
                       CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
       return false;
     }
 
-    if (CBS_mem_equal(&ci_oid, kPkcs7EncryptedDataOid,
-                      sizeof(kPkcs7EncryptedDataOid))) {
-      // Encrypted certs: EncryptedData { version, EncryptedContentInfo {
-      // OID(data), contentEncryptionAlgorithm, [0] IMPLICIT OCTET STRING } }
-      CBS encrypted_data, eci, inner_oid, algorithm, pbe_oid;
+    const int content_nid = OBJ_cbs2nid(&content_type);
+    if (content_nid == NID_pkcs7_encrypted) {
+      CBS encrypted_data, encrypted_content_info, inner_type, algorithm;
       uint64_t encrypted_data_version = 0;
-      if (!CBS_get_asn1(&ci_wrapper, &encrypted_data, CBS_ASN1_SEQUENCE) ||
+      if (!CBS_get_asn1(&content, &encrypted_data, CBS_ASN1_SEQUENCE) ||
           !CBS_get_asn1_uint64(&encrypted_data, &encrypted_data_version) ||
-          !CBS_get_asn1(&encrypted_data, &eci, CBS_ASN1_SEQUENCE) ||
-          !CBS_get_asn1(&eci, &inner_oid, CBS_ASN1_OBJECT) ||
-          !CBS_get_asn1(&eci, &algorithm, CBS_ASN1_SEQUENCE) ||
-          !CBS_get_asn1(&algorithm, &pbe_oid, CBS_ASN1_OBJECT) ||
-          !ReadPbeIterations(&algorithm, &out->cert_iterations)) {
+          !CBS_get_asn1(&encrypted_data, &encrypted_content_info,
+                        CBS_ASN1_SEQUENCE) ||
+          !CBS_get_asn1(&encrypted_content_info, &inner_type,
+                        CBS_ASN1_OBJECT) ||
+          OBJ_cbs2nid(&inner_type) != NID_pkcs7_data ||
+          !CBS_get_asn1(&encrypted_content_info, &algorithm,
+                        CBS_ASN1_SEQUENCE) ||
+          !ReadPbeAlgorithm(&algorithm, &out->cert_pbe_nid,
+                            &out->cert_iterations)) {
         return false;
       }
       out->cert_present = true;
       out->cert_encrypted = true;
-      out->cert_pbe_oid = CBSToVector(&pbe_oid);
       continue;
     }
 
-    if (!CBS_mem_equal(&ci_oid, kPkcs7DataOid, sizeof(kPkcs7DataOid))) {
-      continue;  // Not a shape this tool's -export can produce; ignore.
+    if (content_nid != NID_pkcs7_data) {
+      continue;
     }
 
-    // A plain "data" ContentInfo: either unencrypted CertBag(s) or the
-    // key's SafeContents (one KeyBag or PKCS8ShroudedKeyBag). Both share
-    // this shape, so classify by walking the bags and inspecting each
-    // bag's own OID.
     CBS octets, safe_contents;
-    if (!CBS_get_asn1(&ci_wrapper, &octets, CBS_ASN1_OCTETSTRING) ||
+    if (!CBS_get_asn1(&content, &octets, CBS_ASN1_OCTETSTRING) ||
         !CBS_get_asn1(&octets, &safe_contents, CBS_ASN1_SEQUENCE)) {
       return false;
     }
     while (CBS_len(&safe_contents) > 0) {
-      CBS bag, bag_oid, bag_value;
+      CBS bag, bag_type, bag_value;
       if (!CBS_get_asn1(&safe_contents, &bag, CBS_ASN1_SEQUENCE) ||
-          !CBS_get_asn1(&bag, &bag_oid, CBS_ASN1_OBJECT) ||
+          !CBS_get_asn1(&bag, &bag_type, CBS_ASN1_OBJECT) ||
           !CBS_get_asn1(&bag, &bag_value,
                         CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
         return false;
       }
-      if (CBS_mem_equal(&bag_oid, kKeyBagOid, sizeof(kKeyBagOid))) {
+
+      const int bag_nid = OBJ_cbs2nid(&bag_type);
+      if (bag_nid == NID_keyBag) {
         out->key_present = true;
         out->key_encrypted = false;
-      } else if (CBS_mem_equal(&bag_oid, kPkcs8ShroudedKeyBagOid,
-                               sizeof(kPkcs8ShroudedKeyBagOid))) {
-        CBS epki, algorithm, pbe_oid;
-        if (!CBS_get_asn1(&bag_value, &epki, CBS_ASN1_SEQUENCE) ||
-            !CBS_get_asn1(&epki, &algorithm, CBS_ASN1_SEQUENCE) ||
-            !CBS_get_asn1(&algorithm, &pbe_oid, CBS_ASN1_OBJECT) ||
-            !ReadPbeIterations(&algorithm, &out->key_iterations)) {
+      } else if (bag_nid == NID_pkcs8ShroudedKeyBag) {
+        CBS encrypted_key, algorithm;
+        if (!CBS_get_asn1(&bag_value, &encrypted_key, CBS_ASN1_SEQUENCE) ||
+            !CBS_get_asn1(&encrypted_key, &algorithm, CBS_ASN1_SEQUENCE) ||
+            !ReadPbeAlgorithm(&algorithm, &out->key_pbe_nid,
+                              &out->key_iterations)) {
           return false;
         }
         out->key_present = true;
         out->key_encrypted = true;
-        out->key_pbe_oid = CBSToVector(&pbe_oid);
-      } else if (CBS_mem_equal(&bag_oid, kCertBagOid, sizeof(kCertBagOid))) {
+      } else if (bag_nid == NID_certBag) {
         out->cert_present = true;
         out->cert_encrypted = false;
       }
-      // Else: a bag type this tool's -export never produces; ignore.
     }
   }
 
-  if (CBS_len(&pfx) != 0) {
-    CBS mac_data, digest_info, mac_salt;
-    if (!CBS_get_asn1(&pfx, &mac_data, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&mac_data, &digest_info, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&mac_data, &mac_salt, CBS_ASN1_OCTETSTRING)) {
-      return false;
-    }
-    CBS mac_alg, mac_oid;
-    if (!CBS_get_asn1(&digest_info, &mac_alg, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&mac_alg, &mac_oid, CBS_ASN1_OBJECT)) {
-      return false;
-    }
-    out->mac_present = true;
-    out->mac_digest_oid = CBSToVector(&mac_oid);
-    if (CBS_len(&mac_data) != 0) {
-      if (!CBS_get_asn1_uint64(&mac_data, &out->mac_iterations)) {
-        return false;
-      }
-    } else {
-      out->mac_iterations = 1;  // ASN.1 DEFAULT when omitted.
-    }
+  if (CBS_len(&pfx) == 0) {
+    return true;
   }
-  return true;
+
+  CBS mac_data, digest_info, mac_salt, mac_algorithm, mac_oid;
+  if (!CBS_get_asn1(&pfx, &mac_data, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&mac_data, &digest_info, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&mac_data, &mac_salt, CBS_ASN1_OCTETSTRING) ||
+      !CBS_get_asn1(&digest_info, &mac_algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&mac_algorithm, &mac_oid, CBS_ASN1_OBJECT)) {
+    return false;
+  }
+  out->mac_present = true;
+  out->mac_digest_nid = OBJ_cbs2nid(&mac_oid);
+  if (CBS_len(&mac_data) == 0) {
+    out->mac_iterations = 1;
+    return true;
+  }
+  return CBS_get_asn1_uint64(&mac_data, &out->mac_iterations);
 }
 
 // EVP_PKEY_cmp only compares public key material; marshal both keys to
@@ -1133,38 +1095,6 @@ bool PrivateKeysEqual(EVP_PKEY *a, EVP_PKEY *b) {
   return len_a == len_b && memcmp(der_a, der_b, len_a) == 0;
 }
 
-// Mirrors CreateAndSignX509Certificate (test_util.cc), which only generates
-// RSA -- -export must handle both key types.
-void CreateAndSignP256Certificate(bssl::UniquePtr<X509> &x509,
-                                  bssl::UniquePtr<EVP_PKEY> *pkey_p) {
-  bssl::UniquePtr<EC_KEY> ec_key(
-      EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!ec_key || !pkey || !EC_KEY_generate_key(ec_key.get()) ||
-      !EVP_PKEY_assign_EC_KEY(pkey.get(), ec_key.release())) {
-    return;
-  }
-
-  x509.reset(X509_new());
-  if (!x509 || !X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
-      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * 30L) ||
-      !X509_set_pubkey(x509.get(), pkey.get())) {
-    x509.reset();
-    return;
-  }
-  X509_NAME *subject = X509_get_subject_name(x509.get());
-  if (!X509_NAME_add_entry_by_NID(
-          subject, NID_commonName, MBSTRING_UTF8,
-          reinterpret_cast<const unsigned char *>("P256 Leaf"), -1, -1, 0) ||
-      !X509_set_issuer_name(x509.get(), subject) ||
-      X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
-    x509.reset();
-    return;
-  }
-  if (pkey_p != nullptr) {
-    pkey_p->reset(pkey.release());
-  }
-}
 
 // Writes |key| (optionally PEM-encrypted with |key_password|) and |certs|
 // to |path| as PEM, key-then-certs unless |cert_first|. |key| may be null
@@ -1239,7 +1169,7 @@ class PKCS12ExportTest : public ::testing::Test {
     ASSERT_TRUE(rsa_cert);
     ASSERT_TRUE(rsa_key);
 
-    CreateAndSignP256Certificate(p256_cert, &p256_key);
+    CreateAndSignX509Certificate(p256_cert, &p256_key, EVP_PKEY_EC);
     ASSERT_TRUE(p256_cert);
     ASSERT_TRUE(p256_key);
   }
@@ -1255,27 +1185,23 @@ class PKCS12ExportTest : public ::testing::Test {
     return WritePemBundle(in_path, rsa_key.get(), nullptr, {rsa_cert.get()});
   }
 
-  // Exports (-in in_path plus |extra_args|), decrypts with |out_password|
-  // (via -passout "pass:<out_password>", or |passout_arg| verbatim if
-  // given), and checks the recovered key (full private material, not just
-  // what EVP_PKEY_cmp checks) and certs (in order) match. |expect_key| may
-  // be null to assert no key was exported.
-  void ExpectExportRoundTrips(const args_list_t &extra_args,
-                              const char *out_password, EVP_PKEY *expect_key,
-                              const std::vector<X509 *> &expect_certs,
-                              const char *passout_arg = nullptr) {
-    std::string passout =
-        passout_arg ? passout_arg : std::string("pass:") + out_password;
-    args_list_t args = {"-export", "-in",  in_path, "-passout",
-                        passout,   "-out", out_path};
-    args.insert(args.end(), extra_args.begin(), extra_args.end());
-    ASSERT_EQ(kToolExitSuccess, pkcs12Tool(args));
+  bool MarkOutputKept() {
+    return WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'});
+  }
 
+  void ExpectOutputKept() {
+    EXPECT_EQ("keep", ReadFileToString(out_path));
+    ERR_clear_error();
+  }
+
+  void ExpectImportedContentsMatch(const char *path, const char *password,
+                                   EVP_PKEY *expect_key,
+                                   const std::vector<X509 *> &expect_certs) {
     std::vector<uint8_t> der;
-    ASSERT_TRUE(ReadBytesFromFile(out_path, &der));
+    ASSERT_TRUE(ReadBytesFromFile(path, &der));
     bssl::UniquePtr<EVP_PKEY> key;
     bssl::UniquePtr<STACK_OF(X509)> certs;
-    ASSERT_TRUE(ImportPkcs12(der, out_password, &key, &certs));
+    ASSERT_TRUE(ImportPkcs12(der, password, &key, &certs));
     if (expect_key == nullptr) {
       EXPECT_EQ(nullptr, key.get());
     } else {
@@ -1287,6 +1213,20 @@ class PKCS12ExportTest : public ::testing::Test {
       EXPECT_EQ(0, X509_cmp(sk_X509_value(certs.get(), i), expect_certs[i]))
           << "cert " << i;
     }
+  }
+
+  void ExpectExportRoundTrips(const args_list_t &extra_args,
+                              const char *out_password, EVP_PKEY *expect_key,
+                              const std::vector<X509 *> &expect_certs,
+                              const char *passout_arg = nullptr) {
+    std::string passout =
+        passout_arg ? passout_arg : std::string("pass:") + out_password;
+    args_list_t args = {"-export", "-in",  in_path, "-passout",
+                        passout,   "-out", out_path};
+    args.insert(args.end(), extra_args.begin(), extra_args.end());
+    ASSERT_EQ(kToolExitSuccess, pkcs12Tool(args));
+    ExpectImportedContentsMatch(out_path, out_password, expect_key,
+                                expect_certs);
   }
 
   char in_path[PATH_MAX];
@@ -1380,7 +1320,7 @@ TEST_F(PKCS12ExportTest, NoCertMatchesKeyFailsWithExactMessage) {
   ASSERT_TRUE(unrelated_cert);
   ASSERT_TRUE(
       WritePemBundle(in_path, rsa_key.get(), nullptr, {unrelated_cert.get()}));
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   testing::internal::CaptureStderr();
   int result = pkcs12Tool(
@@ -1388,10 +1328,9 @@ TEST_F(PKCS12ExportTest, NoCertMatchesKeyFailsWithExactMessage) {
   std::string stderr_output = testing::internal::GetCapturedStderr();
 
   EXPECT_EQ(kToolExitFailure, result);
-  // Exact text from OpenSSL_1_1_1w's apps/pkcs12.c.
+  // Exact text from OpenSSL 1.1.1.
   EXPECT_EQ(stderr_output, "No certificate matches private key\n");
-  EXPECT_EQ(ReadFileToString(out_path), "keep");
-  ERR_clear_error();
+  ExpectOutputKept();
 }
 
 TEST_F(PKCS12ExportTest, NokeysAndNocertsFlags) {
@@ -1410,7 +1349,7 @@ TEST_F(PKCS12ExportTest, NokeysAndNocertsFlags) {
 
 TEST_F(PKCS12ExportTest, NothingToExportFails) {
   ASSERT_TRUE(WriteBaselineRsaBundle());
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   for (const args_list_t &flags :
        std::vector<args_list_t>{{"-noout"}, {"-nokeys", "-nocerts"}}) {
@@ -1424,7 +1363,7 @@ TEST_F(PKCS12ExportTest, NothingToExportFails) {
     EXPECT_EQ(kToolExitFailure, result);
     EXPECT_NE(stderr_output.find("Nothing to export"), std::string::npos)
         << stderr_output;
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
+    ExpectOutputKept();
   }
 }
 
@@ -1432,11 +1371,11 @@ TEST_F(PKCS12ExportTest, NothingToExportFails) {
 // -inkey, there is no key to export.
 TEST_F(PKCS12ExportTest, RequiresKeyUnlessNokeys) {
   ASSERT_TRUE(WritePemBundle(in_path, nullptr, nullptr, {rsa_cert.get()}));
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   EXPECT_EQ(kToolExitFailure, pkcs12Tool({"-export", "-in", in_path, "-passout",
                                           "pass:outpw", "-out", out_path}));
-  EXPECT_EQ(ReadFileToString(out_path), "keep");
+  ExpectOutputKept();
 }
 
 // -in and -out may be the same path: the input is fully buffered and
@@ -1446,14 +1385,8 @@ TEST_F(PKCS12ExportTest, SameInputOutputPathSucceeds) {
   ASSERT_EQ(kToolExitSuccess, pkcs12Tool({"-export", "-in", in_path, "-passout",
                                           "pass:outpw", "-out", in_path}));
 
-  std::vector<uint8_t> der;
-  ASSERT_TRUE(ReadBytesFromFile(in_path, &der));
-  bssl::UniquePtr<EVP_PKEY> key;
-  bssl::UniquePtr<STACK_OF(X509)> certs;
-  ASSERT_TRUE(ImportPkcs12(der, "outpw", &key, &certs));
-  EXPECT_TRUE(PrivateKeysEqual(key.get(), rsa_key.get()));
-  ASSERT_EQ(1u, sk_X509_num(certs.get()));
-  EXPECT_EQ(0, X509_cmp(sk_X509_value(certs.get(), 0), rsa_cert.get()));
+  ExpectImportedContentsMatch(in_path, "outpw", rsa_key.get(),
+                              {rsa_cert.get()});
 }
 
 #if !defined(OPENSSL_WINDOWS)
@@ -1484,14 +1417,8 @@ TEST_F(PKCS12ExportTest, CertBeforeKeyViaFileAndStdin) {
   clearerr(stdin);
   ASSERT_EQ(kToolExitSuccess, result);
 
-  std::vector<uint8_t> der;
-  ASSERT_TRUE(ReadBytesFromFile(out_path, &der));
-  bssl::UniquePtr<EVP_PKEY> key;
-  bssl::UniquePtr<STACK_OF(X509)> certs;
-  ASSERT_TRUE(ImportPkcs12(der, "outpw", &key, &certs));
-  EXPECT_TRUE(PrivateKeysEqual(key.get(), rsa_key.get()));
-  ASSERT_EQ(1u, sk_X509_num(certs.get()));
-  EXPECT_EQ(0, X509_cmp(sk_X509_value(certs.get(), 0), rsa_cert.get()));
+  ExpectImportedContentsMatch(out_path, "outpw", rsa_key.get(),
+                              {rsa_cert.get()});
 }
 #endif  // !OPENSSL_WINDOWS
 
@@ -1508,11 +1435,11 @@ TEST_F(PKCS12ExportTest, MalformedCertAfterValidCertFails) {
                       "-----END CERTIFICATE-----\n"),
               0);
   }
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   EXPECT_EQ(kToolExitFailure, pkcs12Tool({"-export", "-in", in_path, "-passout",
                                           "pass:outpw", "-out", out_path}));
-  EXPECT_EQ(ReadFileToString(out_path), "keep");
+  ExpectOutputKept();
 }
 
 #if !defined(OPENSSL_WINDOWS)
@@ -1539,12 +1466,8 @@ TEST_F(PKCS12ExportTest, StdoutOutput) {
     close(old_stdout);
 
     EXPECT_EQ(kToolExitSuccess, result);
-    std::vector<uint8_t> der;
-    ASSERT_TRUE(ReadBytesFromFile(redirect_path, &der));
-    bssl::UniquePtr<EVP_PKEY> key;
-    bssl::UniquePtr<STACK_OF(X509)> certs;
-    ASSERT_TRUE(ImportPkcs12(der, "outpw", &key, &certs));
-    EXPECT_TRUE(PrivateKeysEqual(key.get(), rsa_key.get()));
+    ExpectImportedContentsMatch(redirect_path, "outpw", rsa_key.get(),
+                                {rsa_cert.get()});
     RemoveFile(redirect_path);
   }
   {
@@ -1583,14 +1506,14 @@ TEST_F(PKCS12ExportTest, EncryptedCertificatesDoNotPrompt) {
       EVP_aes_256_cbc(), reinterpret_cast<const unsigned char *>("certpw"), 6,
       nullptr, nullptr));
   bio.reset();
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
   testing::internal::CaptureStderr();
   int result = pkcs12Tool({"-export", "-in", in_path, "-inkey", inkey_path,
                            "-out", out_path, "-passout", "pass:outpw"});
   std::string errors = testing::internal::GetCapturedStderr();
   EXPECT_EQ(kToolExitFailure, result);
   EXPECT_EQ(std::string::npos, errors.find("Enter PEM pass phrase"));
-  EXPECT_EQ("keep", ReadFileToString(out_path));
+  ExpectOutputKept();
   ExpectExportRoundTrips({"-inkey", inkey_path, "-passin", "pass:certpw"},
                          "outpw", rsa_key.get(), {rsa_cert.get()});
 }
@@ -1647,13 +1570,12 @@ TEST_F(PKCS12ExportTest, LastScalarOptionWins) {
 TEST_F(PKCS12ExportTest, PasswordDoesNotActAsPassin) {
   ASSERT_TRUE(
       WritePemBundle(in_path, rsa_key.get(), "keypassword", {rsa_cert.get()}));
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   EXPECT_EQ(kToolExitFailure,
             pkcs12Tool({"-export", "-in", in_path, "-password",
                         "pass:keypassword", "-out", out_path}));
-  EXPECT_EQ(ReadFileToString(out_path), "keep");
-  ERR_clear_error();
+  ExpectOutputKept();
 
   EXPECT_EQ(kToolExitSuccess, pkcs12Tool({"-export", "-in", in_path, "-passin",
                                           "pass:keypassword", "-password",
@@ -1700,15 +1622,13 @@ TEST_F(PKCS12ExportTest, EncryptedInputKeyRequiresPassin) {
     args_list_t base = {"-export",    "-in",  in_path, "-passout",
                         "pass:outpw", "-out", out_path};
     base.insert(base.end(), extra.begin(), extra.end());
-    ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+    ASSERT_TRUE(MarkOutputKept());
     EXPECT_EQ(kToolExitFailure, pkcs12Tool(base));  // Default-empty -passin.
-    EXPECT_EQ("keep", ReadFileToString(out_path));
-    ERR_clear_error();
+    ExpectOutputKept();
     args_list_t wrong = base;
     wrong.insert(wrong.end(), {"-passin", "pass:wrong"});
     EXPECT_EQ(kToolExitFailure, pkcs12Tool(wrong));
-    EXPECT_EQ("keep", ReadFileToString(out_path));
-    ERR_clear_error();
+    ExpectOutputKept();
 
     extra.insert(extra.end(), {"-passin", "pass:keypw"});
     ExpectExportRoundTrips(extra, "outpw", rsa_key.get(), {rsa_cert.get()});
@@ -1755,7 +1675,7 @@ TEST_F(PKCS12ExportTest, PasswordSourcesFileEnvAndFd) {
 // Every kind of export failure must leave a pre-existing -out untouched, and
 // a validation failure must be caught before -out is even opened.
 TEST_F(PKCS12ExportTest, FailedExportLeavesExistingOutfileUnchanged) {
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   {
     SCOPED_TRACE("bad key: -in is not valid PEM");
@@ -1764,8 +1684,7 @@ TEST_F(PKCS12ExportTest, FailedExportLeavesExistingOutfileUnchanged) {
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:x",
                           "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
-    ERR_clear_error();
+    ExpectOutputKept();
   }
   {
     SCOPED_TRACE("bad password: encrypted key, -passin omitted");
@@ -1774,15 +1693,14 @@ TEST_F(PKCS12ExportTest, FailedExportLeavesExistingOutfileUnchanged) {
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:x",
                           "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
-    ERR_clear_error();
+    ExpectOutputKept();
   }
   {
     SCOPED_TRACE("bad path: -in does not exist");
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", "/nonexistent/path/to/file.pem",
                           "-passout", "pass:x", "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
+    ExpectOutputKept();
   }
   {
     SCOPED_TRACE("bad PBE: unrecognized -certpbe name");
@@ -1790,16 +1708,14 @@ TEST_F(PKCS12ExportTest, FailedExportLeavesExistingOutfileUnchanged) {
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:x",
                           "-certpbe", "not-a-real-pbe", "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
-    ERR_clear_error();
+    ExpectOutputKept();
   }
   {
     SCOPED_TRACE("unsupported: recognized but unsupported PBES2 cipher");
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:x",
                           "-keypbe", "aes-256-cbc", "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
-    ERR_clear_error();
+    ExpectOutputKept();
   }
   {
     SCOPED_TRACE("validation failure: does not even create -out");
@@ -1825,21 +1741,20 @@ TEST_F(PKCS12ExportTest, DefaultUsesLegacyAlgorithmsAndIteration2048) {
 
   ASSERT_TRUE(algs.cert_present);
   EXPECT_TRUE(algs.cert_encrypted);
-  EXPECT_EQ(OidBytes(kPbeSha1Rc2_40Oid), algs.cert_pbe_oid);
+  EXPECT_EQ(NID_pbe_WithSHA1And40BitRC2_CBC, algs.cert_pbe_nid);
   EXPECT_EQ(2048u, algs.cert_iterations);
 
   ASSERT_TRUE(algs.key_present);
   EXPECT_TRUE(algs.key_encrypted);
-  EXPECT_EQ(OidBytes(kPbeSha1_3DesOid), algs.key_pbe_oid);
+  EXPECT_EQ(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, algs.key_pbe_nid);
   EXPECT_EQ(2048u, algs.key_iterations);
 
   ASSERT_TRUE(algs.mac_present);
-  EXPECT_EQ(OidBytes(kSha1Oid), algs.mac_digest_oid);
+  EXPECT_EQ(NID_sha1, algs.mac_digest_nid);
   EXPECT_EQ(2048u, algs.mac_iterations);
 }
 
-// -descert and -certpbe/-keypbe select the cert/key PBE (accepting only
-// "PBE-SHA1-3DES", "PBE-SHA1-RC2-40", or "NONE"); when -descert and
+// -descert and -certpbe/-keypbe select the cert/key PBE; when -descert and
 // -certpbe conflict, whichever is last on the command line wins.
 TEST_F(PKCS12ExportTest, PbeSelectionAndOrderingMatchesFlags) {
   ASSERT_TRUE(WriteBaselineRsaBundle());
@@ -1847,36 +1762,47 @@ TEST_F(PKCS12ExportTest, PbeSelectionAndOrderingMatchesFlags) {
     const char *trace;
     args_list_t flags;
     bool cert_encrypted;
-    std::vector<uint8_t> cert_oid;
+    int cert_nid;
     bool key_encrypted;
-    std::vector<uint8_t> key_oid;
+    int key_nid;
   };
   const Case cases[] = {
       {"descert",
        {"-descert"},
        true,
-       OidBytes(kPbeSha1_3DesOid),
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
        true,
-       OidBytes(kPbeSha1_3DesOid)},
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC},
       {"explicit swap",
        {"-certpbe", "PBE-SHA1-3DES", "-keypbe", "PBE-SHA1-RC2-40"},
        true,
-       OidBytes(kPbeSha1_3DesOid),
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
        true,
-       OidBytes(kPbeSha1Rc2_40Oid)},
-      {"none", {"-certpbe", "NONE", "-keypbe", "NONE"}, false, {}, false, {}},
+       NID_pbe_WithSHA1And40BitRC2_CBC},
+      {"rc4-128, as accepted by OpenSSL 1.1.1",
+       {"-certpbe", "PBE-SHA1-RC4-128", "-keypbe", "PBE-SHA1-RC4-128"},
+       true,
+       NID_pbe_WithSHA1And128BitRC4,
+       true,
+       NID_pbe_WithSHA1And128BitRC4},
+      {"none",
+       {"-certpbe", "NONE", "-keypbe", "NONE"},
+       false,
+       NID_undef,
+       false,
+       NID_undef},
       {"descert then certpbe: certpbe wins",
        {"-descert", "-certpbe", "PBE-SHA1-RC2-40"},
        true,
-       OidBytes(kPbeSha1Rc2_40Oid),
+       NID_pbe_WithSHA1And40BitRC2_CBC,
        true,
-       OidBytes(kPbeSha1_3DesOid)},
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC},
       {"certpbe then descert: descert wins",
        {"-certpbe", "PBE-SHA1-RC2-40", "-descert"},
        true,
-       OidBytes(kPbeSha1_3DesOid),
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
        true,
-       OidBytes(kPbeSha1_3DesOid)},
+       NID_pbe_WithSHA1And3_Key_TripleDES_CBC},
   };
   for (const auto &c : cases) {
     SCOPED_TRACE(c.trace);
@@ -1892,28 +1818,22 @@ TEST_F(PKCS12ExportTest, PbeSelectionAndOrderingMatchesFlags) {
     EXPECT_EQ(c.cert_encrypted, algs.cert_encrypted);
     EXPECT_EQ(c.key_encrypted, algs.key_encrypted);
     if (c.cert_encrypted) {
-      EXPECT_EQ(c.cert_oid, algs.cert_pbe_oid);
+      EXPECT_EQ(c.cert_nid, algs.cert_pbe_nid);
     }
     if (c.key_encrypted) {
-      EXPECT_EQ(c.key_oid, algs.key_pbe_oid);
+      EXPECT_EQ(c.key_nid, algs.key_pbe_nid);
     }
 
-    // Content round-trips regardless of which PBE (or none) was used.
-    bssl::UniquePtr<EVP_PKEY> key;
-    bssl::UniquePtr<STACK_OF(X509)> certs;
-    ASSERT_TRUE(ImportPkcs12(der, "outpw", &key, &certs));
-    EXPECT_TRUE(PrivateKeysEqual(key.get(), rsa_key.get()));
-    ASSERT_EQ(1u, sk_X509_num(certs.get()));
-    EXPECT_EQ(0, X509_cmp(sk_X509_value(certs.get(), 0), rsa_cert.get()));
+    ExpectImportedContentsMatch(out_path, "outpw", rsa_key.get(),
+                                {rsa_cert.get()});
   }
 }
 
-// A totally unknown -certpbe/-keypbe name, a recognized-but-unsupported
-// PBES2 cipher name (AWS-LC's PKCS12_create has no PBES2/AES support), and
-// an out-of-range -iter must all fail rather than silently falling back.
+// Unknown or lowercase PBE names, PBEs PKCS12_create cannot produce, and
+// out-of-range values must fail rather than silently falling back.
 TEST_F(PKCS12ExportTest, InvalidFlagValuesFail) {
   ASSERT_TRUE(WriteBaselineRsaBundle());
-  ASSERT_TRUE(WriteBytesToFile(out_path, {'k', 'e', 'e', 'p'}));
+  ASSERT_TRUE(MarkOutputKept());
 
   struct Case {
     const char *flag;
@@ -1923,6 +1843,8 @@ TEST_F(PKCS12ExportTest, InvalidFlagValuesFail) {
       {"-certpbe", "not-a-real-pbe-name"},
       {"-certpbe", "aes-256-cbc"},
       {"-keypbe", "aes-128-cbc"},
+      {"-keypbe", "pbe-sha1-3des"},
+      {"-keypbe", "PBE-SHA1-2DES"},
       {"-iter", "0"},
       {"-iter", "-5"},
       {"-iter", "not-a-number"},
@@ -1941,8 +1863,7 @@ TEST_F(PKCS12ExportTest, InvalidFlagValuesFail) {
     EXPECT_EQ(kToolExitFailure,
               pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:outpw",
                           c.flag, c.value, "-out", out_path}));
-    EXPECT_EQ(ReadFileToString(out_path), "keep");
-    ERR_clear_error();
+    ExpectOutputKept();
   }
 }
 
@@ -2056,8 +1977,8 @@ TEST_F(PKCS12ExportTest, LegacyIsNoOpForExport) {
   ASSERT_TRUE(ParseExportedAlgorithms(der, &algs));
   ASSERT_TRUE(ParseExportedAlgorithms(der_legacy, &algs_legacy));
 
-  EXPECT_EQ(algs.cert_pbe_oid, algs_legacy.cert_pbe_oid);
-  EXPECT_EQ(algs.key_pbe_oid, algs_legacy.key_pbe_oid);
+  EXPECT_EQ(algs.cert_pbe_nid, algs_legacy.cert_pbe_nid);
+  EXPECT_EQ(algs.key_pbe_nid, algs_legacy.key_pbe_nid);
   EXPECT_EQ(algs.cert_iterations, algs_legacy.cert_iterations);
   EXPECT_EQ(algs.key_iterations, algs_legacy.key_iterations);
   EXPECT_EQ(algs.mac_iterations, algs_legacy.mac_iterations);

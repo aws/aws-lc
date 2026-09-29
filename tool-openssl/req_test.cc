@@ -7,6 +7,7 @@
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <string.h>
+#include <cstdarg>
 #if defined(OPENSSL_WINDOWS)
 #include <direct.h>
 #include <io.h>
@@ -53,61 +54,72 @@ static std::string DescribeNIDs(const std::set<int> &nids) {
   return out.empty() ? "<none>" : out;
 }
 
+static bool WriteConfig(const char *path, const char *format, ...)
+    OPENSSL_PRINTF_FORMAT_FUNC(2, 3);
+
+static bool WriteConfig(const char *path, const char *format, ...) {
+  ScopedFILE config_file(fopen(path, "w"));
+  if (!config_file) {
+    return false;
+  }
+  va_list args{};
+  va_start(args, format);
+  const int written = vfprintf(config_file.get(), format, args);
+  va_end(args);
+  return written > 0;
+}
+
 // authorityKeyIdentifier stays in the signing-time section because a CSR has
 // no issuer.
 static void WriteExtensionRoutingConfig(const char *path, const char *cn) {
-  ScopedFILE config_file(fopen(path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "default_bits       = 2048\n"
-          "distinguished_name = req_distinguished_name\n"
-          "x509_extensions    = v3_ca\n"
-          "req_extensions     = v3_csr\n"
-          "prompt             = no\n"
-          "\n"
-          "[ req_distinguished_name ]\n"
-          "CN = %s\n"
-          "\n"
-          "[ v3_csr ]\n"
-          "subjectAltName   = email:test@example.com\n"
-          "keyUsage         = digitalSignature\n"
-          "extendedKeyUsage = codeSigning\n"
-          "\n"
-          "[ v3_req ]\n"
-          "subjectAltName         = email:test@example.com\n"
-          "authorityKeyIdentifier = keyid,issuer\n"
-          "keyUsage               = digitalSignature\n"
-          "extendedKeyUsage       = codeSigning\n"
-          "\n"
-          "[ v3_san_only ]\n"
-          "subjectAltName = DNS:san-only.example.com\n"
-          "\n"
-          "[ v3_ca ]\n"
-          "subjectKeyIdentifier   = hash\n"
-          "authorityKeyIdentifier = keyid:always,issuer:always\n"
-          "basicConstraints       = critical, CA:true\n"
-          "keyUsage               = critical, digitalSignature, cRLSign, "
-          "keyCertSign\n",
-          cn);
+  ASSERT_TRUE(WriteConfig(
+      path,
+      "[ req ]\n"
+      "default_bits       = 2048\n"
+      "distinguished_name = req_distinguished_name\n"
+      "x509_extensions    = v3_ca\n"
+      "req_extensions     = v3_csr\n"
+      "prompt             = no\n"
+      "\n"
+      "[ req_distinguished_name ]\n"
+      "CN = %s\n"
+      "\n"
+      "[ v3_csr ]\n"
+      "subjectAltName   = email:test@example.com\n"
+      "keyUsage         = digitalSignature\n"
+      "extendedKeyUsage = codeSigning\n"
+      "\n"
+      "[ v3_req ]\n"
+      "subjectAltName         = email:test@example.com\n"
+      "authorityKeyIdentifier = keyid,issuer\n"
+      "keyUsage               = digitalSignature\n"
+      "extendedKeyUsage       = codeSigning\n"
+      "\n"
+      "[ v3_san_only ]\n"
+      "subjectAltName = DNS:san-only.example.com\n"
+      "\n"
+      "[ v3_ca ]\n"
+      "subjectKeyIdentifier   = hash\n"
+      "authorityKeyIdentifier = keyid:always,issuer:always\n"
+      "basicConstraints       = critical, CA:true\n"
+      "keyUsage               = critical, digitalSignature, cRLSign, "
+      "keyCertSign\n",
+      cn));
 }
 
 static void WriteBatchPrefixedDNConfig(const char *path) {
-  ScopedFILE config_file(fopen(path, "w"));
-  ASSERT_TRUE(config_file);
-  ASSERT_GT(fprintf(config_file.get(),
-                    "[req]\ndistinguished_name = dn\n"
-                    "[dn]\n"
-                    "CN = Common Name\nCN_default = prefixes.example\n"
-                    "0.organizationName = Organization\n"
-                    "0.organizationName_default = Example Corp\n"
-                    "1.organizationalUnitName = First Unit\n"
-                    "1.organizationalUnitName_default = Engineering\n"
-                    "2.OU = Second Unit\n2.OU_default = Wrong default\n"
-                    "2.OU_value = Security\n"
-                    "organizationName_default = Wrong organization\n"
-                    "OU_default = Wrong unit\n"),
-            0);
+  ASSERT_TRUE(WriteConfig(path,
+                          "[req]\ndistinguished_name = dn\n"
+                          "[dn]\n"
+                          "CN = Common Name\nCN_default = prefixes.example\n"
+                          "0.organizationName = Organization\n"
+                          "0.organizationName_default = Example Corp\n"
+                          "1.organizationalUnitName = First Unit\n"
+                          "1.organizationalUnitName_default = Engineering\n"
+                          "2.OU = Second Unit\n2.OU_default = Wrong default\n"
+                          "2.OU_value = Security\n"
+                          "organizationName_default = Wrong organization\n"
+                          "OU_default = Wrong unit\n"));
 }
 
 // Returns a file that reads as immediately at EOF, standing in for a closed
@@ -947,10 +959,7 @@ TEST_F(ReqTest, StdoutOutput) {
 
 // -------------------- -batch Tests --------------------------------------
 
-// -subj bypasses subject prompting/defaults entirely, so -batch must not
-// change anything: OpenSSL's -subj/fsubj check precedes the no_prompt/batch
-// branch entirely (verified against apps/req.c in tags openssl-3.0.16 and
-// OpenSSL_1_1_1w).
+// -subj bypasses subject prompting, so -batch has no effect.
 TEST_F(ReqTest, BatchNoOpWithSubj) {
   args_list_t no_batch_args = {"-new",     "-newkey",
                                "rsa:2048", "-nodes",
@@ -984,9 +993,7 @@ TEST_F(ReqTest, BatchNoOpWithSubj) {
   RemoveFile(csr_path_batch);
 }
 
-// -batch only changes subject/attribute prompting; an explicit -passin
-// stdin is a separate request (unrelated to the subject-building code path
-// above) and must still read its password.
+// -batch does not suppress an explicit -passin stdin read.
 TEST_F(ReqTest, BatchDoesNotAffectPassinStdin) {
   char pass_input_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(pass_input_path), 0u);
@@ -1016,25 +1023,20 @@ TEST_F(ReqTest, BatchDoesNotAffectPassinStdin) {
   RemoveFile(pass_input_path);
 }
 
-// Mirrors a ServerCerts-style config: prompt=no routes through the existing
-// (unchanged) no-prompt path both with and without -batch, since -batch only
-// affects prompting, never the prompt=no/auto_info() path upstream.
+// prompt=no already bypasses prompting, so -batch has no effect.
 TEST_F(ReqTest, BatchNoOpWithPromptNoConfig) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name=req_distinguished_name\n"
-          "prompt=no\n"
-          "default_md=sha256\n"
-          "\n"
-          "[req_distinguished_name]\n"
-          "C=US\n"
-          "ST=Washington\n"
-          "L=Seattle\n"
-          "O=Amazon.com\n"
-          "CN=server.example\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name=req_distinguished_name\n"
+                          "prompt=no\n"
+                          "default_md=sha256\n"
+                          "\n"
+                          "[req_distinguished_name]\n"
+                          "C=US\n"
+                          "ST=Washington\n"
+                          "L=Seattle\n"
+                          "O=Amazon.com\n"
+                          "CN=server.example\n"));
 
   args_list_t no_batch_args = {
       "-config",  config_path, "-new",          "-x509",  "-newkey",
@@ -1063,11 +1065,7 @@ TEST_F(ReqTest, BatchNoOpWithPromptNoConfig) {
       DecryptPrivateKey(key_path_batch, nullptr));
   ASSERT_TRUE(key_batch);
 
-  // Semantic equivalence: identical subject/issuer DN and validity window.
-  // The keys/signatures necessarily differ, since each run generates a fresh
-  // RSA key; instead confirm each certificate's embedded public key is the
-  // one that actually signed it (i.e. is internally consistent with its own
-  // freshly-generated private key).
+  // Fresh keys and signatures differ, but certificate semantics must match.
   EXPECT_EQ(0, X509_NAME_cmp(X509_get_subject_name(cert_no_batch.get()),
                              X509_get_subject_name(cert_batch.get())));
   EXPECT_EQ(0, X509_NAME_cmp(X509_get_issuer_name(cert_no_batch.get()),
@@ -1082,44 +1080,31 @@ TEST_F(ReqTest, BatchNoOpWithPromptNoConfig) {
   RemoveFile(key_path_batch);
 }
 
-// With a config that does not set prompt=no, subject fields would normally
-// be interactively prompted. -batch must resolve them from
-// "<field>_value"/"<field>_default" (never the bare "<field>" key, which is
-// a prompt label, not a value), but -- like OpenSSL -- only for fields the
-// config mentions by their bare name; a "_default" with no such base entry
-// (stateOrProvinceName here) must not appear. Also verifies -batch never
-// reads stdin while building the request (separate from an explicit
-// -passin/-passout stdin), by pointing stdin at an immediately-EOF source
-// and confirming the non-batch call fails (hitting that EOF) while -batch
-// succeeds.
+// Batch mode uses _value, then _default, and omits unconfigured fields
+// without reading stdin.
 TEST_F(ReqTest, BatchUsesConfigValueAndDefaultOmitsOthers) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "countryName = Country Name (2 letter code)\n"
-          "countryName_default = AU\n"
-          "stateOrProvinceName_default = Washington\n"
-          "organizationName = Organization Name\n"
-          "commonName = Common Name\n"
-          "commonName_value = batch.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "countryName = Country Name (2 letter code)\n"
+                          "countryName_default = AU\n"
+                          "stateOrProvinceName_default = Washington\n"
+                          "organizationName = Organization Name\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = batch.example.com\n"));
 
   ScopedFILE devnull = OpenDevNullForReading();
   ASSERT_TRUE(devnull);
   ScopedStdinRedirect redirect(devnull.get());
   ASSERT_TRUE(redirect.ok());
 
-  // Without -batch, the redirected-to-EOF stdin read fails, so the request
-  // cannot be built.
+  // Without -batch, prompting reaches EOF.
   args_list_t no_batch_args = {"-new", "-config", config_path, "-out",
                                csr_path};
   EXPECT_EQ(kToolExitFailure, reqTool(no_batch_args));
 
-  // With -batch, the same config succeeds without reading stdin to build
-  // the request.
+  // With -batch, the same config does not read stdin.
   char csr_path_batch[PATH_MAX];
   ASSERT_GT(createTempFILEpath(csr_path_batch), 0u);
   args_list_t batch_args = {"-new",   "-config", config_path,
@@ -1131,11 +1116,7 @@ TEST_F(ReqTest, BatchUsesConfigValueAndDefaultOmitsOthers) {
   X509_NAME *name = X509_REQ_get_subject_name(csr.get());
   ASSERT_TRUE(name);
 
-  // organizationName has neither _value nor _default: omitted.
-  // stateOrProvinceName has a _default but no base "stateOrProvinceName"
-  // entry, so OpenSSL never visits it either: also omitted. countryName
-  // falls back to its config default; commonName uses its explicit
-  // override.
+  // Only base entries are visited; _default alone does not add a field.
   EXPECT_EQ(2, X509_NAME_entry_count(name));
   EXPECT_EQ(-1, X509_NAME_get_index_by_NID(name, NID_organizationName, -1));
   EXPECT_EQ(-1, X509_NAME_get_index_by_NID(name, NID_stateOrProvinceName, -1));
@@ -1188,8 +1169,8 @@ TEST_F(ReqTest, BatchWithoutConfigUsesBuiltinDefaults) {
   EXPECT_STREQ("Internet Widgits Pty Ltd", buf);
   EXPECT_EQ(-1, X509_NAME_get_index_by_NID(name, NID_commonName, -1));
   // The default extensionRequest is independent of prompted attributes.
-  EXPECT_LT(X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_challengePassword, -1),
-            0);
+  EXPECT_LT(
+      X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_challengePassword, -1), 0);
   EXPECT_LT(X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_unstructuredName, -1),
             0);
 }
@@ -1198,17 +1179,14 @@ TEST_F(ReqTest, BatchWithoutConfigUsesBuiltinDefaults) {
 // name, never a long/short alias: a config defining only "CN" (not
 // "commonName") must not pick up an unrelated "commonName_default".
 TEST_F(ReqTest, BatchUsesExactEntryNameNotAlias) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "CN = Common Name\n"
-          "commonName_default = should-not-be-used-for-CN\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "CN = Common Name\n"
+                          "commonName_default = should-not-be-used-for-CN\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"));
 
   args_list_t args = {"-new",      "-key",   input_key_path, "-config",
                       config_path, "-batch", "-out",         csr_path};
@@ -1219,9 +1197,7 @@ TEST_F(ReqTest, BatchUsesExactEntryNameNotAlias) {
   X509_NAME *name = X509_REQ_get_subject_name(csr.get());
   ASSERT_TRUE(name);
 
-  // "CN"'s own "CN_default"/"CN_value" are unset, so it is omitted --
-  // "commonName_default" belongs to a different (absent) "commonName"
-  // entry and must not be borrowed for the "CN" line.
+  // Metadata for commonName must not be borrowed by the CN entry.
   EXPECT_EQ(1, X509_NAME_entry_count(name));
   EXPECT_EQ(-1, X509_NAME_get_index_by_NID(name, NID_commonName, -1));
 
@@ -1235,19 +1211,16 @@ TEST_F(ReqTest, BatchUsesExactEntryNameNotAlias) {
 // order (C, ST, L, O, OU, CN, emailAddress): OpenSSL iterates the DN
 // section's actual entries.
 TEST_F(ReqTest, BatchFieldOrderFollowsConfigOrder) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "commonName = Common Name\n"
-          "commonName_value = order.example.com\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n"
-          "organizationName = Organization Name\n"
-          "organizationName_value = Example Corp\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = order.example.com\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"
+                          "organizationName = Organization Name\n"
+                          "organizationName_value = Example Corp\n"));
 
   args_list_t args = {"-new",   "-config", config_path,
                       "-batch", "-out",    csr_path};
@@ -1299,16 +1272,13 @@ TEST_F(ReqTest, BatchPrefixedFieldsPreserveValuesAndOrder) {
 // An empty "_value" behaves like blank input and falls back to "_default",
 // rather than producing an empty attribute value.
 TEST_F(ReqTest, BatchEmptyValueFallsBackToDefault) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "commonName = Common Name\n"
-          "commonName_value =\n"
-          "commonName_default = fallback.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value =\n"
+                          "commonName_default = fallback.example.com\n"));
 
   args_list_t args = {"-new",   "-config", config_path,
                       "-batch", "-out",    csr_path};
@@ -1326,18 +1296,15 @@ TEST_F(ReqTest, BatchEmptyValueFallsBackToDefault) {
 // A "_value" of "." omits the field even when a "_default" is present --
 // unlike a "_default" of ".", which is literal (next test).
 TEST_F(ReqTest, BatchDotValueOmitsField) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "commonName = Common Name\n"
-          "commonName_value = .\n"
-          "commonName_default = should-not-appear.example.com\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = .\n"
+                          "commonName_default = should-not-appear.example.com\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"));
 
   args_list_t args = {"-new",   "-config", config_path,
                       "-batch", "-out",    csr_path};
@@ -1355,17 +1322,14 @@ TEST_F(ReqTest, BatchDotValueOmitsField) {
 // only applies to raw (interactive or "_value") input, not a substituted
 // default.
 TEST_F(ReqTest, BatchDotDefaultIsLiteral) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "commonName = Common Name\n"
-          "commonName_default = .\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_default = .\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"));
 
   args_list_t args = {"-new",   "-config", config_path,
                       "-batch", "-out",    csr_path};
@@ -1384,15 +1348,12 @@ TEST_F(ReqTest, BatchDotDefaultIsLiteral) {
 // distinguished_name, this must not fail and must not fall back to this
 // tool's built-in attribute defaults.
 TEST_F(ReqTest, BatchNoAttributesSectionWithConfigOmitsAttributes) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name = req_dn\n"
-          "[req_dn]\n"
-          "commonName = Common Name\n"
-          "commonName_value = attrs.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = attrs.example.com\n"));
 
   args_list_t args = {"-new",   "-config", config_path,
                       "-batch", "-out",    csr_path};
@@ -1400,8 +1361,8 @@ TEST_F(ReqTest, BatchNoAttributesSectionWithConfigOmitsAttributes) {
 
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
-  EXPECT_LT(X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_challengePassword, -1),
-            0);
+  EXPECT_LT(
+      X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_challengePassword, -1), 0);
   EXPECT_LT(X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_unstructuredName, -1),
             0);
 }
@@ -1409,14 +1370,11 @@ TEST_F(ReqTest, BatchNoAttributesSectionWithConfigOmitsAttributes) {
 TEST_F(ReqTest, BatchConfiguredAttributesSectionMustExist) {
   for (bool section_exists : {false, true}) {
     SCOPED_TRACE(section_exists);
-    ScopedFILE config_file(fopen(config_path, "w"));
-    ASSERT_TRUE(config_file);
-    ASSERT_GT(fprintf(config_file.get(),
-                      "[req]\ndistinguished_name = dn\nattributes = attrs\n"
-                      "[dn]\nCN = Common Name\nCN_default = attrs.example\n%s",
-                      section_exists ? "[attrs]\n" : ""),
-              0);
-    config_file.reset();
+    ASSERT_TRUE(
+        WriteConfig(config_path,
+                    "[req]\ndistinguished_name = dn\nattributes = attrs\n"
+                    "[dn]\nCN = Common Name\nCN_default = attrs.example\n%s",
+                    section_exists ? "[attrs]\n" : ""));
     ScopedFILE output(fopen(csr_path, "w"));
     ASSERT_TRUE(output);
     ASSERT_GT(fprintf(output.get(), "keep"), 0);
@@ -1442,20 +1400,17 @@ TEST_F(ReqTest, BatchConfiguredAttributesSectionMustExist) {
 }
 
 TEST_F(ReqTest, BatchSelfSignedUsesDefaultsWithoutPrompting) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  ASSERT_GT(fprintf(config_file.get(),
-                    "[req]\ndistinguished_name=dn\n"
-                    "[dn]\nCN=Common name\nCN_default=batch.example\n"
-                    "O=Organization\n"), 0);
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\ndistinguished_name=dn\n"
+                          "[dn]\nCN=Common name\nCN_default=batch.example\n"
+                          "O=Organization\n"));
   ScopedFILE devnull = OpenDevNullForReading();
   ASSERT_TRUE(devnull);
   ScopedStdinRedirect redirect(devnull.get());
   ASSERT_TRUE(redirect.ok());
   ASSERT_EQ(kToolExitSuccess,
-            reqTool({"-new", "-x509", "-batch", "-config", config_path,
-                     "-key", input_key_path, "-out", cert_path}));
+            reqTool({"-new", "-x509", "-batch", "-config", config_path, "-key",
+                     input_key_path, "-out", cert_path}));
   auto cert = LoadPEMCertificate(cert_path);
   ASSERT_TRUE(cert);
   auto subject = X509_get_subject_name(cert.get());
@@ -1470,10 +1425,7 @@ TEST_F(ReqTest, BatchSelfSignedUsesDefaultsWithoutPrompting) {
 // OpenSSL's "No template, please set one up." -- it must not fall back to
 // this tool's built-in defaults, which only apply with no -config at all.
 TEST_F(ReqTest, BatchConfigWithoutDnSectionFails) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(), "[req]\ndefault_md = sha256\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path, "[req]\ndefault_md = sha256\n"));
 
   args_list_t args = {"-new",         "-config", config_path, "-key",
                       input_key_path, "-batch",  "-out",      csr_path};
@@ -1485,23 +1437,21 @@ TEST_F(ReqTest, BatchConfigWithoutDnSectionFails) {
 TEST_F(ReqTest, BatchMinMaxLengthConstraints) {
   auto write_config = [&](const char *default_value, const char *min,
                           const char *max) {
-    ScopedFILE config_file(fopen(config_path, "w"));
-    ASSERT_TRUE(config_file);
-    fprintf(config_file.get(),
-            "[req]\n"
-            "distinguished_name = req_dn\n"
-            "[req_dn]\n"
-            "commonName = Common Name\n"
-            "commonName_default = %s\n"
-            "commonName_min = %s\n"
-            "commonName_max = %s\n",
-            default_value, min, max);
+    return WriteConfig(config_path,
+                       "[req]\n"
+                       "distinguished_name = req_dn\n"
+                       "[req_dn]\n"
+                       "commonName = Common Name\n"
+                       "commonName_default = %s\n"
+                       "commonName_min = %s\n"
+                       "commonName_max = %s\n",
+                       default_value, min, max);
   };
   args_list_t args = {"-new",         "-config", config_path, "-key",
                       input_key_path, "-batch",  "-out",      csr_path};
 
   // Too short and too long, with OpenSSL's req_check_len() messages.
-  write_config("ab", "3", "10");
+  ASSERT_TRUE(write_config("ab", "3", "10"));
   testing::internal::CaptureStderr();
   EXPECT_EQ(kToolExitFailure, reqTool(args));
   std::string errors = testing::internal::GetCapturedStderr();
@@ -1509,7 +1459,7 @@ TEST_F(ReqTest, BatchMinMaxLengthConstraints) {
             errors.find("String too short, must be at least 3 bytes long"))
       << errors;
 
-  write_config("abcdefghijk", "3", "10");
+  ASSERT_TRUE(write_config("abcdefghijk", "3", "10"));
   testing::internal::CaptureStderr();
   EXPECT_EQ(kToolExitFailure, reqTool(args));
   errors = testing::internal::GetCapturedStderr();
@@ -1517,7 +1467,7 @@ TEST_F(ReqTest, BatchMinMaxLengthConstraints) {
             errors.find("String too long, must be at most 10 bytes long"))
       << errors;
 
-  write_config("abc", "3", "10");  // Within bounds.
+  ASSERT_TRUE(write_config("abc", "3", "10"));  // Within bounds.
   ASSERT_EQ(kToolExitSuccess, reqTool(args));
   auto csr = LoadPEMCSR(csr_path);
   ASSERT_TRUE(csr);
@@ -1533,16 +1483,12 @@ TEST_F(ReqTest, BatchMinMaxLengthConstraints) {
 // rather than silently treating those keys (e.g. a bound) as unset.
 TEST_F(ReqTest, BatchOverlongFieldNameFails) {
   auto run = [&](const std::string &name) {
-    ScopedFILE config_file(fopen(config_path, "w"));
-    EXPECT_TRUE(config_file);
-    if (!config_file) {
+    if (!WriteConfig(config_path,
+                     "[req]\ndistinguished_name = dn\n[dn]\n"
+                     "%s = Common Name\n%s_default = abc\n",
+                     name.c_str(), name.c_str())) {
       return kToolExitFailure;
     }
-    fprintf(config_file.get(),
-            "[req]\ndistinguished_name = dn\n[dn]\n"
-            "%s = Common Name\n%s_default = abc\n",
-            name.c_str(), name.c_str());
-    config_file.reset();
     return reqTool({"-new", "-batch", "-config", config_path, "-key",
                     input_key_path, "-out", csr_path});
   };
@@ -1566,13 +1512,11 @@ TEST_F(ReqTest, BatchOverlongFieldNameFails) {
 // Like OpenSSL, the text through the first '.' is always an instance prefix,
 // so a dotted OID such as 2.5.4.3 is not recognized as commonName.
 TEST_F(ReqTest, BatchDottedOidFieldIsIgnored) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\ndistinguished_name = dn\n[dn]\n"
-          "2.5.4.3 = Common Name\n2.5.4.3_default = oid.example.com\n"
-          "organizationName = Org\norganizationName_default = Example\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(
+      config_path,
+      "[req]\ndistinguished_name = dn\n[dn]\n"
+      "2.5.4.3 = Common Name\n2.5.4.3_default = oid.example.com\n"
+      "organizationName = Org\norganizationName_default = Example\n"));
 
   ASSERT_EQ(kToolExitSuccess,
             reqTool({"-new", "-batch", "-config", config_path, "-key",
@@ -1594,22 +1538,16 @@ TEST_F(ReqTest, BatchMalformedLengthBoundsFail) {
         SCOPED_TRACE(field);
         SCOPED_TRACE(suffix);
         SCOPED_TRACE(bound);
-        ScopedFILE config_file(fopen(config_path, "w"));
-        ASSERT_TRUE(config_file);
-        ASSERT_GT(fprintf(config_file.get(),
-                          "[req]\ndistinguished_name = dn\nattributes = attrs\n"
-                          "[dn]\ncommonName = Common Name\n"
-                          "commonName_default = abc\n"
-                          "%s%s%s = %s\n",
-                          attribute ? "[attrs]\nchallengePassword = Password\n"
-                                      "challengePassword_default = abc\n"
-                                    : "",
-                          field, suffix, bound),
-                  0);
-        if (!attribute) {
-          ASSERT_GT(fprintf(config_file.get(), "[attrs]\n"), 0);
-        }
-        config_file.reset();
+        ASSERT_TRUE(
+            WriteConfig(config_path,
+                        "[req]\ndistinguished_name = dn\nattributes = attrs\n"
+                        "[dn]\ncommonName = Common Name\n"
+                        "commonName_default = abc\n"
+                        "%s%s%s = %s\n%s",
+                        attribute ? "[attrs]\nchallengePassword = Password\n"
+                                    "challengePassword_default = abc\n"
+                                  : "",
+                        field, suffix, bound, attribute ? "" : "[attrs]\n"));
         ScopedFILE output(fopen(csr_path, "w"));
         ASSERT_TRUE(output);
         ASSERT_GT(fprintf(output.get(), "keep"), 0);
@@ -2769,27 +2707,21 @@ TEST_F(ReqComparisonTest, NoReqSectionConfig) {
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
-// Exercises the exact ServerCerts-style command shape: -config with
-// prompt=no plus -x509 -newkey ... -batch. Since prompt=no already routes
-// through OpenSSL's auto_info() upstream -- unaffected by -batch, confirmed
-// against apps/req.c in tags openssl-3.0.16 and OpenSSL_1_1_1w -- adding
-// -batch must not change AWS-LC's OpenSSL-compatible output.
+// A ServerCerts-style prompt=no invocation remains OpenSSL-compatible with
+// -batch present.
 TEST_F(ReqComparisonTest, ServerCertsConfigWithBatch) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[req]\n"
-          "distinguished_name=req_distinguished_name\n"
-          "prompt=no\n"
-          "default_md=sha256\n"
-          "\n"
-          "[req_distinguished_name]\n"
-          "C=US\n"
-          "ST=Washington\n"
-          "L=Seattle\n"
-          "O=Amazon.com\n"
-          "CN=server.example\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name=req_distinguished_name\n"
+                          "prompt=no\n"
+                          "default_md=sha256\n"
+                          "\n"
+                          "[req_distinguished_name]\n"
+                          "C=US\n"
+                          "ST=Washington\n"
+                          "L=Seattle\n"
+                          "O=Amazon.com\n"
+                          "CN=server.example\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -config " +
@@ -2829,19 +2761,16 @@ TEST_F(ReqComparisonTest, ServerCertsConfigWithBatch) {
 // build_data(), which under -batch uses "<field>_value" verbatim, else
 // "<field>_default", else omits the field -- all without reading stdin.
 TEST_F(ReqComparisonTest, BatchDefaultsWithoutPromptNo) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_distinguished_name\n"
-          "\n"
-          "[ req_distinguished_name ]\n"
-          "countryName = Country Name (2 letter code)\n"
-          "countryName_default = US\n"
-          "organizationName = Organization Name\n"
-          "commonName = Common Name\n"
-          "commonName_value = batch.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_distinguished_name\n"
+                          "\n"
+                          "[ req_distinguished_name ]\n"
+                          "countryName = Country Name (2 letter code)\n"
+                          "countryName_default = US\n"
+                          "organizationName = Organization Name\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = batch.example.com\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -2860,26 +2789,23 @@ TEST_F(ReqComparisonTest, BatchDefaultsWithoutPromptNo) {
   ASSERT_TRUE(csr_awslc);
   ASSERT_TRUE(csr_openssl);
   EXPECT_EQ(0, X509_NAME_cmp(X509_REQ_get_subject_name(csr_awslc.get()),
-                            X509_REQ_get_subject_name(csr_openssl.get())));
+                             X509_REQ_get_subject_name(csr_openssl.get())));
 }
 
 // Cross-checks that -batch adds subject fields in the config's order, not
 // this tool's fixed table order, against real OpenSSL.
 TEST_F(ReqComparisonTest, BatchFieldOrderMatchesOpenSSL) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_dn\n"
-          "\n"
-          "[ req_dn ]\n"
-          "commonName = Common Name\n"
-          "commonName_value = order.example.com\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n"
-          "organizationName = Organization Name\n"
-          "organizationName_value = Example Corp\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = order.example.com\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"
+                          "organizationName = Organization Name\n"
+                          "organizationName_value = Example Corp\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -2960,25 +2886,22 @@ TEST_F(ReqComparisonTest, BatchPrefixedFieldsMatchOpenSSL) {
 // a "_default" with no base "<name>" entry (organizationName here) never
 // appears.
 TEST_F(ReqComparisonTest, BatchValueResolutionQuirksMatchOpenSSL) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_dn\n"
-          "\n"
-          "[ req_dn ]\n"
-          "countryName = Country Name\n"
-          "countryName_value =\n"
-          "countryName_default = US\n"
-          "stateOrProvinceName = State\n"
-          "stateOrProvinceName_value = .\n"
-          "stateOrProvinceName_default = should-not-appear\n"
-          "localityName = Locality\n"
-          "localityName_default = .\n"
-          "organizationName_default = should-not-appear\n"
-          "commonName = Common Name\n"
-          "commonName_value = quirks.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "countryName = Country Name\n"
+                          "countryName_value =\n"
+                          "countryName_default = US\n"
+                          "stateOrProvinceName = State\n"
+                          "stateOrProvinceName_value = .\n"
+                          "stateOrProvinceName_default = should-not-appear\n"
+                          "localityName = Locality\n"
+                          "localityName_default = .\n"
+                          "organizationName_default = should-not-appear\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = quirks.example.com\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -3019,18 +2942,15 @@ TEST_F(ReqComparisonTest, BatchValueResolutionQuirksMatchOpenSSL) {
 // config defining only "CN" must not pick up an unrelated
 // "commonName_default".
 TEST_F(ReqComparisonTest, BatchExactEntryNameMatchesOpenSSL) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_dn\n"
-          "\n"
-          "[ req_dn ]\n"
-          "CN = Common Name\n"
-          "commonName_default = should-not-be-used-for-CN\n"
-          "countryName = Country Name\n"
-          "countryName_value = US\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "CN = Common Name\n"
+                          "commonName_default = should-not-be-used-for-CN\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -3058,18 +2978,16 @@ TEST_F(ReqComparisonTest, BatchExactEntryNameMatchesOpenSSL) {
   EXPECT_EQ(-1, X509_NAME_get_index_by_NID(name_awslc, NID_commonName, -1));
 }
 
-// Neither tool should synthesize prompted attributes when the section is absent.
+// Neither tool should synthesize prompted attributes when the section is
+// absent.
 TEST_F(ReqComparisonTest, BatchNoAttributesSectionMatchesOpenSSL) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_dn\n"
-          "\n"
-          "[ req_dn ]\n"
-          "commonName = Common Name\n"
-          "commonName_value = noattrs.example.com\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = noattrs.example.com\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -3088,20 +3006,18 @@ TEST_F(ReqComparisonTest, BatchNoAttributesSectionMatchesOpenSSL) {
   ASSERT_TRUE(csr_awslc);
   ASSERT_TRUE(csr_openssl);
   for (X509_REQ *csr : {csr_awslc.get(), csr_openssl.get()}) {
-    EXPECT_LT(X509_REQ_get_attr_by_NID(csr, NID_pkcs9_challengePassword, -1), 0);
+    EXPECT_LT(X509_REQ_get_attr_by_NID(csr, NID_pkcs9_challengePassword, -1),
+              0);
     EXPECT_LT(X509_REQ_get_attr_by_NID(csr, NID_pkcs9_unstructuredName, -1), 0);
   }
 }
 
 TEST_F(ReqComparisonTest, BatchMissingAttributesSectionFailsForBoth) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  ASSERT_GT(fprintf(config_file.get(),
-                    "[req]\ndistinguished_name = dn\n"
-                    "attributes = missing_section\n"
-                    "[dn]\nCN = Common Name\nCN_default = attrs.example\n"),
-            0);
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\ndistinguished_name = dn\n"
+                          "attributes = missing_section\n"
+                          "[dn]\nCN = Common Name\n"
+                          "CN_default = attrs.example\n"));
 
   for (bool self_signed : {false, true}) {
     SCOPED_TRACE(self_signed);
@@ -3126,10 +3042,7 @@ TEST_F(ReqComparisonTest, BatchMissingAttributesSectionFailsForBoth) {
 
 // A config missing distinguished_name is fatal for -batch on both tools.
 TEST_F(ReqComparisonTest, BatchConfigWithoutDnSectionFailsForBoth) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(), "[ req ]\ndefault_md = sha256\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path, "[ req ]\ndefault_md = sha256\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
@@ -3146,17 +3059,14 @@ TEST_F(ReqComparisonTest, BatchConfigWithoutDnSectionFailsForBoth) {
 
 // A "_default" shorter than "_min" is fatal for -batch on both tools.
 TEST_F(ReqComparisonTest, BatchMinLengthViolationFailsForBoth) {
-  ScopedFILE config_file(fopen(config_path, "w"));
-  ASSERT_TRUE(config_file);
-  fprintf(config_file.get(),
-          "[ req ]\n"
-          "distinguished_name = req_dn\n"
-          "\n"
-          "[ req_dn ]\n"
-          "commonName = Common Name\n"
-          "commonName_default = ab\n"
-          "commonName_min = 3\n");
-  config_file.reset();
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "commonName = Common Name\n"
+                          "commonName_default = ab\n"
+                          "commonName_min = 3\n"));
 
   std::string awslc_command =
       ShellEscape(tool_executable_path) + " req -new -config " +
