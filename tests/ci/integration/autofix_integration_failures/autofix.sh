@@ -164,7 +164,7 @@ fetch_logs() {
 
   local job_id
   for job_id in ${job_ids}; do
-    gh api "/repos/${REPO}/actions/jobs/${job_id}/logs" \
+    gh api --allow-escape-sequences "/repos/${REPO}/actions/jobs/${job_id}/logs" \
       | sanitize_log | tail -n 200 > "${logs_dir}/${job_id}.log"
   done
 }
