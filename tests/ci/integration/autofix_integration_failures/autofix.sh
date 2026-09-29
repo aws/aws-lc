@@ -105,6 +105,7 @@ get_failing_targets() {
 
   local integration version patch_dir
   while IFS=$'\t' read -r integration version _; do
+    [[ "${integration}" == *=* ]] && continue
 
     # Skip integrations with no patch dir (e.g. openssh): they test AWS-LC as a
     # dropin with no patches, so there's no patch to fix.
