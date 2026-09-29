@@ -845,7 +845,8 @@ int X509Tool(const args_list_t &args) {
     }
 
     if (X509_REQ_verify(csr.get(), req_pubkey.get()) <= 0) {
-      fprintf(stderr, "Error: certificate request signature verification failed\n");
+      fprintf(stderr,
+              "Error: certificate request signature verification failed\n");
       ERR_print_errors_fp(stderr);
       return kToolExitFailure;
     }
@@ -869,8 +870,8 @@ int X509Tool(const args_list_t &args) {
     // - If no signkey provided: use public key from the CSR
     // - If signkey provided: use public key from the signkey
     if (signkey_path.empty()) {
-      bssl::UniquePtr<EVP_PKEY> csr_pkey(X509_REQ_get_pubkey(csr.get()));
-      if (!csr_pkey || !X509_set_pubkey(x509.get(), csr_pkey.get())) {
+      // Reuse the public key already fetched above for proof of possession
+      if (!X509_set_pubkey(x509.get(), req_pubkey.get())) {
         fprintf(stderr, "Error: unable to set public key from CSR\n");
         return kToolExitFailure;
       }

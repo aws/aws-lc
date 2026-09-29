@@ -335,8 +335,9 @@ TEST_F(X509Test, Req) {
 
 // Builds a CSR whose signature does NOT match its advertised public key: it
 // carries key A's public key but is signed with key B's private key. Such a
-// request fails proof of possession and must be rejected under -req.
-static void CreateMismatchedCSR(const char *path) {
+// request fails proof of possession and must be rejected under -req. When
+// |der| is true the request is written in DER, otherwise PEM.
+static void CreateMismatchedCSR(const char *path, bool der = false) {
   bssl::UniquePtr<EVP_PKEY> advertised(EVP_PKEY_new());
   bssl::UniquePtr<EVP_PKEY> signer(EVP_PKEY_new());
   ASSERT_TRUE(advertised);
@@ -360,7 +361,11 @@ static void CreateMismatchedCSR(const char *path) {
 
   ScopedFILE csr_file(fopen(path, "wb"));
   ASSERT_TRUE(csr_file);
-  ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
+  if (der) {
+    ASSERT_GT(i2d_X509_REQ_fp(csr_file.get(), csr.get()), 0);
+  } else {
+    ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
+  }
 }
 
 // -req with -CA must reject a CSR whose signature doesn't match its key. This
@@ -370,10 +375,42 @@ static void CreateMismatchedCSR(const char *path) {
 TEST_F(X509Test, ReqCARejectsBadSignature) {
   char bad_csr_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
-  CreateMismatchedCSR(bad_csr_path);
+  ASSERT_NO_FATAL_FAILURE(CreateMismatchedCSR(bad_csr_path));
 
-  args_list_t args = {"-in",        bad_csr_path, "-req", "-CA",
+  args_list_t args = {"-in",        bad_csr_path, "-req",     "-CA",
                       ca_cert_path, "-CAkey",     ca_key_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  RemoveFile(bad_csr_path);
+}
+
+// -req with -CA must succeed on a valid CSR: csr_path carries a public key that
+// matches its signature, so proof of possession passes and a certificate is
+// issued. This pins the positive -CA path in the non-comparison suite (the
+// X509ComparisonTest.ReqCA case is skipped when no OpenSSL binary is present).
+TEST_F(X509Test, ReqCASucceedsWithValidCSR) {
+  args_list_t args = {"-in",    csr_path,    "-req", "-CA",   ca_cert_path,
+                      "-CAkey", ca_key_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  // The output must be a parseable certificate.
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<X509> issued(
+      PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(issued);
+}
+
+// Same rejection as ReqCARejectsBadSignature, but the bad CSR is DER-encoded
+// and read via -inform DER. This exercises the proof-of-possession check on the
+// DER read path (d2i_X509_REQ_fp), which the PEM cases do not cover.
+TEST_F(X509Test, ReqCARejectsBadSignatureDER) {
+  char bad_csr_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
+  ASSERT_NO_FATAL_FAILURE(CreateMismatchedCSR(bad_csr_path, /*der=*/true));
+
+  args_list_t args = {"-in", bad_csr_path, "-req",   "-inform",  "DER",
+                      "-CA", ca_cert_path, "-CAkey", ca_key_path};
   ASSERT_EQ(kToolExitFailure, X509Tool(args));
 
   RemoveFile(bad_csr_path);
@@ -385,7 +422,7 @@ TEST_F(X509Test, ReqCARejectsBadSignature) {
 TEST_F(X509Test, ReqSignkeyRejectsBadSignature) {
   char bad_csr_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
-  CreateMismatchedCSR(bad_csr_path);
+  ASSERT_NO_FATAL_FAILURE(CreateMismatchedCSR(bad_csr_path));
 
   args_list_t args = {"-in", bad_csr_path, "-req", "-signkey", signkey_path};
   ASSERT_EQ(kToolExitFailure, X509Tool(args));
