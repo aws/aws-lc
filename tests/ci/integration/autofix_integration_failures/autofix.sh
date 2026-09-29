@@ -165,7 +165,7 @@ fetch_logs() {
   local job_id
   for job_id in ${job_ids}; do
     gh api "/repos/${REPO}/actions/jobs/${job_id}/logs" \
-      | tail -n 200 | sanitize_log > "${logs_dir}/${job_id}.log" || true
+      | sanitize_log | tail -n 200 > "${logs_dir}/${job_id}.log"
   done
 }
 
