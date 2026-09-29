@@ -228,7 +228,29 @@ TEST(SSLClientHelloTest, ClientHelloCallbackErrorHandling) {
   EXPECT_EQ(0, SSL_client_hello_get0_ext(ssl.get(), 0, &ext_data, &ext_len));
 }
 
-// Test interaction with other callbacks (select_certificate_cb)
+void ExpectClientHelloAccessors(SSL *ssl, bool expect_success) {
+  const unsigned char *ext_data = nullptr;
+  size_t ext_len = 0;
+  EXPECT_EQ(expect_success,
+            SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_supported_groups,
+                                      &ext_data, &ext_len) == 1);
+
+  size_t num_extensions = 0;
+  EXPECT_EQ(expect_success, SSL_client_hello_get_extension_order(
+                                ssl, nullptr, &num_extensions) == 1);
+
+  int *extensions = nullptr;
+  size_t extensions_len = 0;
+  EXPECT_EQ(expect_success, SSL_client_hello_get1_extensions_present(
+                                ssl, &extensions, &extensions_len) == 1);
+  OPENSSL_free(extensions);
+
+  EXPECT_EQ(expect_success, SSL_client_hello_get0_legacy_version(ssl) != 0);
+}
+
+// Test interaction with other callbacks (select_certificate_cb, servername
+// callback, custom extension parse callback, cert_cb). The ClientHello
+// accessors work in all of them except cert_cb.
 TEST(SSLClientHelloTest, ClientHelloCallbackWithSelectCertificate) {
   UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   UniquePtr<SSL_CTX> server_ctx =
@@ -236,31 +258,82 @@ TEST(SSLClientHelloTest, ClientHelloCallbackWithSelectCertificate) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
-  bool client_hello_called = false;
+  struct CallbackResults {
+    bool client_hello_called = false;
+    bool select_certificate_called = false;
+    bool servername_called = false;
+    bool custom_ext_parse_called = false;
+    bool cert_called = false;
+  } results;
+
+  static const uint16_t kCustomExtensionValue = 1234;
+  ASSERT_TRUE(SSL_CTX_add_client_custom_ext(
+      client_ctx.get(), kCustomExtensionValue,
+      [](SSL *ssl, unsigned extension_value, const uint8_t **out,
+         size_t *out_len, int *out_alert_value, void *add_arg) -> int {
+        static const char kCustomExtensionContents[] = "custom extension";
+        *out = reinterpret_cast<const uint8_t *>(kCustomExtensionContents);
+        *out_len = sizeof(kCustomExtensionContents) - 1;
+        return 1;
+      },
+      nullptr, nullptr, nullptr, nullptr));
+  ASSERT_TRUE(SSL_CTX_add_server_custom_ext(
+      server_ctx.get(), kCustomExtensionValue, nullptr, nullptr, nullptr,
+      [](SSL *ssl, unsigned extension_value, const uint8_t *contents,
+         size_t contents_len, int *out_alert_value, void *parse_arg) -> int {
+        static_cast<CallbackResults *>(parse_arg)->custom_ext_parse_called =
+            true;
+        ExpectClientHelloAccessors(ssl, true);
+        return 1;
+      },
+      &results));
 
   SSL_CTX_set_client_hello_cb(
       server_ctx.get(),
       [](SSL *ssl, int *al, void *arg) -> int {
-        bool *called = static_cast<bool *>(arg);
-        *called = true;
+        static_cast<CallbackResults *>(arg)->client_hello_called = true;
+        ExpectClientHelloAccessors(ssl, true);
         return SSL_CLIENT_HELLO_SUCCESS;
       },
-      &client_hello_called);
+      &results);
 
+  ASSERT_TRUE(SSL_CTX_set_app_data(server_ctx.get(), &results));
   SSL_CTX_set_select_certificate_cb(
       server_ctx.get(),
       [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        // Just verify the callback is called by testing the SSL pointer
-        EXPECT_NE(nullptr, client_hello->ssl);
+        CallbackResults *res = static_cast<CallbackResults *>(
+            SSL_CTX_get_app_data(SSL_get_SSL_CTX(client_hello->ssl)));
+        res->select_certificate_called = true;
+        ExpectClientHelloAccessors(client_hello->ssl, true);
         return ssl_select_cert_success;
       });
+
+  SSL_CTX_set_tlsext_servername_callback(
+      server_ctx.get(), [](SSL *ssl, int *al, void *arg) -> int {
+        static_cast<CallbackResults *>(arg)->servername_called = true;
+        ExpectClientHelloAccessors(ssl, true);
+        return SSL_TLSEXT_ERR_OK;
+      });
+  SSL_CTX_set_tlsext_servername_arg(server_ctx.get(), &results);
+
+  SSL_CTX_set_cert_cb(
+      server_ctx.get(),
+      [](SSL *ssl, void *arg) -> int {
+        static_cast<CallbackResults *>(arg)->cert_called = true;
+        ExpectClientHelloAccessors(ssl, false);
+        return 1;
+      },
+      &results);
 
   UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
-  // Client hello callback should be called
-  EXPECT_TRUE(client_hello_called);
+  EXPECT_TRUE(results.client_hello_called);
+  EXPECT_TRUE(results.select_certificate_called);
+  EXPECT_TRUE(results.servername_called);
+  EXPECT_TRUE(results.custom_ext_parse_called);
+  EXPECT_TRUE(results.cert_called);
 }
 
 // Test SSL_CLIENT_HELLO_RETRY return value (though treated as error in current
