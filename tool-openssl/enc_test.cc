@@ -5,8 +5,74 @@
 #include <openssl/pem.h>
 #include <sys/stat.h>
 #include <cctype>
+#if !defined(OPENSSL_WINDOWS)
+#include <signal.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#endif
 #include "internal.h"
 #include "test_util.h"
+
+struct EncCipherTestCase {
+  const char *flag;
+  size_t key_len;
+  size_t iv_len;
+  size_t block_len;
+  bool needs_legacy_provider;
+};
+
+static const EncCipherTestCase kEncCipherTestCases[] = {
+    {"-aes-128-cbc", 16, 16, 16, false}, {"-aes-128-cfb", 16, 16, 16, false},
+    {"-aes-128-ctr", 16, 16, 16, false}, {"-aes-128-ecb", 16, 0, 16, false},
+    {"-aes-128-ofb", 16, 16, 16, false}, {"-aes-192-cbc", 24, 16, 16, false},
+    {"-aes-192-cfb", 24, 16, 16, false}, {"-aes-192-ctr", 24, 16, 16, false},
+    {"-aes-192-ecb", 24, 0, 16, false},  {"-aes-192-ofb", 24, 16, 16, false},
+    {"-aes-256-cbc", 32, 16, 16, false}, {"-aes-256-cfb", 32, 16, 16, false},
+    {"-aes-256-ctr", 32, 16, 16, false}, {"-aes-256-ecb", 32, 0, 16, false},
+    {"-aes-256-ofb", 32, 16, 16, false}, {"-aes128", 16, 16, 16, false},
+    {"-aes256", 32, 16, 16, false},      {"-des-cbc", 8, 8, 8, true},
+    {"-des-ede3-cbc", 24, 8, 8, false},
+};
+
+static args_list_t EncArgs(const EncCipherTestCase &cipher, bool decrypt,
+                           const std::string &in_path,
+                           const std::string &out_path) {
+  args_list_t args = {decrypt ? "-d" : "-e", cipher.flag, "-K",
+                      std::string(cipher.key_len * 2, '1')};
+  if (cipher.iv_len != 0) {
+    args.push_back("-iv");
+    args.push_back(std::string(cipher.iv_len * 2, '2'));
+  }
+  args.push_back("-in");
+  args.push_back(in_path);
+  args.push_back("-out");
+  args.push_back(out_path);
+  return args;
+}
+
+static std::string EncCommand(const char *executable,
+                              const EncCipherTestCase &cipher, bool decrypt,
+                              const std::string &in_path,
+                              const std::string &out_path,
+                              bool load_legacy_provider) {
+  std::string command = ShellEscape(executable) + " enc";
+  if (load_legacy_provider && cipher.needs_legacy_provider) {
+    command += " -provider default -provider legacy";
+  }
+  for (const auto &arg : EncArgs(cipher, decrypt, in_path, out_path)) {
+    command += " " + ShellEscape(arg);
+  }
+  return command;
+}
+
+static void WriteInput(const char *path, size_t len) {
+  ScopedFILE file(fopen(path, "wb"));
+  ASSERT_TRUE(file);
+  for (size_t i = 0; i < len; i++) {
+    const uint8_t byte = static_cast<uint8_t>(i);
+    ASSERT_EQ(fwrite(&byte, 1, 1, file.get()), 1u);
+  }
+}
 
 class EncTest : public ::testing::Test {
  protected:
@@ -114,54 +180,21 @@ TEST_F(EncTest, ExplicitDecryption) {
   RemoveFile(decrypt_path);
 }
 
-// Test decryption with default cipher
-TEST_F(EncTest, DecryptionDefaultCipher) {
-  // First encrypt with default cipher
-  args_list_t encrypt_args = {"-e",
-                              "-K",
-                              "0123456789abcdef0123456789abcdef",
-                              "-iv",
-                              "0123456789abcdef0123456789abcdef",
-                              "-in",
-                              in_path,
-                              "-out",
-                              out_path};
-  int result = encTool(encrypt_args);
-  ASSERT_EQ(kToolExitSuccess, result);
-
-  // Create temp file for decrypted output
-  char decrypt_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(decrypt_path), 0u);
-
-  // Decrypt with default cipher
-  args_list_t decrypt_args = {"-d",
-                              "-K",
-                              "0123456789abcdef0123456789abcdef",
-                              "-iv",
-                              "0123456789abcdef0123456789abcdef",
-                              "-in",
-                              out_path,
-                              "-out",
-                              decrypt_path};
-  result = encTool(decrypt_args);
-  ASSERT_EQ(kToolExitSuccess, result);
-
-  RemoveFile(decrypt_path);
-}
-
-// Test default cipher (should be aes-128-cbc)
-TEST_F(EncTest, DefaultCipher) {
-  args_list_t args = {"-e",
-                      "-K",
-                      "0123456789abcdef0123456789abcdef",
-                      "-iv",
-                      "0123456789abcdef0123456789abcdef",
-                      "-in",
-                      in_path,
-                      "-out",
-                      out_path};
-  int result = encTool(args);
-  ASSERT_EQ(kToolExitSuccess, result);
+TEST_F(EncTest, NoCipherCopiesInput) {
+  const std::vector<args_list_t> options = {{},
+                                            {"-d"},
+                                            {"-e"},
+                                            {"-K", "invalid", "-iv", "invalid"},
+                                            {"-aes-256-cbc", "-none"}};
+  for (size_t len : {0u, 16u, 1024u, 1025u}) {
+    WriteInput(in_path, len);
+    for (const auto &flags : options) {
+      args_list_t args = {"-in", in_path, "-out", out_path};
+      args.insert(args.end(), flags.begin(), flags.end());
+      ASSERT_EQ(kToolExitSuccess, encTool(args));
+      EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(out_path));
+    }
+  }
 }
 
 // Test encryption without -e flag (should default to encrypt)
@@ -177,6 +210,25 @@ TEST_F(EncTest, DefaultEncrypt) {
                       out_path};
   int result = encTool(args);
   ASSERT_EQ(kToolExitSuccess, result);
+}
+
+TEST_F(EncTest, RegisteredCiphersRoundTrip) {
+  char encrypted_path[PATH_MAX];
+  char decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  for (const auto &cipher : kEncCipherTestCases) {
+    SCOPED_TRACE(cipher.flag);
+    ASSERT_EQ(kToolExitSuccess,
+              encTool(EncArgs(cipher, false, in_path, encrypted_path)));
+    ASSERT_EQ(kToolExitSuccess,
+              encTool(EncArgs(cipher, true, encrypted_path, decrypted_path)));
+    EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  }
+
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
 }
 
 // -------------------- Enc Option Usage Error Tests --------------------------
@@ -207,14 +259,27 @@ TEST_F(EncOptionUsageErrorsTest, MissingKey) {
   }
 }
 
-// Test mutually exclusive -e and -d options
-TEST_F(EncOptionUsageErrorsTest, MutuallyExclusiveOptions) {
-  std::vector<std::vector<std::string>> testparams = {
-      {"-e", "-d", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef",
-       "-iv", "0123456789abcdef0123456789abcdef", "-in", in_path}};
-  for (const auto &args : testparams) {
-    TestOptionUsageErrors(args);
-  }
+TEST_F(EncTest, LastOptionsWin) {
+  char encrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  const std::string key(64, '1'), iv(32, '2');
+  ASSERT_EQ(kToolExitSuccess,
+            encTool({"-none",   "-aes-128-cbc", "-aes-256-cbc",
+                     "-d",      "-e",           "-K",
+                     "invalid", "-K",           key,
+                     "-iv",     "invalid",      "-iv",
+                     iv,        "-in",          "missing.pem",
+                     "-in",     in_path,        "-out",
+                     "",        "-out",         encrypted_path}));
+  const std::string encrypted = ReadFileToString(encrypted_path);
+  ASSERT_EQ(kToolExitSuccess, encTool({"-aes-256-cbc", "-K", key, "-iv", iv,
+                                       "-in", in_path, "-out", out_path}));
+  EXPECT_EQ(encrypted, ReadFileToString(out_path));
+  ASSERT_EQ(kToolExitSuccess,
+            encTool({"-aes-256-cbc", "-e", "-d", "-K", key, "-iv", iv, "-in",
+                     encrypted_path, "-out", out_path}));
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(out_path));
+  RemoveFile(encrypted_path);
 }
 
 // Test invalid hex key
@@ -241,25 +306,100 @@ TEST_F(EncOptionUsageErrorsTest, InvalidHexIV) {
   }
 }
 
-// Test hex string size mismatch for key and IV
-TEST_F(EncOptionUsageErrorsTest, HexStringSizeMismatch) {
-  std::vector<std::vector<std::string>> testparams = {
-      // Key too short (AES-128 needs 32 hex chars, providing 30)
-      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcd", "-iv",
-       "0123456789abcdef0123456789abcdef", "-in", in_path},
-      // Key too long (AES-128 needs 32 hex chars, providing 34)
-      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef01", "-iv",
-       "0123456789abcdef0123456789abcdef", "-in", in_path},
-      // IV too short (AES-128-CBC needs 32 hex chars, providing 30)
-      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
-       "0123456789abcdef0123456789abcd", "-in", in_path},
-      // IV too long (AES-128-CBC needs 32 hex chars, providing 34)
-      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
-       "0123456789abcdef0123456789abcdef01", "-in", in_path}};
-  for (const auto &args : testparams) {
-    TestOptionUsageErrors(args);
+TEST_F(EncTest, HexValuesArePaddedAndTruncated) {
+  for (const char *option : {"-K", "-iv"}) {
+    const size_t width = strcmp(option, "-K") == 0 ? 64 : 32;
+    for (const std::string &value :
+         {std::string(), std::string("f"), std::string("aBc"),
+          std::string(width - 1, '1'), std::string(width, '1') + "not-hex"}) {
+      SCOPED_TRACE(std::string(option) + "=" + value);
+      args_list_t args = {"-aes-256-cbc",
+                          "-K",
+                          std::string(64, '0'),
+                          "-iv",
+                          std::string(32, '0'),
+                          "-in",
+                          in_path,
+                          "-out",
+                          out_path,
+                          option,
+                          value};
+      testing::internal::CaptureStderr();
+      const int result = encTool(args);
+      const std::string errors = testing::internal::GetCapturedStderr();
+      ASSERT_EQ(kToolExitSuccess, result) << errors;
+      EXPECT_NE(std::string::npos,
+                errors.find(value.size() < width ? "padding with zero bytes"
+                                                 : "ignoring excess"));
+      const std::string ciphertext = ReadFileToString(out_path);
+      std::string normalized = value;
+      normalized.resize(width, '0');
+      args.back() = normalized;
+      ASSERT_EQ(kToolExitSuccess, encTool(args));
+      EXPECT_EQ(ciphertext, ReadFileToString(out_path));
+    }
   }
 }
+
+TEST_F(EncTest, NoPadding) {
+  for (size_t len : {0u, 16u, 17u, 1024u, 1025u}) {
+    SCOPED_TRACE(len);
+    WriteInput(in_path, len);
+    args_list_t args = {"-aes-256-cbc", "-nopad",
+                        "-K",           std::string(64, '1'),
+                        "-iv",          std::string(32, '2'),
+                        "-in",          in_path,
+                        "-out",         out_path};
+    EXPECT_EQ(len % 16 == 0 ? kToolExitSuccess : kToolExitFailure,
+              encTool(args));
+    if (len % 16 != 0) {
+      continue;
+    }
+    EXPECT_EQ(len, ReadFileToString(out_path).size());
+    args = {"-aes-256-cbc",
+            "-nopad",
+            "-d",
+            "-K",
+            std::string(64, '1'),
+            "-iv",
+            std::string(32, '2'),
+            "-in",
+            out_path,
+            "-out",
+            in_path};
+    ASSERT_EQ(kToolExitSuccess, encTool(args));
+    std::string expected;
+    for (size_t i = 0; i < len; i++) {
+      expected.push_back(static_cast<char>(i));
+    }
+    EXPECT_EQ(expected, ReadFileToString(in_path));
+  }
+}
+
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(EncTest, BufferedOutputFailureIsReported) {
+  // Limit file writes in a child process so the limit and signal disposition
+  // cannot leak into other tests. A small output is buffered until flush.
+  for (const char *cipher : {"-none", "-aes-256-cbc"}) {
+    SCOPED_TRACE(cipher);
+    ASSERT_EXIT(
+        {
+          struct rlimit limit;
+          limit.rlim_cur = 0;
+          limit.rlim_max = 0;
+          if (setrlimit(RLIMIT_FSIZE, &limit) != 0 ||
+              signal(SIGXFSZ, SIG_IGN) == SIG_ERR) {
+            _exit(2);
+          }
+          _exit(encTool({cipher, "-K", std::string(64, '1'), "-iv",
+                         std::string(32, '2'), "-in", in_path, "-out",
+                         out_path}));
+        },
+        // gtest captures stderr in a file, which is also subject to the limit.
+        testing::ExitedWithCode(kToolExitFailure), "");
+  }
+}
+#endif
 
 // Test missing IV for cipher that requires it
 TEST_F(EncOptionUsageErrorsTest, MissingIV) {
@@ -382,4 +522,130 @@ TEST_F(EncComparisonTest, DecryptionComparison) {
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
   RemoveFile(encrypted_path);
+}
+
+// "-" selects stdin for -in and stdout for -out, as in OpenSSL.
+TEST_F(EncComparisonTest, DashMeansStdio) {
+  const std::string args =
+      " enc -e -aes-128-cbc -K 0123456789abcdef0123456789abcdef"
+      " -iv 0123456789abcdef0123456789abcdef -in - -out - < " +
+      ShellEscape(in_path);
+  std::string tool_output_str, openssl_output_str;
+  RunCommandsAndCompareOutput(ShellEscape(tool_executable_path) + args + " > " +
+                                  ShellEscape(out_path_tool),
+                              ShellEscape(openssl_executable_path) + args +
+                                  " > " + ShellEscape(out_path_openssl),
+                              out_path_tool, out_path_openssl, tool_output_str,
+                              openssl_output_str);
+  EXPECT_FALSE(tool_output_str.empty());
+  EXPECT_EQ(tool_output_str, openssl_output_str);
+}
+
+TEST_F(EncComparisonTest, OptionSemanticsMatchOpenSSL) {
+  const std::string key(64, '1'), iv(32, '2');
+  struct Case {
+    args_list_t options;
+    size_t len;
+    bool success;
+  };
+  const Case cases[] = {
+      {{}, 1025, true},
+      {{"-d", "-K", "invalid", "-iv", "invalid"}, 17, true},
+      {{"-aes-256-cbc", "-none"}, 17, true},
+      {{"-none", "-aes-256-cbc", "-K", key, "-iv", iv}, 17, true},
+      {{"-aes-128-cbc", "-aes-256-cbc", "-d", "-e", "-K", key, "-iv", iv},
+       17,
+       true},
+      {{"-aes-256-cbc", "-K", "", "-iv", ""}, 17, true},
+      {{"-aes-256-cbc", "-K", "f", "-iv", "aBc"}, 17, true},
+      {{"-aes-256-cbc", "-K", key + "not-hex", "-iv", iv + "not-hex"},
+       17,
+       true},
+      {{"-aes-256-cbc", "-K", "invalid", "-K", key, "-iv", "invalid", "-iv",
+        iv},
+       17,
+       true},
+      {{"-aes-256-cbc", "-K", "invalid", "-iv", iv}, 17, false},
+      {{"-aes-256-cbc", "-nopad", "-K", key, "-iv", iv}, 16, true},
+      {{"-aes-256-cbc", "-nopad", "-K", key, "-iv", iv}, 17, false},
+      {{"-aes-256-cbc", "-nopad", "-e", "-d", "-K", key, "-iv", iv}, 16, true},
+      {{"-aes-256-ecb", "-K", key, "-iv", "invalid"}, 17, true},
+  };
+  for (const auto &test : cases) {
+    WriteInput(in_path, test.len);
+    std::string options = " enc";
+    for (const auto &option : test.options) {
+      options += " " + ShellEscape(option);
+    }
+    SCOPED_TRACE(options);
+    // Exercise last-wins for filenames without touching the earlier paths.
+    options += " -in missing.pem -in " + ShellEscape(in_path) + " -out " +
+               ShellEscape("");
+    const int tool_result =
+        ExecuteCommandExitCode(ShellEscape(tool_executable_path) + options +
+                               " -out " + ShellEscape(out_path_tool));
+    const int openssl_result =
+        ExecuteCommandExitCode(ShellEscape(openssl_executable_path) + options +
+                               " -out " + ShellEscape(out_path_openssl));
+    EXPECT_EQ(test.success ? 0 : 1, tool_result);
+    EXPECT_EQ(openssl_result, tool_result);
+    if (test.success) {
+      EXPECT_EQ(ReadFileToString(out_path_openssl),
+                ReadFileToString(out_path_tool));
+    }
+  }
+}
+
+TEST_F(EncComparisonTest, RegisteredCiphersMatchOpenSSL) {
+  char decrypted_path_tool[PATH_MAX];
+  char decrypted_path_openssl[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(decrypted_path_tool), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path_openssl), 0u);
+
+  // OpenSSL 3.x moved DES-CBC to the legacy provider. `list -providers` only
+  // exists in 3.x, so probe for it rather than relying on
+  // OPENSSL_TOOL_VERSION, which is unset in local runs.
+#if defined(OPENSSL_WINDOWS)
+  const char *null_device = "NUL";
+#else
+  const char *null_device = "/dev/null";
+#endif
+  const bool load_legacy_provider =
+      ExecuteCommandExitCode(ShellEscape(openssl_executable_path) +
+                             " list -providers > " + null_device + " 2>&1") ==
+      0;
+
+  for (const auto &cipher : kEncCipherTestCases) {
+    const size_t input_lengths[] = {0, cipher.block_len, cipher.block_len + 1};
+    for (size_t input_len : input_lengths) {
+      SCOPED_TRACE(std::string(cipher.flag) + ", input length " +
+                   std::to_string(input_len));
+      WriteInput(in_path, input_len);
+
+      std::string tool_command = EncCommand(tool_executable_path, cipher, false,
+                                            in_path, out_path_tool, false);
+      std::string openssl_command =
+          EncCommand(openssl_executable_path, cipher, false, in_path,
+                     out_path_openssl, load_legacy_provider);
+      std::string tool_output_str, openssl_output_str;
+      RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                                  out_path_openssl, tool_output_str,
+                                  openssl_output_str);
+      EXPECT_EQ(tool_output_str, openssl_output_str);
+
+      tool_command = EncCommand(tool_executable_path, cipher, true,
+                                out_path_openssl, decrypted_path_tool, false);
+      openssl_command =
+          EncCommand(openssl_executable_path, cipher, true, out_path_openssl,
+                     decrypted_path_openssl, load_legacy_provider);
+      RunCommandsAndCompareOutput(tool_command, openssl_command,
+                                  decrypted_path_tool, decrypted_path_openssl,
+                                  tool_output_str, openssl_output_str);
+      EXPECT_EQ(tool_output_str, openssl_output_str);
+      EXPECT_EQ(ReadFileToString(in_path), tool_output_str);
+    }
+  }
+
+  RemoveFile(decrypted_path_tool);
+  RemoveFile(decrypted_path_openssl);
 }

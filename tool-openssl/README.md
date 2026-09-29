@@ -28,6 +28,14 @@ Exit status follows OpenSSL: 1 for option or trust store setup errors (including
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
 
+### enc
+
+`enc` supports raw-key encryption and decryption with `-K` and, when required by the cipher, `-iv`. Supported ciphers are AES-128, AES-192, and AES-256 in CBC, CFB, CTR, ECB, and OFB modes; DES-CBC; and 3DES-CBC. The OpenSSL aliases `aes128` and `aes256` are also supported.
+
+Like OpenSSL 1.1.1, omitting the cipher (or specifying `-none`) copies input unchanged; `-K` and `-iv` are then ignored. When a cipher is selected, short hex keys/IVs are zero-padded on the right and long ones are truncated, with a warning. An odd final hex digit supplies the high nibble of a byte, and an explicitly empty hex value is all zeros. `-nopad` disables block padding. Repeated cipher, direction (`-e`/`-d`), filename, key, and IV options use their last values. Output write and flush failures return a nonzero exit status.
+
+Password-based encryption (`-k`, `-pass`, `-kfile`, `-S`, `-salt`, `-pbkdf2`, and `-md`) and base64 encoding (`-a` and `-base64`) are not supported. A selected cipher requires an explicit `-K` rather than prompting for a password.
+
 ### pkeyutl
 
 `pkeyutl` supports `-encrypt`, `-decrypt`, `-sign`, and `-verify`. Like OpenSSL 1.1.1, it defaults to `-sign`, and the last operation flag wins. Repeated filename and `-passin` options also use their last values; all `-pkeyopt` options are applied in order. RSA encryption uses PKCS#1 v1.5 padding by default; OAEP and its digest settings can be selected with `-pkeyopt rsa_padding_mode:oaep`, `-pkeyopt rsa_oaep_md:<digest>`, and `-pkeyopt rsa_mgf1_md:<digest>`.
