@@ -18,17 +18,15 @@
       "Bash(git stash)",
       "Bash(git stash:*)",
       "Bash(git hash-object:*)",
-      "Bash(patch:*)",
-      "Bash(sed:*)",
+      "Bash(patch --dry-run:*)",
       "Bash(cut:*)",
-      "Bash(tar:*)",
       "Bash(mkdir:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)"
+      "Bash(curl:*)"
     ],
     "deny": [
       "Bash(git config *)",
       "Bash(git -c *)",
+      "Edit(**/.git/**)",
       "Read(**/.env*)",
       "Read(**/secrets/**)",
       "Read(**/.aws/**)",
