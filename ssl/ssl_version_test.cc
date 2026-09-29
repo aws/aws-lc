@@ -2535,9 +2535,10 @@ TEST(SSLBufferSizeFailureTest, DeserializeBufferViewRejectsWraparound) {
   EXPECT_EQ(view.size(), 0u);
 }
 
-// Regression test for the V2 buffer-view deserializer. Same integer-validation fix as
-// V1, but the offset is signed and measured from data().
-TEST(SSLBufferSizeFailureTest, DeserializeBufferViewDataOffsetRejectsWraparound) {
+// Regression test for the V2 buffer-view deserializer. Same integer-validation
+// fix as V1, but the offset is signed and measured from data().
+TEST(SSLBufferSizeFailureTest,
+     DeserializeBufferViewDataOffsetRejectsWraparound) {
   // [0] CONSTRUCTED CONTEXT-SPECIFIC, matching kBufferViewOffsetFromDataPtr in
   // ssl_buffer.cc.
   const unsigned kOffsetFromDataPtr =
@@ -2608,10 +2609,15 @@ TEST(SSLBufferSizeFailureTest, DeserializeBufferViewDataOffsetRejectsWraparound)
   EXPECT_EQ(view.data(), buffer.buf_ptr());
   EXPECT_EQ(view.size(), buf_size);
 
-  // A nonempty interior view relative to data() (offset 0 starts at data()).
+  // A nonempty view from data() to the end of the buffer.
   ASSERT_TRUE(deserialize(0, buf_size - data_off, &view));
   EXPECT_EQ(view.data(), buffer.data());
   EXPECT_EQ(view.size(), buf_size - data_off);
+
+  // A nonempty interior view straddling data().
+  ASSERT_TRUE(deserialize(-1, 2, &view));
+  EXPECT_EQ(view.data(), buffer.data() - 1);
+  EXPECT_EQ(view.size(), 2u);
 
   // An empty view one-past-the-end is allowed.
   ASSERT_TRUE(deserialize(to_end, 0, &view));
