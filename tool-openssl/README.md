@@ -28,6 +28,12 @@ Exit status follows OpenSSL: 1 for option or trust store setup errors (including
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
 
+### pkeyutl
+
+`pkeyutl` supports `-encrypt`, `-decrypt`, `-sign`, and `-verify`. Like OpenSSL 1.1.1, it defaults to `-sign`, and the last operation flag wins. Repeated filename and `-passin` options also use their last values; all `-pkeyopt` options are applied in order. RSA encryption uses PKCS#1 v1.5 padding by default; OAEP and its digest settings can be selected with `-pkeyopt rsa_padding_mode:oaep`, `-pkeyopt rsa_oaep_md:<digest>`, and `-pkeyopt rsa_mgf1_md:<digest>`.
+
+Keys default to private-key PEM input, including for verification, which uses the public component of that key. Encryption or verification with a public-key PEM requires `-pubin -inkey <public-key>`. Signing and decryption reject `-pubin`. Private-key loading supports the existing `-passin` password sources for encrypted keys. Output write and flush failures return a nonzero exit status.
+
 ## rehash
 
 `openssl rehash [-compat] [cert-directory]` indexes PEM certificates and CRLs in files ending in `.pem`, `.crt`, `.cer`, or `.crl`. By default it creates modern SHA-1 name-hash links. `-compat` creates both modern SHA-1 and legacy MD5 name-hash links for certificate subjects and CRL issuers. These hashes are directory lookup identifiers, not certificate fingerprints or signature algorithms.
