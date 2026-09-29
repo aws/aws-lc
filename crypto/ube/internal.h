@@ -55,8 +55,8 @@ OPENSSL_EXPORT void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn)
 // number to the value |vm_ube_gn|. This value will be the vm_ube generation
 // value used by the UBE logic, overriding the generation number from the real
 // vm_ube detection.
-// |allow_mocked_ube_detection_FOR_TESTING| must have been invoked (once
-// per-process) to allow mocking the vm_ube generation number.
+// |allow_mocked_ube_detection_FOR_TESTING| must have been invoked, once
+// per-process, to allow mocking the vm_ube generation number.
 OPENSSL_EXPORT void set_vm_ube_generation_number_FOR_TESTING(uint64_t vm_ube_gn);
 
 // allow_mocked_ube_detection_FOR_TESTING allows mocking UBE detection even
