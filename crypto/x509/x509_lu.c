@@ -335,6 +335,13 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
   X509_CINF cinf_s;
   X509_CRL crl_s;
   X509_CRL_INFO crl_info_s;
+  // These are stack-only lookup keys. They must start zeroed so
+  // |x509_ensure_legacy| can tell them apart from parsed certificates. A braced
+  // initializer would need every field listed on older compilers.
+  OPENSSL_memset(&x509_s, 0, sizeof(x509_s));
+  OPENSSL_memset(&cinf_s, 0, sizeof(cinf_s));
+  OPENSSL_memset(&crl_s, 0, sizeof(crl_s));
+  OPENSSL_memset(&crl_info_s, 0, sizeof(crl_info_s));
 
   stmp.type = type;
   switch (type) {
@@ -512,6 +519,9 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   size_t i;
   *issuer = NULL;
   xn = X509_get_issuer_name(x);
+  if (xn == NULL) {
+    return -1;
+  }
   if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
     return 0;
   }
@@ -538,7 +548,13 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
       if (pobj->type != X509_LU_X509) {
         break;
       }
-      if (X509_NAME_cmp(xn, X509_get_subject_name(pobj->data.x509))) {
+      X509_NAME *subject = X509_get_subject_name(pobj->data.x509);
+      if (subject == NULL) {
+        *issuer = NULL;
+        ret = -1;
+        break;
+      }
+      if (X509_NAME_cmp(xn, subject)) {
         break;
       }
       if (x509_check_issued_with_callback(ctx, x, pobj->data.x509)) {

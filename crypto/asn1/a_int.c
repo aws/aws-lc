@@ -19,6 +19,12 @@ ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x) {
 }
 
 int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y) {
+  // Lazy X.509 field materialization may fail and return NULL. Treat that as
+  // non-equality so comparison-based certificate selection fails closed.
+  if (x == NULL || y == NULL) {
+    return -2;
+  }
+
   // Compare signs.
   int neg = x->type & V_ASN1_NEG;
   if (neg != (y->type & V_ASN1_NEG)) {

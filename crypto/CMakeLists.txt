@@ -579,6 +579,7 @@ add_library(
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
+target_sources(crypto_objects PRIVATE x509/x509_c_view_parser.c)
 
 function(build_libcrypto)
   set(options SET_OUTPUT_NAME)
@@ -872,6 +873,11 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
+  )
+  target_sources(
+    ${CRYPTO_TEST_EXEC}
+    PRIVATE
+    x509/x509_view_test.cc
   )
   set_test_location(${CRYPTO_TEST_EXEC})
 

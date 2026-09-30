@@ -337,6 +337,9 @@ static int copy_email(const X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p) {
   } else {
     nm = X509_REQ_get_subject_name(ctx->subject_req);
   }
+  if (nm == NULL) {
+    goto err;
+  }
 
   // Now add any email address(es) to STACK
   i = -1;

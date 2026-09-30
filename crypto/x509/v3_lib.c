@@ -5,6 +5,7 @@
 // X509 v3 extension utilities
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include <openssl/conf.h>
@@ -161,23 +162,21 @@ int X509V3_add_standard_extensions(void) { return 1; }
 
 // Return an extension internal structure
 
-void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
-  const X509V3_EXT_METHOD *method;
-  const unsigned char *p;
-
-  if (!(method = X509V3_EXT_get(ext))) {
+void *x509v3_ext_d2i_nid(int nid, const uint8_t *data, size_t len) {
+  const X509V3_EXT_METHOD *method = X509V3_EXT_get_nid(nid);
+  if (method == NULL || len > LONG_MAX) {
     return NULL;
   }
-  p = ext->value->data;
+
+  const unsigned char *p = data;
   void *ret = NULL;
   if (method->it) {
-    ret =
-        ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
+    ret = ASN1_item_d2i(NULL, &p, (long)len, ASN1_ITEM_ptr(method->it));
   } else if (method->ext_nid == NID_id_pkix_OCSP_Nonce && method->d2i != NULL) {
     // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
     // ASN.1 callbacks for backwards compatibility reasons.
     // Note: See |v3_ext_method| under "include/openssl/x509.h".
-    ret = method->d2i(NULL, &p, ext->value->length);
+    ret = method->d2i(NULL, &p, (long)len);
   } else {
     assert(0);
   }
@@ -186,12 +185,23 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
     return NULL;
   }
   // Check for trailing data.
-  if (p != ext->value->data + ext->value->length) {
+  if (p != data + len) {
     x509v3_ext_free_with_method(method, ret);
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_TRAILING_DATA_IN_EXTENSION);
     return NULL;
   }
   return ret;
+}
+
+void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
+  if (ext == NULL) {
+    return NULL;
+  }
+  const int nid = OBJ_obj2nid(ext->object);
+  if (nid == NID_undef) {
+    return NULL;
+  }
+  return x509v3_ext_d2i_nid(nid, ext->value->data, ext->value->length);
 }
 
 void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
