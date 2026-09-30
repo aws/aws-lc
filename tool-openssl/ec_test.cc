@@ -228,16 +228,16 @@ TEST_F(ECTest, InvalidOutputPath) {
 // Test that private key output files are created with restrictive permissions
 #if !defined(OPENSSL_WINDOWS)
 TEST_F(ECTest, PrivateKeyFilePermissions) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
   args_list_t args = {"-in", pem_key_path, "-out", out_path};
   ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   struct stat st;
   ASSERT_EQ(0, stat(out_path, &st));
-  // File should be owner-only (0600 mask applied via umask 0077)
   mode_t perms = st.st_mode & 0777;
-  EXPECT_EQ(static_cast<mode_t>(perms & 0077), static_cast<mode_t>(0))
-      << "Private key file should not be group/world accessible, got: 0"
-      << std::oct << perms;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0600))
+      << "Private key file should be owner-only, got: 0" << std::oct << perms;
 }
 #endif
 

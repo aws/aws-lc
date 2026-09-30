@@ -213,8 +213,7 @@ int pkcs12Tool(const args_list_t &args) {
     out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
     // Output is owner-only regardless of whether a key ends up in it.
-    SetUmaskForPrivateKey();
-    out.reset(BIO_new_file(out_path.c_str(), "wb"));
+    out = NewPrivateFileBIO(out_path);
   }
   if (!out) {
     fprintf(stderr, "Error: unable to open output '%s'\n",

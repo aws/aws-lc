@@ -96,11 +96,8 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
       return nullptr;
     }
   } else {
-    SetUmaskForPrivateKey();
-    bio.reset(BIO_new_file(out_path.c_str(), "wb"));
+    bio = NewPrivateFileBIO(out_path);
     if (!bio) {
-      fprintf(stderr, "Error: Could not open output file '%s'\n",
-              out_path.c_str());
       return nullptr;
     }
   }

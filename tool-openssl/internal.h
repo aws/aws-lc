@@ -287,6 +287,9 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               const ordered_args_map_t &args);
 }  // namespace ordered_args
 
-void SetUmaskForPrivateKey();
+// NewPrivateFileBIO opens |path| for writing with owner-only permissions (0600
+// on POSIX), truncating any existing file. Use this for private keys and other
+// secrets. It returns nullptr on failure, after printing the reason to stderr.
+bssl::UniquePtr<BIO> NewPrivateFileBIO(const std::string &path);
 
 #endif  // TOOL_OPENSSL_INTERNAL_H

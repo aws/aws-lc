@@ -237,9 +237,9 @@ bool Server(const std::vector<std::string> &args) {
 
   const char *keylog_file = getenv("SSLKEYLOGFILE");
   if (keylog_file) {
-    g_keylog_file = fopen(keylog_file, "a");
+    // The log holds TLS traffic secrets.
+    g_keylog_file = OpenPrivateFile(keylog_file, /*append=*/true).release();
     if (g_keylog_file == nullptr) {
-      perror("fopen");
       return false;
     }
     SSL_CTX_set_keylog_callback(ctx.get(), KeyLogCallback);
