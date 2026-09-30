@@ -368,6 +368,57 @@ static void CreateMismatchedCSR(const char *path, bool der = false) {
   }
 }
 
+// Builds a CSR that parses structurally but whose SubjectPublicKeyInfo cannot
+// be decoded into an EVP_PKEY. A valid RSA CSR is serialized to DER, then the
+// rsaEncryption OID in its SPKI is rewritten to an unknown OID. d2i_X509_REQ
+// still succeeds (an SPKI whose key we cannot interpret is still a valid
+// structure), but X509_REQ_get_pubkey then returns NULL, exercising the -req
+// "unable to get public key" path. Written in DER so the OID can be patched
+// directly. The now-stale request signature is irrelevant: the tool rejects
+// the CSR before it reaches signature verification.
+static void CreateUndecodablePubkeyCSR(const char *path) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(bn);
+  ASSERT_TRUE(BN_set_word(bn.get(), RSA_F4));
+  ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
+
+  bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
+  ASSERT_TRUE(csr);
+  ASSERT_TRUE(X509_REQ_set_pubkey(csr.get(), pkey.get()));
+  ASSERT_TRUE(X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256()));
+
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509_REQ(csr.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_cleanup(der);
+
+  // The rsaEncryption OID (1.2.840.113549.1.1.1) as an ASN.1 OBJECT: tag/len
+  // 06 09 then 9 content bytes. This exact sequence is unique in the CSR: the
+  // sha256WithRSAEncryption signature OID differs in its last byte (0x0B).
+  // Rewrite the final arc to 0x7F, yielding the unknown
+  // OID 1.2.840.113549.1.1.127.
+  static const uint8_t kRsaOid[] = {0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+                                    0xf7, 0x0d, 0x01, 0x01, 0x01};
+  uint8_t *found = nullptr;
+  for (int i = 0; i + static_cast<int>(sizeof(kRsaOid)) <= der_len; i++) {
+    if (OPENSSL_memcmp(der + i, kRsaOid, sizeof(kRsaOid)) == 0) {
+      found = der + i;
+      break;
+    }
+  }
+  ASSERT_NE(found, nullptr);
+  found[sizeof(kRsaOid) - 1] = 0x7f;
+
+  ScopedFILE csr_file(fopen(path, "wb"));
+  ASSERT_TRUE(csr_file);
+  ASSERT_EQ(1u, fwrite(der, static_cast<size_t>(der_len), 1, csr_file.get()));
+}
+
 // -req with -CA must reject a CSR whose signature doesn't match its key. This
 // is the core proof-of-possession case: the CSR's own public key is used for
 // the issued certificate, so a bad request signature means the requester may
@@ -408,6 +459,22 @@ TEST_F(X509Test, ReqCARejectsBadSignatureDER) {
   char bad_csr_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
   ASSERT_NO_FATAL_FAILURE(CreateMismatchedCSR(bad_csr_path, /*der=*/true));
+
+  args_list_t args = {"-in", bad_csr_path, "-req",   "-inform",  "DER",
+                      "-CA", ca_cert_path, "-CAkey", ca_key_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  RemoveFile(bad_csr_path);
+}
+
+// A CSR that parses but whose public key cannot be extracted must be rejected
+// under -req, before any certificate is issued. This covers the
+// X509_REQ_get_pubkey failure branch, which the mismatched-signature cases do
+// not reach (those carry a decodable key and fail later at verification).
+TEST_F(X509Test, ReqCARejectsUndecodablePublicKey) {
+  char bad_csr_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(bad_csr_path), 0u);
+  ASSERT_NO_FATAL_FAILURE(CreateUndecodablePubkeyCSR(bad_csr_path));
 
   args_list_t args = {"-in", bad_csr_path, "-req",   "-inform",  "DER",
                       "-CA", ca_cert_path, "-CAkey", ca_key_path};
