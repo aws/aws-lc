@@ -1,0 +1,347 @@
+# RFC 5280 section 4.2.1.10 (Name Constraints), extracted verbatim with
+# `duvet extract https://www.rfc-editor.org/rfc/rfc5280` and scoped to this one
+# section. Two of these MUSTs are cited in crypto/x509/v3_ncons.c; the rest are
+# intentionally left uncovered so the coverage report shows which name-constraint
+# subcases carry a spec anchor and which do not.
+target = "https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10"
+
+# Name Constraints
+#
+#    The name constraints extension, which MUST be used only in a CA
+#    certificate, indicates a name space within which all subject names in
+#    subsequent certificates in a certification path MUST be located.
+#    Restrictions apply to the subject distinguished name and apply to
+#    subject alternative names.  Restrictions apply only when the
+#    specified name form is present.  If no name of the type is in the
+#    certificate, the certificate is acceptable.
+# 
+#    Name constraints are not applied to self-issued certificates (unless
+#    the certificate is the final certificate in the path).  (This could
+#    prevent CAs that use name constraints from employing self-issued
+#    certificates to implement key rollover.)
+# 
+#    Restrictions are defined in terms of permitted or excluded name
+#    subtrees.  Any name matching a restriction in the excludedSubtrees
+#    field is invalid regardless of information appearing in the
+#    permittedSubtrees.  Conforming CAs MUST mark this extension as
+#    critical and SHOULD NOT impose name constraints on the x400Address,
+#    ediPartyName, or registeredID name forms.  Conforming CAs MUST NOT
+#    issue certificates where name constraints is an empty sequence.  That
+#    is, either the permittedSubtrees field or the excludedSubtrees MUST
+#    be present.
+# 
+#    Applications conforming to this profile MUST be able to process name
+#    constraints that are imposed on the directoryName name form and
+#    SHOULD be able to process name constraints that are imposed on the
+#    rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+#    forms.  If a name constraints extension that is marked as critical
+#    imposes constraints on a particular name form, and an instance of
+#    that name form appears in the subject field or subjectAltName
+#    extension of a subsequent certificate, then the application MUST
+#    either process the constraint or reject the certificate.
+# 
+#    Within this profile, the minimum and maximum fields are not used with
+#    any name forms, thus, the minimum MUST be zero, and maximum MUST be
+#    absent.  However, if an application encounters a critical name
+#    constraints extension that specifies other values for minimum or
+#    maximum for a name form that appears in a subsequent certificate, the
+#    application MUST either process these fields or reject the
+#    certificate.
+# 
+#    For URIs, the constraint applies to the host part of the name.  The
+#    constraint MUST be specified as a fully qualified domain name and MAY
+#    specify a host or a domain.  Examples would be "host.example.com" and
+#    ".example.com".  When the constraint begins with a period, it MAY be
+#    expanded with one or more labels.  That is, the constraint
+#    ".example.com" is satisfied by both host.example.com and
+#    my.host.example.com.  However, the constraint ".example.com" is not
+#    satisfied by "example.com".  When the constraint does not begin with
+#    a period, it specifies a host.  If a constraint is applied to the
+#    uniformResourceIdentifier name form and a subsequent certificate
+#    includes a subjectAltName extension with a uniformResourceIdentifier
+#    that does not include an authority component with a host name
+#    specified as a fully qualified domain name (e.g., if the URI either
+#    does not include an authority component or includes an authority
+#    component in which the host name is specified as an IP address), then
+#    the application MUST reject the certificate.
+# 
+#    A name constraint for Internet mail addresses MAY specify a
+#    particular mailbox, all addresses at a particular host, or all
+#    mailboxes in a domain.  To indicate a particular mailbox, the
+#    constraint is the complete mail address.  For example,
+#    "root@example.com" indicates the root mailbox on the host
+#    "example.com".  To indicate all Internet mail addresses on a
+#    particular host, the constraint is specified as the host name.  For
+#    example, the constraint "example.com" is satisfied by any mail
+#    address at the host "example.com".  To specify any address within a
+#    domain, the constraint is specified with a leading period (as with
+#    URIs).  For example, ".example.com" indicates all the Internet mail
+#    addresses in the domain "example.com", but not Internet mail
+#    addresses on the host "example.com".
+# 
+#    DNS name restrictions are expressed as host.example.com.  Any DNS
+#    name that can be constructed by simply adding zero or more labels to
+#    the left-hand side of the name satisfies the name constraint.  For
+#    example, www.host.example.com would satisfy the constraint but
+#    host1.example.com would not.
+# 
+#    Legacy implementations exist where an electronic mail address is
+#    embedded in the subject distinguished name in an attribute of type
+#    emailAddress (Section 4.1.2.6).  When constraints are imposed on the
+# 
+#    rfc822Name name form, but the certificate does not include a subject
+#    alternative name, the rfc822Name constraint MUST be applied to the
+#    attribute of type emailAddress in the subject distinguished name.
+#    The ASN.1 syntax for emailAddress and the corresponding OID are
+#    supplied in Appendix A.
+# 
+#    Restrictions of the form directoryName MUST be applied to the subject
+#    field in the certificate (when the certificate includes a non-empty
+#    subject field) and to any names of type directoryName in the
+#    subjectAltName extension.  Restrictions of the form x400Address MUST
+#    be applied to any names of type x400Address in the subjectAltName
+#    extension.
+# 
+#    When applying restrictions of the form directoryName, an
+#    implementation MUST compare DN attributes.  At a minimum,
+#    implementations MUST perform the DN comparison rules specified in
+#    Section 7.1.  CAs issuing certificates with a restriction of the form
+#    directoryName SHOULD NOT rely on implementation of the full ISO DN
+#    name comparison algorithm.  This implies name restrictions MUST be
+#    stated identically to the encoding used in the subject field or
+#    subjectAltName extension.
+# 
+#    The syntax of iPAddress MUST be as described in Section 4.2.1.6 with
+#    the following additions specifically for name constraints.  For IPv4
+#    addresses, the iPAddress field of GeneralName MUST contain eight (8)
+#    octets, encoded in the style of RFC 4632 (CIDR) to represent an
+#    address range [RFC4632].  For IPv6 addresses, the iPAddress field
+#    MUST contain 32 octets similarly encoded.  For example, a name
+#    constraint for "class C" subnet 192.0.2.0 is represented as the
+#    octets C0 00 02 00 FF FF FF 00, representing the CIDR notation
+#    192.0.2.0/24 (mask 255.255.255.0).
+# 
+#    Additional rules for encoding and processing name constraints are
+#    specified in Section 7.
+# 
+#    The syntax and semantics for name constraints for otherName,
+#    ediPartyName, and registeredID are not defined by this specification,
+#    however, syntax and semantics for name constraints for other name
+#    forms may be specified in other documents.
+# 
+#       id-ce-nameConstraints OBJECT IDENTIFIER ::=  { id-ce 30 }
+# 
+#       NameConstraints ::= SEQUENCE {
+#            permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+#            excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+# 
+#       GeneralSubtrees ::= SEQUENCE SIZE (1..MAX) OF GeneralSubtree
+# 
+#       GeneralSubtree ::= SEQUENCE {
+#            base                    GeneralName,
+#            minimum         [0]     BaseDistance DEFAULT 0,
+#            maximum         [1]     BaseDistance OPTIONAL }
+# 
+#       BaseDistance ::= INTEGER (0..MAX)
+
+[[spec]]
+level = "MUST"
+quote = '''
+The name constraints extension, which MUST be used only in a CA
+certificate, indicates a name space within which all subject names in
+subsequent certificates in a certification path MUST be located.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Conforming CAs MUST mark this extension as
+critical and SHOULD NOT impose name constraints on the x400Address,
+ediPartyName, or registeredID name forms.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Conforming CAs MUST NOT
+issue certificates where name constraints is an empty sequence.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+That
+is, either the permittedSubtrees field or the excludedSubtrees MUST
+be present.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Applications conforming to this profile MUST be able to process name
+constraints that are imposed on the directoryName name form and
+SHOULD be able to process name constraints that are imposed on the
+rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+forms.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If a name constraints extension that is marked as critical
+imposes constraints on a particular name form, and an instance of
+that name form appears in the subject field or subjectAltName
+extension of a subsequent certificate, then the application MUST
+either process the constraint or reject the certificate.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Within this profile, the minimum and maximum fields are not used with
+any name forms, thus, the minimum MUST be zero, and maximum MUST be
+absent.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+However, if an application encounters a critical name
+constraints extension that specifies other values for minimum or
+maximum for a name form that appears in a subsequent certificate, the
+application MUST either process these fields or reject the
+certificate.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The
+constraint MUST be specified as a fully qualified domain name and MAY
+specify a host or a domain.
+'''
+
+[[spec]]
+level = "MAY"
+quote = '''
+When the constraint begins with a period, it MAY be
+expanded with one or more labels.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If a constraint is applied to the
+uniformResourceIdentifier name form and a subsequent certificate
+includes a subjectAltName extension with a uniformResourceIdentifier
+that does not include an authority component with a host name
+specified as a fully qualified domain name (e.g., if the URI either
+does not include an authority component or includes an authority
+component in which the host name is specified as an IP address), then
+the application MUST reject the certificate.
+'''
+
+[[spec]]
+level = "MAY"
+quote = '''
+A name constraint for Internet mail addresses MAY specify a
+particular mailbox, all addresses at a particular host, or all
+mailboxes in a domain.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+rfc822Name name form, but the certificate does not include a subject
+alternative name, the rfc822Name constraint MUST be applied to the
+attribute of type emailAddress in the subject distinguished name.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Restrictions of the form directoryName MUST be applied to the subject
+field in the certificate (when the certificate includes a non-empty
+subject field) and to any names of type directoryName in the
+subjectAltName extension.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+Restrictions of the form x400Address MUST
+be applied to any names of type x400Address in the subjectAltName
+extension.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+When applying restrictions of the form directoryName, an
+implementation MUST compare DN attributes.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+At a minimum,
+implementations MUST perform the DN comparison rules specified in
+Section 7.1.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+CAs issuing certificates with a restriction of the form
+directoryName SHOULD NOT rely on implementation of the full ISO DN
+name comparison algorithm.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+This implies name restrictions MUST be
+stated identically to the encoding used in the subject field or
+subjectAltName extension.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The syntax of iPAddress MUST be as described in Section 4.2.1.6 with
+the following additions specifically for name constraints.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+For IPv4
+addresses, the iPAddress field of GeneralName MUST contain eight (8)
+octets, encoded in the style of RFC 4632 (CIDR) to represent an
+address range [RFC4632].
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+For IPv6 addresses, the iPAddress field
+MUST contain 32 octets similarly encoded.
+'''
+
+[[spec]]
+level = "MAY"
+quote = '''
+NameConstraints ::= SEQUENCE {
+permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+'''
+
+[[spec]]
+level = "MAY"
+quote = '''
+GeneralSubtree ::= SEQUENCE {
+base                    GeneralName,
+minimum         [0]     BaseDistance DEFAULT 0,
+maximum         [1]     BaseDistance OPTIONAL }
+'''
+
