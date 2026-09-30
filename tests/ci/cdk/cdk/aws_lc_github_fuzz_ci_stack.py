@@ -22,40 +22,16 @@ from util.iam_policies import (
 from util.metadata import GITHUB_PUSH_CI_BRANCH_TARGETS
 from util.build_spec_loader import BuildSpecLoader
 
-# NFS port used by EFS mount targets.
 NFS_PORT = 2049
 
 
 class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
-    """Define a stack used to batch execute AWS-LC fuzz tests in GitHub.
+    """Batch-execute AWS-LC fuzz tests in GitHub.
 
-    Fuzzing is split across two CodeBuild projects so that untrusted fork-PR
-    builds cannot read from or write to the canonical fuzzing corpus and the
-    crash-artifact store that trusted runs depend on, while still giving PR
-    runs a warm seed corpus:
-
-      * a trusted project, triggered only by pushes to the protected CI
-        branches (main / fips-*), which mounts the canonical EFS read-write. It
-        is the sole reader/writer of the crash-artifact store and the only
-        writer of the corpus, and
-      * an untrusted project, triggered by pull requests (including forks),
-        which mounts only a read-replica EFS that holds a copy of the corpus
-        (never the crash-artifact tree). It runs in a dedicated security group
-        that the canonical EFS mount target does not admit.
-
-    The corpus is synced one-way (trusted -> replica, corpus subtree only) by
-    the trusted build after it merges new inputs back (see
-    tests/ci/common_fuzz.sh). Nothing flows replica -> canonical, so a PR that
-    scribbles on the replica cannot affect trusted data, and the replica
-    self-heals on the next trusted sync.
-
-    Why network isolation rather than a read-only mount or IAM policy:
-    CodeBuild does not support IAM authorization for EFS mounts (see
-    https://docs.aws.amazon.com/codebuild/latest/userguide/sample-efs-troubleshooting.html),
-    and the fuzzing containers run privileged, so neither a per-role read-only
-    EFS file-system policy nor an "ro" mount option can be enforced against
-    attacker-controlled PR code. The only robust control is denying the PR
-    project a network path to the canonical filesystem.
+    A trusted project (push to main/fips-*) mounts the canonical EFS
+    read-write; an untrusted PR project mounts only a read-replica of the
+    corpus and has no network path to the canonical filesystem. The trusted
+    build syncs the corpus one-way to the replica.
     """
 
     def __init__(
@@ -68,12 +44,9 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
     ) -> None:
         super().__init__(scope, id, env=env, timeout=120, **kwargs)
 
-        # The trusted (push-triggered) project keeps the stack id as its name;
-        # the untrusted (PR-triggered) project is suffixed.
         trusted_project_name = id
         pr_project_name = "{}-pr".format(id)
 
-        # Create the VPC shared by both EFS filesystems and both projects.
         public_subnet = ec2.SubnetConfiguration(
             name="PublicFuzzingSubnet", subnet_type=ec2.SubnetType.PUBLIC
         )
@@ -90,10 +63,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             max_azs=1,
         )
 
-        # Security group for trusted builds. It is shared with the canonical
-        # EFS mount target; the self-referencing ingress rule means only
-        # members of this group (i.e. the trusted project) can reach the
-        # canonical corpus/crash-artifact filesystem.
         trusted_security_group = ec2.SecurityGroup(
             scope=self, id="{}-FuzzingSecurityGroup".format(id), vpc=fuzz_vpc
         )
@@ -103,10 +72,7 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             description="Allow all traffic inside security group",
         )
 
-        # Dedicated security group for untrusted PR builds. It is deliberately
-        # NOT admitted by the canonical EFS security group, so PR containers
-        # have no network path to the canonical filesystem even though they
-        # share the VPC and run privileged. They reach only the replica EFS.
+        # Deliberately not admitted to the canonical EFS SG.
         pr_security_group = ec2.SecurityGroup(
             scope=self, id="{}-PRFuzzingSecurityGroup".format(id), vpc=fuzz_vpc
         )
@@ -137,10 +103,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             provisioned_throughput_per_second=Size.mebibytes(100),
         )
 
-        # Security group for the replica EFS mount target. It admits the PR
-        # project (read path for the warm seed corpus) and the trusted project
-        # (one-way sync writer). It does NOT grant the PR project any path to
-        # the canonical filesystem above.
         replica_efs_security_group = ec2.SecurityGroup(
             scope=self, id="{}-ReplicaEFSSecurityGroup".format(id), vpc=fuzz_vpc
         )
@@ -155,9 +117,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             description="Allow trusted fuzz builds to sync the replica corpus",
         )
 
-        # Read-replica EFS: holds a one-way-synced copy of the corpus only
-        # (never the crash-artifact tree). No automatic backups: it is derived
-        # state that the trusted sync can fully reconstruct.
         replica_filesystem = efs.FileSystem(
             scope=self,
             id="{}-FuzzingReplicaEFS".format(id),
@@ -172,11 +131,7 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             provisioned_throughput_per_second=Size.mebibytes(100),
         )
 
-        # ------------------------------------------------------------------
-        # Trusted project: triggered only by pushes to main / fips-* (i.e.
-        # already-reviewed, merged code). Mounts the canonical EFS read-write
-        # and the replica EFS as the one-way sync target.
-        # ------------------------------------------------------------------
+        # Trusted project: push to main/fips-*, canonical EFS read-write.
         trusted_source = codebuild.Source.git_hub(
             owner=self.github_repo_owner,
             repo=self.github_repo_name,
@@ -214,11 +169,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 compute_type=codebuild.ComputeType.LARGE,
                 privileged=True,
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0,
-                # Marks this project as the trusted corpus writer. Only builds
-                # with this flag set write back to the canonical corpus /
-                # crash-artifact store and drive the replica sync (see
-                # tests/ci/common_fuzz.sh). This is a project-level variable
-                # that PR-authored code cannot change.
                 environment_variables={
                     "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
                         value="true"
@@ -259,12 +209,7 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             ],
         )
 
-        # ------------------------------------------------------------------
-        # Untrusted project: triggered by pull requests (including forks).
-        # Runs unreviewed code, so it mounts ONLY the replica EFS (warm corpus,
-        # no crash-artifact tree) and lives in an isolated security group with
-        # no path to the canonical filesystem.
-        # ------------------------------------------------------------------
+        # Untrusted PR project: replica EFS only, isolated security group.
         pr_source = codebuild.Source.git_hub(
             owner=self.github_repo_owner,
             repo=self.github_repo_name,
@@ -304,6 +249,11 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 compute_type=codebuild.ComputeType.LARGE,
                 privileged=True,
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0,
+                environment_variables={
+                    "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
+                        value="false"
+                    )
+                },
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env),
             vpc=fuzz_vpc,
@@ -311,8 +261,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
         )
         pr_codebuild.enable_batch_builds()
 
-        # PR builds mount only the replica, at the same identifier the fuzz
-        # script reads its corpus from (fuzzing_root -> CODEBUILD_FUZZING_ROOT).
         cfn_pr_codebuild = pr_codebuild.node.default_child
         cfn_pr_codebuild.add_override(
             "Properties.FileSystemLocations",
@@ -330,7 +278,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             "Triggers.PullRequestBuildPolicy", self.pull_request_policy
         )
 
-        # Prune stale PR builds superseded by newer commits on the same PR.
         PruneStaleGitHubBuilds(
             scope=self,
             id="PruneStaleGitHubBuilds",
