@@ -65,6 +65,20 @@ static std::string EncCommand(const char *executable,
   return command;
 }
 
+// Reports whether |executable| is OpenSSL 3.x or later. `list -providers` only
+// exists in 3.x, so probe for it rather than relying on OPENSSL_TOOL_VERSION,
+// which is unset in local runs.
+static bool IsOpenSSL3OrLater(const char *executable) {
+#if defined(OPENSSL_WINDOWS)
+  const char *null_device = "NUL";
+#else
+  const char *null_device = "/dev/null";
+#endif
+  return ExecuteCommandExitCode(ShellEscape(executable) +
+                                " list -providers > " + null_device +
+                                " 2>&1") == 0;
+}
+
 static void WriteInput(const char *path, size_t len) {
   ScopedFILE file(fopen(path, "wb"));
   ASSERT_TRUE(file);
@@ -551,11 +565,8 @@ TEST_F(EncComparisonTest, OptionSemanticsMatchOpenSSL) {
   const Case cases[] = {
       {{}, 1025, true},
       {{"-d", "-K", "invalid", "-iv", "invalid"}, 17, true},
-      {{"-aes-256-cbc", "-none"}, 17, true},
       {{"-none", "-aes-256-cbc", "-K", key, "-iv", iv}, 17, true},
-      {{"-aes-128-cbc", "-aes-256-cbc", "-d", "-e", "-K", key, "-iv", iv},
-       17,
-       true},
+      {{"-aes-256-cbc", "-d", "-e", "-K", key, "-iv", iv}, 17, true},
       {{"-aes-256-cbc", "-K", "", "-iv", ""}, 17, true},
       {{"-aes-256-cbc", "-K", "f", "-iv", "aBc"}, 17, true},
       {{"-aes-256-cbc", "-K", key + "not-hex", "-iv", iv + "not-hex"},
@@ -596,24 +607,56 @@ TEST_F(EncComparisonTest, OptionSemanticsMatchOpenSSL) {
   }
 }
 
+// As in OpenSSL 1.1.1, the last cipher option, including -none, wins. OpenSSL
+// 3.x differs: it resolves the cipher after parsing, so -none after a cipher
+// has no effect (and enc prompts for a password), and newer releases reject
+// multiple ciphers. Compare against OpenSSL only for 1.1.1.
+TEST_F(EncComparisonTest, LastCipherOptionWinsLikeOpenSSL111) {
+  const std::string key_iv =
+      " -K " + std::string(64, '1') + " -iv " + std::string(32, '2');
+  struct Case {
+    std::string options;
+    // Options that should give the same output from our tool.
+    std::string equivalent;
+  };
+  const Case cases[] = {
+      {" -aes-256-cbc -none", " -none"},
+      {" -aes-128-cbc -aes-256-cbc" + key_iv, " -aes-256-cbc" + key_iv},
+  };
+  const bool compare_openssl = !IsOpenSSL3OrLater(openssl_executable_path);
+  WriteInput(in_path, 17);
+  const std::string io = " -in " + ShellEscape(in_path) + " -out ";
+  for (const auto &test : cases) {
+    SCOPED_TRACE(test.options);
+    ASSERT_EQ(kToolExitSuccess,
+              ExecuteCommandExitCode(ShellEscape(tool_executable_path) +
+                                     " enc" + test.equivalent + io +
+                                     ShellEscape(out_path_openssl)));
+    const std::string expected = ReadFileToString(out_path_openssl);
+    ASSERT_EQ(
+        kToolExitSuccess,
+        ExecuteCommandExitCode(ShellEscape(tool_executable_path) + " enc" +
+                               test.options + io + ShellEscape(out_path_tool)));
+    EXPECT_EQ(expected, ReadFileToString(out_path_tool));
+
+    if (compare_openssl) {
+      ASSERT_EQ(0, ExecuteCommandExitCode(ShellEscape(openssl_executable_path) +
+                                          " enc" + test.options + io +
+                                          ShellEscape(out_path_openssl)));
+      EXPECT_EQ(ReadFileToString(out_path_openssl),
+                ReadFileToString(out_path_tool));
+    }
+  }
+}
+
 TEST_F(EncComparisonTest, RegisteredCiphersMatchOpenSSL) {
   char decrypted_path_tool[PATH_MAX];
   char decrypted_path_openssl[PATH_MAX];
   ASSERT_GT(createTempFILEpath(decrypted_path_tool), 0u);
   ASSERT_GT(createTempFILEpath(decrypted_path_openssl), 0u);
 
-  // OpenSSL 3.x moved DES-CBC to the legacy provider. `list -providers` only
-  // exists in 3.x, so probe for it rather than relying on
-  // OPENSSL_TOOL_VERSION, which is unset in local runs.
-#if defined(OPENSSL_WINDOWS)
-  const char *null_device = "NUL";
-#else
-  const char *null_device = "/dev/null";
-#endif
-  const bool load_legacy_provider =
-      ExecuteCommandExitCode(ShellEscape(openssl_executable_path) +
-                             " list -providers > " + null_device + " 2>&1") ==
-      0;
+  // OpenSSL 3.x moved DES-CBC to the legacy provider.
+  const bool load_legacy_provider = IsOpenSSL3OrLater(openssl_executable_path);
 
   for (const auto &cipher : kEncCipherTestCases) {
     const size_t input_lengths[] = {0, cipher.block_len, cipher.block_len + 1};
