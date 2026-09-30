@@ -556,6 +556,12 @@ static int has_suffix_case(const CBS *a, const CBS *b) {
   return equal_case(&copy, b);
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# Applications conforming to this profile MUST be able to process name
+//# constraints that are imposed on the directoryName name form and
+//# SHOULD be able to process name constraints that are imposed on the
+//# rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+//# forms.
 static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
                   int excluding) {
   CBS dns_cbs, base_cbs;
@@ -750,6 +756,11 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
 //# does not include an authority component or includes an authority
 //# component in which the host name is specified as an IP address), then
 //# the application MUST reject the certificate.
+
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# The
+//# constraint MUST be specified as a fully qualified domain name and MAY
+//# specify a host or a domain.
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
   CBS uri_cbs, base_cbs;
   CBS_init(&uri_cbs, uri->data, uri->length);
