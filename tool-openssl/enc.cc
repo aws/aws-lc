@@ -77,36 +77,30 @@ int encTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  std::string in_path, out_path, cipher_name;
-  Password hex_key, hex_iv;
-  bool encode = true, nopad = false, has_key = false, has_iv = false;
-
-  // OpenSSL processes repeated options in order: the last value wins.
-  for (const auto &arg : parsed_args) {
-    if (arg.first == "-help") {
-      PrintUsage(kArguments);
-      return kToolExitSuccess;
-    } else if (arg.first == "-in") {
-      in_path = arg.second;
-    } else if (arg.first == "-out") {
-      out_path = arg.second;
-    } else if (arg.first == "-e" || arg.first == "-d") {
-      encode = arg.first == "-e";
-    } else if (arg.first == "-nopad") {
-      nopad = true;
-    } else if (arg.first == "-K") {
-      hex_key.get() = arg.second;
-      has_key = true;
-    } else if (arg.first == "-iv") {
-      hex_iv.get() = arg.second;
-      has_iv = true;
-    } else if (arg.first == "-none") {
-      cipher_name.clear();
-    } else {
-      // All remaining accepted options are cipher names.
-      cipher_name = arg.first.substr(1);
-    }
+  using namespace ordered_args;
+  if (HasArgument(parsed_args, "-help")) {
+    PrintUsage(kArguments);
+    return kToolExitSuccess;
   }
+
+  std::string in_path, out_path;
+  Password hex_key, hex_iv;
+  GetLastString(&in_path, "-in", "", parsed_args);
+  GetLastString(&out_path, "-out", "", parsed_args);
+  GetLastString(&hex_key.get(), "-K", "", parsed_args);
+  GetLastString(&hex_iv.get(), "-iv", "", parsed_args);
+  const bool has_key = HasArgument(parsed_args, "-K");
+  const bool has_iv = HasArgument(parsed_args, "-iv");
+  const bool nopad = HasArgument(parsed_args, "-nopad");
+  const bool encode = GetLastOption({"-e", "-d"}, "-e", parsed_args) == "-e";
+  std::string cipher_name = GetLastOption(
+      {"-none",        "-aes-128-cbc", "-aes-128-cfb", "-aes-128-ctr",
+       "-aes-128-ecb", "-aes-128-ofb", "-aes-192-cbc", "-aes-192-cfb",
+       "-aes-192-ctr", "-aes-192-ecb", "-aes-192-ofb", "-aes-256-cbc",
+       "-aes-256-cfb", "-aes-256-ctr", "-aes-256-ecb", "-aes-256-ofb",
+       "-aes128",      "-aes256",      "-des-cbc",     "-des-ede3-cbc"},
+      "-none", parsed_args);
+  cipher_name = cipher_name == "-none" ? "" : cipher_name.substr(1);
 
   // As in OpenSSL, an absent path or "-" means stdin/stdout.
   ScopedFILE in_file;

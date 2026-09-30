@@ -289,37 +289,23 @@ int pkeyutlTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
+  if (HasArgument(parsed_args, "-help")) {
+    PrintUsage(kArguments);
+    return kToolExitSuccess;
+  }
+
   std::string in_path, out_path, inkey_path, sigfile_path;
   std::vector<std::string> pkeyopts;
-  // Use sensitive string handling for password
   Password passin_arg;
-  bool pubin = false;
-
-  std::string operation = "-sign";
-  // OpenSSL uses the last scalar/operation option, but applies every pkeyopt.
-  for (const auto &arg : parsed_args) {
-    if (arg.first == "-help") {
-      PrintUsage(kArguments);
-      return kToolExitSuccess;
-    } else if (arg.first == "-in") {
-      in_path = arg.second;
-    } else if (arg.first == "-out") {
-      out_path = arg.second;
-    } else if (arg.first == "-inkey") {
-      inkey_path = arg.second;
-    } else if (arg.first == "-passin") {
-      passin_arg.get() = arg.second;
-    } else if (arg.first == "-sigfile") {
-      sigfile_path = arg.second;
-    } else if (arg.first == "-pubin") {
-      pubin = true;
-    } else if (arg.first == "-pkeyopt") {
-      pkeyopts.push_back(arg.second);
-    } else if (arg.first == "-encrypt" || arg.first == "-decrypt" ||
-               arg.first == "-sign" || arg.first == "-verify") {
-      operation = arg.first;
-    }
-  }
+  GetLastString(&in_path, "-in", "", parsed_args);
+  GetLastString(&out_path, "-out", "", parsed_args);
+  GetLastString(&inkey_path, "-inkey", "", parsed_args);
+  GetLastString(&passin_arg.get(), "-passin", "", parsed_args);
+  GetLastString(&sigfile_path, "-sigfile", "", parsed_args);
+  const bool pubin = HasArgument(parsed_args, "-pubin");
+  const std::string operation = GetLastOption(
+      {"-encrypt", "-decrypt", "-sign", "-verify"}, "-sign", parsed_args);
+  FindAll(pkeyopts, "-pkeyopt", parsed_args);
 
   // Validate arguments
   if (operation == "-verify" && sigfile_path.empty()) {

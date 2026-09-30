@@ -164,4 +164,27 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
 
   return true;
 }
+
+void GetLastString(std::string *out, const std::string &arg_name,
+                   std::string default_value, const ordered_args_map_t &args) {
+  for (auto it = args.rbegin(); it != args.rend(); ++it) {
+    if (it->first == arg_name) {
+      *out = it->second;
+      return;
+    }
+  }
+  *out = std::move(default_value);
+}
+
+std::string GetLastOption(std::initializer_list<const char *> options,
+                          std::string default_option,
+                          const ordered_args_map_t &args) {
+  for (auto it = args.rbegin(); it != args.rend(); ++it) {
+    if (std::find(options.begin(), options.end(), it->first) != options.end()) {
+      return it->first;
+    }
+  }
+  return default_option;
+}
+
 }  // namespace ordered_args
