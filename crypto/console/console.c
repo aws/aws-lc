@@ -310,6 +310,12 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 
     // check if we see a new line, otherwise clear out remaining input buffer
     if ((p = strchr(buf, '\n')) != NULL) {
+#if defined(OPENSSL_WINDOWS)
+        // Redirected stdin may be binary; match the console's CRLF handling.
+        if (!is_a_tty && p > buf && p[-1] == '\r') {
+            p--;
+        }
+#endif
         *p = '\0';
     } else if (!discard_line_remainder(tty_in)) {
         ok = -1;
