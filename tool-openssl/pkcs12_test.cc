@@ -1194,6 +1194,64 @@ class PKCS12ExportTest : public ::testing::Test {
     ERR_clear_error();
   }
 
+  // Runs pkcs12Tool with |stdin_contents| as stdin and returns its exit code,
+  // storing stderr in |*errors|. AWSLC_CONSOLE_NO_TTY_DETECT makes password
+  // prompts read stdin rather than /dev/tty, so tests never block on a TTY.
+  int RunWithStdin(const args_list_t &args, const std::string &stdin_contents,
+                   std::string *errors) {
+    char stdin_path[PATH_MAX];
+    if (createTempFILEpath(stdin_path) == 0 ||
+        !WriteBytesToFile(stdin_path,
+                          std::vector<uint8_t>(stdin_contents.begin(),
+                                               stdin_contents.end()))) {
+      ADD_FAILURE() << "failed to write stdin file";
+      return -1;
+    }
+    ScopedFILE input_file(fopen(stdin_path, "rb"));
+    if (!input_file) {
+      ADD_FAILURE() << "failed to open stdin file";
+      RemoveFile(stdin_path);
+      return -1;
+    }
+#if defined(OPENSSL_WINDOWS)
+    _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", "1");
+    ScopedFD saved_stdin(_dup(_fileno(stdin)));
+    bool redirected = saved_stdin.get() >= 0 &&
+                      _dup2(_fileno(input_file.get()), _fileno(stdin)) == 0;
+#else
+    setenv("AWSLC_CONSOLE_NO_TTY_DETECT", "1", 1);
+    ScopedFD saved_stdin(dup(STDIN_FILENO));
+    bool redirected =
+        saved_stdin.get() >= 0 &&
+        dup2(fileno(input_file.get()), STDIN_FILENO) == STDIN_FILENO;
+#endif
+    int result = -1;
+    if (redirected) {
+      clearerr(stdin);
+      testing::internal::CaptureStderr();
+      result = pkcs12Tool(args);
+      *errors = testing::internal::GetCapturedStderr();
+#if defined(OPENSSL_WINDOWS)
+      redirected = _dup2(saved_stdin.get(), _fileno(stdin)) == 0;
+#else
+      redirected = dup2(saved_stdin.get(), STDIN_FILENO) == STDIN_FILENO;
+#endif
+      clearerr(stdin);
+    }
+#if defined(OPENSSL_WINDOWS)
+    _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", "");
+#else
+    unsetenv("AWSLC_CONSOLE_NO_TTY_DETECT");
+#endif
+    input_file.reset();
+    RemoveFile(stdin_path);
+    if (!redirected) {
+      ADD_FAILURE() << "failed to redirect or restore stdin";
+      return -1;
+    }
+    return result;
+  }
+
   void ExpectImportedContentsMatch(const char *path, const char *password,
                                    EVP_PKEY *expect_key,
                                    const std::vector<X509 *> &expect_certs) {
@@ -1512,7 +1570,7 @@ TEST_F(PKCS12ExportTest, EncryptedCertificatesDoNotPrompt) {
                            "-out", out_path, "-passout", "pass:outpw"});
   std::string errors = testing::internal::GetCapturedStderr();
   EXPECT_EQ(kToolExitFailure, result);
-  EXPECT_EQ(std::string::npos, errors.find("Enter PEM pass phrase"));
+  EXPECT_EQ(std::string::npos, errors.find("Enter PEM passphrase"));
   ExpectOutputKept();
   ExpectExportRoundTrips({"-inkey", inkey_path, "-passin", "pass:certpw"},
                          "outpw", rsa_key.get(), {rsa_cert.get()});
@@ -1572,9 +1630,12 @@ TEST_F(PKCS12ExportTest, PasswordDoesNotActAsPassin) {
       WritePemBundle(in_path, rsa_key.get(), "keypassword", {rsa_cert.get()}));
   ASSERT_TRUE(MarkOutputKept());
 
+  // The key pass phrase prompt reads EOF instead of reusing -password.
+  std::string errors;
   EXPECT_EQ(kToolExitFailure,
-            pkcs12Tool({"-export", "-in", in_path, "-password",
-                        "pass:keypassword", "-out", out_path}));
+            RunWithStdin({"-export", "-in", in_path, "-password",
+                          "pass:keypassword", "-out", out_path},
+                         "", &errors));
   ExpectOutputKept();
 
   EXPECT_EQ(kToolExitSuccess, pkcs12Tool({"-export", "-in", in_path, "-passin",
@@ -1582,28 +1643,66 @@ TEST_F(PKCS12ExportTest, PasswordDoesNotActAsPassin) {
                                           "pass:outpw", "-out", out_path}));
 }
 
-// With neither -passout nor -password given, the output password defaults
-// to empty -- an intentional AWS-LC difference from upstream OpenSSL, which
-// prompts interactively (see EmptyPasswordDefaultedWhenOmitted for the
-// import-side default).
-TEST_F(PKCS12ExportTest, DefaultPasswordsAreEmpty) {
+// Like OpenSSL 1.1.1, omitting -passout and -password prompts for the export
+// password twice. A mismatch or unreadable input fails without touching -out.
+TEST_F(PKCS12ExportTest, PromptsForExportPasswordWhenOmitted) {
   ASSERT_TRUE(WriteBaselineRsaBundle());
-  ASSERT_EQ(kToolExitSuccess,
-            pkcs12Tool({"-export", "-in", in_path, "-out", out_path}));
+  const args_list_t args = {"-export", "-in", in_path, "-out", out_path};
+  std::string errors;
 
-  std::vector<uint8_t> der;
-  ASSERT_TRUE(ReadBytesFromFile(out_path, &der));
-  bssl::UniquePtr<EVP_PKEY> key;
-  bssl::UniquePtr<STACK_OF(X509)> certs;
-  EXPECT_TRUE(ImportPkcs12(der, "", &key, &certs));
-  key.reset();
-  certs.reset();
-  EXPECT_FALSE(ImportPkcs12(der, "notempty", &key, &certs));
-  ERR_clear_error();
+  ASSERT_EQ(kToolExitSuccess,
+            RunWithStdin(args, "typedpw\ntypedpw\n", &errors));
+  EXPECT_NE(std::string::npos, errors.find("Enter Export Password:"));
+  EXPECT_NE(std::string::npos,
+            errors.find("Verifying - Enter Export Password:"));
+  ExpectImportedContentsMatch(out_path, "typedpw", rsa_key.get(),
+                              {rsa_cert.get()});
+
+  // An empty line at both prompts is an empty password, as in OpenSSL.
+  ASSERT_EQ(kToolExitSuccess, RunWithStdin(args, "\n\n", &errors));
+  ExpectImportedContentsMatch(out_path, "", rsa_key.get(), {rsa_cert.get()});
+
+  for (const char *input : {"typedpw\nother\n", "typedpw\n", ""}) {
+    SCOPED_TRACE(input);
+    ASSERT_TRUE(MarkOutputKept());
+    EXPECT_EQ(kToolExitFailure, RunWithStdin(args, input, &errors));
+    EXPECT_NE(std::string::npos, errors.find("Can't read Password"));
+    ExpectOutputKept();
+  }
 }
 
-// -passin decrypts the input key (default empty, no prompts), whether it
-// comes from a separate -inkey file or is embedded in -in.
+// An explicit password source, even an empty one, never prompts.
+TEST_F(PKCS12ExportTest, ExplicitPassoutDoesNotPrompt) {
+  ASSERT_TRUE(WriteBaselineRsaBundle());
+  for (const char *flag : {"-passout", "-password"}) {
+    SCOPED_TRACE(flag);
+    std::string errors;
+    ASSERT_EQ(kToolExitSuccess, RunWithStdin({"-export", "-in", in_path, flag,
+                                              "pass:", "-out", out_path},
+                                             "unused\nunused\n", &errors));
+    EXPECT_EQ(std::string::npos, errors.find("Enter Export Password"));
+    ExpectImportedContentsMatch(out_path, "", rsa_key.get(), {rsa_cert.get()});
+  }
+}
+
+// Without -passin, an encrypted input key prompts for its pass phrase before
+// the export password is requested, matching OpenSSL's ordering.
+TEST_F(PKCS12ExportTest, PromptsForEncryptedKeyWithoutPassin) {
+  ASSERT_TRUE(
+      WritePemBundle(in_path, rsa_key.get(), "keypw", {rsa_cert.get()}));
+  std::string errors;
+  ASSERT_EQ(kToolExitSuccess,
+            RunWithStdin({"-export", "-in", in_path, "-out", out_path},
+                         "keypw\noutpw\noutpw\n", &errors));
+  EXPECT_NE(std::string::npos, errors.find("Enter PEM passphrase:"));
+  EXPECT_LT(errors.find("Enter PEM passphrase:"),
+            errors.find("Enter Export Password:"));
+  ExpectImportedContentsMatch(out_path, "outpw", rsa_key.get(),
+                              {rsa_cert.get()});
+}
+
+// -passin decrypts the input key, whether it comes from a separate -inkey file
+// or is embedded in -in. A wrong or unreadable pass phrase fails.
 TEST_F(PKCS12ExportTest, EncryptedInputKeyRequiresPassin) {
   for (bool separate_inkey : {false, true}) {
     SCOPED_TRACE(separate_inkey);
@@ -1623,7 +1722,9 @@ TEST_F(PKCS12ExportTest, EncryptedInputKeyRequiresPassin) {
                         "pass:outpw", "-out", out_path};
     base.insert(base.end(), extra.begin(), extra.end());
     ASSERT_TRUE(MarkOutputKept());
-    EXPECT_EQ(kToolExitFailure, pkcs12Tool(base));  // Default-empty -passin.
+    std::string errors;
+    // Without -passin, the key pass phrase prompt reads EOF and fails.
+    EXPECT_EQ(kToolExitFailure, RunWithStdin(base, "", &errors));
     ExpectOutputKept();
     args_list_t wrong = base;
     wrong.insert(wrong.end(), {"-passin", "pass:wrong"});
@@ -1687,12 +1788,14 @@ TEST_F(PKCS12ExportTest, FailedExportLeavesExistingOutfileUnchanged) {
     ExpectOutputKept();
   }
   {
-    SCOPED_TRACE("bad password: encrypted key, -passin omitted");
+    SCOPED_TRACE("bad password: encrypted key, -passin prompt reads EOF");
     ASSERT_TRUE(WritePemBundle(in_path, rsa_key.get(), "realpassword",
                                {rsa_cert.get()}));
+    std::string errors;
     EXPECT_EQ(kToolExitFailure,
-              pkcs12Tool({"-export", "-in", in_path, "-passout", "pass:x",
-                          "-out", out_path}));
+              RunWithStdin({"-export", "-in", in_path, "-passout", "pass:x",
+                            "-out", out_path},
+                           "", &errors));
     ExpectOutputKept();
   }
   {

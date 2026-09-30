@@ -76,7 +76,8 @@ static void print_usage() {
           "With -export, reads PEM and writes DER using OpenSSL 1.1.1's "
           "3DES/RC2-40\n"
           "encryption and SHA1 MAC defaults. PBES2/AES export is unsupported.\n"
-          "There are no interactive prompts; omitted passwords are empty.\n"
+          "Export prompts for the export password (and an encrypted key's\n"
+          "pass phrase) when -passout/-passin are omitted; import does not.\n"
           "Export ignores -nodes; -noout leaves nothing to export and fails.\n"
           "Unsupported: -chain, -caname, -macalg, -nomac, -twopass, -info,\n"
           "-nomacver, -clcerts, -cacerts.\n\n"
@@ -240,6 +241,9 @@ static int ExportPKCS12(const ordered_args::ordered_args_map_t &args,
   }
 
   Password passin, passout;
+  const bool passin_given = HasArgument(args, "-passin");
+  const bool passout_given =
+      HasArgument(args, "-passout") || HasArgument(args, "-password");
   GetExportString(&passin.get(), "-passin", args);
   // Like OpenSSL, -password overrides -passout on export, never -passin.
   if (HasArgument(args, "-password")) {
@@ -247,9 +251,7 @@ static int ExportPKCS12(const ordered_args::ordered_args_map_t &args,
   } else {
     GetExportString(&passout.get(), "-passout", args);
   }
-  if ((HasArgument(args, "-passin") && passin.empty()) ||
-      ((HasArgument(args, "-passout") || HasArgument(args, "-password")) &&
-       passout.empty())) {
+  if ((passin_given && passin.empty()) || (passout_given && passout.empty())) {
     fprintf(stderr, "Error: password source is empty (use pass: for empty)\n");
     return kToolExitFailure;
   }
@@ -277,11 +279,11 @@ static int ExportPKCS12(const ordered_args::ordered_args_map_t &args,
         return kToolExitFailure;
       }
     }
-    // A non-null password (even "") prevents PEM's default callback from
-    // prompting. Decrypt input keys only with -passin, not -passout.
+    // Decrypt input keys only with -passin, not -passout. Without -passin,
+    // PEM's default callback prompts for an encrypted key, like OpenSSL.
     key.reset(PEM_read_bio_PrivateKey(
         key_in ? key_in.get() : in.get(), nullptr, nullptr,
-        const_cast<char *>(passin.get().c_str())));
+        passin_given ? const_cast<char *>(passin.get().c_str()) : nullptr));
     if (!key) {
       fprintf(stderr, "Error reading PEM private key\n");
       ERR_print_errors_fp(stderr);
@@ -324,6 +326,22 @@ static int ExportPKCS12(const ordered_args::ordered_args_map_t &args,
     std::vector<uint8_t> chain_bytes;
     auto chain_in = ReadPEMInput(cert_path, &chain_bytes);
     if (!chain_in || !ReadCertificates(chain_in.get(), certs.get(), "")) {
+      return kToolExitFailure;
+    }
+  }
+
+  // Like OpenSSL 1.1.1, prompt (with verification) only after all input has
+  // been read. Use -passout pass: for an empty password without prompting.
+  if (!passout_given) {
+    char buf[2048];
+    int ret = EVP_read_pw_string(buf, sizeof(buf), "Enter Export Password:", 1);
+    if (ret == 0) {
+      passout.get() = buf;
+    }
+    OPENSSL_cleanse(buf, sizeof(buf));
+    if (ret != 0) {
+      fprintf(stderr, "Can't read Password\n");
+      ERR_print_errors_fp(stderr);
       return kToolExitFailure;
     }
   }
