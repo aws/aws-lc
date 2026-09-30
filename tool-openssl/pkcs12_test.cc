@@ -1671,6 +1671,26 @@ TEST_F(PKCS12ExportTest, PromptsForExportPasswordWhenOmitted) {
   }
 }
 
+TEST_F(PKCS12ExportTest, ExportPasswordPromptWithCRLFInput) {
+  ASSERT_TRUE(WriteBaselineRsaBundle());
+  const args_list_t args = {"-export", "-in", in_path, "-out", out_path};
+  std::string errors;
+  ASSERT_EQ(kToolExitSuccess,
+            RunWithStdin(args, "typedpw\r\ntypedpw\r\n", &errors));
+#if defined(OPENSSL_WINDOWS)
+  const char *password = "typedpw";
+  const char *empty_password = "";
+#else
+  const char *password = "typedpw\r";
+  const char *empty_password = "\r";
+#endif
+  ExpectImportedContentsMatch(out_path, password, rsa_key.get(),
+                              {rsa_cert.get()});
+  ASSERT_EQ(kToolExitSuccess, RunWithStdin(args, "\r\n\r\n", &errors));
+  ExpectImportedContentsMatch(out_path, empty_password, rsa_key.get(),
+                              {rsa_cert.get()});
+}
+
 // An explicit password source, even an empty one, never prompts.
 TEST_F(PKCS12ExportTest, ExplicitPassoutDoesNotPrompt) {
   ASSERT_TRUE(WriteBaselineRsaBundle());
@@ -1697,6 +1717,23 @@ TEST_F(PKCS12ExportTest, PromptsForEncryptedKeyWithoutPassin) {
   EXPECT_NE(std::string::npos, errors.find("Enter PEM passphrase:"));
   EXPECT_LT(errors.find("Enter PEM passphrase:"),
             errors.find("Enter Export Password:"));
+  ExpectImportedContentsMatch(out_path, "outpw", rsa_key.get(),
+                              {rsa_cert.get()});
+}
+
+TEST_F(PKCS12ExportTest, InputKeyPasswordPromptWithCRLFInput) {
+#if defined(OPENSSL_WINDOWS)
+  const char *password = "keypw";
+#else
+  const char *password = "keypw\r";
+#endif
+  ASSERT_TRUE(
+      WritePemBundle(in_path, rsa_key.get(), password, {rsa_cert.get()}));
+  std::string errors;
+  ASSERT_EQ(kToolExitSuccess, RunWithStdin({"-export", "-in", in_path, "-out",
+                                            out_path, "-passout", "pass:outpw"},
+                                           "keypw\r\n", &errors));
+  EXPECT_NE(std::string::npos, errors.find("Enter PEM passphrase:"));
   ExpectImportedContentsMatch(out_path, "outpw", rsa_key.get(),
                               {rsa_cert.get()});
 }

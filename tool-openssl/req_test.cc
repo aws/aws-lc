@@ -1568,6 +1568,183 @@ TEST_F(ReqTest, BatchMalformedLengthBoundsFail) {
   }
 }
 
+// A subject need not contain any of the built-in prompting fields.
+TEST_F(ReqTest, BatchAcceptsFormerlyUnsupportedDNFields) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "serialNumber = Serial Number\n"
+                          "serialNumber_value = SN12345\n"
+                          "dnQualifier = DN Qualifier\n"
+                          "dnQualifier_value = QUAL1\n"));
+
+  args_list_t args = {"-new",         "-config", config_path, "-key",
+                      input_key_path, "-batch",  "-out",      csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  X509_NAME *name = X509_REQ_get_subject_name(csr.get());
+  ASSERT_TRUE(name);
+  ASSERT_EQ(2, X509_NAME_entry_count(name));
+
+  char buf[128];
+  ASSERT_GT(X509_NAME_get_text_by_NID(name, NID_serialNumber, buf, sizeof(buf)),
+            0);
+  EXPECT_STREQ("SN12345", buf);
+  ASSERT_GT(X509_NAME_get_text_by_NID(name, NID_dnQualifier, buf, sizeof(buf)),
+            0);
+  EXPECT_STREQ("QUAL1", buf);
+}
+
+
+TEST_F(ReqTest, BatchAcceptsFormerlyUnsupportedAttribute) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "attributes = req_attr\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = attrs.example.com\n"
+                          "[req_attr]\n"
+                          "unstructuredAddress = An unstructured address\n"
+                          "unstructuredAddress_value = 123 Main St\n"));
+
+  args_list_t args = {"-new",         "-config", config_path, "-key",
+                      input_key_path, "-batch",  "-out",      csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  int idx =
+      X509_REQ_get_attr_by_NID(csr.get(), NID_pkcs9_unstructuredAddress, -1);
+  ASSERT_GE(idx, 0);
+  X509_ATTRIBUTE *attr = X509_REQ_get_attr(csr.get(), idx);
+  ASSERT_TRUE(attr);
+  const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, 0);
+  ASSERT_TRUE(value);
+  ASN1_STRING *str = value->value.asn1_string;
+  EXPECT_EQ(
+      "123 Main St",
+      std::string(reinterpret_cast<const char *>(ASN1_STRING_get0_data(str)),
+                  ASN1_STRING_length(str)));
+}
+
+
+TEST_F(ReqTest, BatchMultiValuedRDNGroupsEntriesViaLeadingPlus) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = multivalued.example.com\n"
+                          "organizationalUnitName = Organizational Unit\n"
+                          "organizationalUnitName_value = Engineering\n"
+                          "1.+OU = Second Organizational Unit\n"
+                          "1.+OU_value = Security\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"));
+
+  args_list_t args = {"-new",         "-config", config_path, "-key",
+                      input_key_path, "-batch",  "-out",      csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  X509_NAME *name = X509_REQ_get_subject_name(csr.get());
+  ASSERT_TRUE(name);
+  ASSERT_EQ(4, X509_NAME_entry_count(name));
+
+  auto entry_value = [](X509_NAME_ENTRY *entry) {
+    const ASN1_STRING *value = X509_NAME_ENTRY_get_data(entry);
+    return std::string(
+        reinterpret_cast<const char *>(ASN1_STRING_get0_data(value)),
+        ASN1_STRING_length(value));
+  };
+
+  // DER SET ordering may reorder the OUs within their shared RDN.
+  X509_NAME_ENTRY *cn = X509_NAME_get_entry(name, 0);
+  X509_NAME_ENTRY *ou1 = X509_NAME_get_entry(name, 1);
+  X509_NAME_ENTRY *ou2 = X509_NAME_get_entry(name, 2);
+  X509_NAME_ENTRY *country = X509_NAME_get_entry(name, 3);
+  ASSERT_TRUE(cn);
+  ASSERT_TRUE(ou1);
+  ASSERT_TRUE(ou2);
+  ASSERT_TRUE(country);
+
+  EXPECT_EQ(NID_commonName, OBJ_obj2nid(X509_NAME_ENTRY_get_object(cn)));
+  EXPECT_EQ("multivalued.example.com", entry_value(cn));
+  EXPECT_EQ(NID_organizationalUnitName,
+            OBJ_obj2nid(X509_NAME_ENTRY_get_object(ou1)));
+  EXPECT_EQ(NID_organizationalUnitName,
+            OBJ_obj2nid(X509_NAME_ENTRY_get_object(ou2)));
+  const std::set<std::string> ou_values = {entry_value(ou1), entry_value(ou2)};
+  EXPECT_EQ((std::set<std::string>{"Engineering", "Security"}), ou_values);
+  EXPECT_EQ(NID_countryName, OBJ_obj2nid(X509_NAME_ENTRY_get_object(country)));
+  EXPECT_EQ("US", entry_value(country));
+
+
+  EXPECT_EQ(X509_NAME_ENTRY_set(ou1), X509_NAME_ENTRY_set(ou2));
+  EXPECT_NE(X509_NAME_ENTRY_set(cn), X509_NAME_ENTRY_set(ou1));
+  EXPECT_NE(X509_NAME_ENTRY_set(ou2), X509_NAME_ENTRY_set(country));
+}
+
+
+TEST_F(ReqTest, BatchUnknownFieldAndMetadataSuffixAreSkipped) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "bogusField = Not A Real Field\n"
+                          "bogusField_default = should-not-appear.example.com\n"
+                          "commonName = Common Name\n"
+                          "commonName_default = only.example.com\n"
+                          "commonName_min = 3\n"
+                          "commonName_max = 64\n"));
+
+  ERR_clear_error();
+  args_list_t args = {"-new",         "-config", config_path, "-key",
+                      input_key_path, "-batch",  "-out",      csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+  EXPECT_EQ(0u, ERR_peek_error());
+
+  auto csr = LoadPEMCSR(csr_path);
+  ASSERT_TRUE(csr);
+  X509_NAME *name = X509_REQ_get_subject_name(csr.get());
+  ASSERT_TRUE(name);
+  EXPECT_EQ(1, X509_NAME_entry_count(name));
+
+  char buf[128];
+  ASSERT_GT(X509_NAME_get_text_by_NID(name, NID_commonName, buf, sizeof(buf)),
+            0);
+  EXPECT_STREQ("only.example.com", buf);
+}
+
+
+TEST_F(ReqTest, BatchMetadataSuffixesDoNotContaminateErrorQueue) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "distinguished_name = req_dn\n"
+                          "attributes = req_attr\n"
+                          "[req_dn]\n"
+                          "commonName = Common Name\n"
+                          "commonName_default = queue.example.com\n"
+                          "commonName_min = 3\n"
+                          "commonName_max = 64\n"
+                          "countryName = Country Name\n"
+                          "countryName_value = US\n"
+                          "[req_attr]\n"
+                          "challengePassword = A challenge password\n"
+                          "challengePassword_default = supersecret123\n"));
+
+  ERR_clear_error();
+  args_list_t args = {"-new",         "-config", config_path, "-key",
+                      input_key_path, "-batch",  "-out",      csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+  EXPECT_EQ(0u, ERR_peek_error());
+}
+
 // -------------------- Req Option Usage Error Tests --------------------------
 
 class ReqOptionUsageErrorsTest : public ReqTest {
@@ -3079,6 +3256,159 @@ TEST_F(ReqComparisonTest, BatchMinLengthViolationFailsForBoth) {
 
   EXPECT_NE(ExecuteCommand(awslc_command), 0);
   EXPECT_NE(ExecuteCommand(openssl_command), 0);
+}
+
+
+TEST_F(ReqComparisonTest,
+       BatchAcceptsFormerlyUnsupportedFieldsMatchingOpenSSL) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "serialNumber = Serial Number\n"
+                          "serialNumber_value = SN12345\n"
+                          "dnQualifier = DN Qualifier\n"
+                          "dnQualifier_value = QUAL1\n"));
+
+  std::string awslc_command =
+      ShellEscape(tool_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_awslc) + " -out " + ShellEscape(csr_path_awslc);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_openssl) + " -out " + ShellEscape(csr_path_openssl);
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
+
+  X509_NAME *name_awslc = X509_REQ_get_subject_name(csr_awslc.get());
+  X509_NAME *name_openssl = X509_REQ_get_subject_name(csr_openssl.get());
+  ASSERT_TRUE(name_awslc);
+  ASSERT_TRUE(name_openssl);
+  EXPECT_EQ(0, X509_NAME_cmp(name_awslc, name_openssl));
+  ASSERT_EQ(2, X509_NAME_entry_count(name_awslc));
+  ASSERT_EQ(2, X509_NAME_entry_count(name_openssl));
+
+  for (X509_NAME *name : {name_awslc, name_openssl}) {
+    char buf[128];
+    ASSERT_GT(
+        X509_NAME_get_text_by_NID(name, NID_serialNumber, buf, sizeof(buf)), 0);
+    EXPECT_STREQ("SN12345", buf);
+    ASSERT_GT(
+        X509_NAME_get_text_by_NID(name, NID_dnQualifier, buf, sizeof(buf)), 0);
+    EXPECT_STREQ("QUAL1", buf);
+  }
+}
+
+
+TEST_F(ReqComparisonTest, BatchUnstructuredAddressAttributeMatchesOpenSSL) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "attributes = req_attr\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = attrs.example.com\n"
+                          "\n"
+                          "[ req_attr ]\n"
+                          "unstructuredAddress = An unstructured address\n"
+                          "unstructuredAddress_value = 123 Main St\n"));
+
+  std::string awslc_command =
+      ShellEscape(tool_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_awslc) + " -out " + ShellEscape(csr_path_awslc);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_openssl) + " -out " + ShellEscape(csr_path_openssl);
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
+
+  for (X509_REQ *csr : {csr_awslc.get(), csr_openssl.get()}) {
+    int idx = X509_REQ_get_attr_by_NID(csr, NID_pkcs9_unstructuredAddress, -1);
+    ASSERT_GE(idx, 0);
+    X509_ATTRIBUTE *attr = X509_REQ_get_attr(csr, idx);
+    ASSERT_TRUE(attr);
+    const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, 0);
+    ASSERT_TRUE(value);
+    ASN1_STRING *str = value->value.asn1_string;
+    EXPECT_EQ(
+        "123 Main St",
+        std::string(reinterpret_cast<const char *>(ASN1_STRING_get0_data(str)),
+                    ASN1_STRING_length(str)));
+  }
+}
+
+
+TEST_F(ReqComparisonTest, BatchMultiValuedRDNMatchesOpenSSL) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[ req ]\n"
+                          "distinguished_name = req_dn\n"
+                          "\n"
+                          "[ req_dn ]\n"
+                          "commonName = Common Name\n"
+                          "commonName_value = multivalued.example.com\n"
+                          "organizationalUnitName = Organizational Unit\n"
+                          "organizationalUnitName_value = Engineering\n"
+                          "+OU = Second Organizational Unit\n"
+                          "+OU_value = Security\n"));
+
+  std::string awslc_command =
+      ShellEscape(tool_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_awslc) + " -out " + ShellEscape(csr_path_awslc);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " req -new -config " +
+      ShellEscape(config_path) + " -newkey rsa:2048 -nodes -batch -keyout " +
+      ShellEscape(key_path_openssl) + " -out " + ShellEscape(csr_path_openssl);
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc);
+  ASSERT_TRUE(csr_openssl);
+
+  X509_NAME *name_awslc = X509_REQ_get_subject_name(csr_awslc.get());
+  X509_NAME *name_openssl = X509_REQ_get_subject_name(csr_openssl.get());
+  ASSERT_TRUE(name_awslc);
+  ASSERT_TRUE(name_openssl);
+  EXPECT_EQ(0, X509_NAME_cmp(name_awslc, name_openssl));
+
+  ASSERT_EQ(3, X509_NAME_entry_count(name_awslc));
+  ASSERT_EQ(3, X509_NAME_entry_count(name_openssl));
+  for (X509_NAME *name : {name_awslc, name_openssl}) {
+    SCOPED_TRACE(name == name_awslc ? "awslc" : "openssl");
+    X509_NAME_ENTRY *cn = X509_NAME_get_entry(name, 0);
+    X509_NAME_ENTRY *ou1 = X509_NAME_get_entry(name, 1);
+    X509_NAME_ENTRY *ou2 = X509_NAME_get_entry(name, 2);
+    ASSERT_TRUE(cn);
+    ASSERT_TRUE(ou1);
+    ASSERT_TRUE(ou2);
+    EXPECT_EQ(NID_organizationalUnitName,
+              OBJ_obj2nid(X509_NAME_ENTRY_get_object(ou1)));
+    EXPECT_EQ(NID_organizationalUnitName,
+              OBJ_obj2nid(X509_NAME_ENTRY_get_object(ou2)));
+
+    EXPECT_EQ(X509_NAME_ENTRY_set(ou1), X509_NAME_ENTRY_set(ou2));
+    EXPECT_NE(X509_NAME_ENTRY_set(cn), X509_NAME_ENTRY_set(ou1));
+  }
 }
 
 struct SubjectNameTestCase {

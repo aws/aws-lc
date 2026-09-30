@@ -250,8 +250,22 @@ static bool ResolveBatchFieldValue(CONF *conf, const char *section,
   return true;
 }
 
-// Builds a batch subject from supported config fields in file order. Without
-// a config, this tool's built-in DN defaults are used.
+// Mirrors OpenSSL's check_end(): true if |name| is a field's metadata key.
+static bool HasMetadataSuffix(const char *name) {
+  static const char *const kSuffixes[] = {"_min", "_max", "_default", "_value"};
+  const size_t name_len = strlen(name);
+  for (const char *suffix : kSuffixes) {
+    const size_t suffix_len = strlen(suffix);
+    if (suffix_len <= name_len &&
+        strcmp(name + (name_len - suffix_len), suffix) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Builds a batch subject from the DN/attributes sections' entries in file
+// order, accepting any NID OBJ_txt2nid() recognizes (see no-config path below).
 static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
                                                     const std::string &section,
                                                     bool is_csr,
@@ -290,6 +304,9 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
 
   for (size_t i = 0; i < sk_CONF_VALUE_num(dn_entries); i++) {
     const CONF_VALUE *entry = sk_CONF_VALUE_value(dn_entries, i);
+    if (HasMetadataSuffix(entry->name)) {
+      continue;
+    }
     // Strip an instance prefix through the first ':', ',', or '.'. The full
     // entry name is still used for value and bound lookups.
     const char *type = entry->name;
@@ -297,15 +314,16 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
     if (separator != nullptr && separator[1] != '\0') {
       type = separator + 1;
     }
-    int nid = OBJ_txt2nid(type);
-    const ReqField *field = nullptr;
-    for (const auto &candidate : subject_fields) {
-      if (candidate.nid == nid) {
-        field = &candidate;
-        break;
-      }
+    // A leading '+' (after any instance prefix) marks a multi-valued RDN:
+    // this entry joins the previous entry's SET instead of starting a new one.
+    int mval = 0;
+    if (*type == '+') {
+      mval = -1;
+      type++;
     }
-    if (field == nullptr) {
+    int nid = OBJ_txt2nid(type);
+    if (nid == NID_undef) {
+      ERR_clear_error();
       continue;
     }
 
@@ -315,9 +333,9 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
     }
     if (value != nullptr &&
         !X509_NAME_add_entry_by_NID(
-            subj.get(), field->nid, chtype,
-            reinterpret_cast<const unsigned char *>(value), -1, -1, 0)) {
-      fprintf(stderr, "Error adding %s to subject\n", field->field_ln);
+            subj.get(), nid, chtype,
+            reinterpret_cast<const unsigned char *>(value), -1, -1, mval)) {
+      fprintf(stderr, "Error adding %s to subject\n", type);
       return nullptr;
     }
   }
@@ -344,15 +362,12 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
 
   for (size_t i = 0; i < sk_CONF_VALUE_num(attr_entries); i++) {
     const CONF_VALUE *entry = sk_CONF_VALUE_value(attr_entries, i);
-    int nid = OBJ_txt2nid(entry->name);
-    const ReqField *field = nullptr;
-    for (const auto &candidate : extra_attributes) {
-      if (candidate.nid == nid) {
-        field = &candidate;
-        break;
-      }
+    if (HasMetadataSuffix(entry->name)) {
+      continue;
     }
-    if (field == nullptr) {
+    int nid = OBJ_txt2nid(entry->name);
+    if (nid == NID_undef) {
+      ERR_clear_error();
       continue;
     }
 
@@ -364,11 +379,10 @@ static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
       continue;
     }
     bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
-        nullptr, field->nid, MBSTRING_ASC,
+        nullptr, nid, MBSTRING_ASC,
         reinterpret_cast<const unsigned char *>(value), -1));
     if (!x509_attr || !X509_REQ_add1_attr(req, x509_attr.get())) {
-      fprintf(stderr, "Error adding attribute %s to request\n",
-              field->field_ln);
+      fprintf(stderr, "Error adding attribute %s to request\n", entry->name);
       return nullptr;
     }
   }
