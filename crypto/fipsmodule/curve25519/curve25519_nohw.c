@@ -490,7 +490,8 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_loose check;
 
   fe_frombytes(&h->Y, s);
-  // RFC 8032 5.1.3: y must already be in [0, p).
+  //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
+  //# If the resulting value is >= p, decoding fails.
   uint8_t y_canonical[32], y_in[32];
   fe_tobytes(y_canonical, &h->Y);
   OPENSSL_memcpy(y_in, s, 32);
@@ -524,7 +525,8 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   if (fe_isnegative(&h->X) != (s[31] >> 7)) {
     fe_loose t;
     fe_neg(&t, &h->X);
-    // RFC 8032 5.1.3: x = 0 and x_0 = 1 is not a valid encoding.
+    //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
+    //# If x = 0, and x_0 = 1, decoding fails.
     if (!fe_isnonzero(&t)) {
       return 0;
     }
