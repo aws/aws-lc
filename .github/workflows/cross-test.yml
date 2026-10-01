@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   ppc64-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -23,6 +24,7 @@ jobs:
       - name: PPC64 Build/Test
         run: tests/ci/run_cross_tests.sh ppc64 powerpc64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc32-non-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -34,6 +36,7 @@ jobs:
       - name: PPC32 Build/Test
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   ppc32-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -45,6 +48,7 @@ jobs:
       - name: PPC32 Build/Test
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc64le-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -56,6 +60,7 @@ jobs:
       - name: PPC64LE Build/Test
         run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-DOPENSSL_GETAUXVAL_FORCE_PROC_FALLBACK"
   riscv64-non-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -74,6 +79,7 @@ jobs:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh riscv riscv64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   armv6-non-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -95,6 +101,7 @@ jobs:
     # that does ship <sys/auxv.h>, the "INFO:" line in
     # run_cross_tests_bootlin.sh will make the coverage loss visible in the
     # CI log.
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -114,6 +121,7 @@ jobs:
             arm \
             "-DCMAKE_BUILD_TYPE=Release"
   loongarch64-non-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
@@ -124,6 +132,7 @@ jobs:
       - name: loongarch64 Build/Test
         run: tests/ci/run_cross_tests.sh loongarch64 loongarch64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   s390x-non-fips-build-test:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-24.04
     steps:
@@ -142,6 +151,7 @@ jobs:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh s390x s390x-ibm-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   ios-aarch64:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: iOS aarch64 cross-platform build
     runs-on: macos-latest
@@ -165,6 +175,7 @@ jobs:
         timeout-minutes: 45
         run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
   powerpc-old-glibc:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     container:

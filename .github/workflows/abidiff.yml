@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   libcrypto-incremental:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libcrypto incremental ABI check
     runs-on: ubuntu-latest
@@ -36,6 +37,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" abidiff crypto
 
   libssl-incremental:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libssl incremental ABI check
     runs-on: ubuntu-latest
@@ -57,6 +59,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" abidiff ssl
 
   libcrypto-release:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libcrypto release ABI check
     runs-on: ubuntu-latest
@@ -83,6 +86,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" abidiff crypto
 
   libssl-release:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libssl release ABI check
     runs-on: ubuntu-latest
@@ -110,6 +114,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" abidiff ssl
 
   libcrypto-symbols-incremental:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libcrypto symbol check (incremental)
     runs-on: ubuntu-latest
@@ -131,6 +136,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" symbol_check crypto incremental
 
   libssl-symbols-incremental:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libssl symbol check (incremental)
     runs-on: ubuntu-latest
@@ -152,6 +158,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" symbol_check ssl incremental
 
   libcrypto-symbols-baseline:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libcrypto symbol check (baseline)
     runs-on: ubuntu-latest
@@ -166,6 +173,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}:/workspace" symbol_check crypto baseline
 
   libssl-symbols-baseline:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libssl symbol check (baseline)
     runs-on: ubuntu-latest
@@ -180,6 +188,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}:/workspace" symbol_check ssl baseline
 
   libcrypto-symbols-mapcheck:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libcrypto version script drift check
     runs-on: ubuntu-latest
@@ -194,6 +203,7 @@ jobs:
           docker run -v "${GITHUB_WORKSPACE}:/workspace" symbol_check crypto mapcheck
 
   libssl-symbols-mapcheck:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: libssl version script drift check
     runs-on: ubuntu-latest

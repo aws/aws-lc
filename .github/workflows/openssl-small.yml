@@ -26,6 +26,7 @@ permissions:
 
 jobs:
   size-reduction:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: OPENSSL_SMALL size reduction (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
@@ -134,6 +135,7 @@ jobs:
           done
 
   small-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: Tests (OPENSSL_SMALL, ${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
@@ -169,6 +171,7 @@ jobs:
           cmake --build build-small --target run_tests
 
   small-tests-windows:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     # Test generated and pre-generated assembly because NASM rejects objects
     # without sections (bugzilla.nasm.us/show_bug.cgi?id=3392738).
@@ -220,6 +223,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   small-sde-tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     # The Linux/Windows legs above run on whatever CPU the hosted runner
     # lands on, so coverage of the CPU profiles OPENSSL_SMALL cares about

@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   openssl_comparison_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:

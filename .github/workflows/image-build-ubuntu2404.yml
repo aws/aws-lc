@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   x86_64_build:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
@@ -123,6 +124,7 @@ jobs:
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
 
   x86_64_push:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -155,6 +157,7 @@ jobs:
           docker push ${{ steps.images.outputs.ubuntu2404 }}
 
   aarch64_build:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:arm-3.0
@@ -250,6 +253,7 @@ jobs:
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
 
   aarch64_push:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -282,6 +286,7 @@ jobs:
           docker push ${{ steps.images.outputs.ubuntu2404 }}
 
   multiarch_manifest:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

@@ -25,6 +25,7 @@ permissions:
 
 jobs:
   freebsd:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
@@ -62,6 +63,7 @@ jobs:
             tests/ci/run_bsd_tests.sh
 
   OpenBSD:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
@@ -118,6 +120,7 @@ jobs:
             EOF
 
   netbsd:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws' && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test

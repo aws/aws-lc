@@ -34,6 +34,7 @@ permissions:
 
 jobs:
   authorization-check:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     outputs:
       approval-env: ${{ steps.authz.outputs.approval-env }}
     runs-on:

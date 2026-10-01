@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   zig:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.config.host }}
     strategy:

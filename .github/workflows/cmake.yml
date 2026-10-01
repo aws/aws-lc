@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   cmake:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
     strategy:

@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   codecov-ci:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Install lcov

@@ -28,6 +28,7 @@ concurrency:
 
 jobs:
   validate-api-docs:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     concurrency:
       group: api-docs-validate-${{ github.ref }}
       cancel-in-progress: true

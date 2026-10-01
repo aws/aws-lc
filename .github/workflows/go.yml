@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   go-version-1_20:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     env:
       GOROOT: "/usr/local/go"

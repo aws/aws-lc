@@ -6,6 +6,7 @@ permissions:
 
 jobs:
   build:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

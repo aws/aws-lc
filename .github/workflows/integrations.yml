@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   libssh2:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -34,6 +35,7 @@ jobs:
   # can break against AWS-LC for reasons outside our control (e.g. upstream
   # -Werror changes), so this job is allowed to fail without failing CI.
   libssh2-main:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -47,6 +49,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_libssh2_integration.sh
   libevent:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +63,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
   librdkafka:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +77,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
   socat:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     env:
@@ -87,6 +92,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_socat_integration.sh
   memcached:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +112,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_memcached_integration.sh '1.6.45'
   rust-openssl:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -131,6 +138,7 @@ jobs:
           pushd "${GITHUB_WORKSPACE}/aws-lc"
           ./tests/ci/integration/run_rust_openssl_integration.sh
   apache-httpd:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     name: Apache httpd

@@ -9,6 +9,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   analytics:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: analytics-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

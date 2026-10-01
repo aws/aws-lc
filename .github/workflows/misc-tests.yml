@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   pre-sandbox:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +34,7 @@ jobs:
           ./tests/ci/run_presandbox_tests.sh
 
   assert-license-statement-in-pr-description:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
 
@@ -89,6 +91,7 @@ jobs:
           exit 1
         fi
   path-has-spaces:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.os }}
     strategy:
@@ -142,6 +145,7 @@ jobs:
         name: Run tests
         run: cmake --build "path has spaces/build-fips" --target run_tests
   git-tag-check:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -155,6 +159,7 @@ jobs:
       - name: Check for git tag
         run: python ./util/git-tag-check/git-tag-check.py
   rpmbuild:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     if: github.repository_owner == 'aws'
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

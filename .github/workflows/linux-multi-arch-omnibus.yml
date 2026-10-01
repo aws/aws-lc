@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   posix_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: posix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ (matrix.arch == 'x86_64' && matrix.build32 && 'x86') || matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -194,6 +195,7 @@ jobs:
             ./tests/ci/run_posix_tests.sh
 
   fips_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: ${{ matrix.enableASAN && 'asan-' || '' }}${{ matrix.enableMSAN && 'msan-' || '' }}fips-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -374,6 +376,7 @@ jobs:
             ./tests/ci/run_fips_tests.sh
 
   dist_pkg_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: dist-pkg-${{ matrix.test }}-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -401,6 +404,7 @@ jobs:
             ./tests/ci/run_dist_pkg_${{ matrix.test }}_tests.sh
 
   prefix_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: prefix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -429,6 +433,7 @@ jobs:
             ./tests/ci/run_prefix_tests.sh
 
   valgrind:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: valgrind-${{ matrix.arch }}-${{ matrix.shard }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -463,6 +468,7 @@ jobs:
             ./tests/ci/run_valgrind_tests.sh
 
   valgrind-ssl-runner-part1:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: valgrind-ssl-runner-part1-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -493,6 +499,7 @@ jobs:
             ./tests/ci/run_ssl_runner_valgrind_tests.sh
 
   valgrind-ssl-runner-part2:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: valgrind-ssl-runner-part2-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -526,6 +533,7 @@ jobs:
             ./tests/ci/run_ssl_runner_valgrind_tests.sh
 
   sanitizers:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: sanitizers-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -556,6 +564,7 @@ jobs:
             ./tests/ci/run_posix_sanitizers.sh
 
   benchmark:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: benchmark-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -579,6 +588,7 @@ jobs:
             ./tests/ci/run_benchmark_build_tests.sh
 
   fips_callback:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: fips-callback-${{ matrix.image }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -606,6 +616,7 @@ jobs:
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ./tests/ci/run_fips_callback_tests.sh
   crypto_policies_tests:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: crypto-policies-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}

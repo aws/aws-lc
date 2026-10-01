@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   define_images:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -102,6 +103,7 @@ jobs:
           echo EOF >> "${GITHUB_OUTPUT}"
 
   build:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: build-${{ matrix.name }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -143,6 +145,7 @@ jobs:
       nsym: ${{ fromJSON(needs.define_images.outputs.images).nsym.staging }}
 
   push:
+    environment: "${{ github.event.pull_request.user.login == 'acl-ci[bot]' && 'manual-approval' || '' }}"
     name: push-${{ matrix.name }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
