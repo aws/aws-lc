@@ -205,7 +205,7 @@ typedef struct DIST_POINT_NAME_st {
     GENERAL_NAMES *fullname;
     STACK_OF(X509_NAME_ENTRY) *relativename;
   } name;
-  // If relativename then this contains the full distribution point name
+  // This field is unused and is no longer populated when parsing.
   X509_NAME *dpname;
 } DIST_POINT_NAME;
 // All existing reasons

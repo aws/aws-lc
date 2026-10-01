@@ -287,35 +287,37 @@ Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
 -----END PRIVATE KEY-----
 )";
 
-// kCRLTestRoot is a test root certificate. It has private key:
-//
-//     -----BEGIN RSA PRIVATE KEY-----
-//     MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
-//     lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
-//     07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
-//     IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
-//     9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
-//     ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
-//     DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
-//     Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
-//     aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
-//     GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
-//     9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
-//     grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
-//     /zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
-//     5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
-//     DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
-//     BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
-//     lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
-//     TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
-//     RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
-//     ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
-//     s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
-//     EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
-//     qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
-//     Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
-//     vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
-//     -----END RSA PRIVATE KEY-----
+// kCRLTestRootKey is the private key for kCRLTestRoot.
+static const char kCRLTestRootKey[] = R"(
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAo16WiLWZuaymsD8n5SKPmxV1y6jjgr3BS/dUBpbrzd1aeFzN
+lI8l2jfAnzUyp+I21RQ+nh/MhqjGElkTtK9xMn1Y+S9GMRh+5R/Du0iCb1tCZIPY
+07Tgrb0KMNWe0v2QKVVruuYSgxIWodBfxlKO64Z8AJ5IbnWpuRqO6rctN9qUoMlT
+IAB6dL4G0tDJ/PGFWOJYwOMEIX54bly2wgyYJVBKiRRt4f7n8H922qmvPNA9idmX
+9G1VAtgV6x97XXi7ULORIQvn9lVQF6nTYDBJhyuPB+mLThbLP2o9orxGx7aCtnnB
+ZUIxUvHNOI0FaSaZH7Fi0xsZ/GkG2HZe7ImPJwIDAQABAoIBAQCJF9MTHfHGkk+/
+DwCXlA0Wg0e6hBuHl10iNobYkMWIl/xXjOknhYiqOqb181py76472SVC5ERprC+r
+Lf0PXzqKuA117mnkwT2bYLCL9Skf8WEhoFLQNbVlloF6wYjqXcYgKYKh8HgQbZl4
+aLg2YQl2NADTNABsUWj/4H2WEelsODVviqfFs725lFg9KHDI8zxAZXLzDt/M9uVL
+GxJiX12tr0AwaeAFZ1oPM/y+LznM3N3+Ht3jHHw3jZ/u8Z1RdAmdpu3bZ6tbwGBr
+9edsH5rKkm9aBvMrY7eX5VHqaqyRNFyG152ZOJh4XiiFG7EmgTPCpaHo50Y018Re
+grVtk+FBAoGBANY3lY+V8ZOwMxSHes+kTnoimHO5Ob7nxrOC71i27x+4HHsYUeAr
+/zOOghiDIn+oNkuiX5CIOWZKx159Bp65CPpCbTb/fh+HYnSgXFgCw7XptycO7LXM
+5GwR5jSfpfzBFdYxjxoUzDMFBwTEYRTm0HkUHkH+s+ajjw5wqqbcGLcfAoGBAMM8
+DKW6Tb66xsf708f0jonAjKYTLZ+WOcwsBEWSFHoY8dUjvW5gqx5acHTEsc5ZTeh4
+BCFLa+Mn9cuJWVJNs09k7Xb2PNl92HQ4GN2vbdkJhExbkT6oLDHg1hVD0w8KLfz1
+lTAW6pS+6CdOHMEJpvqx89EgU/1GgIQ1fXYczE75AoGAKeJoXdDFkUjsU+FBhAPu
+TDcjc80Nm2QaF9NMFR5/lsYa236f06MGnQAKM9zADBHJu/Qdl1brUjLg1HrBppsr
+RDNkw1IlSOjhuUf5hkPUHGd8Jijm440SRIcjabqla8wdBupdvo2+d2NOQgJbsQiI
+ToQ+fkzcxAXK3Nnuo/1436UCgYBjLH7UNOZHS8OsVM0I1r8NVKVdu4JCfeJQR8/H
+s2P5ffBir+wLRMnH+nMDreMQiibcPxMCArkERAlE4jlgaJ38Z62E76KLbLTmnJRt
+EC9Bv+bXjvAiHvWMRMUbOj/ddPNVez7Uld+FvdBaHwDWQlvzHzBWfBCOKSEhh7Z6
+qDhUqQKBgQDPMDx2i5rfmQp3imV9xUcCkIRsyYQVf8Eo7NV07IdUy/otmksgn4Zt
+Lbf3v2dvxOpTNTONWjp2c+iUQo8QxJCZr5Sfb21oQ9Ktcrmc/CY7LeBVDibXwxdM
+vRG8kBzvslFWh7REzC3u06GSVhyKDfW93kN2cKVwGoahRlhj7oHuZQ==
+-----END RSA PRIVATE KEY-----
+)";
+
 static const char kCRLTestRoot[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIDbzCCAlegAwIBAgIJAODri7v0dDUFMA0GCSqGSIb3DQEBCwUAME4xCzAJBgNV
@@ -1613,6 +1615,254 @@ TEST(X509Test, TestCRL) {
 
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
+}
+
+// Helper to create a GENERAL_NAME with a URI.
+static bssl::UniquePtr<GENERAL_NAME> MakeURIGeneralName(const char *uri) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  if (!name) {
+    return nullptr;
+  }
+  name->type = GEN_URI;
+  name->d.uniformResourceIdentifier = ASN1_IA5STRING_new();
+  if (!name->d.uniformResourceIdentifier ||
+      !ASN1_STRING_set(name->d.uniformResourceIdentifier, uri, strlen(uri))) {
+    return nullptr;
+  }
+  return name;
+}
+
+// Helper to create a DIST_POINT_NAME from a URI. Caller takes ownership.
+static DIST_POINT_NAME *MakeDistPointName(const char *uri) {
+  DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
+  if (!dpn) {
+    return nullptr;
+  }
+  dpn->type = 0;  // fullname
+  dpn->name.fullname = sk_GENERAL_NAME_new_null();
+  if (!dpn->name.fullname) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  auto gn = MakeURIGeneralName(uri);
+  if (!gn || !bssl::PushToStack(dpn->name.fullname, std::move(gn))) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  return dpn;
+}
+
+// Helper to create a leaf cert with a CRLDP extension and sign it.
+static bssl::UniquePtr<X509> MakeCRLDPLeaf(
+    X509 *issuer_cert, EVP_PKEY *issuer_key, int serial,
+    CRL_DIST_POINTS *crldp) {
+  bssl::UniquePtr<EVP_PKEY> leaf_key(EVP_PKEY_new());
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (!leaf_key || !rsa || !e ||
+      !BN_set_word(e.get(), RSA_F4) ||
+      !RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr) ||
+      !EVP_PKEY_assign_RSA(leaf_key.get(), rsa.release())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509> leaf(X509_new());
+  if (!leaf ||
+      !X509_set_version(leaf.get(), X509_VERSION_3) ||
+      !X509_set_issuer_name(leaf.get(),
+                            X509_get_subject_name(issuer_cert)) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(leaf.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>("Leaf"), -1, -1, 0) ||
+      !X509_set_pubkey(leaf.get(), leaf_key.get()) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(leaf.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(leaf.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+  if (!sn || !ASN1_INTEGER_set(sn.get(), serial) ||
+      !X509_set_serialNumber(leaf.get(), sn.get())) {
+    return nullptr;
+  }
+  if (!X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points, crldp,
+                         /*crit=*/0, /*flags=*/0)) {
+    return nullptr;
+  }
+  if (!X509_sign(leaf.get(), issuer_key, EVP_sha256())) {
+    return nullptr;
+  }
+  return leaf;
+}
+
+static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {
+  DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
+  if (!dpn) {
+    return nullptr;
+  }
+  dpn->type = 1;  // nameRelativeToCRLIssuer
+  dpn->name.relativename = sk_X509_NAME_ENTRY_new_null();
+  bssl::UniquePtr<X509_NAME_ENTRY> entry(X509_NAME_ENTRY_create_by_NID(
+      nullptr, NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const uint8_t *>(cn), -1));
+  if (!dpn->name.relativename || !entry ||
+      !bssl::PushToStack(dpn->name.relativename, std::move(entry))) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  return dpn;
+}
+
+// nameRelativeToCRLIssuer is not supported. Such distribution points must not
+// be expanded when extensions are cached, and must never match in CRL scope
+// checks.
+TEST(X509Test, CRLDPNameRelativeToCRLIssuer) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x1100;
+  static const size_t kNumDPs = 64;
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  for (size_t i = 0; i < kNumDPs; i++) {
+    bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+    ASSERT_TRUE(dp);
+    dp->distpoint = MakeRelativeDistPointName("CRL");
+    ASSERT_TRUE(dp->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+  }
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+  // Round-trip so the extension cache is computed from parsed extensions.
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509(leaf.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  const uint8_t *inp = der;
+  leaf.reset(d2i_X509(nullptr, &inp, der_len));
+  ASSERT_TRUE(leaf);
+
+  // Computing cached extensions must not construct absolute names.
+  EXPECT_FALSE(X509_get_extension_flags(leaf.get()) & EXFLAG_INVALID);
+  ASSERT_EQ(kNumDPs, sk_DIST_POINT_num(leaf->crldp));
+  for (size_t i = 0; i < kNumDPs; i++) {
+    const DIST_POINT *dp = sk_DIST_POINT_value(leaf->crldp, i);
+    ASSERT_TRUE(dp->distpoint);
+    EXPECT_EQ(1, dp->distpoint->type);
+    EXPECT_FALSE(dp->distpoint->dpname);
+  }
+
+  // Builds a CRL that revokes the leaf, with an IDP whose distributionPoint is
+  // |dpn|. Takes ownership of |dpn|.
+  auto make_crl = [&](DIST_POINT_NAME *dpn) -> bssl::UniquePtr<X509_CRL> {
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp) {
+      DIST_POINT_NAME_free(dpn);
+      return nullptr;
+    }
+    idp->distpoint = dpn;
+    bssl::UniquePtr<X509_EXTENSION> idp_ext(
+        dpn ? X509V3_EXT_i2d(NID_issuing_distribution_point, /*crit=*/1, idp)
+            : nullptr);
+    ISSUING_DIST_POINT_free(idp);  // Also frees |dpn|.
+    if (!idp_ext) {
+      return nullptr;
+    }
+    bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+    bssl::UniquePtr<ASN1_TIME> t(ASN1_TIME_new());
+    bssl::UniquePtr<X509_REVOKED> rev(X509_REVOKED_new());
+    bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+    if (!crl || !t || !rev || !sn ||
+        !X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2) ||
+        !X509_CRL_set_issuer_name(crl.get(),
+                                  X509_get_subject_name(root.get())) ||
+        !ASN1_TIME_adj(t.get(), kReferenceTime, 0, 0) ||
+        !X509_CRL_set1_lastUpdate(crl.get(), t.get()) ||
+        !ASN1_TIME_adj(t.get(), kReferenceTime, 30, 0) ||
+        !X509_CRL_set1_nextUpdate(crl.get(), t.get()) ||
+        !ASN1_INTEGER_set(sn.get(), kLeafSerial) ||
+        !X509_REVOKED_set_serialNumber(rev.get(), sn.get()) ||
+        !ASN1_TIME_set_posix(t.get(), kReferenceTime) ||
+        !X509_REVOKED_set_revocationDate(rev.get(), t.get()) ||
+        !X509_CRL_add0_revoked(crl.get(), rev.get())) {
+      return nullptr;
+    }
+    rev.release();  // Ownership transferred to |crl|.
+    if (!X509_CRL_add_ext(crl.get(), idp_ext.get(), /*loc=*/-1) ||
+        !X509_CRL_sign(crl.get(), key.get(), EVP_sha256())) {
+      return nullptr;
+    }
+    // Re-parse so |crl->idp| is populated.
+    uint8_t *crl_der = nullptr;
+    int crl_der_len = i2d_X509_CRL(crl.get(), &crl_der);
+    if (crl_der_len <= 0) {
+      return nullptr;
+    }
+    bssl::UniquePtr<uint8_t> free_crl_der(crl_der);
+    const uint8_t *crl_inp = crl_der;
+    return bssl::UniquePtr<X509_CRL>(
+        d2i_X509_CRL(nullptr, &crl_inp, crl_der_len));
+  };
+
+  // A CRL whose IDP uses the same relative name used to match and revoke the
+  // leaf. It is now out of scope.
+  bssl::UniquePtr<X509_CRL> crl = make_crl(MakeRelativeDistPointName("CRL"));
+  ASSERT_TRUE(crl);
+  ASSERT_TRUE(crl->idp);
+  EXPECT_FALSE(crl->idp->distpoint->dpname);
+  EXPECT_EQ(X509_V_ERR_DIFFERENT_CRL_SCOPE,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
+
+  // A CRL whose IDP is a fullName directoryName equal to the leaf's relative
+  // name expanded against its issuer. This also used to match and revoke the
+  // leaf, and is now out of scope.
+  bssl::UniquePtr<X509_NAME> expanded(
+      X509_NAME_dup(X509_get_subject_name(root.get())));
+  ASSERT_TRUE(expanded);
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      expanded.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const uint8_t *>("CRL"), -1, /*loc=*/-1, /*set=*/0));
+  bssl::UniquePtr<GENERAL_NAMES> fullname(sk_GENERAL_NAME_new_null());
+  ASSERT_TRUE(fullname);
+  bssl::UniquePtr<GENERAL_NAME> dirname(GENERAL_NAME_new());
+  ASSERT_TRUE(dirname);
+  GENERAL_NAME_set0_value(dirname.get(), GEN_DIRNAME, expanded.release());
+  ASSERT_TRUE(bssl::PushToStack(fullname.get(), std::move(dirname)));
+  DIST_POINT_NAME *full_dpn = DIST_POINT_NAME_new();
+  ASSERT_TRUE(full_dpn);
+  full_dpn->type = 0;  // fullName
+  full_dpn->name.fullname = fullname.release();
+  crl = make_crl(full_dpn);
+  ASSERT_TRUE(crl);
+  ASSERT_TRUE(crl->idp);
+  EXPECT_EQ(X509_V_ERR_DIFFERENT_CRL_SCOPE,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
+
+  // fullName distribution points must still match. This branch still supports
+  // CRL reason partitioning, so this also checks that each distribution point's
+  // reasons are still computed when extensions are cached.
+  static const char kURI[] = "http://example.com/crl";
+  bssl::UniquePtr<CRL_DIST_POINTS> uri_crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(uri_crldp);
+  bssl::UniquePtr<DIST_POINT> uri_dp(DIST_POINT_new());
+  ASSERT_TRUE(uri_dp);
+  uri_dp->distpoint = MakeDistPointName(kURI);
+  ASSERT_TRUE(uri_dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(uri_crldp.get(), std::move(uri_dp)));
+  auto uri_leaf =
+      MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, uri_crldp.get());
+  ASSERT_TRUE(uri_leaf);
+  EXPECT_FALSE(X509_get_extension_flags(uri_leaf.get()) & EXFLAG_INVALID);
+  ASSERT_EQ(1u, sk_DIST_POINT_num(uri_leaf->crldp));
+  EXPECT_EQ(CRLDP_ALL_REASONS,
+            sk_DIST_POINT_value(uri_leaf->crldp, 0)->dp_reasons);
+  crl = make_crl(MakeDistPointName(kURI));
+  ASSERT_TRUE(crl);
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+            Verify(uri_leaf.get(), {root.get()}, {root.get()}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {
