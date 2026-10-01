@@ -682,16 +682,9 @@ err:
   return 0;
 }
 
-// pkcs7_chain_has_digest returns one if |bio|'s chain already contains an MD
-// filter for |nid|, and zero otherwise.
-//
-// Duplicate entries in digestAlgorithms are redundant: both
-// |pkcs7_find_digest| and |pkcs7_signature_verify| resolve a digest by NID and
-// use the first matching BIO, so a second BIO for an algorithm already in the
-// chain is never read. Adding one anyway costs an extra full pass over the
-// content, which an attacker-supplied structure can repeat up to the
-// digestAlgorithms bound. Unlike |pkcs7_find_digest|, this helper does not
-// touch the error queue, since a miss is the common, expected case.
+// pkcs7_chain_has_digest returns one if |bio|'s chain already has an MD filter
+// for |nid|. Consumers read the first BIO matching a NID, so duplicates are
+// never read and only cost extra passes over the content.
 static int pkcs7_chain_has_digest(BIO *bio, int nid) {
   while (bio != NULL) {
     bio = BIO_find_type(bio, BIO_TYPE_MD);
@@ -803,10 +796,8 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto err;
   }
-  // |md_sk| comes from parsed input and may name the same digest more than
-  // once. Only add a BIO for algorithms not already in the chain: duplicates
-  // would each hash the entire content again without ever being read. Note
-  // |md_sk| itself is left untouched so the structure re-encodes unchanged.
+  // Skip digests already in the chain so each is hashed once; |md_sk| itself is
+  // left intact so the structure re-encodes unchanged.
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
     X509_ALGOR *alg = sk_X509_ALGOR_value(md_sk, i);
     if (alg == NULL || alg->algorithm == NULL) {
