@@ -195,11 +195,8 @@ TEST_F(EncTest, ExplicitDecryption) {
 }
 
 TEST_F(EncTest, NoCipherCopiesInput) {
-  const std::vector<args_list_t> options = {{},
-                                            {"-d"},
-                                            {"-e"},
-                                            {"-K", "invalid", "-iv", "invalid"},
-                                            {"-aes-256-cbc", "-none"}};
+  const std::vector<args_list_t> options = {
+      {}, {"-d"}, {"-e"}, {"-K", "invalid", "-iv", "invalid"}, {"-none"}};
   for (size_t len : {0u, 16u, 1024u, 1025u}) {
     WriteInput(in_path, len);
     for (const auto &flags : options) {
@@ -259,6 +256,25 @@ class EncOptionUsageErrorsTest : public EncTest {
   }
 };
 
+// Unlike OpenSSL 1.1.1, which uses the last one, multiple cipher options are
+// rejected because OpenSSL 3.x interprets them differently.
+TEST_F(EncOptionUsageErrorsTest, MultipleCiphers) {
+  const std::string key(64, '1'), iv(32, '2');
+  const std::vector<std::vector<std::string>> testparams = {
+      {"-aes-256-cbc", "-none"},
+      {"-none", "-aes-256-cbc"},
+      {"-aes-128-cbc", "-aes-256-cbc"},
+      {"-aes-256-cbc", "-aes-256-cbc"},
+      {"-none", "-none"},
+  };
+  for (auto args : testparams) {
+    SCOPED_TRACE(args[0] + " " + args[1]);
+    args.insert(args.end(),
+                {"-K", key, "-iv", iv, "-in", in_path, "-out", out_path});
+    TestOptionUsageErrors(args);
+  }
+}
+
 // Test missing required key
 TEST_F(EncOptionUsageErrorsTest, MissingKey) {
   std::vector<std::vector<std::string>> testparams = {
@@ -278,13 +294,9 @@ TEST_F(EncTest, LastOptionsWin) {
   ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
   const std::string key(64, '1'), iv(32, '2');
   ASSERT_EQ(kToolExitSuccess,
-            encTool({"-none",   "-aes-128-cbc", "-aes-256-cbc",
-                     "-d",      "-e",           "-K",
-                     "invalid", "-K",           key,
-                     "-iv",     "invalid",      "-iv",
-                     iv,        "-in",          "missing.pem",
-                     "-in",     in_path,        "-out",
-                     "",        "-out",         encrypted_path}));
+            encTool({"-aes-256-cbc", "-d", "-e", "-K", "invalid", "-K", key,
+                     "-iv", "invalid", "-iv", iv, "-in", "missing.pem", "-in",
+                     in_path, "-out", "", "-out", encrypted_path}));
   const std::string encrypted = ReadFileToString(encrypted_path);
   ASSERT_EQ(kToolExitSuccess, encTool({"-aes-256-cbc", "-K", key, "-iv", iv,
                                        "-in", in_path, "-out", out_path}));
@@ -565,7 +577,7 @@ TEST_F(EncComparisonTest, OptionSemanticsMatchOpenSSL) {
   const Case cases[] = {
       {{}, 1025, true},
       {{"-d", "-K", "invalid", "-iv", "invalid"}, 17, true},
-      {{"-none", "-aes-256-cbc", "-K", key, "-iv", iv}, 17, true},
+      {{"-none"}, 17, true},
       {{"-aes-256-cbc", "-d", "-e", "-K", key, "-iv", iv}, 17, true},
       {{"-aes-256-cbc", "-K", "", "-iv", ""}, 17, true},
       {{"-aes-256-cbc", "-K", "f", "-iv", "aBc"}, 17, true},
@@ -601,48 +613,6 @@ TEST_F(EncComparisonTest, OptionSemanticsMatchOpenSSL) {
     EXPECT_EQ(test.success ? 0 : 1, tool_result);
     EXPECT_EQ(openssl_result, tool_result);
     if (test.success) {
-      EXPECT_EQ(ReadFileToString(out_path_openssl),
-                ReadFileToString(out_path_tool));
-    }
-  }
-}
-
-// As in OpenSSL 1.1.1, the last cipher option, including -none, wins. OpenSSL
-// 3.x differs: it resolves the cipher after parsing, so -none after a cipher
-// has no effect (and enc prompts for a password), and newer releases reject
-// multiple ciphers. Compare against OpenSSL only for 1.1.1.
-TEST_F(EncComparisonTest, LastCipherOptionWinsLikeOpenSSL111) {
-  const std::string key_iv =
-      " -K " + std::string(64, '1') + " -iv " + std::string(32, '2');
-  struct Case {
-    std::string options;
-    // Options that should give the same output from our tool.
-    std::string equivalent;
-  };
-  const Case cases[] = {
-      {" -aes-256-cbc -none", " -none"},
-      {" -aes-128-cbc -aes-256-cbc" + key_iv, " -aes-256-cbc" + key_iv},
-  };
-  const bool compare_openssl = !IsOpenSSL3OrLater(openssl_executable_path);
-  WriteInput(in_path, 17);
-  const std::string io = " -in " + ShellEscape(in_path) + " -out ";
-  for (const auto &test : cases) {
-    SCOPED_TRACE(test.options);
-    ASSERT_EQ(kToolExitSuccess,
-              ExecuteCommandExitCode(ShellEscape(tool_executable_path) +
-                                     " enc" + test.equivalent + io +
-                                     ShellEscape(out_path_openssl)));
-    const std::string expected = ReadFileToString(out_path_openssl);
-    ASSERT_EQ(
-        kToolExitSuccess,
-        ExecuteCommandExitCode(ShellEscape(tool_executable_path) + " enc" +
-                               test.options + io + ShellEscape(out_path_tool)));
-    EXPECT_EQ(expected, ReadFileToString(out_path_tool));
-
-    if (compare_openssl) {
-      ASSERT_EQ(0, ExecuteCommandExitCode(ShellEscape(openssl_executable_path) +
-                                          " enc" + test.options + io +
-                                          ShellEscape(out_path_openssl)));
       EXPECT_EQ(ReadFileToString(out_path_openssl),
                 ReadFileToString(out_path_tool));
     }

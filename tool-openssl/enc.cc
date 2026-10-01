@@ -20,28 +20,29 @@ static const argument_t kArguments[] = {
     {"-e", kBooleanArgument, "Encrypt"},
     {"-d", kBooleanArgument, "Decrypt"},
     {"-nopad", kBooleanArgument, "Disable standard block padding"},
-    {"-none", kBooleanArgument, "Copy input without encryption (default)"},
+    {"-none", kExclusiveBooleanArgument,
+     "Copy input without encryption (default)"},
     {"-K", kOptionalArgument, "Raw key to use, in hex form"},
     {"-iv", kOptionalArgument, "IV to use, in hex form"},
-    {"-aes-128-cbc", kBooleanArgument, "Supported cipher"},
-    {"-aes-128-cfb", kBooleanArgument, "Supported cipher"},
-    {"-aes-128-ctr", kBooleanArgument, "Supported cipher"},
-    {"-aes-128-ecb", kBooleanArgument, "Supported cipher"},
-    {"-aes-128-ofb", kBooleanArgument, "Supported cipher"},
-    {"-aes-192-cbc", kBooleanArgument, "Supported cipher"},
-    {"-aes-192-cfb", kBooleanArgument, "Supported cipher"},
-    {"-aes-192-ctr", kBooleanArgument, "Supported cipher"},
-    {"-aes-192-ecb", kBooleanArgument, "Supported cipher"},
-    {"-aes-192-ofb", kBooleanArgument, "Supported cipher"},
-    {"-aes-256-cbc", kBooleanArgument, "Supported cipher"},
-    {"-aes-256-cfb", kBooleanArgument, "Supported cipher"},
-    {"-aes-256-ctr", kBooleanArgument, "Supported cipher"},
-    {"-aes-256-ecb", kBooleanArgument, "Supported cipher"},
-    {"-aes-256-ofb", kBooleanArgument, "Supported cipher"},
-    {"-aes128", kBooleanArgument, "Supported cipher alias"},
-    {"-aes256", kBooleanArgument, "Supported cipher alias"},
-    {"-des-cbc", kBooleanArgument, "Supported cipher"},
-    {"-des-ede3-cbc", kBooleanArgument, "Supported cipher"},
+    {"-aes-128-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes128", kExclusiveBooleanArgument, "Supported cipher alias"},
+    {"-aes256", kExclusiveBooleanArgument, "Supported cipher alias"},
+    {"-des-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-des-ede3-cbc", kExclusiveBooleanArgument, "Supported cipher"},
     {"", kOptionalArgument, ""}};
 
 static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
@@ -93,13 +94,11 @@ int encTool(const args_list_t &args) {
   const bool has_iv = HasArgument(parsed_args, "-iv");
   const bool nopad = HasArgument(parsed_args, "-nopad");
   const bool encode = GetLastOption({"-e", "-d"}, "-e", parsed_args) == "-e";
-  std::string cipher_name = GetLastOption(
-      {"-none",        "-aes-128-cbc", "-aes-128-cfb", "-aes-128-ctr",
-       "-aes-128-ecb", "-aes-128-ofb", "-aes-192-cbc", "-aes-192-cfb",
-       "-aes-192-ctr", "-aes-192-ecb", "-aes-192-ofb", "-aes-256-cbc",
-       "-aes-256-cfb", "-aes-256-ctr", "-aes-256-ecb", "-aes-256-ofb",
-       "-aes128",      "-aes256",      "-des-cbc",     "-des-ede3-cbc"},
-      "-none", parsed_args);
+  // Unlike OpenSSL 1.1.1, which uses the last one, the parser rejects multiple
+  // cipher options (including -none). OpenSSL 3.x interprets them differently,
+  // and a mismatch could silently skip encryption.
+  std::string cipher_name;
+  GetExclusiveBoolArgument(&cipher_name, kArguments, "-none", parsed_args);
   cipher_name = cipher_name == "-none" ? "" : cipher_name.substr(1);
 
   // As in OpenSSL, an absent path or "-" means stdin/stdout.
