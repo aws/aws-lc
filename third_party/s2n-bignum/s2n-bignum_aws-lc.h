@@ -204,8 +204,9 @@ typedef struct s2n_bignum_aes_key_st s2n_bignum_AES_KEY;
 // encrypted or decrypted in counter mode from the counter block "ivec" with
 // the AES round keys "key" (10 rounds for AES-128, 14 for AES-256), the
 // ciphertext is folded into the GHASH accumulator "tag" using the table
-// "htable" of powers of H, and "ivec" is advanced. Returns the number of
-// bytes processed.
+// "htable" of powers of H (the first 96 bytes of the Htable produced by
+// gcm_init_v8: H to H^4 with their Karatsuba middle terms), and "ivec" is
+// advanced. Returns the number of bytes processed.
 extern uint64_t aes128_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *out,
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 extern uint64_t aes128_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *out,

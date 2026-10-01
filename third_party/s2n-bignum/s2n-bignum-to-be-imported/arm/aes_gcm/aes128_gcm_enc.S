@@ -17,6 +17,18 @@
 // written back to "ivec", the updated authenticator to "tag", and the number
 // of bytes processed is returned.
 //
+// The table "htable" is the GHASH key schedule used by the PMULL-based GCM
+// code in OpenSSL, BoringSSL and AWS-LC: the first 96 bytes of the Htable that
+// gcm_init_v8 derives from the subkey H = AES_K(0^128). Its six 16-byte entries
+// hold, in order, H, m(H,H^2), H^2, H^3, m(H^3,H^4), H^4, where the powers are
+// in the bit-reflected ("twisted") representation that gcm_init_v8 uses and
+// m(A,B) packs the Karatsuba middle terms A.lo ^ A.hi (low 64 bits) and
+// B.lo ^ B.hi (high 64 bits) of the two neighbouring powers into one entry;
+// four powers suffice because GHASH is folded four blocks at a time, and
+// nothing beyond the first 96 bytes is read. The reference implementation in
+// tests/ref_aes_gcm.c (ref_gcm_init_htable) constructs the full table
+// independently.
+//
 // Standard ARM ABI: X0 = in, X1 = len_bits, X2 = out, X3 = tag, X4 = ivec,
 //                   X5 = key, X6 = htable, returns X0
 // ----------------------------------------------------------------------------
@@ -145,7 +157,6 @@
 #define STACK_BASE_GPRS 0  /* (0) */
 #define STACK_BASE_VREGS 96  /* (STACK_SIZE_GPRS) */
 #define STACK_BASE_AES_ST 160  /* (STACK_SIZE_GPRS + STACK_SIZE_VREGS) */
-#define STACK_BASE_AES_CTR 172  /* STACK_BASE_AES_ST + 12: counter word of an AES state slot */
 
 /********************************************************************/
 /*                 Generic preamble/postamble macros                */
@@ -204,12 +215,11 @@
         add        ctr_tmp_w, ctr, #(loc) __LF \
         rev        ctr_tmp_w, ctr_tmp_w __LF \
         orr        ctr_tmp, ivec_64_96, ctr_tmp, lsl #32 __LF \
-        stp        ivec_0_63, ctr_tmp, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF  /* @slothy:writes=stack_\loc */ \
-        ldr        aes_st##_q, [sp, #(STACK_BASE_AES_ST+loc*16)]  /* @slothy:reads=stack_\loc */
+        stp        ivec_0_63, ctr_tmp, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF \
+        ldr        aes_st##_q, [sp, #(STACK_BASE_AES_ST+loc*16)]
 
 // A single AES round
-// Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
-/* @slothy:no-unfold=true */
+// Kept as a pair since microarchitectures fuse AESE with the following AESMC
 #define aesr(data, key) \
         aese  data, key __LF \
         aesmc data, data
@@ -242,8 +252,8 @@
         aese aes_st.16b, rk9.16b __LF \
         eor plain##_lo, plain##_lo, rk10_lo __LF \
         eor plain##_hi, plain##_hi, rk10_hi __LF \
-        stp plain##_lo, plain##_hi, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF  /* @slothy:writes=stack_\loc */ \
-        ldr plain##_q, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF  /* @slothy:reads=stack_\loc */ \
+        stp plain##_lo, plain##_hi, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF \
+        ldr plain##_q, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF \
         eor out.16b, plain.16b, aes_st.16b
 
 #define load_round_key(i) \

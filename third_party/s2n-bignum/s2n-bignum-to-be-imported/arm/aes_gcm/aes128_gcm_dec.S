@@ -18,6 +18,18 @@
 // return the updated counter is written back to "ivec", the updated
 // authenticator to "tag", and the number of bytes processed is returned.
 //
+// The table "htable" is the GHASH key schedule used by the PMULL-based GCM
+// code in OpenSSL, BoringSSL and AWS-LC: the first 96 bytes of the Htable that
+// gcm_init_v8 derives from the subkey H = AES_K(0^128). Its six 16-byte entries
+// hold, in order, H, m(H,H^2), H^2, H^3, m(H^3,H^4), H^4, where the powers are
+// in the bit-reflected ("twisted") representation that gcm_init_v8 uses and
+// m(A,B) packs the Karatsuba middle terms A.lo ^ A.hi (low 64 bits) and
+// B.lo ^ B.hi (high 64 bits) of the two neighbouring powers into one entry;
+// four powers suffice because GHASH is folded four blocks at a time, and
+// nothing beyond the first 96 bytes is read. The reference implementation in
+// tests/ref_aes_gcm.c (ref_gcm_init_htable) constructs the full table
+// independently.
+//
 // Standard ARM ABI: X0 = in, X1 = len_bits, X2 = out, X3 = tag, X4 = ivec,
 //                   X5 = key, X6 = htable, returns X0
 // ----------------------------------------------------------------------------
@@ -140,7 +152,6 @@
 #define STACK_BASE_GPRS 0  /* (0) */
 #define STACK_BASE_VREGS 96  /* (STACK_SIZE_GPRS) */
 #define STACK_BASE_AES_ST 160  /* (STACK_SIZE_GPRS + STACK_SIZE_VREGS) */
-#define STACK_BASE_AES_CTR 172  /* STACK_BASE_AES_ST + 12: counter word of an AES state slot */
 
 /* ****************************************************************** */
 /* Generic preamble/postamble macros */
@@ -199,12 +210,11 @@
         add        ctr_tmp_w, ctr, #(loc) __LF \
         rev        ctr_tmp_w, ctr_tmp_w __LF \
         orr        ctr_tmp, ivec_64_96, ctr_tmp, lsl #32 __LF \
-        stp        ivec_0_63, ctr_tmp, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF  /* @slothy:writes=stack_\loc */ \
-        ldr        aes_st##_q, [sp, #(STACK_BASE_AES_ST+loc*16)]  /* @slothy:reads=stack_\loc */
+        stp        ivec_0_63, ctr_tmp, [sp, #(STACK_BASE_AES_ST+loc*16)] __LF \
+        ldr        aes_st##_q, [sp, #(STACK_BASE_AES_ST+loc*16)]
 
 // A single AES round
-// Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
-/* @slothy:no-unfold */
+// Kept as a pair since microarchitectures fuse AESE with the following AESMC
 #define aesr(data, key) \
         aese  data, key __LF \
         aesmc data, data
@@ -496,26 +506,26 @@ Laes128_gcm_dec_preamble_end:
         add w30, w13, #1
         rev w14, w30
         orr x24, x12, x14, lsl   #32
-        stp x11, x21, [sp, #STACK_BASE_AES_ST]// @slothy:writes=stack_0
+        stp x11, x21, [sp, #STACK_BASE_AES_ST]
         rev w23, w26
-        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]// @slothy:writes=stack_1
+        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]
         orr x29, x12, x23, lsl   #32
         add w7, w13, #2
-        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]// @slothy:writes=stack_3
+        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]
         add w13, w13, #UNROLL
         rev w25, w7
-        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]// @slothy:reads=stack_3
+        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]
         orr x27, x12, x25, lsl   #32
         add w10, w13, #0
-        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]// @slothy:writes=stack_2
+        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]
         add w26, w13, #3
         rev w17, w10
         orr x21, x12, x17, lsl   #32
         aesr(v31.16b, v18.16b)
         aesr(v31.16b, v19.16b)
-        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]// @slothy:reads=stack_1
+        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]
         aesr(v31.16b, v20.16b)
-        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]// @slothy:reads=stack_2
+        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]
         aesr(v31.16b, v21.16b)
         add w30, w13, #1
         aesr(v5.16b, v18.16b)
@@ -543,10 +553,10 @@ Laes128_gcm_dec_preamble_end:
         aesr(v5.16b, v21.16b)
         eor v11.16B, v6.16B, v30.16B
         aesr(v31.16b, v26.16b)
-        ldr q30, [sp, #STACK_BASE_AES_ST]// @slothy:reads=stack_0
+        ldr q30, [sp, #STACK_BASE_AES_ST]
         aesr(v5.16b, v22.16b)
         ext v6.16B, v11.16B, v11.16B, #8
-        stp x11, x21, [sp, #STACK_BASE_AES_ST]// @slothy:writes=stack_0
+        stp x11, x21, [sp, #STACK_BASE_AES_ST]
         aese v31.16b, v27.16b
         aesr(v5.16b, v23.16b)
         eor v6.16B, v6.16B, v11.16B
@@ -599,25 +609,25 @@ Laes128_gcm_dec_loop_unrolled_start:
         eor v5.16B, v5.16B, v28.16B                        // l.....................................................
         aesr(v30.16b, v20.16b)  /* l..................................................... */
         rev w23, w26                                       // *.....................................................
-        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]        // *.....................................................  // @slothy:writes=stack_1
+        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]        // *.....................................................
         eor v3.16B, v9.16B, v3.16B                         // .l....................................................
         pmull v9.1q, v0.1d, v15.1d                         // .l....................................................
         orr x29, x12, x23, lsl   #32                       // .*....................................................
         add w7, w13, #2                                    // .*....................................................
         eor v5.16B, v5.16B, v10.16B                        // ..l...................................................
         aesr(v30.16b, v21.16b)  /* ..l................................................... */
-        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]        // ..*...................................................  // @slothy:writes=stack_3
+        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]        // ..*...................................................
         add w13, w13, #UNROLL                              // ..*...................................................
         pmull v10.1q, v11.1d, v16.1d                       // ...l..................................................
         eor v11.16B, v31.16B, v9.16B                       // ...l..................................................
         rev w25, w7                                        // ...*..................................................
-        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]             // ....*.................................................  // @slothy:reads=stack_3
+        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]             // ....*.................................................
         aesr(v30.16b, v22.16b)  /* ....l................................................. */
         orr x27, x12, x25, lsl   #32                       // ....*.................................................
         pmull2 v9.1q, v6.2d, v17.2d                        // .....l................................................
         mov d6, v0.d[1]                                    // .....l................................................
         add w10, w13, #0                                   // .....e................................................
-        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]        // .....*................................................  // @slothy:writes=stack_2
+        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]        // .....*................................................
         eor v10.16B, v11.16B, v10.16B                      // ......l...............................................
         aesr(v30.16b, v23.16b)  /* ......l............................................... */
         add w26, w13, #3                                   // ......e...............................................
@@ -635,11 +645,11 @@ Laes128_gcm_dec_loop_unrolled_start:
         eor v3.16B, v10.16B, v3.16B                        // ...........l..........................................
         str q5, [x2, #16]                                  // ............l.........................................
         aesr(v31.16b, v19.16b)  /* ............*......................................... */
-        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]              // .............*........................................  // @slothy:reads=stack_1
+        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]              // .............*........................................
         aesr(v30.16b, v25.16b)  /* .............l........................................ */
         aesr(v31.16b, v20.16b)  /* ..............*....................................... */
         eor v0.16B, v11.16B, v0.16B                        // ..............l.......................................
-        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]              // ...............*......................................  // @slothy:reads=stack_2
+        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]              // ...............*......................................
         aesr(v30.16b, v26.16b)  /* ...............l...................................... */
         aesr(v31.16b, v21.16b)  /* ................*..................................... */
         eor v9.16B, v0.16B, v9.16B                         // ................l.....................................
@@ -681,10 +691,10 @@ Laes128_gcm_dec_loop_unrolled_start:
         aesr(v5.16b, v21.16b)  /* ..................................*................... */
         eor v11.16B, v6.16B, v30.16B                       // ..................................*...................
         aesr(v31.16b, v26.16b)  /* ...................................*.................. */
-        ldr q30, [sp, #STACK_BASE_AES_ST]                  // ...................................*..................  // @slothy:reads=stack_0
+        ldr q30, [sp, #STACK_BASE_AES_ST]                  // ...................................*..................
         aesr(v5.16b, v22.16b)  /* ....................................*................. */
         ext v6.16B, v11.16B, v11.16B, #8                   // ....................................*.................
-        stp x11, x21, [sp, #STACK_BASE_AES_ST]             // ....................................e.................  // @slothy:writes=stack_0
+        stp x11, x21, [sp, #STACK_BASE_AES_ST]             // ....................................e.................
         aese v31.16b, v27.16b                              // .....................................*................
         aesr(v5.16b, v23.16b)  /* ......................................*............... */
         eor v6.16B, v6.16B, v11.16B                        // ......................................*...............
@@ -851,24 +861,24 @@ Laes128_gcm_dec_loop_unrolled_start_postamble:// end of loop kernel
         eor v5.16B, v5.16B, v28.16B
         aesr(v30.16b, v20.16b)
         rev w23, w26
-        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]// @slothy:writes=stack_1
+        stp x11, x24, [sp, #(STACK_BASE_AES_ST+16)]
         eor v3.16B, v9.16B, v3.16B
         pmull v9.1q, v0.1d, v15.1d
         orr x29, x12, x23, lsl   #32
         add w7, w13, #2
         eor v5.16B, v5.16B, v10.16B
         aesr(v30.16b, v21.16b)
-        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]// @slothy:writes=stack_3
+        stp x11, x29, [sp, #(STACK_BASE_AES_ST+48)]
         add w13, w13, #UNROLL
         pmull v10.1q, v11.1d, v16.1d
         eor v11.16B, v31.16B, v9.16B
         rev w25, w7
-        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]// @slothy:reads=stack_3
+        ldr q31, [sp, #(STACK_BASE_AES_ST+48)]
         aesr(v30.16b, v22.16b)
         orr x27, x12, x25, lsl   #32
         pmull2 v9.1q, v6.2d, v17.2d
         mov d6, v0.d[1]
-        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]// @slothy:writes=stack_2
+        stp x11, x27, [sp, #(STACK_BASE_AES_ST+32)]
         eor v10.16B, v11.16B, v10.16B
         aesr(v30.16b, v23.16b)
         pmull v1.1q, v2.1d, v14.1d
@@ -883,11 +893,11 @@ Laes128_gcm_dec_loop_unrolled_start_postamble:// end of loop kernel
         eor v3.16B, v10.16B, v3.16B
         str q5, [x2, #16]
         aesr(v31.16b, v19.16b)
-        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]// @slothy:reads=stack_1
+        ldr q5, [sp, #(STACK_BASE_AES_ST+16)]
         aesr(v30.16b, v25.16b)
         aesr(v31.16b, v20.16b)
         eor v0.16B, v11.16B, v0.16B
-        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]// @slothy:reads=stack_2
+        ldr q4, [sp, #(STACK_BASE_AES_ST+32)]
         aesr(v30.16b, v26.16b)
         aesr(v31.16b, v21.16b)
         eor v9.16B, v0.16B, v9.16B
@@ -926,7 +936,7 @@ Laes128_gcm_dec_loop_unrolled_start_postamble:// end of loop kernel
         aesr(v5.16b, v21.16b)
         eor v11.16B, v6.16B, v30.16B
         aesr(v31.16b, v26.16b)
-        ldr q30, [sp, #STACK_BASE_AES_ST]// @slothy:reads=stack_0
+        ldr q30, [sp, #STACK_BASE_AES_ST]
         aesr(v5.16b, v22.16b)
         ext v6.16B, v11.16B, v11.16B, #8
         aese v31.16b, v27.16b
@@ -1028,29 +1038,29 @@ Laes128_gcm_dec_loop_unrolled_start_iter_1:
         orr x7, x12, x24, lsl   #32                        // ..*...............................................................
         rev w10, w21                                       // ..*...............................................................
         rev w14, w30                                       // ..*...............................................................
-        stp x11, x7, [sp, #(STACK_BASE_AES_ST+48)]         // ...*..............................................................  // @slothy:writes=stack_3
+        stp x11, x7, [sp, #(STACK_BASE_AES_ST+48)]         // ...*..............................................................
         orr x17, x12, x10, lsl   #32                       // ...*..............................................................
         orr x29, x12, x14, lsl   #32                       // ...*..............................................................
         rev64 v8.16B, v10.16B                              // ....*.............................................................
         rev w25, w23                                       // ....*.............................................................
         rev64 v11.16B, v4.16B                              // .....*............................................................
-        ldr q5, [sp, #(STACK_BASE_AES_ST+48)]              // .....*............................................................  // @slothy:reads=stack_3
-        stp x11, x29, [sp, #(STACK_BASE_AES_ST+16)]        // .....*............................................................  // @slothy:writes=stack_1
+        ldr q5, [sp, #(STACK_BASE_AES_ST+48)]              // .....*............................................................
+        stp x11, x29, [sp, #(STACK_BASE_AES_ST+16)]        // .....*............................................................
         orr x27, x12, x25, lsl   #32                       // .....*............................................................
         pmull2 v3.1q, v8.2d, v15.2d                        // ......*...........................................................
         rev64 v0.16B, v2.16B                               // ......*...........................................................
-        stp x11, x27, [sp, #STACK_BASE_AES_ST]             // ......*...........................................................  // @slothy:writes=stack_0
+        stp x11, x27, [sp, #STACK_BASE_AES_ST]             // ......*...........................................................
         mov d29, v11.d[1]                                  // .......*..........................................................
         pmull2 v9.1q, v11.2d, v12.2d                       // .......*..........................................................
         ext v1.16B, v0.16B, v0.16B, #8                     // ........*.........................................................
         pmull2 v31.1q, v0.2d, v13.2d                       // ........*.........................................................
-        stp x11, x17, [sp, #(STACK_BASE_AES_ST+32)]        // ........*.........................................................  // @slothy:writes=stack_2
+        stp x11, x17, [sp, #(STACK_BASE_AES_ST+32)]        // ........*.........................................................
         aesr(v5.16b, v18.16b)  /* .........*........................................................ */
         eor v29.8B, v29.8B, v11.8B                         // .........*........................................................
         eor v9.16B, v9.16B, v31.16B                        // ..........*.......................................................
         pmull v11.1q, v11.1d, v12.1d                       // ..........*.......................................................
         aesr(v5.16b, v19.16b)  /* ...........*...................................................... */
-        ldr q31, [sp, #STACK_BASE_AES_ST]                  // ...........*......................................................  // @slothy:reads=stack_0
+        ldr q31, [sp, #STACK_BASE_AES_ST]                  // ...........*......................................................
         pmull v6.1q, v29.1d, v14.1d                        // ............*.....................................................
         eor v29.16B, v1.16B, v0.16B                        // ............*.....................................................
         eor v3.16B, v9.16B, v3.16B                         // .............*....................................................
@@ -1076,11 +1086,11 @@ Laes128_gcm_dec_loop_unrolled_start_iter_1:
         pmull v29.1q, v8.1d, v15.1d                        // .............................*....................................
         eor v8.16B, v5.16B, v28.16B                        // .............................*....................................
         aesr(v31.16b, v25.16b)  /* ..............................*................................... */
-        ldr q5, [sp, #(STACK_BASE_AES_ST+32)]              // ..............................*...................................  // @slothy:reads=stack_2
+        ldr q5, [sp, #(STACK_BASE_AES_ST+32)]              // ..............................*...................................
         pmull v9.1q, v6.1d, v17.1d                         // ...............................*..................................
         eor v6.16B, v8.16B, v4.16B                         // ...............................*..................................
         aesr(v31.16b, v26.16b)  /* ................................*................................. */
-        ldr q4, [sp, #(STACK_BASE_AES_ST+16)]              // ................................*.................................  // @slothy:reads=stack_1
+        ldr q4, [sp, #(STACK_BASE_AES_ST+16)]              // ................................*.................................
         str q6, [x2, #48]                                  // .................................*................................
         pmull v8.1q, v0.1d, v13.1d                         // .................................*................................
         ldr q6, [x0], #(4*16)                              // ..................................*...............................
@@ -1289,9 +1299,9 @@ Laes128_gcm_dec_loop_1x_start:
         add w13, w13, #1                              // .*................................
         rev w17, w17                                  // .*................................
         orr x23, x12, x17, lsl   #32                  // ..*...............................
-        stp x11, x23, [sp, #STACK_BASE_AES_ST]        // ...*.............................. // @slothy:writes=stack_0
+        stp x11, x23, [sp, #STACK_BASE_AES_ST]        // ...*..............................
         rev64 v17.16B, v29.16B                        // ....*.............................
-        ldr q10, [sp, #STACK_BASE_AES_ST]             // .....*............................ // @slothy:reads=stack_0
+        ldr q10, [sp, #STACK_BASE_AES_ST]             // .....*............................
         eor v8.16B, v17.16B, v30.16B                  // ......*...........................
         pmull2 v13.1q, v8.2d, v12.2d                  // ........*.........................
         mov d30, v8.d[1]                              // ........*.........................
