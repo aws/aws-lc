@@ -32,8 +32,9 @@ extern "C" {
 // DH_new returns a new, empty DH object or NULL on error.
 OPENSSL_EXPORT DH *DH_new(void);
 
-// DH_new_by_nid returns the DH specified by |nid|, only NID_ffdhe2048, and
-// NID_ffdhe4096 are supported. All other values will return null.
+// DH_new_by_nid returns the DH specified by |nid|. Only NID_ffdhe2048,
+// NID_ffdhe3072, NID_ffdhe4096, and NID_ffdhe8192 are supported. All other
+// values will return null.
 OPENSSL_EXPORT DH *DH_new_by_nid(int nid);
 
 // DH_free decrements the reference count of |dh| and frees it if the reference
