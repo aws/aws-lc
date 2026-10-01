@@ -2386,7 +2386,7 @@ static bool EncodeMLDSAPrivateKey(const uint8_t *der, long der_len,
                                   MLDSATrailingData trailing,
                                   std::vector<uint8_t> *out) {
   CBS pkcs8, algorithm;
-  uint64_t version;
+  uint64_t version = 0;
   CBS_init(&pkcs8, der, der_len);
   if (!CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
@@ -2453,7 +2453,7 @@ TEST_P(PQDSAParameterTest, ParsePrivateKeyTrailingData) {
   bssl::UniquePtr<uint8_t> free_der_priv(der_priv);
 
   CBS pkcs8, algorithm, private_key, sequence, seed, expanded_key;
-  uint64_t version;
+  uint64_t version = 0;
   CBS_init(&pkcs8, der_priv, der_priv_len);
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
   ASSERT_TRUE(CBS_get_asn1_uint64(&pkcs8, &version));
