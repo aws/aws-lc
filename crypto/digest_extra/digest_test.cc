@@ -16,6 +16,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/rand.h>
 #include <openssl/md5.h>
@@ -728,4 +729,41 @@ TEST(DigestTest, InitAndGetStateSHA512_256Large) {
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA512_256, SHA512_CTX, SHA512_CBLOCK,
       (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+}
+
+// Reusing an |EVP_MD_CTX| that already carries state for one digest as an
+// |EVP_PKEY_HMAC| context for a *larger* digest used to advance |ctx->digest|
+// without resizing |ctx->md_data|. Everything that sizes |ctx->md_data| by
+// |ctx->digest->ctx_size| then ran off the end of the allocation. Run under
+// ASAN to see the overflow; SHA-1's |SHA_CTX| is roughly half the size of
+// SHA-512's |SHA512_CTX|.
+TEST(DigestTest, HMACReuseOfSmallerDigestContext) {
+  static const uint8_t kKey[32] = {'k'};
+  static const uint8_t kData[64] = {'d'};
+
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, kKey, sizeof(kKey)));
+  ASSERT_TRUE(pkey);
+
+  uint8_t expected[EVP_MAX_MD_SIZE];
+  unsigned expected_len;
+  ASSERT_TRUE(HMAC(EVP_sha512(), kKey, sizeof(kKey), kData, sizeof(kData),
+                   expected, &expected_len));
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), EVP_sha1(), nullptr));
+  ASSERT_TRUE(EVP_DigestSignInit(ctx.get(), nullptr, EVP_sha512(), nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(ctx.get(), kData, sizeof(kData)));
+
+  // |EVP_DigestSignFinal| reaches the undersized |md_data| through
+  // |EVP_MD_CTX_copy_ex|, which copies |ctx->digest->ctx_size| bytes out of it.
+  uint8_t sig[EVP_MAX_MD_SIZE];
+  size_t sig_len = sizeof(sig);
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig, &sig_len));
+  EXPECT_EQ(Bytes(expected, expected_len), Bytes(sig, sig_len));
+
+  // |EVP_MD_CTX_cleanse| reaches it as a write, zeroing
+  // |ctx->digest->ctx_size| bytes of it.
+  EVP_MD_CTX_cleanse(ctx.get());
 }
