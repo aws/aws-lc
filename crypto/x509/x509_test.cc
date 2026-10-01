@@ -3184,6 +3184,20 @@ TEST(X509Test, NameConstraintsIntermediateCN) {
   EXPECT_EQ(
       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
       Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
 }
 
 // Test that wildcard CNs are checked against name constraints when no
