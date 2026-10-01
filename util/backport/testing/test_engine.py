@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Sequence
 from unittest import mock
@@ -25,6 +25,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from commands import apply as apply_cmd
+from commands import publish
 from engine import (
     classify_branches,
     consult_ai,
@@ -32,7 +33,7 @@ from engine import (
     inspect_fix,
     prompts,
 )
-from util import config, git
+from util import config, git, github
 
 import main
 
@@ -1575,6 +1576,364 @@ class ReadmeMatchesTheCode(unittest.TestCase):
             shipped - listed, set(), "these ship but are not in the README listing"
         )
         self.assertEqual(listed - shipped, set(), "these are listed but do not exist")
+
+
+class FakeWorktreeRoot:
+    """Stands in for WORKTREE_ROOT, so a test can say whether the worktree is there"""
+
+    def __init__(self, present: bool) -> None:
+        self.present = present
+
+    def __truediv__(self, name):
+        return mock.Mock(exists=lambda: self.present)
+
+
+class RemoteSlug(unittest.TestCase):
+    # The push target decides whether a PR head needs an owner prefix, so reading a
+    # remote URL wrong sends the pull request at the wrong repo
+
+    def slug(self, url):
+        with mock.patch.object(
+            github, "git", lambda *a, **k: completed(stdout=url + "\n")
+        ):
+            return github.remote_slug("origin")
+
+    def test_https_with_git_suffix(self):
+        self.assertEqual(
+            self.slug("https://github.com/tianyiy-tim/aws-lc.git"), "tianyiy-tim/aws-lc"
+        )
+
+    def test_https_without_suffix(self):
+        self.assertEqual(self.slug("https://github.com/aws/aws-lc"), "aws/aws-lc")
+
+    def test_ssh_form(self):
+        self.assertEqual(self.slug("git@github.com:aws/aws-lc.git"), "aws/aws-lc")
+
+    def test_a_url_we_cannot_parse_is_none(self):
+        self.assertIsNone(self.slug("/some/local/path"))
+
+    def test_a_missing_remote_is_none(self):
+        with mock.patch.object(
+            github, "git", lambda *a, **k: completed(returncode=2, stdout="")
+        ):
+            self.assertIsNone(github.remote_slug("nope"))
+
+
+class RequirePushRemote(unittest.TestCase):
+    # Pushing backport branches at aws/aws-lc would put half-reviewed work on the real
+    # repository, so it is refused outright rather than just discouraged
+
+    def test_pushing_to_aws_lc_is_refused(self):
+        with mock.patch.object(
+            github, "remote_slug", lambda r: "aws/aws-lc"
+        ), self.assertRaises(config.BackportError) as caught:
+            github.require_push_remote("upstream")
+        self.assertIn("aws/aws-lc", str(caught.exception))
+
+    def test_the_check_ignores_case(self):
+        with mock.patch.object(
+            github, "remote_slug", lambda r: "AWS/AWS-LC"
+        ), self.assertRaises(config.BackportError):
+            github.require_push_remote("upstream")
+
+    def test_a_fork_is_allowed(self):
+        with mock.patch.object(github, "remote_slug", lambda r: "tianyiy-tim/aws-lc"):
+            self.assertEqual(github.require_push_remote("origin"), "tianyiy-tim/aws-lc")
+
+    def test_an_unknown_remote_is_an_error(self):
+        with mock.patch.object(
+            github, "remote_slug", lambda r: None
+        ), self.assertRaises(config.BackportError):
+            github.require_push_remote("nope")
+
+
+class ForkRemote(unittest.TestCase):
+    # A maintainer's origin is often aws/aws-lc itself, so the push target cannot be a
+    # fixed name
+
+    def pick(self, names, slugs):
+        github.fork_remote.cache_clear()
+        with mock.patch.object(
+            github, "git", lambda *a, **k: completed(stdout="\n".join(names) + "\n")
+        ), mock.patch.object(github, "remote_slug", lambda r: slugs.get(r)):
+            return github.fork_remote()
+
+    def tearDown(self):
+        github.fork_remote.cache_clear()
+
+    def test_origin_is_preferred_when_it_is_a_fork(self):
+        got = self.pick(
+            ["origin", "upstream"],
+            {"origin": "tianyiy-tim/aws-lc", "upstream": "aws/aws-lc"},
+        )
+        self.assertEqual(got, "origin")
+
+    def test_an_origin_that_is_aws_lc_is_skipped(self):
+        got = self.pick(
+            ["origin", "fork"], {"origin": "aws/aws-lc", "fork": "tianyiy-tim/aws-lc"}
+        )
+        self.assertEqual(got, "fork")
+
+    def test_the_check_ignores_case(self):
+        got = self.pick(
+            ["origin", "fork"], {"origin": "AWS/AWS-LC", "fork": "tianyiy-tim/aws-lc"}
+        )
+        self.assertEqual(got, "fork")
+
+    def test_a_checkout_with_only_aws_lc_falls_back_to_origin(self):
+        # require_push_remote is what reports it, so this only has to not invent a name
+        got = self.pick(["origin"], {"origin": "aws/aws-lc"})
+        self.assertEqual(got, "origin")
+
+
+class BaseRepo(unittest.TestCase):
+    # Where the pull requests are opened. Read from the remote, so a checkout that does
+    # not call it upstream still works
+
+    def test_an_override_wins(self):
+        self.assertEqual(github.base_repo("aws/aws-lc-staging"), "aws/aws-lc-staging")
+
+    def test_otherwise_the_release_remote_decides(self):
+        with mock.patch.object(
+            github, "release_remote", lambda: "upstream"
+        ), mock.patch.object(
+            github, "remote_slug", lambda r: "aws/aws-lc" if r == "upstream" else None
+        ):
+            self.assertEqual(github.base_repo(), "aws/aws-lc")
+
+    def test_an_unreadable_remote_falls_back_to_aws_lc(self):
+        with mock.patch.object(
+            github, "release_remote", lambda: "nope"
+        ), mock.patch.object(github, "remote_slug", lambda r: None):
+            self.assertEqual(github.base_repo(), "aws/aws-lc")
+
+
+class HeadSpec(unittest.TestCase):
+    # The one difference between a laptop pushing to a fork and CI pushing to the repo
+    # it already runs in
+
+    def test_across_repos_the_owner_is_prefixed(self):
+        got = github.head_spec("tianyiy-tim/aws-lc", "aws/aws-lc", "backport-x")
+        self.assertEqual(got, "tianyiy-tim:backport-x")
+
+    def test_within_one_repo_the_branch_stands_alone(self):
+        got = github.head_spec("aws/aws-lc", "aws/aws-lc", "backport-x")
+        self.assertEqual(got, "backport-x")
+
+
+class PrBody(unittest.TestCase):
+    def test_the_body_says_it_is_not_auto_merged(self):
+        title, body = github.pr_title_and_body(
+            "fips-2024-09-27", "abc1234567890", "Fix a thing", "git history", "3301"
+        )
+        self.assertEqual(title, "[backport fips-2024-09-27] Fix a thing")
+        self.assertIn("#3301", body)
+        self.assertIn("Not** auto-merged", body)
+
+    def test_without_a_source_pr_there_is_no_dangling_link(self):
+        _, body = github.pr_title_and_body(
+            "fips-2024-09-27", "abc1234567890", "Fix a thing", "", None
+        )
+        self.assertNotIn("of #", body)
+
+
+class BranchState(unittest.TestCase):
+    # A branch is only publishable once its cherry-pick is finished. Resolving a
+    # conflict by hand has to be enough, without apply running again
+
+    def state(self, exists=True, worktree=False, in_progress=False, ahead=1):
+        """branch_state with git and the worktree directory faked out"""
+        self.base = None
+
+        def commits_ahead(base, branch):
+            # Records which ref the count was taken against
+            self.base = base
+            return ahead
+
+        with mock.patch.multiple(
+            publish,
+            WORKTREE_ROOT=FakeWorktreeRoot(worktree),
+            branch_exists=lambda name: exists,
+            branch_ref=lambda branch: f"upstream/{branch}",
+            cherry_pick_in_progress=lambda path: in_progress,
+            commits_ahead=commits_ahead,
+        ):
+            return publish.branch_state("fips-2024-09-27", "backport-x")
+
+    def test_no_branch_is_missing(self):
+        self.assertEqual(self.state(exists=False), publish.MISSING)
+
+    def test_a_stopped_cherry_pick_is_unfinished(self):
+        got = self.state(worktree=True, in_progress=True)
+        self.assertEqual(got, publish.UNFINISHED)
+
+    def test_a_resolved_conflict_is_ready(self):
+        # The worktree survives a hand resolution, so its presence alone means nothing
+        got = self.state(worktree=True, in_progress=False)
+        self.assertEqual(got, publish.OPENED)
+
+    def test_a_clean_pick_with_no_worktree_is_ready(self):
+        self.assertEqual(self.state(worktree=False), publish.OPENED)
+
+    def test_a_branch_with_no_commits_of_its_own_is_missing(self):
+        self.assertEqual(self.state(ahead=0), publish.MISSING)
+
+    def test_the_count_is_taken_against_the_ref_apply_cut_the_branch_from(self):
+        # Not against origin. A fork behind on the release branches would make a branch
+        # carrying no pick of its own look ready to publish
+        self.state()
+        self.assertEqual(self.base, "upstream/fips-2024-09-27")
+
+
+class PublishBranch(unittest.TestCase):
+    def publish(self, state, existing=None, dry_run=False, push_error=None, url="ok"):
+        with mock.patch.multiple(
+            publish,
+            branch_state=lambda release, local_branch: state,
+            existing_pr=lambda repo, head: existing,
+            push_branch=lambda remote, branch: push_error,
+            create_pr=lambda *a: url,
+            remove_worktree=lambda path: None,
+        ):
+            return publish.publish_branch(
+                "fips-2024-09-27",
+                "abc1234567890",
+                "subject",
+                "basis",
+                None,
+                "origin",
+                "me/aws-lc",
+                "aws/aws-lc",
+                dry_run,
+            )
+
+    def test_a_missing_branch_says_run_apply(self):
+        outcome, detail = self.publish(publish.MISSING)
+        self.assertEqual(outcome, publish.MISSING)
+        self.assertIn("apply", detail)
+
+    def test_an_unfinished_branch_is_never_pushed(self):
+        outcome, _ = self.publish(publish.UNFINISHED)
+        self.assertEqual(outcome, publish.UNFINISHED)
+
+    def test_an_existing_pull_request_is_not_opened_twice(self):
+        outcome, detail = self.publish(publish.OPENED, existing="http://pr/1")
+        self.assertEqual(outcome, publish.ALREADY_OPEN)
+        self.assertEqual(detail, "http://pr/1")
+
+    def test_a_dry_run_pushes_nothing(self):
+        outcome, _ = self.publish(publish.OPENED, dry_run=True)
+        self.assertEqual(outcome, publish.DRY_RUN)
+
+    def test_a_failed_push_is_reported_not_raised(self):
+        outcome, detail = self.publish(publish.OPENED, push_error="denied")
+        self.assertEqual(outcome, publish.FAILED)
+        self.assertIn("denied", detail)
+
+    def test_a_failed_pr_is_reported(self):
+        outcome, detail = self.publish(publish.OPENED, url="error: no base")
+        self.assertEqual(outcome, publish.FAILED)
+        self.assertIn("no base", detail)
+
+    def test_a_good_run_returns_the_url(self):
+        outcome, detail = self.publish(publish.OPENED, url="http://pr/9")
+        self.assertEqual(outcome, publish.OPENED)
+        self.assertEqual(detail, "http://pr/9")
+
+
+class ADryRunWritesNothing(unittest.TestCase):
+    # The source pull request belongs to somebody else, and a dry run that comments on it
+    # has already done the thing it promised not to do
+
+    def report(self, dry_run):
+        """report() with the comment call recorded, as the list of posts it made"""
+        posted = []
+
+        def comment(repo, number, body):
+            posted.append((repo, number))
+
+        outcomes = [("fips-2024-09-27", publish.OPENED, "http://pr/1")]
+        with mock.patch.multiple(
+            publish,
+            comment_on_pr=comment,
+            commit_subject=lambda sha: "a subject",
+            summary_lines=lambda *a: "| table |",
+        ), redirect_stdout(io.StringIO()):
+            publish.report(
+                {"fix": "abc1234567"}, outcomes, "3105", "aws/aws-lc", dry_run
+            )
+        return posted
+
+    def test_a_real_run_comments_on_the_source_pull_request(self):
+        self.assertEqual(self.report(dry_run=False), [("aws/aws-lc", "3105")])
+
+    def test_a_dry_run_does_not(self):
+        self.assertEqual(self.report(dry_run=True), [])
+
+    def test_a_dry_run_says_what_it_would_have_opened(self):
+        # "0 pull request(s) opened" on a dry run reads as nothing to do, which is the
+        # opposite of what it means
+        printed = io.StringIO()
+        outcomes = [
+            ("fips-2024-09-27", publish.DRY_RUN, "would push and open"),
+            ("fips-2022-11-02", publish.DRY_RUN, "would push and open"),
+        ]
+        with redirect_stdout(printed):
+            publish.report({"fix": "abc1234567"}, outcomes, None, "aws/aws-lc", True)
+        said = printed.getvalue()
+        self.assertIn("2 pull request(s) would be opened", said)
+        self.assertNotIn("0 pull request(s) opened", said)
+
+
+class TheFipsWarningReachesTheReader(unittest.TestCase):
+    # analyze prints the boundary warning, but nobody reviewing a backport ran analyze.
+    # It has to travel into the pull requests and the summary, or it reaches no one
+
+    NOTE = "touches the validated FIPS module (1 file(s): crypto/fipsmodule/bn/bn.c)"
+    OUTCOMES: ClassVar[list] = [("fips-2024-09-27", "opened", "http://pr/1")]
+
+    def test_the_pull_request_body_leads_with_it(self):
+        _, body = github.pr_title_and_body(
+            "fips-2024-09-27",
+            "abc1234567890",
+            "Fix a thing",
+            "git history",
+            "3105",
+            self.NOTE,
+        )
+        self.assertTrue(body.startswith("> [!WARNING]"), body[:60])
+        self.assertIn("FIPS boundary", body)
+        self.assertIn("crypto/fipsmodule/bn/bn.c", body)
+        self.assertIn("Needs FIPS review", body)
+
+    def test_a_fix_outside_the_module_says_nothing_about_fips(self):
+        _, body = github.pr_title_and_body(
+            "fips-2024-09-27", "abc1234567890", "Fix a thing", "git history", "3105", ""
+        )
+        self.assertNotIn("FIPS", body)
+        self.assertTrue(body.startswith("Backport"), body[:40])
+
+    def test_the_summary_comment_carries_it_too(self):
+        table = github.summary_lines(
+            "abc1234567890", "Fix a thing", self.OUTCOMES, self.NOTE
+        )
+        self.assertIn("FIPS boundary", table)
+        self.assertIn("FIPS review before it merges", table)
+        # and still says what happened per branch
+        self.assertIn("fips-2024-09-27", table)
+
+    def test_the_summary_is_unchanged_without_it(self):
+        table = github.summary_lines("abc1234567890", "Fix a thing", self.OUTCOMES)
+        self.assertNotIn("FIPS", table)
+
+    def test_the_note_comes_from_the_saved_run_not_the_diff(self):
+        # publish never reads the fix, so the files analyze recorded are the only source.
+        # An older run file without the key must not crash it
+        self.assertEqual(publish.fips_note_for({}), "")
+        self.assertEqual(publish.fips_note_for({"fips_files": []}), "")
+        self.assertNotEqual(
+            publish.fips_note_for({"fips_files": ["crypto/fipsmodule/bn/bn.c"]}), ""
+        )
 
 
 if __name__ == "__main__":
