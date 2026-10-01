@@ -180,12 +180,15 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // The cipher suite must be one we offered. We currently offer all supported
-  // TLS 1.3 ciphers, so check the version.
+  // The cipher suite must be one we offered. Check that it is a TLS 1.3
+  // cipher supported at this protocol version and that it appears in the
+  // client's configured cipher list (which may be a subset of all supported
+  // TLS 1.3 ciphers, e.g. when configured via SSL_set_ciphersuites).
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(server_hello.cipher_suite);
   if (cipher == nullptr ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
+      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
+      !sk_SSL_CIPHER_find_awslc(SSL_get_ciphers(ssl), nullptr, cipher)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
