@@ -37,10 +37,20 @@ jobs:
     outputs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
       ubuntu2204_sde: ${{ steps.images.outputs.ubuntu2204_sde }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - name: Load dependency pins
         run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .github/docker_images/dependencies.env >> "$GITHUB_ENV"
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -63,7 +73,8 @@ jobs:
             scripts=./.github/docker_images/scripts
           target: ubuntu2204
           tags: ${{ steps.images.outputs.ubuntu2204 }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: docker/build-push-action@v7
         with:
           file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2204
@@ -76,7 +87,8 @@ jobs:
             SDE_SHA256=${{ env.SDE_SHA256_LIN }}
           target: ubuntu2204_sde
           tags: ${{ steps.images.outputs.ubuntu2204_sde }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container (ubuntu2204)
         with:
@@ -178,7 +190,16 @@ jobs:
       - x86_64_build
     outputs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -211,8 +232,18 @@ jobs:
       instance-size:small
     outputs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -234,7 +265,8 @@ jobs:
             scripts=./.github/docker_images/scripts
           target: ubuntu2204
           tags: ${{ steps.images.outputs.ubuntu2204 }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container
         with:
@@ -290,7 +322,16 @@ jobs:
       - aarch64_build
     outputs:
       ubuntu2204: ${{ steps.images.outputs.ubuntu2204 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -321,7 +362,16 @@ jobs:
     needs:
       - x86_64_push
       - aarch64_push
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

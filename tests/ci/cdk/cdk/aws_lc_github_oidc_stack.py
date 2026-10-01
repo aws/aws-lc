@@ -93,8 +93,58 @@ class AwsLcGitHubOidcStack(Stack):
                                               },
                                           }))
 
+        image_promotion_oidc_role_name = "AwsLcGitHubActionsImagePromotionOidcRole"
+        # Writing to a production CI image repository is restricted two ways.
+        #
+        # The subject claim must be a branch or tag ref. A pull_request event
+        # produces a ":pull_request" subject instead and so cannot match. Note
+        # that GitHub does not document the subject format for
+        # pull_request_target, which is also a pull request event but runs in the
+        # base ref's context, so do not rely on the subject claim alone to
+        # exclude it.
+        #
+        # The event name must therefore also be one that only a trusted ref can
+        # raise. GitHub recommends constraining trust policies this way, and it
+        # holds regardless of how pull_request_target renders its subject.
+        # workflow_call does not appear here on purpose: a reusable workflow
+        # reports the event that triggered the top level run.
+        # See https://docs.github.com/en/actions/reference/security/oidc
+        self.image_promotion_oidc_role = iam.Role(self, id=image_promotion_oidc_role_name,
+                                                  role_name=image_promotion_oidc_role_name,
+                                                  assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
+                                                      "StringEquals": {
+                                                          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                                          "token.actions.githubusercontent.com:event_name": [
+                                                              "push",
+                                                              "workflow_dispatch",
+                                                              "schedule",
+                                                          ],
+                                                      },
+                                                      "StringLike": {
+                                                          "token.actions.githubusercontent.com:sub": [
+                                                              "repo:{}/{}:ref:refs/heads/*".format(
+                                                                  GITHUB_REPO_OWNER, (
+                                                                      STAGING_GITHUB_REPO_NAME
+                                                                      if (env.account == PRE_PROD_ACCOUNT)
+                                                                      else GITHUB_REPO_NAME
+                                                                  )
+                                                              ),
+                                                              "repo:{}/{}:ref:refs/tags/*".format(
+                                                                  GITHUB_REPO_OWNER, (
+                                                                      STAGING_GITHUB_REPO_NAME
+                                                                      if (env.account == PRE_PROD_ACCOUNT)
+                                                                      else GITHUB_REPO_NAME
+                                                                  )
+                                                              ),
+                                                          ]
+                                                      },
+                                                  }))
+
         ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
                      for x in ECR_REPOS]
+
+        staging_repo = ecr.Repository.from_repository_name(
+            self, IMAGE_STAGING_REPO.replace('/', '-'), IMAGE_STAGING_REPO)
 
         self.standard_github_actions_role = create_standard_github_actions_role(
             self, "AwsLcGitHubActionStandardRole", env, self.minimal_oidc_role, ecr_repos)
@@ -106,9 +156,15 @@ class AwsLcGitHubOidcStack(Stack):
         self.device_farm_role.grant_assume_role(self.minimal_oidc_role)
 
         self.docker_image_build_role = create_docker_image_build_role(
-            self, "AwsLcGitHubActionDockerImageBuildRole", env, self.minimal_oidc_role, ecr_repos)
+            self, "AwsLcGitHubActionDockerImageBuildRole", env, self.minimal_oidc_role, ecr_repos, staging_repo)
         self.docker_image_build_role.grant_assume_role(
             self.minimal_oidc_role)
+
+        self.docker_image_promotion_role = create_docker_image_promotion_role(
+            self, "AwsLcGitHubActionDockerImagePromotionRole", env, self.image_promotion_oidc_role, ecr_repos,
+            staging_repo)
+        self.docker_image_promotion_role.grant_assume_role(
+            self.image_promotion_oidc_role)
 
         self.autofix_bucket = s3.Bucket(
             self, "aws-lc-autofix-integration-failures",
@@ -208,13 +264,11 @@ def create_device_farm_role(scope: Construct, id: str,
 def create_docker_image_build_role(scope: Construct, id: str,
                                    env: typing.Union[Environment, typing.Dict[str, typing.Any]],
                                    principal: iam.IPrincipal,
-                                   repos: typing.List[ecr.IRepository]) -> iam.Role:
+                                   repos: typing.List[ecr.IRepository],
+                                   staging_repo: ecr.IRepository) -> iam.Role:
 
     pull_through_caches = [ecr.Repository.from_repository_name(
         scope, "quay-io", "quay.io/*")]
-
-    staging_repo = ecr.Repository.from_repository_name(
-        scope, IMAGE_STAGING_REPO.replace('/', '-'), IMAGE_STAGING_REPO)
 
     role = iam.Role(scope, id, role_name=id,
                     assumed_by=iam.SessionTagsPrincipal(principal),
@@ -256,6 +310,9 @@ def create_docker_image_build_role(scope: Construct, id: str,
                                         x.repository_arn for x in repos
                                     ], [x.repository_arn for x in pull_through_caches], [staging_repo.repository_arn])],
                                 ),
+                                # Image builds only ever write to the staging
+                                # repository. Promotion into the production
+                                # repositories is a separate role.
                                 iam.PolicyStatement(
                                     effect=iam.Effect.ALLOW,
                                     actions=[
@@ -264,8 +321,7 @@ def create_docker_image_build_role(scope: Construct, id: str,
                                         "ecr:PutImage",
                                         "ecr:UploadLayerPart",
                                     ],
-                                    resources=[x for x in itertools.chain([
-                                        x.repository_arn for x in repos], [staging_repo.repository_arn])],
+                                    resources=[staging_repo.repository_arn],
                                 ),
                                 iam.PolicyStatement(
                                     effect=iam.Effect.ALLOW,
@@ -280,6 +336,72 @@ def create_docker_image_build_role(scope: Construct, id: str,
                     })
 
     return role
+
+
+def create_docker_image_promotion_role(scope: Construct, id: str,
+                                       env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                                       principal: iam.IPrincipal,
+                                       repos: typing.List[ecr.IRepository],
+                                       staging_repo: ecr.IRepository) -> iam.Role:
+    """Retags an image already validated in staging into the production CI repositories.
+
+    This is the only GitHub Actions role allowed to write to those repositories,
+    and it is only assumable from a branch or tag ref.
+    """
+
+    return iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "metrics_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "cloudwatch:PutMetricData"
+                                    ],
+                                    resources=["*"],
+                                    conditions={
+                                        "StringEquals": {
+                                            "aws:RequestedRegion": [env.region],
+                                            "cloudwatch:namespace": [AWS_LC_METRIC_NS],
+                                        }
+                                    }
+                                ),
+                            ]
+                        ),
+                        "ecr": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "ecr:GetAuthorizationToken",
+                                    ],
+                                    resources=["*"],
+                                ),
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "ecr:BatchGetImage",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                    ],
+                                    resources=[x for x in itertools.chain([
+                                        x.repository_arn for x in repos], [staging_repo.repository_arn])],
+                                ),
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "ecr:CompleteLayerUpload",
+                                        "ecr:InitiateLayerUpload",
+                                        "ecr:PutImage",
+                                        "ecr:UploadLayerPart",
+                                    ],
+                                    resources=[
+                                        x.repository_arn for x in repos],
+                                ),
+                            ],
+                        ),
+                    })
 
 
 def create_standard_github_actions_role(scope: Construct, id: str,
