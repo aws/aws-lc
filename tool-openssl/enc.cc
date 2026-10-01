@@ -58,7 +58,7 @@ static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
   // validate only the retained prefix.
   memset(buffer, 0, size);
   for (size_t i = 0; i < std::min(hex_string.size(), hex_len); i++) {
-    uint8_t digit;
+    uint8_t digit = 0;
     if (!OPENSSL_fromxdigit(&digit, hex_string[i])) {
       return false;
     }
