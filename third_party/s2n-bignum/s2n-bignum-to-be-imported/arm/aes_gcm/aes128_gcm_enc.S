@@ -17,6 +17,11 @@
 // written back to "ivec", the updated authenticator to "tag", and the number
 // of bytes processed is returned.
 //
+// The kernel is intended for a whole number of 16-byte blocks, i.e. len_bits a
+// multiple of 128; a partial final block is the caller's responsibility, as in
+// AWS-LC's GCM layer. For any other length only the floor(len_bits/128)
+// complete blocks are processed, while the return value is still len_bits/8.
+//
 // The table "htable" is the GHASH key schedule used by the PMULL-based GCM
 // code in OpenSSL, BoringSSL and AWS-LC: the first 96 bytes of the Htable that
 // gcm_init_v8 derives from the subkey H = AES_K(0^128). Its six 16-byte entries
