@@ -336,41 +336,26 @@ static const uint8_t kTestName[] = {
     0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64,
 };
 
-// CreateEarlyDataSession sets up a pair of 0-RTT-enabled contexts and returns
-// an early-data-capable session for them.
-static bssl::UniquePtr<SSL_SESSION> CreateEarlyDataSession(
-    bssl::UniquePtr<SSL_CTX> *out_client_ctx,
-    bssl::UniquePtr<SSL_CTX> *out_server_ctx) {
+// Test that, after seeing TLS 1.2 in response to early data, |SSL_write|
+// continues to report |SSL_R_WRONG_VERSION_ON_EARLY_DATA|. See
+// https://crbug.com/1078515.
+TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
+  // Set up some 0-RTT-enabled contexts.
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
-  if (!client_ctx || !server_ctx) {
-    return nullptr;
-  }
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
   SSL_CTX_set_early_data_enabled(client_ctx.get(), 1);
   SSL_CTX_set_early_data_enabled(server_ctx.get(), 1);
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
 
+  // Get an early-data-capable session.
   bssl::UniquePtr<SSL_SESSION> session =
       CreateClientSession(client_ctx.get(), server_ctx.get());
-  if (!session || !SSL_SESSION_early_data_capable(session.get())) {
-    return nullptr;
-  }
-
-  *out_client_ctx = std::move(client_ctx);
-  *out_server_ctx = std::move(server_ctx);
-  return session;
-}
-
-// Test that, after seeing TLS 1.2 in response to early data, |SSL_write|
-// continues to report |SSL_R_WRONG_VERSION_ON_EARLY_DATA|. See
-// https://crbug.com/1078515.
-TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
-  bssl::UniquePtr<SSL_CTX> client_ctx, server_ctx;
-  bssl::UniquePtr<SSL_SESSION> session =
-      CreateEarlyDataSession(&client_ctx, &server_ctx);
   ASSERT_TRUE(session);
+  EXPECT_TRUE(SSL_SESSION_early_data_capable(session.get()));
 
   // Offer the session to the server, but now the server speaks TLS 1.2.
   bssl::UniquePtr<SSL> client, server;
@@ -417,53 +402,73 @@ TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
   EXPECT_EQ(0u, len);
 }
 
-// Test that a write interrupted during early data does not leave state behind
-// which interferes with writes made after |SSL_reset_early_data_reject|.
-TEST(SSLTest, WriteAfterEarlyDataReject) {
-  bssl::UniquePtr<SSL_CTX> client_ctx, server_ctx;
-  bssl::UniquePtr<SSL_SESSION> session =
-      CreateEarlyDataSession(&client_ctx, &server_ctx);
-  ASSERT_TRUE(session);
+TEST(SSLTest, EarlyDataRejectStaleUnreportedBytes) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(server_ctx);
 
-  // Offer the session to the server, but now the server declines 0-RTT.
+  // Setup a 0-RTT session.
+  SSL_CTX_set_early_data_enabled(client_ctx.get(), 1);
+  SSL_CTX_set_early_data_enabled(server_ctx.get(), 1);
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx.get(), server_ctx.get());
+  ASSERT_TRUE(session);
+  ASSERT_TRUE(SSL_SESSION_early_data_capable(session.get()));
+
+  // Use the session, but with 0-RTT disabled on the server.
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
                                     server_ctx.get()));
   SSL_set_session(client.get(), session.get());
   SSL_set_early_data_enabled(server.get(), 0);
 
+  // The client sends ClientHello.
   ASSERT_EQ(1, SSL_do_handshake(client.get()));
   ASSERT_TRUE(SSL_in_early_data(client.get()));
 
-  // Write more early data than the server permits. Some of the input is
-  // written, but the write as a whole is interrupted to finish the handshake,
-  // so the client remembers the prefix it already wrote.
-  std::vector<uint8_t> early_data(kMaxEarlyDataAccepted + 1, 'a');
-  ASSERT_EQ(-1, SSL_write(client.get(), early_data.data(), early_data.size()));
+  // Try to write a large amount of early data, large enough that one record
+  // gets through, but a subsequent record is interrupted. (In this case, by the
+  // early data limit, but the exact interrupt is not important.)
+  //
+  // |client| now remembers there is a pending write, and that some prefix of it
+  // has already been written.
+  std::vector<uint8_t> early_write(20000, 'A');
+  ASSERT_EQ(-1,
+            SSL_write(client.get(), early_write.data(), early_write.size()));
   ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
 
-  // The server processes the ClientHello and rejects 0-RTT.
+  // The server reads the ClientHello, rejects 0-RTT, and sends
+  // ServerHello..Finished.
   ASSERT_EQ(-1, SSL_do_handshake(server.get()));
   ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server.get(), -1));
-  ASSERT_FALSE(SSL_early_data_accepted(server.get()));
+  ASSERT_FALSE(SSL_in_early_data(server.get()));
 
-  // The client retries the write, reads the server's flight, and learns 0-RTT
-  // was rejected.
-  ASSERT_EQ(-1, SSL_write(client.get(), early_data.data(), early_data.size()));
+  // The client retries the write. It now reads the server's flight and
+  // discovers 0-RTT was rejected.
+  ASSERT_EQ(-1,
+            SSL_write(client.get(), early_write.data(), early_write.size()));
   ASSERT_EQ(SSL_ERROR_EARLY_DATA_REJECTED, SSL_get_error(client.get(), -1));
 
+  // Resetting the early data reject should allow the handshake to proceed and
+  // forget the pending write.
   SSL_reset_early_data_reject(client.get());
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
-  ASSERT_FALSE(SSL_early_data_accepted(client.get()));
+  ASSERT_FALSE(SSL_in_early_data(client.get()));
 
-  // The interrupted write is forgotten, so a shorter, unrelated write succeeds
-  // and arrives intact.
-  static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
-  ASSERT_EQ(int(sizeof(kInput)),
-            SSL_write(client.get(), kInput, sizeof(kInput)));
-  uint8_t buf[sizeof(kInput)];
-  ASSERT_EQ(int(sizeof(buf)), SSL_read(server.get(), buf, sizeof(buf)));
-  EXPECT_EQ(Bytes(buf), Bytes(kInput));
+  // Test the pending write was cleared by attempting to write something else.
+  static const uint8_t kNewWrite[] = {'h', 'e', 'l', 'l', 'o'};
+  ASSERT_EQ(static_cast<int>(sizeof(kNewWrite)),
+            SSL_write(client.get(), kNewWrite, sizeof(kNewWrite)));
+
+  // Confirm it was written correctly.
+  uint8_t received[sizeof(kNewWrite)];
+  ASSERT_EQ(static_cast<int>(sizeof(received)),
+            SSL_read(server.get(), received, sizeof(received)));
+  EXPECT_EQ(Bytes(received), Bytes(kNewWrite));
 }
 
 TEST(SSLTest, SessionDuplication) {
