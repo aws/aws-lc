@@ -33,3 +33,50 @@ int UI_add_info_string(UI *ui, const char *text) {
 int UI_process(UI *ui) {
   return -1;
 }
+
+UI_METHOD *UI_OpenSSL(void) {
+  static UI_METHOD method = {0};
+  return &method;
+}
+
+UI_METHOD *UI_create_method(const char *name) { return NULL; }
+
+void UI_destroy_method(UI_METHOD *ui_method) {}
+
+int UI_method_set_opener(UI_METHOD *method, int (*opener)(UI *ui)) {
+  return -1;
+}
+
+int UI_method_set_writer(UI_METHOD *method,
+                         int (*writer)(UI *ui, UI_STRING *uis)) {
+  return -1;
+}
+
+int UI_method_set_reader(UI_METHOD *method,
+                         int (*reader)(UI *ui, UI_STRING *uis)) {
+  return -1;
+}
+
+int UI_method_set_closer(UI_METHOD *method, int (*closer)(UI *ui)) {
+  return -1;
+}
+
+static int ui_session_stub(UI *ui) { return 0; }
+
+static int ui_string_stub(UI *ui, UI_STRING *uis) { return 0; }
+
+int (*UI_method_get_opener(const UI_METHOD *method))(UI *) {
+  return ui_session_stub;
+}
+
+int (*UI_method_get_writer(const UI_METHOD *method))(UI *, UI_STRING *) {
+  return ui_string_stub;
+}
+
+int (*UI_method_get_reader(const UI_METHOD *method))(UI *, UI_STRING *) {
+  return ui_string_stub;
+}
+
+int (*UI_method_get_closer(const UI_METHOD *method))(UI *) {
+  return ui_session_stub;
+}

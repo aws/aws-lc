@@ -1110,4 +1110,96 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
   <p><span>Does nothing.</span></p>
   </td>
 </tr>
+ <tr>
+  <td rowspan=9>
+  <p><span>UI</span></p>
+  </td>
+  <td rowspan=9>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/ui.h">
+            ui.h
+        </a>
+    </span>
+  </p>
+  </td>
+  <td>
+  <p><span>UI_new</span></p>
+  </td>
+  <td>
+  <p><span>Returns NULL.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_free</span></p>
+  </td>
+  <td>
+  <p><span>Calls OPENSSL_free on its argument.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_add_input_string</span><br>
+  <span>UI_add_verify_string</span><br>
+  <span>UI_add_info_string</span></p>
+  </td>
+  <td>
+  <p><span>Returns -1.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_process</span></p>
+  </td>
+  <td>
+  <p><span>Returns -1.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_OpenSSL</span></p>
+  </td>
+  <td>
+  <p><span>Returns a non-NULL pointer to a static dummy UI_METHOD.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_create_method</span></p>
+  </td>
+  <td>
+  <p><span>Returns NULL.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_destroy_method</span></p>
+  </td>
+  <td>
+  <p><span>Does nothing.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_method_set_opener</span><br>
+  <span>UI_method_set_writer</span><br>
+  <span>UI_method_set_reader</span><br>
+  <span>UI_method_set_closer</span></p>
+  </td>
+  <td>
+  <p><span>Returns -1. The callback is neither stored nor invoked.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>UI_method_get_opener</span><br>
+  <span>UI_method_get_writer</span><br>
+  <span>UI_method_get_reader</span><br>
+  <span>UI_method_get_closer</span></p>
+  </td>
+  <td>
+  <p><span>Returns a non-NULL callback that ignores its arguments and returns zero.</span></p>
+  </td>
+ </tr>
 </table>

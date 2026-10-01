@@ -866,6 +866,8 @@ if(BUILD_TESTING)
     ube/ube_test.cc
     ube/fork_ube_detect_test.cc
     ube/vm_ube_detect_test.cc
+    ui/ui_compile_test.cc
+    ui/ui_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
     x509/x509_compat_test.cc
