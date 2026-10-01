@@ -44,13 +44,6 @@ bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
       continue;
     }
 
-    // Check for duplicate arguments - allowed for order preservation
-    // but warn about it when debugging
-#ifndef NDEBUG
-    if (templ->type != kDuplicateArgument && HasArgument(out_args, arg)) {
-      fprintf(stderr, "Warning: Duplicate argument: %s\n", arg.c_str());
-    }
-#endif
 
     if (templ->type == kBooleanArgument ||
         templ->type == kExclusiveBooleanArgument) {
