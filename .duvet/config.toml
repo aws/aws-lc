@@ -46,7 +46,7 @@ format = "ietf"
 pattern = ".duvet/rfc8032-requirements/**/*.toml"
 
 # RFC 5280 section 4.2.1.10 (Name Constraints), scoped to a single section
-# rather than extracting the whole RFC. See rfc5280-requirements/.
+# rather than registering the whole RFC. See .duvet/README.md.
 [[requirement]]
 pattern = ".duvet/rfc5280-requirements/**/*.toml"
 

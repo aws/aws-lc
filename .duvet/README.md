@@ -22,9 +22,20 @@ Ed25519 / Ed25519ph surface in `crypto/fipsmodule/curve25519/`.
 | `specifications/` | Cached copy of the spec text Duvet extracts from |
 | `requirements/` | Requirements extracted from the RFC prose (`duvet extract`) |
 | `rfc8032-requirements/` | Hand-authored requirements for descriptive (non-RFC-2119) prose |
+| `rfc5280-requirements/` | `duvet extract` output for RFC 5280 §4.2.1.10 only (see below) |
 | `scripts/check_annotations.py` | Annotation-regression guard (see below) |
 | `annotations.baseline` | Committed snapshot of source-code annotations |
 | `reports/` | Generated reports — gitignored, never committed |
+
+### Why RFC 5280 is not a registered `[[specification]]`
+
+`duvet report` re-extracts every registered specification into
+`requirements/`. Registering RFC 5280 would add all 73 of its sections (425
+requirements) to the report, burying the name-constraint coverage. Instead,
+`rfc5280-requirements/name-constraints.toml` is the unmodified `duvet extract`
+output for section 4.2.1.10 alone, wired in through a `[[requirement]]` pattern.
+To refresh it, run `duvet extract https://www.rfc-editor.org/rfc/rfc5280 -o
+<tmpdir>` and copy that section's file over.
 
 ## Generate reports locally
 
