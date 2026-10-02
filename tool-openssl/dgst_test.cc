@@ -4,12 +4,8 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include "../crypto/test/test_util.h"
+#include "internal.h"
 #include "test_util.h"
-
-// -------------------- MD5 OpenSSL Comparison Test ---------------------------
-
-// Comparison tests cannot run without set up of environment variables:
-// AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
 
 class DgstComparisonTest : public ::testing::Test {
  protected:
@@ -17,26 +13,64 @@ class DgstComparisonTest : public ::testing::Test {
     // Skip gtests if env variables not set
     awslc_executable_path = getenv("AWSLC_TOOL_PATH");
     openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
+
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path_awslc), 0u);
+    ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(sig_path_awslc), 0u);
+    ASSERT_GT(createTempFILEpath(sig_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(key_path), 0u);
+    ASSERT_GT(createTempFILEpath(pubkey_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_key_path),
+              0u);  // TODO: update this to test passin
+
+    // Create and save a private key in PEM format
+    bssl::UniquePtr<EVP_PKEY> pkey(CreateTestKey(2048));
+    ASSERT_TRUE(pkey);
+
+    ScopedFILE key_file(fopen(key_path, "wb"));
+    ASSERT_TRUE(key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(key_file.get(), pkey.get(), nullptr,
+                                     nullptr, 0, nullptr, nullptr));
+
+    // Create a public key file
+    ScopedFILE pubkey_file(fopen(pubkey_path, "wb"));
+    ASSERT_TRUE(pubkey_file);
+    ASSERT_TRUE(PEM_write_PUBKEY(pubkey_file.get(), pkey.get()));
+
+    // Create a test input file with some data
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *test_data = "AWS_LC_TEST_STRING_INPUT";
+    ASSERT_EQ(fwrite(test_data, 1, strlen(test_data), in_file.get()),
+              strlen(test_data));
+
     if (awslc_executable_path == nullptr ||
         openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
                       "environment variables are not set";
     }
-    ASSERT_GT(createTempFILEpath(in_path), 0u);
-    ASSERT_GT(createTempFILEpath(out_path_awslc), 0u);
-    ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
   }
+
   void TearDown() override {
-    if (awslc_executable_path != nullptr &&
-        openssl_executable_path != nullptr) {
-      //      RemoveFile(in_path);
-      RemoveFile(out_path_awslc);
-      RemoveFile(out_path_openssl);
-    }
+    RemoveFile(in_path);
+    RemoveFile(out_path_awslc);
+    RemoveFile(out_path_openssl);
+    RemoveFile(sig_path_awslc);
+    RemoveFile(sig_path_openssl);
+    RemoveFile(key_path);
+    RemoveFile(pubkey_path);
+    RemoveFile(protected_key_path);
   }
+
   char in_path[PATH_MAX];
   char out_path_awslc[PATH_MAX];
   char out_path_openssl[PATH_MAX];
+  char sig_path_awslc[PATH_MAX];
+  char sig_path_openssl[PATH_MAX];
+  char key_path[PATH_MAX];
+  char pubkey_path[PATH_MAX];
+  char protected_key_path[PATH_MAX];
   const char *awslc_executable_path;
   const char *openssl_executable_path;
   std::string awslc_output_str;
@@ -49,23 +83,33 @@ std::string GetHash(const std::string &str) {
   if (pos == std::string::npos) {
     return "";
   }
-  return str.substr(pos + 1);
+  std::string result = str.substr(pos + 1);
+
+  // OpenSSL has inconsistent leading white space
+  size_t start = result.find_first_not_of(" ");
+  if (start == std::string::npos) {
+    return "";
+  }
+
+  if (start == 0) {
+    return result;
+  }
+
+  return result.substr(start);
 }
 
-// Test against OpenSSL output for "-hmac"
-TEST_F(DgstComparisonTest, HMAC_default_files) {
-  std::string input_file = std::string(in_path);
-  std::ofstream ofs(input_file);
-  ofs << "AWS_LC_TEST_STRING_INPUT";
-  ofs.close();
+// -------------------- Dgst Options Test ---------------------------
+TEST_F(DgstComparisonTest, HMAC) {
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -hmac " + ShellEscape("test_key_string") +
+                              " -out " + ShellEscape(out_path_awslc) + " " +
+                              ShellEscape(in_path);
 
-  // Run -hmac against a single file.
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " dgst -hmac test_key_string " + input_file +
-                              " > " + out_path_awslc;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dgst -hmac test_key_string " + input_file +
-                                " > " + out_path_openssl;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -hmac " +
+                                ShellEscape("test_key_string") + " -out " +
+                                ShellEscape(out_path_openssl) + " " +
+                                ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -76,125 +120,430 @@ TEST_F(DgstComparisonTest, HMAC_default_files) {
 
   EXPECT_EQ(awslc_hash, openssl_hash);
 
-  // Run -hmac again against multiple files.
+  // binary output
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -hmac " + ShellEscape("test_key_string") +
+                  " -binary -out " + ShellEscape(out_path_awslc) + " " +
+                  ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -hmac " + ShellEscape("test_key_string") +
+                    " -binary -out " + ShellEscape(out_path_openssl) + " " +
+                    ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+}
+
+TEST_F(DgstComparisonTest, Digest) {
+  // default digest
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
+
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+
+  // non-default digest + binary
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -sha1 -binary -out " + ShellEscape(out_path_awslc) +
+                  " " + ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -sha1 -binary -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+}
+
+TEST_F(DgstComparisonTest, SignAndVerify) {
+  // default binary output
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -sign " + ShellEscape(key_path) +
+                              " -out " + ShellEscape(sig_path_awslc) + " " +
+                              ShellEscape(in_path);
+
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -sign " + ShellEscape(key_path) +
+                                " -out " + ShellEscape(sig_path_openssl) +
+                                " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
+                              sig_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -verify " +
+                  ShellEscape(pubkey_path) + " -signature " +
+                  ShellEscape(sig_path_awslc) + " -keyform " +
+                  ShellEscape("PEM") + " -out " + ShellEscape(out_path_awslc) +
+                  " " + ShellEscape(in_path);
+
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -verify " +
+                    ShellEscape(pubkey_path) + " -signature " +
+                    ShellEscape(sig_path_openssl) + " -keyform " +
+                    ShellEscape("PEM") + " -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  // sigopts
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -sign " +
+                  ShellEscape(key_path) + " -sigopt " +
+                  ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                  ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                  ShellEscape(sig_path_awslc) + " " + ShellEscape(in_path);
+
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -sign " +
+                    ShellEscape(key_path) + " -sigopt " +
+                    ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                    ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                    ShellEscape(sig_path_openssl) + " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
+                              sig_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -verify " +
+                  ShellEscape(pubkey_path) + " -signature " +
+                  ShellEscape(sig_path_awslc) + " -sigopt " +
+                  ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                  ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                  ShellEscape(out_path_awslc) + " " + ShellEscape(in_path);
+
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -verify " +
+                    ShellEscape(pubkey_path) + " -signature " +
+                    ShellEscape(sig_path_openssl) + " -sigopt " +
+                    ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                    ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  // hex output
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -sign " +
+                  ShellEscape(key_path) + " -hex -out " +
+                  ShellEscape(sig_path_awslc) + " " + ShellEscape(in_path);
+
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -sign " +
+                    ShellEscape(key_path) + " -hex -out " +
+                    ShellEscape(sig_path_openssl) + " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
+                              sig_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+}
+
+// Verify that dgst -verify's exit status matches OpenSSL: 0 on a good
+// signature and nonzero when the signature does not match the input.
+TEST_F(DgstComparisonTest, VerifyExitCode) {
+  std::string sign_command = std::string(awslc_executable_path) +
+                             " dgst -sign " + key_path + " -out " +
+                             sig_path_awslc + " " + in_path;
+  ASSERT_EQ(0, ExecuteCommandExitCode(sign_command));
+
+  // Good signature: both exit 0.
+  std::string awslc_command = std::string(awslc_executable_path) +
+                              " dgst -verify " + pubkey_path + " -signature " +
+                              sig_path_awslc + " " + in_path + " > " +
+                              out_path_awslc + " 2>&1";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " dgst -verify " + pubkey_path +
+                                " -signature " + sig_path_awslc + " " +
+                                in_path + " > " + out_path_openssl + " 2>&1";
+  int awslc_exit = ExecuteCommandExitCode(awslc_command);
+  int openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_EQ(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  // Bad signature: verify the untampered signature against a different file.
+  char other_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_path), 0u);
+  {
+    ScopedFILE other_file(fopen(other_path, "wb"));
+    ASSERT_TRUE(other_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), other_file.get()),
+              strlen(tampered));
+  }
+
+  awslc_command = std::string(awslc_executable_path) + " dgst -verify " +
+                  pubkey_path + " -signature " + sig_path_awslc + " " +
+                  other_path + " > " + out_path_awslc + " 2>&1";
+  openssl_command = std::string(openssl_executable_path) + " dgst -verify " +
+                    pubkey_path + " -signature " + sig_path_awslc + " " +
+                    other_path + " > " + out_path_openssl + " 2>&1";
+  awslc_exit = ExecuteCommandExitCode(awslc_command);
+  openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_NE(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  RemoveFile(other_path);
+}
+
+class MD5ComparisonTest : public DgstComparisonTest {};
+
+TEST_F(MD5ComparisonTest, Digest) {
+  // default digest
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " md5 -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
+
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " md5 -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+}
+
+class SHA1ComparisonTest : public DgstComparisonTest {};
+
+TEST_F(SHA1ComparisonTest, Digest) {
+  // default digest
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " sha1 -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
+
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " sha1 -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+}
+
+class DgstTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path), 0u);
+    ASSERT_GT(createTempFILEpath(sig_path), 0u);
+    ASSERT_GT(createTempFILEpath(key_path), 0u);
+    ASSERT_GT(createTempFILEpath(pubkey_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_key_path), 0u);
+
+    // Create and save a private key in PEM format
+    bssl::UniquePtr<EVP_PKEY> pkey(CreateTestKey(2048));
+    ASSERT_TRUE(pkey);
+
+    ScopedFILE key_file(fopen(key_path, "wb"));
+    ASSERT_TRUE(key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(key_file.get(), pkey.get(), nullptr,
+                                     nullptr, 0, nullptr, nullptr));
+
+    // Create a public key file
+    ScopedFILE pubkey_file(fopen(pubkey_path, "wb"));
+    ASSERT_TRUE(pubkey_file);
+    ASSERT_TRUE(PEM_write_PUBKEY(pubkey_file.get(), pkey.get()));
+
+    // Create a password-protected private key
+    ScopedFILE protected_key_file(fopen(protected_key_path, "wb"));
+    ASSERT_TRUE(protected_key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_key_file.get(), pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
+
+    // Create a test input file with some data
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *test_data = "Test data for signing and verification";
+    ASSERT_EQ(fwrite(test_data, 1, strlen(test_data), in_file.get()),
+              strlen(test_data));
+  }
+
+  void TearDown() override {
+    RemoveFile(in_path);
+    RemoveFile(out_path);
+    RemoveFile(sig_path);
+    RemoveFile(key_path);
+    RemoveFile(pubkey_path);
+    RemoveFile(protected_key_path);
+  }
+
+  char in_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char sig_path[PATH_MAX];
+  char key_path[PATH_MAX];
+  char pubkey_path[PATH_MAX];
+  char protected_key_path[PATH_MAX];
+  std::string awslc_output_str;
+  std::string openssl_output_str;
+};
+
+TEST_F(DgstTest, HMAC) {
+  args_list_t args = {"-hmac", "test_key_string", in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
+}
+
+TEST_F(DgstTest, Sign) {
+  args_list_t args = {"-sign", key_path, "-out", sig_path, in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
+}
+
+TEST_F(DgstTest, Verify) {
+  // First create signature
+  args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));
+
+  // Then verify
+  args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
+                             in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(verify_args));
+}
+
+// A signature that does not match the input exits nonzero.
+TEST_F(DgstTest, VerifyFailureExitCode) {
+  args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));
+
+  // Tamper with the signed data so verification fails.
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), in_file.get()),
+              strlen(tampered));
+  }
+
+  args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
+                             in_path};
+  EXPECT_EQ(kToolExitFailure, dgstTool(verify_args));
+}
+
+TEST_F(DgstTest, DigestDefault) {
+  args_list_t args = {in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
+}
+
+TEST_F(DgstTest, CustomDigest) {
+  args_list_t args = {"-sha1", in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
+}
+
+TEST_F(DgstTest, FileInput) {
+  // Single file input
+  args_list_t single_args = {in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(single_args));
+
+  // Multiple file inputs
   char in_path2[PATH_MAX];
   ASSERT_GT(createTempFILEpath(in_path2), 0u);
-  std::string input_file2 = std::string(in_path2);
-  ofs.open(input_file2);
-  ofs << "AWS_LC_TEST_STRING_INPUT_2";
-  ofs.close();
+  ScopedFILE in_file2(fopen(in_path2, "wb"));
+  ASSERT_TRUE(in_file2);
+  const char *test_data = "AWS_LC_TEST_STRING_INPUT_2";
+  ASSERT_EQ(fwrite(test_data, 1, strlen(test_data), in_file2.get()),
+            strlen(test_data));
 
-  awslc_command = std::string(awslc_executable_path) +
-                  " dgst -hmac alternative_key_string " + input_file + " " +
-                  input_file2 + " > " + out_path_awslc;
-  openssl_command = std::string(openssl_executable_path) +
-                    " dgst -hmac alternative_key_string " + input_file + " " +
-                    input_file2 + +" > " + out_path_openssl;
+  args_list_t multi_args = {in_path, in_path2};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(multi_args));
 
-  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
-
-  awslc_hash = GetHash(awslc_output_str);
-  openssl_hash = GetHash(openssl_output_str);
-
-  EXPECT_EQ(awslc_hash, openssl_hash);
-
-  // Run -hmac with empty key
-  awslc_command = std::string(awslc_executable_path) +
-                  " dgst -hmac \"\" "
-                  " " +
-                  input_file + " " + input_file2 + " > " + out_path_awslc;
-  openssl_command = std::string(openssl_executable_path) + " dgst -hmac \"\" " +
-                    input_file + " " + input_file2 + +" > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
-
-  awslc_hash = GetHash(awslc_output_str);
-  openssl_hash = GetHash(openssl_output_str);
-
-  EXPECT_EQ(awslc_hash, openssl_hash);
-
-  RemoveFile(input_file.c_str());
-  RemoveFile(input_file2.c_str());
+  RemoveFile(in_path2);
 }
 
+class DgstOptionUsageErrorsTest : public DgstTest {
+ protected:
+  void TestOptionUsageErrors(const std::vector<std::string> &args) {
+    args_list_t c_args;
+    for (const auto &arg : args) {
+      c_args.push_back(arg.c_str());
+    }
+    int result = dgstTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
+  }
+};
 
-TEST_F(DgstComparisonTest, HMAC_default_stdin) {
-  std::string tool_command = "echo hmac_this_string | " +
-                             std::string(awslc_executable_path) +
-                             " dgst -hmac key > " + out_path_awslc;
-  std::string openssl_command = "echo hmac_this_string | " +
-                                std::string(openssl_executable_path) +
-                                " dgst -hmac key > " + out_path_openssl;
+TEST_F(DgstOptionUsageErrorsTest, InvalidCombinations) {
+  std::vector<std::vector<std::string>> invalid_combos = {
+      // unsupported keyform
+      {"-verify", key_path, "-signature", sig_path, "-keyform", "ENGINE",
+       in_path},
+      // verify without sig file
+      {"-verify", key_path, "-keyform", "ENGINE", in_path},
+      // hmac, verify, and sign used together
+      {"-hmac", "test_key_string", "-verify", key_path, "-signature", sig_path,
+       in_path},
+      {"-hmac", "test_key_string", "-sign", pubkey_path, in_path},
+      {"-verify", key_path, "-sign", pubkey_path, in_path},
+      // wrong use of sigopt
+      {"-sign", pubkey_path, "-sigopt", "abc:xyz", in_path},
+      // unsupported digest
+      {"-sha3224", in_path},
+      // hex and binary both specified
+      {"-hex", "-binary", in_path},
+      // wrong and invalid passwords
+      {"-sign", protected_key_path, "-passin", "invalid : format", "-out",
+       sig_path, in_path},
+      {"-sign", protected_key_path, "-passin", "pass:wrongpassword", "-out",
+       sig_path, in_path}};
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
-
-  std::string tool_hash = GetHash(awslc_output_str);
-  std::string openssl_hash = GetHash(openssl_output_str);
-
-  EXPECT_EQ(tool_hash, openssl_hash);
+  for (const auto &args : invalid_combos) {
+    TestOptionUsageErrors(args);
+  }
 }
 
-TEST_F(DgstComparisonTest, MD5_files) {
-  std::string input_file = std::string(in_path);
-  std::ofstream ofs(input_file);
-  ofs << "AWS_LC_TEST_STRING_INPUT";
-  ofs.close();
-
-  // Input file as pipe (stdin)
-  std::string tool_command = std::string(awslc_executable_path) + " md5 < " +
-                             input_file + " > " + out_path_awslc;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " md5 < " + input_file + " > " +
-                                out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
-
-  std::string tool_hash = GetHash(awslc_output_str);
-  std::string openssl_hash = GetHash(openssl_output_str);
-
-  EXPECT_EQ(tool_hash, openssl_hash);
-
-  // Input file as regular command line option.
-  tool_command = std::string(awslc_executable_path) + " md5 " + input_file +
-                 " > " + out_path_awslc;
-  openssl_command = std::string(openssl_executable_path) + " md5 " +
-                    input_file + " > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
-
-  tool_hash = GetHash(awslc_output_str);
-  openssl_hash = GetHash(openssl_output_str);
-
-  EXPECT_EQ(tool_hash, openssl_hash);
-
-  RemoveFile(input_file.c_str());
+// Test basic passin integration with password-protected key
+TEST_F(DgstTest, PassinBasicIntegrationTest) {
+  args_list_t args = {
+      "-sign", protected_key_path, "-passin", "pass:testpassword",
+      "-out",  sig_path,           in_path};
+  int result = dgstTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
-// Test against OpenSSL output with stdin.
-TEST_F(DgstComparisonTest, MD5_stdin) {
-  std::string tool_command = "echo hash_this_string | " +
-                             std::string(awslc_executable_path) + " md5 > " +
-                             out_path_awslc;
-  std::string openssl_command = "echo hash_this_string | " +
-                                std::string(openssl_executable_path) +
-                                " md5 > " + out_path_openssl;
+class MD5Test : public DgstTest {};
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
-                              out_path_openssl, awslc_output_str,
-                              openssl_output_str);
+TEST_F(MD5Test, Sign) {
+  args_list_t args = {in_path};
+  EXPECT_EQ(kToolExitSuccess, md5Tool(args));
+}
 
-  std::string tool_hash = GetHash(awslc_output_str);
-  std::string openssl_hash = GetHash(openssl_output_str);
+class SHA1Test : public DgstTest {};
 
-  EXPECT_EQ(tool_hash, openssl_hash);
+TEST_F(SHA1Test, Sign) {
+  args_list_t args = {in_path};
+  EXPECT_EQ(kToolExitSuccess, sha1Tool(args));
 }

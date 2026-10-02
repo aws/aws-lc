@@ -7,16 +7,31 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    txt_db/txt_db.cc
+
+    asn1parse.cc
+    ca.cc
+    ca_req_common.cc
     crl.cc
     dgst.cc
+    dhparam.cc
+    ecparam.cc
+    ec.cc
+    enc.cc
+    genpkey.cc
+    genrsa.cc
+    pass_util.cc
     pkcs8.cc
+    pkcs12.cc
     pkey.cc
+    pkeyutl.cc
     rehash.cc
     req.cc
     ordered_args.cc
     rsa.cc
     s_client.cc
     tool.cc
+    tool_util.cc
     verify.cc
     version.cc
     x509.cc
@@ -88,18 +103,45 @@ if(BUILD_TESTING)
         ../tool/args.cc
         ../tool/file.cc
         ../tool/fd.cc
-        ../crypto/test/test_util.cc
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        txt_db/txt_db.cc
+        txt_db/txt_db_test.cc
+
+        asn1parse.cc
+        asn1parse_test.cc
+        ca.cc
+        ca_test.cc
+        ca_req_common.cc
         crl.cc
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        dhparam.cc
+        dhparam_test.cc
+        ec.cc
+        ec_test.cc
+        ecparam.cc
+        ecparam_test.cc
+        enc.cc
+        enc_test.cc
+        genrsa.cc
+        genrsa_test.cc
+        genpkey.cc
+        genpkey_test.cc
+        ordered_args.cc
+        ordered_args_test.cc
+        pass_util.cc
+        pass_util_test.cc
         pkcs8.cc
         pkcs8_test.cc
+        pkcs12.cc
+        pkcs12_test.cc
         pkey.cc
         pkey_test.cc
+        pkeyutl.cc
+        pkeyutl_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
@@ -107,9 +149,13 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
-        ordered_args.cc
+        s_client_test.cc
+        test_util.cc
+        tool_util.cc
         verify.cc
         verify_test.cc
+        version.cc
+        version_test.cc
         x509.cc
         x509_test.cc
     )
@@ -133,4 +179,14 @@ if(BUILD_TESTING)
     add_dependencies(all_tests tool_openssl_test)
     add_dependencies(tool_openssl_test openssl)
     set_test_location(tool_openssl_test)
+endif()
+
+# Create binary symlinks for OpenSSL compatibility
+if(INSTALL_OPENSSL_SHIM AND COHABITANT_BINARIES)
+  install(CODE "
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${AWSLC_BIN_PREFIX}openssl\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/openssl\")
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${AWSLC_BIN_PREFIX}c_rehash\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/c_rehash\")
+  ")
 endif()

@@ -2,34 +2,31 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <gtest/gtest.h>
-#include "internal.h"
 #include <openssl/ssl.h>
+#include "internal.h"
 
-// Test -connect
-TEST(SClientTest, SClientConnect) {
-  args_list_t args = {"-connect", "amazon.com:443"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
-}
+// Tests that connect to a live, remote host are in
+// s_client_integration_test.cc, built into the integration_test executable.
 
 // Test without connect but with help
-TEST(SClientTest, SClientNoConnect) {
+TEST(SClientTest, NoConnect) {
   args_list_t args = {};
-  bool result = SClientTool(args);
-  ASSERT_FALSE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
 
 // Test -help
-TEST(SClientTest, SClientHelp) {
+TEST(SClientTest, Help) {
   args_list_t args = {"-help"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
-// Test -connect, -verify, -showcerts
-TEST(SClientTest, SClientConnectVerifyShowcerts) {
-  args_list_t args = {"-connect", "amazon.com:443", "-verify", "99"};
-  bool result = SClientTool(args);
-  ASSERT_TRUE(result);
+// Test that s_client returns false (not crash) for unresolvable hostname. This
+// only needs DNS resolution to fail, not network egress, so it stays here
+// rather than moving to s_client_integration_test.cc.
+TEST(SClientTest, UnresolvableHost) {
+  args_list_t args = {"-connect", "this.host.does.not.exist.invalid:443"};
+  int result = SClientTool(args);
+  ASSERT_EQ(kToolExitFailure, result);
 }
-

@@ -7,8 +7,7 @@
 #include "internal.h"
 #include <string>
 
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
+
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -24,15 +23,15 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "" }
 };
 
-static bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int output_format) {
-  if (output_format == FORMAT_DER) {
-    if (!i2d_PrivateKey_bio(output_bio.get(), pkey)) {
+bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format) {
+  if (format == FORMAT_DER) {
+    if (!i2d_PrivateKey_bio(out.get(), pkey)) {
       fprintf(stderr, "Error: error writing private key in DER format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-  } else {
-    if (!PEM_write_bio_PrivateKey(output_bio.get(), pkey, nullptr, nullptr, 0, nullptr, nullptr)) {
+  } else { // FORMAT_PEM
+    if (!PEM_write_bio_PrivateKey(out.get(), pkey, nullptr, nullptr, 0, nullptr, nullptr)) {
       fprintf(stderr, "Error: error writing private key in PEM format\n");
       ERR_print_errors_fp(stderr);
       return false;
@@ -48,22 +47,18 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
       ERR_print_errors_fp(stderr);
       return false;
     }
-    return true;
-  } else if (output_format == FORMAT_PEM) {
+  } else { // FORMAT_PEM
     if (!PEM_write_bio_PUBKEY(output_bio.get(), pkey)) {
       fprintf(stderr, "Error: failed to write public key in PEM format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    return true;
   }
-
-  fprintf(stderr, "Error: unsupported output format\n");
-  return false;
+  return true;
 }
 
 
-bool pkeyTool(const args_list_t &args) {
+int pkeyTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -71,7 +66,7 @@ bool pkeyTool(const args_list_t &args) {
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, out_path, inform, outform;
@@ -93,7 +88,7 @@ bool pkeyTool(const args_list_t &args) {
   // Display pkey tool option summary
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   // Check input format
@@ -104,7 +99,7 @@ bool pkeyTool(const args_list_t &args) {
       input_format = FORMAT_PEM;
     } else {
       fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -116,7 +111,7 @@ bool pkeyTool(const args_list_t &args) {
       output_format = FORMAT_PEM;
     } else {
       fprintf(stderr, "Error: '-outform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -140,11 +135,16 @@ bool pkeyTool(const args_list_t &args) {
     in_file.reset(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
       fprintf(stderr, "Error: unable to load key from '%s'\n", in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
   // Set up output BIO
+  // Set restrictive permissions when writing private keys to file
+  if (!pubout && !pubin && !out_path.empty()) {
+    SetUmaskForPrivateKey();
+  }
+
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
@@ -152,13 +152,13 @@ bool pkeyTool(const args_list_t &args) {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
       fprintf(stderr, "Error: failed to open output file '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
   if (!output_bio) {
     fprintf(stderr, "Error: unable to create output BIO\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Load the key
@@ -181,17 +181,17 @@ bool pkeyTool(const args_list_t &args) {
     fprintf(stderr, "Error: error reading %s key from '%s'\n", 
             pubin ? "public" : "private", in_path.empty() ? "stdin" : in_path.c_str());
     ERR_print_errors_fp(stderr);
-    return false;
+    return kToolExitFailure;
   }
 
   if (!noout) {
     if (pubout || pubin) {
       if (!WritePublicKey(pkey.get(), output_bio, output_format)) {
-        return false;
+        return kToolExitFailure;
       }
     } else {
       if (!WritePrivateKey(pkey.get(), output_bio, output_format)) {
-        return false;
+        return kToolExitFailure;
       }
     }
   }
@@ -200,15 +200,15 @@ bool pkeyTool(const args_list_t &args) {
     if (EVP_PKEY_print_public(output_bio.get(), pkey.get(), 0, nullptr) <= 0) {
       fprintf(stderr, "Error: unable to print public key components\n");
       ERR_print_errors_fp(stderr);
-      return false;
+      return kToolExitFailure;
     }
   } else if (text) {
     if (EVP_PKEY_print_private(output_bio.get(), pkey.get(), 0, nullptr) <= 0) {
       fprintf(stderr, "Error: unable to print private key components\n");
       ERR_print_errors_fp(stderr);
-      return false;
+      return kToolExitFailure;
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }
