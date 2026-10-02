@@ -587,7 +587,10 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   if (sctx != NULL && sctx->client_hello_cb != NULL) {
     int al = SSL_AD_INTERNAL_ERROR;
     // A failure in the ClientHello callback terminates the connection.
-    switch (sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg)) {
+    hs->can_read_client_hello = true;
+    int cb_ret = sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg);
+    hs->can_read_client_hello = false;
+    switch (cb_ret) {
       case SSL_CLIENT_HELLO_SUCCESS:
         break;
       case SSL_CLIENT_HELLO_RETRY:
@@ -603,7 +606,11 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
 
   // Run the early callback.
   if (ssl->ctx->select_certificate_cb != NULL) {
-    switch (ssl->ctx->select_certificate_cb(&client_hello)) {
+    hs->can_read_client_hello = true;
+    enum ssl_select_cert_result_t cert_ret =
+        ssl->ctx->select_certificate_cb(&client_hello);
+    hs->can_read_client_hello = false;
+    switch (cert_ret) {
       case ssl_select_cert_retry:
         ERR_clear_error();
         return ssl_hs_certificate_selection_pending;
@@ -659,7 +666,10 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   }
 
   // TLS extensions.
-  if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
+  hs->can_read_client_hello = true;
+  bool tlsext_ok = ssl_parse_clienthello_tlsext(hs, &client_hello);
+  hs->can_read_client_hello = false;
+  if (!tlsext_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }

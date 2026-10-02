@@ -3043,6 +3043,19 @@ void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
   c->client_hello_cb_arg = arg;
 }
 
+static bool ssl_get_current_client_hello(SSL *ssl,
+                                         SSL_CLIENT_HELLO *out_client_hello) {
+  GUARD_PTR(ssl);
+  GUARD_PTR(ssl->s3);
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+  GUARD_PTR(hs);
+  if (!ssl->server || !hs->can_read_client_hello) {
+    return false;
+  }
+  SSLMessage msg_unused;
+  return hs->GetClientHello(&msg_unused, out_client_hello);
+}
+
 int SSL_client_hello_isv2(SSL *s) {
   // SSLv2 not supported
   return 0;
@@ -3050,14 +3063,8 @@ int SSL_client_hello_isv2(SSL *s) {
 
 int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
                               size_t *outlen) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE* hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_get_current_client_hello(s, &client_hello)) {
     return 0;
   }
 
@@ -3127,14 +3134,8 @@ int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
 }
 
 int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_get_current_client_hello(s, &client_hello)) {
     return 0;
   }
 
@@ -3166,14 +3167,8 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
 }
 
 unsigned int SSL_client_hello_get0_legacy_version(SSL *s) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_get_current_client_hello(s, &client_hello)) {
     return 0;
   }
   return client_hello.version;
