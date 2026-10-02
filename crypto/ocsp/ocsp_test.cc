@@ -2141,6 +2141,42 @@ static bssl::UniquePtr<X509> MakeOCSPResponderCert(EVP_PKEY *responder_key,
   return cert;
 }
 
+// Helper to create a CRL issued by |issuer|. If |revoked_serial| is non-NULL,
+// the CRL lists that serial number as revoked.
+static bssl::UniquePtr<X509_CRL> MakeTestCRL(X509 *issuer, EVP_PKEY *issuer_key,
+                                             const ASN1_INTEGER *revoked_serial) {
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  bssl::UniquePtr<ASN1_TIME> last_update(
+      ASN1_TIME_adj(nullptr, kReferenceTime, -1, 0));
+  bssl::UniquePtr<ASN1_TIME> next_update(
+      ASN1_TIME_adj(nullptr, kReferenceTime, 1, 0));
+  if (!crl || !last_update || !next_update ||
+      !X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2) ||
+      !X509_CRL_set_issuer_name(crl.get(), X509_get_subject_name(issuer)) ||
+      !X509_CRL_set1_lastUpdate(crl.get(), last_update.get()) ||
+      !X509_CRL_set1_nextUpdate(crl.get(), next_update.get())) {
+    return nullptr;
+  }
+
+  if (revoked_serial != nullptr) {
+    bssl::UniquePtr<X509_REVOKED> revoked(X509_REVOKED_new());
+    if (!revoked ||
+        !X509_REVOKED_set_serialNumber(revoked.get(), revoked_serial) ||
+        !X509_REVOKED_set_revocationDate(revoked.get(), last_update.get())) {
+      return nullptr;
+    }
+    if (!X509_CRL_add0_revoked(crl.get(), revoked.get())) {
+      return nullptr;
+    }
+    revoked.release();
+  }
+
+  if (!X509_CRL_sign(crl.get(), issuer_key, EVP_sha256())) {
+    return nullptr;
+  }
+  return crl;
+}
+
 // Test that the id-pkix-ocsp-nocheck extension on a delegated OCSP responder
 // certificate causes CRL checking to be skipped during verification. Without
 // the extension, verification should fail when CRL checking is enabled because
@@ -2238,5 +2274,123 @@ TEST(OCSPTest, OCSPNoCheckExtension) {
     EXPECT_NE(ret, OCSP_VERIFYSTATUS_SUCCESS)
         << "Verification should fail without nocheck extension when CRL "
            "checking is enabled";
+  }
+}
+
+// id-pkix-ocsp-nocheck on a responder certificate speaks for that certificate
+// alone (RFC 6960 section 4.2.2.2.1), so a CA above it is still checked for
+// revocation when the caller asked for the whole chain to be checked.
+TEST(OCSPTest, OCSPNoCheckDoesNotExemptIssuers) {
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  auto new_key = [&e]() -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    if (!pkey || !rsa ||
+        !RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr) ||
+        !EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+      return nullptr;
+    }
+    return pkey;
+  };
+
+  bssl::UniquePtr<EVP_PKEY> root_key = new_key();
+  ASSERT_TRUE(root_key);
+  bssl::UniquePtr<EVP_PKEY> inter_key = new_key();
+  ASSERT_TRUE(inter_key);
+  bssl::UniquePtr<EVP_PKEY> resp_key = new_key();
+  ASSERT_TRUE(resp_key);
+
+  // Root CA -> intermediate CA -> delegated responder carrying nocheck.
+  bssl::UniquePtr<X509> root = MakeTestCert("Test Root CA", "Test Root CA",
+                                           root_key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(root.get()), 3));
+  ASSERT_TRUE(X509_sign(root.get(), root_key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate = MakeTestCert(
+      "Test Root CA", "Test Intermediate CA", inter_key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(intermediate.get()), 2));
+  ASSERT_TRUE(X509_sign(intermediate.get(), root_key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> responder =
+      MakeOCSPResponderCert(resp_key.get(), intermediate.get(),
+                            inter_key.get(), /*add_nocheck=*/true);
+  ASSERT_TRUE(responder);
+
+  // The response covers a certificate issued by the intermediate, which makes
+  // the responder a delegate of the intermediate.
+  bssl::UniquePtr<X509> leaf = MakeTestCert(
+      "Test Intermediate CA", "Test Leaf", resp_key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(leaf.get()), 5));
+  ASSERT_TRUE(X509_sign(leaf.get(), inter_key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<OCSP_CERTID> cert_id(
+      OCSP_cert_to_id(EVP_sha1(), leaf.get(), intermediate.get()));
+  ASSERT_TRUE(cert_id);
+
+  bssl::UniquePtr<OCSP_BASICRESP> bs(OCSP_BASICRESP_new());
+  ASSERT_TRUE(bs);
+  bssl::UniquePtr<ASN1_TIME> this_update(
+      ASN1_TIME_adj(nullptr, kReferenceTime, -1, 0));
+  bssl::UniquePtr<ASN1_TIME> next_update(
+      ASN1_TIME_adj(nullptr, kReferenceTime, 1, 0));
+  ASSERT_TRUE(OCSP_basic_add1_status(bs.get(), cert_id.get(),
+                                     V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
+                                     this_update.get(), next_update.get()));
+  ASSERT_TRUE(OCSP_basic_sign(bs.get(), responder.get(), resp_key.get(),
+                              EVP_sha256(),
+                              CertsToStack({intermediate.get()}).get(), 0));
+
+  // The store trusts the root and asks for every certificate in the chain to be
+  // checked against a CRL. The root's CRL covers both itself and the
+  // intermediate; nothing issues a CRL for the responder.
+  auto make_store = [&](X509_CRL *crl) -> bssl::UniquePtr<X509_STORE> {
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    if (!store || !X509_STORE_add_cert(store.get(), root.get()) ||
+        !X509_STORE_add_crl(store.get(), crl)) {
+      return nullptr;
+    }
+    X509_STORE_set_flags(store.get(),
+                         X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+    X509_VERIFY_PARAM *param = X509_STORE_get0_param(store.get());
+    if (param == nullptr) {
+      return nullptr;
+    }
+    X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
+    return store;
+  };
+
+  // A CRL revoking the intermediate must fail the response.
+  {
+    bssl::UniquePtr<X509_CRL> crl = MakeTestCRL(
+        root.get(), root_key.get(), X509_get0_serialNumber(intermediate.get()));
+    ASSERT_TRUE(crl);
+    bssl::UniquePtr<X509_STORE> store = make_store(crl.get());
+    ASSERT_TRUE(store);
+
+    EXPECT_EQ(OCSP_basic_verify(bs.get(), CertsToStack({responder.get()}).get(),
+                                store.get(), 0),
+              OCSP_VERIFYSTATUS_ERROR);
+    EXPECT_EQ(OCSP_R_CERTIFICATE_VERIFY_ERROR,
+              ERR_GET_REASON(ERR_get_error()));
+    ERR_clear_error();
+  }
+
+  // With nothing revoked, the responder's own lack of a CRL is still exempt.
+  {
+    bssl::UniquePtr<X509_CRL> crl =
+        MakeTestCRL(root.get(), root_key.get(), /*revoked_serial=*/nullptr);
+    ASSERT_TRUE(crl);
+    bssl::UniquePtr<X509_STORE> store = make_store(crl.get());
+    ASSERT_TRUE(store);
+
+    EXPECT_EQ(OCSP_basic_verify(bs.get(), CertsToStack({responder.get()}).get(),
+                                store.get(), 0),
+              OCSP_VERIFYSTATUS_SUCCESS);
   }
 }
