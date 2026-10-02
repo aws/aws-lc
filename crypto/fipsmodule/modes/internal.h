@@ -145,6 +145,7 @@ typedef struct {
     AES_KEY ks;
   } ks1, ks2;  // AES key schedules to use
   XTS128_CONTEXT xts;
+  uint8_t data_unit_processed;
 } EVP_AES_XTS_CTX;
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
