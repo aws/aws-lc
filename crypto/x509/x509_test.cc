@@ -3010,6 +3010,111 @@ TEST(X509Test, NameConstraints) {
   }
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# Applications conforming to this profile MUST be able to process name
+//# constraints that are imposed on the directoryName name form and
+//# SHOULD be able to process name constraints that are imposed on the
+//# rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+//# forms.
+TEST(X509Test, NameConstraintsDirectoryName) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  using Rdns = std::vector<std::pair<std::string, std::string>>;
+  auto make_name = [](const Rdns &rdns) -> bssl::UniquePtr<X509_NAME> {
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    if (!name) {
+      return nullptr;
+    }
+    for (const auto &rdn : rdns) {
+      if (!X509_NAME_add_entry_by_txt(
+              name.get(), rdn.first.c_str(), MBSTRING_UTF8,
+              reinterpret_cast<const uint8_t *>(rdn.second.data()),
+              rdn.second.size(), /*loc=*/-1, /*set=*/0)) {
+        return nullptr;
+      }
+    }
+    return name;
+  };
+
+  const struct {
+    Rdns subject;
+    Rdns constraint;
+    int permit_result;
+    int exclude_result;
+  } kTests[] = {
+      // An empty constraint matches everything.
+      {{{"O", "Org"}, {"CN", "Leaf"}}, {}, X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      // The constraint matches any name it is a prefix of.
+      {{{"O", "Org"}, {"CN", "Leaf"}}, {{"O", "Org"}}, X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {{{"O", "Org"}, {"CN", "Leaf"}}, {{"O", "Org"}, {"CN", "Leaf"}},
+       X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {{{"O", "Org"}, {"CN", "Leaf"}}, {{"O", "Other"}},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // A constraint longer than the name does not match.
+      {{{"O", "Org"}, {"CN", "Leaf"}},
+       {{"O", "Org"}, {"OU", "Unit"}, {"CN", "Leaf"}},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // RDN order matters.
+      {{{"CN", "Leaf"}, {"O", "Org"}}, {{"O", "Org"}},
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Comparison uses the canonical encoding, which folds case and
+      // whitespace.
+      {{{"O", "org"}, {"CN", "Leaf"}}, {{"O", "ORG"}}, X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {{{"O", "  My   Org "}, {"CN", "Leaf"}}, {{"O", "my org"}}, X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(&t - kTests);
+    for (bool exclude : {false, true}) {
+      SCOPED_TRACE(exclude);
+
+      bssl::UniquePtr<X509_NAME> constraint_name = make_name(t.constraint);
+      ASSERT_TRUE(constraint_name);
+      bssl::UniquePtr<GENERAL_NAME> base(GENERAL_NAME_new());
+      ASSERT_TRUE(base);
+      base->type = GEN_DIRNAME;
+      base->d.directoryName = constraint_name.release();
+      bssl::UniquePtr<GENERAL_SUBTREE> subtree(GENERAL_SUBTREE_new());
+      ASSERT_TRUE(subtree);
+      GENERAL_NAME_free(subtree->base);
+      subtree->base = base.release();
+      bssl::UniquePtr<NAME_CONSTRAINTS> nc(NAME_CONSTRAINTS_new());
+      ASSERT_TRUE(nc);
+      STACK_OF(GENERAL_SUBTREE) **rule =
+          exclude ? &nc->excludedSubtrees : &nc->permittedSubtrees;
+      *rule = sk_GENERAL_SUBTREE_new_null();
+      ASSERT_TRUE(*rule);
+      ASSERT_TRUE(bssl::PushToStack(*rule, std::move(subtree)));
+
+      bssl::UniquePtr<X509> root =
+          MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+      ASSERT_TRUE(root);
+      ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                    /*crit=*/1, /*flags=*/0));
+      ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+      bssl::UniquePtr<X509_NAME> subject = make_name(t.subject);
+      ASSERT_TRUE(subject);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_set_subject_name(leaf.get(), subject.get()));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+      int got_result = Verify(leaf.get(), {root.get()}, {}, {}, 0);
+      int want_result = exclude ? t.exclude_result : t.permit_result;
+      EXPECT_EQ(want_result, got_result)
+          << "got \"" << X509_verify_cert_error_string(got_result)
+          << "\", want \"" << X509_verify_cert_error_string(want_result)
+          << "\"";
+    }
+  }
+}
+
 // Test that wildcard CNs are checked against name constraints when no
 // dNSName SAN is present.
 //= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10

@@ -474,6 +474,12 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# Applications conforming to this profile MUST be able to process name
+//# constraints that are imposed on the directoryName name form and
+//# SHOULD be able to process name constraints that are imposed on the
+//# rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+//# forms.
 static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
                            int excluding) {
   switch (base->type) {
@@ -556,12 +562,6 @@ static int has_suffix_case(const CBS *a, const CBS *b) {
   return equal_case(&copy, b);
 }
 
-//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
-//# Applications conforming to this profile MUST be able to process name
-//# constraints that are imposed on the directoryName name form and
-//# SHOULD be able to process name constraints that are imposed on the
-//# rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
-//# forms.
 static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base,
                   int excluding) {
   CBS dns_cbs, base_cbs;
