@@ -13,6 +13,12 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#if defined(__MINGW32__)
+#define AWSLC_MINGW_RODATA_END __attribute__((section(".rdata$zzzz"), used))
+#else
+#define AWSLC_MINGW_RODATA_END
+#endif
+
 #if defined(AWSLC_FIPS_SHARED_START)
 #if defined(_MSC_VER)
 #pragma code_seg(".fipstx$a")
@@ -56,6 +62,7 @@ const uint8_t *BORINGSSL_bcm_text_end(void){
 #if defined(_MSC_VER)
 __declspec(allocate(".fipsco$z"))
 #endif
+AWSLC_MINGW_RODATA_END
 const uint8_t BORINGSSL_bcm_rodata_end[16] =
               {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 
