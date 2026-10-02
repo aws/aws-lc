@@ -3137,6 +3137,69 @@ TEST(X509Test, NameConstraints) {
   }
 }
 
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // An intermediate CA whose CN is an organization name with an internal dot
+  // and spaces, and no SAN. The CN fallback is a hostname heuristic and only
+  // applies to the end-entity certificate, so this must not be treated as a
+  // DNS name.
+  static const char kIntermediateCN[] = "ACME Corp. Issuing CA G2";
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", kIntermediateCN, key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf = MakeTestCert(kIntermediateCN, "www.example.com",
+                                            key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The end-entity CN is still checked through the same intermediate.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert(kIntermediateCN, "www.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  bssl::UniquePtr<X509> leaf_space = MakeTestCert(
+      kIntermediateCN, "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(
+      X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+      Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
+}
+
 // Test that wildcard CNs are checked against name constraints when no
 // dNSName SAN is present.
 TEST(X509Test, NameConstraintsWildcardCN) {
