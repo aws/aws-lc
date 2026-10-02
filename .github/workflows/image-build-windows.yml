@@ -161,10 +161,31 @@ jobs:
       - x86_64_build
     outputs:
       ltsc2022: ${{ steps.images.outputs.ltsc2022 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Enable long paths
         run: git config --global core.longpaths true
       - uses: actions/checkout@v7
+      # The configure-aws-credentials composite action is bash only, so this
+      # job assumes the image promotion role directly.
+      - name: Query Environment
+        id: env
+        shell: pwsh
+        run: |
+          "aws_account_id=$env:AWS_ACCOUNT_ID" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Retrieve OIDC Role Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsImagePromotionOidcRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Retrieve Image Promotion Role Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImagePromotionRole
+          role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+          role-chaining: true
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
