@@ -1567,6 +1567,94 @@ TEST(AEADTest, WycheproofXChaCha20Poly1305) {
 
 TEST(AEADTest, FreeNull) { EVP_AEAD_CTX_free(nullptr); }
 
+// The implicit-IV TLS CBC AEADs chain the CBC IV from one record into the next,
+// so they reuse a single |EVP_CIPHER_CTX| across records. One AEAD per block
+// size suffices below; the others differ only in key and MAC length.
+static const struct {
+  const char *name;
+  const EVP_AEAD *(*func)(void);
+} kTLSImplicitIVAEADs[] = {
+    {"AES_128_CBC_SHA1", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv},
+    {"DES_EDE3_CBC_SHA1", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv},
+};
+
+// Key material, AD (which must be 11 bytes), and plaintext; contents are
+// irrelevant to both tests below.
+static const uint8_t kZeros[80] = {0};
+
+static bool InitTLSImplicitIV(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
+                              enum evp_aead_direction_t dir) {
+  return EVP_AEAD_CTX_init_with_direction(ctx, aead, kZeros,
+                                          EVP_AEAD_key_length(aead),
+                                          EVP_AEAD_DEFAULT_TAG_LENGTH, dir);
+}
+
+// |aead_tls_open| must discard the partial block that a rejected record leaves
+// buffered in the cipher (see the comment there); otherwise the next record
+// replays it and writes more than |in_len| bytes to |out|. libssl treats the
+// first failure as fatal, but a direct |EVP_AEAD_CTX| caller need not.
+//
+// The overflowing write happens inside the cipher -- hand-written assembly for
+// AES, which sanitizers do not instrument -- so this test plants guard bytes of
+// its own. The |assert| in |aead_tls_open| is compiled out of release builds.
+TEST(AEADTest, TLSImplicitIVOpenDoesNotReplayBufferedBlock) {
+  // 47 is congruent to -1, and 33 to 1, modulo both 8 and 16, so whatever the
+  // block size the first record leaves a partial block buffered that the second
+  // would complete into an extra block of output. Both also exceed the 20-byte
+  // MAC that |aead_tls_open| requires.
+  static const size_t kInLen1 = 47, kInLen2 = 33;
+  static const uint8_t kGuard = 0xab;
+
+  for (const auto &aead : kTLSImplicitIVAEADs) {
+    SCOPED_TRACE(aead.name);
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(InitTLSImplicitIV(ctx.get(), aead.func(), evp_aead_open));
+
+    // The first record is rejected, but only after the cipher has buffered a
+    // partial block.
+    uint8_t out[kInLen1 + 16];
+    size_t out_len;
+    EXPECT_FALSE(EVP_AEAD_CTX_open(ctx.get(), out, &out_len, kInLen1, nullptr,
+                                   0, kZeros, kInLen1, kZeros, 11));
+    ERR_clear_error();
+
+    // The second record must not write more than |kInLen2| bytes of output.
+    OPENSSL_memset(out, kGuard, sizeof(out));
+    EXPECT_FALSE(EVP_AEAD_CTX_open(ctx.get(), out, &out_len, kInLen2, nullptr,
+                                   0, kZeros, kInLen2, kZeros, 11));
+    ERR_clear_error();
+    for (size_t i = kInLen2; i < sizeof(out); i++) {
+      ASSERT_EQ(out[i], kGuard) << "output buffer overflowed at byte " << i;
+    }
+  }
+}
+
+// The fix for the above discards only the buffered block; re-initializing the
+// cipher would rewind the chained IV. Nothing else covers that chaining, as the
+// test-vector tests reset the context after every record.
+TEST(AEADTest, TLSImplicitIVChainsAcrossRecords) {
+  for (const auto &aead : kTLSImplicitIVAEADs) {
+    SCOPED_TRACE(aead.name);
+    bssl::ScopedEVP_AEAD_CTX seal_ctx, open_ctx;
+    ASSERT_TRUE(InitTLSImplicitIV(seal_ctx.get(), aead.func(), evp_aead_seal));
+    ASSERT_TRUE(InitTLSImplicitIV(open_ctx.get(), aead.func(), evp_aead_open));
+
+    // Two records in a row, on the same pair of contexts.
+    for (int i = 0; i < 2; i++) {
+      SCOPED_TRACE(i);
+      uint8_t record[128], out[128];
+      size_t record_len, out_len;
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(seal_ctx.get(), record, &record_len,
+                                    sizeof(record), nullptr, 0, kZeros, 24,
+                                    kZeros, 11));
+      ASSERT_TRUE(EVP_AEAD_CTX_open(open_ctx.get(), out, &out_len, sizeof(out),
+                                    nullptr, 0, record, record_len, kZeros,
+                                    11));
+      EXPECT_EQ(Bytes(kZeros, 24), Bytes(out, out_len));
+    }
+  }
+}
+
 // Deterministic IV generation for AES-GCM 256.
 TEST(AEADTest, AEADAES256GCMDetIVGen) {
   EXPECT_FALSE(EVP_AEAD_get_iv_from_ipv4_nanosecs(0, 0, nullptr));
