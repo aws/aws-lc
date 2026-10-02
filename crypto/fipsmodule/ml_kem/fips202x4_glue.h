@@ -38,7 +38,7 @@ static MLK_INLINE void mlk_shake128x4_squeezeblocks(uint8_t *out0, uint8_t *out1
 static MLK_INLINE void mlk_shake128x4_init(mlk_shake128x4ctx *state) {
   // Return code check can be omitted
   // since mlkem-native adheres to call discipline
-  (void) SHAKE128_Init_x4(state);
+  (void) SHAKE_Init_x4(state);
 }
 
 static MLK_INLINE void mlk_shake128x4_release(mlk_shake128x4ctx *state) {
