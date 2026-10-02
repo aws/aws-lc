@@ -353,9 +353,7 @@ int X509_supported_extension(const X509_EXTENSION *ex) {
   return 0;
 }
 
-static int setup_dp(X509 *x, DIST_POINT *dp) {
-  X509_NAME *iname = NULL;
-  size_t i;
+static void setup_dp(DIST_POINT *dp) {
   if (dp->reasons) {
     if (dp->reasons->length > 0) {
       dp->dp_reasons = dp->reasons->data[0];
@@ -367,21 +365,6 @@ static int setup_dp(X509 *x, DIST_POINT *dp) {
   } else {
     dp->dp_reasons = CRLDP_ALL_REASONS;
   }
-  if (!dp->distpoint || (dp->distpoint->type != 1)) {
-    return 1;
-  }
-  for (i = 0; i < sk_GENERAL_NAME_num(dp->CRLissuer); i++) {
-    GENERAL_NAME *gen = sk_GENERAL_NAME_value(dp->CRLissuer, i);
-    if (gen->type == GEN_DIRNAME) {
-      iname = gen->d.directoryName;
-      break;
-    }
-  }
-  if (!iname) {
-    iname = X509_get_issuer_name(x);
-  }
-
-  return DIST_POINT_set_dpname(dp->distpoint, iname);
 }
 
 static int setup_crldp(X509 *x) {
@@ -391,9 +374,7 @@ static int setup_crldp(X509 *x) {
     return 0;
   }
   for (size_t i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
-    if (!setup_dp(x, sk_DIST_POINT_value(x->crldp, i))) {
-      return 0;
-    }
+    setup_dp(sk_DIST_POINT_value(x->crldp, i));
   }
   return 1;
 }

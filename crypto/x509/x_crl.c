@@ -342,7 +342,7 @@ static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
     crl->idp_reasons &= CRLDP_ALL_REASONS;
   }
 
-  return DIST_POINT_set_dpname(idp->distpoint, X509_CRL_get_issuer(crl));
+  return 1;
 }
 
 ASN1_SEQUENCE_ref(X509_CRL, crl_cb) = {
