@@ -481,8 +481,7 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
   // Groups and SignatureAlgorithms took effect, keeping the policy's order and
   // dropping only what AWS-LC cannot do. This policy says nothing about
   // post-quantum algorithms, so AWS-LC's own are kept: the hybrids ahead of the
-  // classical groups and ML-DSA after the classical algorithms, as in the
-  // built-in defaults.
+  // classical groups, as in the built-in defaults.
   EXPECT_EQ(ToVector(ctx->supported_group_list),
             (std::vector<uint16_t>{
                 SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
@@ -493,9 +492,7 @@ TEST_F(CryptoPolicyTest, FullPolicyTLS) {
       SSL_SIGN_ECDSA_SECP521R1_SHA512, SSL_SIGN_ED25519,
       SSL_SIGN_RSA_PSS_RSAE_SHA256,    SSL_SIGN_RSA_PSS_RSAE_SHA384,
       SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA256,
-      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512,
-      SSL_SIGN_MLDSA44,                SSL_SIGN_MLDSA65,
-      SSL_SIGN_MLDSA87};
+      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512};
   EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
   EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
 
@@ -530,7 +527,7 @@ TEST_F(CryptoPolicyTest, UnsupportedGroupsAndSigalgsAreFiltered) {
                 SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
                 SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
                 SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
-  EXPECT_EQ(ctx->verify_sigalgs.size(), 13u);
+  EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -579,9 +576,9 @@ TEST_F(CryptoPolicyTest, StackedModifiersAndTupleSeparator) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-// Signature algorithms carry the '?' modifier too. Left on, it drops the
-// algorithm, and for ML-DSA the merge then appends what the policy asked for
-// first, inverting the operator's order.
+// Signature algorithms carry the '?' modifier too. Left on it drops the
+// algorithm the policy asked for, here Ed25519. The ML-DSA entry resolves to
+// nothing on this branch and is dropped whatever its modifier.
 TEST_F(CryptoPolicyTest, SigalgListModifiers) {
   const std::string content =
       "SignatureAlgorithms = ?mldsa44:ECDSA+SHA256:?ed25519\n";
@@ -593,8 +590,7 @@ TEST_F(CryptoPolicyTest, SigalgListModifiers) {
   ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
                               /*is_dtls=*/false, /*version_locked=*/false);
 
-  const std::vector<uint16_t> expected = {SSL_SIGN_MLDSA44,
-                                          SSL_SIGN_ECDSA_SECP256R1_SHA256,
+  const std::vector<uint16_t> expected = {SSL_SIGN_ECDSA_SECP256R1_SHA256,
                                           SSL_SIGN_ED25519};
   EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected);
   EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected);
@@ -602,8 +598,8 @@ TEST_F(CryptoPolicyTest, SigalgListModifiers) {
 }
 
 // Amazon Linux 2023's DEFAULT:PQ as shipped. The policy names post-quantum
-// algorithms, so it is authoritative over them: the hybrids and ML-DSA appear
-// where it put them, not where the merge would.
+// algorithms, so it is authoritative over them: the hybrids appear where it put
+// them, not where the merge would.
 TEST_F(CryptoPolicyTest, PQSubpolicyGroupsAndSigalgs) {
   const std::string content = std::string("Groups = ") + kPQSubpolicyGroups +
                               "\nSignatureAlgorithms = " + kPQSubpolicySigalgs +
@@ -622,13 +618,11 @@ TEST_F(CryptoPolicyTest, PQSubpolicyGroupsAndSigalgs) {
                 SSL_GROUP_SECP384R1_MLKEM1024, SSL_GROUP_X25519,
                 SSL_GROUP_SECP256R1, SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
   const std::vector<uint16_t> expected_sigalgs = {
-      SSL_SIGN_MLDSA44,                SSL_SIGN_MLDSA65,
-      SSL_SIGN_MLDSA87,                SSL_SIGN_ECDSA_SECP256R1_SHA256,
-      SSL_SIGN_ECDSA_SECP384R1_SHA384, SSL_SIGN_ECDSA_SECP521R1_SHA512,
-      SSL_SIGN_ED25519,                SSL_SIGN_RSA_PSS_RSAE_SHA256,
-      SSL_SIGN_RSA_PSS_RSAE_SHA384,    SSL_SIGN_RSA_PSS_RSAE_SHA512,
-      SSL_SIGN_RSA_PKCS1_SHA256,       SSL_SIGN_RSA_PKCS1_SHA384,
-      SSL_SIGN_RSA_PKCS1_SHA512};
+      SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_ECDSA_SECP384R1_SHA384,
+      SSL_SIGN_ECDSA_SECP521R1_SHA512, SSL_SIGN_ED25519,
+      SSL_SIGN_RSA_PSS_RSAE_SHA256,    SSL_SIGN_RSA_PSS_RSAE_SHA384,
+      SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA256,
+      SSL_SIGN_RSA_PKCS1_SHA384,       SSL_SIGN_RSA_PKCS1_SHA512};
   EXPECT_EQ(ToVector(ctx->cert->sigalgs), expected_sigalgs);
   EXPECT_EQ(ToVector(ctx->verify_sigalgs), expected_sigalgs);
   EXPECT_EQ(ERR_peek_error(), 0u);
@@ -714,9 +708,9 @@ TEST_F(CryptoPolicyTest, RemovalOfUnknownGroupKeepsDefaults) {
 }
 
 // A directive naming nothing AWS-LC implements is dropped, leaving the built-in
-// defaults in force. In particular no post-quantum algorithm is merged into an
-// otherwise empty result, which would leave the context offering ML-DSA and
-// nothing else.
+// defaults in force. In particular no post-quantum group is merged into an
+// otherwise empty result, which would leave the context offering the hybrids
+// and nothing else.
 TEST_F(CryptoPolicyTest, WhollyUnsupportedDirectivesKeepDefaults) {
   const std::string content =
       "Groups = X448:ffdhe2048:ffdhe3072\n"
@@ -757,8 +751,8 @@ TEST_F(CryptoPolicyTest, RepeatedGroupSpellingsCollapse) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-// Every stock crypto-policies value predates ML-KEM and ML-DSA and so names
-// neither. Since both setters replace AWS-LC's list rather than intersecting with
+// Every stock crypto-policies value predates ML-KEM and so does not name it.
+// Since the group setter replaces AWS-LC's list rather than intersecting with
 // it, such a policy would otherwise strip post-quantum support from every
 // context that seeds from it.
 TEST_F(CryptoPolicyTest, PolicySilentOnPQKeepsPQDefaults) {
@@ -774,11 +768,6 @@ TEST_F(CryptoPolicyTest, PolicySilentOnPQKeepsPQDefaults) {
        {SSL_GROUP_X25519_MLKEM768, SSL_GROUP_SECP256R1_MLKEM768,
         SSL_GROUP_SECP384R1_MLKEM1024}) {
     EXPECT_TRUE(Contains(ctx->supported_group_list, group)) << group;
-  }
-  for (uint16_t sigalg :
-       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
-    EXPECT_TRUE(Contains(ctx->cert->sigalgs, sigalg)) << sigalg;
-    EXPECT_TRUE(Contains(ctx->verify_sigalgs, sigalg)) << sigalg;
   }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
@@ -801,10 +790,6 @@ TEST_F(CryptoPolicyTest, PostQuantumOffDropsPQDefaults) {
             (std::vector<uint16_t>{SSL_GROUP_X25519, SSL_GROUP_SECP256R1,
                                    SSL_GROUP_SECP521R1, SSL_GROUP_SECP384R1}));
   EXPECT_EQ(ctx->verify_sigalgs.size(), 10u);
-  for (uint16_t sigalg :
-       {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}) {
-    EXPECT_FALSE(Contains(ctx->cert->sigalgs, sigalg)) << sigalg;
-  }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -825,7 +810,6 @@ TEST_F(CryptoPolicyTest, PostQuantumOtherValuesKeepPQDefaults) {
 
     EXPECT_TRUE(
         Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
-    EXPECT_TRUE(Contains(ctx->cert->sigalgs, SSL_SIGN_MLDSA65));
   }
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
@@ -865,7 +849,6 @@ TEST_F(CryptoPolicyTest, PostQuantumOffIsCaseInsensitive) {
                               /*is_dtls=*/false, /*version_locked=*/false);
 
   EXPECT_FALSE(Contains(ctx->supported_group_list, SSL_GROUP_X25519_MLKEM768));
-  EXPECT_FALSE(Contains(ctx->cert->sigalgs, SSL_SIGN_MLDSA65));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -926,45 +909,12 @@ TEST_F(CryptoPolicyTest, PolicyRemovingPQGroupKeepsItOut) {
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
-TEST_F(CryptoPolicyTest, PolicyNamingMLDSAIsAuthoritative) {
-  const std::string content = "SignatureAlgorithms = mldsa65:ECDSA+SHA256\n";
-  TemporaryFile policy;
-  ASSERT_TRUE(policy.Init(content));
-
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false, /*version_locked=*/false);
-
-  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
-            (std::vector<uint16_t>{SSL_SIGN_MLDSA65,
-                                   SSL_SIGN_ECDSA_SECP256R1_SHA256}));
-  EXPECT_EQ(ERR_peek_error(), 0u);
-}
-
-// Removing an ML-DSA algorithm with the '-' modifier keeps that one out, the
-// same way it does for groups. The rest still come back with the defaults.
-TEST_F(CryptoPolicyTest, PolicyRemovingMLDSASigalgKeepsItOut) {
-  const std::string content = "SignatureAlgorithms = ECDSA+SHA256:-mldsa44\n";
-  TemporaryFile policy;
-  ASSERT_TRUE(policy.Init(content));
-
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-  ssl_ctx_apply_crypto_policy(ctx.get(), policy.path().c_str(),
-                              /*is_dtls=*/false, /*version_locked=*/false);
-
-  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
-            (std::vector<uint16_t>{SSL_SIGN_ECDSA_SECP256R1_SHA256,
-                                   SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}));
-  EXPECT_EQ(ERR_peek_error(), 0u);
-}
-
 // A value that only removes names nothing to seed from, so the removal is
 // applied to AWS-LC's defaults. Skipping the directive would hand back the
-// algorithm the operator took out.
+// algorithm the operator took out. ECDSA with SHA-256 is in both default
+// lists, so the removal reaches both.
 TEST_F(CryptoPolicyTest, PolicyRemovalOnlySigalgValueDropsFromDefaults) {
-  const std::string content = "SignatureAlgorithms = -mldsa44\n";
+  const std::string content = "SignatureAlgorithms = -ECDSA+SHA256\n";
   TemporaryFile policy;
   ASSERT_TRUE(policy.Init(content));
 
@@ -975,13 +925,13 @@ TEST_F(CryptoPolicyTest, PolicyRemovalOnlySigalgValueDropsFromDefaults) {
 
   std::vector<uint16_t> want_sign;
   for (uint16_t sigalg : tls12_get_default_sign_sigalgs()) {
-    if (sigalg != SSL_SIGN_MLDSA44) {
+    if (sigalg != SSL_SIGN_ECDSA_SECP256R1_SHA256) {
       want_sign.push_back(sigalg);
     }
   }
   std::vector<uint16_t> want_verify;
   for (uint16_t sigalg : tls12_get_default_verify_sigalgs()) {
-    if (sigalg != SSL_SIGN_MLDSA44) {
+    if (sigalg != SSL_SIGN_ECDSA_SECP256R1_SHA256) {
       want_verify.push_back(sigalg);
     }
   }
@@ -1011,10 +961,10 @@ TEST_F(CryptoPolicyTest, PolicyRemovalOnlySigalgValueReachesEachDefaultList) {
 }
 
 // A '-' entry takes its algorithm out of the list the value names, the same way
-// it does for groups. The other two ML-DSA defaults come back as usual.
+// it does for groups.
 TEST_F(CryptoPolicyTest, PolicyRemovingANamedSigalgKeepsItOut) {
   const std::string content =
-      "SignatureAlgorithms = ECDSA+SHA256:mldsa44:-mldsa44\n";
+      "SignatureAlgorithms = ECDSA+SHA256:ed25519:-ed25519\n";
   TemporaryFile policy;
   ASSERT_TRUE(policy.Init(content));
 
@@ -1024,8 +974,7 @@ TEST_F(CryptoPolicyTest, PolicyRemovingANamedSigalgKeepsItOut) {
                               /*is_dtls=*/false, /*version_locked=*/false);
 
   EXPECT_EQ(ToVector(ctx->cert->sigalgs),
-            (std::vector<uint16_t>{SSL_SIGN_ECDSA_SECP256R1_SHA256,
-                                   SSL_SIGN_MLDSA65, SSL_SIGN_MLDSA87}));
+            (std::vector<uint16_t>{SSL_SIGN_ECDSA_SECP256R1_SHA256}));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 
@@ -1034,8 +983,7 @@ TEST_F(CryptoPolicyTest, PolicyRemovingANamedSigalgKeepsItOut) {
 // recognized as one at all.
 TEST_F(CryptoPolicyTest, CryptoPoliciesPQSpellingsResolve) {
   const std::string content =
-      "Groups = X25519-MLKEM768:SECP256R1-MLKEM768:secp384r1-mlkem1024\n"
-      "SignatureAlgorithms = ML-DSA-44:ml-dsa-65:ML-DSA-87\n";
+      "Groups = X25519-MLKEM768:SECP256R1-MLKEM768:secp384r1-mlkem1024\n";
   TemporaryFile policy;
   ASSERT_TRUE(policy.Init(content));
 
@@ -1048,9 +996,6 @@ TEST_F(CryptoPolicyTest, CryptoPoliciesPQSpellingsResolve) {
             (std::vector<uint16_t>{SSL_GROUP_X25519_MLKEM768,
                                    SSL_GROUP_SECP256R1_MLKEM768,
                                    SSL_GROUP_SECP384R1_MLKEM1024}));
-  EXPECT_EQ(ToVector(ctx->cert->sigalgs),
-            (std::vector<uint16_t>{SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
-                                   SSL_SIGN_MLDSA87}));
   EXPECT_EQ(ERR_peek_error(), 0u);
 }
 

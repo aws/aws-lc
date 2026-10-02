@@ -195,16 +195,14 @@ const PolicyAlias kGroupAliases[] = {
     {"secp384r1-mlkem1024", "SecP384r1MLKEM1024"},
 };
 
-// crypto-policies spells ML-DSA with the FIPS 204 parameter-set names.
+// crypto-policies spells ML-DSA with the FIPS 204 parameter-set names. This
+// branch has no ML-DSA signature algorithms, so these resolve to nothing until
+// one is added.
 const PolicyAlias kSigalgAliases[] = {
     {"ml-dsa-44", "mldsa44"},
     {"ml-dsa-65", "mldsa65"},
     {"ml-dsa-87", "mldsa87"},
 };
-
-// kPolicyMLDSASigalgs are AWS-LC's default ML-DSA signature algorithms.
-const uint16_t kPolicyMLDSASigalgs[] = {SSL_SIGN_MLDSA44, SSL_SIGN_MLDSA65,
-                                        SSL_SIGN_MLDSA87};
 
 bool EqualsIgnoreAsciiCase(const char *tok, size_t len, const char *lower) {
   if (strlen(lower) != len) {
@@ -513,38 +511,6 @@ size_t MergeDefaultPQGroups(uint16_t *ids, size_t n, size_t cap,
   return n + num_add;
 }
 
-// MergeDefaultPQSigalgs restores AWS-LC's default ML-DSA algorithms at the end of
-// |ids|, which holds |n| of |cap| entries and came from the SignatureAlgorithms
-// value |value|, and returns the new count. As with groups, a policy naming any of
-// them is left alone, and one it names only to remove stays out.
-//
-// They go last because that is where AWS-LC's own default list puts them.
-size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap,
-                             const char *value) {
-  if (n == 0) {
-    return n;
-  }
-  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
-    if (ContainsId(MakeConstSpan(ids, n), sigalg)) {
-      return n;
-    }
-  }
-
-  uint16_t add[OPENSSL_ARRAY_SIZE(kPolicyMLDSASigalgs)];
-  size_t num_add = 0;
-  for (uint16_t sigalg : kPolicyMLDSASigalgs) {
-    if (!ValueNamesRemoval(value, sigalg, SigalgIdFromToken)) {
-      add[num_add++] = sigalg;
-    }
-  }
-  if (num_add == 0 || n + num_add > cap) {
-    return n;
-  }
-
-  OPENSSL_memcpy(ids + n, add, num_add * sizeof(uint16_t));
-  return n + num_add;
-}
-
 // ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
 // |SSL_CTX_set_cipher_list| does when |config_tls13| is false and
 // |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
@@ -712,12 +678,6 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
     size_t verify_n =
         PolicySigalgIds(verify_ids, OPENSSL_ARRAY_SIZE(verify_ids), cfg.sigalgs,
                         tls12_get_default_verify_sigalgs());
-    if (keep_pq) {
-      sign_n = MergeDefaultPQSigalgs(sign_ids, sign_n,
-                                     OPENSSL_ARRAY_SIZE(sign_ids), cfg.sigalgs);
-      verify_n = MergeDefaultPQSigalgs(
-          verify_ids, verify_n, OPENSSL_ARRAY_SIZE(verify_ids), cfg.sigalgs);
-    }
     // Each list is a separate allocation, so the verify setter can fail with
     // the signing list already in place. Moving the signing list aside costs
     // nothing and is what lets that failure keep the defaults.
@@ -741,7 +701,13 @@ void ApplyPolicyToCtx(SSL_CTX *ctx, const char *path, bool is_dtls,
       n = MergeDefaultPQGroups(ids, n, OPENSSL_ARRAY_SIZE(ids), cfg.groups);
     }
     if (n > 0) {
-      SSL_CTX_set1_group_ids(ctx, ids, n);
+      // The ids came out of AWS-LC's own group table, so they need no further
+      // validation and the public NID-taking setters would only translate them
+      // back and forth.
+      Array<uint16_t> group_ids;
+      if (group_ids.CopyFrom(MakeConstSpan(ids, n))) {
+        ctx->supported_group_list = std::move(group_ids);
+      }
     }
   }
 }
