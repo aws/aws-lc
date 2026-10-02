@@ -32,8 +32,9 @@ Ed25519 / Ed25519ph surface in `crypto/fipsmodule/curve25519/`.
 `duvet report` re-extracts every registered specification into
 `requirements/`. Registering RFC 5280 would add all 73 of its sections (425
 requirements) to the report, burying the name-constraint coverage. Instead,
-`rfc5280-requirements/name-constraints.toml` is the unmodified `duvet extract`
-output for section 4.2.1.10 alone, wired in through a `[[requirement]]` pattern.
+`rfc5280-requirements/name-constraints.toml` is the `duvet extract` output
+for section 4.2.1.10 alone, unmodified apart from its header comment, and wired
+in through a `[[requirement]]` pattern.
 To refresh it, run `duvet extract https://www.rfc-editor.org/rfc/rfc5280 -o
 <tmpdir>` and copy that section's file over.
 
