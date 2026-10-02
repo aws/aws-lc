@@ -51,6 +51,7 @@ endif()
 add_library(awslc_provider_front OBJECT
   frontend/provider.c
   frontend/registry.c
+  frontend/errors.c
   frontend/operations/digests/digests.c
   frontend/operations/digests/sha2.c)
 set_target_properties(awslc_provider_front PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -63,6 +64,7 @@ set_property(TARGET awslc_provider_front PROPERTY INCLUDE_DIRECTORIES
 add_library(awslc_provider_back OBJECT
   backend/mem.c
   backend/info.c
+  backend/errors.c
   backend/operations/digests/sha2.c)
 set_target_properties(awslc_provider_back PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_add_awslc_include_paths(TARGET awslc_provider_back SCOPE PRIVATE)
@@ -175,6 +177,7 @@ if(BUILD_TESTING AND NOT ANDROID)
   # awslc_provider_linkage_test.
   add_executable(awslc_provider_backend_test
     test/test_main.cc
+    test/backend/errors_test.cc
     test/backend/operations/digests/sha2_test.cc
     $<TARGET_OBJECTS:awslc_provider_back>)
 
