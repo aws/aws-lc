@@ -2267,6 +2267,63 @@ TEST(PKCS7Test, VerifyDetachedMultiDigestNoLeak) {
                PKCS7_NOVERIFY);
 }
 
+static size_t CountDigestBIOs(BIO *bio) {
+  size_t count = 0;
+  while (bio != nullptr) {
+    bio = BIO_find_type(bio, BIO_TYPE_MD);
+    if (bio == nullptr) {
+      break;
+    }
+    count++;
+    bio = BIO_next(bio);
+  }
+  return count;
+}
+
+TEST(PKCS7Test, DataInitDedupesDigestAlgorithms) {
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Build the stack by hand; |PKCS7_add_signer| would dedupe on the write path.
+  static const size_t kDuplicates = 512;
+  for (size_t i = 0; i < kDuplicates; i++) {
+    X509_ALGOR *alg = X509_ALGOR_new();
+    ASSERT_TRUE(alg);
+    ASSERT_TRUE(X509_ALGOR_set_md(alg, EVP_sha256()));
+    ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+  }
+  ASSERT_EQ(kDuplicates, sk_X509_ALGOR_num(p7->d.sign->md_algs));
+
+  bssl::UniquePtr<BIO> bio(PKCS7_dataInit(p7.get(), nullptr));
+  ASSERT_TRUE(bio);
+  EXPECT_EQ(1u, CountDigestBIOs(bio.get()));
+
+  EXPECT_EQ(kDuplicates, sk_X509_ALGOR_num(p7->d.sign->md_algs));
+}
+
+TEST(PKCS7Test, DataInitKeepsDistinctDigestAlgorithms) {
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  const EVP_MD *mds[] = {EVP_sha256(), EVP_sha384(), EVP_sha256(),
+                         EVP_sha512(), EVP_sha384(), EVP_sha256()};
+  for (const EVP_MD *md : mds) {
+    X509_ALGOR *alg = X509_ALGOR_new();
+    ASSERT_TRUE(alg);
+    ASSERT_TRUE(X509_ALGOR_set_md(alg, md));
+    ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+  }
+
+  bssl::UniquePtr<BIO> bio(PKCS7_dataInit(p7.get(), nullptr));
+  ASSERT_TRUE(bio);
+  // SHA-256, SHA-384, SHA-512.
+  EXPECT_EQ(3u, CountDigestBIOs(bio.get()));
+}
+
 TEST(PKCS7Test, PKCS7PrintNoop) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());

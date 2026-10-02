@@ -682,6 +682,25 @@ err:
   return 0;
 }
 
+// pkcs7_chain_has_digest returns one if |bio|'s chain already has an MD filter
+// for |nid|. Consumers read the first BIO matching a NID, so duplicates are
+// never read and only cost extra passes over the content.
+static int pkcs7_chain_has_digest(BIO *bio, int nid) {
+  while (bio != NULL) {
+    bio = BIO_find_type(bio, BIO_TYPE_MD);
+    if (bio == NULL) {
+      return 0;
+    }
+    EVP_MD_CTX *mdc = NULL;
+    if (BIO_get_md_ctx(bio, &mdc) && mdc != NULL &&
+        EVP_MD_CTX_type(mdc) == nid) {
+      return 1;
+    }
+    bio = BIO_next(bio);
+  }
+  return 0;
+}
+
 static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
                               int keylen) {
   GUARD_PTR(ri);
@@ -777,8 +796,18 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto err;
   }
+  // Skip digests already in the chain so each is hashed once; |md_sk| itself is
+  // left intact so the structure re-encodes unchanged.
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
-    if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
+    X509_ALGOR *alg = sk_X509_ALGOR_value(md_sk, i);
+    if (alg == NULL || alg->algorithm == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
+      goto err;
+    }
+    if (pkcs7_chain_has_digest(out, OBJ_obj2nid(alg->algorithm))) {
+      continue;
+    }
+    if (!pkcs7_bio_add_digest(&out, alg)) {
       goto err;
     }
   }
