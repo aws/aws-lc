@@ -4042,6 +4042,221 @@ TEST(X509Test, TestFromBufferReused) {
   ASSERT_EQ(nullptr, root->buf);
 }
 
+// MakeCachedExtensionsCert returns a self-signed CA certificate carrying every
+// extension that |x509v3_cache_extensions| caches, so that reusing an |X509|
+// which held it exercises each cached field.
+static bssl::UniquePtr<X509> MakeCachedExtensionsCert(EVP_PKEY *key) {
+  bssl::UniquePtr<X509> cert =
+      MakeTestCert("Cached CA", "Cached CA", key, /*is_ca=*/true);
+  if (!cert) {
+    return nullptr;
+  }
+  // Drop the basicConstraints |MakeTestCert| added; the table below supplies
+  // one with a pathLenConstraint.
+  X509_EXTENSION_free(X509_delete_ext(
+      cert.get(), X509_get_ext_by_NID(cert.get(), NID_basic_constraints, -1)));
+  // |cert| is its own issuer, so authorityKeyIdentifier can copy the
+  // subjectKeyIdentifier added before it.
+  X509V3_CTX ctx;
+  X509V3_set_ctx(&ctx, cert.get(), cert.get(), nullptr, nullptr, /*flags=*/0);
+  static const struct {
+    int nid;
+    const char *value;
+  } kExtensions[] = {
+      {NID_basic_constraints, "critical,CA:TRUE,pathlen:3"},
+      {NID_key_usage, "critical,keyCertSign,cRLSign"},
+      {NID_ext_key_usage, "OCSPSigning"},
+      {NID_netscape_cert_type, "sslCA"},
+      {NID_subject_key_identifier, "01:02:03:04"},
+      {NID_authority_key_identifier, "keyid:always"},
+      {NID_subject_alt_name, "DNS:cached.example.com"},
+      {NID_name_constraints, "critical,permitted;DNS:.example.com"},
+      {NID_crl_distribution_points, "URI:http://example.com/crl"},
+  };
+  for (const auto &ext : kExtensions) {
+    bssl::UniquePtr<X509_EXTENSION> x509_ext(
+        X509V3_EXT_nconf_nid(nullptr, &ctx, ext.nid, ext.value));
+    if (!x509_ext || !X509_add_ext(cert.get(), x509_ext.get(), /*loc=*/-1)) {
+      return nullptr;
+    }
+  }
+  if (!X509_sign(cert.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return cert;
+}
+
+// Reusing an |X509| as the output of |d2i_X509| must discard the cached
+// extension state of the certificate it previously held. Otherwise the old
+// certificate's CA bit, path length, key usages, key identifiers and hash
+// would govern checks made on the new one.
+TEST(X509Test, ReusedCertResetsCachedExtensions) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> ca = MakeCachedExtensionsCert(key.get());
+  ASSERT_TRUE(ca);
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Cached CA", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  uint8_t *ca_der = nullptr, *leaf_der = nullptr;
+  int ca_len = i2d_X509(ca.get(), &ca_der);
+  int leaf_len = i2d_X509(leaf.get(), &leaf_der);
+  bssl::UniquePtr<uint8_t> ca_der_storage(ca_der), leaf_der_storage(leaf_der);
+  ASSERT_GT(ca_len, 0);
+  ASSERT_GT(leaf_len, 0);
+
+  // Sanity-check the inputs: one is a CA and the other is not.
+  ASSERT_EQ(1, X509_check_ca(ca.get()));
+  ASSERT_EQ(0, X509_check_ca(leaf.get()));
+
+  bssl::UniquePtr<X509> reused(X509_new());
+  ASSERT_TRUE(reused);
+  X509 *reusedp = reused.get();
+  const uint8_t *inp = ca_der;
+  ASSERT_TRUE(d2i_X509(&reusedp, &inp, ca_len));
+  ASSERT_EQ(reused.get(), reusedp);
+
+  // Use the certificate, which populates the extension cache. Also attach
+  // auxiliary information, as a trust store would, and application data, as a
+  // caller of |X509_set_ex_data| would.
+  ASSERT_EQ(1, X509_check_ca(reused.get()));
+  ASSERT_EQ(3, X509_get_pathlen(reused.get()));
+  ASSERT_TRUE(X509_alias_set1(reused.get(),
+                              reinterpret_cast<const uint8_t *>("alias"), -1));
+  static const int kExIndex = X509_get_ex_new_index(
+      /*argl=*/0, /*argp=*/nullptr, /*unused=*/nullptr, /*dup_unused=*/nullptr,
+      /*free_func=*/nullptr);
+  ASSERT_GE(kExIndex, 0);
+  char app_data[] = "app data";
+  ASSERT_TRUE(X509_set_ex_data(reused.get(), kExIndex, app_data));
+
+  // Reuse the object to parse a different, non-CA certificate.
+  inp = leaf_der;
+  ASSERT_TRUE(d2i_X509(&reusedp, &inp, leaf_len));
+
+  // Every cached value must describe the new certificate, not the old one.
+  EXPECT_EQ(0, X509_check_ca(reused.get()));
+  EXPECT_EQ(X509_get_extension_flags(leaf.get()),
+            X509_get_extension_flags(reused.get()));
+  EXPECT_EQ(X509_get_pathlen(leaf.get()), X509_get_pathlen(reused.get()));
+  EXPECT_EQ(X509_get_key_usage(leaf.get()), X509_get_key_usage(reused.get()));
+  EXPECT_EQ(X509_get_extended_key_usage(leaf.get()),
+            X509_get_extended_key_usage(reused.get()));
+  EXPECT_EQ(nullptr, X509_get0_subject_key_id(reused.get()));
+  EXPECT_EQ(nullptr, X509_get0_authority_key_id(reused.get()));
+  EXPECT_EQ(nullptr, X509_alias_get0(reused.get(), nullptr));
+  EXPECT_EQ(nullptr, reused->altname);
+  EXPECT_EQ(nullptr, reused->nc);
+  EXPECT_EQ(nullptr, reused->crldp);
+  EXPECT_EQ(0u, reused->ex_nscert);
+  EXPECT_EQ(nullptr, X509_get_ex_data(reused.get(), kExIndex));
+
+  // |X509_cmp| compares cached certificate hashes, so a stale cache would make
+  // the reused object compare equal to the certificate it no longer holds.
+  EXPECT_EQ(0, X509_cmp(leaf.get(), reused.get()));
+  EXPECT_NE(0, X509_cmp(ca.get(), reused.get()));
+}
+
+// MakeCachedExtensionsCRL returns a CRL carrying every extension |crl_cb|
+// caches: an issuing distribution point, an authorityKeyIdentifier naming a key
+// no certificate has, and an unknown critical extension.
+static bssl::UniquePtr<X509_CRL> MakeCachedExtensionsCRL(X509 *issuer,
+                                                         EVP_PKEY *key) {
+  // An IDP with no distribution point matches any certificate's scope, so the
+  // CRL is still the one chosen for |issuer|'s certificates.
+  bssl::UniquePtr<X509_CRL> crl =
+      MakeTestCRL(issuer, key, /*idp_uri=*/"", /*revoked_serials=*/{});
+  if (!crl) {
+    return nullptr;
+  }
+
+  static const uint8_t kWrongKeyID[] = {0xde, 0xad, 0xbe, 0xef};
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
+  if (!akid) {
+    return nullptr;
+  }
+  akid->keyid = ASN1_OCTET_STRING_new();
+  if (!akid->keyid ||
+      !ASN1_OCTET_STRING_set(akid->keyid, kWrongKeyID, sizeof(kWrongKeyID)) ||
+      !X509_CRL_add1_ext_i2d(crl.get(), NID_authority_key_identifier,
+                             akid.get(), /*crit=*/0, /*flags=*/0)) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<ASN1_OBJECT> oid(
+      OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
+  bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
+  if (!oid || !ext_val) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_OBJ(
+      nullptr, oid.get(), /*crit=*/1, ext_val.get()));
+  if (!ext || !X509_CRL_add_ext(crl.get(), ext.get(), /*loc=*/-1) ||
+      !X509_CRL_sign(crl.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return crl;
+}
+
+// Reusing an |X509_CRL| as the output of |d2i_X509_CRL| must likewise discard
+// the cached extension state of the CRL it previously held.
+TEST(X509Test, ReusedCRLResetsCachedExtensions) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kCRLTestLeaf));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  bssl::UniquePtr<X509_CRL> basic_crl(CRLFromPEM(kBasicCRL));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(basic_crl);
+
+  bssl::UniquePtr<X509_CRL> old_crl =
+      MakeCachedExtensionsCRL(root.get(), key.get());
+  ASSERT_TRUE(old_crl);
+  uint8_t *old_der = nullptr;
+  int old_len = i2d_X509_CRL(old_crl.get(), &old_der);
+  bssl::UniquePtr<uint8_t> old_der_storage(old_der);
+  ASSERT_GT(old_len, 0);
+
+  // |kBasicCRL| carries none of the three extensions.
+  size_t new_len = 0;
+  bssl::UniquePtr<uint8_t> new_der;
+  ASSERT_TRUE(PEMToDER(&new_der, &new_len, kBasicCRL));
+
+  bssl::UniquePtr<X509_CRL> reused(X509_CRL_new());
+  ASSERT_TRUE(reused);
+  X509_CRL *reusedp = reused.get();
+  const uint8_t *inp = old_der;
+  ASSERT_TRUE(d2i_X509_CRL(&reusedp, &inp, old_len));
+  ASSERT_EQ(reused.get(), reusedp);
+  ASSERT_TRUE(reused->idp);
+  ASSERT_NE(0, reused->idp_flags);
+  ASSERT_TRUE(reused->akid);
+  ASSERT_TRUE(reused->flags & EXFLAG_CRITICAL);
+  // |akid| is what matches a CRL to its issuer, and this one matches no key, so
+  // the CRL cannot be used.
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {reused.get()},
+                   X509_V_FLAG_CRL_CHECK));
+
+  // Reuse the object for the other CRL. None of the cached state may survive.
+  // Parsing overwrites |idp| and |akid| but only accumulates into the two flag
+  // words, so the reset must clear those and free what the pointers held.
+  inp = new_der.get();
+  ASSERT_TRUE(d2i_X509_CRL(&reusedp, &inp, new_len));
+  EXPECT_EQ(nullptr, reused->idp);
+  EXPECT_EQ(0, reused->idp_flags);
+  EXPECT_EQ(nullptr, reused->akid);
+  EXPECT_EQ(basic_crl->flags, reused->flags);
+  // A surviving |flags| reports an unhandled critical extension, so this
+  // verification fails without the reset.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                              {reused.get()}, X509_V_FLAG_CRL_CHECK));
+}
+
 TEST(X509Test, TestFailedParseFromBuffer) {
   static const uint8_t kNonsense[] = {1, 2, 3, 4, 5};
 
