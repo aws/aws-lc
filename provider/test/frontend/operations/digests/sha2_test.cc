@@ -5,6 +5,7 @@
 
 #include <openssl/core_names.h>
 #include <openssl/evp.h>
+#include <openssl/indicator.h>
 #include <openssl/params.h>
 
 #include <algorithm>
@@ -226,6 +227,42 @@ TEST_P(Sha2Test, CopyCtxOverwritesInitializedDestination) {
 
   EXPECT_EQ(expected, ToHex(from_source, source_len));
   EXPECT_EQ(expected, ToHex(from_destination, destination_len));
+}
+
+TEST_F(ProviderTest, ReportsRuntimeFipsIndicator) {
+#if defined(AWSLC_FIPS)
+  constexpr int kExpectedFipsIndicator = 1;
+#else
+  constexpr int kExpectedFipsIndicator = 0;
+#endif
+
+  MdPtr md(EVP_MD_fetch(libctx(), "SHA2-256", kRequireAwslc));
+  MdCtxPtr ctx(EVP_MD_CTX_new());
+  ASSERT_TRUE(md);
+  ASSERT_TRUE(ctx);
+
+  OSSL_INDICATOR_set_callback(
+      libctx(), [](const char *, const char *, const OSSL_PARAM[]) { return 1; });
+
+  static const unsigned char kMessage[] = "fips indicator";
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len = 0;
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md.get(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest, &digest_len));
+
+  const OSSL_PARAM *gettable = EVP_MD_CTX_gettable_params(ctx.get());
+  ASSERT_NE(nullptr, gettable);
+  EXPECT_NE(nullptr, OSSL_PARAM_locate_const(
+                         gettable, OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR));
+
+  int approved = -1;
+  OSSL_PARAM params[] = {
+      OSSL_PARAM_construct_int(OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR,
+                               &approved),
+      OSSL_PARAM_construct_end()};
+  ASSERT_TRUE(EVP_MD_CTX_get_params(ctx.get(), params));
+  EXPECT_EQ(kExpectedFipsIndicator, approved);
 }
 
 // Names the cell after the algorithm, so a failure reads

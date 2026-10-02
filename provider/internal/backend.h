@@ -64,6 +64,7 @@
 // into whatever the dispatch slot it is serving expects.
 
 #include <stddef.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -80,15 +81,29 @@ void *awslc_prov_zalloc(size_t size);
 // wipe is not optional.
 void awslc_prov_clear_free(void *ptr, size_t size);
 
+// Wipe |size| bytes at |ptr|. AWS-LC exports OPENSSL_cleanse, so a front-side
+// call to it would bind to AWS-LC's libcrypto rather than the host's.
+void awslc_prov_cleanse(void *ptr, size_t size);
+
 // The AWS-LC version this provider is linked against, e.g. "AWS-LC 5.4.0". The
 // returned string is static and outlives any caller. Reported through the
 // provider's buildinfo parameter, which is the only way a consumer can tell which
 // AWS-LC is underneath.
 const char *awslc_prov_backend_version(void);
 
-// Whether the AWS-LC linked here is a FIPS build. FIPS is a compile-time property
-// of AWS-LC, so this is constant for the life of the process.
+// Whether the linked AWS-LC reports FIPS mode through its public FIPS_mode()
+// API. FIPS is a compile-time property of AWS-LC, so this is constant for the
+// life of the process.
 int awslc_prov_backend_is_fips(void);
+
+// Bracket one complete AWS-LC service and report whether the service-indicator
+// counter advanced. Callers must also require the provider's stored runtime FIPS
+// state because non-FIPS AWS-LC deliberately returns a synthetic counter delta.
+uint64_t awslc_prov_service_indicator_before_call(void);
+int awslc_prov_service_indicator_after_call(uint64_t before);
+
+// Re-run AWS-LC's known-answer self-tests.
+int awslc_prov_backend_self_test(void);
 
 #if defined(__cplusplus)
 }  // extern "C"
