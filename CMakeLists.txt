@@ -97,6 +97,8 @@ option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for sh
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 option(COHABITANT_BINARIES "Install tool binaries with an 'aws-lc-' prefix to avoid conflicts with OpenSSL" OFF)
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
+option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
+set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
 set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
 
 # Set the install binary prefix based on whether cohabitation is desired
@@ -108,6 +110,7 @@ endif()
 message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 
 include(cmake/go.cmake)
+include(cmake/GenerateVersionScript.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
   set(PERFORM_SONAME_BUILD 1)
@@ -121,6 +124,109 @@ message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
 message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
+
+# ELF symbol versioning for shared libraries. Deliberately independent of the
+# rest of distribution packaging: versioned symbols can be adopted without
+# relocating headers into include/aws-lc (COHABITANT_HEADERS) or renaming the
+# bssl tool (COHABITANT_BINARIES). ENABLE_DIST_PKG only supplies the default.
+#
+# Version scripts are derived from the symbol registry files and have stable
+# filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
+# recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
+#
+# Not declared with option(): that would bake the first configure's default into
+# the cache, so a later -DENABLE_DIST_PKG=ON would leave versioning stuck off.
+# Testing DEFINED lets an explicit -D win (it stays in the cache, so it stays
+# DEFINED) while an unset value keeps tracking ENABLE_DIST_PKG.
+if(DEFINED ENABLE_SYMBOL_VERSIONING)
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY TRUE)
+else()
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY FALSE)
+  set(ENABLE_SYMBOL_VERSIONING "${ENABLE_DIST_PKG}")
+endif()
+
+# Version-node prefix. A non-default value yields symbol versions that do not
+# interoperate with a stock AWS-LC build, so it is only appropriate for a
+# privately distributed libcrypto (see docs/SymbolVersioning.md).
+set(SYMBOL_VERSION_NAMESPACE "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}" CACHE STRING
+    "Prefix for ELF symbol version nodes (e.g. AWS_LC yields AWS_LC_1.0)")
+
+if(NOT "${SYMBOL_VERSION_NAMESPACE}" MATCHES "${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}")
+  message(FATAL_ERROR "SYMBOL_VERSION_NAMESPACE must match ${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}, got: ${SYMBOL_VERSION_NAMESPACE}")
+endif()
+
+# A version script is a link-time input that only the ELF linker understands: a
+# static build has no link step to attach it to, and Mach-O and PE have no
+# equivalent. Fail loudly when versioning was requested explicitly; when merely
+# inherited from ENABLE_DIST_PKG, leave it off so a static dist-pkg build still
+# configures.
+if(ENABLE_SYMBOL_VERSIONING AND (NOT BUILD_SHARED_LIBS OR NOT UNIX OR APPLE))
+  if(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+    message(FATAL_ERROR "ENABLE_SYMBOL_VERSIONING requires a shared library build (-DBUILD_SHARED_LIBS=ON) on a non-Apple UNIX platform.")
+  endif()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+unset(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+
+# Canonicalize: an inherited value carries ENABLE_DIST_PKG's literal spelling, so
+# -DENABLE_DIST_PKG=1 would otherwise report "1" here rather than "ON".
+if(ENABLE_SYMBOL_VERSIONING)
+  set(ENABLE_SYMBOL_VERSIONING ON)
+else()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+
+message(STATUS "ENABLE_SYMBOL_VERSIONING: ${ENABLE_SYMBOL_VERSIONING}")
+
+# The namespace only reaches the linker through a version script, and unlike
+# ENABLE_SYMBOL_VERSIONING it has no inherited default, so setting one without
+# versioning is always a mistake. Refuse it, as ENABLE_DIST_PKG_OPENSSL_SHIM
+# without ENABLE_DIST_PKG is refused.
+if(NOT ENABLE_SYMBOL_VERSIONING AND
+   NOT "${SYMBOL_VERSION_NAMESPACE}" STREQUAL "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}")
+  message(FATAL_ERROR
+    "SYMBOL_VERSION_NAMESPACE is set to '${SYMBOL_VERSION_NAMESPACE}' but symbol "
+    "versioning is disabled, so the namespace cannot take effect. Enable "
+    "versioning with -DENABLE_SYMBOL_VERSIONING=ON (requires "
+    "-DBUILD_SHARED_LIBS=ON on a non-Apple UNIX platform), or clear the "
+    "namespace with -USYMBOL_VERSION_NAMESPACE.")
+endif()
+
+# BORINGSSL_PREFIX renames every exported symbol, but the version scripts
+# reference the unprefixed names, so a prefixed+versioned build would hide
+# every symbol behind "local: *". Reject the combination rather than produce
+# an empty library; docs/SymbolVersioning.md contrasts the two mechanisms.
+if(ENABLE_SYMBOL_VERSIONING AND BORINGSSL_PREFIX)
+  message(FATAL_ERROR
+    "BORINGSSL_PREFIX cannot be combined with symbol versioning: the version "
+    "scripts reference unprefixed symbol names, so the build would export no "
+    "symbols. Configure with -DENABLE_SYMBOL_VERSIONING=OFF (needed even with "
+    "-DENABLE_DIST_PKG=ON, which enables versioning by default).")
+endif()
+
+if(ENABLE_SYMBOL_VERSIONING)
+  message(STATUS "SYMBOL_VERSION_NAMESPACE: ${SYMBOL_VERSION_NAMESPACE}")
+
+  # lld treats undefined symbols in version scripts as errors by default.
+  # The --undefined-version flag downgrades them to warnings, matching GNU ld.
+  # Probe once during configure; the result is cached.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      LINK_OPTIONS "-Wl,--undefined-version"
+    )
+  else()
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      CMAKE_FLAGS "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--undefined-version"
+    )
+  endif()
+endif()
+
 
 # The validated entropy source will always be configured to be CPU Jitter
 # Entropy by default; because it's the root of the Tree DRBG.
@@ -287,6 +393,20 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
+if(ENABLE_CRYPTO_POLICIES)
+  message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
+  add_definitions(-DAWSLC_CRYPTO_POLICIES)
+  # Optional override of the compile-time default policy file. Packagers can set
+  # this to relocate the system crypto-policies OpenSSL back-end file; tests use
+  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
+  # overrides it at run time.
+  if(AWSLC_CRYPTO_POLICY_FILE)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
+    add_definitions(
+      -DAWSLC_CRYPTO_POLICY_DEFAULT_FILE=\"${AWSLC_CRYPTO_POLICY_FILE}\")
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)

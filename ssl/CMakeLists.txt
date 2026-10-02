@@ -2,6 +2,7 @@ add_library(
   ssl
 
   bio_ssl.cc
+  crypto_policy.cc
   custom_extensions.cc
   d1_both.cc
   d1_lib.cc
@@ -58,6 +59,18 @@ if(PERFORM_SONAME_BUILD)
       SOVERSION "${ABI_VERSION}")
 endif()
 
+# Apply symbol versioning for shared libraries. The version script is a
+# checked-in source file, so if versioning is enabled it must be present;
+# apply_version_script() fatal-errors if it is missing rather than silently
+# producing an unversioned library.
+if(ENABLE_SYMBOL_VERSIONING)
+  apply_version_script(
+    TARGET ssl
+    VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libssl.map"
+    NAMESPACE "${SYMBOL_VERSION_NAMESPACE}"
+  )
+endif()
+
 if(BUILD_TESTING)
   # ocsp_integration_test.cc does integration tests with the Amazon Trust
   # Services OCSP responder. This is ran as its own test executable because
@@ -98,6 +111,7 @@ if(BUILD_TESTING)
     ssl_hybrid_handshake_test.cc
     ssl_encoding_test.cc
     ssl_ciphers_test.cc
+    ssl_crypto_policy_test.cc
     ssl_handshake_test.cc
   )
 

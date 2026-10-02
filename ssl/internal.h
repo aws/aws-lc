@@ -2593,6 +2593,13 @@ Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs);
 // peer signature to |out|. It returns true on success and false on error.
 bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out);
 
+// tls12_get_default_sign_sigalgs and tls12_get_default_verify_sigalgs return the
+// signature algorithms AWS-LC signs with and accepts from a peer when nothing is
+// configured. The two lists differ, so a caller adjusting the defaults has to
+// adjust each of them.
+OPENSSL_EXPORT Span<const uint16_t> tls12_get_default_sign_sigalgs(void);
+OPENSSL_EXPORT Span<const uint16_t> tls12_get_default_verify_sigalgs(void);
+
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
 // signature. It returns true on success and false on error, setting
 // |*out_alert| to an alert to send.
@@ -3759,6 +3766,145 @@ void ssl_set_read_error(SSL *ssl);
 // ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
 // set to false when the mutex in |SSL_CTX| has already been locked.
 void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock);
+
+#if defined(AWSLC_CRYPTO_POLICIES)
+
+// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). On
+// Amazon Linux 2023 and Fedora the system-wide crypto-policies framework
+// renders an OpenSSL back-end file describing the OS TLS posture. When enabled,
+// |SSL_CTX_new| seeds each new |SSL_CTX| from that file after its built-in
+// defaults. This is best-effort: consumers may override afterward, and any
+// failure leaves the built-in defaults in place.
+
+// AWSLC_CRYPTO_POLICY_DEFAULT_FILE is the compile-time default location of the
+// crypto-policies OpenSSL back-end file. Packagers set it with
+// -DAWSLC_CRYPTO_POLICY_FILE=..., which is also the name of the environment
+// variable that overrides it at run time (see |ssl_crypto_policy_default_path|).
+// The macro spells "DEFAULT" so the name a caller sets and the value it falls
+// back to are not the same identifier.
+#if !defined(AWSLC_CRYPTO_POLICY_DEFAULT_FILE)
+#define AWSLC_CRYPTO_POLICY_DEFAULT_FILE \
+  "/etc/crypto-policies/back-ends/opensslcnf.config"
+#endif
+
+// AWSLC_CRYPTO_POLICY_MAX_VALUE is the longest directive value, excluding the
+// NUL terminator, that AWS-LC will act on. The longest value the crypto-policies
+// framework emits is the LEGACY policy's CipherString, well under this bound.
+//
+// A longer value is treated as absent rather than truncated: half of a cipher
+// list or group list is not a weaker version of the operator's policy, it is a
+// different policy that nobody chose.
+#define AWSLC_CRYPTO_POLICY_MAX_VALUE 1023
+
+// AWSLC_CRYPTO_POLICY_MAX_TOKEN bounds the single-token protocol directives
+// ("TLSv1.2", "DTLSv1.2", and the like).
+#define AWSLC_CRYPTO_POLICY_MAX_TOKEN 31
+
+// CryptoPolicyConfig holds the recognized directives parsed from a
+// crypto-policies OpenSSL back-end file. Each field is a NUL-terminated string;
+// an absent directive is the empty string, so callers must zero-initialize
+// (|CryptoPolicyConfig cfg = {};|).
+//
+// These are fixed buffers rather than |std::string| because libssl on Linux may
+// not depend on the C++ runtime (see STYLE.md), a constraint
+// util/check_imported_libraries.go enforces. Fixed buffers also cannot throw out
+// of |SSL_CTX_new|, which is a C entry point.
+struct CryptoPolicyConfig {
+  // cipher_string is CipherString, which may still carry a leading @SECLEVEL.
+  char cipher_string[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];
+  char ciphersuites[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];  // Ciphersuites
+  char sigalgs[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];       // SignatureAlgorithms
+  char groups[AWSLC_CRYPTO_POLICY_MAX_VALUE + 1];        // Groups
+  char tls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MinProtocol
+  char tls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];       // TLS.MaxProtocol
+  char dtls_min[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MinProtocol
+  char dtls_max[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];      // DTLS.MaxProtocol
+  // post_quantum is AWSLC.PostQuantum, AWS-LC's own directive. "off" waives the
+  // post-quantum defaults a policy silent on them would otherwise keep; any
+  // other value, including absent, leaves them in force.
+  char post_quantum[AWSLC_CRYPTO_POLICY_MAX_TOKEN + 1];
+
+  // Set when the floor directive appeared, whatever became of its value. An
+  // absent floor leaves the context's own, which sits below every floor a policy
+  // can name, so a floor AWS-LC cannot resolve has to be told apart from one the
+  // operator never wrote. The ceilings need no flag: a ceiling left unapplied
+  // keeps the stricter of the two.
+  bool tls_min_present;
+  bool dtls_min_present;
+};
+
+// ssl_crypto_policy_parse_file reads |path| line-by-line and fills |out| with
+// the recognized directives. Blank lines, '#' comments, and '[section]' headers
+// are ignored, as are unrecognized keys; the last occurrence of a key wins. A
+// value too long for its field leaves that field empty, so a directive that
+// cannot be represented reads as absent rather than as its earlier occurrence,
+// except that the floor directives still record that they appeared.
+// It returns true if the whole file was read (even if no recognized keys were
+// present), and false on invalid arguments or if the file could not be opened
+// or read to its end.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
+                                                 CryptoPolicyConfig *out);
+
+// ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
+// back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
+// variable if set and non-empty, otherwise the compile-time
+// |AWSLC_CRYPTO_POLICY_DEFAULT_FILE|. Mirrors the SSL_CERT_FILE override idiom.
+//
+// The environment override is ignored in processes running with elevated
+// privileges, where the environment sits on the far side of a privilege boundary
+// from the root-owned default path.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT const char *ssl_crypto_policy_default_path(void);
+
+// ssl_sigalg_id_from_name sets |*out| to the signature algorithm named by
+// |name|, of length |len|. It takes either spelling |SSL_CTX_set1_sigalgs_list|
+// takes, "ecdsa_secp256r1_sha256" or "ECDSA+SHA256", queues no errors, and
+// returns false if AWS-LC has no such algorithm.
+//
+// This is for filtering a list from an outside source, which may name algorithms
+// AWS-LC does not implement, down to the ones it does. The name-based setter
+// rejects the whole list on the first token it does not know.
+bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len);
+
+// ssl_crypto_policy_named_group_ids and ssl_crypto_policy_named_sigalg_ids
+// resolve the tokens of a Groups or SignatureAlgorithms value the way seeding
+// does, writing the IDs the value asks for and AWS-LC implements to |out|, which
+// holds |max_out| entries, and returning how many were written. An algorithm the
+// value removes is not one it asks for.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests, which read the
+// system policy file with it rather than assuming how it spells an algorithm.
+OPENSSL_EXPORT size_t ssl_crypto_policy_named_group_ids(uint16_t *out,
+                                                        size_t max_out,
+                                                        const char *value);
+OPENSSL_EXPORT size_t ssl_crypto_policy_named_sigalg_ids(uint16_t *out,
+                                                         size_t max_out,
+                                                         const char *value);
+
+// ssl_ctx_apply_crypto_policy seeds |ctx| from the crypto-policies OpenSSL
+// back-end file at |path|. It is best-effort and never fails: a missing or
+// malformed file, or a directive AWS-LC rejects, leaves the corresponding
+// built-in default in place. Errors already queued by the caller are preserved;
+// errors this function provokes are not.
+//
+// |is_dtls| selects the TLS.* vs DTLS.* protocol directives. |version_locked|
+// must be true when |ctx| came from one of the legacy version-locked
+// |SSL_METHOD|s (|ssl_method_st.version| non-zero), in which case the policy's
+// protocol floor and ceiling are skipped: the caller pinned a single version and
+// a system-wide default must not silently widen it.
+//
+// The parsed file is cached process-wide, keyed on |path|, so repeated
+// |SSL_CTX_new| calls do not re-read it.
+//
+// Marked with OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT void ssl_ctx_apply_crypto_policy(SSL_CTX *ctx, const char *path,
+                                                bool is_dtls,
+                                                bool version_locked);
+
+#endif  // AWSLC_CRYPTO_POLICIES
 
 BSSL_NAMESPACE_END
 
