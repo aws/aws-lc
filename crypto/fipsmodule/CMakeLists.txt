@@ -321,6 +321,16 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_32.S
     )
 
+    # AES-GCM bulk encryption/decryption kernels tuned for Neoverse N1
+    # (Graviton2). Staged under s2n-bignum-to-be-imported until the imported
+    # s2n-bignum snapshot includes arm/aes_gcm; see s2n-bignum_aws-lc.h.
+    list(APPEND BCM_ASM_SOURCES
+                ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes_gcm/aes128_gcm_enc.S
+                ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes_gcm/aes128_gcm_dec.S
+                ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes_gcm/aes256_gcm_enc.S
+                ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes_gcm/aes256_gcm_dec.S
+    )
+
     #
     # Keccak assembly from s2n-bignum/mlkem-native
     #

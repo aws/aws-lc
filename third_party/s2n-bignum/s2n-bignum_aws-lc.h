@@ -186,4 +186,36 @@ static inline void edwards25519_scalarmuldouble_selector(uint64_t res[S2N_BIGNUM
 
 #endif // OPENSSL_SMALL
 
+// ----------------------------------------------------------------------------
+// Prototypes for s2n-bignum code staged under s2n-bignum-to-be-imported.
+// These mirror the declarations in s2n-bignum's include/s2n-bignum.h exactly;
+// delete this section when the imported snapshot provides them.
+// ----------------------------------------------------------------------------
+#if defined(OPENSSL_AARCH64)
+
+struct s2n_bignum_aes_key_st {
+  uint64_t rd_key[30];
+  int rounds;
+};
+typedef struct s2n_bignum_aes_key_st s2n_bignum_AES_KEY;
+
+// AES-GCM bulk encryption and decryption (Neoverse N1 tuned). Each processes
+// a whole number of 16-byte blocks: the input "in" of "len_bits" bits is
+// encrypted or decrypted in counter mode from the counter block "ivec" with
+// the AES round keys "key" (10 rounds for AES-128, 14 for AES-256), the
+// ciphertext is folded into the GHASH accumulator "tag" using the table
+// "htable" of powers of H (the first 96 bytes of the Htable produced by
+// gcm_init_v8: H to H^4 with their Karatsuba middle terms), and "ivec" is
+// advanced. Returns the number of bytes processed.
+extern uint64_t aes128_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+extern uint64_t aes128_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+extern uint64_t aes256_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+extern uint64_t aes256_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+#endif // OPENSSL_AARCH64
+
 #endif // S2N_BIGNUM_AWS_LC_H
