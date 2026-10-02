@@ -817,19 +817,43 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
     return 0;
   }
   len += header_len;
+
+  // Nothing has verified the claimed length yet, so grow the buffer as content
+  // arrives instead of allocating the whole claim up front. Follows OpenSSL's
+  // |asn1_d2i_read_bio|, including its 16 KiB starting chunk.
+  size_t cap = header_len + 16 * 1024;
+  if (cap > len) {
+    cap = len;
+  }
+  uint8_t *buf = OPENSSL_malloc(cap);
+  if (buf == NULL) {
+    return 0;
+  }
+  OPENSSL_memcpy(buf, header, header_len);
+
+  size_t done = header_len;
+  while (done < len) {
+    if (!bio_read_full(bio, buf + done, NULL, cap - done)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_NOT_ENOUGH_DATA);
+      OPENSSL_free(buf);
+      return 0;
+    }
+    done = cap;
+    if (done == len) {
+      break;
+    }
+    // Double the buffer, stopping at |len|. |cap| < |len|, so no overflow.
+    cap = (cap > (len - cap)) ? len : (cap * 2);
+    uint8_t *new_buf = OPENSSL_realloc(buf, cap);
+    if (new_buf == NULL) {
+      OPENSSL_free(buf);
+      return 0;
+    }
+    buf = new_buf;
+  }
+
+  *out = buf;
   *out_len = len;
-
-  *out = OPENSSL_malloc(len);
-  if (*out == NULL) {
-    return 0;
-  }
-  OPENSSL_memcpy(*out, header, header_len);
-  if (!bio_read_full(bio, (*out) + header_len, NULL, len - header_len)) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_NOT_ENOUGH_DATA);
-    OPENSSL_free(*out);
-    return 0;
-  }
-
   return 1;
 }
 
