@@ -5,14 +5,19 @@ specification to the source that implements and tests them. Each requirement is
 cited in-tree with a `//=` annotation, and Duvet reports which requirements are
 covered, tested, or missing.
 
-This directory is a scoped demonstration: it wires **RFC 8032 (EdDSA)** to the
-Ed25519 / Ed25519ph surface in `crypto/fipsmodule/curve25519/`.
+This directory is a scoped demonstration. It wires:
+
+- **RFC 8032 (EdDSA)** to the Ed25519 / Ed25519ph surface in
+  `crypto/fipsmodule/curve25519/`.
+- **RFC 5280 §4.2.1.10 (Name Constraints)** to X.509 name-constraint
+  enforcement in `crypto/x509/v3_ncons.c`, tested in `crypto/x509/x509_test.cc`.
 
 ## Links
 
 - Duvet project: https://github.com/awslabs/duvet
 - Config schema (v0.4.0): https://awslabs.github.io/duvet/config/v0.4.0.json
 - RFC 8032 (EdDSA): https://www.rfc-editor.org/rfc/rfc8032
+- RFC 5280 §4.2.1.10 (Name Constraints): https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
 
 ## Layout
 
