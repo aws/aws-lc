@@ -50,7 +50,17 @@ fi
 
 PASSTHRU_ENV_VARS=("GOPROXY" "AWS_DEFAULT_REGION" "AWS_REGION")
 
-if [[ "${INPUT_WITH_CREDENTIALS}" == "true" ]] &&
+# A pull_request run executes code taken from the pull request, so the runner's
+# AWS credentials are withheld from the container whatever the caller asked for.
+# Callers that genuinely need credentials run on push or schedule, or behind the
+# check-authorization approval gate.
+WITH_CREDENTIALS="${INPUT_WITH_CREDENTIALS}"
+if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" && "${WITH_CREDENTIALS}" == "true" ]]; then
+    echo "pull_request run: not passing AWS credentials into the container."
+    WITH_CREDENTIALS="false"
+fi
+
+if [[ "${WITH_CREDENTIALS}" == "true" ]] &&
     [[ ! "${ENV_FLAGS}" =~ ECS_CONTAINER_METADATA_URI_V4 ]] && 
     [[ ! "${ENV_FLAGS}" =~ AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ]]; then
     PASSTHRU_ENV_VARS+=(ECS_CONTAINER_METADATA_URI_V4 AWS_CONTAINER_CREDENTIALS_RELATIVE_URI AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN)
@@ -62,8 +72,10 @@ for ev in "${PASSTHRU_ENV_VARS[@]}"; do
     fi
 done
 
-exec docker run -v /var/run/docker.sock:/var/run/docker.sock \
-    -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} \
+# The Docker control socket is deliberately not mounted: reaching it from inside
+# the container is equivalent to root on the runner host. No command run through
+# this action uses Docker.
+exec docker run -v ${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE} \
     -w ${GITHUB_WORKSPACE} \
     ${DOCKER_OPTIONS} \
     ${ENV_FLAGS} \
