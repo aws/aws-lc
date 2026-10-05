@@ -42,6 +42,9 @@ struct rsassa_pss_params_st {
   RSA_INTEGER *trailer_field;
 };
 
+// RSA_get0_ssa_pss_params returns the key's PSS restrictions without ownership.
+OPENSSL_EXPORT const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa);
+
 // RSASSA_PSS_PARAMS related malloc functions.
 RSA_INTEGER *RSA_INTEGER_new(void);
 RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void);
