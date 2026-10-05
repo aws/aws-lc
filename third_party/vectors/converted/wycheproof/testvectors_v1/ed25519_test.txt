@@ -323,126 +323,126 @@ flags = CompressedSignature
 [publicKeyJwk.x = fU0Of2FTpptiQrUiq77mhf2kQg-INLEIw72uNp71Sfo]
 
 # tcId = 42
-# modified bit 0 in R
+# modified bit 0 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 647c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2b1d125e5538f38afbcc1c84e489521083041d24bc6240767029da063271a1ff0c
 flags = InvalidEncoding
 
 # tcId = 43
-# modified bit 1 in R
+# modified bit 1 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 677c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2bc108ca4b87a49c9ed2cf383aecad8f54a962b2899da891e12004d7993a627e01
 flags = InvalidEncoding
 
 # tcId = 44
-# modified bit 2 in R
+# modified bit 2 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 617c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2b9ce23fc6213ed5b87912e9bbf92f5e2c780eae26d15c50a112d1e97d2ea33c06
 flags = InvalidEncoding
 
 # tcId = 45
-# modified bit 7 in R
+# modified bit 7 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = e57c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2bbb3eb51cd98dddb235a5f46f2bded6af184a58d09cce928bda43f41d69118a03
 flags = InvalidEncoding
 
 # tcId = 46
-# modified bit 8 in R
+# modified bit 8 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657d1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2bcd237dda9a116501f67a5705a854b9adc304f34720803a91b324f2c13e0f5a09
 flags = InvalidEncoding
 
 # tcId = 47
-# modified bit 16 in R
+# modified bit 16 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1592402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2b6b167bbdc0d881cc04d28905552c1876f3709851abc5007376940cc8a435c300
 flags = InvalidEncoding
 
 # tcId = 48
-# modified bit 31 in R
+# modified bit 31 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1412402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2b7fd2ac7da14afffcceeb13f2a0d6b887941cb1a5eb57a52f3cb131a16cce7b0e
 flags = InvalidEncoding
 
 # tcId = 49
-# modified bit 32 in R
+# modified bit 32 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492412ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2b7373ba13ebbef99cd2a8ead55ce735c987d85a35320925a8e871702dc7c5c40d
 flags = InvalidEncoding
 
 # tcId = 50
-# modified bit 63 in R
+# modified bit 63 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab54e03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2bd35bd331c03f0855504ca1cab87b83c36a028425a3cf007ede4f4254c261cb00
 flags = InvalidEncoding
 
 # tcId = 51
-# modified bit 64 in R
+# modified bit 64 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce02e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2bcb35101f73cf467deac8c1a03b6c3dc35af544132734b7e57ab20c89b2e4750d
 flags = InvalidEncoding
 
 # tcId = 52
-# modified bit 97 in R
+# modified bit 97 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f2384d051b9cf3570f1207fc78c1bcc98c281c2bb58d2e8878290bff8d3355fdd4ea381924ee578752354eb6dee678ab4011c301
 flags = InvalidEncoding
 
 # tcId = 53
-# modified bit 127 in R
+# modified bit 127 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d851b9cf3570f1207fc78c1bcc98c281c2bb978c866187ffb1cc7b29a0b4045aefc08768df65717194ff0c6e63f4dea0d02
 flags = InvalidEncoding
 
 # tcId = 54
-# modified bit 240 in R
+# modified bit 240 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281d2b0576ecf8eaf675f00f3dfbe19f75b83b7607a6c96414f6821af920a2498d0305
 flags = InvalidEncoding
 
 # tcId = 55
-# modified bit 247 in R
+# modified bit 247 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c289c2be5241a345c7b5428054c74b7c382fa10d4a5f1e8f8b79a71d3fdea2254f1ff0e
 flags = InvalidEncoding
 
 # tcId = 56
-# modified bit 248 in R
+# modified bit 248 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c2a63950c85cd6dc96364e768de50ff7732b538f8a0b1615d799190ab600849230e
 flags = InvalidEncoding
 
 # tcId = 57
-# modified bit 253 in R
+# modified bit 253 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c0b543bd3da0a56a8c9c152f59c9fec12f31fa66434d48b817b30d90cb4efa8b501
 flags = InvalidEncoding
 
 # tcId = 58
-# modified bit 254 in R
+# modified bit 254 in R. Accepted only by verifiers that ignore this bit when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281c6b8da07efd07a6dafb015ed6a32fe136319a972ffbc341f3a0beae97ccf8136505
 flags = InvalidEncoding
 
 # tcId = 59
-# modified bit 255 in R
+# modified bit 255 in R. This flips the sign of x and yields the canonical encoding of the negated R point. Accepted only by verifiers that ignore the sign of x when comparing R to the recovered R.
 msg = 313233343030
 result = invalid
 sig = 657c1492402ab5ce03e2c3a7f0384d051b9cf3570f1207fc78c1bcc98c281cab227aedf259f910f0f3a759a335062665217925d019173b88917eae294f75d40f
@@ -480,56 +480,56 @@ flags = InvalidEncoding
 [publicKeyJwk.x = fU0Of2FTpptiQrUiq77mhf2kQg-INLEIw72uNp71Sfo]
 
 # tcId = 63
-# checking malleability 
+# the encoded s was replaced by s + L. The scalar is unchanged mod L. Accepted only by verifiers that fail to enforce s < L. See RFC 8032, Section 5.1.7.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab067654bce3832c2d76f8f6f5dafc08d9339d4eef676573336a5c51eb6f946b31d
 flags = SignatureMalleability
 
 # tcId = 64
-# checking malleability 
+# the encoded s was replaced by s + 2L. The scalar is unchanged mod L. Accepted only by verifiers that fail to enforce s < L. See RFC 8032, Section 5.1.7.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab05439412b5395d42f462c67008eba6ca839d4eef676573336a5c51eb6f946b32d
 flags = SignatureMalleability
 
 # tcId = 65
-# checking malleability 
+# the encoded s was replaced by s + 4L. The scalar is unchanged mod L. Accepted only by verifiers that fail to enforce s < L. See RFC 8032, Section 5.1.7.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab02ee12ce5875bf9dff26556464bae2ad239d4eef676573336a5c51eb6f946b34d
 flags = SignatureMalleability
 
 # tcId = 66
-# checking malleability 
+# the encoded s was replaced by s + 8L. The scalar is unchanged mod L. Accepted only by verifiers that fail to enforce s < L. See RFC 8032, Section 5.1.7.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab0e2300459f1e742404cd934d2c595a6253ad4eef676573336a5c51eb6f946b38d
 flags = SignatureMalleability
 
 # tcId = 67
-# checking malleability 
+# the encoded s was replaced by s + 2^253. The scalar differs from the valid s mod L, so verification fails even without a range check on s. Accepted only by parsers that silently clear bit 253 of s.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b32d
 flags = SignatureMalleability
 
 # tcId = 68
-# checking malleability 
+# the encoded s was replaced by s + 2^254. The scalar differs from the valid s mod L, so verification fails even without a range check on s. Accepted only by parsers that silently clear bit 254 of s.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b34d
 flags = SignatureMalleability
 
 # tcId = 69
-# checking malleability 
+# the encoded s was replaced by s + 2^255. The scalar differs from the valid s mod L, so verification fails even without a range check on s. Accepted only by parsers that silently clear bit 255 of s.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b38d
 flags = SignatureMalleability
 
 # tcId = 70
-# checking malleability 
+# the encoded s was replaced by s + p where p is the field prime 2^255 - 19. The scalar differs from the valid s mod L, so verification fails even without a range check on s. Accepted only by verifiers that reduce s mod p instead of checking s < L.
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab0679155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b38d
@@ -1805,4 +1805,21 @@ msg = 44530b0b34f598767a7b875b0caee3c7b9c502d1
 result = valid
 sig = cfbd450a2c83cb8436c348822fe3ee347d4ee937b7f2ea11ed755cc52852407c9eec2c1fa30d2f9aef90e89b2cc3bcef2b1b9ca59f712110d19894a9cf6a2802
 flags = TinkOverflow
+
+[publicKey.curve = edwards25519]
+[publicKey.keySize = 255]
+[publicKey.pk = d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a]
+[publicKey.type = EDDSAPublicKey]
+[publicKeyDer = 302a300506032b6570032100d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a]
+[publicKeyJwk.crv = Ed25519]
+[publicKeyJwk.kid = none]
+[publicKeyJwk.kty = OKP]
+[publicKeyJwk.x = 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo]
+
+# tcId = 151
+# R encodes y = 1 with the sign bit of x set. The only point with y = 1 has x = 0, so decoding must fail (RFC 8032, Section 5.1.3). Accepted only by verifiers that ignore the sign of x.
+msg = 313233343030
+result = invalid
+sig = 0100000000000000000000000000000000000000000000000000000000000080c803ee1f2342aa96ff698a393d1ab5e66f3eda101d6d120b394c3fd32c117d0a
+flags = InvalidEncoding
 
