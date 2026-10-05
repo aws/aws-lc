@@ -629,7 +629,7 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     return 0;
   }
 
-  int ret;
+  int ret = 0;
   if (hwaes_xts_available()) {
     ret = aes_hw_xts_cipher(in, out, len, xctx->xts.key1, xctx->xts.key2,
                             ctx->iv, ctx->encrypt);
