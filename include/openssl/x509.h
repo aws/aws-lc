@@ -4778,7 +4778,7 @@ typedef struct DIST_POINT_NAME_st {
     GENERAL_NAMES *fullname;
     STACK_OF(X509_NAME_ENTRY) *relativename;
   } name;
-  // If relativename then this contains the full distribution point name
+  // This field is unused and is no longer populated when parsing.
   X509_NAME *dpname;
 } DIST_POINT_NAME;
 // CRLDP_ALL_REASONS is an alias for all existing reasons
@@ -4916,6 +4916,8 @@ DECLARE_ASN1_FUNCTIONS(DIST_POINT_NAME)
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 
+// DIST_POINT_set_dpname is retained for ABI compatibility only. The library no
+// longer calls it, and certificate verification ignores |dpn->dpname|.
 OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn,
                                          X509_NAME *iname);
 
