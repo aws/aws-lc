@@ -1787,7 +1787,7 @@ static bssl::UniquePtr<uint8_t> BuildLDTMessage(
     return nullptr;
   }
 
-  uint64_t times;
+  uint64_t times = 0;
   memcpy(&times, times_bytes.data(), sizeof(times));
   if (times == 0 || times > kMaxLDTMessageLength / part_msg.size() ||
       times > SIZE_MAX / part_msg.size()) {
@@ -1814,7 +1814,7 @@ template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
 static bool HashLDT(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
-  size_t full_msg_size;
+  size_t full_msg_size = 0;
   bssl::UniquePtr<uint8_t> full_msg =
       BuildLDTMessage(args[0], args[1], &full_msg_size);
   if (!full_msg) {
@@ -1831,7 +1831,7 @@ static bool HashLDT(const Span<const uint8_t> args[],
 template <const EVP_MD *(*MDFunc)(), size_t DigestLength>
 static bool HashLDTSha3(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
-  size_t full_msg_size;
+  size_t full_msg_size = 0;
   bssl::UniquePtr<uint8_t> full_msg =
       BuildLDTMessage(args[0], args[1], &full_msg_size);
   if (!full_msg) {
