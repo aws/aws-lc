@@ -440,3 +440,29 @@ def cherry_pick_was_empty(path) -> bool:
 def abort_cherry_pick(path) -> None:
     """Backs a stopped cherry-pick out, leaving the worktree on its branch"""
     git("-C", str(path), "cherry-pick", "--abort", check=False)
+
+
+def cherry_pick_in_progress(path) -> bool:
+    """
+    True while a cherry-pick in that worktree is still stopped part way
+    This is what tells a resolved conflict from an open one, so publish can pick up a
+    branch the user finished by hand without apply having to run again
+    """
+    head = git(
+        "-C", str(path), "rev-parse", "-q", "--verify", "CHERRY_PICK_HEAD", check=False
+    )
+    return head.returncode == 0
+
+
+def commits_ahead(base_ref: str, branch: str) -> int:
+    """How many commits branch has that base_ref does not. 0 when git cannot tell"""
+    counted = git("rev-list", "--count", f"{base_ref}..{branch}", check=False)
+    if counted.returncode != 0:
+        return 0
+    return int(counted.stdout.strip() or 0)
+
+
+def commit_subject(commit: str) -> str:
+    """The one-line subject of a commit, or an empty string when git cannot read it"""
+    subject = git("log", "-1", "--format=%s", commit, check=False)
+    return subject.stdout.strip() if subject.returncode == 0 else ""
