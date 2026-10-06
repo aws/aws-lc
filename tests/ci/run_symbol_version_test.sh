@@ -103,14 +103,56 @@ fi
 
 # Whether nm appends "@@NODE" to a versioned symbol is not consistent across
 # binutils releases; --with-symbol-versions asks for it but only exists from
-# 2.35. Probe once and use it where available, so a host whose nm stays quiet
-# about versions does not read as a library with no versioned symbols.
+# 2.35. Probe once, and where the flag is missing read the same table with
+# readelf, which has always printed the version suffix. Without the fallback a
+# host on older binutils reads as a library with no versioned symbols at all.
 NM_VERSION_FLAG=()
 if nm --help 2>&1 | grep -q -- '--with-symbol-versions'; then
   NM_VERSION_FLAG=(--with-symbol-versions)
 fi
+
+# Print "VALUE TYPE NAME[@[@]NODE]" per dynamic symbol, the three columns nm -D
+# prints, mapping readelf's type and binding onto nm's letters so the callers'
+# filters are unchanged. Accepts --defined-only. The linker's own boundary
+# symbols (__bss_start, _edata, _end) are NOTYPE here where nm names their
+# section; every caller drops them on their leading underscore.
+readelf_dyn() {
+  local defined_only=0 arg lib
+  local -a libs=()
+  for arg in "$@"; do
+    case "${arg}" in
+      --defined-only) defined_only=1 ;;
+      *) libs+=("${arg}") ;;
+    esac
+  done
+  for lib in "${libs[@]}"; do
+    readelf --wide --dyn-syms "${lib}" | awk -v defined_only="${defined_only}" '
+      $1 ~ /^[0-9]+:$/ && $8 != "" {
+        if ($7 == "UND") {
+          if (defined_only) { next }
+          type = "U"
+        } else if ($7 == "ABS") {
+          # The version node names themselves sit in .dynsym as absolute
+          # symbols; nm reports them "A" and no caller counts them.
+          type = "A"
+        } else if ($4 == "FUNC") {
+          type = ($5 == "WEAK") ? "W" : (($5 == "LOCAL") ? "t" : "T")
+        } else if ($4 == "OBJECT") {
+          type = ($5 == "WEAK") ? "V" : (($5 == "LOCAL") ? "d" : "D")
+        } else {
+          type = "?"
+        }
+        print $2, type, $8
+      }'
+  done
+}
+
 nm_dyn() {
-  nm -D "${NM_VERSION_FLAG[@]}" "$@"
+  if [[ ${#NM_VERSION_FLAG[@]} -gt 0 ]]; then
+    nm -D "${NM_VERSION_FLAG[@]}" "$@"
+  else
+    readelf_dyn "$@"
+  fi
 }
 
 # Build and install into a temporary directory if no install dir was provided.

@@ -1,6 +1,6 @@
 # Symbol Version Registries
 
-The symbol version registries have moved alongside their respective libraries:
+The symbol version registries live alongside their respective libraries:
 
 - [`crypto/libcrypto.txt`](../../../../crypto/libcrypto.txt) — libcrypto symbol registry
 - [`ssl/libssl.txt`](../../../../ssl/libssl.txt) — libssl symbol registry

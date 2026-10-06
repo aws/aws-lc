@@ -26,15 +26,19 @@
 #include "../crypto/err/internal.h"
 
 #if defined(OPENSSL_LINUX)
-// Detection mirrors crypto/rand_extra/urandom.c: glibc gained getauxval in 2.16,
-// and some Android host builds still compile against a 2.15 sysroot.
-#if !defined(OPENSSL_ANDROID)
+// Ask the compiler for <sys/auxv.h> where it can answer, so bionic and musl are
+// covered alongside glibc 2.16 and later. The libc heuristics serve the
+// compilers that lack __has_include.
+#if defined(__has_include)
+#if __has_include(<sys/auxv.h>)
 #define OPENSSL_HAS_GETAUXVAL
 #endif
-#if defined(__GLIBC_PREREQ)
-#if !__GLIBC_PREREQ(2, 16)
-#undef OPENSSL_HAS_GETAUXVAL
+#elif defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 16)
+#define OPENSSL_HAS_GETAUXVAL
 #endif
+#elif !defined(__UCLIBC__)
+#define OPENSSL_HAS_GETAUXVAL
 #endif
 #if defined(OPENSSL_HAS_GETAUXVAL)
 #include <sys/auxv.h>

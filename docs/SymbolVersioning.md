@@ -161,7 +161,7 @@ The registry and version scripts are managed by Go tools and shell wrappers in `
 | [`util/read_public_symbols`](../util/read_public_symbols) | Extracts exported symbols from headers and classifies visibility (PUBLIC / PRIVATE / PRIVATE_CXX). |
 | [`util/generate_version_script`](../util/generate_version_script) | Generates a `.map` version script from a registry `.txt`. Deterministic. `-namespace` rewrites the version node prefix. |
 | [`util/generate_initial_version_scripts.sh`](../util/generate_initial_version_scripts.sh) | Bootstraps both registries and `.map` files from scratch (used once to establish the baseline). |
-| [`util/update_symbol_version.sh`](../util/update_symbol_version.sh) | Adds newly introduced API to a new version node and regenerates the `.map` files. |
+| [`util/update_symbol_version.sh`](../util/update_symbol_version.sh) | Registers newly introduced API and regenerates the `.map` files. |
 
 ### Version Script Format
 
@@ -190,23 +190,28 @@ emits this inheritance automatically; only the oldest (base) node carries the
 
 ### Adding New Symbols
 
-When new public APIs are added, the new symbols must be assigned to a new version
-node. Use `update_symbol_version.sh` rather than editing the registry or `.map`
-files by hand:
+New public API is registered in the open version node, the newest node in the
+registry. That node is `AWS_LC_1.0` today, and adding to it is the normal case:
 
 ```bash
 # Build so the new OPENSSL_EXPORT symbols exist in the headers, then:
-./util/update_symbol_version.sh AWS_LC_1.1
+./util/update_symbol_version.sh --current
 ```
 
 This extracts the current symbol set from the headers, identifies symbols not yet
-in the registry, appends them to the registry under the given node with their
-visibility, re-sorts the registry, and regenerates `crypto/libcrypto.map` and
-`ssl/libssl.map`. Commit the updated `.txt` and `.map` files together.
+in the registry, appends them to the open node with their visibility, re-sorts the
+registry, and regenerates `crypto/libcrypto.map` and `ssl/libssl.map`. Commit the
+updated `.txt` and `.map` files together.
 
-> While a version series is unreleased, newly added symbols may simply be folded
-> into the existing baseline node (`AWS_LC_1.0`) by regenerating the registry;
-> once a version has shipped, its node is frozen and new API goes into a new node.
+Always use `update_symbol_version.sh` rather than editing the registry or `.map`
+files by hand.
+
+Once a version has shipped, its node is frozen and new API goes into a new one.
+Pass the node instead of `--current` to open it:
+
+```bash
+./util/update_symbol_version.sh AWS_LC_1.1
+```
 
 ### Version Naming Convention
 
@@ -317,7 +322,7 @@ in `incremental`, `baseline`, and `mapcheck` modes.
 - **Symbol additions**: ⚠️ Warning (allowed, but verify intentional)
 - **PUBLIC symbol removals**: ❌ Error (blocks the build — ABI break)
 - **PRIVATE / PRIVATE_CXX removals**: ⚠️ Warning (allowed)
-- **Unregistered new API (baseline)**: ❌ Error (run `update_symbol_version.sh`)
+- **Unregistered new API (baseline)**: ❌ Error (run `update_symbol_version.sh --current`)
 - **`.map` out of sync with registry (drift)**: ❌ Error (regenerate the `.map`)
 
 ### When CI Fails
@@ -328,11 +333,15 @@ in `incremental`, `baseline`, and `mapcheck` modes.
 ❌ UNREGISTERED SYMBOLS (1):
 CRYPTO_tls13_hkdf_expand_label
 
-🛑 New symbols are not in the registry.
-   Run: util/update_symbol_version.sh <version>
+🛑 New symbols are not in the registry. Unregistered symbols are hidden
+   by the version script, so applications cannot link against them.
+   Register them in the current version node:
+     ./util/update_symbol_version.sh --current
+   then commit the updated .txt and .map files together.
+   See docs/SymbolVersioning.md for when to open a new node instead.
 ```
 
-**Action**: run `./util/update_symbol_version.sh <version>` and commit the updated `.txt`/`.map`.
+**Action**: run `./util/update_symbol_version.sh --current` and commit the updated `.txt`/`.map`.
 
 #### PUBLIC symbol removal (incremental check)
 
@@ -366,13 +375,13 @@ No action needed. Symbol versioning is transparent.
 1. Add new `OPENSSL_EXPORT` functions to headers.
 2. Register the new symbols and regenerate the version scripts:
    ```bash
-   ./util/update_symbol_version.sh AWS_LC_1.1
+   ./util/update_symbol_version.sh --current
    ```
 3. Optionally verify against a build:
    ```bash
    cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON
    ninja -C build
-   nm -D build/crypto/libcrypto-awslc.so | grep @AWS_LC_1.1 | head
+   nm -D build/crypto/libcrypto-awslcfips4.so | grep @AWS_LC_1.0 | head
    ```
 4. Commit the updated registry (`crypto/libcrypto.txt`, `ssl/libssl.txt`) and version scripts (`crypto/libcrypto.map`, `ssl/libssl.map`) together.
 
