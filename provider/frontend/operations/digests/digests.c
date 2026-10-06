@@ -34,42 +34,14 @@ const OSSL_PARAM *awslc_prov_digest_gettable_ctx_params(void *dctx,
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
                                  size_t digest_size, uint32_t flags) {
-  OSSL_PARAM *p = NULL;
-
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
-  if (p != NULL && !OSSL_PARAM_set_size_t(p, block_size)) {
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_SIZE);
-  if (p != NULL && !OSSL_PARAM_set_size_t(p, digest_size)) {
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_XOF);
-  if (p != NULL &&
-      !OSSL_PARAM_set_int(p, (flags & AWSLC_PROV_DIGEST_FLAG_XOF) != 0)) {
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_ALGID_ABSENT);
-  if (p != NULL &&
-      !OSSL_PARAM_set_int(
-          p, (flags & AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT) != 0)) {
-    return 0;
-  }
-  return 1;
-}
-
-int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
-                                         OSSL_PARAM params[], int approved) {
-  OSSL_PARAM *p =
-      OSSL_PARAM_locate(params, OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR);
-
-  if (p == NULL) {
-    return 1;
-  }
-  if (!OSSL_PARAM_set_int(p, approved)) {
-    AWSLC_PROV_ERROR_RAISE(provctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR);
-    return 0;
-  }
-  return 1;
+  // OSSL_FUNC_digest_get_params carries no provctx to raise through.
+  return awslc_prov_param_set_size_t(NULL, params, OSSL_DIGEST_PARAM_BLOCK_SIZE,
+                                     block_size) &&
+         awslc_prov_param_set_size_t(NULL, params, OSSL_DIGEST_PARAM_SIZE,
+                                     digest_size) &&
+         awslc_prov_param_set_int(NULL, params, OSSL_DIGEST_PARAM_XOF,
+                                  (flags & AWSLC_PROV_DIGEST_FLAG_XOF) != 0) &&
+         awslc_prov_param_set_int(
+             NULL, params, OSSL_DIGEST_PARAM_ALGID_ABSENT,
+             (flags & AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT) != 0);
 }

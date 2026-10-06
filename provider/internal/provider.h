@@ -69,6 +69,20 @@ int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx);
 int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx, const char *type,
                                        const char *description);
 
+// Answer |key| in |params| with |value|. Succeeds when |key| is not requested;
+// a failed set raises AWSLC_PROV_R_INVALID_PARAMETER naming |key|, except that
+// a NULL |ctx| raises nothing.
+int awslc_prov_param_set_int(const AWSLC_PROV_CTX *ctx, OSSL_PARAM params[],
+                             const char *key, int value);
+int awslc_prov_param_set_size_t(const AWSLC_PROV_CTX *ctx, OSSL_PARAM params[],
+                                const char *key, size_t value);
+int awslc_prov_param_set_utf8_string(const AWSLC_PROV_CTX *ctx,
+                                     OSSL_PARAM params[], const char *key,
+                                     const char *value);
+int awslc_prov_param_set_utf8_ptr(const AWSLC_PROV_CTX *ctx,
+                                  OSSL_PARAM params[], const char *key,
+                                  const char *value);
+
 // The fan-out, implemented in registry.c and published by provider.c in the
 // top-level dispatch table. The dispatch tables it hands out are declared in
 // per-class headers, which only registry.c and the class implementations include.

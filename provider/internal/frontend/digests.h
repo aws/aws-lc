@@ -31,8 +31,6 @@ OSSL_FUNC_digest_gettable_ctx_params_fn
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
                                  size_t digest_size, uint32_t flags);
-int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
-                                         OSSL_PARAM params[], int approved);
 
 // Declare one fixed-length digest's slots at the exact types OpenSSL calls.
 #define AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(algorithm)                       \

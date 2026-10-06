@@ -34,7 +34,9 @@ None yet.
 
 ## Key Managements (`OSSL_OP_KEYMGMT`)
 
-None yet.
+| Family | Variants |
+|---|---|
+| RSA | `RSA` |
 
 ## Message Authentication Codes (`OSSL_OP_MAC`)
 

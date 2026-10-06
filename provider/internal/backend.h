@@ -56,6 +56,8 @@
 //   frontend/operations/<class>/<family>.c   family helpers and dispatch slots
 //   backend/operations/<class>/<family>.c    explicit AWS-LC bindings
 //
+// <class> is OpenSSL's providers/implementations/ directory name.
+//
 // The two operations/ trees correspond one to one where the shape allows it.
 //
 // Anything the whole provider needs regardless of algorithm is declared in this

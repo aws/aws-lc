@@ -31,6 +31,7 @@ constexpr ReachabilityCell kReachabilityCells[] = {
     {OSSL_OP_DIGEST, "SHA2-512"},
     {OSSL_OP_DIGEST, "SHA2-512/224"},
     {OSSL_OP_DIGEST, "SHA2-512/256"},
+    {OSSL_OP_KEYMGMT, "RSA"},
 };
 
 std::string ReachabilityKey(int operation, const std::string &name) {
@@ -78,6 +79,15 @@ TEST_P(ReachabilityTest, IsReachableAndAttributed) {
       ASSERT_TRUE(md) << cell.name << " was not reachable";
       EXPECT_STREQ(kProviderName,
                    OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
+      break;
+    }
+    case OSSL_OP_KEYMGMT: {
+      EVP_KEYMGMT *keymgmt =
+          EVP_KEYMGMT_fetch(libctx(), cell.name, kRequireAwslc);
+      ASSERT_NE(nullptr, keymgmt) << cell.name << " was not reachable";
+      EXPECT_STREQ(kProviderName,
+                   OSSL_PROVIDER_get0_name(EVP_KEYMGMT_get0_provider(keymgmt)));
+      EVP_KEYMGMT_free(keymgmt);
       break;
     }
     default:

@@ -5,6 +5,7 @@
 #include <openssl/core_dispatch.h>
 
 #include "internal/frontend/digests.h"
+#include "internal/frontend/keymgmt.h"
 #include "internal/provider.h"
 
 // A macro for defining algorithm rows for the OpenSSL provider dispatch table.
@@ -52,6 +53,13 @@ static const OSSL_ALGORITHM awslc_prov_digests[] = {
         "AWS-LC SHA2-512/256 implementation"),
     {NULL, NULL, NULL, NULL}};
 
+static const OSSL_ALGORITHM awslc_prov_keymgmt[] = {
+    // PROV_NAMES_RSA
+    AWSLC_PROV_ALG("RSA:rsaEncryption:1.2.840.113549.1.1.1",
+                   AWSLC_PROV_FIPS_PROPERTIES, rsa_keymgmt,
+                   "AWS-LC RSA implementation"),
+    {NULL, NULL, NULL, NULL}};
+
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
                                                  int operation_id,
                                                  int *no_store) {
@@ -64,6 +72,8 @@ const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
   switch (operation_id) {
     case OSSL_OP_DIGEST:
       return awslc_prov_digests;
+    case OSSL_OP_KEYMGMT:
+      return awslc_prov_keymgmt;
     default:
       // Returning NULL is what lets the fetch fall through to another provider
       // rather than fail, so every class we do not serve must land here.

@@ -6,6 +6,8 @@
 // Shared behavior is ordinary C at the family level. Each algorithm then has
 // thin, typed wrappers naming its own backend entry points.
 
+#include <openssl/core_names.h>
+
 #include "internal/backend.h"
 #include "internal/backend/digests.h"
 #include "internal/frontend/digests.h"
@@ -196,8 +198,9 @@ static int awslc_prov_sha2_get_ctx_params(void *dctx, OSSL_PARAM params[]) {
   if (ctx == NULL) {
     return 0;
   }
-  return awslc_prov_digest_get_fips_indicator(ctx->provctx, params,
-                                              ctx->fips_approved);
+  return awslc_prov_param_set_int(ctx->provctx, params,
+                                  OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR,
+                                  ctx->fips_approved);
 }
 
 static int awslc_prov_sha2_get_params(OSSL_PARAM params[],

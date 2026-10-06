@@ -41,13 +41,14 @@ PROVIDER_NAME="awslc"
 # required fetch count per algorithm the provider backs.
 #
 #   cases   Known answers in the file.
-#   skips   Cases evp_test declines to run.
+#   skips   Cases evp_test declines to run because a stanza precondition is unmet.
 #   fetches Times evp_test reported fetching that specific algorithm name.
 #
 # Algorithms the provider does not back are the default provider's to serve and
 # are left unconstrained.
 EXPECTATIONS=(
   "evpmd_sha.txt 74 0 SHA224:3 SHA256:3 SHA384:3 SHA512:3 SHA512-224:7 SHA512-256:7 shA512:1"
+  "evppkey_rsa.txt 63 11"
 )
 
 # --------------------------------------------------------------------------
