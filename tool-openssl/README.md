@@ -14,6 +14,14 @@ Current status:
 
 ## Notable differences from OpenSSL
 
+### ca
+
+`ca` can act as a CA that signs CSRs, not only self-sign. The signing key comes from `-keyfile` (otherwise the config `private_key`) and the signing certificate from `-cert` (otherwise the config `certificate`), and the two must correspond. `-subj` overrides the subject of the issued certificate. The CA certificate may be supplied as either a plain `CERTIFICATE` or a `TRUSTED CERTIFICATE` PEM block.
+
+`-revoke <cert>` marks an existing entry revoked in the index database, and `-gencrl` writes a CRL covering the revoked entries. `-crldays` sets the CRL's next-update interval (falling back to the config `default_crl_days`) and is required for `-gencrl`.
+
+The certificate validity period is taken from the config `default_days`, falling back to `days`, unless `-enddate` is given. The `<index>.attr` sidecar is optional: when it is absent, `unique_subject` defaults to `yes`, as in OpenSSL.
+
 ### verify
 
 `-CAfile` and `-CApath` may be used independently or together; an explicit path replaces the default for that source, and `-no-CAfile`/`-no-CApath` disable the corresponding default (but not an explicit path). Defaults honor `SSL_CERT_FILE` and `SSL_CERT_DIR`. CA directories must be indexed by subject hash, as produced by `openssl rehash`.
