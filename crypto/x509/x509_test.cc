@@ -7029,6 +7029,96 @@ TEST(X509Test, NamePrintMissingAttributeName) {
   }
 }
 
+TEST(X509Test, NamePrintLargeOutputOverflow) {
+  // Each value dumps as '#' plus two hex digits per byte. Exercise overflow
+  // when adding each part of the printed name, as well as exact-fit outputs.
+  const struct {
+    int value_lengths[2];
+    int second_set;
+    int indent;
+    unsigned long flags;
+    int expected_len;
+  } kTests[] = {
+      // Two values of |INT_MAX / 2| characters and a comma fit exactly.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE,
+       INT_MAX},
+      // A two-character separator overflows when adding the second value.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_NONE,
+       -1},
+      // The first value reaches |INT_MAX|, so the ',' or '+' overflows.
+      {{INT_MAX / 2, 0}, 0, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      {{INT_MAX / 2, 0}, -1, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      // Initial indentation, the first value, and '\n' reach |INT_MAX|.
+      // Indenting the second line overflows.
+      {{(INT_MAX - 3) / 2, 0},
+       0,
+       1,
+       XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_NONE,
+       -1},
+      // "CN=", the first value, and ',' reach |INT_MAX|. The second "CN"
+      // overflows.
+      {{(INT_MAX - 5) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN", but not its '='.
+      {{(INT_MAX - 7) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN=#", reaching |INT_MAX| exactly.
+      {{(INT_MAX - 9) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       INT_MAX},
+      // The padded first "CN=", value, and ',' reach |INT_MAX|. Alignment
+      // padding for the second field overflows.
+      {{(INT_MAX - 13) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN | XN_FLAG_FN_ALIGN,
+       -1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.value_lengths[0]);
+    SCOPED_TRACE(t.second_set);
+    SCOPED_TRACE(t.flags);
+    // Parsed names are bounded, but a caller-constructed name may print more
+    // than |INT_MAX| characters in total. As in
+    // |ASN1Test.PrintExLargeStringOverflow|, fake each value's length. With a
+    // NULL |BIO| and |ASN1_STRFLGS_DUMP_ALL|, the values are only measured and
+    // never read.
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    for (int i = 0; i < 2; i++) {
+      ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+          name.get(), NID_commonName, V_ASN1_UTF8STRING,
+          reinterpret_cast<const uint8_t *>("x"), 1, /*loc=*/-1,
+          /*set=*/i == 0 ? 0 : t.second_set));
+      ASN1_STRING *val =
+          X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name.get(), i));
+      ASSERT_TRUE(val);
+      val->length = t.value_lengths[i];
+    }
+
+    EXPECT_EQ(t.expected_len,
+              X509_NAME_print_ex(nullptr, name.get(), t.indent,
+                                 t.flags | ASN1_STRFLGS_DUMP_ALL));
+    if (t.expected_len < 0) {
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509, ERR_R_OVERFLOW));
+    }
+  }
+}
+
 // kRareRSAPEM is a certificate with the rare |nid_rsa|.
 static const char kRareRSAPEM[] = R"(
 -----BEGIN CERTIFICATE-----
