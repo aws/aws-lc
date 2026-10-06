@@ -35,6 +35,7 @@ constexpr ReachabilityCell kReachabilityCells[] = {
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512},
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_224},
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_256},
+    {OSSL_OP_KEYMGMT, "RSA:rsaEncryption:1.2.840.113549.1.1.1"},
 };
 
 std::vector<std::string> SplitNames(const std::string &names) {
@@ -139,6 +140,16 @@ TEST_P(ReachabilityTest, ResolvesUnderEveryAdvertisedName) {
         ASSERT_TRUE(md) << "advertised name '" << name << "' did not resolve";
         EXPECT_STREQ(kProviderName,
                      OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
+        break;
+      }
+      case OSSL_OP_KEYMGMT: {
+        EVP_KEYMGMT *keymgmt =
+            EVP_KEYMGMT_fetch(libctx(), name.c_str(), kRequireAwslc);
+        ASSERT_NE(nullptr, keymgmt)
+            << "advertised name '" << name << "' did not resolve";
+        EXPECT_STREQ(kProviderName, OSSL_PROVIDER_get0_name(
+                                        EVP_KEYMGMT_get0_provider(keymgmt)));
+        EVP_KEYMGMT_free(keymgmt);
         break;
       }
       default:
