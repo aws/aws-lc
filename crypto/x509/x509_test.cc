@@ -2344,6 +2344,154 @@ TEST(X509Test, CRLDistributionPointScope) {
   }
 }
 
+static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {
+  DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
+  if (!dpn) {
+    return nullptr;
+  }
+  dpn->type = 1;  // nameRelativeToCRLIssuer
+  dpn->name.relativename = sk_X509_NAME_ENTRY_new_null();
+  bssl::UniquePtr<X509_NAME_ENTRY> entry(X509_NAME_ENTRY_create_by_NID(
+      nullptr, NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const uint8_t *>(cn), -1));
+  if (!dpn->name.relativename || !entry ||
+      !bssl::PushToStack(dpn->name.relativename, std::move(entry))) {
+    DIST_POINT_NAME_free(dpn);
+    return nullptr;
+  }
+  return dpn;
+}
+
+// nameRelativeToCRLIssuer is not supported. Such distribution points must not
+// be expanded when extensions are cached, and must never match in CRL scope
+// checks.
+TEST(X509Test, CRLDPNameRelativeToCRLIssuer) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x1100;
+  static const size_t kNumDPs = 64;
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  for (size_t i = 0; i < kNumDPs; i++) {
+    bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+    ASSERT_TRUE(dp);
+    dp->distpoint = MakeRelativeDistPointName("CRL");
+    ASSERT_TRUE(dp->distpoint);
+    ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+  }
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(leaf);
+  // Round-trip so the extension cache is computed from parsed extensions.
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509(leaf.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  const uint8_t *inp = der;
+  leaf.reset(d2i_X509(nullptr, &inp, der_len));
+  ASSERT_TRUE(leaf);
+
+  // Computing cached extensions must not construct absolute names.
+  EXPECT_FALSE(X509_get_extension_flags(leaf.get()) & EXFLAG_INVALID);
+  ASSERT_EQ(kNumDPs, sk_DIST_POINT_num(leaf->crldp));
+  for (size_t i = 0; i < kNumDPs; i++) {
+    const DIST_POINT *dp = sk_DIST_POINT_value(leaf->crldp, i);
+    ASSERT_TRUE(dp->distpoint);
+    EXPECT_EQ(1, dp->distpoint->type);
+    EXPECT_FALSE(dp->distpoint->dpname);
+  }
+
+  // Builds a CRL that revokes the leaf, with an IDP whose distributionPoint is
+  // |dpn|. Takes ownership of |dpn|.
+  auto make_crl = [&](DIST_POINT_NAME *dpn) -> bssl::UniquePtr<X509_CRL> {
+    ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
+    if (!idp) {
+      DIST_POINT_NAME_free(dpn);
+      return nullptr;
+    }
+    idp->distpoint = dpn;
+    bssl::UniquePtr<X509_EXTENSION> idp_ext(
+        dpn ? X509V3_EXT_i2d(NID_issuing_distribution_point, /*crit=*/1, idp)
+            : nullptr);
+    ISSUING_DIST_POINT_free(idp);  // Also frees |dpn|.
+    if (!idp_ext) {
+      return nullptr;
+    }
+    bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+    bssl::UniquePtr<ASN1_TIME> t(ASN1_TIME_new());
+    bssl::UniquePtr<X509_REVOKED> rev(X509_REVOKED_new());
+    bssl::UniquePtr<ASN1_INTEGER> sn(ASN1_INTEGER_new());
+    if (!crl || !t || !rev || !sn ||
+        !X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2) ||
+        !X509_CRL_set_issuer_name(crl.get(),
+                                  X509_get_subject_name(root.get())) ||
+        !ASN1_TIME_adj(t.get(), kReferenceTime, 0, 0) ||
+        !X509_CRL_set1_lastUpdate(crl.get(), t.get()) ||
+        !ASN1_TIME_adj(t.get(), kReferenceTime, 30, 0) ||
+        !X509_CRL_set1_nextUpdate(crl.get(), t.get()) ||
+        !ASN1_INTEGER_set(sn.get(), kLeafSerial) ||
+        !X509_REVOKED_set_serialNumber(rev.get(), sn.get()) ||
+        !ASN1_TIME_set_posix(t.get(), kReferenceTime) ||
+        !X509_REVOKED_set_revocationDate(rev.get(), t.get()) ||
+        !X509_CRL_add0_revoked(crl.get(), rev.get())) {
+      return nullptr;
+    }
+    rev.release();  // Ownership transferred to |crl|.
+    if (!X509_CRL_add_ext(crl.get(), idp_ext.get(), /*loc=*/-1) ||
+        !X509_CRL_sign(crl.get(), key.get(), EVP_sha256())) {
+      return nullptr;
+    }
+    // Re-parse so |crl->idp| is populated.
+    uint8_t *crl_der = nullptr;
+    int crl_der_len = i2d_X509_CRL(crl.get(), &crl_der);
+    if (crl_der_len <= 0) {
+      return nullptr;
+    }
+    bssl::UniquePtr<uint8_t> free_crl_der(crl_der);
+    const uint8_t *crl_inp = crl_der;
+    return bssl::UniquePtr<X509_CRL>(
+        d2i_X509_CRL(nullptr, &crl_inp, crl_der_len));
+  };
+
+  // A CRL whose IDP uses the same relative name used to match and revoke the
+  // leaf. It is now out of scope.
+  bssl::UniquePtr<X509_CRL> crl = make_crl(MakeRelativeDistPointName("CRL"));
+  ASSERT_TRUE(crl);
+  ASSERT_TRUE(crl->idp);
+  EXPECT_FALSE(crl->idp->distpoint->dpname);
+  EXPECT_EQ(X509_V_ERR_DIFFERENT_CRL_SCOPE,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
+
+  // A CRL whose IDP is a fullName directoryName equal to the leaf's relative
+  // name expanded against its issuer. This also used to match and revoke the
+  // leaf, and is now out of scope.
+  bssl::UniquePtr<X509_NAME> expanded(
+      X509_NAME_dup(X509_get_subject_name(root.get())));
+  ASSERT_TRUE(expanded);
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      expanded.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const uint8_t *>("CRL"), -1, /*loc=*/-1, /*set=*/0));
+  bssl::UniquePtr<GENERAL_NAMES> fullname(sk_GENERAL_NAME_new_null());
+  ASSERT_TRUE(fullname);
+  bssl::UniquePtr<GENERAL_NAME> dirname(GENERAL_NAME_new());
+  ASSERT_TRUE(dirname);
+  GENERAL_NAME_set0_value(dirname.get(), GEN_DIRNAME, expanded.release());
+  ASSERT_TRUE(bssl::PushToStack(fullname.get(), std::move(dirname)));
+  DIST_POINT_NAME *full_dpn = DIST_POINT_NAME_new();
+  ASSERT_TRUE(full_dpn);
+  full_dpn->type = 0;  // fullName
+  full_dpn->name.fullname = fullname.release();
+  crl = make_crl(full_dpn);
+  ASSERT_TRUE(crl);
+  ASSERT_TRUE(crl->idp);
+  EXPECT_EQ(X509_V_ERR_DIFFERENT_CRL_SCOPE,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
+}
+
 // A CRL whose IDP specifically matches the certificate's CRLDP must be
 // preferred over a broad CRL (no IDP or empty IDP), regardless of freshness
 // or load order.
@@ -3892,6 +4040,221 @@ TEST(X509Test, TestFromBufferReused) {
   ASSERT_EQ(static_cast<long>(data2_len), i2d_len);
   ASSERT_EQ(0, OPENSSL_memcmp(data2.get(), i2d, i2d_len));
   ASSERT_EQ(nullptr, root->buf);
+}
+
+// MakeCachedExtensionsCert returns a self-signed CA certificate carrying every
+// extension that |x509v3_cache_extensions| caches, so that reusing an |X509|
+// which held it exercises each cached field.
+static bssl::UniquePtr<X509> MakeCachedExtensionsCert(EVP_PKEY *key) {
+  bssl::UniquePtr<X509> cert =
+      MakeTestCert("Cached CA", "Cached CA", key, /*is_ca=*/true);
+  if (!cert) {
+    return nullptr;
+  }
+  // Drop the basicConstraints |MakeTestCert| added; the table below supplies
+  // one with a pathLenConstraint.
+  X509_EXTENSION_free(X509_delete_ext(
+      cert.get(), X509_get_ext_by_NID(cert.get(), NID_basic_constraints, -1)));
+  // |cert| is its own issuer, so authorityKeyIdentifier can copy the
+  // subjectKeyIdentifier added before it.
+  X509V3_CTX ctx;
+  X509V3_set_ctx(&ctx, cert.get(), cert.get(), nullptr, nullptr, /*flags=*/0);
+  static const struct {
+    int nid;
+    const char *value;
+  } kExtensions[] = {
+      {NID_basic_constraints, "critical,CA:TRUE,pathlen:3"},
+      {NID_key_usage, "critical,keyCertSign,cRLSign"},
+      {NID_ext_key_usage, "OCSPSigning"},
+      {NID_netscape_cert_type, "sslCA"},
+      {NID_subject_key_identifier, "01:02:03:04"},
+      {NID_authority_key_identifier, "keyid:always"},
+      {NID_subject_alt_name, "DNS:cached.example.com"},
+      {NID_name_constraints, "critical,permitted;DNS:.example.com"},
+      {NID_crl_distribution_points, "URI:http://example.com/crl"},
+  };
+  for (const auto &ext : kExtensions) {
+    bssl::UniquePtr<X509_EXTENSION> x509_ext(
+        X509V3_EXT_nconf_nid(nullptr, &ctx, ext.nid, ext.value));
+    if (!x509_ext || !X509_add_ext(cert.get(), x509_ext.get(), /*loc=*/-1)) {
+      return nullptr;
+    }
+  }
+  if (!X509_sign(cert.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return cert;
+}
+
+// Reusing an |X509| as the output of |d2i_X509| must discard the cached
+// extension state of the certificate it previously held. Otherwise the old
+// certificate's CA bit, path length, key usages, key identifiers and hash
+// would govern checks made on the new one.
+TEST(X509Test, ReusedCertResetsCachedExtensions) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> ca = MakeCachedExtensionsCert(key.get());
+  ASSERT_TRUE(ca);
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Cached CA", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  uint8_t *ca_der = nullptr, *leaf_der = nullptr;
+  int ca_len = i2d_X509(ca.get(), &ca_der);
+  int leaf_len = i2d_X509(leaf.get(), &leaf_der);
+  bssl::UniquePtr<uint8_t> ca_der_storage(ca_der), leaf_der_storage(leaf_der);
+  ASSERT_GT(ca_len, 0);
+  ASSERT_GT(leaf_len, 0);
+
+  // Sanity-check the inputs: one is a CA and the other is not.
+  ASSERT_EQ(1, X509_check_ca(ca.get()));
+  ASSERT_EQ(0, X509_check_ca(leaf.get()));
+
+  bssl::UniquePtr<X509> reused(X509_new());
+  ASSERT_TRUE(reused);
+  X509 *reusedp = reused.get();
+  const uint8_t *inp = ca_der;
+  ASSERT_TRUE(d2i_X509(&reusedp, &inp, ca_len));
+  ASSERT_EQ(reused.get(), reusedp);
+
+  // Use the certificate, which populates the extension cache. Also attach
+  // auxiliary information, as a trust store would, and application data, as a
+  // caller of |X509_set_ex_data| would.
+  ASSERT_EQ(1, X509_check_ca(reused.get()));
+  ASSERT_EQ(3, X509_get_pathlen(reused.get()));
+  ASSERT_TRUE(X509_alias_set1(reused.get(),
+                              reinterpret_cast<const uint8_t *>("alias"), -1));
+  static const int kExIndex = X509_get_ex_new_index(
+      /*argl=*/0, /*argp=*/nullptr, /*unused=*/nullptr, /*dup_unused=*/nullptr,
+      /*free_func=*/nullptr);
+  ASSERT_GE(kExIndex, 0);
+  char app_data[] = "app data";
+  ASSERT_TRUE(X509_set_ex_data(reused.get(), kExIndex, app_data));
+
+  // Reuse the object to parse a different, non-CA certificate.
+  inp = leaf_der;
+  ASSERT_TRUE(d2i_X509(&reusedp, &inp, leaf_len));
+
+  // Every cached value must describe the new certificate, not the old one.
+  EXPECT_EQ(0, X509_check_ca(reused.get()));
+  EXPECT_EQ(X509_get_extension_flags(leaf.get()),
+            X509_get_extension_flags(reused.get()));
+  EXPECT_EQ(X509_get_pathlen(leaf.get()), X509_get_pathlen(reused.get()));
+  EXPECT_EQ(X509_get_key_usage(leaf.get()), X509_get_key_usage(reused.get()));
+  EXPECT_EQ(X509_get_extended_key_usage(leaf.get()),
+            X509_get_extended_key_usage(reused.get()));
+  EXPECT_EQ(nullptr, X509_get0_subject_key_id(reused.get()));
+  EXPECT_EQ(nullptr, X509_get0_authority_key_id(reused.get()));
+  EXPECT_EQ(nullptr, X509_alias_get0(reused.get(), nullptr));
+  EXPECT_EQ(nullptr, reused->altname);
+  EXPECT_EQ(nullptr, reused->nc);
+  EXPECT_EQ(nullptr, reused->crldp);
+  EXPECT_EQ(0u, reused->ex_nscert);
+  EXPECT_EQ(nullptr, X509_get_ex_data(reused.get(), kExIndex));
+
+  // |X509_cmp| compares cached certificate hashes, so a stale cache would make
+  // the reused object compare equal to the certificate it no longer holds.
+  EXPECT_EQ(0, X509_cmp(leaf.get(), reused.get()));
+  EXPECT_NE(0, X509_cmp(ca.get(), reused.get()));
+}
+
+// MakeCachedExtensionsCRL returns a CRL carrying every extension |crl_cb|
+// caches: an issuing distribution point, an authorityKeyIdentifier naming a key
+// no certificate has, and an unknown critical extension.
+static bssl::UniquePtr<X509_CRL> MakeCachedExtensionsCRL(X509 *issuer,
+                                                         EVP_PKEY *key) {
+  // An IDP with no distribution point matches any certificate's scope, so the
+  // CRL is still the one chosen for |issuer|'s certificates.
+  bssl::UniquePtr<X509_CRL> crl =
+      MakeTestCRL(issuer, key, /*idp_uri=*/"", /*revoked_serials=*/{});
+  if (!crl) {
+    return nullptr;
+  }
+
+  static const uint8_t kWrongKeyID[] = {0xde, 0xad, 0xbe, 0xef};
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
+  if (!akid) {
+    return nullptr;
+  }
+  akid->keyid = ASN1_OCTET_STRING_new();
+  if (!akid->keyid ||
+      !ASN1_OCTET_STRING_set(akid->keyid, kWrongKeyID, sizeof(kWrongKeyID)) ||
+      !X509_CRL_add1_ext_i2d(crl.get(), NID_authority_key_identifier,
+                             akid.get(), /*crit=*/0, /*flags=*/0)) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<ASN1_OBJECT> oid(
+      OBJ_txt2obj("1.3.6.1.4.1.311.21.36", /*dont_search_names=*/1));
+  bssl::UniquePtr<ASN1_OCTET_STRING> ext_val(ASN1_OCTET_STRING_new());
+  if (!oid || !ext_val) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_OBJ(
+      nullptr, oid.get(), /*crit=*/1, ext_val.get()));
+  if (!ext || !X509_CRL_add_ext(crl.get(), ext.get(), /*loc=*/-1) ||
+      !X509_CRL_sign(crl.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return crl;
+}
+
+// Reusing an |X509_CRL| as the output of |d2i_X509_CRL| must likewise discard
+// the cached extension state of the CRL it previously held.
+TEST(X509Test, ReusedCRLResetsCachedExtensions) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kCRLTestLeaf));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  bssl::UniquePtr<X509_CRL> basic_crl(CRLFromPEM(kBasicCRL));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(basic_crl);
+
+  bssl::UniquePtr<X509_CRL> old_crl =
+      MakeCachedExtensionsCRL(root.get(), key.get());
+  ASSERT_TRUE(old_crl);
+  uint8_t *old_der = nullptr;
+  int old_len = i2d_X509_CRL(old_crl.get(), &old_der);
+  bssl::UniquePtr<uint8_t> old_der_storage(old_der);
+  ASSERT_GT(old_len, 0);
+
+  // |kBasicCRL| carries none of the three extensions.
+  size_t new_len = 0;
+  bssl::UniquePtr<uint8_t> new_der;
+  ASSERT_TRUE(PEMToDER(&new_der, &new_len, kBasicCRL));
+
+  bssl::UniquePtr<X509_CRL> reused(X509_CRL_new());
+  ASSERT_TRUE(reused);
+  X509_CRL *reusedp = reused.get();
+  const uint8_t *inp = old_der;
+  ASSERT_TRUE(d2i_X509_CRL(&reusedp, &inp, old_len));
+  ASSERT_EQ(reused.get(), reusedp);
+  ASSERT_TRUE(reused->idp);
+  ASSERT_NE(0, reused->idp_flags);
+  ASSERT_TRUE(reused->akid);
+  ASSERT_TRUE(reused->flags & EXFLAG_CRITICAL);
+  // |akid| is what matches a CRL to its issuer, and this one matches no key, so
+  // the CRL cannot be used.
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {reused.get()},
+                   X509_V_FLAG_CRL_CHECK));
+
+  // Reuse the object for the other CRL. None of the cached state may survive.
+  // Parsing overwrites |idp| and |akid| but only accumulates into the two flag
+  // words, so the reset must clear those and free what the pointers held.
+  inp = new_der.get();
+  ASSERT_TRUE(d2i_X509_CRL(&reusedp, &inp, new_len));
+  EXPECT_EQ(nullptr, reused->idp);
+  EXPECT_EQ(0, reused->idp_flags);
+  EXPECT_EQ(nullptr, reused->akid);
+  EXPECT_EQ(basic_crl->flags, reused->flags);
+  // A surviving |flags| reports an unhandled critical extension, so this
+  // verification fails without the reset.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                              {reused.get()}, X509_V_FLAG_CRL_CHECK));
 }
 
 TEST(X509Test, TestFailedParseFromBuffer) {
@@ -6844,6 +7207,40 @@ TEST(X509Test, NamePrint) {
       truncated += component;
     }
     EXPECT_EQ(buf, truncated);
+  }
+}
+
+TEST(X509Test, NamePrintMissingAttributeName) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid_no_ln =
+      OBJ_create("1.2.840.113554.4.1.72585.1010", "short name only", nullptr);
+  ASSERT_NE(NID_undef, nid_no_ln);
+  int nid_no_sn =
+      OBJ_create("1.2.840.113554.4.1.72585.1011", nullptr, "long name only");
+  ASSERT_NE(NID_undef, nid_no_sn);
+
+  const struct {
+    int nid;
+    unsigned long flags;
+  } kTests[] = {
+      {nid_no_ln, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_LN},
+      {nid_no_sn, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.nid);
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+        name.get(), t.nid, V_ASN1_PRINTABLESTRING,
+        reinterpret_cast<const uint8_t *>("value"), 5, /*loc=*/-1, /*set=*/0));
+
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    EXPECT_EQ(X509_NAME_print_ex(bio.get(), name.get(), /*indent=*/0, t.flags),
+              -1);
+    EXPECT_EQ(X509_NAME_print_ex(nullptr, name.get(), /*indent=*/0, t.flags),
+              -1);
   }
 }
 

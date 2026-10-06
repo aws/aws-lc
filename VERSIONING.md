@@ -136,8 +136,8 @@ FIPS branches published before this scheme have the following deprecation timeli
 
 | Branch            | End of support     |
 |-------------------|--------------------|
-| AWS-LC FIPS 1.0   | October 2026       |
-| AWS-LC FIPS 2.0   | April 2027         |
-| AWS-LC FIPS 3.0   | April 2028         |
+| AWS-LC FIPS 1.x   | October 2026       |
+| AWS-LC FIPS 2.x   | April 2027         |
+| AWS-LC FIPS 3.x   | February 2030      |
 
 After a branch reaches end of support, security fixes will no longer be backported. Consumers on these branches should migrate to mainline or to the FIPS 4.x LTS branch before the listed date.

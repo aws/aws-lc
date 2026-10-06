@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include "test_util.h"
+#include <openssl/ec_key.h>
 #include <openssl/pem.h>
 
 std::string ShellEscape(const std::string &argument) {
@@ -55,9 +56,12 @@ TEST(TestUtilTest, ShellEscape) {
 #endif
 }
 
-void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
-                                  bssl::UniquePtr<EVP_PKEY> *pkey_p) {
-  x509.reset(X509_new());
+void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &out_x509,
+                                  bssl::UniquePtr<EVP_PKEY> *pkey_p,
+                                  int key_type) {
+  // Leave |out_x509| empty on failure.
+  out_x509.reset();
+  bssl::UniquePtr<X509> x509(X509_new());
   if (!x509) {
     fprintf(stderr, "Error creating new X509 certificate\n");
     return;
@@ -83,12 +87,25 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
     return;
   }
 
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
-      !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
-    fprintf(stderr, "Error generating new key\n");
+  if (key_type == EVP_PKEY_RSA) {
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> exponent(BN_new());
+    if (!exponent || !BN_set_word(exponent.get(), RSA_F4) ||
+        !RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr) ||
+        !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
+      fprintf(stderr, "Error generating new RSA key\n");
+      return;
+    }
+  } else if (key_type == EVP_PKEY_EC) {
+    bssl::UniquePtr<EC_KEY> ec_key(
+        EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+    if (!ec_key || !EC_KEY_generate_key(ec_key.get()) ||
+        !EVP_PKEY_assign_EC_KEY(pkey.get(), ec_key.release())) {
+      fprintf(stderr, "Error generating new EC key\n");
+      return;
+    }
+  } else {
+    fprintf(stderr, "Error: unsupported key type\n");
     return;
   }
   if (!X509_set_pubkey(x509.get(), pkey.get())) {
@@ -121,11 +138,10 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
 
   // Set a randomly generated serial number
 
-  bn.reset(BN_new());
-
+  bssl::UniquePtr<BIGNUM> serial_bn(BN_new());
   constexpr int SERIAL_RAND_BITS = 159;
-  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
-               BN_RAND_BOTTOM_ANY)) {
+  if (!serial_bn || !BN_rand(serial_bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
+                             BN_RAND_BOTTOM_ANY)) {
     fprintf(stderr, "Error: Failed to generate random serial number\n");
     return;
   }
@@ -136,7 +152,7 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
     return;
   }
 
-  if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
+  if (!BN_to_ASN1_INTEGER(serial_bn.get(), serial)) {
     fprintf(stderr, "Error: Failed to convert BIGNUM to ASN1_INTEGER\n");
     return;
   }
@@ -168,6 +184,7 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
     return;
   }
 
+  out_x509 = std::move(x509);
   if (pkey_p != nullptr) {
     pkey_p->reset(pkey.release());
   }
