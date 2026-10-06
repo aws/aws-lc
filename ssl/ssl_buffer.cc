@@ -440,38 +440,18 @@ static bool deserialize_buffer_view_from_buf_ptr_offset(CBS &cbs,
   if (!CBS_get_asn1_uint64(&cbs, &offset) ||
       !CBS_get_asn1_uint64(&cbs, &size)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
+    return false;
   }
-  uint8_t *view_ptr = buffer->buf_ptr() + offset;
-  if (view_ptr < buffer->buf_ptr() ||  // does the start of the view fall before
-                                       // the buffer
-      view_ptr > (buffer->buf_ptr() +
-                  buffer->buf_size()) ||  // does the the start of the view fall
-                                          // after the end of the buffer
-      (view_ptr + size) <
-          buffer->buf_ptr() ||  // does the end of the view fall
-                                // before the start of the buffer
-      (view_ptr + size) > (buffer->buf_ptr() +
-                           buffer->buf_size())  // does the end of the view fall
-                                                // after the end of the buffer
-
-  ) {
+  // Validate the counters as integers before any pointer arithmetic. Forming
+  // |buf_ptr() + offset| or |view_ptr + size| first can result in pointer
+  // overflow and defeat the checks.
+  if (offset > buffer->buf_size() || size > buffer->buf_size() - offset) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
+  uint8_t *view_ptr = buffer->buf_ptr() + offset;
   view = MakeSpan(view_ptr, size);
   return true;
-}
-
-static int fits_in_ptrdiff_int64(int64_t x) {
-#if PTRDIFF_MAX > INT64_MAX || PTRDIFF_MAX == INT64_MAX
-  // ptrdiff_t is equal to or wider than int64_t — all int64_t fit
-  (void)x;
-  return 1;
-#else
-  // ptrdiff_t is narrower than int64_t — cast to int64_t for safe compare
-  return x >= (int64_t)PTRDIFF_MIN && x <= (int64_t)PTRDIFF_MAX;
-#endif
 }
 
 static bool deserialize_buffer_view_from_data_offset(CBS &cbs,
@@ -487,27 +467,22 @@ static bool deserialize_buffer_view_from_data_offset(CBS &cbs,
       !CBS_get_asn1_int64(&child, &offset) ||
       !CBS_get_asn1_uint64(&cbs, &size)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
+    return false;
   }
-  if (!fits_in_ptrdiff_int64(offset)) {
+  // Validate offset and size as integers before forming any pointer. Doing the
+  // arithmetic on pointers first can wrap the address space and defeat the
+  // checks.
+  const int64_t data_off =
+      static_cast<int64_t>(buffer->data() - buffer->buf_ptr());
+  const int64_t buf_size = static_cast<int64_t>(buffer->buf_size());
+  if (offset < -data_off ||            // start falls before buf_ptr()
+      offset > buf_size - data_off ||  // start falls past the end of the buffer
+      size > static_cast<uint64_t>(buf_size - (data_off + offset))) {
+    // size runs off the end of the buffer
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
+    return false;
   }
-  uint8_t *view_ptr = buffer->data() + (ptrdiff_t)offset;
-  if (view_ptr <
-          buffer->buf_ptr() ||  // does the view start fall before the buffer
-      view_ptr >
-          (buffer->buf_ptr() +
-           buffer->buf_size()) ||  // does the view start fall after the buffer
-      (view_ptr + size) < buffer->buf_ptr() ||  // does the end of the view fall
-                                                // before the buffer start
-      (view_ptr + size) > (buffer->buf_ptr() +
-                           buffer->buf_size()  // does the end of the view fall
-                                               // after the end of the buffer
-                           )) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
-  }
+  uint8_t *view_ptr = buffer->data() + static_cast<ptrdiff_t>(offset);
   view = MakeSpan(view_ptr, size);
 
   return true;

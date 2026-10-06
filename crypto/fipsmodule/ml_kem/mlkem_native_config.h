@@ -39,7 +39,7 @@ static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
 #if defined(MLK_SYS_X86_64)
   if (cap == MLK_SYS_CAP_X86_64_AVX2)
   {
-    return CRYPTO_is_AVX2_capable();
+    return CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable();
   }
 #elif defined(MLK_SYS_AARCH64)
   if (cap == MLK_SYS_CAP_AARCH64_NEON)

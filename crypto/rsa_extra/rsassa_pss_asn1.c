@@ -7,6 +7,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/rsa.h>
 
 #include "../internal.h"
 #include "internal.h"
@@ -421,7 +422,7 @@ static int pss_saltlen_create(int saltlen, RSA_INTEGER **out) {
 int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd, const EVP_MD *mgf1md,
                              int saltlen, RSASSA_PSS_PARAMS **out) {
   // If all parameters are not changed after |pkey_rsa_init|, don't create pss.
-  if (sigmd == NULL && mgf1md == NULL && saltlen == -2) {
+  if (sigmd == NULL && mgf1md == NULL && saltlen == RSA_PSS_SALTLEN_AUTO) {
     return 1;
   }
   RSASSA_PSS_PARAMS *pss = RSASSA_PSS_PARAMS_new();

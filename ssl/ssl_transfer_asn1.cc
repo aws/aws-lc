@@ -523,14 +523,16 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
        CBS_len(&previous_client_finished) != previous_client_finished_len) ||
       (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
-       CBS_len(&previous_client_finished) > PREV_FINISHED_MAX_SIZE) ||
+       (CBS_len(&previous_client_finished) > PREV_FINISHED_MAX_SIZE ||
+        previous_client_finished_len > CBS_len(&previous_client_finished))) ||
       !CBS_get_asn1(&s3, &previous_server_finished, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1_uint64(&s3, &previous_server_finished_len) ||
       previous_server_finished_len > PREV_FINISHED_MAX_SIZE ||
       (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
        CBS_len(&previous_server_finished) != previous_server_finished_len) ||
       (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
-       CBS_len(&previous_server_finished) > PREV_FINISHED_MAX_SIZE) ||
+       (CBS_len(&previous_server_finished) > PREV_FINISHED_MAX_SIZE ||
+        previous_server_finished_len > CBS_len(&previous_server_finished))) ||
       !CBS_get_asn1_uint64(&s3, &empty_record_count) ||
       !CBS_get_asn1_uint64(&s3, &warning_alert_count) ||
       !CBS_get_asn1_uint64(&s3, &total_renegotiations) ||
