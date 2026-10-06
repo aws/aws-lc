@@ -62,6 +62,24 @@ static const argument_t kArguments[] = {
      "YYYYMMDDHHMMSSZ (the same as an ASN1 GeneralizedTime structure). In both "
      "formats, seconds SS and timezone Z must be present. Alternatively, you "
      "can also use \"today\""},
+    {"-keyfile", kOptionalArgument,
+     "The CA private key used to sign the request. Overrides the private_key "
+     "entry in the configuration file."},
+    {"-cert", kOptionalArgument,
+     "The CA certificate that issues the request when not self-signing. "
+     "Overrides the certificate entry in the configuration file."},
+    {"-subj", kOptionalArgument,
+     "Set the subject name to use for the issued certificate, overriding the "
+     "subject in the request. The format is /type0=value0/type1=value1/..."},
+    {"-revoke", kOptionalArgument,
+     "Revoke the certificate contained in the given file by marking its "
+     "matching entry in the index database as revoked, instead of signing a "
+     "request."},
+    {"-gencrl", kBooleanArgument,
+     "Generate a CRL covering the revoked entries in the index database, "
+     "signed by the CA key and certificate, and write it to -out."},
+    {"-crldays", kOptionalArgument,
+     "The number of days until the next CRL is due. Used with -gencrl."},
     {"", kOptionalArgument, ""}};
 
 struct db_attr_st {
@@ -247,8 +265,9 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string &dbfile,
 
   BIO_snprintf(buf, sizeof(buf), "%s.attr", dbfile.c_str());
 
-  if (!NCONF_load(dbattr_conf.get(), buf, nullptr)) {
-    return retdb;
+  const bool have_attr = NCONF_load(dbattr_conf.get(), buf, nullptr) != 0;
+  if (!have_attr) {
+    ERR_clear_error();
   }
 
   retdb.reset((CA_DB *)OPENSSL_zalloc(sizeof(CA_DB)));
@@ -264,7 +283,7 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string &dbfile,
     retdb->attributes.unique_subject = 1;
   }
 
-  if (dbattr_conf) {
+  if (have_attr) {
     const char *p = NCONF_get_string(dbattr_conf.get(), NULL, "unique_subject");
     if (p) {
       retdb->attributes.unique_subject = parse_bool(p, true);
@@ -874,15 +893,11 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
   int ok = -1, i = 0, j = 0, last = 0, nid = 0;
   const char *p = nullptr;
   CONF_VALUE *cv = nullptr;
-  OPENSSL_STRING row[DB_NUMBER];
+  OPENSSL_STRING row[DB_NUMBER] = {nullptr};
   ossl_string_ptr irow(nullptr, OPENSSL_free);
   OPENSSL_STRING *rrow = NULL;
   bssl::UniquePtr<X509_NAME> dn_subject;
   X509_NAME_ENTRY *tmpne = nullptr;
-
-  for (i = 0; i < DB_NUMBER; i++) {
-    row[i] = nullptr;
-  }
 
   if (!subj.empty()) {
     bssl::UniquePtr<X509_NAME> n(ParseSubjectName(subj));
@@ -1457,6 +1472,170 @@ static int RotateSerial(const std::string &serialfile,
   return 1;
 }
 
+static int DoCRLSign(X509_CRL *crl, bssl::UniquePtr<EVP_PKEY> &pkey,
+                     const EVP_MD *md) {
+  EVP_PKEY_CTX *pkctx = NULL;
+  bssl::UniquePtr<EVP_MD_CTX> mctx(EVP_MD_CTX_new());
+  if (!mctx) {
+    return 0;
+  }
+  if (!EVP_DigestSignInit(mctx.get(), &pkctx, md, nullptr, pkey.get())) {
+    return 0;
+  }
+  return X509_CRL_sign_ctx(crl, mctx.get());
+}
+
+static int DoRevoke(X509 *cert, bssl::UniquePtr<CA_DB> &db) {
+  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_NOCLOSE));
+  OPENSSL_STRING row[DB_NUMBER] = {nullptr};
+
+  bssl::UniquePtr<BIGNUM> bn(
+      ASN1_INTEGER_to_BN(X509_get_serialNumber(cert), nullptr));
+  if (!bn) {
+    return 0;
+  }
+  ossl_char_ptr serial_hex(nullptr, OPENSSL_free);
+  if (BN_is_zero(bn.get())) {
+    serial_hex.reset(OPENSSL_strdup("00"));
+  } else {
+    serial_hex.reset(BN_bn2hex(bn.get()));
+  }
+  if (!serial_hex) {
+    return 0;
+  }
+  row[DB_serial] = serial_hex.get();
+
+  OPENSSL_STRING *rrow = TXT_DB_get_by_index(db->db, DB_serial, row);
+  if (rrow == nullptr) {
+    BIO_printf(
+        bio_err.get(),
+        "ERROR: certificate with serial number %s is not in the database\n",
+        serial_hex.get());
+    return 0;
+  }
+  if (rrow[DB_type][0] == DB_TYPE_REV) {
+    BIO_printf(bio_err.get(),
+               "ERROR: certificate with serial number %s is already revoked\n",
+               serial_hex.get());
+    return 0;
+  }
+
+  bssl::UniquePtr<ASN1_TIME> now(ASN1_TIME_new());
+  if (!now || !X509_gmtime_adj(now.get(), 0)) {
+    return 0;
+  }
+  const int tlen = ASN1_STRING_length(now.get());
+  char *rev_date = (char *)OPENSSL_malloc(tlen + 1);
+  if (rev_date == nullptr) {
+    return 0;
+  }
+  memcpy(rev_date, ASN1_STRING_get0_data(now.get()), tlen);
+  rev_date[tlen] = '\0';
+
+  rrow[DB_type][0] = DB_TYPE_REV;
+  rrow[DB_type][1] = '\0';
+  rrow[DB_rev_date] = rev_date;
+  return 1;
+}
+
+static int DoGenCRL(bssl::UniquePtr<CA_DB> &db, X509 *ca_cert,
+                    bssl::UniquePtr<EVP_PKEY> &pkey, const EVP_MD *md,
+                    long crldays, const std::string &outfile) {
+  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_NOCLOSE));
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  if (!crl) {
+    return 0;
+  }
+  if (!X509_CRL_set_issuer_name(crl.get(), X509_get_subject_name(ca_cert))) {
+    return 0;
+  }
+
+  bssl::UniquePtr<ASN1_TIME> tmptm(ASN1_TIME_new());
+  if (!tmptm || !X509_gmtime_adj(tmptm.get(), 0)) {
+    return 0;
+  }
+  if (!X509_CRL_set1_lastUpdate(crl.get(), tmptm.get())) {
+    return 0;
+  }
+  if (!X509_time_adj_ex(tmptm.get(), crldays, 0, nullptr)) {
+    return 0;
+  }
+  if (!X509_CRL_set1_nextUpdate(crl.get(), tmptm.get())) {
+    return 0;
+  }
+
+  for (size_t i = 0; i < sk_OPENSSL_PSTRING_num(db->db->data); i++) {
+    OPENSSL_STRING *row = sk_OPENSSL_PSTRING_value(db->db->data, i);
+    if (row[DB_type][0] != DB_TYPE_REV) {
+      continue;
+    }
+    bssl::UniquePtr<X509_REVOKED> rev(X509_REVOKED_new());
+    if (!rev) {
+      return 0;
+    }
+    BIGNUM *bn = nullptr;
+    if (!BN_hex2bn(&bn, row[DB_serial])) {
+      return 0;
+    }
+    bssl::UniquePtr<BIGNUM> bn_owner(bn);
+    bssl::UniquePtr<ASN1_INTEGER> ai(BN_to_ASN1_INTEGER(bn, nullptr));
+    if (!ai || !X509_REVOKED_set_serialNumber(rev.get(), ai.get())) {
+      return 0;
+    }
+    if (!MakeRevoked(rev.get(), row[DB_rev_date])) {
+      return 0;
+    }
+    if (!X509_CRL_add0_revoked(crl.get(), rev.get())) {
+      return 0;
+    }
+    rev.release();
+  }
+
+  X509_CRL_sort(crl.get());
+
+  if (!DoCRLSign(crl.get(), pkey, md)) {
+    BIO_printf(bio_err.get(), "unable to sign CRL\n");
+    return 0;
+  }
+
+  bssl::UniquePtr<BIO> out(outfile.empty()
+                               ? BIO_new_fp(stdout, BIO_NOCLOSE)
+                               : BIO_new_file(outfile.c_str(), "w"));
+  if (!out) {
+    return 0;
+  }
+  if (!PEM_write_bio_X509_CRL(out.get(), crl.get())) {
+    return 0;
+  }
+  return 1;
+}
+
+static bssl::UniquePtr<X509> LoadCertificate(const std::string &cert_path) {
+  bssl::UniquePtr<BIO> in(BIO_new_file(cert_path.c_str(), "r"));
+  if (!in) {
+    return nullptr;
+  }
+  // Accept both "CERTIFICATE" and "TRUSTED CERTIFICATE" PEM blocks, matching
+  // OpenSSL's load_cert, so a trusted certificate (e.g. from `x509 -addtrust`)
+  // can be used as the CA certificate.
+  STACK_OF(X509_INFO) *infos =
+      PEM_X509_INFO_read_bio(in.get(), nullptr, nullptr, nullptr);
+  if (!infos) {
+    return nullptr;
+  }
+  bssl::UniquePtr<X509> cert;
+  for (size_t i = 0; i < sk_X509_INFO_num(infos); i++) {
+    X509_INFO *info = sk_X509_INFO_value(infos, i);
+    if (info->x509 != nullptr) {
+      X509_up_ref(info->x509);
+      cert.reset(info->x509);
+      break;
+    }
+  }
+  sk_X509_INFO_pop_free(infos, X509_INFO_free);
+  return cert;
+}
+
 int caTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
@@ -1472,6 +1651,12 @@ int caTool(const args_list_t &args) {
   bool help = false, self_sign = false, notext = false, preserveDN = false,
        rand_serial = false;
   std::string ca_section, policy, keyfile, serialfile, extensions;
+  std::string cert_path, key_path_cli, subj;
+  std::string revoke_file, crldays_str;
+  bool gencrl = false, signing_mode = true;
+  long crldays = 0;
+  bssl::UniquePtr<X509> ca_cert;
+  bssl::UniquePtr<X509> revoke_cert;
   EXT_COPY_TYPE copy_extensions = EXT_COPY_NONE;
   DB_ATTR dbattr = {0};
   bssl::UniquePtr<CA_DB> db(nullptr);
@@ -1498,6 +1683,16 @@ int caTool(const args_list_t &args) {
   GetString(&end_date, "-enddate", "", parsed_args);
   GetBoolArgument(&notext, "-notext", parsed_args);
   GetBoolArgument(&self_sign, "-selfsign", parsed_args);
+  GetString(&key_path_cli, "-keyfile", "", parsed_args);
+  GetString(&cert_path, "-cert", "", parsed_args);
+  GetString(&subj, "-subj", "", parsed_args);
+  GetString(&revoke_file, "-revoke", "", parsed_args);
+  GetBoolArgument(&gencrl, "-gencrl", parsed_args);
+  GetString(&crldays_str, "-crldays", "", parsed_args);
+  if (!crldays_str.empty()) {
+    crldays = std::atol(crldays_str.c_str());
+  }
+  signing_mode = revoke_file.empty() && !gencrl;
 
   // Assumption: we default as if `-noemailDN` was provided and don't support
   // `email_in_dn` attribute in the configuration file Per RFC 5280 for v3
@@ -1512,9 +1707,10 @@ int caTool(const args_list_t &args) {
     goto err;
   }
 
-  if (!self_sign || in_path.empty()) {
-    // TODO: Error we are only supporting a specfic use-case for 'openssl ca'
-    // at this time.
+  if (signing_mode && in_path.empty()) {
+    fprintf(stderr,
+            "No operation specified (use -in to sign a request, -revoke to "
+            "revoke a certificate, or -gencrl to generate a CRL)\n");
     goto err;
   }
 
@@ -1546,9 +1742,14 @@ int caTool(const args_list_t &args) {
       ParseBoolSectionValue(ca_conf, ca_section, CA_UNIQ_SUBJ_OPT, 1);
 
   // Do private key related stuff...
-  {
+  if (!key_path_cli.empty()) {
+    keyfile = key_path_cli;
+  } else {
     auto value = GetSectionValue(ca_conf, ca_section, CA_PRIVATE_KEY_OPT);
     if (!value) {
+      fprintf(stderr,
+              "No CA private key provided (use -keyfile or set private_key in "
+              "the config)\n");
       goto err;
     }
     keyfile = std::move(*value);
@@ -1557,6 +1758,31 @@ int caTool(const args_list_t &args) {
   if (!LoadPrivateKey(keyfile, passin, pkey)) {
     // LoadPrivateKey will print a message for us
     goto err;
+  }
+
+  if (!self_sign) {
+    if (cert_path.empty()) {
+      auto value = GetSectionValue(ca_conf, ca_section, "certificate");
+      if (value) {
+        cert_path = std::move(*value);
+      }
+    }
+    if (cert_path.empty()) {
+      fprintf(stderr,
+              "No CA certificate provided (use -cert or set certificate in the "
+              "config)\n");
+      goto err;
+    }
+    ca_cert = LoadCertificate(cert_path);
+    if (!ca_cert) {
+      fprintf(stderr, "unable to load CA certificate from %s\n",
+              cert_path.c_str());
+      goto err;
+    }
+    if (!X509_check_private_key(ca_cert.get(), pkey.get())) {
+      fprintf(stderr, "CA certificate and CA private key do not match\n");
+      goto err;
+    }
   }
 
   preserveDN =
@@ -1576,7 +1802,7 @@ int caTool(const args_list_t &args) {
   // provided, that this is a CSR, additionally we are continuing with the
   // assumption that `-selfsign` was also provided.
 
-  {
+  if (signing_mode) {
     auto value = GetSectionValue(ca_conf, ca_section, CA_NEW_CERTS_DIR_OPT);
     if (!value) {
       goto err;
@@ -1662,6 +1888,48 @@ int caTool(const args_list_t &args) {
 
   // Assumption: not going to support email_in_dn
 
+  if (!revoke_file.empty()) {
+    revoke_cert = LoadCertificate(revoke_file);
+    if (!revoke_cert) {
+      fprintf(stderr, "unable to load certificate to revoke from %s\n",
+              revoke_file.c_str());
+      goto err;
+    }
+    if (!DoRevoke(revoke_cert.get(), db)) {
+      goto err;
+    }
+    if (!SaveIndex(dbfile, "new", db) ||
+        !RotateIndex(dbfile, "new", "old")) {
+      goto err;
+    }
+    fprintf(stderr, "Data Base Updated\n");
+    ret = true;
+    goto err;
+  }
+
+  if (gencrl) {
+    if (crldays <= 0) {
+      crldays =
+          ParseNumberSectionValue(ca_conf, ca_section, "default_crl_days", 0);
+    }
+    if (crldays <= 0) {
+      fprintf(stderr,
+              "cannot determine how many days until the next CRL (use "
+              "-crldays or set default_crl_days in the config)\n");
+      goto err;
+    }
+    if (!ca_cert) {
+      fprintf(stderr,
+              "generating a CRL requires a CA certificate (use -cert)\n");
+      goto err;
+    }
+    if (!DoGenCRL(db, ca_cert.get(), pkey, md, crldays, outfile)) {
+      goto err;
+    }
+    ret = true;
+    goto err;
+  }
+
   // Find the policy info
   {
     auto value = GetSectionValue(ca_conf, ca_section, CA_POLICY_OPT);
@@ -1728,7 +1996,10 @@ int caTool(const args_list_t &args) {
     }
   }
 
-  days = ParseNumberSectionValue(ca_conf, ca_section, CA_DAYS_OPT, 0);
+  days = ParseNumberSectionValue(ca_conf, ca_section, "default_days", 0);
+  if (days <= 0) {
+    days = ParseNumberSectionValue(ca_conf, ca_section, CA_DAYS_OPT, 0);
+  }
   if (days <= 0 && end_date.empty()) {
     fprintf(stderr, "cannot lookup how many days to certify for\n");
     goto err;
@@ -1755,12 +2026,13 @@ int caTool(const args_list_t &args) {
 
   {
     int j = 0;
-    X509 *signer = nullptr;  // Only supporting self-sign use-case
+    X509 *signer = self_sign ? nullptr : ca_cert.get();
+    const int selfsign_flag = self_sign ? 1 : 0;
     X509 *out = nullptr;
     bssl::UniquePtr<X509> out_owner;
-    j = Certify(&out, in_path, pkey, signer, md, attribs, db, serial, "",
+    j = Certify(&out, in_path, pkey, signer, md, attribs, db, serial, subj,
                 MBSTRING_ASC, start_date, end_date, days, extensions, ca_conf,
-                verbose, copy_extensions, 1, preserveDN);
+                verbose, copy_extensions, selfsign_flag, preserveDN);
     if (j <= 0) {
       goto err;
     }
@@ -1779,8 +2051,8 @@ int caTool(const args_list_t &args) {
         goto err;
       }
       j = Certify(&out, extra_args[i], pkey, signer, md, attribs, db, serial,
-                  "", MBSTRING_ASC, start_date, end_date, days, extensions,
-                  ca_conf, verbose, copy_extensions, 1, preserveDN);
+                  subj, MBSTRING_ASC, start_date, end_date, days, extensions,
+                  ca_conf, verbose, copy_extensions, selfsign_flag, preserveDN);
       if (j <= 0) {
         goto err;
       }
