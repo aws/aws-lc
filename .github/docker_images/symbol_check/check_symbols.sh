@@ -210,8 +210,12 @@ elif [[ "${MODE}" == "baseline" ]]; then
     echo "${unregistered}" | head -20
     [[ ${unregistered_count} -gt 20 ]] && echo "... and $((unregistered_count - 20)) more"
     echo ""
-    echo "🛑 New symbols are not in the registry."
-    echo "   Run: util/update_symbol_version.sh <version>"
+    echo "🛑 New symbols are not in the registry. Unregistered symbols are hidden"
+    echo "   by the version script, so applications cannot link against them."
+    echo "   Register them in the current version node:"
+    echo "     ./util/update_symbol_version.sh --current"
+    echo "   then commit the updated .txt and .map files together."
+    echo "   See docs/SymbolVersioning.md for when to open a new node instead."
     exit 1
   fi
 

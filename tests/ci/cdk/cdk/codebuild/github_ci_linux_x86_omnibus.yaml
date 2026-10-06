@@ -712,7 +712,7 @@ batch:
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
         variables:
@@ -722,7 +722,7 @@ batch:
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_latest
         variables:
