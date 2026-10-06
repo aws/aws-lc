@@ -26,6 +26,8 @@ GRPC_REF="${1:-v1.72.2}"
 SCRATCH_FOLDER="${SYS_ROOT}/GRPC_BUILD_ROOT"
 GRPC_SRC_FOLDER="${SCRATCH_FOLDER}/grpc"
 GRPC_BUILD_FOLDER="${SCRATCH_FOLDER}/grpc/cmake/build"
+# Patches are keyed by the ref being tested; a ref with no directory needs none.
+GRPC_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/grpc_patch/${GRPC_REF}"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
@@ -38,6 +40,13 @@ git clone --depth 1 --branch "${GRPC_REF}" https://github.com/grpc/grpc.git ${GR
 record_repo_commit "${GRPC_SRC_FOLDER}"
 cd ${GRPC_SRC_FOLDER}
 git submodule update --recursive --init
+
+if [[ -d "${GRPC_PATCH_FOLDER}" ]]; then
+    for patchfile in $(find -L "${GRPC_PATCH_FOLDER}" -type f -name '*.patch'); do
+        echo "Apply patch ${patchfile}..."
+        patch --strip 1 --quiet -d "${GRPC_SRC_FOLDER}" --input "${patchfile}"
+    done
+fi
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 

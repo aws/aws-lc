@@ -132,6 +132,7 @@ if(BUILD_TESTING)
         genpkey.cc
         genpkey_test.cc
         ordered_args.cc
+        ordered_args_test.cc
         pass_util.cc
         pass_util_test.cc
         pkcs8.cc
