@@ -18,7 +18,7 @@ None yet.
 
 | Family | Variants |
 |---|---|
-| SHA-2 | `SHA2-256` |
+| SHA-2 | `SHA2-224`, `SHA2-256` |
 
 ## Key Encapsulation Mechanisms (`OSSL_OP_KEM`)
 
