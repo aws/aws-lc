@@ -297,9 +297,10 @@ bool ContainsId(Span<const uint16_t> ids, uint16_t id) {
 // therefore discards the operator's whole preference order. Dropping the
 // unsupported tokens keeps the rest of it.
 //
-// Repeats are dropped for the same reason: two spellings of one group, such as
-// "secp256r1" and "prime256v1", resolve to a single ID, and |SSL_CTX_set1_group_ids|
-// rejects a list that names it twice.
+// Repeats are dropped as well: two spellings of one entry, such as "secp256r1"
+// and "prime256v1", resolve to a single ID. The signature-algorithm setters
+// reject a list that names an ID twice, and nothing else removes a repeat from
+// the group list, which is installed directly into |ctx->supported_group_list|.
 size_t FilterPolicyIds(uint16_t *out, size_t out_len, const char *value,
                        bool (*lookup)(uint16_t *, const char *, size_t)) {
   size_t out_i = 0;
