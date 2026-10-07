@@ -31,6 +31,14 @@ struct DigestSpec {
 };
 
 constexpr DigestSpec kDigests[] = {
+    {"SHA2-224",
+     {"SHA2-224", "SHA-224", "SHA224", "2.16.840.1.101.3.4.2.4"},
+     28,
+     64,
+     0,
+     1,
+     "abc",
+     "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7"},
     {"SHA2-256",
      {"SHA2-256", "SHA-256", "SHA256", "2.16.840.1.101.3.4.2.1"},
      32,
@@ -39,6 +47,42 @@ constexpr DigestSpec kDigests[] = {
      1,
      "abc",
      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+    {"SHA2-384",
+     {"SHA2-384", "SHA-384", "SHA384", "2.16.840.1.101.3.4.2.2"},
+     48,
+     128,
+     0,
+     1,
+     "abc",
+     "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
+     "8086072ba1e7cc2358baeca134c825a7"},
+    {"SHA2-512",
+     {"SHA2-512", "SHA-512", "SHA512", "2.16.840.1.101.3.4.2.3"},
+     64,
+     128,
+     0,
+     1,
+     "abc",
+     "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
+     "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"},
+    {"SHA2-512/224",
+     {"SHA2-512/224", "SHA-512/224", "SHA512-224",
+      "2.16.840.1.101.3.4.2.5"},
+     28,
+     128,
+     0,
+     1,
+     "abc",
+     "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
+    {"SHA2-512/256",
+     {"SHA2-512/256", "SHA-512/256", "SHA512-256",
+      "2.16.840.1.101.3.4.2.6"},
+     32,
+     128,
+     0,
+     1,
+     "abc",
+     "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
 };
 
 // Renders |len| bytes as lowercase hex so a failure names the actual digest rather
@@ -80,11 +124,8 @@ TEST_P(Sha2Test, ResolvesUnderEveryAdvertisedName) {
   }
 }
 
-// The four algorithm-level parameters our get_params slot answers. ALGID_ABSENT is
-// the one with teeth: it decides whether the DigestAlgorithmIdentifier omits its
-// parameters field, so reporting it wrongly yields DER that differs byte for byte
-// from the default provider's for every CMS digestAlgorithms entry and every RSA
-// DigestInfo.
+// ALGID_ABSENT is the one with teeth: it changes the DER OpenSSL emits for this
+// digest inside PKI structures, so it must match the default provider's value.
 TEST_P(Sha2Test, ReportsExpectedParams) {
   MdPtr md = FetchRequired();
   ASSERT_TRUE(md);
