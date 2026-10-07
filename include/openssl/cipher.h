@@ -37,6 +37,11 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
+
+// EVP_aes_256_xts returns an AES-256-XTS cipher. XTS does not support
+// streaming: the complete data unit must be supplied in one non-empty
+// |EVP_CipherUpdate| or |EVP_Cipher| call. Before processing another data unit,
+// callers must reinitialize the context with a new key or IV.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
 // EVP_aes_256_wrap implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required
