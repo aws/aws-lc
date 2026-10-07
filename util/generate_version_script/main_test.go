@@ -21,6 +21,10 @@ func TestParseVersion(t *testing.T) {
 		{"AWS_LC_1.1", 1, 1},
 		{"AWS_LC_2.0", 2, 0},
 		{"AWS_LC_10.3", 10, 3},
+		// This branch's namespace, where the prefix itself contains the
+		// underscore-digit sequence a fixed-prefix trim would stop at.
+		{"AWS_LC_FIPS4_1.0", 1, 0},
+		{"AWS_LC_FIPS4_2.11", 2, 11},
 		{"bad", 0, 0},
 		{"AWS_LC_", 0, 0},
 	}

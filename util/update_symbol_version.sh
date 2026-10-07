@@ -18,7 +18,7 @@
 #   --current   Add the new symbols to the current (newest) node already in the
 #               registry. This is the common case: while a node is still open,
 #               new API accumulates in it.
-#   <version>   Open a NEW node (e.g. AWS_LC_1.1) and add the new symbols to it.
+#   <version>   Open a NEW node (e.g. AWS_LC_FIPS4_1.1) and add the new symbols to it.
 #               Opening a node closes the current one, so this is a release-level
 #               decision: use it when the current node has been closed to further
 #               additions, or when starting a new ABI series.
@@ -33,7 +33,7 @@ SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 usage() {
   echo "Usage: $0 --current      # add new symbols to the current (newest) node"
-  echo "       $0 <version>     # open a new node, e.g. AWS_LC_1.1"
+  echo "       $0 <version>     # open a new node, e.g. AWS_LC_FIPS4_1.1"
   echo ""
   echo "Exactly one argument is required; the version node is always explicit."
 }
@@ -63,12 +63,21 @@ for f in "${CRYPTO_REGISTRY}" "${SSL_REGISTRY}"; do
   fi
 done
 
-# Print the newest version node in a registry. Nodes are AWS_LC_<major>.<minor>,
+# Print the version-node prefix the registry already uses. Reading it rather
+# than hardcoding it keeps this script working on any release branch: mainline
+# ships AWS_LC, this branch ships AWS_LC_FIPS4.
+node_namespace() {
+  awk 'NF { print $2 }' "$1" | sed -n '1s/_[0-9][0-9]*\.[0-9][0-9]*$//p'
+}
+
+# Print the newest version node in a registry. Nodes are <prefix>_<major>.<minor>,
 # so sort numerically on each component rather than lexically: that keeps
-# AWS_LC_1.10 after AWS_LC_1.9 instead of before it.
+# AWS_LC_FIPS4_1.10 after AWS_LC_FIPS4_1.9 instead of before it.
 newest_node() {
-  awk 'NF { print $2 }' "$1" | sort -u | sed 's/^AWS_LC_//' | \
-    sort -t. -k1,1n -k2,2n | tail -1 | sed 's/^/AWS_LC_/'
+  local ns
+  ns=$(node_namespace "$1")
+  awk 'NF { print $2 }' "$1" | sort -u | sed "s/^${ns}_//" | \
+    sort -t. -k1,1n -k2,2n | tail -1 | sed "s/^/${ns}_/"
 }
 
 if [[ "${MODE_ARG}" == "--current" ]]; then
@@ -98,9 +107,12 @@ if [[ "${MODE_ARG}" == "--current" ]]; then
 else
   NEW_VERSION="${MODE_ARG}"
 
-  # Validate version format
-  if ! [[ "${NEW_VERSION}" =~ ^AWS_LC_[0-9]+\.[0-9]+$ ]]; then
-    echo "Error: version must match AWS_LC_X.Y (e.g. AWS_LC_1.1), got: ${NEW_VERSION}"
+  # Validate version format. The prefix has to be the registry's own: a node in
+  # some other namespace would link, but it would not inherit from the existing
+  # node, so every symbol assigned to it would look like a new ABI series.
+  REGISTRY_NAMESPACE=$(node_namespace "${CRYPTO_REGISTRY}")
+  if ! [[ "${NEW_VERSION}" =~ ^${REGISTRY_NAMESPACE}_[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: version must match ${REGISTRY_NAMESPACE}_X.Y (e.g. ${REGISTRY_NAMESPACE}_1.1), got: ${NEW_VERSION}"
     echo ""
     usage
     exit 1
@@ -109,7 +121,7 @@ else
   # A new node must actually be new. Reusing an existing node is a valid
   # operation, but it has to be requested as such via --current so the choice
   # is deliberate rather than a typo in a version number.
-  # Use -F so the '.' in the version (e.g. AWS_LC_1.0) is matched literally
+  # Use -F so the '.' in the version (e.g. AWS_LC_FIPS4_1.0) is matched literally
   # rather than as a regex wildcard.
   if awk '{print $2}' "${CRYPTO_REGISTRY}" | grep -Fqx "${NEW_VERSION}" 2>/dev/null || \
      awk '{print $2}' "${SSL_REGISTRY}" | grep -Fqx "${NEW_VERSION}" 2>/dev/null; then
