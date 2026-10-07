@@ -12,12 +12,17 @@
 #   util/update_symbol_version.sh <version>    (adding new symbols)
 
 # Version-node prefix in the checked-in registries and .map files: their nodes
-# are named AWS_LC_<major>.<minor>. -DSYMBOL_VERSION_NAMESPACE=<prefix> rewrites
-# them into the build tree instead of using the script verbatim; see
+# are named AWS_LC_FIPS4_<major>.<minor>. -DSYMBOL_VERSION_NAMESPACE=<prefix>
+# rewrites them into the build tree instead of using the script verbatim; see
 # docs/SymbolVersioning.md for when that is appropriate. Unrelated to
 # BORINGSSL_PREFIX: only node names change, never symbols, and the two are
 # mutually exclusive (enforced in the top-level CMakeLists.txt).
-set(AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE "AWS_LC")
+#
+# The prefix is per release branch, and glibc resolves a versioned symbol by
+# node name alone, with no regard for which library provides it. A FIPS build
+# and a mainline build loaded into one process must therefore not share a node
+# name, or FIPS-linked code could bind to mainline code. mainline uses AWS_LC.
+set(AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE "AWS_LC_FIPS4")
 
 # A node name is "<namespace>_<major>.<minor>", so the namespace must be a valid
 # linker identifier.
@@ -36,8 +41,9 @@ function(_awslc_write_namespaced_version_script in_file namespace out_file)
 
   file(READ "${in_file}" contents)
 
-  # Node names appear only at the start of a line, as "AWS_LC_1.0 {" (the
-  # declaration) and "} AWS_LC_1.0;" (the predecessor of an inheriting node).
+  # Node names appear only at the start of a line, as "AWS_LC_FIPS4_1.0 {" (the
+  # declaration) and "} AWS_LC_FIPS4_1.0;" (the predecessor of an inheriting
+  # node).
   # CMake regexes have no multiline mode, hence the explicit "(^|\n)" anchor;
   # matching the line start is also what protects indented symbol names.
   string(REGEX REPLACE
@@ -52,8 +58,8 @@ function(_awslc_write_namespaced_version_script in_file namespace out_file)
   # Never link a script that was not fully renamed. This check is unanchored so
   # it also catches a node name the rewrites could not reach (indented, or split
   # across lines): "<ns>_<digits>.<digits>" cannot occur in a symbol name ('.' is
-  # invalid in an identifier) nor in an already-renamed node (AWS_LC_PRIVATE_1.0
-  # has no digit directly after "AWS_LC_").
+  # invalid in an identifier) nor in an already-renamed node (MYCORP_PRIVATE_1.0
+  # has no digit directly after "MYCORP_").
   if(contents MATCHES "${default_ns}_[0-9]+\\.[0-9]+")
     message(FATAL_ERROR
       "apply_version_script: failed to apply namespace '${namespace}' to "
@@ -93,7 +99,7 @@ endfunction()
 # Parameters:
 #   TARGET         - Library target name (e.g., crypto, ssl)
 #   VERSION_SCRIPT - Path to version script file (e.g., ${CMAKE_CURRENT_SOURCE_DIR}/libcrypto.map)
-#   NAMESPACE      - Optional version-node prefix. Defaults to "AWS_LC", which uses
+#   NAMESPACE      - Optional version-node prefix. Defaults to "AWS_LC_FIPS4", which uses
 #                    VERSION_SCRIPT as-is; any other value rewrites the node names
 #                    into a copy under the target's binary directory.
 

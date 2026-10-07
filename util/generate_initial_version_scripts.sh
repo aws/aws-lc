@@ -7,9 +7,9 @@
 # The registry files (crypto/libcrypto.txt and ssl/libssl.txt) are the source
 # of truth. Each line records a symbol, its version node, and its visibility:
 #
-#   AES_encrypt AWS_LC_1.0 PUBLIC
-#   CRYPTO_once AWS_LC_1.0 PRIVATE
-#   ssl_cert_check_key_usage AWS_LC_1.0 PRIVATE_CXX
+#   AES_encrypt AWS_LC_FIPS4_1.0 PUBLIC
+#   CRYPTO_once AWS_LC_FIPS4_1.0 PRIVATE
+#   ssl_cert_check_key_usage AWS_LC_FIPS4_1.0 PRIVATE_CXX
 #
 # Visibility values:
 #   PUBLIC      - public API from include/openssl/*.h, can never be removed
@@ -54,9 +54,15 @@ done
 # The baseline version node for a from-scratch bootstrap. This is intentionally
 # fixed: this script only ever establishes the initial node. Later additions go
 # through update_symbol_version.sh <version>, which takes the node as an argument
-# rather than hardcoding it. The major component corresponds to ABI_VERSION in
-# CMakeLists.txt (bumped only on an ABI break).
-INITIAL_VERSION="AWS_LC_1.0"
+# rather than hardcoding it.
+#
+# This branch pairs SONAME .so.0 (ABI_VERSION 0 in CMakeLists.txt) with node
+# AWS_LC_FIPS4_1.0, so the two numbers do not match: the node starts at 1.0 for
+# every branch, while ABI_VERSION reflects what has already shipped. An ABI break
+# moves both, to ABI_VERSION 1 and AWS_LC_FIPS4_2.0. The AWS_LC_FIPS4 prefix is
+# this branch's alone; see cmake/GenerateVersionScript.cmake for why it cannot be
+# shared with mainline.
+INITIAL_VERSION="AWS_LC_FIPS4_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
 CRYPTO_MAP="${SOURCE_ROOT}/crypto/libcrypto.map"
@@ -68,7 +74,7 @@ echo "Step 1: Building shared libraries for validation..."
 # because enabling it would require the .map files to already exist
 # (apply_version_script fatal-errors otherwise) -- a chicken-and-egg problem for a
 # script whose job is to regenerate them from scratch. SONAME stays enabled
-# (ENABLE_PRE_SONAME_BUILD=OFF) so the libraries keep the -awslc suffix the find
+# (ENABLE_PRE_SONAME_BUILD=OFF) so the libraries keep the -awslcfips4 suffix the find
 # globs below expect.
 cmake -B "${BUILD_DIR}" -S "${SOURCE_ROOT}" \
   -DBUILD_SHARED_LIBS=ON \
@@ -115,7 +121,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
 echo ""
 echo "Step 3: Writing symbol registry files (${INITIAL_VERSION})..."
 
-# Write registry: "<symbol> AWS_LC_1.0 <visibility>" sorted by symbol name.
+# Write registry: "<symbol> AWS_LC_FIPS4_1.0 <visibility>" sorted by symbol name.
 # The extractor emits two columns ("SYMBOL VISIBILITY"); we insert the version
 # node as the middle column to produce the three-column registry format. The
 # temp files are named *_headersyms to distinguish them (two columns, no

@@ -6,7 +6,7 @@
 // script with proper version inheritance.
 //
 // Symbols are grouped by version node. Versions are sorted numerically
-// (AWS_LC_1.0 < AWS_LC_1.1 < AWS_LC_2.0), and each version
+// (AWS_LC_FIPS4_1.0 < AWS_LC_FIPS4_1.1 < AWS_LC_FIPS4_2.0), and each version
 // automatically inherits from its immediate predecessor. The oldest (base)
 // version includes "local: *;" to hide all unlisted symbols.
 //
@@ -17,7 +17,7 @@
 // patterns so the linker matches their demangled C++ names.
 //
 // The -namespace flag rewrites the prefix of every version node, so a registry
-// recording AWS_LC_1.0 can emit, say, MYCORP_1.0 instead. This is for consumers
+// recording AWS_LC_FIPS4_1.0 can emit, say, MYCORP_1.0 instead. This is for consumers
 // who ship a private libcrypto; the resulting symbol versions do not interoperate
 // with a stock AWS-LC build.
 //
@@ -54,7 +54,8 @@ func init() {
 var namespacePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // nodeNamePattern splits a node name into namespace and version, e.g.
-// "AWS_LC_1.0" -> ("AWS_LC", "1.0").
+// "AWS_LC_FIPS4_1.0" -> ("AWS_LC_FIPS4", "1.0"). The namespace group is greedy,
+// so a prefix containing underscores stays whole.
 var nodeNamePattern = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)_([0-9]+\.[0-9]+)$`)
 
 // visibility classifies a symbol's linkage and export status. It is the third
@@ -207,7 +208,7 @@ func readRegistryFrom(r io.Reader) (map[string][]symbolInfo, []string, error) {
 	return versionSymbols, versions, nil
 }
 
-// versionLess compares two version strings of the form "AWS_LC_X_Y".
+// versionLess compares two node names of the form "<namespace>_<major>.<minor>".
 func versionLess(a, b string) bool {
 	ma, na := parseVersion(a)
 	mb, nb := parseVersion(b)
@@ -217,10 +218,15 @@ func versionLess(a, b string) bool {
 	return na < nb
 }
 
-// parseVersion extracts (major, minor) from "AWS_LC_X.Y".
+// parseVersion extracts (major, minor) from "<namespace>_<major>.<minor>", e.g.
+// "AWS_LC_FIPS4_1.0" -> (1, 0). The namespace is matched rather than trimmed as a
+// fixed prefix: it is per release branch, and it may itself contain underscores.
 func parseVersion(v string) (int, int) {
-	s := strings.TrimPrefix(v, "AWS_LC_")
-	parts := strings.SplitN(s, ".", 2)
+	m := nodeNamePattern.FindStringSubmatch(v)
+	if m == nil {
+		return 0, 0
+	}
+	parts := strings.SplitN(m[2], ".", 2)
 	if len(parts) != 2 {
 		return 0, 0
 	}
