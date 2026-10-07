@@ -20,6 +20,7 @@ add_executable(
     enc.cc
     genpkey.cc
     genrsa.cc
+    ocsp.cc
     pass_util.cc
     pkcs8.cc
     pkcs12.cc
@@ -131,6 +132,8 @@ if(BUILD_TESTING)
         genrsa_test.cc
         genpkey.cc
         genpkey_test.cc
+        ocsp.cc
+        ocsp_test.cc
         ordered_args.cc
         pass_util.cc
         pass_util_test.cc
