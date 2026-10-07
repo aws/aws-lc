@@ -22,6 +22,12 @@ Current status:
 
 Exit status follows OpenSSL: 1 for option or trust store setup errors (including a `-CApath` that is not a directory), 2 when any input certificate fails to load or verify. `-verbose` is accepted and has no effect.
 
+### ocsp
+
+`ocsp` is file-based only and has two modes. In request mode, `-reqout` writes a DER-encoded OCSP request for the certificate named by `-cert` under its issuer `-issuer`. In responder mode, `-respout` reads a request from `-reqin`, determines each certificate's status from the CA index database (`-index`) for certificates issued under `-CA`, signs the response with `-rsigner`/`-rkey`, and writes it DER-encoded; `-ndays` sets the next-update interval.
+
+Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing request over a URL or host — input and output are files only. The client does not add a nonce, and the responder neither verifies request signatures nor prints responses. Responses are signed with SHA-256. Revoked entries are reported with reason `unspecified`, because AWS-LC's `OCSP_basic_add1_status` requires a concrete reason code and the index written by `ca -revoke` carries none.
+
 ### x509
 
 `-subject` prints names in modern OpenSSL's `CN=value` form (no spaces around `=`). `-nameopt oneline` restores the previous `CN = value` form.
