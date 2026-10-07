@@ -132,7 +132,16 @@ jobs:
       - x86_64_build
     outputs:
       ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -259,7 +268,16 @@ jobs:
       - aarch64_build
     outputs:
       ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -290,7 +308,16 @@ jobs:
     needs:
       - x86_64_push
       - aarch64_push
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
