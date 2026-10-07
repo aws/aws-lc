@@ -20,7 +20,7 @@ Symbol versioning is enabled by default in distribution packaging mode
 AWS-LC assigns every exported symbol to a version node. Both libcrypto and libssl
 share the same symbol version namespace:
 
-- **AWS_LC_1.0** (current baseline - ~3,000 libcrypto symbols, ~640 libssl symbols)
+- **AWS_LC_FIPS4_1.0** (current baseline - ~3,000 libcrypto symbols, ~640 libssl symbols)
 
 When you link an application against AWS-LC, the linker records which symbol versions your application uses. At runtime, the dynamic linker ensures your application gets the correct symbol versions.
 
@@ -31,19 +31,19 @@ When you link an application against AWS-LC, the linker records which symbol ver
 #include <openssl/evp.h>
 
 int main() {
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();  // Uses EVP_MD_CTX_new@@AWS_LC_1.0
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();  // Uses EVP_MD_CTX_new@@AWS_LC_FIPS4_1.0
     // ...
 }
 ```
 
 When compiled and linked:
 ```bash
-$ gcc myapp.c -o myapp -lcrypto-awslc
+$ gcc myapp.c -o myapp -lcrypto-awslcfips4
 $ nm -D myapp | grep EVP_MD_CTX_new
-                 U EVP_MD_CTX_new@@AWS_LC_1.0
+                 U EVP_MD_CTX_new@@AWS_LC_FIPS4_1.0
 ```
 
-The `@@AWS_LC_1.0` suffix indicates your application requires the `AWS_LC_1.0` version of `EVP_MD_CTX_new`.
+The `@@AWS_LC_FIPS4_1.0` suffix indicates your application requires the `AWS_LC_FIPS4_1.0` version of `EVP_MD_CTX_new`.
 
 ## Building with Symbol Versioning
 
@@ -100,31 +100,33 @@ ninja -C build
 
 This produces versioned shared libraries whose file name carries the full
 library version (`SOFTWARE_VERSION`) and whose SONAME carries the ABI version
-(`ABI_VERSION`). For example, on AWS-LC `5.1.0` with `ABI_VERSION=1`:
+(`ABI_VERSION`). On this branch that is `4.2.0` with `ABI_VERSION=0`:
 
-- `build/crypto/libcrypto-awslc.so.5.1.0` — real file, with `AWS_LC_1.0` versioned symbols
-- `build/ssl/libssl-awslc.so.5.1.0` — real file, with `AWS_LC_1.0` versioned symbols
+- `build/crypto/libcrypto-awslcfips4.so.4.2.0` — real file, with `AWS_LC_FIPS4_1.0` versioned symbols
+- `build/ssl/libssl-awslcfips4.so.4.2.0` — real file, with `AWS_LC_FIPS4_1.0` versioned symbols
 
-along with the usual symlinks: `libcrypto-awslc.so.1` (SONAME) → `libcrypto-awslc.so.5.1.0`, and the linker/dev symlink `libcrypto-awslc.so`.
+along with the usual symlinks: `libcrypto-awslcfips4.so.0` (SONAME) → `libcrypto-awslcfips4.so.4.2.0`, and the linker/dev symlink `libcrypto-awslcfips4.so`.
 
-> Note: the symbol version node (`AWS_LC_1.0`) is independent of the file
-> version. The node only changes when new API is added or an ABI break starts a
-> new series; the file version tracks each release.
+> Note: the symbol version node (`AWS_LC_FIPS4_1.0`) is independent of both the
+> file version and the SONAME, which is why `.so.0` pairs with a node numbered
+> `1.0`. Every branch starts its nodes at `1.0`, while `ABI_VERSION` reflects
+> what has already shipped. The node changes when new API is added or an ABI
+> break starts a new series; the file version tracks each release.
 
 ### Verification
 
-Verify symbol versioning is applied (use the `libcrypto-awslc.so` dev symlink so
-the commands do not depend on a specific version string):
+Verify symbol versioning is applied (use the `libcrypto-awslcfips4.so` dev symlink
+so the commands do not depend on a specific version string):
 
 ```bash
 # Check version definitions
-readelf --version-info build/crypto/libcrypto-awslc.so
+readelf --version-info build/crypto/libcrypto-awslcfips4.so
 
 # List versioned symbols
-nm -D build/crypto/libcrypto-awslc.so | grep @AWS_LC_1.0 | head -10
+nm -D build/crypto/libcrypto-awslcfips4.so | grep @AWS_LC_FIPS4_1.0 | head -10
 
 # Verify all symbols are versioned
-nm -D build/crypto/libcrypto-awslc.so | grep ' T ' | grep -v '@'
+nm -D build/crypto/libcrypto-awslcfips4.so | grep ' T ' | grep -v '@'
 # (should be empty - all symbols should have a version suffix)
 ```
 
@@ -138,9 +140,9 @@ Symbol versioning is driven by two per-library files that are checked into the t
 Each registry line records a symbol, its version node, and its visibility:
 
 ```
-AES_encrypt AWS_LC_1.0 PUBLIC
-CRYPTO_once AWS_LC_1.0 PRIVATE
-ssl_cert_check_key_usage AWS_LC_1.0 PRIVATE_CXX
+AES_encrypt AWS_LC_FIPS4_1.0 PUBLIC
+CRYPTO_once AWS_LC_FIPS4_1.0 PRIVATE
+ssl_cert_check_key_usage AWS_LC_FIPS4_1.0 PRIVATE_CXX
 ```
 
 Visibility values:
@@ -166,7 +168,7 @@ The registry and version scripts are managed by Go tools and shell wrappers in `
 ### Version Script Format
 
 ```
-AWS_LC_1.0 {
+AWS_LC_FIPS4_1.0 {
   global:
     AES_encrypt;
     AES_decrypt;
@@ -178,11 +180,11 @@ AWS_LC_1.0 {
 ```
 
 This defines:
-- **global**: Symbols exported with version `AWS_LC_1.0`
+- **global**: Symbols exported with version `AWS_LC_FIPS4_1.0`
 - **local: \***: Hide all other symbols (internal implementation)
 
 When more than one version node exists, each node inherits from its predecessor
-(e.g. `AWS_LC_1.1 { global: ...; } AWS_LC_1.0;`). `generate_version_script`
+(e.g. `AWS_LC_FIPS4_1.1 { global: ...; } AWS_LC_FIPS4_1.0;`). `generate_version_script`
 emits this inheritance automatically; only the oldest (base) node carries the
 `local: *;` catch-all.
 
@@ -191,7 +193,7 @@ emits this inheritance automatically; only the oldest (base) node carries the
 ### Adding New Symbols
 
 New public API is registered in the open version node, the newest node in the
-registry. That node is `AWS_LC_1.0` today, and adding to it is the normal case:
+registry. That node is `AWS_LC_FIPS4_1.0` today, and adding to it is the normal case:
 
 ```bash
 # Build so the new OPENSSL_EXPORT symbols exist in the headers, then:
@@ -210,28 +212,28 @@ Once a version has shipped, its node is frozen and new API goes into a new one.
 Pass the node instead of `--current` to open it:
 
 ```bash
-./util/update_symbol_version.sh AWS_LC_1.1
+./util/update_symbol_version.sh AWS_LC_FIPS4_1.1
 ```
 
 ### Version Naming Convention
 
-- **Format**: `AWS_LC_<MAJOR>.<MINOR>`
+- **Format**: `AWS_LC_FIPS4_<MAJOR>.<MINOR>`
 - **Increment**: Bump minor version for each API addition
 - **Examples**:
-  - `AWS_LC_1.0` - Initial release
-  - `AWS_LC_1.1` - First update with new symbols
-  - `AWS_LC_1.2` - Second update with new symbols
-  - `AWS_LC_2.0` - After ABI break (new SONAME)
+  - `AWS_LC_FIPS4_1.0` - Initial release
+  - `AWS_LC_FIPS4_1.1` - First update with new symbols
+  - `AWS_LC_FIPS4_1.2` - Second update with new symbols
+  - `AWS_LC_FIPS4_2.0` - After ABI break (new SONAME)
 
 ### Custom Version Node Namespace
 
-The `AWS_LC` prefix in the node name is configurable via
+The `AWS_LC_FIPS4` prefix in the node name is configurable via
 `-DSYMBOL_VERSION_NAMESPACE=<prefix>`:
 
 ```bash
 cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON \
   -DENABLE_SYMBOL_VERSIONING=ON -DSYMBOL_VERSION_NAMESPACE=MYCORP
-# => nodes are named MYCORP_1.0 instead of AWS_LC_1.0
+# => nodes are named MYCORP_1.0 instead of AWS_LC_FIPS4_1.0
 ```
 
 The prefix must be a valid linker identifier (`[A-Za-z_][A-Za-z0-9_]*`), and
@@ -243,7 +245,7 @@ script is written into the build tree (`<build>/crypto/libcrypto.map`,
 
 > **This changes the ABI contract.** An application linked against a `MYCORP_1.0`
 > build records a dependency on `MYCORP_1.0` and will not resolve against a stock
-> `AWS_LC_1.0` library, or vice versa. A custom namespace is therefore only
+> `AWS_LC_FIPS4_1.0` library, or vice versa. A custom namespace is therefore only
 > appropriate for a privately distributed libcrypto. Do not use it for anything
 > published as AWS-LC.
 
@@ -263,11 +265,11 @@ things:
 
 | | `BORINGSSL_PREFIX` | `SYMBOL_VERSION_NAMESPACE` |
 |---|--------------------|----------------------------|
-| Renames | Every exported symbol (`SSL_new` -> `awslc_SSL_new`) | Only version node names (`AWS_LC_1.0` -> `MYCORP_1.0`) |
+| Renames | Every exported symbol (`SSL_new` -> `awslc_SSL_new`) | Only version node names (`AWS_LC_FIPS4_1.0` -> `MYCORP_1.0`) |
 | Mechanism | Generated `#define` headers compiled into library and consumers | GNU ld version script, applied at link time |
 | Consumer impact | Token-level rewrite of consumer code; also hits same-named identifiers in unrelated C++ namespaces | None; consumer source is unchanged |
 | Applies to | All build types and platforms | Shared ELF libraries only |
-| Isolation via | Names differ across builds | Dynamic linker refuses to bind `SSL_new@AWS_LC_1.0` to a library defining only `SSL_new@MYCORP_1.0` |
+| Isolation via | Names differ across builds | Dynamic linker refuses to bind `SSL_new@AWS_LC_FIPS4_1.0` to a library defining only `SSL_new@MYCORP_1.0` |
 
 Use prefixing when renaming the symbols is acceptable; use a version namespace
 when symbol names must stay standard (drop-in OpenSSL-API consumers, `dlsym()`
@@ -283,17 +285,17 @@ absolutely necessary:
 
 1. **Increment `ABI_VERSION`** in `CMakeLists.txt` (this drives the SONAME):
    ```cmake
-   set(ABI_VERSION 2)  # Was 1
+   set(ABI_VERSION 1)  # Was 0
    ```
 
 2. **Start a new version series** by assigning symbols to a new major node:
    ```bash
-   ./util/update_symbol_version.sh AWS_LC_2.0
+   ./util/update_symbol_version.sh AWS_LC_FIPS4_2.0
    ```
 
 3. **SONAME changes accordingly**:
-   - Old: `libcrypto-awslc.so.1`
-   - New: `libcrypto-awslc.so.2`
+   - Old: `libcrypto-awslcfips4.so.0`
+   - New: `libcrypto-awslcfips4.so.1`
 
 4. **Document the breaking change**: release notes must prominently document this.
 
@@ -381,7 +383,7 @@ No action needed. Symbol versioning is transparent.
    ```bash
    cmake -GNinja -B build -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON
    ninja -C build
-   nm -D build/crypto/libcrypto-awslcfips4.so | grep @AWS_LC_1.0 | head
+   nm -D build/crypto/libcrypto-awslcfips4.so | grep @AWS_LC_FIPS4_1.0 | head
    ```
 4. Commit the updated registry (`crypto/libcrypto.txt`, `ssl/libssl.txt`) and version scripts (`crypto/libcrypto.map`, `ssl/libssl.map`) together.
 
@@ -399,11 +401,11 @@ git commit -m "Regenerate symbol registry and version scripts"
 
 ### Forward Compatibility
 
-Applications using `AWS_LC_1.0` symbols work with `AWS_LC_1.1` libraries because version inheritance ensures all `AWS_LC_1.0` symbols remain available.
+Applications using `AWS_LC_FIPS4_1.0` symbols work with `AWS_LC_FIPS4_1.1` libraries because version inheritance ensures all `AWS_LC_FIPS4_1.0` symbols remain available.
 
 ### Backward Compatibility
 
-Applications using `AWS_LC_1.1` symbols **require** `AWS_LC_1.1` or later. They won't work with `AWS_LC_1.0`-only libraries.
+Applications using `AWS_LC_FIPS4_1.1` symbols **require** `AWS_LC_FIPS4_1.1` or later. They won't work with `AWS_LC_FIPS4_1.0`-only libraries.
 
 ### Package Management
 
@@ -411,7 +413,7 @@ Package managers can enforce version requirements:
 
 ```
 # Application package metadata
-Requires: libcrypto-awslc.so.1(AWS_LC_1.1)
+Requires: libcrypto-awslcfips4.so.0(AWS_LC_FIPS4_1.1)
 ```
 
 This ensures users have a compatible AWS-LC version installed.
@@ -445,7 +447,7 @@ configure error.
 ./util/generate_initial_version_scripts.sh
 ```
 
-### Runtime Error: "symbol version `AWS_LC_1.1' not found"
+### Runtime Error: "symbol version `AWS_LC_FIPS4_1.1' not found"
 
 **Cause**: Application was built against a newer library version than is installed.
 

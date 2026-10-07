@@ -213,15 +213,16 @@ so AWS-LC can coexist with other crypto libraries (including a system OpenSSL)
 on the same machine, so the artifacts are named and laid out differently from
 the plain build described above. The differences that affect consumers are:
 
-* **Library names carry an `-awslc` suffix**: the libraries are
-  `libcrypto-awslc` and `libssl-awslc` (e.g. `libcrypto-awslc.so.1`), not
-  `libcrypto`/`libssl`. Link with `-lssl-awslc -lcrypto-awslc` (ssl before
-  crypto, as above).
+* **Library names carry an `-awslcfips4` suffix**: the libraries are
+  `libcrypto-awslcfips4` and `libssl-awslcfips4` (e.g.
+  `libcrypto-awslcfips4.so.0`), not `libcrypto`/`libssl`. Link with
+  `-lssl-awslcfips4 -lcrypto-awslcfips4` (ssl before crypto, as above).
 * **Headers move under an `aws-lc/` subdirectory**: they install to
   `<prefix>/include/aws-lc/openssl/` rather than `<prefix>/include/openssl/`.
   Add `-I<prefix>/include/aws-lc` so that `#include <openssl/ssl.h>` resolves.
 * **pkg-config modules are renamed to match**: the native modules are
-  `libcrypto-awslc` and `libssl-awslc` (there is also an `aws-lc` module). They
+  `libcrypto-awslcfips4` and `libssl-awslcfips4` (there is also an `aws-lc`
+  module). They
   report the suffixed library names and the `include/aws-lc` header directory.
 
 Putting the first three together, a manual build against a dist-package install
@@ -230,12 +231,12 @@ looks like:
 ```bash
 # Manual flags
 cc -I"${AWS_LC_INSTALL}/include/aws-lc" app.c \
-   -L"${AWS_LC_INSTALL}/lib" -lssl-awslc -lcrypto-awslc -o app
+   -L"${AWS_LC_INSTALL}/lib" -lssl-awslcfips4 -lcrypto-awslcfips4 -o app
 
 # Or via pkg-config
 export PKG_CONFIG_PATH="${AWS_LC_INSTALL}/lib/pkgconfig"
-cc $(pkg-config --cflags libssl-awslc) app.c \
-   $(pkg-config --libs libssl-awslc libcrypto-awslc) -o app
+cc $(pkg-config --cflags libssl-awslcfips4) app.c \
+   $(pkg-config --libs libssl-awslcfips4 libcrypto-awslcfips4) -o app
 ```
 
 #### The OpenSSL compatibility shim
@@ -255,8 +256,8 @@ So with the shim enabled the install carries two distinct sets of pkg-config
 metadata, and both remain valid:
 
 ```text
-libcrypto-awslc.pc  libssl-awslc.pc  aws-lc.pc   # native, suffixed
-libcrypto.pc        libssl.pc        openssl.pc  # shim, unsuffixed
+libcrypto-awslcfips4.pc  libssl-awslcfips4.pc  aws-lc.pc   # native, suffixed
+libcrypto.pc             libssl.pc             openssl.pc  # shim, unsuffixed
 ```
 
 The shim modules deliberately describe the unsuffixed interface throughout:
@@ -269,10 +270,11 @@ emit `-lcrypto`/`-lssl` rather than the suffixed names. Both matter in practice:
 * Emitting a suffixed `-l` name breaks consumers that only recognize `crypto`
   and `ssl`. CMake's `FindOpenSSL` is the notable one: it treats any other name
   from `openssl.pc` as an extra dependency and re-emits it as a bare `-l` flag
-  with no `-L` path, so the final link fails with `cannot find -lcrypto-awslc`.
+  with no `-L` path, so the final link fails with `cannot find
+  -lcrypto-awslcfips4`.
 
 Because `-lcrypto`/`-lssl` resolve the shim symlinks, and those symlinks point
-at libraries whose SONAMEs keep the `-awslc` suffix, a shared consumer linked
+at libraries whose SONAMEs keep the `-awslcfips4` suffix, a shared consumer linked
 this way still records the suffixed SONAME at runtime. Cohabitation with a
 system OpenSSL is preserved.
 
@@ -293,10 +295,11 @@ is installed under either name, and `openssl.pc` requires only `libcrypto`.
 #### Symbol versioning
 
 Distribution packaging mode also enables ELF symbol versioning for the shared
-libraries: every exported symbol is bound to a version node (e.g. `AWS_LC_1.0`
-for the current series) and the SONAME encodes the ABI version (e.g.
-`libcrypto-awslc.so.1`). The exact node name and SONAME depend on the AWS-LC
-version you build; the values shown here are illustrative. See
+libraries: every exported symbol is bound to a version node (`AWS_LC_FIPS4_1.0`
+for the current series) and the SONAME encodes the ABI version
+(`libcrypto-awslcfips4.so.0`). The node prefix is this branch's own, so these
+libraries cannot cross-bind with a versioned mainline build in the same process.
+See
 [docs/SymbolVersioning.md](./docs/SymbolVersioning.md) for the full details.
 
 This is transparent to consumers: you do not pass any extra compiler or linker
@@ -304,9 +307,10 @@ flags for it. When you link against the versioned libraries, the linker
 automatically records the versions your application references (visible in the
 binary's `Verneed` table, e.g. via `readelf -V app`), and at runtime the dynamic
 loader checks that the installed library provides them. Version nodes inherit
-from their predecessors, so a binary built against `AWS_LC_1.0` keeps working
-against later libraries in the same series; the only consumer-visible effect is
-a runtime error such as `symbol version 'AWS_LC_1.1' not found` if you deploy
+from their predecessors, so a binary built against `AWS_LC_FIPS4_1.0` keeps
+working against later libraries in the same series; the only consumer-visible
+effect is a runtime error such as `symbol version 'AWS_LC_FIPS4_1.1' not found`
+if you deploy
 against an *older* AWS-LC than the one you built against.
 
 ## Defines
