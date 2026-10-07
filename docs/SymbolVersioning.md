@@ -451,7 +451,7 @@ configure error.
 
 **Cause**: Application was built against a newer library version than is installed.
 
-**Solution**: Install AWS-LC 1.1 or later, or rebuild the application against the installed version.
+**Solution**: Install a library that provides `AWS_LC_FIPS4_1.1`, or rebuild the application against the installed version.
 
 ### CI Error: "PUBLIC symbols removed" / "unregistered symbols" / "map out of sync"
 
