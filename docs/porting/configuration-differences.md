@@ -70,10 +70,10 @@ empty group list will result in AWS-LC's default list being used.
 removal there is applied to AWS-LC's default lists for signing and for verifying,
 which are not the same list.
 
-AWS-LC's post-quantum groups (the ML-KEM hybrids) and signature algorithms
-(ML-DSA) are kept unless the policy speaks about post-quantum algorithms. Every
-policy the `crypto-policies` framework ships today predates them, and both setters
-replace AWS-LC's default list rather than intersect with it, so seeding would
+AWS-LC's post-quantum groups (the ML-KEM hybrids) are kept unless the policy
+speaks about post-quantum algorithms. Every policy the `crypto-policies`
+framework ships today predates them, and seeding replaces AWS-LC's default group
+list rather than intersecting with it, so it would
 otherwise strip post-quantum support from every context. A policy that names any
 post-quantum algorithm is authoritative and nothing is added back. An algorithm
 the policy removes with `-` stays out, in either directive. A hybrid needs its
