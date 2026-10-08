@@ -5,14 +5,22 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/crypto.h>
+#include <openssl/mem.h>
+
 #include "internal.h"
 #include "../internal.h"
 #include "../../../ube/internal.h"
+#include "../../../ube/vm_ube_detect.h"
+
+#include "../../../rand_extra/internal.h"
+#include "../../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 
 #include "../../../test/ube_test.h"
 #include "../../../test/test_util.h"
 
 #include <cstdio>
+#include <cstring>
 
 // Use `#if GTEST_HAS_DEATH_TEST` (not `defined()`); some toolchains define it to 0.
 #if GTEST_HAS_DEATH_TEST
@@ -203,6 +211,345 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
 
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
+
+#if !defined(BORINGSSL_FIPS)
+
+// The OS fallback must be silent. Requiring an empty stderr from the child
+// catches a stray diagnostic, while assertion failures in the child still
+// report their messages.
+static ::testing::Matcher<const std::string &> empty_stderr() {
+  return ::testing::Eq(std::string());
+}
+
+struct MockedTreeJitter {
+  // The power-up test fails with |power_up_error| below |power_up_pass_osr|.
+  int power_up_error = 0;
+  unsigned int power_up_pass_osr = JENT_MIN_OSR;
+  bool fail_alloc = false;
+  int read_result = CTR_DRBG_ENTROPY_LEN;
+
+  unsigned int power_up_calls = 0;
+  unsigned int alloc_calls = 0;
+  unsigned int alloc_osr = 0;
+  unsigned int read_calls = 0;
+  struct rand_data **collector = nullptr;
+};
+
+static MockedTreeJitter mocked_tree_jitter;
+
+static int mocked_tree_jitter_power_up(unsigned int osr, unsigned int flags) {
+  TEST_IN_FORK_ASSERT_TRUE(
+      (flags == (JENT_FORCE_FIPS | JENT_MAX_MEMSIZE_128kB)))
+  TEST_IN_FORK_ASSERT_TRUE(
+      (osr == JENT_MIN_OSR + mocked_tree_jitter.power_up_calls))
+  mocked_tree_jitter.power_up_calls++;
+  return osr >= mocked_tree_jitter.power_up_pass_osr
+             ? 0
+             : mocked_tree_jitter.power_up_error;
+}
+
+static struct rand_data *mocked_tree_jitter_collector_alloc(unsigned int osr,
+                                                          unsigned int flags) {
+  TEST_IN_FORK_ASSERT_TRUE(
+      (flags == (JENT_FORCE_FIPS | JENT_MAX_MEMSIZE_128kB)))
+  mocked_tree_jitter.alloc_calls++;
+  mocked_tree_jitter.alloc_osr = osr;
+  if (mocked_tree_jitter.fail_alloc) {
+    return nullptr;
+  }
+  // The read hook supplies the entropy, so only |jent_entropy_collector_free|
+  // touches this collector; its zeroed fields make that cleanup a no-op.
+  struct rand_data *collector =
+      static_cast<struct rand_data *>(OPENSSL_zalloc(sizeof(struct rand_data)));
+  TEST_IN_FORK_ASSERT_TRUE(collector)
+  collector->osr = osr;
+  collector->flags = flags;
+  return collector;
+}
+
+static void fill_failed_tree_jitter_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  // Keep the unwritten suffix known so we can detect use of the rejected seed.
+  memset(seed, 0, CTR_DRBG_ENTROPY_LEN);
+  memset(seed, 0xa5, CTR_DRBG_ENTROPY_LEN / 2);
+}
+
+static int mocked_tree_jitter_read_entropy(
+    struct rand_data **jitter_ec, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  TEST_IN_FORK_ASSERT_TRUE(jitter_ec)
+  TEST_IN_FORK_ASSERT_TRUE(*jitter_ec)
+  mocked_tree_jitter.collector = jitter_ec;
+  mocked_tree_jitter.read_calls++;
+  if (mocked_tree_jitter.read_result == CTR_DRBG_ENTROPY_LEN) {
+    CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
+  } else {
+    fill_failed_tree_jitter_seed(seed);
+    if (mocked_tree_jitter.read_result == -1) {
+      // Model the safe reader freeing its collector before an allocation fails.
+      jent_entropy_collector_free(*jitter_ec);
+      *jitter_ec = nullptr;
+    }
+  }
+  return mocked_tree_jitter.read_result;
+}
+
+static const struct tree_jitter_test_hooks kMockedTreeJitterHooks = {
+    mocked_tree_jitter_power_up, mocked_tree_jitter_collector_alloc,
+    mocked_tree_jitter_read_entropy};
+
+static void check_tree_jitter_entropy_status(bool jitter_active) {
+  // These tests invoke the tree directly even when VM UBE selects opt-out.
+  const int selected_id = CRYPTO_get_vm_ube_supported()
+                              ? OPT_OUT_CPU_JITTER_ENTROPY_SOURCE
+                              : TREE_DRBG_JITTER_WITH_OS_FALLBACK_ENTROPY_SOURCE;
+  TEST_IN_FORK_ASSERT_TRUE(
+      (get_entropy_source_method_id_FOR_TESTING() == selected_id))
+  TEST_IN_FORK_ASSERT_TRUE(
+      (FIPS_is_entropy_cpu_jitter() ==
+       (selected_id != OPT_OUT_CPU_JITTER_ENTROPY_SOURCE && jitter_active)))
+}
+
+// Read failures the root seed source handles differently: an error that leaves
+// the collector in place, a short read, and an error after the collector was
+// freed.
+static const int kTreeJitterReadFailures[] = {-7, CTR_DRBG_ENTROPY_LEN / 2, -1};
+
+static void force_tree_jitter_reseed(struct entropy_source_t *entropy_source,
+                                    uint64_t expected_reseeds) {
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+  TEST_IN_FORK_ASSERT_TRUE(
+      set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
+          entropy_source, TREE_JITTER_THREAD_DRBG_MAX_GENERATE + 1,
+          TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE + 1))
+  TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(entropy_source, seed))
+  struct test_tree_drbg_t calls = {0, 0, 0, 0};
+  TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(entropy_source, &calls))
+  TEST_IN_FORK_ASSERT_TRUE(
+      (calls.thread_reseed_calls_since_initialization == expected_reseeds))
+  TEST_IN_FORK_ASSERT_TRUE(
+      (calls.global_reseed_calls_since_initialization == expected_reseeds))
+}
+
+static void check_tree_jitter_fallback_reseeds(
+    struct entropy_source_t *entropy_source, uint64_t initial_reseeds = 1) {
+  check_tree_jitter_entropy_status(false);
+  const unsigned int power_up_calls = mocked_tree_jitter.power_up_calls;
+  const unsigned int alloc_calls = mocked_tree_jitter.alloc_calls;
+  const unsigned int read_calls = mocked_tree_jitter.read_calls;
+
+  force_tree_jitter_reseed(entropy_source, initial_reseeds + 1);
+  uint8_t out[32];
+  TEST_IN_FORK_ASSERT_TRUE(RAND_bytes(out, sizeof(out)))
+  check_tree_jitter_entropy_status(false);
+  TEST_IN_FORK_ASSERT_TRUE(
+      (mocked_tree_jitter.power_up_calls == power_up_calls))
+  TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == alloc_calls))
+  TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == read_calls))
+  if (mocked_tree_jitter.collector != nullptr) {
+    TEST_IN_FORK_ASSERT_TRUE((*mocked_tree_jitter.collector == nullptr))
+  }
+  tree_jitter_free_thread_drbg(entropy_source);
+}
+
+TEST_F(treeDrbgJitterentropyTest, RootSeedReadFailureReplacesBuffer) {
+  for (int read_result : kTreeJitterReadFailures) {
+    SCOPED_TRACE(read_result);
+    auto testFunc = [read_result]() {
+      mocked_tree_jitter = MockedTreeJitter();
+      mocked_tree_jitter.read_result = read_result;
+      tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+      struct rand_data *collector =
+          mocked_tree_jitter_collector_alloc(
+              JENT_MIN_OSR, JENT_FORCE_FIPS | JENT_MAX_MEMSIZE_128kB);
+      uint8_t seed[CTR_DRBG_ENTROPY_LEN], rejected[CTR_DRBG_ENTROPY_LEN];
+      fill_failed_tree_jitter_seed(rejected);
+      tree_jitter_get_root_seed_FOR_TESTING(&collector, seed);
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE((collector == nullptr))
+      // Check both halves so replacing only the rejected prefix or only the
+      // unwritten suffix cannot pass.
+      const size_t half = sizeof(seed) / 2;
+      TEST_IN_FORK_ASSERT_FALSE((memcmp(seed, rejected, half) == 0))
+      TEST_IN_FORK_ASSERT_FALSE(
+          (memcmp(seed + half, rejected + half, sizeof(seed) - half) == 0))
+      exit(0);
+    };
+    EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+  }
+}
+
+struct PowerUpFailure {
+  // error is returned by every power-up attempt.
+  int error;
+  // expected_attempts is the number of rates tried before falling back.
+  unsigned int expected_attempts;
+};
+
+static const PowerUpFailure kPowerUpFailures[] = {
+    // A health test failure is retried at every permitted rate.
+    {EHEALTH, TREE_JITTER_MAX_OSR - JENT_MIN_OSR + 1},
+    // Timer failures cannot be cleared by a higher rate.
+    {ENOTIME, 1},
+    {ECOARSETIME, 1},
+    {ESTUCK, 1},
+};
+
+TEST_F(treeDrbgJitterentropyTest, PowerUpRetriesAtHigherRate) {
+  // Health test and entropy-rate failures can clear at a higher rate.
+  for (int error : {EHEALTH, ERCT, EMINVARVAR}) {
+    SCOPED_TRACE(error);
+    auto testFunc = [error]() {
+      mocked_tree_jitter = MockedTreeJitter();
+      mocked_tree_jitter.power_up_error = error;
+      mocked_tree_jitter.power_up_pass_osr = JENT_MIN_OSR + 2;
+      tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+      check_tree_jitter_entropy_status(true);
+      struct entropy_source_t entropy_source = {0, 0};
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+      check_tree_jitter_entropy_status(true);
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.power_up_calls == 3))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE(
+          (mocked_tree_jitter.alloc_osr == JENT_MIN_OSR + 2))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE(*mocked_tree_jitter.collector)
+      tree_jitter_free_thread_drbg(&entropy_source);
+      exit(0);
+    };
+    EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+  }
+}
+
+TEST_F(treeDrbgJitterentropyTest, PowerUpFailureFallsBackToOS) {
+  for (const PowerUpFailure &failure : kPowerUpFailures) {
+    SCOPED_TRACE(failure.error);
+    auto testFunc = [failure]() {
+      mocked_tree_jitter = MockedTreeJitter();
+      mocked_tree_jitter.power_up_error = failure.error;
+      mocked_tree_jitter.power_up_pass_osr = TREE_JITTER_MAX_OSR + 1;
+      tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+      check_tree_jitter_entropy_status(true);
+      struct entropy_source_t entropy_source = {0, 0};
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+      TEST_IN_FORK_ASSERT_TRUE(
+          (mocked_tree_jitter.power_up_calls == failure.expected_attempts))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 0))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 0))
+      check_tree_jitter_fallback_reseeds(&entropy_source);
+      exit(0);
+    };
+    EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), empty_stderr());
+  }
+}
+
+TEST_F(treeDrbgJitterentropyTest, AllocationFailureFallsBackToOS) {
+  auto testFunc = []() {
+    mocked_tree_jitter = MockedTreeJitter();
+    mocked_tree_jitter.fail_alloc = true;
+    tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+    check_tree_jitter_entropy_status(true);
+    struct entropy_source_t entropy_source = {0, 0};
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.power_up_calls == 1))
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 1))
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 0))
+    check_tree_jitter_fallback_reseeds(&entropy_source);
+    exit(0);
+  };
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), empty_stderr());
+}
+
+TEST_F(treeDrbgJitterentropyTest, InitialReadFailureFallsBackToOS) {
+  for (int read_result : kTreeJitterReadFailures) {
+    SCOPED_TRACE(read_result);
+    auto testFunc = [read_result]() {
+      mocked_tree_jitter = MockedTreeJitter();
+      mocked_tree_jitter.read_result = read_result;
+      tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+      check_tree_jitter_entropy_status(true);
+      struct entropy_source_t entropy_source = {0, 0};
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.power_up_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE(mocked_tree_jitter.collector)
+      TEST_IN_FORK_ASSERT_TRUE((*mocked_tree_jitter.collector == nullptr))
+      check_tree_jitter_fallback_reseeds(&entropy_source);
+      exit(0);
+    };
+    EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), empty_stderr());
+  }
+}
+
+TEST_F(treeDrbgJitterentropyTest, ReseedReadFailureFallsBackToOS) {
+  for (int read_result : kTreeJitterReadFailures) {
+    SCOPED_TRACE(read_result);
+    auto testFunc = [read_result]() {
+      mocked_tree_jitter = MockedTreeJitter();
+      tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+      check_tree_jitter_entropy_status(true);
+      struct entropy_source_t entropy_source = {0, 0};
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+      check_tree_jitter_entropy_status(true);
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE(mocked_tree_jitter.collector)
+      TEST_IN_FORK_ASSERT_TRUE(*mocked_tree_jitter.collector)
+
+      mocked_tree_jitter.read_result = read_result;
+      force_tree_jitter_reseed(&entropy_source, 2);
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.power_up_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 1))
+      TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 2))
+      TEST_IN_FORK_ASSERT_TRUE((*mocked_tree_jitter.collector == nullptr))
+      check_tree_jitter_fallback_reseeds(&entropy_source, 2);
+      exit(0);
+    };
+    EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), empty_stderr());
+  }
+}
+
+TEST_F(treeDrbgJitterentropyTest, FallbackPersistsAcrossThreads) {
+  auto testFunc = []() {
+    mocked_tree_jitter = MockedTreeJitter();
+    tree_jitter_set_hooks_FOR_TESTING(&kMockedTreeJitterHooks);
+    struct entropy_source_t entropy_source = {0, 0};
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    check_tree_jitter_entropy_status(true);
+
+    mocked_tree_jitter.read_result = -7;
+    force_tree_jitter_reseed(&entropy_source, 2);
+    check_tree_jitter_entropy_status(false);
+
+    // Even if Jitter could recover, new threads and required root reseeds must
+    // continue using the process-wide OS fallback.
+    mocked_tree_jitter.read_result = CTR_DRBG_ENTROPY_LEN;
+    TEST_IN_FORK_ASSERT_TRUE(threadTest(number_of_threads, [](bool *result) {
+      struct entropy_source_t thread_entropy_source = {0, 0};
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&thread_entropy_source))
+      TEST_IN_FORK_ASSERT_TRUE(
+          set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
+              &thread_entropy_source, TREE_JITTER_THREAD_DRBG_MAX_GENERATE + 1,
+              TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE + 1))
+      uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&thread_entropy_source, seed))
+      check_tree_jitter_entropy_status(false);
+      tree_jitter_free_thread_drbg(&thread_entropy_source);
+      *result = true;
+    }))
+
+    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed))
+    check_tree_jitter_entropy_status(false);
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.power_up_calls == 1))
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.alloc_calls == 1))
+    TEST_IN_FORK_ASSERT_TRUE((mocked_tree_jitter.read_calls == 2))
+    TEST_IN_FORK_ASSERT_TRUE((*mocked_tree_jitter.collector == nullptr))
+    tree_jitter_free_thread_drbg(&entropy_source);
+    exit(0);
+  };
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+#endif  // !defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_WINDOWS)
 
