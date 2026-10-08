@@ -28,6 +28,12 @@ Exit status follows OpenSSL: 1 for option or trust store setup errors (including
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
 
+`-serial` prints the certificate serial number as `serial=<HEX>`.
+
+`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. Unlike OpenSSL, `-addtrust` does not imply `-trustout`; pass `-trustout` explicitly to emit the trusted form. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
+
+When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
+
 ## pkcs12 (import only)
 
 `pkcs12` supports importing a bundle and extracting its certificates and private key:
