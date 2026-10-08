@@ -40,7 +40,7 @@ constexpr ReachabilityCell kReachabilityCells[] = {
 std::vector<std::string> SplitNames(const std::string &names) {
   std::vector<std::string> out;
   size_t start = 0;
-  for (size_t end; (end = names.find(':', start)) != std::string::npos;
+  for (size_t end = 0; (end = names.find(':', start)) != std::string::npos;
        start = end + 1) {
     out.push_back(names.substr(start, end - start));
   }
