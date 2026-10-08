@@ -601,6 +601,8 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     OPENSSL_memcpy(ctx->iv, iv, 16);
   }
 
+  // A new key or IV permits a new data unit.
+  xctx->data_unit_processed = 0;
   return 1;
 }
 
@@ -609,6 +611,12 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   EVP_AES_XTS_CTX *xctx = ctx->cipher_data;
   if (!xctx->xts.key1 || !xctx->xts.key2 || !out || !in ||
       len < AES_BLOCK_SIZE) {
+    return 0;
+  }
+
+  // A key/IV pair may process only one data unit.
+  if (xctx->data_unit_processed) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
     return 0;
   }
 
@@ -621,13 +629,18 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     return 0;
   }
 
+  int ret = 0;
   if (hwaes_xts_available()) {
-    return aes_hw_xts_cipher(in, out, len, xctx->xts.key1, xctx->xts.key2,
-                             ctx->iv, ctx->encrypt);
+    ret = aes_hw_xts_cipher(in, out, len, xctx->xts.key1, xctx->xts.key2,
+                            ctx->iv, ctx->encrypt);
   } else {
-    return CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len,
-                                 ctx->encrypt);
+    ret = CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len,
+                                ctx->encrypt);
   }
+  if (ret) {
+    xctx->data_unit_processed = 1;
+  }
+  return ret;
 }
 
 static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
@@ -654,6 +667,7 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
   // key1 and key2 are used as an indicator both key and IV are set
   xctx->xts.key1 = NULL;
   xctx->xts.key2 = NULL;
+  xctx->data_unit_processed = 0;
   return 1;
 }
 
