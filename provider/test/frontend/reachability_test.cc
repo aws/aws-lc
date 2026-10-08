@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -19,22 +20,36 @@ namespace {
 
 struct ReachabilityCell {
   int operation;
-  const char *name;
+  const char *names;
 };
 
-// One attributed test cell per registry row. Duplicates stay duplicated so the
-// comparison below detects both missing coverage and accidental registrations.
+// One attributed test cell per registry row, carrying the row's names string
+// verbatim. Duplicates stay duplicated so the comparison below detects both
+// missing coverage and accidental registrations.
 constexpr ReachabilityCell kReachabilityCells[] = {
-    {OSSL_OP_DIGEST, "SHA2-224"},
-    {OSSL_OP_DIGEST, "SHA2-256"},
-    {OSSL_OP_DIGEST, "SHA2-384"},
-    {OSSL_OP_DIGEST, "SHA2-512"},
-    {OSSL_OP_DIGEST, "SHA2-512/224"},
-    {OSSL_OP_DIGEST, "SHA2-512/256"},
+    {OSSL_OP_DIGEST, "SHA2-224:SHA-224:SHA224:2.16.840.1.101.3.4.2.4"},
+    {OSSL_OP_DIGEST, "SHA2-256:SHA-256:SHA256:2.16.840.1.101.3.4.2.1"},
+    {OSSL_OP_DIGEST, "SHA2-384:SHA-384:SHA384:2.16.840.1.101.3.4.2.2"},
+    {OSSL_OP_DIGEST, "SHA2-512:SHA-512:SHA512:2.16.840.1.101.3.4.2.3"},
+    {OSSL_OP_DIGEST,
+     "SHA2-512/224:SHA-512/224:SHA512-224:2.16.840.1.101.3.4.2.5"},
+    {OSSL_OP_DIGEST,
+     "SHA2-512/256:SHA-512/256:SHA512-256:2.16.840.1.101.3.4.2.6"},
 };
 
-std::string ReachabilityKey(int operation, const std::string &name) {
-  return std::to_string(operation) + ":" + name;
+std::vector<std::string> SplitNames(const std::string &names) {
+  std::vector<std::string> out;
+  size_t start = 0;
+  for (size_t end; (end = names.find(':', start)) != std::string::npos;
+       start = end + 1) {
+    out.push_back(names.substr(start, end - start));
+  }
+  out.push_back(names.substr(start));
+  return out;
+}
+
+std::string ReachabilityKey(int operation, const std::string &names) {
+  return std::to_string(operation) + " " + names;
 }
 
 TEST_F(ProviderTest, AdvertisedAlgorithmsMatchReachabilityCells) {
@@ -47,9 +62,8 @@ TEST_F(ProviderTest, AdvertisedAlgorithmsMatchReachabilityCells) {
     for (const OSSL_ALGORITHM *algorithm = algorithms;
          algorithm != nullptr && algorithm->algorithm_names != nullptr;
          algorithm++) {
-      const std::string names = algorithm->algorithm_names;
-      const std::string name = names.substr(0, names.find(':'));
-      advertised.push_back(ReachabilityKey(operation, name));
+      advertised.push_back(
+          ReachabilityKey(operation, algorithm->algorithm_names));
     }
 
     OSSL_PROVIDER_unquery_operation(awslc(), operation, algorithms);
@@ -57,39 +71,87 @@ TEST_F(ProviderTest, AdvertisedAlgorithmsMatchReachabilityCells) {
 
   std::vector<std::string> covered;
   for (const ReachabilityCell &cell : kReachabilityCells) {
-    covered.push_back(ReachabilityKey(cell.operation, cell.name));
+    covered.push_back(ReachabilityKey(cell.operation, cell.names));
   }
 
   std::sort(advertised.begin(), advertised.end());
   std::sort(covered.begin(), covered.end());
-  EXPECT_EQ(advertised, covered);
+  std::vector<std::string> uncovered, unadvertised;
+  std::set_difference(advertised.begin(), advertised.end(), covered.begin(),
+                      covered.end(), std::back_inserter(uncovered));
+  std::set_difference(covered.begin(), covered.end(), advertised.begin(),
+                      advertised.end(), std::back_inserter(unadvertised));
+  EXPECT_TRUE(uncovered.empty()) << "advertised but not in kReachabilityCells: "
+                                 << ::testing::PrintToString(uncovered);
+  EXPECT_TRUE(unadvertised.empty())
+      << "in kReachabilityCells but not advertised: "
+      << ::testing::PrintToString(unadvertised);
 }
 
 class ReachabilityTest
     : public ProviderTest,
       public ::testing::WithParamInterface<ReachabilityCell> {};
 
-TEST_P(ReachabilityTest, IsReachableAndAttributed) {
+std::string OperationName(int operation) {
+  switch (operation) {
+    case OSSL_OP_DIGEST:
+      return "Digest";
+    case OSSL_OP_CIPHER:
+      return "Cipher";
+    case OSSL_OP_MAC:
+      return "Mac";
+    case OSSL_OP_KDF:
+      return "Kdf";
+    case OSSL_OP_RAND:
+      return "Rand";
+    case OSSL_OP_KEYMGMT:
+      return "KeyMgmt";
+    case OSSL_OP_KEYEXCH:
+      return "KeyExch";
+    case OSSL_OP_SIGNATURE:
+      return "Signature";
+    case OSSL_OP_ASYM_CIPHER:
+      return "AsymCipher";
+    case OSSL_OP_KEM:
+      return "Kem";
+    case OSSL_OP_SKEYMGMT:
+      return "SKeyMgmt";
+    case OSSL_OP_ENCODER:
+      return "Encoder";
+    case OSSL_OP_DECODER:
+      return "Decoder";
+    case OSSL_OP_STORE:
+      return "Store";
+    default:
+      return "Op" + std::to_string(operation);
+  }
+}
+
+// Implicit-fetch consumers resolve by NID short name, so a missing alias makes
+// the algorithm invisible to them with no error anywhere.
+TEST_P(ReachabilityTest, ResolvesUnderEveryAdvertisedName) {
   const ReachabilityCell &cell = GetParam();
 
-  switch (cell.operation) {
-    case OSSL_OP_DIGEST: {
-      MdPtr md(EVP_MD_fetch(libctx(), cell.name, kRequireAwslc));
-      ASSERT_TRUE(md) << cell.name << " was not reachable";
-      EXPECT_STREQ(kProviderName,
-                   OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
-      break;
+  for (const std::string &name : SplitNames(cell.names)) {
+    switch (cell.operation) {
+      case OSSL_OP_DIGEST: {
+        MdPtr md(EVP_MD_fetch(libctx(), name.c_str(), kRequireAwslc));
+        ASSERT_TRUE(md) << "advertised name '" << name << "' did not resolve";
+        EXPECT_STREQ(kProviderName,
+                     OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
+        break;
+      }
+      default:
+        FAIL() << OperationName(cell.operation)
+               << " has no attributed reachability handler";
     }
-    default:
-      FAIL() << "operation " << cell.operation
-             << " has no attributed reachability handler";
   }
 }
 
 std::string ReachabilityName(
     const testing::TestParamInfo<ReachabilityCell> &info) {
-  std::string name =
-      "Op" + std::to_string(info.param.operation) + "_" + info.param.name;
+  std::string name = OperationName(info.param.operation) + "_" +
+                     SplitNames(info.param.names).front();
   for (char &c : name) {
     if (!isalnum(static_cast<unsigned char>(c))) {
       c = '_';
