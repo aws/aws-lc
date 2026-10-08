@@ -34,6 +34,57 @@ The following table contains the differences in libssl configuration options AWS
 * **Aside from and `SSL_MODE_AUTO_RETRY` being "ON" by default in OpenSSL, everything is "OFF" by default in OpenSSL.**
 * Each “**Context Flag”** has a link that provides more details on the flag’s functionality and our decision behind it (WIP)
 
+### System Crypto Policies Seeding (opt-in)
+
+By default AWS-LC ignores all system configuration files. When built with
+`-DENABLE_CRYPTO_POLICIES=ON` (off by default), AWS-LC seeds each newly created
+`SSL_CTX` from the system-wide `crypto-policies` OpenSSL back-end file at
+`/etc/crypto-policies/back-ends/opensslcnf.config`, which is shipped by Amazon
+Linux 2023 and Fedora. Seeding happens inside `SSL_CTX_new`, after the built-in
+defaults are applied and before the context is returned, so a consumer that
+subsequently calls the relevant setters overrides the seeded values.
+
+The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
+`TLS.MaxProtocol`, `DTLS.MinProtocol`, `DTLS.MaxProtocol`, `Groups`, and
+`SignatureAlgorithms`. Seeding is best-effort: a missing or malformed file, or a
+directive AWS-LC does not support, is ignored rather than fatal. A directive
+AWS-LC cannot satisfy is skipped and the built-in default stands. A context
+created from one of the legacy version-locked methods, such as `TLSv1_2_method`,
+keeps its single pinned version and takes no protocol bounds from the policy.
+
+A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
+rises to the policy's `MaxProtocol`. The built-in floor of TLS 1.0 sits below any
+floor a policy can ask for, so skipping the directive would leave the context
+offering the versions the policy forbids. A `MinProtocol` older than TLS 1.0, such
+as `SSLv3`, keeps the built-in floor.
+
+`Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
+implements, in the order the policy gives them, and a directive naming nothing
+AWS-LC implements is dropped.
+
+In `Groups`, the OpenSSL modifiers `*` and `?` are stripped from the group they
+mark, and `-` drops the group. A removal is applied to AWS-LC's default list. An
+empty group list will result in AWS-LC's default list being used.
+
+`SignatureAlgorithms` takes the same modifiers, on the algorithm each marks. A
+removal there is applied to AWS-LC's default lists for signing and for verifying,
+which are not the same list.
+
+AWS-LC's post-quantum groups (the ML-KEM hybrids) are kept unless the policy
+speaks about post-quantum algorithms. Every policy the `crypto-policies`
+framework ships today predates them, and seeding replaces AWS-LC's default group
+list rather than intersecting with it, so it would
+otherwise strip post-quantum support from every context. A policy that names any
+post-quantum algorithm is authoritative and nothing is added back. An algorithm
+the policy removes with `-` stays out, in either directive. A hybrid needs its
+classical half, so removing that half removes the hybrid whether the policy names
+it or not.
+`AWSLC.PostQuantum = off`, a directive of AWS-LC's own, waives the defaults
+entirely, since the directives the framework writes are preference lists with no
+syntax for excluding an algorithm.
+See [BUILDING.md](../../BUILDING.md) for the build flag and the
+`AWSLC_CRYPTO_POLICY_FILE` override.
+
 
 <table border=0 cellspacing=0 cellpadding=0
  style='border-collapse:collapse'>
@@ -732,6 +783,28 @@ The following table contains the differences in libcrypto configuration options 
   <p><span>NO-OP</span></p>
   </td>
  </tr>
+ <tr>
+  <td>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L928-L930">
+      BN_set_flags
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/main/include/openssl/bn.h#L977-L980">
+      BN_FLG_CONSTTIME
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>OFF</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
 </table>
 
 ### Intentionally Omitted Configuration Flags
@@ -752,23 +825,6 @@ The following table contains configuration options AWS-LC has intentionally omit
   </td>
   <td>
   <p><b><span>AWS-LC Default</span></b></p>
-  </td>
- </tr>
- <tr>
-  <td>
-  <p><span>BN_set_flags</span></p>
-  </td>
-  <td>
-  <p>
-    <span>
-      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/bn.h#L1053-L1062">
-        BN_FLG_CONSTTIME
-      </a>
-    </span>
-  </p>
-  </td>
-  <td>
-  <p><span>Not Implemented</span></p>
   </td>
  </tr>
  <tr>
