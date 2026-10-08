@@ -2429,3 +2429,48 @@ TEST_F(X509Test, SubjectControlCharactersEscaped) {
   EXPECT_NE(std::string::npos, output.find(escaped_newline));
   EXPECT_NE(std::string::npos, output.find(escaped_cr));
 }
+
+// Test -serial
+TEST_F(X509Test, Serial) {
+  args_list_t args = {"-in", in_path, "-serial", "-noout", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  bssl::UniquePtr<X509> cert = LoadPEMCertificate(in_path);
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(mem);
+  ASSERT_TRUE(i2a_ASN1_INTEGER(mem.get(), X509_get_serialNumber(cert.get())));
+  const uint8_t *data = nullptr;
+  size_t len = 0;
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &data, &len));
+  const std::string expected =
+      "serial=" + std::string(reinterpret_cast<const char *>(data), len) + "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+// Test -addtrust / -trustout
+TEST_F(X509Test, AddTrustTrustout) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "clientAuth",
+                      "-trustout", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(out_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+
+  // A plain certificate reader must not accept a trusted certificate.
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> plain(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  EXPECT_FALSE(plain);
+}
+
+// Test -addtrust with -in and -out naming the same file (in-place rewrite).
+TEST_F(X509Test, AddTrustInPlace) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "clientAuth",
+                      "-trustout", "-out",  in_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(in_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+}
