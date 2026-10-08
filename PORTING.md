@@ -327,3 +327,20 @@ See [configuration-differences](docs/porting/configuration-differences.md).
 ### Effect on Integrations
 The default behavior of not performing auto-chaining can have impact to higher-level integrations like CPython or Ruby
 if using software builds that utilize AWS-LC for the underlying TLS implementation.
+
+## Switching `SSL_CTX` during the handshake
+
+Servers often select per-hostname configuration by calling `SSL_set_SSL_CTX` from the callback registered with `SSL_CTX_set_tlsext_servername_callback` or `SSL_CTX_set_select_certificate_cb`. AWS-LC deprecates this function: new code should instead configure the connection directly from these callbacks, setting the certificate with `SSL_set_chain_and_key` or `SSL_use_cert_and_key`. Existing callers remain supported and do not get deprecation warnings, but the function behaves differently than in OpenSSL.
+
+In OpenSSL, a connection that has not set its own cipher suites uses those of its current `SSL_CTX`, and the switch replaces the certificate configuration, including signature algorithm preferences. However, OpenSSL selects the TLS 1.3 cipher suite before the servername callback, so switching contexts there can affect TLS 1.2 cipher selection but cannot change the already-selected TLS 1.3 suite. To apply a different context's TLS 1.3 cipher policy in OpenSSL, switch contexts in the earlier callback registered with `SSL_CTX_set_client_hello_cb`.
+
+In AWS-LC, `SSL_new` copies the cipher suites and peer-verification signature algorithm preferences into the `SSL`, and `SSL_set_SSL_CTX` does not change them. To use the selected `SSL_CTX`'s values, set them on the connection in the same callback with `SSL_set_cipher_list`, `SSL_set_ciphersuites`, and `SSL_set_verify_algorithm_prefs` (or `SSL_set1_sigalgs_list`, which also sets the signing preferences). See `SSL_set_SSL_CTX` in [`ssl.h`](include/openssl/ssl.h) for details.
+
+### Earlier releases
+
+The behavior described above applies to AWS-LC 1.47.0 and later, including the 4.x and 5.x release lines. `SSL_new` has always copied the peer-verification preferences, but earlier releases handle cipher suites differently:
+
+* Before 1.47.0, `SSL_new` does not copy the cipher suites, so a connection that has not set its own uses those of its current `SSL_CTX`, as in OpenSSL.
+* Before 1.46.0, including the AWS-LC FIPS 2.x and 3.x branches, TLS 1.3 cipher suites always come from the current `SSL_CTX`, and `SSL_set_cipher_list` and `SSL_set_ciphersuites` replace the same per-connection list. So `SSL_set_ciphersuites` never affects TLS 1.3, and calling it last leaves the connection with no TLS 1.2 cipher suites.
+
+`AWSLC_API_VERSION` is 32 in every release from 1.40.0 through 1.49.1, so it cannot distinguish 1.46.0-1.49.1 from earlier releases. Every release with 33 or later (1.50.0 and later) behaves as described above.
