@@ -865,6 +865,11 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	if err := tlsConn.Handshake(); err != nil {
 		return err
 	}
+	for i := 0; i < config.Bugs.ReadNewSessionTickets; i++ {
+		if err := tlsConn.ReadNewSessionTicket(); err != nil {
+			return err
+		}
+	}
 
 	expectations := &test.expectations
 	if isResume && test.resumeExpectations != nil {
@@ -12504,6 +12509,55 @@ func addTLS13RecordTests() {
 }
 
 func addSessionTicketTests() {
+	// Test that the server flushes both tickets before either peer writes
+	// application data, including when SSL_read drives the handshake. Reading
+	// the tickets first prevents the shim's echo write from hiding a missing
+	// handshake flush.
+	for _, async := range []bool{false, true} {
+		for _, implicitHandshake := range []bool{false, true} {
+			test := testCase{
+				testType: serverTest,
+				name:     "TLS13-FlushTickets-Server",
+				config: Config{
+					MinVersion: VersionTLS13,
+					MaxVersion: VersionTLS13,
+					Bugs: ProtocolBugs{
+						ReadNewSessionTickets: 2,
+					},
+				},
+				resumeSession: true,
+				flags:         []string{"-flush-tls13-tickets"},
+			}
+			if async {
+				test.name += "-Async"
+				test.flags = append(test.flags, "-async")
+			}
+			if implicitHandshake {
+				test.name += "-ImplicitHandshake"
+				test.flags = append(test.flags, "-implicit-handshake")
+			}
+			testCases = append(testCases, test)
+		}
+	}
+
+	// Test that eager ticket flushing preserves accepted early data. The runner
+	// already consumes the half-RTT tickets during the resumed handshake, so do
+	// not use ReadNewSessionTickets here.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-FlushTickets-EarlyData-Server",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+		},
+		resumeSession: true,
+		earlyData:     true,
+		flags: []string{
+			"-flush-tls13-tickets",
+			"-enable-early-data",
+		},
+	})
+
 	testCases = append(testCases, testCase{
 		// In TLS 1.2 and below, empty NewSessionTicket messages
 		// mean the server changed its mind on sending a ticket.

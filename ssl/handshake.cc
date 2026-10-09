@@ -10,9 +10,11 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <errno.h>
 
 #include <utility>
 
+#include <openssl/err.h>
 #include <openssl/rand.h>
 
 #include "../crypto/internal.h"
@@ -492,6 +494,27 @@ const SSL_SESSION *ssl_handshake_session(const SSL_HANDSHAKE *hs) {
   return hs->ssl->session.get();
 }
 
+// clear_system_error clears the calling thread's system error, so that a stale
+// value is not attributed to a later transport write.
+static void clear_system_error() {
+#if defined(OPENSSL_WINDOWS)
+  WSASetLastError(0);
+#else
+  errno = 0;
+#endif
+}
+
+// is_connection_closed_error returns whether the calling thread's system error
+// indicates that the peer closed or reset the connection. These are the errors
+// OpenSSL ignores when sending TLS 1.3 NewSessionTickets.
+static bool is_connection_closed_error() {
+#if defined(OPENSSL_WINDOWS)
+  return WSAGetLastError() == WSAECONNRESET;
+#else
+  return errno == EPIPE || errno == ECONNRESET;
+#endif
+}
+
 int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
@@ -509,6 +532,31 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         int ret = ssl->method->flush_flight(ssl);
         if (ret <= 0) {
           return ret;
+        }
+        break;
+      }
+
+      case ssl_hs_flush_tickets: {
+        clear_system_error();
+        int ret = ssl->method->flush_flight(ssl);
+        if (ret <= 0) {
+          // Like OpenSSL, ignore the peer closing the connection while we send
+          // TLS 1.3 tickets. Tickets are optional, and this lets the caller
+          // read data from a client that closed without reading them. Check
+          // the system error first, as later calls may overwrite it.
+          const bool closed = is_connection_closed_error();
+          if (!closed || SSL_get_error(ssl, ret) != SSL_ERROR_SYSCALL) {
+            return ret;
+          }
+          // Drop the flight so the handshake does not complete with a
+          // partially-written one. The dropped records were already sealed,
+          // which leaves a gap in the write sequence numbers, so the peer
+          // would reject any later record. This is fine because the transport
+          // can no longer be written to.
+          ssl->s3->pending_flight.reset();
+          ssl->s3->pending_flight_offset = 0;
+          ssl->s3->rwstate = SSL_ERROR_NONE;
+          ERR_clear_error();
         }
         break;
       }
