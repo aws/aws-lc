@@ -1231,8 +1231,10 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
   // write, to prevent a non-reading client from causing the server to hang in
   // the case of a small server write buffer. Consumers which don't write data
   // to the client will need to do a zero-byte write if they wish to flush the
-  // tickets.
-  if (hs->ssl->quic_method != nullptr && sent_tickets) {
+  // tickets, or opt into flushing them as part of the handshake with
+  // |SSL_MODE_FLUSH_TLS13_TICKETS|.
+  if (sent_tickets && (hs->ssl->quic_method != nullptr ||
+                       (hs->ssl->mode & SSL_MODE_FLUSH_TLS13_TICKETS))) {
     return ssl_hs_flush;
   }
   return ssl_hs_ok;
