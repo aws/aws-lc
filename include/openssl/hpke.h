@@ -387,18 +387,18 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 // The following structures are exported so their types are stack-allocatable,
 // but accessing or modifying their fields is forbidden.
 //
-// Every buffer they own is held out of line and sized for the configured
-// algorithm, so that adding a KEM, an AEAD or a digest cannot change either
-// structure's size. A caller which stack-allocates one of these against one
-// release and runs against a later one would otherwise overflow it.
+// |EVP_HPKE_KEY| holds its key material out of line, sized for the configured
+// KEM, so that adding a KEM cannot change the structure's size. A caller which
+// stack-allocates one against one release and runs against a later one would
+// otherwise overflow it.
 
 struct evp_hpke_ctx_st {
   const EVP_HPKE_KEM *kem;
   const EVP_HPKE_AEAD *aead;
   const EVP_HPKE_KDF *kdf;
-  EVP_AEAD_CTX *aead_ctx;
-  uint8_t *base_nonce;
-  uint8_t *exporter_secret;
+  EVP_AEAD_CTX aead_ctx;
+  uint8_t base_nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  uint8_t exporter_secret[EVP_MAX_MD_SIZE];
   uint64_t seq;
   int is_sender;
 };

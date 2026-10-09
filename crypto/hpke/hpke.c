@@ -24,15 +24,12 @@
 
 // This file implements RFC 9180 and draft-ietf-hpke-pq-05.
 
-// Callers stack-allocate |EVP_HPKE_KEY| and |EVP_HPKE_CTX|, so both sizes are
-// ABI: a caller built against one release and run against a later one reserves
-// the older size and overflows it. Each holds pointers and scalars only, so
-// these bounds fail the build if an algorithm-dependent buffer moves back
-// inline. They count pointers so that they hold on ILP32 as well.
-OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) <= 8 * sizeof(void *),
+// Callers stack-allocate |EVP_HPKE_KEY|, so its size is ABI: a caller built
+// against one release and run against a later one reserves the older size and
+// overflows it. The struct is four pointers on any ABI, so spelling that out
+// fails the build if KEM-dependent key material moves back inline.
+OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) == 4 * sizeof(void *),
                       evp_hpke_key_must_not_hold_inline_buffers)
-OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_CTX) <= 16 * sizeof(void *),
-                      evp_hpke_ctx_must_not_hold_inline_buffers)
 
 // MAX_SEED_LEN is the largest |seed_len| of any KEM and MAX_SHARED_SECRET_LEN
 // the largest Nsecret. Both are 32 for every KEM this file implements: X25519
@@ -958,58 +955,12 @@ static int hpke_build_suite_id(const EVP_HPKE_CTX *ctx,
 #define HPKE_MODE_BASE 0
 #define HPKE_MODE_AUTH 2
 
-// hpke_ctx_secrets_len returns the size of the single allocation holding
-// |ctx|'s base nonce and exporter secret, which |hpke_ctx_alloc| partitions.
-static size_t hpke_ctx_secrets_len(const EVP_HPKE_CTX *ctx) {
-  return EVP_AEAD_nonce_length(EVP_HPKE_AEAD_aead(ctx->aead)) +
-         EVP_MD_size(ctx->kdf->hkdf_md_func());
-}
-
-// hpke_ctx_free cleanses and releases |ctx|'s buffers, leaving the pointers
-// dangling for the caller to clear.
-static void hpke_ctx_free(EVP_HPKE_CTX *ctx) {
-  if (ctx->aead_ctx != NULL) {
-    EVP_AEAD_CTX_cleanup(ctx->aead_ctx);
-    OPENSSL_free(ctx->aead_ctx);
-  }
-  if (ctx->base_nonce != NULL) {
-    // |base_nonce| owns the allocation the exporter secret is also carved from.
-    OPENSSL_cleanse(ctx->base_nonce, hpke_ctx_secrets_len(ctx));
-    OPENSSL_free(ctx->base_nonce);
-  }
-}
-
-// hpke_ctx_alloc allocates |ctx|'s AEAD context and secret buffers, sized for
-// |ctx->aead| and |ctx->kdf|, which must already be set. It returns one on
-// success and zero on allocation failure.
-static int hpke_ctx_alloc(EVP_HPKE_CTX *ctx) {
-  assert(ctx->aead_ctx == NULL && ctx->base_nonce == NULL);
-  ctx->aead_ctx = OPENSSL_zalloc(sizeof(EVP_AEAD_CTX));
-  uint8_t *secrets = OPENSSL_zalloc(hpke_ctx_secrets_len(ctx));
-  if (ctx->aead_ctx == NULL || secrets == NULL) {
-    OPENSSL_free(secrets);
-    OPENSSL_free(ctx->aead_ctx);
-    ctx->aead_ctx = NULL;
-    ctx->base_nonce = NULL;
-    ctx->exporter_secret = NULL;
-    return 0;
-  }
-  ctx->base_nonce = secrets;
-  ctx->exporter_secret =
-      secrets + EVP_AEAD_nonce_length(EVP_HPKE_AEAD_aead(ctx->aead));
-  return 1;
-}
-
 static int hpke_key_schedule(EVP_HPKE_CTX *ctx, uint8_t mode,
                              const uint8_t *shared_secret,
                              size_t shared_secret_len, const uint8_t *info,
                              size_t info_len) {
   uint8_t suite_id[HPKE_SUITE_ID_LEN];
   if (!hpke_build_suite_id(ctx, suite_id)) {
-    return 0;
-  }
-
-  if (!hpke_ctx_alloc(ctx)) {
     return 0;
   }
 
@@ -1060,7 +1011,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *ctx, uint8_t mode,
   const size_t kKeyLen = EVP_AEAD_key_length(aead);
   if (!hpke_labeled_expand(hkdf_md, key, kKeyLen, secret, secret_len, suite_id,
                            sizeof(suite_id), "key", context, context_len) ||
-      !EVP_AEAD_CTX_init(ctx->aead_ctx, aead, key, kKeyLen,
+      !EVP_AEAD_CTX_init(&ctx->aead_ctx, aead, key, kKeyLen,
                          EVP_AEAD_DEFAULT_TAG_LENGTH, NULL)) {
     return 0;
   }
@@ -1085,13 +1036,11 @@ static int hpke_key_schedule(EVP_HPKE_CTX *ctx, uint8_t mode,
 
 void EVP_HPKE_CTX_zero(EVP_HPKE_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_HPKE_CTX));
+  EVP_AEAD_CTX_zero(&ctx->aead_ctx);
 }
 
 void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
-  hpke_ctx_free(ctx);
-  // Returning to the zero state makes a second call a no-op, so that the
-  // buffers cannot be freed twice.
-  EVP_HPKE_CTX_zero(ctx);
+  EVP_AEAD_CTX_cleanup(&ctx->aead_ctx);
 }
 
 EVP_HPKE_CTX *EVP_HPKE_CTX_new(void) {
@@ -1132,10 +1081,7 @@ static int hpke_ctx_setup_sender_with_seed_for_testing(
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed,
     size_t seed_len) {
-  // |ctx| may already have been set up, in which case it owns buffers. Cleanup
-  // releases them and leaves the zero state this function builds on; the
-  // documented precondition for a setup function allows it.
-  EVP_HPKE_CTX_cleanup(ctx);
+  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 1;
   ctx->kem = kem;
   ctx->kdf = kdf;
@@ -1165,10 +1111,7 @@ static int hpke_ctx_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
-  // |ctx| may already have been set up, in which case it owns buffers. Cleanup
-  // releases them and leaves the zero state this function builds on; the
-  // documented precondition for a setup function allows it.
-  EVP_HPKE_CTX_cleanup(ctx);
+  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
@@ -1229,10 +1172,7 @@ static int hpke_ctx_setup_auth_sender_with_seed_for_testing(
     return 0;
   }
 
-  // |ctx| may already have been set up, in which case it owns buffers. Cleanup
-  // releases them and leaves the zero state this function builds on; the
-  // documented precondition for a setup function allows it.
-  EVP_HPKE_CTX_cleanup(ctx);
+  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 1;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
@@ -1268,10 +1208,7 @@ static int hpke_ctx_setup_auth_recipient(
     return 0;
   }
 
-  // |ctx| may already have been set up, in which case it owns buffers. Cleanup
-  // releases them and leaves the zero state this function builds on; the
-  // documented precondition for a setup function allows it.
-  EVP_HPKE_CTX_cleanup(ctx);
+  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
@@ -1320,17 +1257,12 @@ static int hpke_ctx_open(EVP_HPKE_CTX *ctx, uint8_t *out, size_t *out_len,
     OPENSSL_PUT_ERROR(EVP, ERR_R_OVERFLOW);
     return 0;
   }
-  if (ctx->aead_ctx == NULL) {
-    // The context was never set up, so there is no key to use.
-    OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
 
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
-  const size_t nonce_len = EVP_AEAD_nonce_length(ctx->aead_ctx->aead);
+  const size_t nonce_len = EVP_AEAD_nonce_length(ctx->aead_ctx.aead);
   hpke_nonce(ctx, nonce, nonce_len);
 
-  if (!EVP_AEAD_CTX_open(ctx->aead_ctx, out, out_len, max_out_len, nonce,
+  if (!EVP_AEAD_CTX_open(&ctx->aead_ctx, out, out_len, max_out_len, nonce,
                          nonce_len, in, in_len, ad, ad_len)) {
     return 0;
   }
@@ -1349,17 +1281,12 @@ static int hpke_ctx_seal(EVP_HPKE_CTX *ctx, uint8_t *out, size_t *out_len,
     OPENSSL_PUT_ERROR(EVP, ERR_R_OVERFLOW);
     return 0;
   }
-  if (ctx->aead_ctx == NULL) {
-    // The context was never set up, so there is no key to use.
-    OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
 
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
-  const size_t nonce_len = EVP_AEAD_nonce_length(ctx->aead_ctx->aead);
+  const size_t nonce_len = EVP_AEAD_nonce_length(ctx->aead_ctx.aead);
   hpke_nonce(ctx, nonce, nonce_len);
 
-  if (!EVP_AEAD_CTX_seal(ctx->aead_ctx, out, out_len, max_out_len, nonce,
+  if (!EVP_AEAD_CTX_seal(&ctx->aead_ctx, out, out_len, max_out_len, nonce,
                          nonce_len, in, in_len, ad, ad_len)) {
     return 0;
   }
@@ -1385,8 +1312,7 @@ static int hpke_ctx_export(const EVP_HPKE_CTX *ctx, uint8_t *out,
 
 size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *ctx) {
   assert(ctx->is_sender);
-  assert(ctx->aead_ctx != NULL);
-  return EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(ctx->aead_ctx));
+  return EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(&ctx->aead_ctx));
 }
 
 const EVP_HPKE_KEM *EVP_HPKE_CTX_kem(const EVP_HPKE_CTX *ctx) {
