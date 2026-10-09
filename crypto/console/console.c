@@ -334,7 +334,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
                 numread--;
             }
             wresult[numread] = L'\0';
-            if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1, buf, maxsize + 1, NULL, 0) > 0) {
+            if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1, buf, maxsize, NULL, 0) > 0) {
                 p = buf;
             }
             OPENSSL_cleanse(wresult, sizeof(wresult));
