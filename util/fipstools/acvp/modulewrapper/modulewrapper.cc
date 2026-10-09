@@ -1774,15 +1774,39 @@ static bool HashMCTXof(const Span<const uint8_t> args[],
 
 // The following logic conforms to the Large Data Tests described in
 // https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-large-data-tests-for-sha-1-
-// Which are the same for SHA-1, SHA2, and SHA3
-static unsigned char *BuildLDTMessage(const bssl::Span<const uint8_t> part_msg,
-                                      int times) {
-  size_t full_msg_size = part_msg.size() * times;
-  unsigned char *full_msg = (unsigned char *)malloc(full_msg_size);
-  for (int i = 0; i < times; i++) {
-    memcpy(full_msg + i * part_msg.size(), part_msg.data(), part_msg.size());
+// Which are the same for SHA-1, SHA2, and SHA3.
+//
+// |performLargeDataTest| advertises support for messages up to eight GiB.
+constexpr uint64_t kMaxLDTMessageLength = UINT64_C(8) << 30;
+
+static bssl::UniquePtr<uint8_t> BuildLDTMessage(
+    const Span<const uint8_t> part_msg,
+    const Span<const uint8_t> times_bytes, size_t *out_size) {
+  *out_size = 0;
+  if (times_bytes.size() != sizeof(uint64_t) || part_msg.empty()) {
+    return nullptr;
   }
 
+  uint64_t times = 0;
+  memcpy(&times, times_bytes.data(), sizeof(times));
+  if (times == 0 || times > kMaxLDTMessageLength / part_msg.size() ||
+      times > SIZE_MAX / part_msg.size()) {
+    return nullptr;
+  }
+
+  const size_t full_msg_size =
+      part_msg.size() * static_cast<size_t>(times);
+  bssl::UniquePtr<uint8_t> full_msg(
+      static_cast<uint8_t *>(OPENSSL_malloc(full_msg_size)));
+  if (!full_msg) {
+    return nullptr;
+  }
+  for (size_t offset = 0; offset < full_msg_size;
+       offset += part_msg.size()) {
+    memcpy(full_msg.get() + offset, part_msg.data(), part_msg.size());
+  }
+
+  *out_size = full_msg_size;
   return full_msg;
 }
 
@@ -1790,31 +1814,37 @@ template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
 static bool HashLDT(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
+  size_t full_msg_size = 0;
+  bssl::UniquePtr<uint8_t> full_msg =
+      BuildLDTMessage(args[0], args[1], &full_msg_size);
+  if (!full_msg) {
+    return false;
+  }
+
   uint8_t digest[DigestLength];
-  int times;
-  memcpy(&times, args[1].data(), sizeof(int));
-
-  unsigned char *msg = BuildLDTMessage(args[0], times);
-
-  OneShotHash(msg, args[0].size() * times, digest);
-  free(msg);
+  if (OneShotHash(full_msg.get(), full_msg_size, digest) == nullptr) {
+    return false;
+  }
   return write_reply({Span<const uint8_t>(digest)});
 }
 
-template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+template <const EVP_MD *(*MDFunc)(), size_t DigestLength>
 static bool HashLDTSha3(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
+  size_t full_msg_size = 0;
+  bssl::UniquePtr<uint8_t> full_msg =
+      BuildLDTMessage(args[0], args[1], &full_msg_size);
+  if (!full_msg) {
+    return false;
+  }
+
   uint8_t digest[DigestLength];
-  const EVP_MD *md = MDFunc();
   unsigned int md_out_size = DigestLength;
-
-  int times;
-  memcpy(&times, args[1].data(), sizeof(int));
-
-  unsigned char *msg = BuildLDTMessage(args[0], times);
-
-  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, nullptr);
-  free(msg);
+  if (!EVP_Digest(full_msg.get(), full_msg_size, digest, &md_out_size, MDFunc(),
+                  nullptr) ||
+      md_out_size != DigestLength) {
+    return false;
+  }
   return write_reply({Span<const uint8_t>(digest)});
 }
 
