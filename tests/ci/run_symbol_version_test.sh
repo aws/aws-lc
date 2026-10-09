@@ -396,13 +396,31 @@ normalized_exports() {
     sort -u
 }
 
+# check_dropped_symbols <name> <unversioned_lib> <versioned_lib> [allowed...]
+#
+# Any symbol named in [allowed...] is reported but not counted as a drop, for
+# markers a versioned build is meant to hide.
 check_dropped_symbols() {
   local name="$1" unversioned_lib="$2" versioned_lib="$3"
-  normalized_exports "${unversioned_lib}" > /tmp/uv_${name}.txt
-  normalized_exports "${versioned_lib}" > /tmp/v_${name}.txt
+  shift 3
+  local allowed=("$@")
+  local work
+  work=$(mktemp -d)
+  CLEANUP_DIRS+=("${work}")
+  normalized_exports "${unversioned_lib}" > "${work}/uv.txt"
+  normalized_exports "${versioned_lib}" > "${work}/v.txt"
   # Symbols exported unversioned but NOT in the versioned library.
   local dropped dropped_count
-  dropped=$(comm -23 /tmp/uv_${name}.txt /tmp/v_${name}.txt)
+  dropped=$(comm -23 "${work}/uv.txt" "${work}/v.txt")
+  if [[ ${#allowed[@]} -gt 0 ]]; then
+    printf '%s\n' "${allowed[@]}" | sort -u > "${work}/allowed.txt"
+    local expected
+    expected=$(printf '%s\n' "${dropped}" | grep -Fxf "${work}/allowed.txt" || true)
+    if [[ -n "${expected}" ]]; then
+      print_info "${name}: hidden as intended: $(echo ${expected})"
+    fi
+    dropped=$(printf '%s\n' "${dropped}" | grep -Fxvf "${work}/allowed.txt" || true)
+  fi
   dropped_count=$(echo "${dropped}" | grep -c . || true)
   if [[ ${dropped_count} -eq 0 ]]; then
     print_pass "${name}: no exported symbols hidden by the version script"
@@ -476,6 +494,89 @@ fi
 
 check_dropped_symbols "libcrypto" "${UV_CRYPTO}" "${LIBCRYPTO_SO}"
 check_dropped_symbols "libssl" "${UV_SSL}" "${LIBSSL_SO}"
+
+# Test 7b: The same check for a FIPS build, which is what this branch ships.
+#
+# Test 7 compares non-FIPS builds, so it says nothing about symbols that only a
+# FIPS build exports. The module boundary markers are the known case: a FIPS=1
+# shared build exports them and the version script hides them, so they are
+# allowlisted here rather than left to mask a future FIPS-only export that the
+# extractor misses.
+print_test "Detect silently dropped exported symbols in a FIPS build"
+
+# Allowlisted: the module-boundary markers delocate emits around bcm.o. They
+# exist for the integrity check inside the library, not for applications.
+FIPS_EXPECTED_HIDDEN=(
+  BORINGSSL_bcm_text_start
+  BORINGSSL_bcm_text_end
+  BORINGSSL_bcm_rodata_start
+  BORINGSSL_bcm_rodata_end
+)
+
+# Go drives delocate, without which FIPS=1 cannot assemble bcm.o.
+if ! command -v go > /dev/null 2>&1; then
+  print_warn "go not found; skipping the FIPS silent-drop check"
+else
+  FIPS_DROP_DIR=$(mktemp -d)
+  CLEANUP_DIRS+=("${FIPS_DROP_DIR}")
+  FIPS_DROP_OK=1
+  for variant in versioned unversioned; do
+    if [[ "${variant}" == "versioned" ]]; then
+      versioning=ON
+    else
+      versioning=OFF
+    fi
+    build_dir="${FIPS_DROP_DIR}/${variant}"
+    print_info "Building FIPS ${variant} libraries"
+    if ! cmake -GNinja -B "${build_dir}" -S "${SOURCE_ROOT}" \
+         -DFIPS=1 \
+         -DBUILD_SHARED_LIBS=ON \
+         -DENABLE_DIST_PKG=OFF \
+         -DENABLE_SYMBOL_VERSIONING=${versioning} \
+         -DENABLE_PRE_SONAME_BUILD=OFF \
+         -DCMAKE_BUILD_TYPE=RelWithDebInfo > "${build_dir}.log" 2>&1 || \
+       ! cmake --build "${build_dir}" --target crypto ssl >> "${build_dir}.log" 2>&1; then
+      print_fail "FIPS ${variant} build failed; cannot run the FIPS silent-drop check"
+      tail -20 "${build_dir}.log" | sed 's/^/  /'
+      FIPS_DROP_OK=0
+      break
+    fi
+  done
+
+  if [[ ${FIPS_DROP_OK} -eq 1 ]]; then
+    FIPS_UV_CRYPTO=$(find "${FIPS_DROP_DIR}/unversioned" -name 'libcrypto-awslc.so*' -type f | sed -n '1p')
+    FIPS_UV_SSL=$(find "${FIPS_DROP_DIR}/unversioned" -name 'libssl-awslc.so*' -type f | sed -n '1p')
+    FIPS_V_CRYPTO=$(find "${FIPS_DROP_DIR}/versioned" -name 'libcrypto-awslc.so*' -type f | sed -n '1p')
+    FIPS_V_SSL=$(find "${FIPS_DROP_DIR}/versioned" -name 'libssl-awslc.so*' -type f | sed -n '1p')
+  fi
+
+  if [[ ${FIPS_DROP_OK} -eq 1 ]] && \
+     [[ -z "${FIPS_UV_CRYPTO}" || -z "${FIPS_UV_SSL}" || -z "${FIPS_V_CRYPTO}" || -z "${FIPS_V_SSL}" ]]; then
+    print_fail "Could not locate the FIPS reference libraries after build"
+    FIPS_DROP_OK=0
+  fi
+
+  # Guard: as in Test 7, a versioned "unversioned" reference would hide both
+  # sides identically and the diff would pass vacuously. Check the other side
+  # too, since a FIPS build that silently lost its version script would also
+  # make this check meaningless.
+  if [[ ${FIPS_DROP_OK} -eq 1 ]]; then
+    if readelf --version-info "${FIPS_UV_CRYPTO}" | grep "${SYMBOL_VERSION}" > /dev/null; then
+      print_fail "FIPS unversioned reference carries version definitions; drop check invalid"
+      FIPS_DROP_OK=0
+    elif ! readelf --version-info "${FIPS_V_CRYPTO}" | grep "${SYMBOL_VERSION}" > /dev/null; then
+      print_fail "FIPS versioned library has no ${SYMBOL_VERSION} node; drop check invalid"
+      FIPS_DROP_OK=0
+    fi
+  fi
+
+  if [[ ${FIPS_DROP_OK} -eq 1 ]]; then
+    check_dropped_symbols "libcrypto (FIPS)" "${FIPS_UV_CRYPTO}" "${FIPS_V_CRYPTO}" \
+      "${FIPS_EXPECTED_HIDDEN[@]}"
+    check_dropped_symbols "libssl (FIPS)" "${FIPS_UV_SSL}" "${FIPS_V_SSL}" \
+      "${FIPS_EXPECTED_HIDDEN[@]}"
+  fi
+fi
 
 # Test 8: Symbol versioning is configurable independently of ENABLE_DIST_PKG.
 # Configure-only: the link is already covered above, so skipping the compile
