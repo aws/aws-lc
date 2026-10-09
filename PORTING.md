@@ -147,6 +147,28 @@ may incorrectly report renegotiation as being supported possibly with a message 
 "Secure Renegotiation IS supported". This is inaccurate, and any attempt by a client will result in a TLS protocol alert
 as previously described.
 
+### TLS 1.3 session ticket timing
+
+An OpenSSL TLS 1.3 server sends its NewSessionTicket messages inside
+`SSL_accept`, so they are on the wire when the handshake returns. AWS-LC
+normally builds the tickets at the end of the handshake but, over TCP, does not
+write them until the server's next `SSL_write`. Accepted 0-RTT and QUIC already
+send tickets during the handshake. Deferring tickets keeps a client that never
+reads from blocking a server with a small write buffer, but it also means a server
+that waits for the client to speak first sends nothing after the handshake. A
+client using Nagle's algorithm may then delay its first message until the
+server's delayed ACK arrives.
+
+To match OpenSSL's timing, set `SSL_MODE_FLUSH_TLS13_TICKETS` with
+`SSL_CTX_set_mode` or `SSL_set_mode`. The handshake then does not complete
+until the tickets are written, so on a non-blocking transport `SSL_do_handshake`
+may return -1 with `SSL_get_error` reporting `SSL_ERROR_WANT_WRITE` after
+reading the client's Finished. A failed ticket write fails the handshake.
+Alternatively, a server that does not otherwise write can flush the tickets
+with a zero-length `SSL_write`, which returns zero on success despite
+`SSL_get_error` reporting `SSL_ERROR_SYSCALL`. A zero-length `SSL_write_ex`
+with a non-NULL `written` returns success without writing anything.
+
 ### Lowercase hexadecimal
 
 BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of
