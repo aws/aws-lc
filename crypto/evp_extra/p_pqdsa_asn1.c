@@ -194,11 +194,16 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
   // Case 1: seed [0] OCTET STRING
   // Case 2: expandedKey OCTET STRING
   // Case 3: both SEQUENCE {seed, expandedKey}
+  //
+  // The CHOICE is the entire contents of the privateKey OCTET STRING, so each
+  // case also rejects trailing data after the element it consumed.
+  // |EVP_parse_private_key| does not re-examine |key| after this returns.
 
   if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
     // Case 1: seed [0] OCTET STRING
     CBS seed;
-    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+        CBS_len(key) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -212,7 +217,8 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
   } else if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
     // Case 2: expandedKey OCTET STRING
     CBS expanded_key;
-    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(key) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -228,7 +234,8 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
     CBS sequence, seed, expanded_key;
     if (!CBS_get_asn1(key, &sequence, CBS_ASN1_SEQUENCE) ||
         !CBS_get_asn1(&sequence, &seed, CBS_ASN1_OCTETSTRING) ||
-        !CBS_get_asn1(&sequence, &expanded_key, CBS_ASN1_OCTETSTRING)) {
+        !CBS_get_asn1(&sequence, &expanded_key, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(&sequence) != 0 || CBS_len(key) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
