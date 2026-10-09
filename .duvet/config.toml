@@ -25,6 +25,16 @@ type = "test"
 [[source]]
 pattern = "include/openssl/evp.h"
 
+# X.509 name-constraint enforcement. Scoped to the one file whose RFC 5280
+# section 4.2.1.10 handling is annotated below; not the whole crypto/x509 tree.
+[[source]]
+pattern = "crypto/x509/v3_ncons.c"
+
+# The name-constraint tests that exercise the annotated §4.2.1.10 handling.
+[[source]]
+pattern = "crypto/x509/x509_test.cc"
+type = "test"
+
 # RFC 8032 (EdDSA) — a normative IETF spec, so requirements are extracted
 # from the RFC prose (`duvet extract`) rather than hand-authored. Covers the
 # Ed25519 / Ed25519ph surface in crypto/fipsmodule/curve25519/.
@@ -34,6 +44,11 @@ format = "ietf"
 
 [[requirement]]
 pattern = ".duvet/rfc8032-requirements/**/*.toml"
+
+# RFC 5280 section 4.2.1.10 (Name Constraints), scoped to a single section
+# rather than registering the whole RFC. See .duvet/README.md.
+[[requirement]]
+pattern = ".duvet/rfc5280-requirements/**/*.toml"
 
 [report.html]
 enabled = true
