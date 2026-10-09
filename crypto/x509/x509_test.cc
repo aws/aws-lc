@@ -3471,6 +3471,164 @@ TEST(X509Test, NameConstraintsWildcardCN) {
   ASSERT_TRUE(X509_sign(leaf_punycode_ok.get(), key.get(), EVP_sha256()));
   EXPECT_EQ(X509_V_OK,
             Verify(leaf_punycode_ok.get(), {root.get()}, {}, {}, 0));
+
+  // Boundary hyphens and trailing dots must not exempt a CN from DNS
+  // constraints. |X509_check_host| matches these CNs literally, so they would
+  // otherwise pass hostname verification while escaping the constraint. A
+  // trailing dot also must not exempt a name from the non-ASCII, control
+  // character, and whitespace rejection above.
+  const struct {
+    const char *cn;
+    bool excluded;
+    int expected;
+  } kBoundaryTests[] = {
+      {"a-.evil.com", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"www.-a.evil.com", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"*.a-.evil.com", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"www.evil.com.", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"*.evil.com.", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"a-.example.com", false, X509_V_OK},
+      {"www.example.com.", false, X509_V_OK},
+      {"a-.evil.com", true, X509_V_ERR_EXCLUDED_VIOLATION},
+      {"www.evil.com.", true, X509_V_ERR_EXCLUDED_VIOLATION},
+      {"r\xc3\xa4ger-.evil.com", false, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {"r\xc3\xa4ger.evil.com.", false, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {"foo .evil.com.", false, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+  };
+  for (const auto &t : kBoundaryTests) {
+    SCOPED_TRACE(t.cn);
+    bssl::UniquePtr<X509> leaf_boundary = MakeTestCert(
+        t.excluded ? "Root2" : "Root", t.cn, key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf_boundary);
+    ASSERT_TRUE(X509_sign(leaf_boundary.get(), key.get(), EVP_sha256()));
+    EXPECT_EQ(1, X509_check_host(leaf_boundary.get(), t.cn, strlen(t.cn),
+                                 /*flags=*/0, /*peername=*/nullptr));
+    EXPECT_EQ(t.expected,
+              Verify(leaf_boundary.get(),
+                     {t.excluded ? root_excl.get() : root.get()}, {}, {}, 0));
+  }
+}
+
+// Retain legacy exemptions outside the boundary-hyphen/trailing-dot fix,
+// even though these CNs still match literally.
+TEST(X509Test, NameConstraintsLegacyCNCompatibility) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  for (bool excluded : {false, true}) {
+    SCOPED_TRACE(excluded);
+    // An empty excluded DNS subtree matches every DNS name.
+    bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+        MakeNameConstraint(GEN_DNS, excluded ? "" : "example.net", excluded);
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                  /*crit=*/1, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const char *cn : {"intranet", "intranet.", "www.example.com:443",
+                           "www.example.com:443.", "www..example.com",
+                           "www.example.com..", "www.example.com!"}) {
+      SCOPED_TRACE(cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(1, X509_check_host(leaf.get(), cn, strlen(cn), /*flags=*/0,
+                                   /*peername=*/nullptr));
+      EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(
+          X509_V_OK,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                X509_STORE_CTX_get0_param(ctx), cn, strlen(cn)));
+          }));
+    }
+  }
+}
+
+// CN syntax checks only run when the constraint set includes a DNS subtree, so
+// decorative CNs that happen to look like malformed DNS names are not rejected
+// under IP, email, or URI constraints alone.
+TEST(X509Test, NameConstraintsCNRequiresDNSConstraint) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  const struct {
+    const char *constraint;
+    bool has_dns;
+  } kConstraints[] = {
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0", false},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0", false},
+      {"critical,permitted;email:example.net", false},
+      {"critical,excluded;email:example.net", false},
+      {"critical,permitted;URI:example.net", false},
+      {"critical,excluded;URI:example.net", false},
+      {"critical,permitted;DNS:example.net", true},
+      // A DNS subtree anywhere in a mixed constraint set triggers CN screening.
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0,permitted;DNS:example.net",
+       true},
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0,excluded;DNS:example.net",
+       true},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0,permitted;DNS:example.net",
+       true},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0,excluded;DNS:example.net",
+       true},
+  };
+
+  const struct {
+    const char *cn;
+    // Whether the CN is DNS-shaped but contains characters not permitted in
+    // DNS names, and so is rejected under DNS constraints.
+    bool malformed;
+  } kNames[] = {
+      // A trailing dot alone, or punctuation such as ',', does not make a name
+      // DNS-shaped, so these are never screened.
+      {"Acme Inc.", false},
+      {"Acme, Inc. Engineering", false},
+      {"intranet.", false},
+      // Multi-label-shaped names with ".-" adjacency or a trailing dot are
+      // screened like their plain multi-label forms.
+      {"Acme Inc.-Root CA", true},
+      {"Example Co. Ltd", true},
+      {"Example Co. Ltd.", true},
+      {"M\xc3\xbcnchen Co. Ltd.", true},
+      {"r\xc3\xa4ger-.example.com", true},
+      {"r\xc3\xa4ger.example.com.", true},
+      {"foo\x01-.example.com", true},
+  };
+
+  for (const auto &constraint : kConstraints) {
+    SCOPED_TRACE(constraint.constraint);
+    bssl::UniquePtr<X509_EXTENSION> nc(X509V3_EXT_conf_nid(
+        nullptr, nullptr, NID_name_constraints, constraint.constraint));
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add_ext(root.get(), nc.get(), -1));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const auto &name : kNames) {
+      SCOPED_TRACE(name.cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", name.cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      int expected = (constraint.has_dns && name.malformed)
+                         ? X509_V_ERR_UNSUPPORTED_NAME_SYNTAX
+                         : X509_V_OK;
+      EXPECT_EQ(expected, Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(
+          expected,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                X509_STORE_CTX_get0_param(ctx), name.cn, strlen(name.cn)));
+          }));
+    }
+  }
 }
 
 TEST(X509Test, PrintGeneralName) {
