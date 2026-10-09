@@ -1730,6 +1730,10 @@ enum ssl_hs_wait_t {
   ssl_hs_read_server_hello,
   ssl_hs_read_message,
   ssl_hs_flush,
+  // ssl_hs_flush_tickets is |ssl_hs_flush| for a flight of TLS 1.3
+  // NewSessionTickets. If the transport reports that the peer closed the
+  // connection, the flight is dropped and the handshake continues.
+  ssl_hs_flush_tickets,
   ssl_hs_certificate_selection_pending,
   ssl_hs_handoff,
   ssl_hs_handback,
