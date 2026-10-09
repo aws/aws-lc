@@ -3268,6 +3268,385 @@ TEST(X509Test, NameConstraintsWildcardCN) {
             Verify(leaf_punycode_ok.get(), {root.get()}, {}, {}, 0));
 }
 
+// DNS-like CNs must remain constrained with boundary hyphens or trailing dots.
+TEST(X509Test, NameConstraintsBoundaryHyphenAndTrailingDotCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  const struct {
+    const char *constraint;
+    bool excluded;
+    int expected;
+  } kConstraints[] = {
+      {"example.net", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"example.com", true, X509_V_ERR_EXCLUDED_VIOLATION},
+      {"example.com", false, X509_V_OK},
+      {".example.com", false, X509_V_OK},
+      {"example.net", true, X509_V_OK},
+      {"example.net.", false, X509_V_ERR_PERMITTED_VIOLATION},
+      {"example.com.", true, X509_V_ERR_EXCLUDED_VIOLATION},
+      {".example.com.", true, X509_V_ERR_EXCLUDED_VIOLATION},
+      {"example.com.", false, X509_V_OK},
+      {".example.com.", false, X509_V_OK},
+  };
+  const struct {
+    const char *cn;
+    bool malformed;
+  } kNames[] = {
+      {"a-.example.com", false},
+      {"-a.example.com", false},
+      {"www.a-.example.com", false},
+      {"www.-a.example.com", false},
+      {"-.example.com", false},
+      {"www.example.com", false},
+      {"www.example.com.", false},
+      {"a-.example.com.", false},
+      {"-a.example.com.", false},
+      {"www.a-.example.com.", false},
+      {"www.-a.example.com.", false},
+      {"-.example.com.", false},
+      {"my_host.example.com.", false},
+      {"xn--rger-koa.example.com.", false},
+      {"*.example.com.", false},
+      // Preserve the existing non-ASCII, control, and whitespace rejection.
+      {"r\xc3\xa4ger-.example.com", true},
+      {"-r\xc3\xa4ger.example.com", true},
+      {"foo\x01-.example.com", true},
+      {"-foo .example.com", true},
+      // A trailing dot must not exempt such names from that rejection.
+      {"r\xc3\xa4ger.example.com.", true},
+      {"-r\xc3\xa4ger.example.com.", true},
+      {"foo\x01.example.com.", true},
+      {"-foo .example.com.", true},
+  };
+
+  for (const auto &constraint : kConstraints) {
+    SCOPED_TRACE(constraint.constraint);
+    SCOPED_TRACE(constraint.excluded);
+    bssl::UniquePtr<NAME_CONSTRAINTS> nc = MakeNameConstraint(
+        GEN_DNS, constraint.constraint, constraint.excluded);
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                  /*crit=*/1, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const auto &name : kNames) {
+      SCOPED_TRACE(name.cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", name.cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      int expected = name.malformed ? X509_V_ERR_UNSUPPORTED_NAME_SYNTAX
+                                    : constraint.expected;
+
+      // Preserve literal matching; enforce constraints during verification.
+      EXPECT_EQ(1, X509_check_host(leaf.get(), name.cn, strlen(name.cn),
+                                    /*flags=*/0, /*peername=*/nullptr));
+      if (name.cn[strlen(name.cn) - 1] == '.') {
+        // Only constraint matching normalizes a trailing dot.
+        std::string relative_name(name.cn, strlen(name.cn) - 1);
+        EXPECT_EQ(0, X509_check_host(leaf.get(), relative_name.c_str(),
+                                     relative_name.size(), /*flags=*/0,
+                                     /*peername=*/nullptr));
+      }
+      EXPECT_EQ(expected, Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(
+          expected,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                X509_STORE_CTX_get0_param(ctx), name.cn, strlen(name.cn)));
+          }));
+      EXPECT_EQ(
+          X509_V_ERR_HOSTNAME_MISMATCH,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+            X509_VERIFY_PARAM_set_hostflags(
+                param, X509_CHECK_FLAG_NEVER_CHECK_SUBJECT);
+            ASSERT_TRUE(
+                X509_VERIFY_PARAM_set1_host(param, name.cn, strlen(name.cn)));
+          }));
+    }
+  }
+}
+
+// Retain legacy exemptions outside the boundary-hyphen/trailing-dot fix,
+// even though these CNs still match literally.
+TEST(X509Test, NameConstraintsLegacyCNCompatibility) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  for (bool excluded : {false, true}) {
+    SCOPED_TRACE(excluded);
+    // An empty excluded DNS subtree matches every DNS name.
+    bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+        MakeNameConstraint(GEN_DNS, excluded ? "" : "example.net", excluded);
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                  /*crit=*/1, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const char *cn : {"intranet", "intranet.", "www.example.com:443",
+                           "www.example.com:443.", "www..example.com",
+                           "www.example.com..", "www.example.com!"}) {
+      SCOPED_TRACE(cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(1, X509_check_host(leaf.get(), cn, strlen(cn), /*flags=*/0,
+                                   /*peername=*/nullptr));
+      EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(
+          X509_V_OK,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                X509_STORE_CTX_get0_param(ctx), cn, strlen(cn)));
+          }));
+    }
+  }
+}
+
+// Decorative leaf CNs may look like DNS names and fail DNS syntax checks.
+// Non-DNS constraints and intermediate CNs must not trigger those checks.
+TEST(X509Test, NameConstraintsDecorativeCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  const struct {
+    const char *cn;
+    // Rejected as malformed under DNS constraints.
+    bool multi_label;
+  } kNames[] = {
+      {"Acme Inc.", false},
+      {"Acme, Inc. Engineering", false},
+      {"intranet", false},
+      {"intranet.", false},
+      {"Example Co. Ltd", true},
+      {"Example Co. Ltd.", true},
+      {"Acme Inc. Research.", true},
+      {"M\xc3\xbcnchen Co. Ltd", true},
+      {"M\xc3\xbcnchen Co. Ltd.", true},
+  };
+
+  const struct {
+    const char *conf;
+    bool is_dns;
+  } kConstraints[] = {
+      {"critical,permitted;DNS:example.net", true},
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0", false},
+  };
+
+  for (const auto &constraint : kConstraints) {
+    SCOPED_TRACE(constraint.conf);
+    bssl::UniquePtr<X509_EXTENSION> nc(X509V3_EXT_conf_nid(
+        nullptr, nullptr, NID_name_constraints, constraint.conf));
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add_ext(root.get(), nc.get(), -1));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const auto &name : kNames) {
+      const char *cn = name.cn;
+      SCOPED_TRACE(cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      int expected = (constraint.is_dns && name.multi_label)
+                         ? X509_V_ERR_UNSUPPORTED_NAME_SYNTAX
+                         : X509_V_OK;
+      EXPECT_EQ(expected, Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(1, X509_check_host(leaf.get(), cn, strlen(cn), /*flags=*/0,
+                                    /*peername=*/nullptr));
+
+      bssl::UniquePtr<X509> intermediate =
+          MakeTestCert("Root", cn, key.get(), /*is_ca=*/true);
+      ASSERT_TRUE(intermediate);
+      ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+      leaf = MakeTestCert(cn, "www.example.net", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+      ASSERT_TRUE(names);
+      ASSERT_TRUE(bssl::PushToStack(
+          names.get(), MakeGeneralName(GEN_DNS, "www.example.net")));
+      ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_subject_alt_name, names.get(),
+                                    /*crit=*/0, /*flags=*/0));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(
+          X509_V_OK,
+          Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                 [&](X509_STORE_CTX *ctx) {
+                   ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                       X509_STORE_CTX_get0_param(ctx), "www.example.net", 0));
+                 }));
+    }
+  }
+}
+
+TEST(X509Test, NameConstraintsCNRequiresDNSConstraint) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  const struct {
+    const char *constraint;
+    int expected;
+  } kConstraints[] = {
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0", X509_V_OK},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0", X509_V_OK},
+      {"critical,permitted;email:example.net", X509_V_OK},
+      {"critical,excluded;email:example.net", X509_V_OK},
+      {"critical,permitted;URI:example.net", X509_V_OK},
+      {"critical,excluded;URI:example.net", X509_V_OK},
+      // A DNS subtree anywhere in a mixed constraint set triggers CN screening.
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0,permitted;DNS:example.net",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {"critical,permitted;IP:10.0.0.0/255.0.0.0,excluded;DNS:example.net",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0,permitted;DNS:example.net",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {"critical,excluded;IP:10.0.0.0/255.0.0.0,excluded;DNS:example.net",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+  };
+
+  for (const auto &constraint : kConstraints) {
+    SCOPED_TRACE(constraint.constraint);
+    bssl::UniquePtr<X509_EXTENSION> nc(X509V3_EXT_conf_nid(
+        nullptr, nullptr, NID_name_constraints, constraint.constraint));
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add_ext(root.get(), nc.get(), -1));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const char *cn : {"Acme Inc.-Root CA", "Example Co. Ltd.",
+                           "r\xc3\xa4ger-.example.com",
+                           "r\xc3\xa4ger.example.com.",
+                           "foo\x01-.example.com"}) {
+      SCOPED_TRACE(cn);
+      bssl::UniquePtr<X509> leaf =
+          MakeTestCert("Root", cn, key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(constraint.expected,
+                Verify(leaf.get(), {root.get()}, {}, {}, 0));
+      EXPECT_EQ(
+          constraint.expected,
+          Verify(leaf.get(), {root.get()}, {}, {}, 0, [&](X509_STORE_CTX *ctx) {
+            ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                X509_STORE_CTX_get0_param(ctx), cn, strlen(cn)));
+          }));
+    }
+  }
+}
+
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  for (bool excluded : {false, true}) {
+    SCOPED_TRACE(excluded);
+    bssl::UniquePtr<NAME_CONSTRAINTS> nc = MakeNameConstraint(
+        GEN_DNS, excluded ? "example.com" : "example.net", excluded);
+    ASSERT_TRUE(nc);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                  /*crit=*/1, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    for (const char *cn : {"Acme Inc.-Root CA", "ca-.example.com",
+                           "ca.example.com.", "ca.example.com"}) {
+      SCOPED_TRACE(cn);
+      for (const char *san : {"", "ca.example.net", "ca.example.com"}) {
+        SCOPED_TRACE(san);
+        bssl::UniquePtr<X509> intermediate =
+            MakeTestCert("Root", cn, key.get(), /*is_ca=*/true);
+        ASSERT_TRUE(intermediate);
+        if (san[0] != '\0') {
+          bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+          ASSERT_TRUE(names);
+          ASSERT_TRUE(
+              bssl::PushToStack(names.get(), MakeGeneralName(GEN_DNS, san)));
+          ASSERT_TRUE(X509_add1_ext_i2d(intermediate.get(),
+                                        NID_subject_alt_name, names.get(),
+                                        /*crit=*/0, /*flags=*/0));
+        }
+        ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+        bssl::UniquePtr<X509> leaf =
+            MakeTestCert(cn, "www.example.net", key.get(), /*is_ca=*/false);
+        ASSERT_TRUE(leaf);
+        ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+        // Intermediate DNS SANs remain constrained; their CNs are not DNS-IDs.
+        int expected = X509_V_OK;
+        if (strcmp(san, "ca.example.com") == 0) {
+          expected = excluded ? X509_V_ERR_EXCLUDED_VIOLATION
+                              : X509_V_ERR_PERMITTED_VIOLATION;
+        }
+        EXPECT_EQ(expected, Verify(leaf.get(), {root.get()},
+                                   {intermediate.get()}, {}, 0));
+        for (unsigned hostflags : {0, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT}) {
+          SCOPED_TRACE(hostflags);
+          EXPECT_EQ(expected,
+                    Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
+                           0, [&](X509_STORE_CTX *ctx) {
+                             X509_VERIFY_PARAM *param =
+                                 X509_STORE_CTX_get0_param(ctx);
+                             X509_VERIFY_PARAM_set_hostflags(param, hostflags);
+                             ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                                 param, "www.example.net", 0));
+                           }));
+        }
+      }
+    }
+  }
+}
+
+TEST(X509Test, NameConstraintsIntermediateDirectoryName) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", "ca-.example.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+  bssl::UniquePtr<X509> leaf = MakeTestCert(
+      "ca-.example.com", "www.example.net", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc(NAME_CONSTRAINTS_new());
+  ASSERT_TRUE(nc);
+  nc->excludedSubtrees = sk_GENERAL_SUBTREE_new_null();
+  ASSERT_TRUE(nc->excludedSubtrees);
+  bssl::UniquePtr<GENERAL_SUBTREE> subtree(GENERAL_SUBTREE_new());
+  ASSERT_TRUE(subtree);
+  bssl::UniquePtr<X509_NAME> name(
+      X509_NAME_dup(X509_get_subject_name(intermediate.get())));
+  ASSERT_TRUE(name);
+  GENERAL_NAME_set0_value(subtree->base, GEN_DIRNAME, name.release());
+  ASSERT_TRUE(bssl::PushToStack(nc->excludedSubtrees, std::move(subtree)));
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // Intermediate subject names still obey directoryName constraints.
+  EXPECT_EQ(X509_V_ERR_EXCLUDED_VIOLATION,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+}
+
 TEST(X509Test, PrintGeneralName) {
   // TODO(https://crbug.com/boringssl/430): Add more tests. Also fix the
   // external projects that use this to extract the SAN list and unexport.
