@@ -32,11 +32,11 @@
 #include "fork_ube_detect.h"
 #include "../internal.h"
 
+#if defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
+
 static struct CRYPTO_STATIC_MUTEX ignore_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static int ignore_wipeonfork = 0;
 static int ignore_inheritzero = 0;
-
-#if defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
 
 #include <openssl/base.h>
 #include <openssl/type_check.h>
@@ -64,6 +64,18 @@ static int ignore_all_fork_ube_detection(void) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&ignore_testing_lock);
   return 0;
+}
+
+void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
+  ignore_wipeonfork = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
+}
+
+void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
+  ignore_inheritzero = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
 }
 
 #if defined(OPENSSL_LINUX)
@@ -265,6 +277,8 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
 // assume address space duplication is not a concern and adding entropy to
 // every RAND_bytes call is not needed.
 uint64_t CRYPTO_get_fork_ube_generation(void) { return 0xc0ffee; }
+void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {}
+void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {}
 
 #else
 
@@ -273,17 +287,7 @@ uint64_t CRYPTO_get_fork_ube_generation(void) { return 0xc0ffee; }
 // space duplication could have occured on any call entropy must be added to
 // every RAND_bytes call.
 uint64_t CRYPTO_get_fork_ube_generation(void) { return 0; }
+void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {}
+void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {}
 
 #endif // defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
-
-void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
-  ignore_wipeonfork = 1;
-  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
-}
-
-void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
-  ignore_inheritzero = 1;
-  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
-}
