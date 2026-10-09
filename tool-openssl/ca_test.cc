@@ -190,16 +190,12 @@ class CATest : public ::testing::Test {
     // Sign certificate
     ASSERT_TRUE(X509_sign(ca_cert.get(), ca_pkey.get(), EVP_sha256()));
 
-    // Note: leaving this here unless we want to support non-self-signed certificate
-    // in the future
-    //
-    // Write CA certificate
-    // ScopedFILE ca_cert_file(fopen(ca_cert_path, "wb"));
-    // ASSERT_TRUE(ca_cert_file);
-    // ASSERT_TRUE(PEM_write_X509(ca_cert_file.get(), ca_cert.get()));
+    ScopedFILE ca_cert_file(fopen(ca_cert_path, "wb"));
+    ASSERT_TRUE(ca_cert_file);
+    ASSERT_TRUE(PEM_write_X509(ca_cert_file.get(), ca_cert.get()));
 
-    // Store the key for CSR creation
     test_ca_key_ = std::move(ca_pkey);
+    test_ca_cert_ = std::move(ca_cert);
   }
 
   void CreateTestCSR() {
@@ -348,6 +344,7 @@ subjectAltName = DNS:alt.example.com
   
   // CA key used for both CA operations and CSR signing (self-signed)
   bssl::UniquePtr<EVP_PKEY> test_ca_key_;
+  bssl::UniquePtr<X509> test_ca_cert_;
   
   // ED25519 key for testing DEF_DGST_REQUIRED behavior
   bssl::UniquePtr<EVP_PKEY> test_ed25519_key_;
@@ -2388,4 +2385,267 @@ TEST_F(CATest, DatabaseWithValidEntryAndRevocationDate) {
 
   // Should fail - valid entry should not have revocation date
   ASSERT_EQ(kToolExitFailure, caTool(args));
+}
+
+TEST_F(CATest, RevokeMarksEntryRevoked) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  std::string db_before = ReadFileToString(db_path);
+  ASSERT_FALSE(db_before.empty());
+  ASSERT_EQ('V', db_before[0]) << "newly issued entry should be valid";
+
+  args_list_t revoke = {"-config", config_path, "-revoke", output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(revoke));
+
+  std::string db_after = ReadFileToString(db_path);
+  ASSERT_FALSE(db_after.empty());
+  EXPECT_EQ('R', db_after[0]) << "entry should be marked revoked";
+}
+
+TEST_F(CATest, RevokeCertificateNotInDatabase) {
+  CreateBasicConfig();
+
+  args_list_t revoke = {"-config", config_path, "-revoke", ca_cert_path};
+  ASSERT_EQ(kToolExitFailure, caTool(revoke));
+}
+
+TEST_F(CATest, RevokeAlreadyRevokedCertificate) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  args_list_t revoke = {"-config", config_path, "-revoke", output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(revoke));
+  ASSERT_EQ(kToolExitFailure, caTool(revoke));
+}
+
+TEST_F(CATest, GenerateEmptyCRL) {
+  CreateBasicConfig();
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+
+  args_list_t gencrl = {"-config",  config_path, "-gencrl",
+                        "-crldays", "1",         "-out",     crl_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(gencrl));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(crl_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509_CRL> crl(
+      PEM_read_bio_X509_CRL(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(crl);
+
+  EXPECT_EQ(0, X509_NAME_cmp(X509_CRL_get_issuer(crl.get()),
+                             X509_get_subject_name(test_ca_cert_.get())));
+  EXPECT_EQ(static_cast<size_t>(0),
+            sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl.get())));
+  EXPECT_EQ(1, X509_CRL_verify(crl.get(), test_ca_key_.get()));
+
+  RemoveFile(crl_path);
+}
+
+TEST_F(CATest, GenerateCRLWithRevokedCertificate) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+  args_list_t revoke = {"-config", config_path, "-revoke", output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(revoke));
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+  args_list_t gencrl = {"-config",  config_path, "-gencrl",
+                        "-crldays", "1",         "-out",     crl_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(gencrl));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(crl_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509_CRL> crl(
+      PEM_read_bio_X509_CRL(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(crl);
+
+  STACK_OF(X509_REVOKED) *revoked = X509_CRL_get_REVOKED(crl.get());
+  ASSERT_EQ(static_cast<size_t>(1), sk_X509_REVOKED_num(revoked));
+
+  // The first issued certificate uses serial 0x01 (serial file starts at 01).
+  const ASN1_INTEGER *serial =
+      X509_REVOKED_get0_serialNumber(sk_X509_REVOKED_value(revoked, 0));
+  bssl::UniquePtr<BIGNUM> bn(ASN1_INTEGER_to_BN(serial, nullptr));
+  ASSERT_TRUE(bn);
+  EXPECT_TRUE(BN_is_one(bn.get()));
+
+  EXPECT_EQ(1, X509_CRL_verify(crl.get(), test_ca_key_.get()));
+
+  RemoveFile(crl_path);
+}
+
+TEST_F(CATest, GenCRLRequiresCrlDays) {
+  CreateBasicConfig();
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+
+  args_list_t gencrl = {"-config", config_path, "-gencrl", "-out", crl_path};
+  ASSERT_EQ(kToolExitFailure, caTool(gencrl));
+
+  RemoveFile(crl_path);
+}
+
+TEST_F(CATest, SigningRejectsMismatchedCaKeyAndCert) {
+  char other_key_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_key_path), 0u);
+  {
+    bssl::UniquePtr<EVP_PKEY> other(EVP_PKEY_new());
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> e(BN_new());
+    ASSERT_TRUE(e && BN_set_word(e.get(), RSA_F4) &&
+                RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(other.get(), rsa.release()));
+    ScopedFILE f(fopen(other_key_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_TRUE(PEM_write_PrivateKey(f.get(), other.get(), nullptr, nullptr, 0,
+                                     nullptr, nullptr));
+  }
+
+  // private_key does not correspond to the CA certificate.
+  {
+    ScopedFILE config_file(fopen(config_path, "w"));
+    ASSERT_TRUE(config_file);
+    std::string content = R"(
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(other_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
+default_md = sha256
+policy = policy_anything
+default_days = 365
+
+[ policy_anything ]
+commonName = supplied
+)";
+    fprintf(config_file.get(), "%s", content.c_str());
+  }
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitFailure, caTool(sign));
+
+  RemoveFile(other_key_path);
+}
+
+// Positive: supply the CA key and certificate via -keyfile/-cert on the
+// command line rather than through the config file.
+TEST_F(CATest, SignWithCliKeyAndCert) {
+  {
+    ScopedFILE config_file(fopen(config_path, "w"));
+    ASSERT_TRUE(config_file);
+    std::string content = R"(
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
+default_md = sha256
+policy = policy_anything
+default_days = 365
+
+[ policy_anything ]
+commonName = supplied
+)";
+    fprintf(config_file.get(), "%s", content.c_str());
+  }
+
+  args_list_t sign = {"-config", config_path,   "-keyfile", ca_key_path,
+                      "-cert",   ca_cert_path,  "-in",      csr_path,
+                      "-out",    output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(output_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> issued(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(issued);
+  EXPECT_EQ(0, X509_NAME_cmp(X509_get_issuer_name(issued.get()),
+                             X509_get_subject_name(test_ca_cert_.get())));
+}
+
+// Positive: the CA certificate is a "TRUSTED CERTIFICATE" (X509 AUX) PEM block,
+// which LoadCertificate must accept just like a plain certificate.
+TEST_F(CATest, SignWithTrustedCaCertificate) {
+  CreateBasicConfig();
+
+  char trusted_cert_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(trusted_cert_path), 0u);
+  {
+    uint8_t *der = nullptr;
+    const int len = i2d_X509_AUX(test_ca_cert_.get(), &der);
+    ASSERT_GT(len, 0);
+    bssl::UniquePtr<uint8_t> der_owner(der);
+    bssl::UniquePtr<BIO> bio(BIO_new_file(trusted_cert_path, "w"));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(PEM_write_bio(bio.get(), "TRUSTED CERTIFICATE", "", der, len));
+  }
+
+  args_list_t sign = {"-config", config_path, "-cert", trusted_cert_path,
+                      "-in",     csr_path,    "-out",  output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  RemoveFile(trusted_cert_path);
+}
+
+// Positive: the <index>.attr sidecar is optional; signing must succeed when it
+// is absent.
+TEST_F(CATest, SignsWithoutAttrFile) {
+  std::string db_attr_path = std::string(db_path) + ".attr";
+  RemoveFile(db_attr_path.c_str());
+
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+}
+
+// Negative: with neither default_days/days in the config nor -enddate, the tool
+// cannot determine the validity period and must fail.
+TEST_F(CATest, FailsWhenNoDaysConfigured) {
+  {
+    ScopedFILE config_file(fopen(config_path, "w"));
+    ASSERT_TRUE(config_file);
+    std::string content = R"(
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
+default_md = sha256
+policy = policy_anything
+
+[ policy_anything ]
+commonName = supplied
+)";
+    fprintf(config_file.get(), "%s", content.c_str());
+  }
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitFailure, caTool(sign));
 }
