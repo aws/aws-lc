@@ -18,10 +18,10 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// BIO uses int instead of size_t. No lengths will exceed SSLBUFFER_MAX_CAPACITY
-// (uint16_t), so this will not overflow.
-static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX,
-              "uint16_t does not fit in int");
+// BIO and |SSLBuffer| use int instead of size_t. No lengths will exceed
+// SSLBUFFER_MAX_CAPACITY plus the alignment offset, so this will not overflow.
+static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX - (SSL3_ALIGN_PAYLOAD - 1),
+              "SSLBuffer capacity plus alignment does not fit in int");
 
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
               "SSL3_ALIGN_PAYLOAD must be a power of 2");
