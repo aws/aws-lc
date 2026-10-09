@@ -1380,6 +1380,69 @@ TEST(HPKETest, SelfCopyAndMoveAreSafe) {
   }
 }
 
+// A key's buffers are sized for its KEM, so re-initializing one across KEMs
+// resizes them. Going from the largest KEM to the smallest and back exercises
+// both directions.
+TEST(HPKETest, ReinitAcrossKEMsResizesBuffers) {
+  const EVP_HPKE_KEM *kems[] = {EVP_hpke_mlkem1024(),
+                                EVP_hpke_x25519_hkdf_sha256(),
+                                EVP_hpke_mlkem512()};
+  ScopedEVP_HPKE_KEY key;
+  for (const EVP_HPKE_KEM *kem : kems) {
+    SCOPED_TRACE(EVP_HPKE_KEM_id(kem));
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+    ASSERT_EQ(EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key.get())),
+              EVP_HPKE_KEM_id(kem));
+
+    uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+    size_t public_key_len = 0;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
+                                        sizeof(public_key)));
+    EXPECT_EQ(public_key_len, EVP_HPKE_KEM_public_key_len(kem));
+  }
+}
+
+// Setting up the same context twice must release the first set of buffers and
+// leave the context usable, rather than leaking them.
+TEST(HPKETest, RepeatedSetupIsUsable) {
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_mlkem768()));
+
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
+                                      sizeof(public_key)));
+
+  ScopedEVP_HPKE_CTX sender_ctx;
+  for (int i = 0; i < 2; i++) {
+    SCOPED_TRACE(i);
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+        sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_HPKE_KEY_kem(key.get()),
+        EVP_hpke_hkdf_sha256(), EVP_hpke_aes_128_gcm(), public_key,
+        public_key_len, nullptr, 0));
+
+    static const uint8_t kPlaintext[] = "setup twice";
+    uint8_t ciphertext[sizeof(kPlaintext) + EVP_HPKE_MAX_OVERHEAD];
+    size_t ciphertext_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_seal(sender_ctx.get(), ciphertext, &ciphertext_len,
+                                  sizeof(ciphertext), kPlaintext,
+                                  sizeof(kPlaintext), nullptr, 0));
+
+    ScopedEVP_HPKE_CTX recipient_ctx;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+        recipient_ctx.get(), key.get(), EVP_hpke_hkdf_sha256(),
+        EVP_hpke_aes_128_gcm(), enc, enc_len, nullptr, 0));
+    uint8_t plaintext[sizeof(kPlaintext)];
+    size_t plaintext_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx.get(), plaintext, &plaintext_len,
+                                  sizeof(plaintext), ciphertext, ciphertext_len,
+                                  nullptr, 0));
+    EXPECT_EQ(Bytes(kPlaintext), Bytes(plaintext, plaintext_len));
+  }
+}
+
 // ML-KEM decapsulation is implicitly rejecting: a corrupt but correctly-sized
 // "enc" yields a pseudorandom shared secret rather than an error, so recipient
 // setup succeeds and only the AEAD detects the problem. This is the opposite of
