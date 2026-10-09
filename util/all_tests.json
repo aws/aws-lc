@@ -148,6 +148,9 @@
     "shard": true
   },
   {
+    "cmd": ["ssl/ssl_ciphers_mem_test"]
+  },
+  {
     "cmd": ["crypto/mem_test"]
   },
   {
