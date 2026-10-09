@@ -1365,6 +1365,65 @@ TEST(OCSPRequestTest, AddHeader) {
                       std::to_string(ocsp_request_data.size()).size() + 1));
 }
 
+struct OCSPRequestHeaderTestVector {
+  const char *method;
+  const char *path;
+  const char *name;
+  const char *value;
+  int expected_reason;
+};
+
+static const OCSPRequestHeaderTestVector kOCSPRequestHeaderVectors[] = {
+    {"POST", "/ocsp", "Host", "ocsp.example.com", 0},
+    // A NULL path defaults to "/".
+    {"POST", nullptr, "Host", "ocsp.example.com", 0},
+    // A NULL value writes the header name only.
+    {"POST", "/ocsp", "Host", nullptr, 0},
+    {nullptr, "/ocsp", "Host", "ocsp.example.com", ERR_R_PASSED_NULL_PARAMETER},
+    // CR or LF would end the request line early.
+    {"POST", "/ocsp\r\nX-Evil: 1", "Host", "ocsp.example.com",
+     OCSP_R_INVALID_HTTP_HEADER},
+    {"POST", "/ocsp\r", "Host", "ocsp.example.com", OCSP_R_INVALID_HTTP_HEADER},
+    {"POST", "/ocsp\n", "Host", "ocsp.example.com", OCSP_R_INVALID_HTTP_HEADER},
+    {"POST\r\n", "/ocsp", "Host", "ocsp.example.com",
+     OCSP_R_INVALID_HTTP_HEADER},
+    // CR or LF would end the header line early.
+    {"POST", "/ocsp", "Host", "ocsp.example.com\r\nX-Evil: 1",
+     OCSP_R_INVALID_HTTP_HEADER},
+    {"POST", "/ocsp", "Host", "ocsp.example.com\r", OCSP_R_INVALID_HTTP_HEADER},
+    {"POST", "/ocsp", "Host", "ocsp.example.com\n", OCSP_R_INVALID_HTTP_HEADER},
+    {"POST", "/ocsp", "Host\r\nX-Evil", "1", OCSP_R_INVALID_HTTP_HEADER},
+};
+
+class OCSPRequestHeaderTest
+    : public testing::TestWithParam<OCSPRequestHeaderTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPRequestHeaderTest,
+                         testing::ValuesIn(kOCSPRequestHeaderVectors));
+
+TEST_P(OCSPRequestHeaderTest, OCSPRequestHeader) {
+  const OCSPRequestHeaderTestVector &t = GetParam();
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_REQ_CTX_new(bio.get(), 0));
+  ASSERT_TRUE(ocspReqCtx);
+
+  BIO *mem = OCSP_REQ_CTX_get0_mem_bio(ocspReqCtx.get());
+  size_t written = 0;
+
+  ERR_clear_error();
+  bool ok = OCSP_REQ_CTX_http(ocspReqCtx.get(), t.method, t.path);
+  if (ok) {
+    written = BIO_pending(mem);
+    ok = OCSP_REQ_CTX_add1_header(ocspReqCtx.get(), t.name, t.value);
+  }
+  EXPECT_EQ(t.expected_reason == 0, ok);
+  EXPECT_EQ(t.expected_reason, ERR_GET_REASON(ERR_get_error()));
+  if (!ok) {
+    EXPECT_EQ(written, BIO_pending(mem));
+  }
+}
+
 // Check a |OCSP_CERTID| can be added to an |OCSP_REQUEST| with
 // OCSP_request_add0_id().
 TEST(OCSPRequestTest, AddCert) {
