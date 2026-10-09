@@ -2176,6 +2176,10 @@ struct SSL_HANDSHAKE {
   // handshake.
   bool channel_id_negotiated : 1;
 
+  // can_read_client_hello is true while the ClientHello accessors may parse the
+  // current handshake message as a ClientHello.
+  bool can_read_client_hello : 1;
+
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
 
