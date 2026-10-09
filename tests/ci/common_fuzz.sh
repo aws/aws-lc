@@ -18,6 +18,21 @@ else
 fi
 echo "$BUILD_ID"
 
+# Only trusted runs may write the shared corpus/crash store; PR builds are
+# network-isolated from it (see the fuzz CDK stack). FUZZ_CORPUS_WRITABLE is
+# set per-project by the CDK.
+CORPUS_WRITE_ALLOWED=false
+if [ -v CODEBUILD_FUZZING_ROOT ] && [ "${FUZZ_CORPUS_WRITABLE:-false}" == "true" ]; then
+  CORPUS_WRITE_ALLOWED=true
+fi
+echo "CORPUS_WRITE_ALLOWED=${CORPUS_WRITE_ALLOWED}"
+
+if [ -v CODEBUILD_FUZZING_REPLICA_ROOT ]; then
+  REPLICA_CORPUS_ROOT="${CODEBUILD_FUZZING_REPLICA_ROOT}/fuzzing"
+else
+  REPLICA_CORPUS_ROOT=""
+fi
+
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"
@@ -91,9 +106,6 @@ function run_fuzz_test {
   mv ./*.log  "${LOCAL_FUZZ_RUN_LOGS}/."
 
   if [ "$FUZZ_RUN_FAILURE" == 1 ]; then
-    FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
-    mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
-
     if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
       for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
         base64 $ARTIFACT
@@ -102,12 +114,18 @@ function run_fuzz_test {
       done
     fi
 
-    cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
-    cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+    if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+      FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
+      mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
+      cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
+      cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+      echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${SHARED_FAILURE_ROOT} in EFS"
+    else
+      echo "${FUZZ_NAME} failed, see the above output for details. Crash artifacts are in ${LOCAL_ARTIFACTS_FOLDER} (not persisted to shared storage for untrusted/local runs)"
+    fi
 
     # If this fuzz run has failed the below metrics won't make a lot of sense, it could fail on the first input and
     # publish a TestCount of 1 which makes all the metrics look weird
-    echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${SHARED_FAILURE_ROOT} in EFS"
     exit 1
   else
     echo "Fuzz test ${FUZZ_NAME} finished successfully, not copying run logs and run corpus"
@@ -118,7 +136,23 @@ function run_fuzz_test {
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus, the first folder is
   # where to merge the new corpus (SHARED_FUZZ_TEST_CORPUS), the second two are where to read new inputs from
   # (LOCAL_RUN_CORPUS and SRC_CORPUS).
-  time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+  if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+    time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+
+    # Mirror the corpus subtree one-way to the replica for PR builds.
+    if [ -n "$REPLICA_CORPUS_ROOT" ]; then
+      REPLICA_FUZZ_TEST_CORPUS="${REPLICA_CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
+      mkdir -p "$REPLICA_FUZZ_TEST_CORPUS"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "${SHARED_FUZZ_TEST_CORPUS}/" "${REPLICA_FUZZ_TEST_CORPUS}/"
+      else
+        rm -rf "${REPLICA_FUZZ_TEST_CORPUS:?}"/*
+        cp -r "${SHARED_FUZZ_TEST_CORPUS}/." "${REPLICA_FUZZ_TEST_CORPUS}/"
+      fi
+    fi
+  else
+    echo "Skipping shared corpus merge-back for untrusted/local run"
+  fi
 
   # Calculate interesting metrics and post results to CloudWatch, this checks the shared (EFS) corpus after the new test
   # run corpus has been merged in
