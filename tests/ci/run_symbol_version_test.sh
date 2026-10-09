@@ -137,14 +137,16 @@ INCLUDE_DIR="${INSTALL_DIR}/include/aws-lc"
 LINK_LIB_DIR="${INSTALL_DIR}/${LIB_DIR}"
 
 # Extract the symbol version tag from the linker map
-SYMBOL_VERSION=$(grep -m1 -oP '^AWS_LC_\S+(?= \{)' "${SOURCE_ROOT}/crypto/libcrypto.map")
+SYMBOL_VERSION=$(grep -m1 -oP '^[A-Za-z_][A-Za-z0-9_]*_[0-9]+\.[0-9]+(?= \{)' "${SOURCE_ROOT}/crypto/libcrypto.map")
 if [[ -z "${SYMBOL_VERSION}" ]]; then
   print_fail "Could not extract symbol version from libcrypto.map"
   exit 1
 fi
-# Guard against a malformed .map: the node must be a well-formed AWS_LC_X.Y tag.
-if [[ ! "${SYMBOL_VERSION}" =~ ^AWS_LC_[0-9]+\.[0-9]+$ ]]; then
-  print_fail "Extracted symbol version is not a well-formed AWS_LC_X.Y string: ${SYMBOL_VERSION}"
+# Guard against a malformed .map, and against one regenerated under mainline's
+# namespace: glibc binds a versioned symbol by node name alone, with no regard
+# for which library provides it, so this branch must not share AWS_LC_<major>.<minor>.
+if [[ ! "${SYMBOL_VERSION}" =~ ^AWS_LC_FIPS5_[0-9]+\.[0-9]+$ ]]; then
+  print_fail "Extracted symbol version is not a well-formed AWS_LC_FIPS5_X.Y string: ${SYMBOL_VERSION}"
   exit 1
 fi
 print_info "Symbol version: ${SYMBOL_VERSION}"
@@ -382,7 +384,7 @@ fi
 print_test "Detect silently dropped exported symbols (independent of registry)"
 
 # Print the sorted set of defined, exported symbol names for a library,
-# stripping version tags (func@@AWS_LC_1.0 -> func) and excluding linker /
+# stripping version tags (func@@AWS_LC_FIPS5_1.0 -> func) and excluding linker /
 # runtime internals that are intentionally local in the versioned build.
 normalized_exports() {
   local lib="$1"
@@ -535,12 +537,12 @@ if cmake -GNinja -B "${NAMESPACE_BUILD}" -S "${SOURCE_ROOT}" \
       namespace_ok=0
     fi
     # No node may keep the default namespace, or the library would export a mix.
-    if grep -qE "^AWS_LC_[0-9]+\.[0-9]+ \{" "${generated}"; then
-      print_fail "lib${lib}: generated script still declares an AWS_LC_* node"
+    if grep -qE "^AWS_LC_FIPS5_[0-9]+\.[0-9]+ \{" "${generated}"; then
+      print_fail "lib${lib}: generated script still declares an AWS_LC_FIPS5_* node"
       namespace_ok=0
     fi
     # The checked-in script is the source of truth and must not be rewritten.
-    if ! grep -qE "^AWS_LC_[0-9]+\.[0-9]+ \{" "${SOURCE_ROOT}/${lib}/lib${lib}.map"; then
+    if ! grep -qE "^AWS_LC_FIPS5_[0-9]+\.[0-9]+ \{" "${SOURCE_ROOT}/${lib}/lib${lib}.map"; then
       print_fail "lib${lib}: checked-in ${lib}/lib${lib}.map was modified in place"
       namespace_ok=0
     fi
@@ -582,7 +584,7 @@ fi
 # cmake/GenerateVersionScript.cmake (so a build never needs Go) and
 # applyNamespace() in util/generate_version_script -- and the two must agree. The
 # in-tree .map files have a single node, so this uses a synthetic multi-node
-# registry to also cover the "} AWS_LC_1.0;" inheritance clause. The fixture is
+# registry to also cover the "} AWS_LC_FIPS5_1.0;" inheritance clause. The fixture is
 # regenerated each run so a change to the generator's output format cannot
 # silently leave the CMake copy behind.
 print_test "CMake namespace rewrite matches the generator"
@@ -594,10 +596,10 @@ else
   CLEANUP_DIRS+=("${REWRITE_DIR}")
 
   cat > "${REWRITE_DIR}/registry.txt" <<'REGISTRY_EOF'
-AES_encrypt AWS_LC_1.0 PUBLIC
-EVP_thing AWS_LC_1.0 PUBLIC
-new_api AWS_LC_1.1 PUBLIC
-newer_api AWS_LC_2.0 PUBLIC
+AES_encrypt AWS_LC_FIPS5_1.0 PUBLIC
+EVP_thing AWS_LC_FIPS5_1.0 PUBLIC
+new_api AWS_LC_FIPS5_1.1 PUBLIC
+newer_api AWS_LC_FIPS5_2.0 PUBLIC
 REGISTRY_EOF
 
   rewrite_ok=1
@@ -614,8 +616,8 @@ REGISTRY_EOF
 
   # Fail rather than pass vacuously if the fixture lost its inheritance clause.
   if [[ ${rewrite_ok} -eq 1 ]] && \
-     ! grep -qE '^\} AWS_LC_[0-9]+\.[0-9]+;' "${REWRITE_DIR}/default.map"; then
-    print_fail "Fixture has no '} AWS_LC_<major>.<minor>;' clause, so the inheritance rewrite is untested"
+     ! grep -qE '^\} AWS_LC_FIPS5_[0-9]+\.[0-9]+;' "${REWRITE_DIR}/default.map"; then
+    print_fail "Fixture has no '} AWS_LC_FIPS5_<major>.<minor>;' clause, so the inheritance rewrite is untested"
     rewrite_ok=0
   fi
 

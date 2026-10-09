@@ -250,6 +250,6 @@ git add crypto/libcrypto.map ssl/libssl.map
 git commit -m "Register new public API symbols"
 ```
 
-Opening a new version node instead (`./util/update_symbol_version.sh AWS_LC_1.1`)
+Opening a new version node instead (`./util/update_symbol_version.sh AWS_LC_FIPS5_1.1`)
 closes the current one and is a release-level decision -- see
 [docs/SymbolVersioning.md](../../docs/SymbolVersioning.md).

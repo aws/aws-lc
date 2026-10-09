@@ -152,7 +152,7 @@ endif()
 # interoperate with a stock AWS-LC build, so it is only appropriate for a
 # privately distributed libcrypto (see docs/SymbolVersioning.md).
 set(SYMBOL_VERSION_NAMESPACE "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}" CACHE STRING
-    "Prefix for ELF symbol version nodes (e.g. AWS_LC yields AWS_LC_1.0)")
+    "Prefix for ELF symbol version nodes (e.g. AWS_LC_FIPS5 yields AWS_LC_FIPS5_1.0)")
 
 if(NOT "${SYMBOL_VERSION_NAMESPACE}" MATCHES "${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}")
   message(FATAL_ERROR "SYMBOL_VERSION_NAMESPACE must match ${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}, got: ${SYMBOL_VERSION_NAMESPACE}")
