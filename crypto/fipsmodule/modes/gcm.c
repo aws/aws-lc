@@ -4,6 +4,7 @@
 #include <openssl/base.h>
 
 #include <assert.h>
+#include <stddef.h>
 #include <string.h>
 
 #include <openssl/mem.h>
@@ -134,6 +135,28 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       break;
     }
   } else {
+#if defined(HW_GCM_S2N_BIGNUM)
+    // On Neoverse N1 (Graviton2) prefer the s2n-bignum kernels, which are
+    // software-pipelined for that core. They cover AES-128 and AES-256; the
+    // AES_KEY layout matches s2n_bignum_AES_KEY.
+    if (CRYPTO_is_Neoverse_N1()) {
+      OPENSSL_STATIC_ASSERT(sizeof(AES_KEY) <= sizeof(s2n_bignum_AES_KEY),
+                            aes_key_layouts_differ);
+      OPENSSL_STATIC_ASSERT(offsetof(AES_KEY, rounds) ==
+                                offsetof(s2n_bignum_AES_KEY, rounds),
+                            aes_key_rounds_offsets_differ);
+      if (key->rounds == 10) {
+        aes128_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                       (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+        return len_blocks;
+      }
+      if (key->rounds == 14) {
+        aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                       (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+        return len_blocks;
+      }
+    }
+#endif
     aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
   }
 
@@ -171,6 +194,28 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
       break;
     }
   } else {
+#if defined(HW_GCM_S2N_BIGNUM)
+    // On Neoverse N1 (Graviton2) prefer the s2n-bignum kernels, which are
+    // software-pipelined for that core. They cover AES-128 and AES-256; the
+    // AES_KEY layout matches s2n_bignum_AES_KEY.
+    if (CRYPTO_is_Neoverse_N1()) {
+      OPENSSL_STATIC_ASSERT(sizeof(AES_KEY) <= sizeof(s2n_bignum_AES_KEY),
+                            aes_key_layouts_differ);
+      OPENSSL_STATIC_ASSERT(offsetof(AES_KEY, rounds) ==
+                                offsetof(s2n_bignum_AES_KEY, rounds),
+                            aes_key_rounds_offsets_differ);
+      if (key->rounds == 10) {
+        aes128_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                       (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+        return len_blocks;
+      }
+      if (key->rounds == 14) {
+        aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                       (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+        return len_blocks;
+      }
+    }
+#endif
     aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
   }
 
