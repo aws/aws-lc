@@ -14,8 +14,6 @@
 #include "../../../rand_extra/internal.h"
 #include "../../../ube/internal.h"
 
-#include "../../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
-
 // Randomness generation implements thread-local "frontend" DRBGs that serve
 // requests for randomness from consumers through exported functions such as
 // RAND_bytes(). This file implements a tree-DRBG from SP800-90C as a seed
@@ -26,7 +24,9 @@
 //  - A global seed DRBG that serves seed requests from the thread-local seed
 //    DRBGs.
 //  - A root seed source that serves seed requests from the global seed DRBG.
-//    The root seed source is a global instance of Jitter Entropy.
+//    The root provider and its failure policy are selected by
+//    entropy_sources.c. The tree consumes seeds and aborts if the root
+//    provider fails; it does not choose alternative entropy sources.
 //
 // The dependency tree looks as follows:
 //
@@ -42,7 +42,7 @@
 // +-----------+  |  +-----------+   -|
 // +-----------+  |  +-----------+     --|     per-process          per-process
 // | CTR-DRBG  | --> | CTR-DRBG  | ---|   --> +-----------+     +----------------+
-// +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> | Jitter Entropy |
+// +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> | Root provider  |
 //      ...       |      ...              --> +-----------+     +----------------+
 // +-----------+  |  +-----------+  -----|
 // | CTR-DRBG  | --> | CTR-DRBG  |-|
@@ -51,7 +51,7 @@
 //
 // Memory life-cycle: The thread-local DRBGs have the same storage duration as
 // their corresponding thread-local frontend DRBGs. The per-process DRBG and
-// Jitter Entropy instance has a storage duration that extends to the duration
+// root provider have a storage duration that extends to the duration
 // of AWS-LC being loaded into the process. The per-process memory is lazily
 // allocated.
 
@@ -86,51 +86,30 @@ struct tree_jitter_drbg_t {
   // ube_protection denotes whether this object is protected from UBEs.
   uint8_t ube_protection;
 
-  // Jitter entropy state. NULL if not the per-process seed DRBG.
-  struct rand_data *jitter_ec;
+  // Only the per-process seed DRBG owns a root provider. Its methods are
+  // immutable; any permitted source transition is private to the provider.
+  struct tree_root_entropy_source root_source;
 };
 
 // Per-process seed DRBG locks.
 DEFINE_BSS_GET(struct tree_jitter_drbg_t *, global_seed_drbg)
+// Protected by global_seed_drbg_lock, including publication after CRYPTO_once.
+// Distinguishes an uninitialized tree from a destroyed one.
+DEFINE_BSS_GET(int, global_seed_drbg_initialized)
 DEFINE_STATIC_ONCE(global_seed_drbg_once)
 DEFINE_STATIC_ONCE(global_seed_drbg_zeroize_once)
 DEFINE_STATIC_MUTEX(global_seed_drbg_lock)
 
 // tree_jitter_get_root_seed generates |CTR_DRBG_ENTROPY_LEN| bytes of output
-// from the Jitter Entropy instance configured in |tree_jitter_drbg|. The output
-// is returned in |seed_out|.
+// from the root provider configured in |tree_jitter_drbg|. The output is
+// returned in |seed_out|. Aborts if the provider fails.
 // Access to this function must be synchronized.
 static void tree_jitter_get_root_seed(
   struct tree_jitter_drbg_t *tree_jitter_drbg,
   uint8_t seed_out[CTR_DRBG_ENTROPY_LEN]) {
 
-  if (tree_jitter_drbg->jitter_ec == NULL) {
-    abort();
-  }
-
-  // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
-  // To avoid aborting so frequently, we retry 3 times.
-  char jitter_generated_output = 0;
-  for (size_t num_tries = 1; num_tries <= ENTROPY_JITTER_MAX_NUM_TRIES; num_tries++) {
-
-    // Try to generate the required number of bytes with Jitter.
-    // If successful break out from the loop, otherwise try again.
-    if (jent_read_entropy(tree_jitter_drbg->jitter_ec, (char *) seed_out,
-          CTR_DRBG_ENTROPY_LEN) == (ssize_t) CTR_DRBG_ENTROPY_LEN) {
-      jitter_generated_output = 1;
-      break;
-    }
-
-    // If Jitter entropy failed to produce entropy we need to reset it.
-    jent_entropy_collector_free(tree_jitter_drbg->jitter_ec);
-    tree_jitter_drbg->jitter_ec = NULL;
-    tree_jitter_drbg->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (tree_jitter_drbg->jitter_ec == NULL) {
-      abort();
-    }
-  }
-
-  if (jitter_generated_output != 1) {
+  struct tree_root_entropy_source *root = &tree_jitter_drbg->root_source;
+  if (root->methods->get_seed(root, seed_out) != 1) {
     abort();
   }
 }
@@ -262,11 +241,9 @@ static void tree_jitter_initialize_once(void) {
     tree_jitter_drbg_global->generation_number = current_generation_number;
   }
 
-  // The first parameter passed to |jent_entropy_collector_alloc| function is
-  // the desired oversampling rate. Passing a 0 tells Jitter module to use
-  // the default rate (which is 3 in Jitter v3.6.3).
-  tree_jitter_drbg_global->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-  if (tree_jitter_drbg_global->jitter_ec == NULL) {
+  struct tree_root_entropy_source *root = &tree_jitter_drbg_global->root_source;
+  root->methods = get_tree_root_entropy_source_methods();
+  if (root->methods->initialize(root) != 1) {
     abort();
   }
 
@@ -278,7 +255,23 @@ static void tree_jitter_initialize_once(void) {
   tree_jitter_drbg_global->reseed_calls_since_initialization += 1;
   OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
 
+  // Publish under the lock because |tree_jitter_root_is_cpu_jitter| reads the
+  // global seed DRBG without going through |CRYPTO_once|.
+  CRYPTO_STATIC_MUTEX_lock_write(global_seed_drbg_lock_bss_get());
   *global_seed_drbg_bss_get() = tree_jitter_drbg_global;
+  *global_seed_drbg_initialized_bss_get() = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
+}
+
+int tree_jitter_root_is_cpu_jitter(void) {
+  CRYPTO_STATIC_MUTEX_lock_read(global_seed_drbg_lock_bss_get());
+  struct tree_jitter_drbg_t *global = *global_seed_drbg_bss_get();
+  int ret = !*global_seed_drbg_initialized_bss_get();
+  if (global != NULL) {
+    ret = global->root_source.methods->is_cpu_jitter(&global->root_source);
+  }
+  CRYPTO_STATIC_MUTEX_unlock_read(global_seed_drbg_lock_bss_get());
+  return ret;
 }
 
 // tree_jitter_initialize initializes a thread-local seed DRBG and configures
@@ -341,16 +334,16 @@ static void tree_jitter_free_global_drbg(void) __attribute__ ((destructor));
 #endif
 
 // The memory life-time for thread-local seed DRBGs is handled differently
-// compared to the global seed DRBG (and Jitter Entropy instance). The frontend
+// compared to the global seed DRBG and its root provider. The frontend
 // DRBG thread-local destuctors will invoke |tree_jitter_free_thread_drbg| using
-// their reference to it. The global seed DRBG and Jitter Entropy instance will
+// their reference to it. The global seed DRBG and its root provider will
 // be released by a destructor. This ensures that the global seed DRBG life-time
 // extends to the entire process life-time if the lazy initialization happened.
 // Obviously, any dlclose on AWS-LC will release the memory early but that's
 // correct behaviour.
 
 // tree_jitter_free_global_drbg frees the memory allocated for the global seed
-// DRBG and Jitter Entropy instance.
+// DRBG and its root provider.
 static void tree_jitter_free_global_drbg(void) {
 
   CRYPTO_STATIC_MUTEX_lock_write(global_seed_drbg_lock_bss_get());
@@ -366,7 +359,8 @@ static void tree_jitter_free_global_drbg(void) {
     abort();
   }
 
-  jent_entropy_collector_free(global_tree_jitter_drbg->jitter_ec);
+  struct tree_root_entropy_source *root = &global_tree_jitter_drbg->root_source;
+  root->methods->cleanup(root);
   OPENSSL_free(global_tree_jitter_drbg);
 
   *global_seed_drbg_bss_get() = NULL;
