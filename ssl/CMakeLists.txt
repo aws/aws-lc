@@ -129,10 +129,18 @@ if(BUILD_TESTING)
   target_add_awslc_include_paths(TARGET ${SSL_TEST_EXEC} SCOPE PRIVATE)
   set_test_location(${SSL_TEST_EXEC})
 
+  # CRYPTO_set_mem_functions installs process-global hooks only once. Keep
+  # allocation failure tests isolated from the other SSL tests.
+  add_executable(${SSL_CIPHERS_MEM_TEST_EXEC} ssl_ciphers_mem_test.cc)
+  target_link_libraries(${SSL_CIPHERS_MEM_TEST_EXEC} boringssl_gtest_main ssl)
+  target_add_awslc_include_paths(TARGET ${SSL_CIPHERS_MEM_TEST_EXEC} SCOPE PRIVATE)
+  set_test_location(${SSL_CIPHERS_MEM_TEST_EXEC})
+
   if(WIN32)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
+    target_link_libraries(${SSL_CIPHERS_MEM_TEST_EXEC} ws2_32)
   endif()
-  add_dependencies(all_tests ${SSL_TEST_EXEC})
+  add_dependencies(all_tests ${SSL_TEST_EXEC} ${SSL_CIPHERS_MEM_TEST_EXEC})
   add_subdirectory(test)
 endif()
 

@@ -531,36 +531,30 @@ size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap,
 
 // ApplyCipherRule applies the cipher rule |rule| to |ctx|, as
 // |SSL_CTX_set_cipher_list| does when |config_tls13| is false and
-// |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
-// as it was if any step fails.
+// |SSL_CTX_set_ciphersuites| when it is true, and returns false having left
+// |ctx| as it was if any step fails.
 //
-// Neither public setter is a no-op on failure. |ssl_create_cipher_list| installs
-// its result, empty or not, before reporting that the rule matched nothing, and
-// the |update_cipher_list| that merges the TLS 1.2 and TLS 1.3 lists back
-// together allocates, so it can fail after the first list is already in place.
-// Either way the context is left holding part of a policy it could not apply,
-// which for the first is no ciphers at all. Building both lists aside and moving
-// them in once every step has succeeded is what keeps a failure to the defaults.
+// |SSL_CTX_set_ciphersuites| already leaves |ctx| unchanged on failure. Unlike
+// |SSL_CTX_set_cipher_list|, which empties the TLS 1.2 and below suites when a
+// rule matches nothing, a policy that cannot be satisfied must keep the
+// defaults, so the legacy list is built aside and installed only on success.
 bool ApplyCipherRule(SSL_CTX *ctx, const char *rule, bool config_tls13) {
+  if (config_tls13) {
+    return SSL_CTX_set_ciphersuites(ctx, rule) != 0;
+  }
+
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  UniquePtr<SSLCipherPreferenceList> configured;
-  if (!ssl_create_cipher_list(&configured, has_aes_hw, rule,
-                              false /* not strict */, config_tls13)) {
+  UniquePtr<SSLCipherPreferenceList> tls12_list;
+  if (!ssl_create_cipher_list(&tls12_list, has_aes_hw, rule,
+                              false /* not strict */,
+                              false /* don't configure TLSv1.3 ciphers */)) {
     return false;
   }
 
-  UniquePtr<SSLCipherPreferenceList> &tls12_list =
-      config_tls13 ? ctx->cipher_list : configured;
-  UniquePtr<SSLCipherPreferenceList> &tls13_list =
-      config_tls13 ? configured : ctx->tls13_cipher_list;
   UniquePtr<SSLCipherPreferenceList> merged;
-  if (!update_cipher_list(merged, tls12_list, tls13_list)) {
+  if (!update_cipher_list(merged, tls12_list, ctx->tls13_cipher_list)) {
     return false;
-  }
-
-  if (config_tls13) {
-    ctx->tls13_cipher_list = std::move(configured);
   }
   ctx->cipher_list = std::move(merged);
   return true;

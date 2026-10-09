@@ -138,6 +138,7 @@ function verify_wasm_artifacts {
         "crypto/mem_set_test.js"
         "crypto/rwlock_static_init.js"
         "ssl/ssl_test.js"
+        "ssl/ssl_ciphers_mem_test.js"
     )
 
     for test_binary in "${test_binaries[@]}"; do
@@ -235,6 +236,10 @@ function run_wasm_tests {
     # Run ssl_test (excluding fork and socket tests)
     if ! shard_gtest "node ssl/ssl_test.js --gtest_filter=${WASM_GTEST_FILTER}" "${NUM_CPU_THREADS}"; then
         failed_tests+=("ssl_test")
+    fi
+
+    if ! run_single_wasm_test "ssl/ssl_ciphers_mem_test.js"; then
+        failed_tests+=("ssl_ciphers_mem_test")
     fi
 
     # Run mem_test - validates memory override via strong symbols

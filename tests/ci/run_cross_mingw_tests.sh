@@ -72,6 +72,7 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test.exe
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test.exe
+  shard_gtest ${BUILD_ROOT}/ssl/ssl_ciphers_mem_test.exe
 
   # Does not use GoogleTest
   ${BUILD_ROOT}/crypto/rwlock_static_init.exe
