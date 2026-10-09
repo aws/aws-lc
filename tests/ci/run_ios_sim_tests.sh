@@ -392,6 +392,7 @@ shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test.app/tree
 
 # SSL tests
 shard_gtest "${BUILD_ROOT}/ssl/ssl_test.app/ssl_test"
+shard_gtest "${BUILD_ROOT}/ssl/ssl_ciphers_mem_test.app/ssl_ciphers_mem_test"
 # TODO: This test is failing on iOS simulator
 # shard_gtest "${BUILD_ROOT}/ssl/integration_test.app/integration_test"
 
