@@ -24,6 +24,16 @@
 
 // This file implements RFC 9180 and draft-ietf-hpke-pq-05.
 
+// Callers stack-allocate |EVP_HPKE_KEY| and |EVP_HPKE_CTX|, so both sizes are
+// ABI: a caller built against one release and run against a later one reserves
+// the older size and overflows it. Each holds pointers and scalars only, so
+// these bounds fail the build if an algorithm-dependent buffer moves back
+// inline. They count pointers so that they hold on ILP32 as well.
+OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) <= 8 * sizeof(void *),
+                      evp_hpke_key_must_not_hold_inline_buffers)
+OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_CTX) <= 16 * sizeof(void *),
+                      evp_hpke_ctx_must_not_hold_inline_buffers)
+
 // MAX_SEED_LEN is the largest |seed_len| of any KEM and MAX_SHARED_SECRET_LEN
 // the largest Nsecret. Both are 32 for every KEM this file implements: X25519
 // seeds an ephemeral private key with 32 bytes and ML-KEM takes 32 bytes of
