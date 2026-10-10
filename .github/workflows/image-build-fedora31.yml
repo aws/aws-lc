@@ -34,8 +34,18 @@ jobs:
       instance-size:small
     outputs:
       fedora31: ${{ steps.images.outputs.fedora31 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -56,7 +66,8 @@ jobs:
           build-contexts: |
             scripts=./.github/docker_images/scripts
           tags: ${{ steps.images.outputs.fedora31 }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container
         with:
@@ -89,7 +100,16 @@ jobs:
       instance-size:small
     needs:
       - x86_64_build
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
