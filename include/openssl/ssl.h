@@ -304,6 +304,15 @@ OPENSSL_EXPORT int SSL_has_pending(const SSL *ssl);
 // single record in a single packet, so |num| must be at most
 // |SSL3_RT_MAX_PLAIN_LENGTH|.
 //
+// If |num| is zero, |SSL_write| writes no application data but still writes any
+// pending handshake data, such as TLS 1.3 NewSessionTicket messages deferred
+// from the handshake (see |SSL_CTX_set_num_tickets|) or a KeyUpdate queued by
+// |SSL_key_update|. On success, it returns zero. |SSL_get_error| reports this
+// successful zero return as |SSL_ERROR_SYSCALL|, so callers must handle zero
+// as the success result when |num| is zero. However, an underlying BIO may
+// also return zero on write failure, so zero alone cannot distinguish success
+// from failure with such BIOs.
+//
 // TODO(davidben): Ensure 0 is only returned on transport EOF.
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
@@ -312,6 +321,10 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 // |SSL_write|, but instead of returning the number of bytes written, it returns
 // 1 on success or 0 for failure. The number bytes actually written is stored in
 // |written|.
+//
+// If |num| is zero and |written| is non-NULL, |SSL_write_ex| returns 1 without
+// writing anything, including pending handshake data. Use a zero-length
+// |SSL_write| to flush pending handshake data instead.
 //
 // This is only maintained for OpenSSL compatibility. Use |SSL_write| instead.
 OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
@@ -764,6 +777,30 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
 // this in explicit fallback retries, following the guidance in RFC 7507.
 #define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
+
+// SSL_MODE_FLUSH_TLS13_TICKETS causes a TLS 1.3 server to write its
+// NewSessionTicket messages to the transport as part of the handshake, rather
+// than deferring them to the server's next |SSL_write|. In protocols where the
+// client speaks first after the handshake, the deferred tickets leave the
+// server with nothing to send, so a client using Nagle's algorithm may stall
+// its first message on the server's delayed ACK. Sending the tickets with the
+// handshake removes that stall.
+//
+// With this mode, |SSL_do_handshake| (and |SSL_accept|) does not return success
+// until the tickets have been written to the BIO. If the write cannot complete
+// on a non-blocking transport, it returns -1 with |SSL_ERROR_WANT_WRITE|; on a
+// blocking transport, it blocks. |SSL_in_init| remains true in the meantime.
+// The same applies when |SSL_read| or |SSL_write| drives the handshake
+// implicitly. A client that does not read may therefore block a server with a
+// small write buffer, which is why this mode is not the default. A failed
+// ticket write fails the handshake, including connection reset errors.
+//
+// This mode has no effect on clients, in TLS 1.2 and below, in DTLS, in QUIC
+// (which always flushes the tickets), when 0-RTT early data is accepted (the
+// tickets are then sent with the server's first flight), or when no tickets are
+// sent, such as with |SSL_OP_NO_TICKET|, a zero ticket count, or a client that
+// does not offer the psk_dhe_ke key exchange mode.
+#define SSL_MODE_FLUSH_TLS13_TICKETS 0x00000800L
 
 // SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
 // of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask
@@ -2675,15 +2712,21 @@ OPENSSL_EXPORT void SSL_CTX_set_ticket_aead_method(
 OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
     SSL *ssl, const uint8_t *buf, size_t buf_len);
 
-// SSL_CTX_set_num_tickets configures |ctx| to send |num_tickets| immediately
-// after a successful TLS 1.3 handshake as a server. It returns one. Large
-// values of |num_tickets| will be capped within the library.
+// SSL_CTX_set_num_tickets configures |ctx| to send |num_tickets| tickets for
+// each TLS 1.3 server handshake. It returns one. Large values of |num_tickets|
+// will be capped within the library.
 //
-// By default, BoringSSL sends two tickets.
+// Normally, tickets wait for the server's next |SSL_write| unless
+// |SSL_MODE_FLUSH_TLS13_TICKETS| is set. QUIC and accepted 0-RTT already send
+// tickets during the handshake. A server that does not otherwise write may
+// flush them with a zero-length |SSL_write|; see |SSL_write| for details.
+//
+// By default, AWS-LC sends two tickets.
 OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 
-// SSL_CTX_get_num_tickets returns the number of tickets |ctx| will send
-// immediately after a successful TLS 1.3 handshake as a server.
+// SSL_CTX_get_num_tickets returns the number of tickets |ctx| is configured to
+// send for a TLS 1.3 handshake as a server. See |SSL_CTX_set_num_tickets| for
+// when the tickets are written.
 OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 
 
