@@ -6,6 +6,7 @@
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
+#include "openssl/ssl.h"
 #include "ssl_common_test.h"
 
 BSSL_NAMESPACE_BEGIN
@@ -300,6 +301,130 @@ TEST_P(EncodeDecodeKATTest, RoundTrips) {
   ASSERT_EQ(OPENSSL_memcmp(output_bytes.data(), encoded, encoded_len), 0);
 }
 
+// Indices of the fields |SSL_to_bytes_full| writes into the inner SEQUENCE, in
+// order.
+enum SerializedSSLField : size_t {
+  kSerdeVersionField = 0,
+  kVersionField = 1,
+  kMaxSendFragmentField = 2,
+  kSSL3StateField = 3,
+  kModeField = 4,
+  kOptionsField = 5,
+};
+
+// ReplaceSerializedSSLField rewrites |in|, a serialized |SSL|, replacing the
+// |index|th field of the inner SEQUENCE with the INTEGER |value|. This produces
+// blobs that |SSL_to_bytes| would never emit, which is exactly what the parser
+// must reject.
+static bool ReplaceSerializedSSLField(std::vector<uint8_t> *out,
+                                      const std::vector<uint8_t> &in,
+                                      size_t index, uint64_t value) {
+  CBS cbs, outer, inner;
+  CBS_init(&cbs, in.data(), in.size());
+  if (!CBS_get_asn1(&cbs, &outer, CBS_ASN1_SEQUENCE) || CBS_len(&cbs) != 0 ||
+      !CBS_get_asn1(&outer, &inner, CBS_ASN1_SEQUENCE) ||
+      CBS_len(&outer) != 0) {
+    return false;
+  }
+
+  ScopedCBB cbb;
+  CBB out_outer, out_inner;
+  if (!CBB_init(cbb.get(), in.size() + 8) ||
+      !CBB_add_asn1(cbb.get(), &out_outer, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&out_outer, &out_inner, CBS_ASN1_SEQUENCE)) {
+    return false;
+  }
+
+  bool replaced = false;
+  for (size_t i = 0; CBS_len(&inner) != 0; i++) {
+    CBS element;
+    unsigned tag = 0;
+    if (!CBS_get_any_asn1_element(&inner, &element, &tag, nullptr)) {
+      return false;
+    }
+    if (i == index) {
+      if (tag != CBS_ASN1_INTEGER || !CBB_add_asn1_uint64(&out_inner, value)) {
+        return false;
+      }
+      replaced = true;
+      continue;
+    }
+    if (!CBB_add_bytes(&out_inner, CBS_data(&element), CBS_len(&element))) {
+      return false;
+    }
+  }
+
+  uint8_t *der = nullptr;
+  size_t der_len = 0;
+  if (!replaced || !CBB_finish(cbb.get(), &der, &der_len)) {
+    return false;
+  }
+  out->assign(der, der + der_len);
+  OPENSSL_free(der);
+  return true;
+}
+
+// |SSL_parse| narrows several fields to smaller types than the wire format
+// allows. Values that would be truncated, or that the setters would never
+// produce, must be rejected rather than silently accepted.
+TEST(SSLTest, SerializedSSLRejectsOutOfRangeFields) {
+  std::vector<uint8_t> valid;
+  ASSERT_TRUE(DecodeHex(&valid, std::string(kEncodeDecodeKATs[0].input)));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  // The unmodified blob must parse, otherwise the cases below prove nothing.
+  ASSERT_TRUE(bssl::UniquePtr<SSL>(
+      SSL_from_bytes(valid.data(), valid.size(), ctx.get())));
+
+  const struct {
+    const char *name;
+    size_t field;
+    uint64_t value;
+  } kCases[] = {
+      // |ssl->version| is a |uint16_t|. Unchecked, this truncates to 0x0303 and
+      // is accepted as TLS 1.2.
+      {"version does not fit in uint16_t", kVersionField, 0x10303},
+      // |ssl->max_send_fragment| is a |uint16_t| that the setters clamp to
+      // [MIN_SAFE_FRAGMENT_SIZE, SSL3_RT_MAX_PLAIN_LENGTH].
+      {"max_send_fragment of zero", kMaxSendFragmentField, 0},
+      {"max_send_fragment below the minimum", kMaxSendFragmentField,
+       MIN_SAFE_FRAGMENT_SIZE - 1},
+      {"max_send_fragment above the maximum", kMaxSendFragmentField,
+       SSL3_RT_MAX_PLAIN_LENGTH + 1},
+      {"max_send_fragment does not fit in uint16_t", kMaxSendFragmentField,
+       0x14000},
+      // |ssl->mode| and |ssl->options| are |uint32_t|.
+      {"mode does not fit in uint32_t", kModeField, UINT64_C(1) << 32},
+      {"options does not fit in uint32_t", kOptionsField, UINT64_C(1) << 32},
+  };
+
+  for (const auto &t : kCases) {
+    SCOPED_TRACE(t.name);
+    std::vector<uint8_t> der;
+    ASSERT_TRUE(ReplaceSerializedSSLField(&der, valid, t.field, t.value));
+    ERR_clear_error();
+    EXPECT_FALSE(bssl::UniquePtr<SSL>(
+        SSL_from_bytes(der.data(), der.size(), ctx.get())));
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                            SSL_R_SERIALIZATION_INVALID_SSL));
+    ERR_clear_error();
+  }
+
+  // Values at the edges of the accepted range still parse.
+  for (uint64_t fragment :
+       {uint64_t{MIN_SAFE_FRAGMENT_SIZE}, uint64_t{SSL3_RT_MAX_PLAIN_LENGTH}}) {
+    SCOPED_TRACE(fragment);
+    std::vector<uint8_t> der;
+    ASSERT_TRUE(ReplaceSerializedSSLField(&der, valid, kMaxSendFragmentField,
+                                          fragment));
+    bssl::UniquePtr<SSL> ssl(
+        SSL_from_bytes(der.data(), der.size(), ctx.get()));
+    ASSERT_TRUE(ssl);
+    EXPECT_EQ(ssl->max_send_fragment, fragment);
+  }
+}
+
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
 // a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
 TEST(SSLTest, QuietShutdown) {
@@ -336,53 +461,55 @@ TEST(SSLTest, QuietShutdown) {
 }
 
 // Test that |SSL_OP_IGNORE_UNEXPECTED_EOF| causes an unexpected transport EOF
-// when the server closes without a close_notify to be reported as a clean shutdown,
-// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SYSCALL|.
-TEST(SSLTest, IgnoreUnexpectedEOFClient) {
+// (the peer closing without a close_notify) to be reported as a clean shutdown,
+// |SSL_ERROR_ZERO_RETURN|, instead of |SSL_ERROR_SYSCALL|, for both the client
+// and the server.
+TEST(SSLTest, IgnoreUnexpectedEOF) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   SSL_CTX_set_options(client_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+  SSL_CTX_set_options(server_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+
+  // Create a fake read BIO that mimics a socket: it returns 0 on read to
+  // signal a transport EOF.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(),
+                                [](BIO *, char *, int) -> int { return 0; }));
+  ASSERT_TRUE(BIO_meth_set_ctrl(
+      method.get(), [](BIO *, int, long, void *) -> long { return 0; }));
+
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
-  // Close the server's write side without sending a close_notify, so the client
-  // sees an unexpected transport EOF.
-  EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server.get())));
+  BIO *eof_bio_client = BIO_new(method.get());
+  BIO *eof_bio_server = BIO_new(method.get());
+  ASSERT_TRUE(eof_bio_client);
+  ASSERT_TRUE(eof_bio_server);
 
-  // With the option set, the client reports the EOF as a clean shutdown rather
-  // than |SSL_ERROR_SYSCALL|.
+  // Dummy BIOs must mimic a socket BIO (BIO_eof == 0)
+  EXPECT_EQ(BIO_eof(eof_bio_client), 0);
+  EXPECT_EQ(BIO_eof(eof_bio_server), 0);
+
+  SSL_set0_rbio(client.get(), eof_bio_client);
+  SSL_set0_rbio(server.get(), eof_bio_server);
+
+  // With the option set, an unexpected transport EOF is reported as a clean
+  // shutdown, |SSL_ERROR_ZERO_RETURN|, rather than |SSL_ERROR_SYSCALL|.
   char buf[1];
   int ret = SSL_read(client.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
-}
 
-// Test that |SSL_OP_IGNORE_UNEXPECTED_EOF| behaves symmetrically on the server:
-// when the client closes without a close_notify, the server's |SSL_read| reports
-// the unexpected transport EOF as a clean shutdown with |SSL_ERROR_ZERO_RETURN|.
-TEST(SSLTest, IgnoreUnexpectedEOFServer) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx =
-      CreateContextWithTestCertificate(TLS_method());
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-  SSL_CTX_set_options(server_ctx.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
-
-  // Close the client's write side without sending a close_notify, so the server
-  // sees an unexpected transport EOF.
-  EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(client.get())));
-
-  // With the option set, the server reports the EOF as a clean shutdown rather
-  // than |SSL_ERROR_SYSCALL|.
-  char buf[1];
-  int ret = SSL_read(server.get(), buf, sizeof(buf));
+  ret = SSL_read(server.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }

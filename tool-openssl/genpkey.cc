@@ -39,7 +39,7 @@ static EVP_PKEY_CTX *init_gen_str(std::string algorithm) {
   return ctx.release();
 }
 
-bool genpkeyTool(const args_list_t &args) {
+int genpkeyTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args{};
   std::string out_path, algorithm, pkey_options;
@@ -51,7 +51,7 @@ bool genpkeyTool(const args_list_t &args) {
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
@@ -61,7 +61,7 @@ bool genpkeyTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   bssl::UniquePtr<BIO> out;
@@ -72,30 +72,30 @@ bool genpkeyTool(const args_list_t &args) {
     if (!BIO_write_filename(out.get(), out_path.c_str())) {
       fprintf(stderr, "Error: failed to open output file '%s'\n",
               out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(init_gen_str(algorithm.c_str()));
   if (!ctx) {
-    return false;
+    return kToolExitFailure;
   }
   if (!pkey_options.empty() &&
       !ApplyPkeyCtrlString(ctx.get(), pkey_options.c_str())) {
     fprintf(stderr, "Error setting %s parameter:\n", pkey_options.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   EVP_PKEY *tmp_key = nullptr;
   if (!EVP_PKEY_keygen(ctx.get(), &tmp_key)) {
     fprintf(stderr, "Error generating key\n");
-    return false;
+    return kToolExitFailure;
   }
   pkey.reset(tmp_key);
 
   if (!WritePrivateKey(pkey.get(), out, out_format)) {
-    return false;
+    return kToolExitFailure;
   }
 
-  return true;
+  return kToolExitSuccess;
 }

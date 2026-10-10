@@ -130,10 +130,17 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
     return 0;
   }
 
+  // Windows uses ';' so drive letters are not interpreted as separators.
+#if defined(OPENSSL_WINDOWS)
+  const char separator = ';';
+#else
+  const char separator = ':';
+#endif
+
   s = dir;
   p = s;
   do {
-    if ((*p == ':') || (*p == '\0')) {
+    if ((*p == separator) || (*p == '\0')) {
       BY_DIR_ENTRY *ent;
       ss = s;
       s = p + 1;

@@ -66,8 +66,9 @@ function run_httpd_test() {
   httpd_patch
   httpd_build
 
-  # Ensure httpd is linked to AWS-LC
-  nm --defined-only "${HTTPD_INSTALL_FOLDER}/bin/httpd" | grep -q awslc_version_string
+  # Ensure httpd is linked to AWS-LC.
+  # Drain nm's output so this also works when pipefail is enabled.
+  nm --defined-only "${HTTPD_INSTALL_FOLDER}/bin/httpd" | grep awslc_version_string > /dev/null
 
   # Setup Python environment and run tests
   setup_python_env

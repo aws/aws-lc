@@ -136,19 +136,21 @@ bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
     hostname = hostname.substr(1, hostname.size() - 2);
   }
 
-  struct addrinfo hint, *result;
+  struct addrinfo hint, *result = nullptr;
   OPENSSL_memset(&hint, 0, sizeof(hint));
   hint.ai_family = AF_UNSPEC;
   hint.ai_socktype = SOCK_STREAM;
 
   int ret = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &result);
-  if (ret != 0 && !quiet) {
+  if (ret != 0) {
+    if (!quiet) {
 #if defined(OPENSSL_WINDOWS)
-    const char *error = gai_strerrorA(ret);
+      const char *error = gai_strerrorA(ret);
 #else
-    const char *error = gai_strerror(ret);
+      const char *error = gai_strerror(ret);
 #endif
-    fprintf(stderr, "getaddrinfo returned: %s\n", error);
+      fprintf(stderr, "getaddrinfo returned: %s\n", error);
+    }
     return false;
   }
 
@@ -796,6 +798,14 @@ class SocketLineReader {
 
       if (n < 0) {
         fprintf(stderr, "Read error from socket\n");
+        return false;
+      }
+
+      if (n == 0) {
+        // The peer closed the connection without terminating the line. Without
+        // this check the loop would spin forever, because |buf_len_| can no
+        // longer grow and no '\n' will be found.
+        fprintf(stderr, "Unexpected EOF from socket\n");
         return false;
       }
 

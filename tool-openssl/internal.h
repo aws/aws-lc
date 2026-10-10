@@ -6,6 +6,7 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
+#include <initializer_list>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,7 +35,13 @@ enum Format {
   FORMAT_UNKNOWN = 3
 };
 
-typedef bool (*tool_func_t)(const std::vector<std::string> &args);
+// Tool entry points return the process exit status. Most tools return
+// |kToolExitFailure| for every failure; verify and x509 -checkend use
+// additional statuses to match OpenSSL's exit codes.
+constexpr int kToolExitSuccess = 0;
+constexpr int kToolExitFailure = 1;
+
+typedef int (*tool_func_t)(const std::vector<std::string> &args);
 
 struct Tool {
   const char *name;
@@ -157,28 +164,29 @@ EVP_PKEY *CreateTestKey(int key_bits);
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
-bool caTool(const args_list_t &args);
-bool CRLTool(const args_list_t &args);
-bool asn1parseTool(const args_list_t &args);
-bool dgstTool(const args_list_t &args);
-bool dhparamTool(const args_list_t &args);
-bool ecTool(const args_list_t &args);
-bool ecparamTool(const args_list_t &args);
-bool encTool(const args_list_t &args);
-bool genpkeyTool(const args_list_t &args);
-bool genrsaTool(const args_list_t &args);
-bool md5Tool(const args_list_t &args);
-bool pkcs8Tool(const args_list_t &args);
-bool pkeyTool(const args_list_t &args);
-bool pkeyutlTool(const args_list_t &args);
-bool RehashTool(const args_list_t &args);
-bool reqTool(const args_list_t &args);
-bool rsaTool(const args_list_t &args);
-bool sha1Tool(const args_list_t &args);
-bool SClientTool(const args_list_t &args);
-bool VerifyTool(const args_list_t &args);
-bool VersionTool(const args_list_t &args);
-bool X509Tool(const args_list_t &args);
+int caTool(const args_list_t &args);
+int CRLTool(const args_list_t &args);
+int asn1parseTool(const args_list_t &args);
+int dgstTool(const args_list_t &args);
+int dhparamTool(const args_list_t &args);
+int ecTool(const args_list_t &args);
+int ecparamTool(const args_list_t &args);
+int encTool(const args_list_t &args);
+int genpkeyTool(const args_list_t &args);
+int genrsaTool(const args_list_t &args);
+int md5Tool(const args_list_t &args);
+int pkcs8Tool(const args_list_t &args);
+int pkcs12Tool(const args_list_t &args);
+int pkeyTool(const args_list_t &args);
+int pkeyutlTool(const args_list_t &args);
+int RehashTool(const args_list_t &args);
+int reqTool(const args_list_t &args);
+int rsaTool(const args_list_t &args);
+int sha1Tool(const args_list_t &args);
+int SClientTool(const args_list_t &args);
+int VerifyTool(const args_list_t &args);
+int VersionTool(const args_list_t &args);
+int X509Tool(const args_list_t &args);
 
 // Req Tool Utilities
 bssl::UniquePtr<X509_NAME> ParseSubjectName(const std::string &subject_string);
@@ -267,7 +275,8 @@ bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
                                    const args_list_t &args,
                                    const argument_t *templates);
 
-// Get helpers for ordered arguments
+// GetString and GetUnsigned use the first occurrence. For last-wins semantics,
+// use GetLastString or GetLastOption.
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
                  unsigned default_value, const ordered_args_map_t &args);
 bool GetString(std::string *out, const std::string &arg_name,
@@ -278,6 +287,17 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args);
+
+// GetLastString sets |*out| to the last (possibly empty) value of |arg_name|,
+// or |default_value| if absent.
+void GetLastString(std::string *out, const std::string &arg_name,
+                   std::string default_value, const ordered_args_map_t &args);
+
+// GetLastOption returns whichever name in |options| occurs last in |args|, or
+// |default_option| if none does.
+std::string GetLastOption(std::initializer_list<const char *> options,
+                          std::string default_option,
+                          const ordered_args_map_t &args);
 }  // namespace ordered_args
 
 void SetUmaskForPrivateKey();

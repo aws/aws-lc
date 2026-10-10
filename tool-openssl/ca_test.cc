@@ -15,6 +15,7 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -450,7 +451,7 @@ TEST_F(CATest, BasicCertificateSigning) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Verify certificate was created
   auto cert = LoadPEMCertificate(output_path);
@@ -477,8 +478,8 @@ TEST_F(CATest, VerboseOutput) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
-  
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
+
   // Verify certificate was created
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -498,7 +499,7 @@ TEST_F(CATest, NoTextOutput) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Verify certificate was created and check format
   std::string cert_content = ReadFileToString(output_path);
@@ -524,8 +525,86 @@ TEST_F(CATest, OutputToStdout) {
       // No -out argument, should output to stdout
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 }
+
+#if !defined(OPENSSL_WINDOWS)
+// A failure writing the issued certificate (here: a broken pipe on stdout)
+// fails the tool and leaves the index unrotated, so the database never claims
+// an issuance whose certificate was lost.
+TEST_F(CATest, CertificateWriteFailureLeavesDatabaseUnchanged) {
+  CreateBasicConfig();
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path
+      // No -out argument, so the certificate goes to stdout.
+  };
+
+  ASSERT_TRUE(ReadFileToString(db_path).empty());
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  close(pipefd[0]);  // No reader: writes and flushes below fail with EPIPE.
+
+  auto old_sigpipe = signal(SIGPIPE, SIG_IGN);
+  fflush(stdout);
+  int old_stdout = dup(STDOUT_FILENO);
+  ASSERT_GE(old_stdout, 0);
+  ASSERT_GE(dup2(pipefd[1], STDOUT_FILENO), 0);
+  close(pipefd[1]);
+
+  int result = caTool(args);
+
+  dup2(old_stdout, STDOUT_FILENO);
+  close(old_stdout);
+  signal(SIGPIPE, old_sigpipe);
+  // Clear the error indicator the failed writes left on |stdout|.
+  clearerr(stdout);
+
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_TRUE(ReadFileToString(db_path).empty());
+  EXPECT_EQ("01\n", ReadFileToString(serial_path));
+}
+
+// Isolates the explicit flush. Routing -out at a reader-less pipe by path gives
+// the tool a fresh, fully buffered stream, and -notext keeps the certificate
+// under one buffer, so no write syscall happens until the flush. Dropping the
+// BIO_flush makes this case pass silently, because the BIO's fclose discards
+// the error.
+TEST_F(CATest, CertificateFlushFailureIsReported) {
+  CreateBasicConfig();
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  close(pipefd[0]);  // No reader: the flush below fails with EPIPE.
+
+  char out_path[32];
+  snprintf(out_path, sizeof(out_path), "/dev/fd/%d", pipefd[1]);
+  if (access(out_path, W_OK) != 0) {
+    close(pipefd[1]);
+    GTEST_SKIP() << "no /dev/fd support";
+  }
+
+  args_list_t args = {
+      "-config", config_path,
+      "-notext",
+      "-selfsign",
+      "-in", csr_path,
+      "-out", out_path
+  };
+
+  auto old_sigpipe = signal(SIGPIPE, SIG_IGN);
+  int result = caTool(args);
+  signal(SIGPIPE, old_sigpipe);
+  close(pipefd[1]);
+
+  EXPECT_EQ(kToolExitFailure, result);
+  EXPECT_TRUE(ReadFileToString(db_path).empty());
+  EXPECT_EQ("01\n", ReadFileToString(serial_path));
+}
+#endif  // !OPENSSL_WINDOWS
 
 // Configuration file handling tests
 TEST_F(CATest, MissingConfigFile) {
@@ -536,7 +615,7 @@ TEST_F(CATest, MissingConfigFile) {
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, ConfigWithExtensions) {
@@ -549,7 +628,7 @@ TEST_F(CATest, ConfigWithExtensions) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -594,7 +673,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Argument parsing tests
@@ -602,7 +681,7 @@ TEST_F(CATest, HelpArgument) {
   args_list_t args = {"-help"};
   
   // Help should not fail but should return false (as it's not doing actual work)
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, MissingRequiredArguments) {
@@ -614,7 +693,7 @@ TEST_F(CATest, MissingRequiredArguments) {
       "-selfsign",
       "-out", output_path
   };
-  ASSERT_FALSE(caTool(args1));
+  ASSERT_EQ(kToolExitFailure, caTool(args1));
 
   // Missing -config argument  
   args_list_t args2 = {
@@ -622,7 +701,7 @@ TEST_F(CATest, MissingRequiredArguments) {
       "-in", csr_path,
       "-out", output_path
   };
-  ASSERT_FALSE(caTool(args2));
+  ASSERT_EQ(kToolExitFailure, caTool(args2));
 }
 
 // Password handling tests
@@ -661,8 +740,8 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
-  
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
+
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
 
@@ -705,7 +784,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Date handling tests
@@ -720,7 +799,7 @@ TEST_F(CATest, CustomStartDate) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -744,7 +823,7 @@ TEST_F(CATest, CustomEndDate) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -768,7 +847,7 @@ TEST_F(CATest, InvalidDateFormat) {
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Database operation tests
@@ -786,7 +865,7 @@ TEST_F(CATest, DatabaseUpdating) {
   std::string initial_db_content = ReadFileToString(db_path);
   EXPECT_TRUE(initial_db_content.empty());
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Check database was updated
   std::string updated_db_content = ReadFileToString(db_path);
@@ -808,7 +887,7 @@ TEST_F(CATest, SerialNumberIncrement) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Check serial number was incremented
   std::string updated_serial = ReadFileToString(serial_path);
@@ -851,7 +930,7 @@ commonName = supplied
   };
 
   // Should fail because CSR doesn't have all required fields
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Extension copy tests
@@ -890,8 +969,8 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
-  
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
+
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
 
@@ -934,7 +1013,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -960,7 +1039,7 @@ TEST_F(CATest, CorruptedCSR) {
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, MissingInputFile) {
@@ -973,7 +1052,7 @@ TEST_F(CATest, MissingInputFile) {
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Different digest algorithm tests  
@@ -1011,7 +1090,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1055,7 +1134,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1122,7 +1201,7 @@ commonName = supplied
       "-in", csr_path,
       "-out", output_path
   };
-  ASSERT_TRUE(caTool(args1));
+  ASSERT_EQ(kToolExitSuccess, caTool(args1));
 
   // Sign second certificate
   args_list_t args2 = {
@@ -1131,7 +1210,7 @@ commonName = supplied
       "-in", csr_path2,
       "-out", output_path2
   };
-  ASSERT_TRUE(caTool(args2));
+  ASSERT_EQ(kToolExitSuccess, caTool(args2));
 
   // Verify both certificates
   auto cert1 = LoadPEMCertificate(output_path);
@@ -1235,7 +1314,7 @@ commonName = supplied
       csr_path2,  // positional argument
       csr_path3   // positional argument
   };
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Verify serial numbers are different (checking via database update)
   std::string updated_serial = ReadFileToString(serial_path);
@@ -1277,7 +1356,7 @@ TEST_F(CATest, TodayDateHandling) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1322,7 +1401,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1363,7 +1442,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Copy extensions copyall test
@@ -1402,7 +1481,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1444,7 +1523,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Database integrity test
@@ -1464,7 +1543,7 @@ TEST_F(CATest, DatabaseIntegrityChecks) {
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Missing database directory test
@@ -1499,7 +1578,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // Test unique subject constraint
@@ -1513,7 +1592,7 @@ TEST_F(CATest, UniqueSubjectConstraint) {
       "-in", csr_path,
       "-out", output_path
   };
-  ASSERT_TRUE(caTool(args1));
+  ASSERT_EQ(kToolExitSuccess, caTool(args1));
 
   // Try to sign another certificate with same subject - should fail
   char output_path2[PATH_MAX];
@@ -1525,7 +1604,7 @@ TEST_F(CATest, UniqueSubjectConstraint) {
       "-in", csr_path,
       "-out", output_path2
   };
-  ASSERT_FALSE(caTool(args2));
+  ASSERT_EQ(kToolExitFailure, caTool(args2));
 
   RemoveFile(output_path2);
 }
@@ -1638,7 +1717,7 @@ commonName = supplied
   };
 
   // This should succeed because countries match
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1686,7 +1765,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Verify certificate was created
   auto cert = LoadPEMCertificate(output_path);
@@ -1736,7 +1815,7 @@ commonName = supplied
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   // Verify certificate was created
   auto cert = LoadPEMCertificate(output_path);
@@ -1781,7 +1860,7 @@ commonName = supplied
   };
 
   // This should fail because ED25519 has DEF_DGST_REQUIRED and explicit digest is not allowed
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 // MakeRevoked and UnpackRevinfo Tests - Exercised through database validation in caTool
@@ -1808,7 +1887,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryBasicTimestamp) {
   };
 
   // Should succeed - database with valid revoked entry loads correctly
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1832,7 +1911,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryUnspecifiedReason) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1855,7 +1934,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryKeyCompromise) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1878,7 +1957,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryCACompromise) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1901,7 +1980,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryAffiliationChanged) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1924,7 +2003,7 @@ TEST_F(CATest, DatabaseWithRevokedEntrySuperseded) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1947,7 +2026,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryCessationOfOperation) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1970,7 +2049,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryCertificateHold) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -1993,7 +2072,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryRemoveFromCRL) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2018,7 +2097,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryHoldInstruction) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2043,7 +2122,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryKeyTime) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2068,7 +2147,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTime) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2094,7 +2173,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryInvalidTimestamp) {
   };
 
   // Should fail - invalid revocation date format
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryInvalidReasonCode) {
@@ -2117,7 +2196,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryInvalidReasonCode) {
   };
 
   // Should fail - invalid reason code
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryHoldInstructionMissingArg) {
@@ -2140,7 +2219,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryHoldInstructionMissingArg) {
   };
 
   // Should fail - missing hold instruction argument
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryKeyTimeMissingArg) {
@@ -2163,7 +2242,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryKeyTimeMissingArg) {
   };
 
   // Should fail - missing compromised time argument
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTimeMissingArg) {
@@ -2186,7 +2265,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTimeMissingArg) {
   };
 
   // Should fail - missing compromised time argument
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryInvalidHoldInstructionOID) {
@@ -2209,7 +2288,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryInvalidHoldInstructionOID) {
   };
 
   // Should fail - invalid OID format
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithRevokedEntryInvalidKeyTimeFormat) {
@@ -2232,7 +2311,7 @@ TEST_F(CATest, DatabaseWithRevokedEntryInvalidKeyTimeFormat) {
   };
 
   // Should fail - invalid compromised time format
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
 TEST_F(CATest, DatabaseWithMultipleRevokedEntries) {
@@ -2255,7 +2334,7 @@ TEST_F(CATest, DatabaseWithMultipleRevokedEntries) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2282,7 +2361,7 @@ TEST_F(CATest, DatabaseWithMixedValidAndRevokedEntries) {
       "-out", output_path
   };
 
-  ASSERT_TRUE(caTool(args));
+  ASSERT_EQ(kToolExitSuccess, caTool(args));
 
   auto cert = LoadPEMCertificate(output_path);
   ASSERT_TRUE(cert);
@@ -2308,5 +2387,5 @@ TEST_F(CATest, DatabaseWithValidEntryAndRevocationDate) {
   };
 
   // Should fail - valid entry should not have revocation date
-  ASSERT_FALSE(caTool(args));
+  ASSERT_EQ(kToolExitFailure, caTool(args));
 }

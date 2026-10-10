@@ -99,11 +99,10 @@ static bool ExtractPasswordFromStream(Password &source, Source source_type,
 
   // Initialize BIO based on source type
   if (source_type == Source::kStdin) {
-#ifdef OPENSSL_WINDOWS
-    bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE | BIO_FP_TEXT));
-#else
+    // Keep stdin binary: a password line may be followed by DER data. Text
+    // mode on Windows can corrupt that data even during password read-ahead.
+    // CR/LF password terminators are trimmed below without text translation.
     bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
-#endif
   } else if (source_type == Source::kFile) {
     source.get().erase(0, 5);  // Remove "file:" prefix
     bio.reset(BIO_new_file(source.get().c_str(), "r"));

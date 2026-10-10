@@ -66,6 +66,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
     bucket = (BUCKET *)OPENSSL_zalloc(sizeof(*bucket));
     if (bucket == NULL) {
       fprintf(stderr, "ERROR: Failed to allocate new bucket\n");
+      status_flag = false;
       return;
     }
     // Insert new bucket as head of linked-list
@@ -94,6 +95,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
   entry = (HASH_ENTRY *)OPENSSL_zalloc(sizeof(*entry));
   if (entry == NULL) {
     fprintf(stderr, "ERROR: Failed to allocate new entry\n");
+    status_flag = false;
     return;
   }
 
@@ -101,6 +103,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
   if (entry->filename == NULL) {
     fprintf(stderr, "ERROR: Failed to duplicate filename\n");
     OPENSSL_free(entry);
+    status_flag = false;
     return;
   }
 
@@ -116,7 +119,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
 // process_file checks if |filename| is valid and creates a mapping in
 // |hash_table|
 static void process_file(const std::string &filename,
-                         const std::string &fullpath) {
+                         const std::string &fullpath, bool compat) {
   // Skip files with invalid extensions
   size_t dot_pos = filename.find_last_of('.');
   if (dot_pos == std::string::npos ||
@@ -183,7 +186,19 @@ static void process_file(const std::string &filename,
     return;
   }
 
+  // Both name-hash APIs return zero on encoding failure, which is also a
+  // valid hash. Check the encoding first to distinguish errors from that hash.
+  if (i2d_X509_NAME(x509_name, nullptr) < 0) {
+    fprintf(stderr, "Error: Failed to encode name for %s\n", filename.c_str());
+    status_flag = false;
+    return;
+  }
   add_entry(type, X509_NAME_hash(x509_name), filename.c_str(), digest);
+  if (compat) {
+    // The legacy hash is a directory lookup identifier. Keep the same object
+    // fingerprint for duplicate suppression in either hash namespace.
+    add_entry(type, X509_NAME_hash_old(x509_name), filename.c_str(), digest);
+  }
 }
 
 // symlink_check determines if |filename| is a symbolic link matching the regex
@@ -265,7 +280,8 @@ static void generate_symlinks(const std::string &directory_path) {
   }
 }
 
-static void process_directory(const std::string &directory_path, regex_t &regex) {
+static void process_directory(const std::string &directory_path, regex_t &regex,
+                              bool compat) {
   DIR* dir = opendir(directory_path.c_str());
   if (dir == nullptr) {
     fprintf(stderr, "Error opening directory '%s': %s\n",
@@ -297,7 +313,7 @@ static void process_directory(const std::string &directory_path, regex_t &regex)
 
     // If it's a valid file, add a mapping to hashtable. Continue
     // processing even if we encounter errors.
-    process_file(filename, full_path);
+    process_file(filename, full_path, compat);
   }
 
   // Pass 2: Process hash table to create symlinks.
@@ -327,6 +343,8 @@ void cleanup_hash_table() {
 
 static const argument_t kArguments[] = {
         { "-help", kBooleanArgument, "Display option summary"},
+        { "-compat", kBooleanArgument,
+          "Create both SHA-1 and legacy MD5 name-hash links" },
         { "", kOptionalArgument, "Path to directory. "\
                     "then the SSL_CERT_DIR environmental variable will be \n" \
                     "consulted. If that is not set, then the default \n" \
@@ -335,23 +353,26 @@ static const argument_t kArguments[] = {
         { "", kOptionalArgument, "" }
 };
 
-bool RehashTool(const args_list_t &args) {
+int RehashTool(const args_list_t &args) {
   using namespace ordered_args;
+  status_flag = true;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
     kArguments) || extra_args.size() > 1) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string directory_path;
   bool help = false;
+  bool compat = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
+  GetBoolArgument(&compat, "-compat", parsed_args);
 
   if (help) {
-    fprintf(stderr, "Usage: openssl rehash [cert-directory]\n" \
+    fprintf(stderr, "Usage: openssl rehash [-compat] [cert-directory]\n" \
       "This tool scans a directory and calculates a hash value of each \n" \
       "pem, .crt, .cer, or .crl file. It then creates a symbolic link \n"\
       "for each file, where the name of the link is the hash value. The \n" \
@@ -360,7 +381,7 @@ bool RehashTool(const args_list_t &args) {
       "removes any existing symbolic links that match the regex \n" \
       "[0-9a-f]{8}.([r])?[0-9]+ in that directory. \n");
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (extra_args.empty()) { // No directory path provided on command line
@@ -379,7 +400,7 @@ bool RehashTool(const args_list_t &args) {
   if (realpath(directory_path.c_str(), resolved_path) == nullptr) {
     fprintf(stderr, "Error: Unable to resolve directory path: %s\n",
             strerror(errno));
-    return false;
+    return kToolExitFailure;
   }
   directory_path = resolved_path;
 
@@ -388,19 +409,19 @@ bool RehashTool(const args_list_t &args) {
   if (stat(directory_path.c_str(), &path_stat) != 0) {
     fprintf(stderr, "Error: Cannot access directory '%s': %s\n",
             directory_path.c_str(), strerror(errno));
-    return false;
+    return kToolExitFailure;
   }
   if (!S_ISDIR(path_stat.st_mode)) {
     fprintf(stderr, "Error: '%s' is not a directory\n",
             directory_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   // Verify write access to directory
   if (access(directory_path.c_str(), W_OK) != 0) {
     fprintf(stderr, "Error: Don't have write permission for '%s'\n",
             directory_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   regex_t regex;
@@ -408,23 +429,23 @@ bool RehashTool(const args_list_t &args) {
   if (ret) {
     regfree(&regex);
     fprintf(stderr, "Could not compile regex\n");
-    return false;
+    return kToolExitFailure;
   }
   // Process directory
-  process_directory(directory_path, regex);
+  process_directory(directory_path, regex, compat);
 
   regfree(&regex);
   cleanup_hash_table();
 
-  return status_flag;
+  return status_flag ? kToolExitSuccess : kToolExitFailure;
 }
 
 #else
 #include <stdio.h>
 #include <stdbool.h>
 
-bool RehashTool(const args_list_t &args) {
+int RehashTool(const args_list_t &args) {
   fprintf(stderr, "RehashTool: Not implemented for windows\n");
-  return false;
+  return kToolExitFailure;
 }
 #endif

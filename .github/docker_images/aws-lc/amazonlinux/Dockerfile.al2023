@@ -23,6 +23,7 @@ dnf install -y \
     clang \
     cmake \
     compiler-rt \
+    crypto-policies \
     diffutils \
     gcc \
     gcc-c++ \

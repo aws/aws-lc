@@ -100,13 +100,16 @@ std::string GetHash(const std::string &str) {
 
 // -------------------- Dgst Options Test ---------------------------
 TEST_F(DgstComparisonTest, HMAC) {
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " dgst -hmac test_key_string -out " +
-                              out_path_awslc + " " + in_path;
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -hmac " + ShellEscape("test_key_string") +
+                              " -out " + ShellEscape(out_path_awslc) + " " +
+                              ShellEscape(in_path);
 
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dgst -hmac test_key_string -out " +
-                                out_path_openssl + " " + in_path;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -hmac " +
+                                ShellEscape("test_key_string") + " -out " +
+                                ShellEscape(out_path_openssl) + " " +
+                                ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -118,12 +121,14 @@ TEST_F(DgstComparisonTest, HMAC) {
   EXPECT_EQ(awslc_hash, openssl_hash);
 
   // binary output
-  awslc_command = std::string(awslc_executable_path) +
-                  " dgst -hmac test_key_string -binary -out " + out_path_awslc +
-                  " " + in_path;
-  openssl_command = std::string(openssl_executable_path) +
-                    " dgst -hmac test_key_string -binary -out " +
-                    out_path_openssl + " " + in_path;
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -hmac " + ShellEscape("test_key_string") +
+                  " -binary -out " + ShellEscape(out_path_awslc) + " " +
+                  ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -hmac " + ShellEscape("test_key_string") +
+                    " -binary -out " + ShellEscape(out_path_openssl) + " " +
+                    ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -134,12 +139,13 @@ TEST_F(DgstComparisonTest, HMAC) {
 
 TEST_F(DgstComparisonTest, Digest) {
   // default digest
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " dgst -out " + out_path_awslc + " " + in_path;
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
 
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dgst -out " + out_path_openssl + " " +
-                                in_path;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -151,11 +157,12 @@ TEST_F(DgstComparisonTest, Digest) {
   EXPECT_EQ(awslc_hash, openssl_hash);
 
   // non-default digest + binary
-  awslc_command = std::string(awslc_executable_path) +
-                  " dgst -sha1 -binary -out " + out_path_awslc + " " + in_path;
-  openssl_command = std::string(openssl_executable_path) +
-                    " dgst -sha1 -binary -out " + out_path_openssl + " " +
-                    in_path;
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -sha1 -binary -out " + ShellEscape(out_path_awslc) +
+                  " " + ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -sha1 -binary -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -166,13 +173,15 @@ TEST_F(DgstComparisonTest, Digest) {
 
 TEST_F(DgstComparisonTest, SignAndVerify) {
   // default binary output
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " dgst -sign " + key_path + " -out " +
-                              sig_path_awslc + " " + in_path;
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -sign " + ShellEscape(key_path) +
+                              " -out " + ShellEscape(sig_path_awslc) + " " +
+                              ShellEscape(in_path);
 
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " dgst -sign " + key_path + " -out " +
-                                sig_path_openssl + " " + in_path;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -sign " + ShellEscape(key_path) +
+                                " -out " + ShellEscape(sig_path_openssl) +
+                                " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
                               sig_path_openssl, awslc_output_str,
@@ -180,13 +189,17 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
 
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 
-  awslc_command = std::string(awslc_executable_path) + " dgst -verify " +
-                  pubkey_path + " -signature " + sig_path_awslc +
-                  " -keyform PEM -out " + out_path_awslc + " " + in_path;
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -verify " +
+                  ShellEscape(pubkey_path) + " -signature " +
+                  ShellEscape(sig_path_awslc) + " -keyform " +
+                  ShellEscape("PEM") + " -out " + ShellEscape(out_path_awslc) +
+                  " " + ShellEscape(in_path);
 
-  openssl_command = std::string(openssl_executable_path) + " dgst -verify " +
-                    pubkey_path + " -signature " + sig_path_openssl +
-                    " -keyform PEM -out " + out_path_openssl + " " + in_path;
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -verify " +
+                    ShellEscape(pubkey_path) + " -signature " +
+                    ShellEscape(sig_path_openssl) + " -keyform " +
+                    ShellEscape("PEM") + " -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -195,15 +208,17 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 
   // sigopts
-  awslc_command =
-      std::string(awslc_executable_path) + " dgst -sign " + key_path +
-      " -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:0 -out " +
-      sig_path_awslc + " " + in_path;
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -sign " +
+                  ShellEscape(key_path) + " -sigopt " +
+                  ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                  ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                  ShellEscape(sig_path_awslc) + " " + ShellEscape(in_path);
 
-  openssl_command =
-      std::string(openssl_executable_path) + " dgst -sign " + key_path +
-      " -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:0 -out " +
-      sig_path_openssl + " " + in_path;
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -sign " +
+                    ShellEscape(key_path) + " -sigopt " +
+                    ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                    ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                    ShellEscape(sig_path_openssl) + " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
                               sig_path_openssl, awslc_output_str,
@@ -211,17 +226,19 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
 
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 
-  awslc_command =
-      std::string(awslc_executable_path) + " dgst -verify " + pubkey_path +
-      " -signature " + sig_path_awslc +
-      " -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:0 -out " +
-      out_path_awslc + " " + in_path;
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -verify " +
+                  ShellEscape(pubkey_path) + " -signature " +
+                  ShellEscape(sig_path_awslc) + " -sigopt " +
+                  ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                  ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                  ShellEscape(out_path_awslc) + " " + ShellEscape(in_path);
 
-  openssl_command =
-      std::string(openssl_executable_path) + " dgst -verify " + pubkey_path +
-      " -signature " + sig_path_openssl +
-      " -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:0 -out " +
-      out_path_openssl + " " + in_path;
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -verify " +
+                    ShellEscape(pubkey_path) + " -signature " +
+                    ShellEscape(sig_path_openssl) + " -sigopt " +
+                    ShellEscape("rsa_padding_mode:pss") + " -sigopt " +
+                    ShellEscape("rsa_pss_saltlen:0") + " -out " +
+                    ShellEscape(out_path_openssl) + " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -230,11 +247,13 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 
   // hex output
-  awslc_command = std::string(awslc_executable_path) + " dgst -sign " +
-                  key_path + " -hex -out " + sig_path_awslc + " " + in_path;
+  awslc_command = ShellEscape(awslc_executable_path) + " dgst -sign " +
+                  ShellEscape(key_path) + " -hex -out " +
+                  ShellEscape(sig_path_awslc) + " " + ShellEscape(in_path);
 
-  openssl_command = std::string(openssl_executable_path) + " dgst -sign " +
-                    key_path + " -hex -out " + sig_path_openssl + " " + in_path;
+  openssl_command = ShellEscape(openssl_executable_path) + " dgst -sign " +
+                    ShellEscape(key_path) + " -hex -out " +
+                    ShellEscape(sig_path_openssl) + " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, sig_path_awslc,
                               sig_path_openssl, awslc_output_str,
@@ -246,15 +265,64 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
   EXPECT_EQ(awslc_hash, openssl_hash);
 }
 
+// Verify that dgst -verify's exit status matches OpenSSL: 0 on a good
+// signature and nonzero when the signature does not match the input.
+TEST_F(DgstComparisonTest, VerifyExitCode) {
+  std::string sign_command = std::string(awslc_executable_path) +
+                             " dgst -sign " + key_path + " -out " +
+                             sig_path_awslc + " " + in_path;
+  ASSERT_EQ(0, ExecuteCommandExitCode(sign_command));
+
+  // Good signature: both exit 0.
+  std::string awslc_command = std::string(awslc_executable_path) +
+                              " dgst -verify " + pubkey_path + " -signature " +
+                              sig_path_awslc + " " + in_path + " > " +
+                              out_path_awslc + " 2>&1";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " dgst -verify " + pubkey_path +
+                                " -signature " + sig_path_awslc + " " +
+                                in_path + " > " + out_path_openssl + " 2>&1";
+  int awslc_exit = ExecuteCommandExitCode(awslc_command);
+  int openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_EQ(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  // Bad signature: verify the untampered signature against a different file.
+  char other_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(other_path), 0u);
+  {
+    ScopedFILE other_file(fopen(other_path, "wb"));
+    ASSERT_TRUE(other_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), other_file.get()),
+              strlen(tampered));
+  }
+
+  awslc_command = std::string(awslc_executable_path) + " dgst -verify " +
+                  pubkey_path + " -signature " + sig_path_awslc + " " +
+                  other_path + " > " + out_path_awslc + " 2>&1";
+  openssl_command = std::string(openssl_executable_path) + " dgst -verify " +
+                    pubkey_path + " -signature " + sig_path_awslc + " " +
+                    other_path + " > " + out_path_openssl + " 2>&1";
+  awslc_exit = ExecuteCommandExitCode(awslc_command);
+  openssl_exit = ExecuteCommandExitCode(openssl_command);
+  EXPECT_NE(0, awslc_exit);
+  EXPECT_EQ(openssl_exit, awslc_exit);
+
+  RemoveFile(other_path);
+}
+
 class MD5ComparisonTest : public DgstComparisonTest {};
 
 TEST_F(MD5ComparisonTest, Digest) {
   // default digest
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " md5 -out " + out_path_awslc + " " + in_path;
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " md5 -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
 
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " md5 -out " + out_path_openssl + " " + in_path;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " md5 -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -270,12 +338,13 @@ class SHA1ComparisonTest : public DgstComparisonTest {};
 
 TEST_F(SHA1ComparisonTest, Digest) {
   // default digest
-  std::string awslc_command = std::string(awslc_executable_path) +
-                              " sha1 -out " + out_path_awslc + " " + in_path;
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " sha1 -out " + ShellEscape(out_path_awslc) +
+                              " " + ShellEscape(in_path);
 
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " sha1 -out " + out_path_openssl + " " +
-                                in_path;
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " sha1 -out " + ShellEscape(out_path_openssl) +
+                                " " + ShellEscape(in_path);
 
   RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -347,39 +416,58 @@ class DgstTest : public ::testing::Test {
 
 TEST_F(DgstTest, HMAC) {
   args_list_t args = {"-hmac", "test_key_string", in_path};
-  EXPECT_TRUE(dgstTool(args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
 }
 
 TEST_F(DgstTest, Sign) {
   args_list_t args = {"-sign", key_path, "-out", sig_path, in_path};
-  EXPECT_TRUE(dgstTool(args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
 }
 
 TEST_F(DgstTest, Verify) {
   // First create signature
   args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
-  EXPECT_TRUE(dgstTool(sign_args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));
 
   // Then verify
   args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
                              in_path};
-  EXPECT_TRUE(dgstTool(verify_args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(verify_args));
+}
+
+// A signature that does not match the input exits nonzero.
+TEST_F(DgstTest, VerifyFailureExitCode) {
+  args_list_t sign_args = {"-sign", key_path, "-out", sig_path, in_path};
+  EXPECT_EQ(kToolExitSuccess, dgstTool(sign_args));
+
+  // Tamper with the signed data so verification fails.
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    const char *tampered = "AWS_LC_TEST_STRING_INPUT_TAMPERED";
+    ASSERT_EQ(fwrite(tampered, 1, strlen(tampered), in_file.get()),
+              strlen(tampered));
+  }
+
+  args_list_t verify_args = {"-verify", pubkey_path, "-signature", sig_path,
+                             in_path};
+  EXPECT_EQ(kToolExitFailure, dgstTool(verify_args));
 }
 
 TEST_F(DgstTest, DigestDefault) {
   args_list_t args = {in_path};
-  EXPECT_TRUE(dgstTool(args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
 }
 
 TEST_F(DgstTest, CustomDigest) {
   args_list_t args = {"-sha1", in_path};
-  EXPECT_TRUE(dgstTool(args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(args));
 }
 
 TEST_F(DgstTest, FileInput) {
   // Single file input
   args_list_t single_args = {in_path};
-  EXPECT_TRUE(dgstTool(single_args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(single_args));
 
   // Multiple file inputs
   char in_path2[PATH_MAX];
@@ -391,7 +479,7 @@ TEST_F(DgstTest, FileInput) {
             strlen(test_data));
 
   args_list_t multi_args = {in_path, in_path2};
-  EXPECT_TRUE(dgstTool(multi_args));
+  EXPECT_EQ(kToolExitSuccess, dgstTool(multi_args));
 
   RemoveFile(in_path2);
 }
@@ -403,8 +491,8 @@ class DgstOptionUsageErrorsTest : public DgstTest {
     for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
-    bool result = dgstTool(c_args);
-    ASSERT_FALSE(result);
+    int result = dgstTool(c_args);
+    ASSERT_EQ(kToolExitFailure, result);
   }
 };
 
@@ -442,20 +530,20 @@ TEST_F(DgstTest, PassinBasicIntegrationTest) {
   args_list_t args = {
       "-sign", protected_key_path, "-passin", "pass:testpassword",
       "-out",  sig_path,           in_path};
-  bool result = dgstTool(args);
-  ASSERT_TRUE(result);
+  int result = dgstTool(args);
+  ASSERT_EQ(kToolExitSuccess, result);
 }
 
 class MD5Test : public DgstTest {};
 
 TEST_F(MD5Test, Sign) {
   args_list_t args = {in_path};
-  EXPECT_TRUE(md5Tool(args));
+  EXPECT_EQ(kToolExitSuccess, md5Tool(args));
 }
 
 class SHA1Test : public DgstTest {};
 
 TEST_F(SHA1Test, Sign) {
   args_list_t args = {in_path};
-  EXPECT_TRUE(sha1Tool(args));
+  EXPECT_EQ(kToolExitSuccess, sha1Tool(args));
 }

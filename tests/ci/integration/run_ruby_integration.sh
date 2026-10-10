@@ -40,9 +40,9 @@ function ruby_build() {
                  --with-openssl-dir=${AWS_LC_INSTALL_FOLDER}
     make V=1 -j ${NUM_CPU_THREADS}
     make install
-    # Check that AWS-LC was used.
-    ./install/bin/ruby -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
-    ./miniruby ./tool/runruby.rb -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
+    # Check that AWS-LC was used. Drain the output to avoid SIGPIPE under pipefail.
+    ./install/bin/ruby -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep "AWS-LC" > /dev/null && echo "AWS-LC found!" || exit 1
+    ./miniruby ./tool/runruby.rb -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep "AWS-LC" > /dev/null && echo "AWS-LC found!" || exit 1
 
     ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" crypto || exit 1
     ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" ssl || exit 1

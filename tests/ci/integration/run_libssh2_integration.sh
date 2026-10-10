@@ -6,6 +6,10 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Optional first argument: the libssh2 git ref (tag or branch) to test against.
+# Defaults to the default branch (main) when unset so local runs keep working.
+LIBSSH2_REF="${1:-}"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -45,8 +49,23 @@ function libssh2_run_tests() {
 
 pushd "${SCRATCH_FOLDER}"
 
-# Get latest libssh2 version.
-git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+# Clone libssh2. When LIBSSH2_REF is set (e.g. a release tag), check out that
+# ref; otherwise track the default branch (main).
+if [[ -n "${LIBSSH2_REF}" ]]; then
+  git clone --depth 1 --branch "${LIBSSH2_REF}" https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+else
+  git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+fi
+
+# Older libssh2 releases use a floating debian:testing-slim base image in the
+# openssh_server test fixture, which no longer ships the `adduser` package.
+# Patch the Dockerfile to install it explicitly so ctest can build the fixture.
+# NOTE: this patch is keyed to the release pinned in
+# .github/workflows/integrations.yml; revisit it if that pin changes.
+OPENSSH_DOCKERFILE="${LIBSSH2_SRC_FOLDER}/tests/openssh_server/Dockerfile"
+if grep -q "debian:testing-slim" "${OPENSSH_DOCKERFILE}" 2>/dev/null; then
+  sed -i 's/install -y openssh-server/install -y openssh-server adduser/' "${OPENSSH_DOCKERFILE}"
+fi
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBSSH2_BUILD_FOLDER}" "${LIBSSH2_INSTALL_FOLDER}"
 ls
 
