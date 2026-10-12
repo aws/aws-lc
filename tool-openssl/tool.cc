@@ -15,7 +15,7 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 22> kTools = {{
+static const std::array<Tool, 23> kTools = {{
     {"asn1parse", asn1parseTool},
     {"ca", caTool},
     {"crl", CRLTool},
@@ -27,6 +27,7 @@ static const std::array<Tool, 22> kTools = {{
     {"genpkey", genpkeyTool},
     {"genrsa", genrsaTool},
     {"md5", md5Tool},
+    {"pkcs12", pkcs12Tool},
     {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
     {"pkeyutl", pkeyutlTool},
@@ -119,10 +120,9 @@ int main(int argc, char **argv) {
     args.emplace_back(argv[i]);
   }
 
-  if (!tool(args)) {
+  int ret = tool(args);
+  if (ret != kToolExitSuccess) {
     ERR_print_errors_fp(stderr);
-    return 1;
   }
-
-  return 0;
+  return ret;
 }

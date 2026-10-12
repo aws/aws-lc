@@ -71,19 +71,19 @@ static int dh_progress_callback(int event, int n, BN_GENCB *cb) {
   return 1; // Continue generation
 }
 
-bool dhparamTool(const args_list_t &args) {
+int dhparamTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
 
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   bool ret = false;
@@ -238,5 +238,5 @@ err:
   if (!ret) {
     ERR_print_errors_fp(stderr);
   }
-  return ret;
+  return ret ? kToolExitSuccess : kToolExitFailure;
 }

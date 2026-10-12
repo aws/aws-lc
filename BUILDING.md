@@ -83,6 +83,122 @@ In order to serve environments where code-size is important as well as those
 where performance is the overriding concern, `OPENSSL_SMALL` can be defined to
 remove some code that is especially large.
 
+### Distribution Packaging Mode
+
+For system-wide installation on Linux and BSD systems, AWS-LC supports distribution
+packaging mode. Enable it by passing `-DENABLE_DIST_PKG=1` to CMake:
+
+```bash
+cmake -GNinja -B build \
+  -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_DIST_PKG=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local
+ninja -C build
+sudo ninja -C build install
+```
+
+This mode enables:
+
+- **SONAME versioning**: Shared libraries use standard SONAME (e.g., `libcrypto-awslc.so.0`)
+- **Symbol versioning**: ELF symbol versioning for ABI stability tracking (`AWS_LC_FIPS5_1.0`)
+- **Cohabitant headers**: Headers installed to `include/aws-lc/openssl/` to coexist with other
+  crypto libraries without conflicts
+
+Symbol versioning ensures backward compatibility and enables multiple AWS-LC versions to
+coexist on the same system. It is on by default in this mode but is an independent
+option, so it can also be enabled on its own:
+
+```bash
+cmake -GNinja -B build \
+  -DBUILD_SHARED_LIBS=ON \
+  -DENABLE_PRE_SONAME_BUILD=OFF \
+  -DENABLE_SYMBOL_VERSIONING=ON \
+  -DCMAKE_BUILD_TYPE=Release
+```
+
+That produces versioned symbols with a standard SONAME while leaving headers in
+`include/openssl` and the `bssl` tool unrenamed. `-DENABLE_PRE_SONAME_BUILD=OFF`
+is what provides the SONAME outside of distribution packaging mode; the
+deprecation warning it prints is expected. `-DSYMBOL_VERSION_NAMESPACE=<prefix>`
+replaces the `AWS_LC` node prefix, which is only appropriate for a privately
+distributed libcrypto. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
+for detailed information about symbol versioning, version evolution, and CI
+integration.
+
+### System Crypto Policies (opt-in)
+
+On Linux distributions that ship the `crypto-policies` framework (for example
+Amazon Linux 2023 and Fedora), AWS-LC can be built to seed newly created
+`SSL_CTX` objects from the system-wide OpenSSL back-end policy file. This is
+disabled by default; enable it with `-DENABLE_CRYPTO_POLICIES=ON`. It is aimed at
+distribution packagers who want AWS-LC to honor the operator-selected system TLS
+policy without per-application code changes.
+
+When enabled, `SSL_CTX_new` reads
+`/etc/crypto-policies/back-ends/opensslcnf.config` after applying AWS-LC's
+built-in defaults and applies the `CipherString`, `Ciphersuites`,
+`TLS`/`DTLS` `MinProtocol`/`MaxProtocol`, `Groups`, and `SignatureAlgorithms`
+directives. This is best-effort: a missing or malformed file, or a directive
+AWS-LC does not support, is ignored, and consumers may still override any setting
+afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
+because AWS-LC does not implement OpenSSL security levels.
+
+`Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
+implements before being applied, keeping the operator's preference order. A stock
+policy value names algorithms AWS-LC does not have, such as X448 and the FFDHE
+groups, and the corresponding setters reject a whole list on the first name they
+do not recognize; without narrowing, the directive would have no effect at all.
+The OpenSSL group-list modifiers are honored: `*` and `?` are stripped, since
+AWS-LC selects its own key shares, and `-` drops the group. A removal is applied
+to AWS-LC's default list. An empty group list will result in AWS-LC's default list
+being used.
+
+`SignatureAlgorithms` carries the same modifiers and is read the same way. AWS-LC
+signs with a different default list than it accepts, so a removal there is applied
+to each of them.
+
+A `MinProtocol` naming a version AWS-LC does not have is the exception: the floor
+rises to the policy's `MaxProtocol`. Ignoring the directive would leave AWS-LC's
+built-in floor of TLS 1.0, which is below any floor the policy can ask for, so
+the context would offer the versions the policy forbids. A `MinProtocol` older
+than TLS 1.0, such as `SSLv3`, keeps the built-in floor, which is already
+stricter.
+
+AWS-LC's post-quantum algorithms survive a policy that says nothing about them.
+Every policy the framework ships today predates ML-KEM and ML-DSA, and the
+setters replace AWS-LC's defaults rather than intersect with them, so seeding
+would otherwise downgrade every context. A policy that names any post-quantum
+algorithm is taken at its word and nothing is added back.
+
+To turn post-quantum off, put AWS-LC's own directive in a drop-in file:
+
+```
+# /etc/crypto-policies/local.d/opensslcnf-awslc.config
+AWSLC.PostQuantum = off
+```
+
+Then run `update-crypto-policies`, which appends the drop-in to the generated
+back-end file. Do not write the directive into that generated file yourself. The
+framework rewrites it on every policy change and package update, which would
+discard the directive.
+
+A hybrid group needs its classical half, so removing `secp384r1` also removes
+`SecP384r1MLKEM1024`, whether the policy names the hybrid or not. An algorithm the
+policy removes with `-` stays out, in either directive.
+
+AWS-LC reads the file once per process, as OpenSSL reads `openssl.cnf`, so a
+policy change takes effect only in processes started afterward. A read that fails
+is retried on the next `SSL_CTX_new`, so a policy file that appears later is
+picked up.
+
+`AWSLC_CRYPTO_POLICY_FILE` names the policy file, at build time with
+`-DAWSLC_CRYPTO_POLICY_FILE=/path/to/file` and at run time as an environment
+variable, which wins. The environment is ignored in set-uid and set-gid
+processes.
+
+### Other Build Options
+
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
 for other variables which may be used to configure the build.
 
@@ -156,6 +272,11 @@ exported symbols from a `.a` file, and can be used in a build script to generate
 the symbol list on the fly (by building without prefixing, using
 `read_symbols.go` to construct a symbol list, and then building again with
 prefixing).
+
+Prefixing cannot be combined with symbol versioning (the version scripts
+reference the unprefixed names); configuring both is rejected. To distinguish
+libraries that must keep identical symbol names, use a symbol version
+namespace instead (see [docs/SymbolVersioning.md](docs/SymbolVersioning.md)).
 
 This mechanism is under development and may change over time. Please contact the
 BoringSSL maintainers if making use of it.

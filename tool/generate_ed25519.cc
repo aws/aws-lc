@@ -37,6 +37,6 @@ bool GenerateEd25519Key(const std::vector<std::string> &args) {
   ED25519_keypair(public_key, private_key);
 
   return WriteToFile(args_map["-out-public"], public_key, sizeof(public_key)) &&
-         WriteToFile(args_map["-out-private"], private_key,
+         WritePrivateKeyToFile(args_map["-out-private"], private_key,
                      sizeof(private_key));
 }

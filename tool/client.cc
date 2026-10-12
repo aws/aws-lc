@@ -146,6 +146,14 @@ static const argument_t kArguments[] = {
         "Use TLS version 1.1 only",
     },
     {
+        "-tls1_2", kBooleanArgument,
+        "Use TLS version 1.2 only",
+    },
+    {
+        "-tls1_3", kBooleanArgument,
+        "Use TLS version 1.3 only",
+    },
+    {
         "-server-name", kOptionalArgument, "The server name to advertise",
     },
     {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/evp.h>
+#include <openssl/mem.h>
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
@@ -18,149 +19,159 @@ static const argument_t kArguments[] = {
     {"-out", kOptionalArgument, "Output file, default stdout"},
     {"-e", kBooleanArgument, "Encrypt"},
     {"-d", kBooleanArgument, "Decrypt"},
+    {"-nopad", kBooleanArgument, "Disable standard block padding"},
+    {"-none", kExclusiveBooleanArgument,
+     "Copy input without encryption (default)"},
     {"-K", kOptionalArgument, "Raw key to use, in hex form"},
     {"-iv", kOptionalArgument, "IV to use, in hex form"},
     {"-aes-128-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-128-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-192-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-cfb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ctr", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ecb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes-256-ofb", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-aes128", kExclusiveBooleanArgument, "Supported cipher alias"},
+    {"-aes256", kExclusiveBooleanArgument, "Supported cipher alias"},
+    {"-des-cbc", kExclusiveBooleanArgument, "Supported cipher"},
+    {"-des-ede3-cbc", kExclusiveBooleanArgument, "Supported cipher"},
     {"", kOptionalArgument, ""}};
 
 static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
-                        unsigned int size) {
-  // First validate that the string contains only valid hex characters
-  for (char c : hex_string) {
-    if (!OPENSSL_isxdigit(c)) {
+                        size_t size) {
+  const size_t hex_len = 2 * size;
+  if (hex_string.size() < hex_len) {
+    fprintf(stderr,
+            "hex string is too short, padding with zero bytes to length\n");
+  } else if (hex_string.size() > hex_len) {
+    fprintf(stderr, "hex string is too long, ignoring excess\n");
+  }
+
+  // Like OpenSSL, zero-pad on the right (including an odd trailing nibble) and
+  // validate only the retained prefix.
+  memset(buffer, 0, size);
+  for (size_t i = 0; i < std::min(hex_string.size(), hex_len); i++) {
+    uint8_t digit = 0;
+    if (!OPENSSL_fromxdigit(&digit, hex_string[i])) {
       return false;
     }
+    buffer[i / 2] |= static_cast<uint8_t>(digit << (i % 2 == 0 ? 4 : 0));
   }
-
-  if (hex_string.size() != size * 2) {
-    return false;
-  }
-
-  BIGNUM *raw = NULL;
-  if (BN_hex2bn(&raw, hex_string.c_str()) == 0) {
-    return false;
-  }
-
-  int ret = BN_bn2bin_padded(buffer, size, raw);
-  BN_free(raw);
-  return ret != 0;
+  return true;
 }
 
-bool encTool(const args_list_t &args) {
+int encTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
-  std::string in_path, out_path, cipher_name;
-  Password hex_key, hex_iv;
-  bool help = false, encode = false, decode = false;
-
-  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
-  ordered_args::GetString(&in_path, "-in", "", parsed_args);
-  ordered_args::GetString(&out_path, "-out", "", parsed_args);
-  ordered_args::GetBoolArgument(&encode, "-e", parsed_args);
-  ordered_args::GetBoolArgument(&decode, "-d", parsed_args);
-  ordered_args::GetString(&hex_key.get(), "-K", "", parsed_args);
-  ordered_args::GetString(&hex_iv.get(), "-iv", "", parsed_args);
-  ordered_args::GetExclusiveBoolArgument(&cipher_name, kArguments, "",
-                                         parsed_args);
-
-  // Display enc tool option summary
-  if (help) {
+  using namespace ordered_args;
+  if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
-  // Since we do not implement key generation, a raw key is required
-  // TODO: remove/modify if we ever implement -k, -kfile, or -S
-  if (hex_key.empty()) {
-    fprintf(stderr, "Error: A raw key is required\n");
-    return false;
-  }
+  std::string in_path, out_path;
+  Password hex_key, hex_iv;
+  GetLastString(&in_path, "-in", "", parsed_args);
+  GetLastString(&out_path, "-out", "", parsed_args);
+  GetLastString(&hex_key.get(), "-K", "", parsed_args);
+  GetLastString(&hex_iv.get(), "-iv", "", parsed_args);
+  const bool has_key = HasArgument(parsed_args, "-K");
+  const bool has_iv = HasArgument(parsed_args, "-iv");
+  const bool nopad = HasArgument(parsed_args, "-nopad");
+  const bool encode = GetLastOption({"-e", "-d"}, "-e", parsed_args) == "-e";
+  // Unlike OpenSSL 1.1.1, which uses the last one, the parser rejects multiple
+  // cipher options (including -none). OpenSSL 3.x interprets them differently,
+  // and a mismatch could silently skip encryption.
+  std::string cipher_name;
+  GetExclusiveBoolArgument(&cipher_name, kArguments, "-none", parsed_args);
+  cipher_name = cipher_name == "-none" ? "" : cipher_name.substr(1);
 
-  if (encode && decode) {
-    fprintf(stderr, "Error: -e and -d are mutually exclusive\n");
-    return false;
-  }
-
-  encode = !decode;
-
-  // Read from stdin if no -in path provided
+  // As in OpenSSL, an absent path or "-" means stdin/stdout.
   ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
+  FILE *input = stdin;
+  if (!in_path.empty() && in_path != "-") {
     in_file.reset(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
       fprintf(stderr, "Error: unable to load data from '%s'\n",
               in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
+    input = in_file.get();
   }
 
-  if (cipher_name.empty()) {
-    cipher_name = "aes-128-cbc";
-  } else {
-    cipher_name = cipher_name.substr(1);
-  }
-  const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name.c_str());
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx;
+  if (!cipher_name.empty()) {
+    const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name.c_str());
+    if (cipher == nullptr) {
+      fprintf(stderr, "Error: Unknown cipher %s\n", cipher_name.c_str());
+      return kToolExitFailure;
+    }
+    // Password-based key derivation is unsupported. An empty -K is still a
+    // valid (all-zero) key.
+    if (!has_key) {
+      fprintf(stderr, "Error: A raw key is required\n");
+      return kToolExitFailure;
+    }
 
-  if (cipher == nullptr) {
-    fprintf(stderr, "Error: Unknown cipher %s\n", cipher_name.c_str());
-    return false;
-  }
-
-  unsigned int iv_length = EVP_CIPHER_iv_length(cipher);
-  uint8_t iv[EVP_MAX_IV_LENGTH];
-
-  if (!hex_iv.empty()) {
-    if (iv_length == 0) {
-      fprintf(stderr, "Warning: IV is not used by cipher %s\n",
-              cipher_name.c_str());
-    } else {
-      if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
+    const size_t iv_length = EVP_CIPHER_iv_length(cipher);
+    uint8_t iv[EVP_MAX_IV_LENGTH] = {0};
+    if (has_iv) {
+      if (iv_length == 0) {
+        fprintf(stderr, "Warning: IV is not used by cipher %s\n",
+                cipher_name.c_str());
+      } else if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
         fprintf(stderr, "Error: Invalid hex IV value\n");
-        return false;
+        return kToolExitFailure;
       }
-    }
-  } else {
-    if (iv_length != 0) {
+    } else if (iv_length != 0) {
       fprintf(stderr, "Error: IV is required for cipher %s\n",
               cipher_name.c_str());
-      return false;
+      return kToolExitFailure;
     }
-  }
 
-  uint8_t key[EVP_MAX_KEY_LENGTH];
-
-  if (!hex_key.empty()) {
+    uint8_t key[EVP_MAX_KEY_LENGTH];
     if (!HexToBinary(key, hex_key.get(), EVP_CIPHER_key_length(cipher))) {
+      OPENSSL_cleanse(key, sizeof(key));
       fprintf(stderr, "Error: Invalid hex key value\n");
-      return false;
+      return kToolExitFailure;
+    }
+    ctx.reset(EVP_CIPHER_CTX_new());
+    const bool init_ok =
+        ctx && EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, encode);
+    OPENSSL_cleanse(key, sizeof(key));
+    if (!init_ok) {
+      fprintf(stderr, "Error: Failed to initialize cipher\n");
+      return kToolExitFailure;
+    }
+    if (nopad) {
+      EVP_CIPHER_CTX_set_padding(ctx.get(), 0);
     }
   }
 
   bssl::UniquePtr<BIO> output_bio;
-  if (out_path.empty()) {
+  if (out_path.empty() || out_path == "-") {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
-    output_bio.reset(BIO_new(BIO_s_file()));
-    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return false;
-    }
+    output_bio.reset(BIO_new_file(out_path.c_str(), "wb"));
   }
-
-  // Create and initialize cipher context
-  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, encode)) {
-    fprintf(stderr, "Error: Failed to initialize cipher\n");
-    return false;
+  if (!output_bio) {
+    fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+    return kToolExitFailure;
   }
 
   // Process the input file
@@ -169,36 +180,47 @@ bool encTool(const args_list_t &args) {
   int inlen = 0, outlen = 0;
 
   for (;;) {
-    if (feof(in_file.get())) {
+    if (feof(input)) {
       break;
     }
 
-    inlen = fread(inbuf, 1, sizeof(inbuf), in_file.get());
+    inlen = fread(inbuf, 1, sizeof(inbuf), input);
 
-    if (ferror(in_file.get())) {
+    if (ferror(input)) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
 
-    if (!EVP_CipherUpdate(ctx.get(), outbuf, &outlen, inbuf, inlen)) {
-      fprintf(stderr, "Error: Cipher update failed\n");
-      return false;
+    const uint8_t *output = inbuf;
+    outlen = inlen;
+    if (ctx) {
+      if (!EVP_CipherUpdate(ctx.get(), outbuf, &outlen, inbuf, inlen)) {
+        fprintf(stderr, "Error: Cipher update failed\n");
+        return kToolExitFailure;
+      }
+      output = outbuf;
     }
-    if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
+    if (!BIO_write_all(output_bio.get(), output, outlen)) {
       fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   }
 
-  if (!EVP_CipherFinal_ex(ctx.get(), outbuf, &outlen)) {
-    fprintf(stderr, "Error: Cipher final failed\n");
-    return false;
+  if (ctx) {
+    if (!EVP_CipherFinal_ex(ctx.get(), outbuf, &outlen)) {
+      fprintf(stderr, "Error: Cipher final failed\n");
+      return kToolExitFailure;
+    }
+    if (!BIO_write_all(output_bio.get(), outbuf, outlen)) {
+      fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
+      return kToolExitFailure;
+    }
   }
 
-  if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
+  if (!BIO_flush(output_bio.get())) {
     fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
-  return true;
+  return kToolExitSuccess;
 }
