@@ -289,7 +289,9 @@ This certificate has a CRL Distribution Points extension, that per RFC 5280:
 profile RECOMMENDS support for this extension by CAs and applications."
 
 OpenSSL 1.1.1 supports this extension being marked as critical, and will not
-fail certificate verification because so.
+fail certificate verification because so. AWS-LC only accepts it when CRL
+checking is enabled for the certificate, since RFC 5280 Section 4.2 requires
+rejecting a critical extension that cannot be processed.
 
 Certificate:
     Data:
@@ -2051,8 +2053,8 @@ TEST(X509CompatTest, EECertificateWithCriticalAKID) {
                    /*crls=*/{}, /*flags=*/0));
 }
 
-// Certificate should not be rejected if it contains a critical CRL Distribution
-// Points extension.
+// A critical CRL Distribution Points extension is rejected unless CRL checking
+// is enabled. With CRL checking enabled, verification proceeds to CRL lookup.
 TEST(X509CompatTest, EECertificateWithCriticalCRLDistributionPointsExt) {
   bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
   ASSERT_TRUE(root);
@@ -2060,9 +2062,12 @@ TEST(X509CompatTest, EECertificateWithCriticalCRLDistributionPointsExt) {
       CertFromPEM(kValidEECertWithCriticalCRLDistributionExt);
   ASSERT_TRUE(leaf);
 
-  EXPECT_EQ(X509_V_OK,
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
             Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
                    /*crls=*/{}, /*flags=*/0));
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+            Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
+                   /*crls=*/{}, X509_V_FLAG_CRL_CHECK));
 }
 
 // EE certificate's trust root is missing the basic constraints extension.
