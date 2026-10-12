@@ -43,18 +43,30 @@ int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx) {
   return ctx != NULL && ctx->is_fips;
 }
 
-int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx, const char *type,
-                                       const char *description) {
+static int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx,
+                                              const char *type,
+                                              const char *description) {
   OSSL_INDICATOR_CALLBACK *callback = NULL;
 
-  if (ctx == NULL || type == NULL || description == NULL) {
-    return 0;
-  }
   if (ctx->indicator_cb == NULL) {
     return 1;
   }
   ctx->indicator_cb(ctx->corectx, &callback);
   return callback == NULL || callback(type, description, NULL);
+}
+
+int awslc_prov_indicator_end(AWSLC_PROV_CTX *ctx, uint64_t before,
+                             const char *type, const char *description,
+                             int *approved) {
+  if (ctx == NULL || type == NULL || description == NULL || approved == NULL) {
+    return 0;
+  }
+  if (awslc_prov_service_indicator_after_call(before)) {
+    return 1;
+  }
+  *approved = 0;
+  return !ctx->is_fips ||
+         awslc_prov_indicator_on_unapproved(ctx, type, description);
 }
 
 // Parameters we answer about ourselves.
@@ -153,8 +165,9 @@ AWSLC_PROV_ENTRY int OSSL_provider_init(const OSSL_CORE_HANDLE *handle,
     }
   }
 
-  // The indicator upcall addresses callback state through the opaque core
-  // context. Refuse to load if the core cannot supply one.
+  // Without the libctx upcall we cannot address the library context the core
+  // called us with, which the indicator callback lookup needs, so refuse to
+  // load rather than guess.
   if (c_get_libctx == NULL) {
     return 0;
   }

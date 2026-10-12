@@ -1,7 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// Expose openssl/mem.h functions from AWS-LC for use in the provider.
+// Allocation, deliberately on AWS-LC's allocator rather than the core's memory
+// upcalls: routing through OpenSSL's allocator would entangle the two libcryptos'
+// memory management for no benefit. Only caller-owned OSSL_PARAM buffers cross
+// the boundary, and those are never allocated by us.
 
 #include <openssl/mem.h>
 

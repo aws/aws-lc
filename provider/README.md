@@ -52,7 +52,7 @@ cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
 
 | Feature | Provider behavior |
 |---|---|
-| `fips=yes` algorithm property | Identifies implementations of algorithms that AWS-LC can approve. It classifies the algorithm rather than attesting the linked AWS-LC. Approved-only fetches must include `fips=yes`. |
+| `fips=yes` algorithm property | Published only when the linked AWS-LC reports FIPS mode, on implementations of algorithms AWS-LC can approve. Approved-only fetches must include `fips=yes`. |
 | `fips-indicator` operation parameter | Reports whether AWS-LC reports FIPS mode and approved the completed operation. Applications enforcing per-operation approval must read it after each operation. |
 | Indicator callback | When AWS-LC reports FIPS mode, invokes OpenSSL's configured indicator callback if an operation is not approved. If the callback vetoes the result, the provider clears the output and returns an error. |
 | Provider `status` parameter | Reports one after successful provider initialization. AWS-LC terminates the process if a FIPS self-test puts the module into a failure state. |

@@ -111,11 +111,16 @@ TEST_F(ProviderTest, UnimplementedOperationsFallThroughToDefault) {
   EVP_CIPHER_free(cipher);
 }
 
-TEST_F(ProviderTest, PublishesFipsCapabilityProperty) {
+// fips=yes is published only when the linked AWS-LC is in FIPS mode.
+TEST_F(ProviderTest, PublishesFipsPropertyOnlyInFipsMode) {
   MdPtr md(EVP_MD_fetch(libctx(), "SHA2-256", "provider=awslc,fips=yes"));
+#if defined(AWSLC_FIPS)
   ASSERT_TRUE(md);
   EXPECT_STREQ(kProviderName,
                OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
+#else
+  EXPECT_FALSE(md) << "fips=yes was published by a non-FIPS AWS-LC";
+#endif
 }
 
 // Reproduce the deployed path: the config activates both providers and installs

@@ -96,9 +96,7 @@ const char *awslc_prov_backend_version(void);
 // life of the process.
 int awslc_prov_backend_is_fips(void);
 
-// Bracket one complete AWS-LC service and report whether the service-indicator
-// counter advanced. Callers must also require the provider's stored runtime FIPS
-// state because non-FIPS AWS-LC deliberately returns a synthetic counter delta.
+// Bracket one complete AWS-LC service and report whether AWS-LC approved it.
 uint64_t awslc_prov_service_indicator_before_call(void);
 int awslc_prov_service_indicator_after_call(uint64_t before);
 

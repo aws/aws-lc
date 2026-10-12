@@ -139,19 +139,12 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
     return 0;
   }
   uint64_t before = awslc_prov_service_indicator_before_call();
-  int ok = final_fn(ctx->backend_ctx, out, outsz);
-  int is_fips = awslc_prov_ctx_is_fips(ctx->provctx);
-  int approved = is_fips && awslc_prov_service_indicator_after_call(before);
-  if (!ok) {
+  if (!final_fn(ctx->backend_ctx, out, outsz)) {
     return 0;
   }
-  if (!approved) {
-    ctx->fips_approved = 0;
-  }
-  if (is_fips && !approved &&
-      !awslc_prov_indicator_on_unapproved(
-          ctx->provctx, ctx->algorithm_name,
-          AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION)) {
+  if (!awslc_prov_indicator_end(ctx->provctx, before, ctx->algorithm_name,
+                                AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION,
+                                &ctx->fips_approved)) {
     awslc_prov_cleanse(out, digest_size);
     return 0;
   }

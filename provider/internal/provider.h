@@ -6,6 +6,8 @@
 
 // Shared between the provider's OpenSSL-facing files.
 
+#include <stdint.h>
+
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 
@@ -27,13 +29,13 @@ const OSSL_CORE_HANDLE *awslc_prov_ctx_handle(const AWSLC_PROV_CTX *ctx);
 // Whether the linked AWS-LC reported FIPS mode when this provider initialized.
 int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx);
 
-// Notify the application through the provider context |ctx| that a fips=yes
-// operation completed without an approved verdict. |type| contains the
-// algorithm type and |description| contains the operation that is not approved.
-// A missing callback permits the result; a callback may veto it by returning
-// zero.
-int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx, const char *type,
-                                       const char *description);
+// Close a bracket opened by awslc_prov_service_indicator_before_call() after the
+// service succeeded. An unapproved verdict clears |*approved|; in FIPS mode it
+// also notifies the application. Zero means the application vetoed the result,
+// and the caller must discard any output and fail the operation.
+int awslc_prov_indicator_end(AWSLC_PROV_CTX *ctx, uint64_t before,
+                             const char *type, const char *description,
+                             int *approved);
 
 // The fan-out, implemented in registry.c and published by provider.c in the
 // top-level dispatch table. The dispatch tables it hands out are declared in
