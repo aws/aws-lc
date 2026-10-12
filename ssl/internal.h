@@ -2992,6 +2992,12 @@ struct SSL3_STATE {
   // ech_status indicates whether ECH was accepted by the server.
   ssl_ech_status_t ech_status = ssl_ech_none;
 
+  // unexpected_eof is true if |read_shutdown| is |ssl_shutdown_error| because
+  // the peer closed the transport without sending a close_notify alert. Unlike
+  // other read errors, this is not reported by |SSL_get_shutdown| as
+  // |SSL_RECEIVED_SHUTDOWN|, matching OpenSSL.
+  bool unexpected_eof : 1;
+
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
   bool skip_early_data : 1;
