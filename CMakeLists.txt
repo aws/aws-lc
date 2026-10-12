@@ -19,6 +19,28 @@ set(REPORTED_PKGCONFIG_VERSION "1.1.1")
 # Defer enabling C and CXX languages.
 project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
+if(DEFINED ENABLE_PRE_SONAME_BUILD)
+  message(WARNING "ENABLE_PRE_SONAME_BUILD option will be deprecated in a future release. Please see ENABLE_DIST_PKG and ENABLE_DIST_PKG_OPENSSL_SHIM")
+endif()
+
+option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
+option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
+option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
+option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+# Keeping this flag for now, for compatibility with existing build configs.
+option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
+option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
+(DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
+option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
+option(COHABITANT_BINARIES "Install tool binaries with an 'aws-lc-' prefix to avoid conflicts with OpenSSL" OFF)
+option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
+set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
+option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
+option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
+option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
+
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
@@ -52,6 +74,62 @@ if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
 endif()
 
+set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
+
+include(cmake/go.cmake)
+
+if(ENABLE_DIST_PKG_OPENSSL_SHIM AND NOT ENABLE_DIST_PKG)
+  message(FATAL_ERROR "ENABLE_DIST_PKG_OPENSSL_SHIM requires ENABLE_DIST_PKG to be enabled and will be ignored.")
+endif()
+
+if(ENABLE_DIST_PKG)
+  if(NOT UNIX OR APPLE)
+    message(FATAL_ERROR "ENABLE_DIST_PKG is not supported on macOS or Windows and will be ignored.")
+  else()
+    set(SET_LIB_SONAME 1)
+    set(COHABITANT_HEADERS 1)
+    if(ENABLE_DIST_PKG_OPENSSL_SHIM)
+      set(INSTALL_OPENSSL_SHIM 1)
+    else()
+      set(INSTALL_OPENSSL_SHIM 0)
+    endif()
+  endif()
+elseif(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(SET_LIB_SONAME 1)
+  set(COHABITANT_HEADERS 0)
+  set(INSTALL_OPENSSL_SHIM 1)
+else()
+  set(SET_LIB_SONAME 0)
+  set(COHABITANT_HEADERS 0)
+  set(INSTALL_OPENSSL_SHIM 1)
+endif()
+
+message(STATUS "SET_LIB_SONAME: ${SET_LIB_SONAME}")
+message(STATUS "COHABITANT_HEADERS: ${COHABITANT_HEADERS}")
+message(STATUS "INSTALL_OPENSSL_SHIM: ${INSTALL_OPENSSL_SHIM}")
+
+if(SET_LIB_SONAME)
+  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
+endif()
+
+enable_language(C)
+
+if (NOT WIN32 AND NOT APPLE)
+  include(GNUInstallDirs)
+elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR "lib")
+  set(CMAKE_INSTALL_INCLUDEDIR "include")
+  set(CMAKE_INSTALL_BINDIR "bin")
+endif()
+
+# Set the install include directory based on whether a prefix subdirectory is desired
+if(COHABITANT_HEADERS)
+  set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/aws-lc")
+else()
+  set(AWSLC_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
+
 function(target_add_awslc_include_paths)
   set(options EXCLUDE_PREFIX_HEADERS)
   set(oneValueArgs TARGET SCOPE)
@@ -81,23 +159,8 @@ function(target_add_awslc_include_paths)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
     $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+    $<INSTALL_INTERFACE:${AWSLC_INSTALL_INCLUDEDIR}>)
 endfunction()
-
-option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
-option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
-option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
-option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
-option(DISABLE_GO "Disable Go for AWS-LC" OFF)
-# Keeping this flag for now, for compatibility with existing build configs.
-option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
-option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
-(DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
-option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
-option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
-option(COHABITANT_BINARIES "Install tool binaries with an 'aws-lc-' prefix to avoid conflicts with OpenSSL" OFF)
-option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
-set(RUST_BINDINGS_TARGET_VERSION "1.70" CACHE STRING "Minimum Rust version for generated bindings")
 
 # Set the install binary prefix based on whether cohabitation is desired
 if(COHABITANT_BINARIES)
@@ -107,20 +170,109 @@ else()
 endif()
 message(STATUS "COHABITANT_BINARIES: ${COHABITANT_BINARIES}")
 
-include(cmake/go.cmake)
+include(cmake/GenerateVersionScript.cmake)
 
-if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
-  set(PERFORM_SONAME_BUILD 1)
-  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
-  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
+# ELF symbol versioning for shared libraries. Deliberately independent of the
+# rest of distribution packaging: versioned symbols can be adopted without
+# relocating headers into include/aws-lc (COHABITANT_HEADERS) or renaming the
+# bssl tool (COHABITANT_BINARIES). ENABLE_DIST_PKG only supplies the default.
+#
+# Version scripts are derived from the symbol registry files and have stable
+# filenames (crypto/libcrypto.map, ssl/libssl.map). The version node names are
+# recorded in the registry (crypto/libcrypto.txt, ssl/libssl.txt).
+#
+# Not declared with option(): that would bake the first configure's default into
+# the cache, so a later -DENABLE_DIST_PKG=ON would leave versioning stuck off.
+# Testing DEFINED lets an explicit -D win (it stays in the cache, so it stays
+# DEFINED) while an unset value keeps tracking ENABLE_DIST_PKG.
+if(DEFINED ENABLE_SYMBOL_VERSIONING)
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY TRUE)
 else()
-  set(PERFORM_SONAME_BUILD 0)
+  set(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY FALSE)
+  set(ENABLE_SYMBOL_VERSIONING "${ENABLE_DIST_PKG}")
 endif()
 
-message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
-message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
+# Version-node prefix. A non-default value yields symbol versions that do not
+# interoperate with a stock AWS-LC build, so it is only appropriate for a
+# privately distributed libcrypto (see docs/SymbolVersioning.md).
+set(SYMBOL_VERSION_NAMESPACE "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}" CACHE STRING
+    "Prefix for ELF symbol version nodes (e.g. AWS_LC_FIPS4 yields AWS_LC_FIPS4_1.0)")
 
-enable_language(C)
+if(NOT "${SYMBOL_VERSION_NAMESPACE}" MATCHES "${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}")
+  message(FATAL_ERROR "SYMBOL_VERSION_NAMESPACE must match ${AWSLC_SYMBOL_VERSION_NAMESPACE_REGEX}, got: ${SYMBOL_VERSION_NAMESPACE}")
+endif()
+
+# A version script is a link-time input that only the ELF linker understands: a
+# static build has no link step to attach it to, and Mach-O and PE have no
+# equivalent. Fail loudly when versioning was requested explicitly; when merely
+# inherited from ENABLE_DIST_PKG, leave it off so a static dist-pkg build still
+# configures.
+if(ENABLE_SYMBOL_VERSIONING AND (NOT BUILD_SHARED_LIBS OR NOT UNIX OR APPLE))
+  if(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+    message(FATAL_ERROR "ENABLE_SYMBOL_VERSIONING requires a shared library build (-DBUILD_SHARED_LIBS=ON) on a non-Apple UNIX platform.")
+  endif()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+unset(SYMBOL_VERSIONING_REQUESTED_EXPLICITLY)
+
+# Canonicalize: an inherited value carries ENABLE_DIST_PKG's literal spelling, so
+# -DENABLE_DIST_PKG=1 would otherwise report "1" here rather than "ON".
+if(ENABLE_SYMBOL_VERSIONING)
+  set(ENABLE_SYMBOL_VERSIONING ON)
+else()
+  set(ENABLE_SYMBOL_VERSIONING OFF)
+endif()
+
+message(STATUS "ENABLE_SYMBOL_VERSIONING: ${ENABLE_SYMBOL_VERSIONING}")
+
+# The namespace only reaches the linker through a version script, and unlike
+# ENABLE_SYMBOL_VERSIONING it has no inherited default, so setting one without
+# versioning is always a mistake. Refuse it, as ENABLE_DIST_PKG_OPENSSL_SHIM
+# without ENABLE_DIST_PKG is refused.
+if(NOT ENABLE_SYMBOL_VERSIONING AND
+   NOT "${SYMBOL_VERSION_NAMESPACE}" STREQUAL "${AWSLC_DEFAULT_SYMBOL_VERSION_NAMESPACE}")
+  message(FATAL_ERROR
+    "SYMBOL_VERSION_NAMESPACE is set to '${SYMBOL_VERSION_NAMESPACE}' but symbol "
+    "versioning is disabled, so the namespace cannot take effect. Enable "
+    "versioning with -DENABLE_SYMBOL_VERSIONING=ON (requires "
+    "-DBUILD_SHARED_LIBS=ON on a non-Apple UNIX platform), or clear the "
+    "namespace with -USYMBOL_VERSION_NAMESPACE.")
+endif()
+
+# BORINGSSL_PREFIX renames every exported symbol, but the version scripts
+# reference the unprefixed names, so a prefixed+versioned build would hide
+# every symbol behind "local: *". Reject the combination rather than produce
+# an empty library; docs/SymbolVersioning.md contrasts the two mechanisms.
+if(ENABLE_SYMBOL_VERSIONING AND BORINGSSL_PREFIX)
+  message(FATAL_ERROR
+    "BORINGSSL_PREFIX cannot be combined with symbol versioning: the version "
+    "scripts reference unprefixed symbol names, so the build would export no "
+    "symbols. Configure with -DENABLE_SYMBOL_VERSIONING=OFF (needed even with "
+    "-DENABLE_DIST_PKG=ON, which enables versioning by default).")
+endif()
+
+if(ENABLE_SYMBOL_VERSIONING)
+  message(STATUS "SYMBOL_VERSION_NAMESPACE: ${SYMBOL_VERSION_NAMESPACE}")
+
+  # lld treats undefined symbols in version scripts as errors by default.
+  # The --undefined-version flag downgrades them to warnings, matching GNU ld.
+  # Probe once during configure; the result is cached.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      LINK_OPTIONS "-Wl,--undefined-version"
+    )
+  else()
+    try_compile(
+      LINKER_HAS_UNDEFINED_VERSION
+      ${CMAKE_BINARY_DIR}/_linker_check
+      SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_features_tests/empty.c"
+      CMAKE_FLAGS "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--undefined-version"
+    )
+  endif()
+endif()
 
 # The validated entropy source will always be configured to be CPU Jitter
 # Entropy by default; because it's the root of the Tree DRBG.
@@ -265,16 +417,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-if (NOT WIN32 AND NOT APPLE)
-  include(GNUInstallDirs)
-elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
-  set(CMAKE_INSTALL_LIBDIR "lib")
-  set(CMAKE_INSTALL_INCLUDEDIR "include")
-  set(CMAKE_INSTALL_BINDIR "bin")
-endif()
-
 install(DIRECTORY include/openssl
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        DESTINATION ${AWSLC_INSTALL_INCLUDEDIR}
         COMPONENT Development
         PATTERN boringssl_prefix_symbols.h EXCLUDE
         PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
@@ -287,6 +431,20 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
+if(ENABLE_CRYPTO_POLICIES)
+  message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
+  add_definitions(-DAWSLC_CRYPTO_POLICIES)
+  # Optional override of the compile-time default policy file. Packagers can set
+  # this to relocate the system crypto-policies OpenSSL back-end file; tests use
+  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
+  # overrides it at run time.
+  if(AWSLC_CRYPTO_POLICY_FILE)
+    message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
+    add_definitions(
+      -DAWSLC_CRYPTO_POLICY_DEFAULT_FILE=\"${AWSLC_CRYPTO_POLICY_FILE}\")
+  endif()
 endif()
 
 if(NOT DISABLE_PERL)
@@ -375,7 +533,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
             symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc)
 
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          DESTINATION ${AWSLC_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
@@ -395,7 +553,7 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   add_custom_target(boringssl_prefix_symbols)
 
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          DESTINATION ${AWSLC_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
@@ -406,7 +564,7 @@ else()
   add_custom_target(boringssl_prefix_symbols)
 
   install(DIRECTORY include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          DESTINATION ${AWSLC_INSTALL_INCLUDEDIR}
           COMPONENT Development
           FILES_MATCHING
           PATTERN boringssl_prefix_symbols.h
@@ -1237,6 +1395,26 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(third_party/jitterentropy)
+
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads. Additionally, the Threads
+# package does not work with Android, but Android does not require any extra
+# parameters to link pthreads. Emscripten provides its own pthread implementation
+# via Web Workers and SharedArrayBuffer, configured through compiler flags.
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
+  find_package(Threads REQUIRED)
+  set(AWSLC_LINK_THREADS TRUE)
+  # CMAKE_THREAD_LIBS_INIT contains the actual linker flags (e.g., -lpthread)
+  # set by find_package(Threads). Use this for pkgconfig instead of the
+  # imported target name.
+  set(PKGCONFIG_LIBS_PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
+else()
+  set(AWSLC_LINK_THREADS FALSE)
+  set(PKGCONFIG_LIBS_PRIVATE "")
+endif()
+
 add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
@@ -1464,26 +1642,114 @@ if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
 
-# AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
-# the downstream integration may build with the system's OpenSSL version instead.
-# Consider adjusting the PKG_CONFIG_PATH environment to get around this.
-file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
-
 include(cmake/JoinPaths.cmake)
-join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
-join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
+join_paths(LIBDIR_FOR_PC_FILE "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
+join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${AWSLC_INSTALL_INCLUDEDIR}")
 
-foreach(in_file ${OPENSSL_PKGCONFIGS})
-  file(RELATIVE_PATH in_file ${AWSLC_SOURCE_DIR} ${in_file})
-  string(REPLACE ".in" "" pc_file ${in_file})
-  configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-endforeach()
+# Generates a pkg-config file from a template and installs it. The optional
+# INCLUDEDIR, CRYPTO_NAME and SSL_NAME arguments override the corresponding
+# template substitution variables for this one file.
+function(install_pkgconfig_file)
+  set(options "")
+  set(oneValueArgs TEMPLATE DEST INCLUDEDIR CRYPTO_NAME SSL_NAME)
+  set(multiValueArgs)
+  if(CMAKE_VERSION VERSION_LESS "3.7")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  else()
+    cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(DEFINED arg_INCLUDEDIR)
+    join_paths(INCLUDEDIR_FOR_PC_FILE "\${prefix}" "${arg_INCLUDEDIR}")
+  endif()
+  if(DEFINED arg_CRYPTO_NAME)
+    set(CRYPTO_LIB_NAME "${arg_CRYPTO_NAME}")
+  endif()
+  if(DEFINED arg_SSL_NAME)
+    set(SSL_LIB_NAME "${arg_SSL_NAME}")
+  endif()
+
+  # Requires line for product.pc.in; omit libssl when it is not built.
+  if(BUILD_LIBSSL)
+    set(PRODUCT_PC_REQUIRES "lib${SSL_LIB_NAME} lib${CRYPTO_LIB_NAME}")
+  else()
+    set(PRODUCT_PC_REQUIRES "lib${CRYPTO_LIB_NAME}")
+  endif()
+
+  configure_file(pkgconfig/${arg_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/pkgconfig/${arg_DEST} @ONLY)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgconfig/${arg_DEST} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endfunction()
 
 if(ENABLE_SOURCE_MODIFICATION)
   configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
   configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
     configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+  endif()
+endif()
+
+install_pkgconfig_file(TEMPLATE product.pc.in DEST aws-lc.pc)
+install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST lib${CRYPTO_LIB_NAME}.pc)
+if(BUILD_LIBSSL)
+  install_pkgconfig_file(TEMPLATE libssl.pc.in DEST lib${SSL_LIB_NAME}.pc)
+endif()
+
+if(INSTALL_OPENSSL_SHIM)
+  # pkg-config resolves packages by filename, so a drop-in OpenSSL replacement
+  # must provide all three of OpenSSL's module names. All three describe the
+  # unsuffixed interface -- plain include/ and -lcrypto/-lssl, resolved via the
+  # compatibility symlinks below -- because consumers that only know OpenSSL's
+  # names cannot cope with a suffix. The symlinks keep suffixed SONAMEs, so
+  # cohabitation is preserved. See INCORPORATING.md. The native cohabitant
+  # modules are installed above and stay suffixed.
+  set(OPENSSL_SHIM_PC_OVERRIDES
+      INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+      CRYPTO_NAME crypto
+      SSL_NAME ssl)
+
+  # Only needed when the native modules are suffixed; otherwise they already
+  # carry the OpenSSL filenames and describe the same interface.
+  if(SET_LIB_SONAME)
+    install_pkgconfig_file(TEMPLATE libcrypto.pc.in DEST libcrypto.pc
+                           ${OPENSSL_SHIM_PC_OVERRIDES})
+    if(BUILD_LIBSSL)
+      install_pkgconfig_file(TEMPLATE libssl.pc.in DEST libssl.pc
+                             ${OPENSSL_SHIM_PC_OVERRIDES})
+    endif()
+  endif()
+
+  install_pkgconfig_file(TEMPLATE product.pc.in DEST openssl.pc
+                         ${OPENSSL_SHIM_PC_OVERRIDES})
+
+  # Create OpenSSL compatibility symlinks. Like the compat pc files above,
+  # these are only needed when the native libraries carry a suffix.
+  if(SET_LIB_SONAME)
+    if(BUILD_SHARED_LIBS)
+      set(SHIM_LIB_EXT "so")
+      set(SHIM_LINK_COMPONENT "")
+    else()
+      set(SHIM_LIB_EXT "a")
+      # Preserves the pre-existing component split: only the static symlinks
+      # are assigned to the Development component.
+      set(SHIM_LINK_COMPONENT COMPONENT Development)
+    endif()
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        lib${CRYPTO_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.${SHIM_LIB_EXT}\")
+    " ${SHIM_LINK_COMPONENT})
+    if(BUILD_LIBSSL)
+      install(CODE "
+        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+          lib${SSL_LIB_NAME}.${SHIM_LIB_EXT} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.${SHIM_LIB_EXT}\")
+      " ${SHIM_LINK_COMPONENT})
+    endif()
+  endif()
+
+  if(COHABITANT_HEADERS)
+    # Always create the include directory symlink for OpenSSL compatibility
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        aws-lc/openssl \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/openssl\")
+    " COMPONENT Development)
   endif()
 endif()

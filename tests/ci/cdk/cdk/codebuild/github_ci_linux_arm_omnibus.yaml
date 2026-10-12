@@ -421,3 +421,67 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_benchmark_build_tests.sh"
+
+    # ENABLE_DIST_PKG installs cohabitant headers and suffixed libraries, so the
+    # install layout and the pkg-config interface are what these check.
+    - identifier: amazonlinux2023_gcc11x_aarch_dist_pkg_install
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_dist_pkg_install_tests.sh"
+
+    - identifier: amazonlinux2023_gcc11x_aarch_dist_pkg_run
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_dist_pkg_run_tests.sh"
+
+    - identifier: amazonlinux2023_clang15x_aarch_dist_pkg_install
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_dist_pkg_install_tests.sh"
+
+    - identifier: amazonlinux2023_clang15x_aarch_dist_pkg_run
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_dist_pkg_run_tests.sh"
+
+    # Amazon Linux 2023 ships the crypto-policies OpenSSL back-end that
+    # ENABLE_CRYPTO_POLICIES reads, so it is the platform these run on.
+    - identifier: amazonlinux2023_gcc11x_aarch_crypto_policies
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_crypto_policies_tests.sh"
+
+    - identifier: amazonlinux2023_clang15x_aarch_crypto_policies
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_crypto_policies_tests.sh"

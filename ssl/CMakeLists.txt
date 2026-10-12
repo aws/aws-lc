@@ -2,6 +2,7 @@ add_library(
   ssl
 
   bio_ssl.cc
+  crypto_policy.cc
   custom_extensions.cc
   d1_both.cc
   d1_lib.cc
@@ -52,10 +53,22 @@ target_add_awslc_include_paths(TARGET ssl SCOPE PUBLIC)
 set_target_properties(ssl PROPERTIES
     OUTPUT_NAME "${SSL_LIB_NAME}")
 
-if(PERFORM_SONAME_BUILD)
+if(SET_LIB_SONAME)
   set_target_properties(ssl PROPERTIES
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
+endif()
+
+# Apply symbol versioning for shared libraries. The version script is a
+# checked-in source file, so if versioning is enabled it must be present;
+# apply_version_script() fatal-errors if it is missing rather than silently
+# producing an unversioned library.
+if(ENABLE_SYMBOL_VERSIONING)
+  apply_version_script(
+    TARGET ssl
+    VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/libssl.map"
+    NAMESPACE "${SYMBOL_VERSION_NAMESPACE}"
+  )
 endif()
 
 if(BUILD_TESTING)
@@ -108,6 +121,7 @@ if(BUILD_TESTING)
     ssl_hybrid_handshake_test.cc
     ssl_encoding_test.cc
     ssl_ciphers_test.cc
+    ssl_crypto_policy_test.cc
     ssl_handshake_test.cc
   )
 
@@ -122,14 +136,21 @@ if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 
-install(TARGETS ssl
-        EXPORT ssl-targets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          NAMELINK_SKIP
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+if(NOT CMAKE_VERSION VERSION_LESS "3.12")
+  install(TARGETS ssl
+          EXPORT ssl-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            NAMELINK_COMPONENT Development
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+else()
+  install(TARGETS ssl
+          EXPORT ssl-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install(FILES $<TARGET_FILE_DIR:ssl>/ssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -153,13 +174,3 @@ install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
-
-if(PERFORM_SONAME_BUILD)
-  install(CODE "
-set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
-set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
-message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
-"
-    COMPONENT Development)
-endif()
