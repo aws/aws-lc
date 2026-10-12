@@ -283,5 +283,83 @@ TEST(SSLTest, Handoff) {
   }
 }
 
+TEST(SSLTest, ApplyHandbackRejectsNonEcdheCipher) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> handshaker_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(handshaker_ctx);
+
+  for (SSL_CTX *ctx :
+       {client_ctx.get(), server_ctx.get(), handshaker_ctx.get()}) {
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION));
+  }
+  SSL_CTX_set_handoff_mode(server_ctx.get(), true);
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+
+  ASSERT_EQ(SSL_get_error(client.get(), SSL_do_handshake(client.get())),
+            SSL_ERROR_WANT_READ);
+  ASSERT_EQ(SSL_get_error(server.get(), SSL_do_handshake(server.get())),
+            SSL_ERROR_HANDOFF);
+
+  ScopedCBB cbb;
+  Array<uint8_t> handoff;
+  SSL_CLIENT_HELLO hello;
+  ASSERT_TRUE(CBB_init(cbb.get(), 256));
+  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
+  ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
+
+  bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
+  ASSERT_TRUE(handshaker);
+  ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
+  MoveBIOs(handshaker.get(), server.get());
+
+  ASSERT_EQ(SSL_get_error(handshaker.get(), SSL_do_handshake(handshaker.get())),
+            SSL_ERROR_HANDBACK);
+
+  const SSL_CIPHER *cipher = SSL_get_pending_cipher(handshaker.get());
+  ASSERT_TRUE(cipher);
+  uint16_t id = SSL_CIPHER_get_protocol_id(cipher);
+
+  ScopedCBB cbb_handback;
+  Array<uint8_t> handback;
+  ASSERT_TRUE(CBB_init(cbb_handback.get(), 1024));
+  ASSERT_TRUE(SSL_serialize_handback(handshaker.get(), cbb_handback.get()));
+  ASSERT_TRUE(CBBFinishArray(cbb_handback.get(), &handback));
+
+  bssl::UniquePtr<SSL> server_ok(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server_ok);
+  EXPECT_TRUE(SSL_apply_handback(server_ok.get(), handback));
+
+  const uint8_t hi = id >> 8, lo = id & 0xff;
+  const uint8_t top_from[] = {0x02, 0x04, 0x03, 0x00, hi, lo};
+  const uint8_t top_to[] = {0x02, 0x04, 0x03, 0x00, 0x00, 0x9c};
+  const uint8_t sess_from[] = {0x04, 0x02, hi, lo};
+  const uint8_t sess_to[] = {0x04, 0x02, 0x00, 0x9c};
+
+  auto replace = [](Array<uint8_t> &buf, const uint8_t *from, const uint8_t *to,
+                    size_t n) -> bool {
+    for (size_t i = 0; i + n <= buf.size(); i++) {
+      if (OPENSSL_memcmp(buf.data() + i, from, n) == 0) {
+        OPENSSL_memcpy(buf.data() + i, to, n);
+        return true;
+      }
+    }
+    return false;
+  };
+  ASSERT_TRUE(replace(handback, top_from, top_to, sizeof(top_from)));
+  ASSERT_TRUE(replace(handback, sess_from, sess_to, sizeof(sess_from)));
+
+  bssl::UniquePtr<SSL> server_bad(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server_bad);
+  EXPECT_FALSE(SSL_apply_handback(server_bad.get(), handback));
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
