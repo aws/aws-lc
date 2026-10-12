@@ -22,12 +22,11 @@
 static const size_t request_len = 64;
 static const size_t number_of_threads = 8;
 
-static thread_local size_t initialize_count = 0;
-static thread_local size_t zeroize_thread_count = 0;
-static thread_local size_t free_thread_count = 0;
+// Only the seed and extra-entropy calls are counted; |assertSeedOrReseed|
+// checks both. The other overrides below are no-ops that exist so every
+// method in |entropy_methods| is non-null.
 static thread_local size_t get_seed_count = 0;
 static thread_local size_t get_extra_entropy_count = 0;
-static thread_local size_t get_prediction_resistance_count = 0;
 
 static thread_local size_t cached_get_seed_count = 0;
 static thread_local size_t cached_get_extra_entropy_count = 0;
@@ -43,17 +42,12 @@ static entropy_source_methods entropy_methods{
 };
 
 static int overrideInitialize(struct entropy_source_t *entropy_source) {
-  initialize_count++;
   return 1;
 }
 
-static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {
-  zeroize_thread_count++;
-}
+static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {}
 
-static void overrideFreeThread(struct entropy_source_t *entropy_source) {
-  free_thread_count++;
-}
+static void overrideFreeThread(struct entropy_source_t *entropy_source) {}
 
 static int overrideGetSeed(const struct entropy_source_t *entropy_source,
   uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
@@ -70,7 +64,6 @@ static int overrideGetExtraEntropy(const struct entropy_source_t *entropy_source
 static int overrideGetPredictionResistance(
   const struct entropy_source_t *entropy_source,
   uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
-  get_prediction_resistance_count++;
   return 1;
 }
 
