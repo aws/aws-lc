@@ -1284,7 +1284,9 @@ enum SSL_BUFFER_SERDE_VERSION {
 const unsigned kSSLBufferMaxSerDeVersion = SSL_BUFFER_SERDE_VERSION_TWO;
 
 #define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
-#define SSLBUFFER_MAX_CAPACITY INT_MAX
+// SSLBUFFER_MAX_CAPACITY leaves room for the |SSL3_ALIGN_PAYLOAD| alignment
+// offset, so |SSLBuffer|'s int-typed offset and capacity cannot overflow.
+#define SSLBUFFER_MAX_CAPACITY (INT_MAX - (SSL3_ALIGN_PAYLOAD - 1))
 class OPENSSL_EXPORT SSLBuffer {
  public:
   SSLBuffer() {}

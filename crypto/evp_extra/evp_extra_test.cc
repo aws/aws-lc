@@ -1927,6 +1927,61 @@ TEST(EVPExtraTest, ECSignatureContextRejected) {
   EXPECT_GT(secret_len, 0u);
 }
 
+TEST(EVPExtraTest, HMACSignatureControlsRejected) {
+  static const uint8_t kKey[] = {1, 2, 3, 4};
+  static const uint8_t kContext[] = {5, 6, 7, 8};
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, nullptr, kKey, sizeof(kKey)));
+  ASSERT_TRUE(pkey);
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pctx = nullptr;
+  ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha256(), nullptr,
+                                  pkey.get()));
+  ASSERT_TRUE(pctx);
+
+  // Low-level controls retain the unsupported-command return value.
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {kContext, sizeof(kContext)};
+  for (int cmd :
+       {EVP_PKEY_CTRL_SIGNING_CONTEXT, EVP_PKEY_CTRL_GET_SIGNING_CONTEXT}) {
+    SCOPED_TRACE(cmd);
+    ERR_clear_error();
+    EXPECT_EQ(
+        -2, EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_TYPE_SIG, cmd, 0, &params));
+    EXPECT_TRUE(
+        ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  }
+
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_set1_signature_context_string(pctx, kContext,
+                                                          sizeof(kContext)));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+
+  ERR_clear_error();
+  EXPECT_EQ(
+      0, EVP_PKEY_CTX_set_signature_context(pctx, kContext, sizeof(kContext)));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+
+  const uint8_t *out_ctx = kContext;
+  size_t out_len = sizeof(kContext);
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_get0_signature_context(pctx, &out_ctx, &out_len));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  EXPECT_EQ(kContext, out_ctx);
+  EXPECT_EQ(sizeof(kContext), out_len);
+
+  // The digest getter must not report success without writing |out_md|.
+  const EVP_MD *out_md = EVP_sha1();
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_get_signature_md(pctx, &out_md));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  EXPECT_EQ(EVP_sha1(), out_md);
+}
+
 TEST(EVPExtraTest, DHKeygen) {
   // Set up some DH params in an |EVP_PKEY|. There is currently no API to do
   // this from EVP directly.
