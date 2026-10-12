@@ -14,7 +14,6 @@ env:
 permissions:
   contents: read
   actions: read
-  id-token: write
 
 jobs:
   integrations:
@@ -603,6 +602,10 @@ jobs:
     name: report-failures
     needs: [integrations, python, ruby]
     if: ${{ always() && github.event_name == 'schedule' }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
