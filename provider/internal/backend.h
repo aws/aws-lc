@@ -100,7 +100,7 @@ int awslc_prov_backend_is_fips(void);
 uint64_t awslc_prov_service_indicator_before_call(void);
 int awslc_prov_service_indicator_after_call(uint64_t before);
 
-// Re-run AWS-LC's known-answer self-tests.
+// Re-run AWS-LC's known-answer self-tests. Aborts on failure in FIPS mode.
 int awslc_prov_backend_self_test(void);
 
 #if defined(__cplusplus)

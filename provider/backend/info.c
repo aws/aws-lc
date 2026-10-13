@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 
@@ -26,5 +29,13 @@ int awslc_prov_service_indicator_after_call(uint64_t before) {
 }
 
 int awslc_prov_backend_self_test(void) {
-  return BORINGSSL_self_test();
+  if (BORINGSSL_self_test()) {
+    return 1;
+  }
+  if (FIPS_mode()) {
+    fprintf(stderr, "AWS-LC FIPS failure caused by:\non-demand self-test failed\n");
+    fflush(stderr);
+    abort();
+  }
+  return 0;
 }

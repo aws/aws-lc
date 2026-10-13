@@ -56,7 +56,7 @@ cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
 | `fips-indicator` operation parameter | Reports whether AWS-LC reports FIPS mode and approved the completed operation. Applications enforcing per-operation approval must read it after each operation. |
 | Indicator callback | When AWS-LC reports FIPS mode, invokes OpenSSL's configured indicator callback if an operation is not approved. If the callback vetoes the result, the provider clears the output and returns an error. |
 | Provider `status` parameter | Reports one after successful provider initialization. AWS-LC terminates the process if a FIPS self-test puts the module into a failure state. |
-| `OSSL_PROVIDER_self_test()` | Runs AWS-LC's known-answer self-tests through `BORINGSSL_self_test()` and propagates the result. |
+| `OSSL_PROVIDER_self_test()` | Runs AWS-LC's known-answer self-tests through `BORINGSSL_self_test()`. In FIPS builds a failure terminates the process; otherwise the result is propagated. |
 | Provider `buildinfo` parameter | Reports the linked AWS-LC version string, including AWS-LC's FIPS build identity when applicable. |
 
 ## Testing
