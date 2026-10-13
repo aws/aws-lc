@@ -51,6 +51,7 @@ endif()
 add_library(awslc_provider_front OBJECT
   frontend/provider.c
   frontend/registry.c
+  frontend/operations/digests/digests.c
   frontend/operations/digests/sha2.c)
 set_target_properties(awslc_provider_front PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Replace the directory-level AWS-LC include paths inherited from the parent.
@@ -123,6 +124,7 @@ if(BUILD_TESTING AND NOT ANDROID)
   add_executable(awslc_provider_test
     test/test_main.cc
     test/frontend/provider_test.cc
+    test/frontend/reachability_test.cc
     test/frontend/operations/digests/digests_test.cc
     test/frontend/operations/digests/sha2_test.cc)
 

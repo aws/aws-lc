@@ -476,6 +476,22 @@ func (t test) getGTestShards() ([]test, error) {
 	return shards, nil
 }
 
+// libsslDirs are the build directories CMake only adds when BUILD_LIBSSL is on.
+// The test binaries they contain do not exist in a libssl-off build, so running
+// them would fail to exec rather than report a test failure.
+var libsslDirs = []string{"ssl/", "tool/", "tool-openssl/"}
+
+// needsLibSSL reports whether the test binary at |prog| is only built when
+// libssl is enabled.
+func needsLibSSL(prog string) bool {
+	for _, dir := range libsslDirs {
+		if strings.HasPrefix(prog, dir) {
+			return true
+		}
+	}
+	return false
+}
+
 // shouldRunInThisJob determines whether a test should be executed by the
 // current CI job. For GTest-sharded tests, each job gets a contiguous block
 // of numWorkers shards. For non-sharded tests, they are distributed
@@ -534,10 +550,8 @@ func main() {
 				}
 			}
 
-			if !(*sslTests) {
-				if strings.Contains(fmt.Sprint(test.Cmd), "ssl/") {
-					continue
-				}
+			if !(*sslTests) && needsLibSSL(test.Cmd[0]) {
+				continue
 			}
 
 			if *useSDE {

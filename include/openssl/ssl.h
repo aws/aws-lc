@@ -5347,13 +5347,15 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
 // SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ctx| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
 
 // SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ssl| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);

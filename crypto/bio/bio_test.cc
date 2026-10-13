@@ -7,11 +7,13 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
 #include <array>
+#include <climits>
 
 #include "../internal.h"
 #include "../test/file_util.h"
@@ -215,6 +217,160 @@ TEST(BIOTest, ReadASN1) {
       EXPECT_EQ(Bytes(input.data(), t.expected_len), Bytes(out, out_len));
     }
   }
+}
+
+namespace {
+
+// ReadASN1Reason runs |BIO_read_asn1| over |input| and returns the first error
+// reason on the queue, or zero if the call succeeded.
+static int ReadASN1Reason(const std::vector<uint8_t> &input, size_t max_len) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input.data(), input.size()));
+  if (!bio) {
+    return -1;
+  }
+
+  ERR_clear_error();
+  uint8_t *out;
+  size_t out_len;
+  if (BIO_read_asn1(bio.get(), &out, &out_len, max_len)) {
+    OPENSSL_free(out);
+    return 0;
+  }
+  return ERR_GET_REASON(ERR_peek_error());
+}
+
+struct ChunkedState {
+  const uint8_t *data;
+  size_t len;
+  // max_request is the largest read length the BIO was asked for.
+  size_t max_request;
+};
+
+// ChunkedMethod returns a |BIO_METHOD| that serves a |ChunkedState| a few bytes
+// at a time, so |BIO_read_asn1| has to cope with partial reads, and records the
+// largest read it was asked for. |BIO_read_asn1| reads into the buffer it just
+// allocated, so that number is also the memory committed before any content.
+static const size_t kChunkedMax = 7;
+
+static bssl::UniquePtr<BIO_METHOD> ChunkedMethod() {
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  if (!method ||
+      !BIO_meth_set_read(method.get(), [](BIO *b, char *out, int len) -> int {
+        ChunkedState *state = static_cast<ChunkedState *>(BIO_get_data(b));
+        size_t todo = len < 0 ? 0 : (size_t)len;
+        state->max_request = std::max(state->max_request, todo);
+        todo = std::min(todo, std::min(kChunkedMax, state->len));
+        OPENSSL_memcpy(out, state->data, todo);
+        state->data += todo;
+        state->len -= todo;
+        return (int)todo;
+      })) {
+    return nullptr;
+  }
+  return method;
+}
+
+}  // namespace
+
+// A header that claims a huge length must not get a buffer that size. If it
+// did, a few attacker-controlled bytes would be enough to force a
+// multi-gigabyte allocation from any caller passing |INT_MAX| as |max_len|.
+TEST(BIOTest, ReadASN1HugeClaimedLength) {
+  // A SEQUENCE claiming ~2 GiB of content, followed by only four bytes of it.
+  const std::vector<uint8_t> input = {0x30, 0x84, 0x7f, 0xff, 0xff, 0xf0,
+                                      0x01, 0x02, 0x03, 0x04};
+  bssl::UniquePtr<BIO_METHOD> method = ChunkedMethod();
+  ASSERT_TRUE(method);
+  ChunkedState state = {input.data(), input.size(), 0};
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+  BIO_set_data(bio.get(), &state);
+  BIO_set_init(bio.get(), 1);
+
+  ERR_clear_error();
+  uint8_t *out;
+  size_t out_len;
+  EXPECT_FALSE(BIO_read_asn1(bio.get(), &out, &out_len, INT_MAX));
+  // The header is well formed and only the content is missing, so the error
+  // should be the truncated body rather than a failed allocation.
+  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA, ERR_GET_REASON(ERR_peek_error()));
+  EXPECT_LE(state.max_request, 1024u * 1024u)
+      << "buffered " << state.max_request << " bytes for a 10-byte input";
+}
+
+// An object big enough to need several growth steps must still be read
+// correctly, into a buffer exactly the object's length.
+TEST(BIOTest, ReadASN1MultipleChunks) {
+  // 300000 bytes crosses the initial 16 KiB chunk and several doublings.
+  static const size_t kPayloadLen = 300000;
+  std::vector<uint8_t> input = {0x30, 0x83, (kPayloadLen >> 16) & 0xff,
+                                (kPayloadLen >> 8) & 0xff, kPayloadLen & 0xff};
+  const size_t expected_len = input.size() + kPayloadLen;
+  for (size_t i = 0; i < kPayloadLen; i++) {
+    input.push_back((uint8_t)i);
+  }
+  // Anything after the object must be left in the BIO.
+  input.push_back(0xff);
+
+  bssl::UniquePtr<BIO_METHOD> method = ChunkedMethod();
+  ASSERT_TRUE(method);
+  ChunkedState state = {input.data(), input.size(), 0};
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+  BIO_set_data(bio.get(), &state);
+  BIO_set_init(bio.get(), 1);
+
+  uint8_t *out;
+  size_t out_len;
+  ASSERT_TRUE(BIO_read_asn1(bio.get(), &out, &out_len, INT_MAX));
+  bssl::UniquePtr<uint8_t> out_storage(out);
+  EXPECT_EQ(expected_len, out_len);
+  EXPECT_EQ(Bytes(input.data(), expected_len), Bytes(out, out_len));
+}
+
+// A claim larger than |max_len| must be rejected before any of the content is
+// read, so that rejecting it stays cheap.
+TEST(BIOTest, ReadASN1MaxLenRejectedUpFront) {
+  std::vector<uint8_t> input = {0x30, 0x81, 0x80};  // Claims 128 bytes.
+  input.resize(input.size() + 128, 0);
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input.data(), input.size()));
+  ASSERT_TRUE(bio);
+
+  uint8_t *out;
+  size_t out_len;
+  EXPECT_FALSE(BIO_read_asn1(bio.get(), &out, &out_len, 100));
+  // Only the header should have been consumed.
+  EXPECT_EQ(128u, BIO_pending(bio.get()));
+}
+
+// Callers depend on each error code |BIO_read_asn1| reports, so check them all.
+TEST(BIOTest, ReadASN1Errors) {
+  // OpenSSL historically returned |ASN1_R_HEADER_TOO_LONG| when the BIO was
+  // empty, and CPython still checks for it.
+  EXPECT_EQ(ASN1_R_HEADER_TOO_LONG, ReadASN1Reason({}, 100));
+
+  // Truncated inputs.
+  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA, ReadASN1Reason({0x30}, 100));
+  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA, ReadASN1Reason({0x30, 0x82, 0x01}, 100));
+  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA,
+            ReadASN1Reason({0x30, 0x03, 0x01, 0x02}, 100));
+
+  // Long-form tags are not supported.
+  EXPECT_EQ(ASN1_R_DECODE_ERROR, ReadASN1Reason({0x3f, 0x02, 0x01, 0x02}, 100));
+
+  // Lengths must be minimally encoded.
+  EXPECT_EQ(ASN1_R_DECODE_ERROR, ReadASN1Reason({0x30, 0x81, 0x01, 0x00}, 100));
+  EXPECT_EQ(ASN1_R_DECODE_ERROR,
+            ReadASN1Reason({0x30, 0x82, 0x00, 0x81, 0x00}, 100));
+  // A length-of-length of zero (on a primitive type) or over four is rejected.
+  EXPECT_EQ(ASN1_R_DECODE_ERROR, ReadASN1Reason({0x04, 0x80, 0x00}, 100));
+  EXPECT_EQ(ASN1_R_DECODE_ERROR,
+            ReadASN1Reason({0x30, 0x85, 0x01, 0x02, 0x03, 0x04, 0x05}, 100));
+
+  // Lengths over |max_len| or |INT_MAX| are rejected.
+  EXPECT_EQ(ASN1_R_TOO_LONG, ReadASN1Reason({0x30, 0x81, 0x80}, 100));
+  EXPECT_EQ(ASN1_R_TOO_LONG,
+            ReadASN1Reason({0x30, 0x84, 0xff, 0xff, 0xff, 0xff}, SIZE_MAX));
 }
 
 TEST(BIOTest, MemReadOnly) {

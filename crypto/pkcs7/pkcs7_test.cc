@@ -1897,6 +1897,119 @@ TEST(PKCS7Test, TestEnveloped) {
   EXPECT_EQ(X509_R_KEY_VALUES_MISMATCH, ERR_GET_REASON(ERR_peek_error()));
 }
 
+// A recipient info that decrypts to a length other than the content cipher's
+// key length must not be used as the content encryption key: too short keys the
+// cipher with the uninitialized tail of the buffer, too long honors an
+// attacker-chosen prefix. Either way it must be treated exactly like a
+// recipient info that failed to decrypt, i.e. the random dummy key gets swapped
+// in, so that no MMA oracle is introduced.
+TEST(PKCS7Test, EnvelopedContentKeyLengthMismatch) {
+  // Use a stream cipher so that decryption with the wrong key always
+  // "succeeds" and returns gibberish, rather than sometimes tripping over
+  // block cipher padding.
+  const EVP_CIPHER *cipher = EVP_aes_128_ctr();
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  uint8_t pt[64], decrypted[sizeof(pt)];
+  OPENSSL_memset(pt, 'A', sizeof(pt));
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+
+  // Parse a cert for use with recipient infos.
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+  ASSERT_TRUE(PKCS7_get_PEM_certificates(certs.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_num(certs.get()));
+  X509 *rsa_x509 = sk_X509_value(certs.get(), 0);
+  ASSERT_TRUE(X509_set_pubkey(rsa_x509, pkey.get()));
+
+  // |decrypt| envelopes |pt| under the first |key_len| bytes of |key|, rewrites
+  // the single recipient info to |cek_len| bytes of |key| encrypted to the
+  // recipient, then decrypts the result into |decrypted| using |cert| (which
+  // may be NULL to exercise the "try every recipient info" path). |cek_len| may
+  // differ from |key_len|; that is how a recipient info that decrypts to the
+  // "wrong" length is built.
+  auto decrypt = [&](X509 *cert, const uint8_t *key, size_t cek_len) {
+    bssl::UniquePtr<BIO> in(BIO_new_mem_buf(pt, sizeof(pt)));
+    ASSERT_TRUE(in);
+    bssl::UniquePtr<PKCS7> p7(
+        PKCS7_encrypt(certs.get(), in.get(), cipher, /*flags*/ 0));
+    ASSERT_TRUE(p7);
+
+    // Re-encrypt the content under |key|, reusing the IV |PKCS7_encrypt| left
+    // in the content encryption algorithm's parameter so only the key changes.
+    PKCS7_ENC_CONTENT *enc_data = p7->d.enveloped->enc_data;
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(
+        ctx.get(), cipher, nullptr, key,
+        ASN1_STRING_get0_data(
+            enc_data->algorithm->parameter->value.octet_string)));
+    uint8_t ct[sizeof(pt)];
+    int ct_len;
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ct, &ct_len, pt, sizeof(pt)));
+    ASSERT_EQ(sizeof(ct), (size_t)ct_len);
+    ASSERT_TRUE(ASN1_OCTET_STRING_set(enc_data->enc_data, ct, ct_len));
+
+    bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(pctx);
+    ASSERT_TRUE(EVP_PKEY_encrypt_init(pctx.get()));
+    uint8_t ek[2048 / 8];
+    size_t ek_len = sizeof(ek);
+    ASSERT_TRUE(EVP_PKEY_encrypt(pctx.get(), ek, &ek_len, key, cek_len));
+    PKCS7_RECIP_INFO *ri =
+        sk_PKCS7_RECIP_INFO_value(p7->d.enveloped->recipientinfo, 0);
+    ASSERT_TRUE(ri);
+    ASSERT_TRUE(ASN1_OCTET_STRING_set(ri->enc_key, ek, ek_len));
+
+    bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(out);
+    ERR_clear_error();
+    // Whatever the recipient info decrypted to, decryption must report success,
+    // queue no error, and produce the full plaintext length. Anything else is
+    // an MMA oracle.
+    EXPECT_TRUE(
+        PKCS7_decrypt(p7.get(), pkey.get(), cert, out.get(), /*flags*/ 0));
+    EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
+    OPENSSL_cleanse(decrypted, sizeof(decrypted));
+    EXPECT_EQ((int)sizeof(decrypted),
+              BIO_read(out.get(), decrypted, sizeof(decrypted)));
+  };
+
+  uint8_t cek[32], short_cek[sizeof(cek)] = {0};
+  ASSERT_LT(key_len, sizeof(cek));
+  OPENSSL_memset(cek, 'K', sizeof(cek));
+  // The content gets encrypted under the five decrypted bytes followed by
+  // zeros, i.e. what an attacker would get if the uninitialized tail of the key
+  // buffer happened to be zeroed.
+  OPENSSL_memcpy(short_cek, cek, 5);
+
+  // Run through both the "match |cert| against the recipient infos" path and
+  // the "try every recipient info" path.
+  for (X509 *cert : {rsa_x509, static_cast<X509 *>(nullptr)}) {
+    SCOPED_TRACE(cert == nullptr ? "no cert" : "cert");
+
+    // Positive control: a correctly sized content encryption key still
+    // decrypts.
+    decrypt(cert, cek, key_len);
+    EXPECT_EQ(Bytes(pt), Bytes(decrypted));
+
+    // Too long: the content is encrypted with the first |key_len| bytes of the
+    // decrypted key, so honoring the prefix would decrypt it correctly.
+    decrypt(cert, cek, sizeof(cek));
+    EXPECT_NE(Bytes(pt), Bytes(decrypted));
+
+    // Too short: the uninitialized tail of the key buffer must not be read.
+    decrypt(cert, short_cek, 5);
+    EXPECT_NE(Bytes(pt), Bytes(decrypted));
+  }
+}
+
 TEST(PKCS7Test, TestSigned) {
   bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio_in, bio_out;
@@ -2152,6 +2265,63 @@ TEST(PKCS7Test, VerifyDetachedMultiDigestNoLeak) {
   // teardown still runs to exercise the leak.
   PKCS7_verify(p7.get(), nullptr, store.get(), indata.get(), outdata.get(),
                PKCS7_NOVERIFY);
+}
+
+static size_t CountDigestBIOs(BIO *bio) {
+  size_t count = 0;
+  while (bio != nullptr) {
+    bio = BIO_find_type(bio, BIO_TYPE_MD);
+    if (bio == nullptr) {
+      break;
+    }
+    count++;
+    bio = BIO_next(bio);
+  }
+  return count;
+}
+
+TEST(PKCS7Test, DataInitDedupesDigestAlgorithms) {
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  // Build the stack by hand; |PKCS7_add_signer| would dedupe on the write path.
+  static const size_t kDuplicates = 512;
+  for (size_t i = 0; i < kDuplicates; i++) {
+    X509_ALGOR *alg = X509_ALGOR_new();
+    ASSERT_TRUE(alg);
+    ASSERT_TRUE(X509_ALGOR_set_md(alg, EVP_sha256()));
+    ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+  }
+  ASSERT_EQ(kDuplicates, sk_X509_ALGOR_num(p7->d.sign->md_algs));
+
+  bssl::UniquePtr<BIO> bio(PKCS7_dataInit(p7.get(), nullptr));
+  ASSERT_TRUE(bio);
+  EXPECT_EQ(1u, CountDigestBIOs(bio.get()));
+
+  EXPECT_EQ(kDuplicates, sk_X509_ALGOR_num(p7->d.sign->md_algs));
+}
+
+TEST(PKCS7Test, DataInitKeepsDistinctDigestAlgorithms) {
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+
+  const EVP_MD *mds[] = {EVP_sha256(), EVP_sha384(), EVP_sha256(),
+                         EVP_sha512(), EVP_sha384(), EVP_sha256()};
+  for (const EVP_MD *md : mds) {
+    X509_ALGOR *alg = X509_ALGOR_new();
+    ASSERT_TRUE(alg);
+    ASSERT_TRUE(X509_ALGOR_set_md(alg, md));
+    ASSERT_TRUE(sk_X509_ALGOR_push(p7->d.sign->md_algs, alg));
+  }
+
+  bssl::UniquePtr<BIO> bio(PKCS7_dataInit(p7.get(), nullptr));
+  ASSERT_TRUE(bio);
+  // SHA-256, SHA-384, SHA-512.
+  EXPECT_EQ(3u, CountDigestBIOs(bio.get()));
 }
 
 TEST(PKCS7Test, PKCS7PrintNoop) {

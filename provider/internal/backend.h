@@ -49,9 +49,10 @@
 //
 //   internal/backend.h                       this file: the contract
 //   internal/backend/<class>.h               per-class backend entry points
-//   internal/frontend/<class>.h              per-class dispatch tables
-//   frontend/operations/<class>/<alg>.c      grows with algorithms
-//   backend/operations/<class>/<alg>.c       grows with algorithms
+//   internal/frontend/<class>.h              per-class frontend contract
+//   frontend/operations/<class>/<class>.c    class-wide frontend behavior
+//   frontend/operations/<class>/<family>.c   family helpers and dispatch slots
+//   backend/operations/<class>/<family>.c    explicit AWS-LC bindings
 //
 // The two operations/ trees correspond one to one where the shape allows it.
 //

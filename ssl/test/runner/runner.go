@@ -4029,6 +4029,30 @@ func addCipherSuiteTests() {
 		expectedError: ":WRONG_CIPHER_RETURNED:",
 	})
 
+	// In TLS 1.3, the client must reject a ServerHello whose selected cipher
+	// suite is not one the client offered, even if the cipher is otherwise a
+	// valid TLS 1.3 cipher.
+	testCases = append(testCases, testCase{
+		name: "UnsupportedCipherSuite-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+			Bugs: ProtocolBugs{
+				IgnorePeerCipherPreferences: true,
+				SendCipherSuite:             TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-tls13-ciphersuites", "TLS_AES_128_GCM_SHA256",
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CIPHER_RETURNED:",
+	})
+
 	testCases = append(testCases, testCase{
 		name: "ServerHelloBogusCipher",
 		config: Config{

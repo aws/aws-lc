@@ -1470,6 +1470,57 @@ TEST(EVPExtraTest, Print) {
 
 #endif
 
+// A write failure while dumping the key material must be reported, not
+// swallowed, so that callers do not mistake truncated output for success.
+TEST(EVPExtraTest, PrintMLDSAWriteFailure) {
+  bssl::UniquePtr<EVP_PKEY> pkey = ParsePrivateKey(
+      EVP_PKEY_PQDSA, kExampleMLDSA65KeyDER, sizeof(kExampleMLDSA65KeyDER));
+  ASSERT_TRUE(pkey);
+
+  // Print once successfully to learn how many bytes precede the hex dump.
+  bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(mem);
+  ASSERT_TRUE(
+      EVP_PKEY_print_private(mem.get(), pkey.get(), /*indent=*/0, nullptr));
+  const uint8_t *data = nullptr;
+  size_t len = 0;
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &data, &len));
+  const uint8_t *newline =
+      static_cast<const uint8_t *>(OPENSSL_memchr(data, '\n', len));
+  ASSERT_TRUE(newline);
+  size_t budget = static_cast<size_t>(newline - data) + 1;
+  ASSERT_LT(budget, len);
+
+  // A BIO that accepts |budget| bytes and then fails every write. With the
+  // budget set to the length of the header, the header is written and the first
+  // write of the hex dump fails.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_write(
+      method.get(), [](BIO *b, const char *in, int len_arg) -> int {
+        size_t *remaining = static_cast<size_t *>(BIO_get_data(b));
+        if (len_arg < 0 || static_cast<size_t>(len_arg) > *remaining) {
+          return -1;
+        }
+        *remaining -= static_cast<size_t>(len_arg);
+        return len_arg;
+      }));
+
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+  BIO_set_data(bio.get(), &budget);
+
+  EXPECT_FALSE(
+      EVP_PKEY_print_private(bio.get(), pkey.get(), /*indent=*/0, nullptr));
+  // The header was written, so the failure came from the hex dump.
+  EXPECT_EQ(budget, 0u);
+  ERR_clear_error();
+}
+
 // Tests loading a bad key in PKCS8 format.
 TEST(EVPExtraTest, BadECKey) {
   const uint8_t *derp = kExampleBadECKeyDER;
@@ -1874,6 +1925,61 @@ TEST(EVPExtraTest, ECSignatureContextRejected) {
   size_t secret_len = 0;
   ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), nullptr, &secret_len));
   EXPECT_GT(secret_len, 0u);
+}
+
+TEST(EVPExtraTest, HMACSignatureControlsRejected) {
+  static const uint8_t kKey[] = {1, 2, 3, 4};
+  static const uint8_t kContext[] = {5, 6, 7, 8};
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, nullptr, kKey, sizeof(kKey)));
+  ASSERT_TRUE(pkey);
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pctx = nullptr;
+  ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha256(), nullptr,
+                                  pkey.get()));
+  ASSERT_TRUE(pctx);
+
+  // Low-level controls retain the unsupported-command return value.
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {kContext, sizeof(kContext)};
+  for (int cmd :
+       {EVP_PKEY_CTRL_SIGNING_CONTEXT, EVP_PKEY_CTRL_GET_SIGNING_CONTEXT}) {
+    SCOPED_TRACE(cmd);
+    ERR_clear_error();
+    EXPECT_EQ(
+        -2, EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_TYPE_SIG, cmd, 0, &params));
+    EXPECT_TRUE(
+        ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  }
+
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_set1_signature_context_string(pctx, kContext,
+                                                          sizeof(kContext)));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+
+  ERR_clear_error();
+  EXPECT_EQ(
+      0, EVP_PKEY_CTX_set_signature_context(pctx, kContext, sizeof(kContext)));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+
+  const uint8_t *out_ctx = kContext;
+  size_t out_len = sizeof(kContext);
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_get0_signature_context(pctx, &out_ctx, &out_len));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  EXPECT_EQ(kContext, out_ctx);
+  EXPECT_EQ(sizeof(kContext), out_len);
+
+  // The digest getter must not report success without writing |out_md|.
+  const EVP_MD *out_md = EVP_sha1();
+  ERR_clear_error();
+  EXPECT_EQ(0, EVP_PKEY_CTX_get_signature_md(pctx, &out_md));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_COMMAND_NOT_SUPPORTED));
+  EXPECT_EQ(EVP_sha1(), out_md);
 }
 
 TEST(EVPExtraTest, DHKeygen) {
@@ -2432,6 +2538,80 @@ TEST_P(EVPRsaPssBadKeyTest, InvalidSaltLength) {
 INSTANTIATE_TEST_SUITE_P(All, EVPRsaPssBadKeyTest,
                          testing::ValuesIn(kBadPssKeyTestInputs));
 
+// |kExampleRSAPSSKeyPKCS8| omits saltLength, so the RFC 4055 default of 20 is
+// the restricted minimum.
+TEST(EVPExtraTest, RestrictedPssAutoSaltlenHonorsMinimum) {
+  const uint8_t *p = kExampleRSAPSSKeyPKCS8;
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      d2i_AutoPrivateKey(nullptr, &p, sizeof(kExampleRSAPSSKeyPKCS8)));
+  ASSERT_TRUE(pkey);
+  ASSERT_EQ(EVP_PKEY_RSA_PSS, EVP_PKEY_id(pkey.get()));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+
+  int saltlen = 0;
+  ASSERT_TRUE(EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx.get(), &saltlen));
+  EXPECT_EQ(20, saltlen);
+
+  EXPECT_FALSE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), 19));
+  ERR_clear_error();
+  EXPECT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), 20));
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), RSA_PSS_SALTLEN_DIGEST));
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(), RSA_PSS_SALTLEN_AUTO));
+
+  // |EVP_PKEY_CTX_dup| must keep the restriction.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx_copy(EVP_PKEY_CTX_dup(ctx.get()));
+  ASSERT_TRUE(ctx_copy);
+  EXPECT_FALSE(EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx_copy.get(), 19));
+  ERR_clear_error();
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx_copy.get(), RSA_PSS_SALTLEN_AUTO));
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(rsa);
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len = 0;
+  ASSERT_TRUE(EVP_Digest(kMsg, sizeof(kMsg), digest, &digest_len, EVP_sha256(),
+                         nullptr));
+
+  // Sign through |rsa| directly, which is not subject to the restriction, so
+  // that we can produce salt lengths the restricted key would never pick.
+  auto sign_with_saltlen = [&](int salt_len) {
+    std::vector<uint8_t> sig(RSA_size(rsa.get()));
+    size_t sig_len = sig.size();
+    EXPECT_TRUE(RSA_sign_pss_mgf1(rsa.get(), &sig_len, sig.data(), sig.size(),
+                                  digest, digest_len, EVP_sha256(),
+                                  EVP_sha256(), salt_len));
+    sig.resize(sig_len);
+    return sig;
+  };
+
+  // |RSA_PSS_SALTLEN_AUTO| recovers the salt length, leaving the restricted
+  // minimum as its only constraint. 24 is included so that a check testing for
+  // equality with the minimum, rather than a floor, would still fail.
+  for (int salt_len : {0, 1, 19}) {
+    SCOPED_TRACE(salt_len);
+    const std::vector<uint8_t> sig = sign_with_saltlen(salt_len);
+    EXPECT_FALSE(
+        EVP_PKEY_verify(ctx.get(), sig.data(), sig.size(), digest, digest_len));
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_PKEY_verify(ctx_copy.get(), sig.data(), sig.size(), digest,
+                                 digest_len));
+    ERR_clear_error();
+  }
+  for (int salt_len : {20, 24}) {
+    SCOPED_TRACE(salt_len);
+    const std::vector<uint8_t> sig = sign_with_saltlen(salt_len);
+    EXPECT_TRUE(
+        EVP_PKEY_verify(ctx.get(), sig.data(), sig.size(), digest, digest_len));
+    EXPECT_TRUE(EVP_PKEY_verify(ctx_copy.get(), sig.data(), sig.size(), digest,
+                                digest_len));
+  }
+}
 
 // START KEM TESTS
 

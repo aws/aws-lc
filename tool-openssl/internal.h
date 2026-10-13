@@ -6,6 +6,7 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
+#include <initializer_list>
 #include <string>
 #include <utility>
 #include <vector>
@@ -274,7 +275,8 @@ bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
                                    const args_list_t &args,
                                    const argument_t *templates);
 
-// Get helpers for ordered arguments
+// GetString and GetUnsigned use the first occurrence. For last-wins semantics,
+// use GetLastString or GetLastOption.
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
                  unsigned default_value, const ordered_args_map_t &args);
 bool GetString(std::string *out, const std::string &arg_name,
@@ -285,6 +287,17 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args);
+
+// GetLastString sets |*out| to the last (possibly empty) value of |arg_name|,
+// or |default_value| if absent.
+void GetLastString(std::string *out, const std::string &arg_name,
+                   std::string default_value, const ordered_args_map_t &args);
+
+// GetLastOption returns whichever name in |options| occurs last in |args|, or
+// |default_option| if none does.
+std::string GetLastOption(std::initializer_list<const char *> options,
+                          std::string default_option,
+                          const ordered_args_map_t &args);
 }  // namespace ordered_args
 
 void SetUmaskForPrivateKey();

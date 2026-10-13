@@ -529,9 +529,6 @@ GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 // |X509_NAME| issue is resolved.
 int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 
-// TODO(https://crbug.com/boringssl/695): Remove this.
-int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
-
 // Exported for testing purposes only. Used for validating that the CIDR mask bytes
 // from a IP Name Constraint is a valid CIDR prefix.
 //

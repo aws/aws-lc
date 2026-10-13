@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // The provider-global surface: that the module loads, reports itself correctly,
-// and declines every operation class, so fetches fall through to another
+// and declines unsupported operation classes so fetches fall through to another
 // provider rather than failing.
 
 #include "test/test_fixture.h"

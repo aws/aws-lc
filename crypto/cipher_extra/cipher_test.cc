@@ -1825,6 +1825,94 @@ TEST(CipherTest, CopyErrorPathReleasesCipherData) {
                                 key.data(), nullptr, 1));
 }
 
+TEST(CipherTest, AESXTSRejectsMultipleDataUnitsWithoutReinit) {
+  std::vector<uint8_t> key(64, 0);
+  key[32] = 1;
+  std::vector<uint8_t> iv(16, 0);
+  std::vector<uint8_t> short_input(15, 0);
+  std::vector<uint8_t> input(32, 0);
+  std::vector<uint8_t> output(32, 0);
+
+  for (int encrypt : {0, 1}) {
+    bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                  key.data(), iv.data(), encrypt));
+
+    int out_len = -1;
+    ASSERT_TRUE(
+        EVP_CipherUpdate(ctx.get(), nullptr, &out_len, nullptr, 0));
+    EXPECT_EQ(out_len, 0);
+
+    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), output.data(), &out_len,
+                                 input.data(), input.size()));
+    EXPECT_EQ(out_len, static_cast<int>(input.size()));
+
+    bssl::UniquePtr<EVP_CIPHER_CTX> copy(EVP_CIPHER_CTX_new());
+    ASSERT_TRUE(copy);
+    ASSERT_TRUE(EVP_CIPHER_CTX_copy(copy.get(), ctx.get()));
+    EXPECT_FALSE(EVP_CipherUpdate(copy.get(), output.data(), &out_len,
+                                  input.data(), input.size()));
+    EXPECT_EQ(ERR_GET_REASON(ERR_peek_last_error()),
+              CIPHER_R_INVALID_OPERATION);
+    ERR_clear_error();
+
+    // Neither operation permits key/IV reuse.
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, nullptr, nullptr,
+                                  encrypt));
+    ASSERT_TRUE(
+        EVP_CipherUpdate(ctx.get(), nullptr, &out_len, nullptr, 0));
+    EXPECT_EQ(out_len, 0);
+
+    out_len = -1;
+    EXPECT_FALSE(EVP_CipherUpdate(ctx.get(), output.data(), &out_len,
+                                  input.data(), input.size()));
+    EXPECT_EQ(out_len, 0);
+    ERR_clear_error();
+
+    // A new IV permits another data unit.
+    iv[0]++;
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, nullptr,
+                                  iv.data(), encrypt));
+    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), output.data(), &out_len,
+                                 input.data(), input.size()));
+    EXPECT_EQ(out_len, static_cast<int>(input.size()));
+
+    // An |EVP_CipherUpdate| that does not consume the context, such as for the
+    // short input below, requires |EVP_CipherInit_ex|. Key and IV may be NULL.
+    bssl::UniquePtr<EVP_CIPHER_CTX> failed_ctx(EVP_CIPHER_CTX_new());
+    ASSERT_TRUE(failed_ctx);
+    ASSERT_TRUE(EVP_CipherInit_ex(failed_ctx.get(), EVP_aes_256_xts(), nullptr,
+                                  key.data(), iv.data(), encrypt));
+    out_len = -1;
+    EXPECT_FALSE(EVP_CipherUpdate(failed_ctx.get(), output.data(), &out_len,
+                                  short_input.data(), short_input.size()));
+    EXPECT_EQ(out_len, 0);
+    ERR_clear_error();
+    ASSERT_TRUE(EVP_CipherInit_ex(failed_ctx.get(), nullptr, nullptr, nullptr,
+                                  nullptr, encrypt));
+    ASSERT_TRUE(EVP_CipherUpdate(failed_ctx.get(), output.data(), &out_len,
+                                 input.data(), input.size()));
+    EXPECT_EQ(out_len, static_cast<int>(input.size()));
+  }
+}
+
+// Regression test: an RC2 key length above the 128-byte maximum must be
+// clamped, not narrowed to a negative |int| that bypasses the clamp and drives
+// an out-of-bounds write in the key expansion.
+TEST(CipherTest, RC2OversizedKeyLengthClamped) {
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_rc2_cbc(), nullptr, nullptr,
+                                 nullptr));
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), 0x80000000u));
+  uint8_t key[128] = {0};  // >=128 so the clamped read stays in bounds
+  uint8_t iv[8] = {0};
+  // cipher==NULL preserves the custom key length; re-passing it would reset to
+  // the 16-byte default.
+  EXPECT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key, iv));
+}
+
 struct CipherInfo {
   const char *name;
   const EVP_CIPHER *(*func)(void);
