@@ -2387,6 +2387,26 @@ TEST_F(CATest, DatabaseWithValidEntryAndRevocationDate) {
   ASSERT_EQ(kToolExitFailure, caTool(args));
 }
 
+TEST_F(CATest, DatabaseWithEmptyTypeFieldRejected) {
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Leading tab => empty type field; everything else is valid.
+  fprintf(db_file.get(),
+          "\t251231235959Z\t\tAA\tunknown\t/CN=empty-type.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_EQ(kToolExitFailure, caTool(args));
+}
+
 TEST_F(CATest, RevokeMarksEntryRevoked) {
   CreateBasicConfig();
 

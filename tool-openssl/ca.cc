@@ -1827,6 +1827,10 @@ int caTool(const args_list_t &args) {
   // Lets check some fields
   for (size_t i = 0; i < sk_OPENSSL_PSTRING_num(db.get()->db->data); i++) {
     auto pp = sk_OPENSSL_PSTRING_value(db->db->data, i);
+    if (pp[DB_type][0] == '\0') {
+      fprintf(stderr, "entry %zu: empty type field\n", i + 1);
+      goto err;
+    }
     if ((pp[DB_type][0] != DB_TYPE_REV) && (pp[DB_rev_date][0] != '\0')) {
       fprintf(stderr, "entry %zu: not revoked yet, but has a revocation date\n",
               i + 1);
