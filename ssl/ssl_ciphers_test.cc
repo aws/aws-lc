@@ -1527,7 +1527,7 @@ TEST_P(SSLContextSwitchTest, VerifyAlgorithmPrefs) {
   SSL_CTX_set_cert_cb(
       client_ctx_.get(),
       [](SSL *ssl, void *arg) -> int {
-        const uint16_t *sigalgs;
+        const uint16_t *sigalgs = nullptr;
         size_t num_sigalgs = SSL_get0_peer_verify_algorithms(ssl, &sigalgs);
         static_cast<std::vector<uint16_t> *>(arg)->assign(
             sigalgs, sigalgs + num_sigalgs);
