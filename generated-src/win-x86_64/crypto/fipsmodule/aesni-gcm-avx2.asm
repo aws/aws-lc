@@ -1588,6 +1588,9 @@ $L$SEH_info_aes_gcm_dec_update_vaes_avx2_0:
 	DB	$L$SEH_prolog_aes_gcm_dec_update_vaes_avx2_2-$L$SEH_begin_aes_gcm_dec_update_vaes_avx2_1
 	DB	96
 %endif
+%ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+	DB	0
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

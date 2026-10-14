@@ -1322,4 +1322,7 @@ _CET_ENDBR
 .cfi_endproc	
 .size	aes_gcm_dec_update_vaes_avx2, . - aes_gcm_dec_update_vaes_avx2
 #endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+.byte	0
+#endif
 #endif

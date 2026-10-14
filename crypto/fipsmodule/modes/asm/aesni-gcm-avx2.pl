@@ -174,9 +174,11 @@ ___
     return $code;
 }
 
-# The .text directive is deliberately emitted outside the #ifndef guard: when
-# the guard elides the body, some NASM versions reject an object with no
-# sections (nasm.us bug 3392738).
+# Keep the disabled output non-empty: the .text directive is deliberately
+# emitted outside the #ifndef guard, and a placeholder byte is emitted when the
+# guard elides the body (see the end of this block). Some NASM versions reject
+# an object with no sections (nasm.us bug 3392738), and NASM 2.16.x crashes
+# while generating CodeView debug information for an empty section.
 $code = <<___;
 .text
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
@@ -1074,6 +1076,9 @@ $code .= _end_func;
 # them before closing the guard rather than at the end of the file.
 $code .= <<___;
 .seh_emit_tables
+#endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+.byte 0
 #endif
 ___
 

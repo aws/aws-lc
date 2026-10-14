@@ -1317,4 +1317,7 @@ L$done__func2:
 
 
 #endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2
+.byte	0
+#endif
 #endif
