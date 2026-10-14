@@ -3365,29 +3365,32 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // the handshake is paused from them. It is typically used to switch
 // certificates based on SNI.
 //
-// This function is deprecated because it changes only part of |ssl|'s
-// configuration. New code should instead configure |ssl| directly from those
-// callbacks, setting the certificate with |SSL_set_chain_and_key| or
+// This function is deprecated because it only partly reconfigures |ssl|, which
+// is easy to get wrong. New code should instead set what it needs on |ssl| from
+// those callbacks, e.g. the certificate with |SSL_set_chain_and_key| or
 // |SSL_use_cert_and_key|. Existing callers remain supported.
 //
-// It replaces the certificate-related settings with |ctx|'s: the certificates,
+// Each |SSL| has its own copy of the settings that |SSL_new| copies from the
+// initial |SSL_CTX|, and of any settings set on the |SSL| directly. Other
+// settings are read from the current |SSL_CTX| when needed. This function
+// replaces the certificate-related copies with |ctx|'s: the certificates,
 // private keys and private key method, signing algorithm preferences, OCSP
 // response, SCT list, delegated credential, certificate callback, session ID
-// context, and the store set by |SSL_CTX_set1_verify_cert_store|. Any of these
-// configured on |ssl| are discarded. |ssl| also takes |ctx|'s early data
-// setting. Settings read from the current |SSL_CTX| when used, such as the ALPN
-// selection callback and the certificate store (|SSL_CTX_set_cert_store|),
-// come from |ctx| afterwards.
-//
-// It does not change settings that |SSL_new| copied from the initial |SSL_CTX|,
-// such as the cipher suites, peer-verification signature algorithm preferences,
+// context, and the store set by |SSL_CTX_set1_verify_cert_store|. It also takes
+// |ctx|'s early data setting. It leaves the other copies unchanged, including
+// the cipher suites, peer-verification signature algorithm preferences,
 // supported groups, protocol versions, options, verify mode, and certificate
-// verification parameters. To use |ctx|'s values, set them on |ssl| after this
-// call, for example with |SSL_set_cipher_list|, |SSL_set_ciphersuites|, and
-// |SSL_set_verify_algorithm_prefs|. A server selects its cipher suite after the
-// callbacks above return, but fixes its protocol version range when the
-// |SSL_CTX_set_select_certificate_cb| callback returns, before the other two
-// run. For differences from OpenSSL and earlier AWS-LC releases, see
+// verification parameters. Settings read from the current |SSL_CTX|, such as
+// the ALPN selection callback and the certificate store
+// (|SSL_CTX_set_cert_store|), come from |ctx| after this call.
+//
+// To use |ctx|'s value for a setting this function leaves unchanged, set it on
+// |ssl| after this call, e.g. with |SSL_set_cipher_list|,
+// |SSL_set_ciphersuites|, or |SSL_set_verify_algorithm_prefs|. A server selects
+// its cipher suite after the callbacks above return, but fixes its protocol
+// version range when the |SSL_CTX_set_select_certificate_cb| callback returns,
+// before the other two run. For differences from OpenSSL and earlier AWS-LC
+// releases, see
 // https://github.com/aws/aws-lc/blob/main/PORTING.md#switching-ssl_ctx-during-the-handshake
 //
 // Note the session cache and related settings will continue to use the initial
