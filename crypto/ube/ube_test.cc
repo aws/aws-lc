@@ -54,19 +54,19 @@ TEST_F(ubeGenerationNumberTest, BasicTests) {
 }
 
 static void MockedDetectionMethodTest(
-  std::function<void(uint32_t)> set_method_generation_number) {
+  std::function<void(uint64_t)> set_method_generation_number) {
 
   uint64_t generation_number = 0;
   uint64_t cached_generation_number = 0;
-  uint32_t mocked_generation_number = 0;
+  uint64_t mocked_generation_number = 0;
 
   uint8_t initial_mocked_generation_number[4] = {0};
   ASSERT_TRUE(RAND_bytes(initial_mocked_generation_number, 4));
   mocked_generation_number =
-        ((uint32_t)initial_mocked_generation_number[0] << 24) |
-        ((uint32_t)initial_mocked_generation_number[1] << 16) |
-        ((uint32_t)initial_mocked_generation_number[2] << 8)  |
-        ((uint32_t)initial_mocked_generation_number[3]);
+        ((uint64_t)initial_mocked_generation_number[0] << 24) |
+        ((uint64_t)initial_mocked_generation_number[1] << 16) |
+        ((uint64_t)initial_mocked_generation_number[2] << 8)  |
+        ((uint64_t)initial_mocked_generation_number[3]);
 
   // Testing that UBE generation number is incremented when:
   //   mocked_generation_number + 1
@@ -133,30 +133,123 @@ TEST_F(ubeGenerationNumberTest, MockedDetectionMethodTests) {
   allowMockedUbe();
 
   MockedDetectionMethodTest(
-    [](uint32_t gn) {
-      set_fork_ube_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+    [](uint64_t gn) {
+      set_fork_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
   MockedDetectionMethodTest(
-    [](uint32_t gn) {
+    [](uint64_t gn) {
       set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
   MockedDetectionMethodTest(
-    [](uint32_t gn) {
-      set_fork_ube_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+    [](uint64_t gn) {
+      set_fork_ube_generation_number_FOR_TESTING(gn);
       set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
   MockedDetectionMethodTest(
-    [](uint32_t gn) {
-      set_fork_ube_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+    [](uint64_t gn) {
+      set_fork_ube_generation_number_FOR_TESTING(gn);
       set_vm_ube_generation_number_FOR_TESTING(gn + 1);
     }
   );
+}
+
+// Exercises the vm_ube generation number across the full 64-bit range. vmclock
+// exposes a 64-bit vm_generation_counter (unlike the legacy 32-bit sysgenid),
+// so the orchestration layer must detect changes in the high 32 bits and in
+// values that exceed 2^32. |MockedDetectionMethodTest| above only covers a
+// 32-bit-range value, so this guards the widening end-to-end.
+TEST_F(ubeGenerationNumberTest, MockedVmUbe64BitValues) {
+  allowMockedUbe();
+
+  // A sequence of distinct 64-bit values. Consecutive entries differ only in
+  // the high 32 bits, only in the low 32 bits, or wrap across the 2^32
+  // boundary -- each transition must be detected as exactly one UBE.
+  const uint64_t values[] = {
+    0x0000000000000001ULL,
+    0x0000000100000001ULL,  // high half changed, low half identical
+    0x0000000100000002ULL,  // low half changed, high half identical
+    0x00000000FFFFFFFFULL,  // drop below 2^32
+    0x0000000100000000ULL,  // cross the 2^32 boundary
+    0xFFFFFFFFFFFFFFFFULL,  // all bits set
+    0x8000000000000000ULL,  // high bit only
+  };
+
+  uint64_t generation_number = 0;
+  set_vm_ube_generation_number_FOR_TESTING(values[0]);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+
+  for (size_t i = 1; i < sizeof(values) / sizeof(values[0]); i++) {
+    uint64_t before = generation_number;
+
+    // Changing the mocked vm_ube generation number must bump the UBE
+    // generation number exactly once.
+    set_vm_ube_generation_number_FOR_TESTING(values[i]);
+    generation_number = 0;
+    ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+    ASSERT_EQ(generation_number, before + 1) << "at index " << i;
+
+    // Stable when the value does not change.
+    uint64_t stable = 0;
+    ASSERT_TRUE(CRYPTO_get_ube_generation_number(&stable));
+    ASSERT_EQ(stable, generation_number) << "instability at index " << i;
+  }
+}
+
+// A change confined entirely to the high 32 bits of the vm_ube generation
+// number must still be detected. A 32-bit-truncating implementation would miss
+// this (both values alias to 0 in the low 32 bits) and fail to reseed.
+TEST_F(ubeGenerationNumberTest, MockedVmUbeHighBitsOnlyChange) {
+  allowMockedUbe();
+
+  uint64_t generation_number = 0;
+  set_vm_ube_generation_number_FOR_TESTING(0x100000000ULL);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+
+  uint64_t before = generation_number;
+  // Low 32 bits stay 0; only the high 32 bits differ.
+  set_vm_ube_generation_number_FOR_TESTING(0x200000000ULL);
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, before + 1);
+}
+
+// A transient VM UBE read failure surfaces to the orchestration layer as a
+// "poison" generation number (bit 63 set; see vm_ube_transient_poison in
+// vm_ube_detect.c), never as 0. This is a regression guard: establishing the
+// cached baseline from such a failed read must not swallow the first real UBE.
+// A poison baseline -> a first consistent read of 0 -> a real
+// 0->1 change must each be detected as exactly one UBE. (In mocked mode the
+// poison value is injected directly, since the mock bypasses the real seqlock
+// read path in vm_ube_detect.c.)
+TEST_F(ubeGenerationNumberTest, MockedVmUbePoisonBaselineDoesNotSwallowFirstUbe) {
+  allowMockedUbe();
+
+  const uint64_t kPoison = 0x8000000000000001ULL;  // bit 63 set
+
+  // Init-time transient failure: the cached vm_ube generation is a poison value.
+  uint64_t g0 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(kPoison);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g0));
+
+  // First consistent read returns the real counter, which is 0 (no UBE yet).
+  // Poison != 0, so recovering the baseline counts as one conservative UBE.
+  uint64_t g1 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(0);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g1));
+  ASSERT_EQ(g1, g0 + 1);
+
+  // The first *real* UBE (0 -> 1) must still be detected, not swallowed by the
+  // baseline having been established from the failed read.
+  uint64_t g2 = 0;
+  set_vm_ube_generation_number_FOR_TESTING(1);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&g2));
+  ASSERT_EQ(g2, g1 + 1);
 }
 
 TEST_F(ubeGenerationNumberTest, ExpectedSupportTests) {

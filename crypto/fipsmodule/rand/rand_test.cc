@@ -14,6 +14,7 @@
 #include "internal.h"
 #include "entropy/internal.h"
 #include "../../ube/internal.h"
+#include "../../ube/vm_ube_detect.h"
 
 #include "../../test/abi_test.h"
 #include "../../test/ube_test.h"
@@ -77,6 +78,42 @@ class randTest : public::testing::Test {
       return ube_base_.allowMockedUbe();
     }
 };
+
+// The mid-generation validity check (rand_ensure_valid_state) is compiled out
+// under AWSLC_VM_UBE_TESTING, so this only exercises it in a normal build.
+#if !defined(AWSLC_VM_UBE_TESTING)
+// A genuine UBE mid-RAND_bytes must fail closed (abort), but a transient VM UBE
+// reading (poison, bit 63) must not -- neither when it is the entry baseline nor
+// the exit read. Drives all four branches of rand_ensure_valid_state directly.
+TEST_F(randTest, MidGenerationValidityIgnoresTransientVmUbe) {
+  allowMockedUbe();
+
+  // Whether the cached generation baseline came from a transient VM UBE read.
+  const int kCleanBaseline = 0;
+  const int kTransientBaseline = 1;
+
+  // Non-transient current reading; capture the current aggregate generation.
+  set_vm_ube_generation_number_FOR_TESTING(1);
+  uint64_t cur = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&cur));
+
+  // (1) Baseline == current, nothing transient -> valid.
+  EXPECT_TRUE(rand_ensure_valid_state_FOR_TESTING(cur, kCleanBaseline));
+
+  // (2) Genuine change (baseline != current), nothing transient -> would abort.
+  EXPECT_FALSE(rand_ensure_valid_state_FOR_TESTING(cur - 1, kCleanBaseline));
+
+  // (3) Same change, but the entry baseline was transient -> suppressed.
+  EXPECT_TRUE(rand_ensure_valid_state_FOR_TESTING(cur - 1, kTransientBaseline));
+
+  // (4) Exit read itself is transient: a poison mock value carries bit 63, so a
+  //     baseline mismatch must be suppressed regardless of the baseline flag.
+  set_vm_ube_generation_number_FOR_TESTING(VM_UBE_TRANSIENT_POISON_BIT | 7);
+  uint64_t poisoned = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&poisoned));
+  EXPECT_TRUE(rand_ensure_valid_state_FOR_TESTING(poisoned - 1, kCleanBaseline));
+}
+#endif  // !defined(AWSLC_VM_UBE_TESTING)
 
 static void randBasicTests(bool *returnFlag) {
   // Do not use stack arrays for these. For example, Alpine OS has too low
@@ -236,7 +273,7 @@ TEST_F(randTest, UbeDetectionMocked) {
 
   MockedUbeDetection(
     [](uint64_t gn) {
-      set_vm_ube_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));
+      set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 }

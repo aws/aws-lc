@@ -660,9 +660,11 @@ AWS_LC_1.0 {
     CRYPTO_get_sysgenid_path;
     CRYPTO_get_thread_local;
     CRYPTO_get_ube_generation_number;
+    CRYPTO_get_ube_generation_number_with_transient;
     CRYPTO_get_vm_ube_active;
     CRYPTO_get_vm_ube_generation;
     CRYPTO_get_vm_ube_supported;
+    CRYPTO_get_vmclock_path;
     CRYPTO_has_asm;
     CRYPTO_has_broken_NEON;
     CRYPTO_is_ARMv8_DIT_capable_for_testing;
@@ -3046,6 +3048,7 @@ AWS_LC_1.0 {
     pmbtoken_exp1_get_h_for_testing;
     pmbtoken_exp2_get_h_for_testing;
     pmbtoken_pst1_get_h_for_testing;
+    rand_ensure_valid_state_FOR_TESTING;
     rand_thread_local_state_clear_all_FOR_TESTING;
     rdrand_multiple8;
     rndr_multiple8;

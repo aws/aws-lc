@@ -37,6 +37,15 @@ OPENSSL_EXPORT uint64_t get_public_thread_reseed_calls_since_initialization(void
 // randomness afterwards.
 OPENSSL_EXPORT void rand_thread_local_state_clear_all_FOR_TESTING(void);
 
+// rand_ensure_valid_state_FOR_TESTING exposes the DRBG's mid-generation
+// validity predicate for tests. Given a cached generation baseline and whether
+// that baseline came from a transient VM UBE reading, it returns 1 if the state
+// is valid against the current UBE generation number (RAND_bytes would
+// continue) or 0 if not (the caller would abort). The current generation is
+// controlled by the UBE mock. Single-threaded test use only.
+OPENSSL_EXPORT int rand_ensure_valid_state_FOR_TESTING(
+    uint64_t baseline_generation_number, int baseline_is_transient);
+
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
 struct ctr_drbg_state_st {
