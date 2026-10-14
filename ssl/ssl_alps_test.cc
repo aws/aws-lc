@@ -283,6 +283,10 @@ TEST(SSLTest, Handoff) {
   }
 }
 
+// Builds a valid handback blob, changes its cipher to an RSA one while leaving
+// its type as handback_after_ecdhe so the type and cipher no longer agree, and
+// checks that SSL_apply_handback rejects it. RSA vs ECDHE key exchange only
+// exists in TLS 1.2, so the handshake is pinned to TLS 1.2.
 TEST(SSLTest, ApplyHandbackRejectsNonEcdheCipher) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -337,9 +341,16 @@ TEST(SSLTest, ApplyHandbackRejectsNonEcdheCipher) {
   ASSERT_TRUE(server_ok);
   EXPECT_TRUE(SSL_apply_handback(server_ok.get(), handback));
 
+  // The cipher is encoded in two spots; rewrite both to RSA cipher 0x009c
+  // (TLS_RSA_WITH_AES_128_GCM_SHA256). Both must change together, or
+  // apply_handback rejects the blob for mismatched ciphers before the guard
+  // under test. hi/lo are the two bytes of the current cipher's protocol id.
   const uint8_t hi = id >> 8, lo = id & 0xff;
+  // Handback cipher, ASN.1 INTEGER: {tag 0x02, length 0x04, value 0x0300<id>};
+  // apply_handback reads the low 2 bytes, so 0x0300009c selects cipher 0x009c.
   const uint8_t top_from[] = {0x02, 0x04, 0x03, 0x00, hi, lo};
   const uint8_t top_to[] = {0x02, 0x04, 0x03, 0x00, 0x00, 0x9c};
+  // Session cipher, ASN.1 OCTET STRING: {tag 0x04, length 0x02, 2-byte id}.
   const uint8_t sess_from[] = {0x04, 0x02, hi, lo};
   const uint8_t sess_to[] = {0x04, 0x02, 0x00, 0x9c};
 
