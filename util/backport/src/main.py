@@ -8,6 +8,7 @@ Calls upon actions based on command-line arguments
 
 from commands.analyze import cmd_analyze
 from commands.apply import cmd_apply
+from commands.publish import cmd_publish
 from util.config import BackportError
 
 import argparse
@@ -50,13 +51,53 @@ def add_apply(subparsers) -> None:
         action="store_true",
         help="Skips the confirm. Useful for test scripts",
     )
+    p.add_argument(
+        "--open-pr",
+        action="store_true",
+        help="offer to open the pull requests once the cherry-picks are done",
+    )
+    p.add_argument(
+        "--remote",
+        help="fork remote the branches are pushed to (default the non-aws/aws-lc remote)",
+    )
     p.set_defaults(func=cmd_apply)
+
+
+def add_publish(subparsers) -> None:
+    """
+    Pushes the branches apply built and opens one pull request each
+    Reads the same saved run, so analyze and apply have to have run first
+    """
+    p = subparsers.add_parser(
+        "publish", help="opens a backport pull request for every affected branch"
+    )
+    p.add_argument("--branch", help="only this release branch")
+    p.add_argument("--pr", help="source pull request number, to link and report on")
+    p.add_argument(
+        "--remote",
+        help="fork remote the branches are pushed to (default the non-aws/aws-lc remote)",
+    )
+    p.add_argument(
+        "--base-repo",
+        help="owner/repo to open the pull requests against (default the aws/aws-lc remote)",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="say what would be pushed and opened, without doing it",
+    )
+    p.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skips the confirm. Useful for test scripts",
+    )
+    p.set_defaults(func=cmd_publish)
 
 
 def build_parser() -> argparse.ArgumentParser:
     """
     Build parser for args
-    Returns the parser, with the analyze and apply subcommands on it
+    Returns the parser, with the analyze, apply and publish subcommands on it
     """
     ap = argparse.ArgumentParser(
         prog="backport",
@@ -65,6 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = ap.add_subparsers(dest="cmd", required=True)
     add_analyze(subparsers)
     add_apply(subparsers)
+    add_publish(subparsers)
     return ap
 
 

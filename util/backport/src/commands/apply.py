@@ -170,5 +170,14 @@ def cmd_apply(args) -> int:
             "Resolve each conflict in the worktree named above, then "
             "'git cherry-pick --continue' there."
         )
-    print("Nothing was pushed. Review each branch before you open a pull request.")
+
+    # Imported here, not at the top: publish imports this module for the run file and
+    # the branch naming, so importing it up there would be a cycle
+    from commands.publish import offer_publish
+
+    ready = [b for b, (o, _) in outcomes.items() if o in (APPLIED, ALREADY_THERE)]
+    if args.open_pr:
+        offer_publish(run, ready, args.remote)
+    else:
+        print("Nothing was pushed. Review each branch before you open a pull request.")
     return 1 if conflicted else 0
