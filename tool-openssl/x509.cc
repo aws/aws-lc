@@ -75,12 +75,34 @@ static const argument_t kArguments[] = {
      "Config file with X509V3 extensions to add"},
     {"-extensions", kOptionalArgument,
      "Section of extfile to use - default: unnamed section"},
+    {"-serial", kBooleanArgument, "Print the certificate serial number"},
+    {"-addtrust", kOptionalArgument,
+     "Add a trusted use (e.g. clientAuth, serverAuth) to the certificate"},
+    {"-trustout", kBooleanArgument,
+     "Output the certificate as a trusted certificate"},
     {"", kOptionalArgument, ""}};
 
 static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
                                    const std::string &out_path,
-                                   const std::string &outform) {
-  if (!outform.empty() && isStringUpperCaseEqual(outform, "DER")) {
+                                   const std::string &outform, bool trustout) {
+  const bool der = !outform.empty() && isStringUpperCaseEqual(outform, "DER");
+  if (trustout) {
+    uint8_t *data = nullptr;
+    const int len = i2d_X509_AUX(x509, &data);
+    const bool ok =
+        len > 0 && (der ? BIO_write(output_bio.get(), data, len) == len
+                        : PEM_write_bio(output_bio.get(), "TRUSTED CERTIFICATE",
+                                        "", data, len) > 0);
+    OPENSSL_free(data);
+    if (!ok) {
+      fprintf(stderr, "Error: error writing certificate to '%s'\n",
+              out_path.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    return true;
+  }
+  if (der) {
     if (!i2d_X509_bio(output_bio.get(), x509)) {
       fprintf(stderr, "Error: error writing certificate to '%s'\n",
               out_path.c_str());
@@ -624,6 +646,12 @@ static bool ProcessArgument(const std::string &arg_name,
   if (arg_name == "-subject") {
     return handleSubject(x509, output_bio.get(), name_flags);
   }
+  if (arg_name == "-serial") {
+    BIO_printf(output_bio.get(), "serial=");
+    i2a_ASN1_INTEGER(output_bio.get(), X509_get_serialNumber(x509));
+    BIO_printf(output_bio.get(), "\n");
+    return true;
+  }
   if (arg_name == "-subject_hash") {
     const uint32_t hash_value = X509_subject_name_hash(x509);
     BIO_printf(output_bio.get(), "%08x\n", hash_value);
@@ -691,16 +719,6 @@ int X509Tool(const args_list_t &args) {
   if (help) {
     PrintUsage(kArguments);
     return kToolExitSuccess;
-  }
-  bssl::UniquePtr<BIO> output_bio;
-  if (out_path.empty()) {
-    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
-  } else {
-    output_bio.reset(BIO_new(BIO_s_file()));
-    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return kToolExitFailure;
-    }
   }
 
   // -req must include a private key
@@ -796,15 +814,38 @@ int X509Tool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  // Read from stdin if no -in path provided
-  ScopedFILE in_file;
+  // Read the entire input up front so that an in-place rewrite (-in and -out
+  // naming the same file) does not truncate the input before it is read.
+  bssl::UniquePtr<BIO> in_bio;
   if (in_path.empty()) {
-    in_file.reset(stdin);
+    in_bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
   } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
+    ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
       fprintf(stderr, "Error: unable to load certificate from '%s'\n",
               in_path.c_str());
+      return kToolExitFailure;
+    }
+    in_bio.reset(BIO_new(BIO_s_mem()));
+    if (!in_bio) {
+      return kToolExitFailure;
+    }
+    uint8_t buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in_file.get())) > 0) {
+      if (BIO_write(in_bio.get(), buf, static_cast<int>(n)) <= 0) {
+        return kToolExitFailure;
+      }
+    }
+  }
+
+  bssl::UniquePtr<BIO> output_bio;
+  if (out_path.empty()) {
+    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else {
+    output_bio.reset(BIO_new(BIO_s_file()));
+    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
+      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
       return kToolExitFailure;
     }
   }
@@ -825,9 +866,9 @@ int X509Tool(const args_list_t &args) {
   if (req) {
     bssl::UniquePtr<X509_REQ> csr;
     if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
-      csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
+      csr.reset(d2i_X509_REQ_bio(in_bio.get(), nullptr));
     } else {
-      csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+      csr.reset(PEM_read_bio_X509_REQ(in_bio.get(), nullptr, nullptr, nullptr));
     }
 
     if (!csr) {
@@ -914,16 +955,17 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
+    if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform,
+                                false)) {
       return kToolExitFailure;
     }
   } else {
     // Parse x509 certificate from input file
     bssl::UniquePtr<X509> x509;
     if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
-      x509.reset(d2i_X509_fp(in_file.get(), nullptr));
+      x509.reset(d2i_X509_bio(in_bio.get(), nullptr));
     } else {
-      x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+      x509.reset(PEM_read_bio_X509(in_bio.get(), nullptr, nullptr, nullptr));
     }
 
     if (!x509) {
@@ -960,6 +1002,17 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
+    std::vector<std::string> add_trusts;
+    ordered_args::FindAll(add_trusts, "-addtrust", parsed_args);
+    const bool trustout = ordered_args::HasArgument(parsed_args, "-trustout");
+    for (const auto &trust : add_trusts) {
+      bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj(trust.c_str(), 0));
+      if (!obj || !X509_add1_trust_object(x509.get(), obj.get())) {
+        fprintf(stderr, "Error: unable to add trust '%s'\n", trust.c_str());
+        return kToolExitFailure;
+      }
+    }
+
     // Process arguments in the order they were provided
     bool dates_processed = false;
     bool will_expire = false;
@@ -971,7 +1024,8 @@ int X509Tool(const args_list_t &args) {
       if (arg_name == "-in" || arg_name == "-out" || arg_name == "-inform" ||
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
-          arg_name == "-CAkey" || arg_name == "-nameopt") {
+          arg_name == "-CAkey" || arg_name == "-nameopt" ||
+          arg_name == "-addtrust" || arg_name == "-trustout") {
         continue;
       }
 
@@ -989,7 +1043,8 @@ int X509Tool(const args_list_t &args) {
     }
 
     if (!noout) {
-      if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
+      if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform,
+                                  trustout)) {
         return kToolExitFailure;
       }
     }
