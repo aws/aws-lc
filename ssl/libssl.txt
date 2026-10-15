@@ -73,6 +73,8 @@ SSL_CTX_get0_chain_certs AWS_LC_1.0 PUBLIC
 SSL_CTX_get0_param AWS_LC_1.0 PUBLIC
 SSL_CTX_get0_privatekey AWS_LC_1.0 PUBLIC
 SSL_CTX_get0_security_ex_data AWS_LC_1.0 PUBLIC
+SSL_CTX_get0_signing_algorithm_prefs AWS_LC_1.0 PUBLIC
+SSL_CTX_get0_verify_algorithm_prefs AWS_LC_1.0 PUBLIC
 SSL_CTX_get_cert_store AWS_LC_1.0 PUBLIC
 SSL_CTX_get_ciphers AWS_LC_1.0 PUBLIC
 SSL_CTX_get_client_CA_list AWS_LC_1.0 PUBLIC
@@ -480,6 +482,7 @@ SSL_set0_security_ex_data AWS_LC_1.0 PUBLIC
 SSL_set0_verify_cert_store AWS_LC_1.0 PUBLIC
 SSL_set0_wbio AWS_LC_1.0 PUBLIC
 SSL_set1_chain AWS_LC_1.0 PUBLIC
+SSL_set1_cipher_lists_from_ctx AWS_LC_1.0 PUBLIC
 SSL_set1_curves AWS_LC_1.0 PUBLIC
 SSL_set1_curves_list AWS_LC_1.0 PUBLIC
 SSL_set1_delegated_credential AWS_LC_1.0 PUBLIC
