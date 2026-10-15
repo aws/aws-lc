@@ -1004,8 +1004,11 @@ ____
 	}
     }
 
+    # pdata_and_xdata returns the unwind tables accumulated so far and resets
+    # them, so the tables are emitted at most once.
     sub pdata_and_xdata {
 	return "" unless $win64;
+	_check_not_in_proc();
 
 	my $ret = "";
 	if ($pdata ne "") {
@@ -1021,6 +1024,7 @@ ____
 $xdata
 ____
 	}
+	($xdata, $pdata) = ("", "");
 	return $ret;
     }
 }
@@ -1604,12 +1608,24 @@ sub process_line {
     print $line,"\n";
 }
 
+sub emit_seh_tables {
+    foreach my $line (split(/\n/, seh_directive->pdata_and_xdata())) {
+	process_line($line);
+    }
+}
+
 while(defined(my $line=<>)) {
+    # By default, the SEH unwind tables are emitted at the end of the file. A
+    # perlasm script may emit them earlier with the |.seh_emit_tables|
+    # pseudo-directive, e.g. so they fall inside the same preprocessor
+    # conditional as the functions they describe.
+    if ($line =~ /^\s*\.seh_emit_tables\s*$/) {
+	emit_seh_tables();
+	next;
+    }
     process_line($line);
 }
-foreach my $line (split(/\n/, seh_directive->pdata_and_xdata())) {
-    process_line($line);
-}
+emit_seh_tables();
 
 print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
 if ($masm) {

@@ -128,6 +128,7 @@ var defaultCPUs = []string{
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
 	"tgl", // Tiger Lake
+	"adl", // Alder Lake (VAES and VPCLMULQDQ without AVX-512)
 	"snb", // Sandy Bridge
 	"ivb", // Ivy Bridge
 }
