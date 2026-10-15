@@ -1247,6 +1247,15 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
                                                    const uint16_t *prefs,
                                                    size_t num_prefs);
 
+// SSL_CTX_get0_signing_algorithm_prefs sets |*out_prefs| to the signing
+// algorithm preferences configured on |ctx| and returns how many there are. It
+// returns zero if none are configured, in which case the defaults are used.
+// The result may be passed to |SSL_set_signing_algorithm_prefs| to apply the
+// same preferences to an |SSL| without parsing them again. |*out_prefs| remains
+// valid until |ctx|'s preferences change or |ctx| is freed.
+OPENSSL_EXPORT size_t SSL_CTX_get0_signing_algorithm_prefs(
+    const SSL_CTX *ctx, const uint16_t **out_prefs);
+
 // SSL_CTX_use_cert_and_key sets |x509|, |privatekey|, and |chain| on |ctx|.
 // The |privatekey| argument must be the private key of the certificate |x509|.
 // If the override argument is 0, then |x509|, |privatekey|, and |chain| are
@@ -1720,11 +1729,14 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // configuration, which |SSL_set_SSL_CTX| does not update. |SSL_set_cipher_list|
 // and |SSL_set_strict_cipher_list| set a connection's TLS 1.2 and below cipher
 // suites, and |SSL_set_ciphersuites| sets its TLS 1.3 cipher suites, without
-// affecting each other. A server may call them from the callbacks registered by
-// |SSL_CTX_set_client_hello_cb|, |SSL_CTX_set_select_certificate_cb|,
+// affecting each other. |SSL_set1_cipher_lists_from_ctx| sets both to a copy of
+// an |SSL_CTX|'s, without parsing a cipher string. A server may call these from
+// the callbacks registered by |SSL_CTX_set_client_hello_cb|,
+// |SSL_CTX_set_select_certificate_cb|,
 // |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb|, which
-// run before it selects the cipher suite. If one fails, the connection's cipher
-// suites may be partially updated, so callers should treat failure as fatal.
+// run before it selects the cipher suite. If a function that parses a cipher
+// string fails, the connection's cipher suites may be partially updated, so
+// callers should treat failure as fatal.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1792,6 +1804,13 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 // also results in an empty cipher list, is allowed. This behavior is strongly
 // advised against and only meant for OpenSSL compatibility.
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
+
+// SSL_set1_cipher_lists_from_ctx sets |ssl|'s cipher suites, for all protocol
+// versions, to a copy of |ctx|'s, replacing any configured on |ssl|. Unlike
+// |SSL_set_cipher_list| and |SSL_set_ciphersuites|, it does not parse a cipher
+// string, and it leaves |ssl| unchanged on error. Later changes to |ctx| do not
+// affect |ssl|. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_set1_cipher_lists_from_ctx(SSL *ssl, const SSL_CTX *ctx);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
 // preference. This includes TLS 1.3 and 1.2 and below cipher suites.
@@ -3228,6 +3247,16 @@ OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
                                                   const uint16_t *prefs,
                                                   size_t num_prefs);
 
+// SSL_CTX_get0_verify_algorithm_prefs sets |*out_prefs| to the
+// peer-verification signature algorithm preferences configured on |ctx| and
+// returns how many there are. It returns zero if none are configured, in which
+// case the defaults are used. The result may be passed to
+// |SSL_set_verify_algorithm_prefs| to apply the same preferences to an |SSL|
+// without parsing them again. |*out_prefs| remains valid until |ctx|'s
+// preferences change or |ctx| is freed.
+OPENSSL_EXPORT size_t SSL_CTX_get0_verify_algorithm_prefs(
+    const SSL_CTX *ctx, const uint16_t **out_prefs);
+
 // Client certificate CA list.
 //
 // When requesting a client certificate, a server may advertise a list of
@@ -3368,7 +3397,8 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // This function is deprecated because it only partly reconfigures |ssl|, which
 // is easy to get wrong. New code should instead set what it needs on |ssl| from
 // those callbacks, e.g. the certificate with |SSL_set_chain_and_key| or
-// |SSL_use_cert_and_key|. Existing callers remain supported.
+// |SSL_use_cert_and_key|, and the cipher suites with
+// |SSL_set1_cipher_lists_from_ctx|. Existing callers remain supported.
 //
 // Each |SSL| has its own copy of the settings that |SSL_new| copies from the
 // initial |SSL_CTX|, and of any settings set on the |SSL| directly. Other
@@ -3385,12 +3415,13 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // (|SSL_CTX_set_cert_store|), come from |ctx| after this call.
 //
 // To use |ctx|'s value for a setting this function leaves unchanged, set it on
-// |ssl| after this call, e.g. with |SSL_set_cipher_list|,
-// |SSL_set_ciphersuites|, or |SSL_set_verify_algorithm_prefs|. A server selects
-// its cipher suite after the callbacks above return, but fixes its protocol
-// version range when the |SSL_CTX_set_select_certificate_cb| callback returns,
-// before the other two run. For differences from OpenSSL and earlier AWS-LC
-// releases, see
+// |ssl| after this call. For example, |SSL_set1_cipher_lists_from_ctx| copies
+// |ctx|'s cipher suites, and |SSL_set_verify_algorithm_prefs| can apply the
+// preferences returned by |SSL_CTX_get0_verify_algorithm_prefs|. A server
+// selects its cipher suite after the callbacks above return, but fixes its
+// protocol version range when the |SSL_CTX_set_select_certificate_cb| callback
+// returns, before the other two run. For differences from OpenSSL and earlier
+// AWS-LC releases, see
 // https://github.com/aws/aws-lc/blob/main/PORTING.md#switching-ssl_ctx-during-the-handshake
 //
 // Note the session cache and related settings will continue to use the initial
