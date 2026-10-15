@@ -1247,6 +1247,16 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
                                                    const uint16_t *prefs,
                                                    size_t num_prefs);
 
+// SSL_CTX_get0_signing_algorithm_prefs sets |*out_prefs| to the signing
+// algorithm preferences configured on |ctx| and returns how many there are. It
+// returns zero if none are configured, in which case the defaults are used and
+// |*out_prefs| may be NULL. The result may be passed to
+// |SSL_set_signing_algorithm_prefs| to apply the same preferences to an |SSL|
+// without parsing them again. |*out_prefs| remains valid until |ctx|'s
+// preferences change or |ctx| is freed.
+OPENSSL_EXPORT size_t SSL_CTX_get0_signing_algorithm_prefs(
+    const SSL_CTX *ctx, const uint16_t **out_prefs);
+
 // SSL_CTX_use_cert_and_key sets |x509|, |privatekey|, and |chain| on |ctx|.
 // The |privatekey| argument must be the private key of the certificate |x509|.
 // If the override argument is 0, then |x509|, |privatekey|, and |chain| are
@@ -1715,6 +1725,19 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
+//
+// |SSL_new| gives each |SSL| its own copy of the |SSL_CTX|'s cipher suite
+// configuration, which |SSL_set_SSL_CTX| does not update. |SSL_set_cipher_list|
+// and |SSL_set_strict_cipher_list| set a connection's TLS 1.2 and below cipher
+// suites, and |SSL_set_ciphersuites| sets its TLS 1.3 cipher suites, without
+// affecting each other. |SSL_set1_cipher_lists_from_ctx| sets both to a copy of
+// an |SSL_CTX|'s, without parsing a cipher string. A server may call these from
+// the callbacks registered by |SSL_CTX_set_client_hello_cb|,
+// |SSL_CTX_set_select_certificate_cb|,
+// |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb|, which
+// run before it selects the cipher suite. If a function that parses a cipher
+// string fails, the connection's cipher suites may be partially updated, so
+// callers should treat failure as fatal.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1782,6 +1805,13 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 // also results in an empty cipher list, is allowed. This behavior is strongly
 // advised against and only meant for OpenSSL compatibility.
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
+
+// SSL_set1_cipher_lists_from_ctx sets |ssl|'s cipher suites, for all protocol
+// versions, to a copy of |ctx|'s, replacing any configured on |ssl|. Unlike
+// |SSL_set_cipher_list| and |SSL_set_ciphersuites|, it does not parse a cipher
+// string, and it leaves |ssl| unchanged on error. Later changes to |ctx| do not
+// affect |ssl|. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_set1_cipher_lists_from_ctx(SSL *ssl, const SSL_CTX *ctx);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
 // preference. This includes TLS 1.3 and 1.2 and below cipher suites.
@@ -3203,6 +3233,9 @@ OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 // preference list when verifying signatures from the peer's long-term key. It
 // returns one on zero on error. |prefs| should not include the internal-only
 // value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+//
+// |SSL_new| copies these preferences into the |SSL|. Unlike the signing
+// preferences, they are not changed by |SSL_set_SSL_CTX|.
 OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
                                                       const uint16_t *prefs,
                                                       size_t num_prefs);
@@ -3214,6 +3247,16 @@ OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
                                                   const uint16_t *prefs,
                                                   size_t num_prefs);
+
+// SSL_CTX_get0_verify_algorithm_prefs sets |*out_prefs| to the
+// peer-verification signature algorithm preferences configured on |ctx| and
+// returns how many there are. It returns zero if none are configured, in which
+// case the defaults are used and |*out_prefs| may be NULL. The result may be
+// passed to |SSL_set_verify_algorithm_prefs| to apply the same preferences to
+// an |SSL| without parsing them again. |*out_prefs| remains valid until |ctx|'s
+// preferences change or |ctx| is freed.
+OPENSSL_EXPORT size_t SSL_CTX_get0_verify_algorithm_prefs(
+    const SSL_CTX *ctx, const uint16_t **out_prefs);
 
 // Client certificate CA list.
 //
@@ -3352,11 +3395,42 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // the handshake is paused from them. It is typically used to switch
 // certificates based on SNI.
 //
+// This function is deprecated because it only partly reconfigures |ssl|, which
+// is easy to get wrong. New code should instead set what it needs on |ssl| from
+// those callbacks, e.g. the certificate with |SSL_set_chain_and_key| or
+// |SSL_use_cert_and_key|, and the cipher suites with
+// |SSL_set1_cipher_lists_from_ctx|. Existing callers remain supported.
+//
+// Each |SSL| has its own copy of the settings that |SSL_new| copies from the
+// initial |SSL_CTX|, and of any settings set on the |SSL| directly. Other
+// settings are read from the current |SSL_CTX| when needed. This function
+// replaces the certificate-related copies with |ctx|'s: the certificates,
+// private keys and private key method, signing algorithm preferences, OCSP
+// response, SCT list, delegated credential, certificate callback, session ID
+// context, and the store set by |SSL_CTX_set1_verify_cert_store|. It also takes
+// |ctx|'s early data setting. It leaves the other copies unchanged, including
+// the cipher suites, peer-verification signature algorithm preferences,
+// supported groups, protocol versions, options, verify mode, and certificate
+// verification parameters. Settings read from the current |SSL_CTX|, such as
+// the ALPN selection callback and the certificate store
+// (|SSL_CTX_set_cert_store|), come from |ctx| after this call.
+//
+// To use |ctx|'s value for a setting this function leaves unchanged, set it on
+// |ssl| after this call. For example, |SSL_set1_cipher_lists_from_ctx| copies
+// |ctx|'s cipher suites, and |SSL_set_verify_algorithm_prefs| can apply the
+// preferences returned by |SSL_CTX_get0_verify_algorithm_prefs|. A server
+// selects its cipher suite after the callbacks above return, but fixes its
+// protocol version range when the |SSL_CTX_set_select_certificate_cb| callback
+// returns, before the other two run. For differences from OpenSSL and earlier
+// AWS-LC releases, see
+// https://github.com/aws/aws-lc/blob/main/PORTING.md#switching-ssl_ctx-during-the-handshake
+//
 // Note the session cache and related settings will continue to use the initial
 // |SSL_CTX|. Callers should use |SSL_CTX_set_session_id_context| to partition
 // the session cache between different domains.
 //
-// TODO(davidben): Should other settings change after this call?
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
+// depends on this.
 OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 
 
@@ -5402,7 +5476,9 @@ OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles);
 // SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
 // where the first is the nid of a hash function and the second is an
 // |EVP_PKEY_*| value. It configures the signature algorithm preferences for
-// |ctx| based on them and returns one on success or zero on error.
+// |ctx| based on them and returns one on success or zero on error. It sets
+// both the signing (|SSL_CTX_set_signing_algorithm_prefs|) and the
+// peer-verification (|SSL_CTX_set_verify_algorithm_prefs|) preferences.
 //
 // This API is compatible with OpenSSL. However, BoringSSL-specific code should
 // prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
@@ -5413,7 +5489,9 @@ OPENSSL_EXPORT int SSL_CTX_set1_sigalgs(SSL_CTX *ctx, const int *values,
 // SSL_set1_sigalgs takes |num_values| ints and interprets them as pairs where
 // the first is the nid of a hash function and the second is an |EVP_PKEY_*|
 // value. It configures the signature algorithm preferences for |ssl| based on
-// them and returns one on success or zero on error.
+// them and returns one on success or zero on error. It sets both the signing
+// (|SSL_set_signing_algorithm_prefs|) and the peer-verification
+// (|SSL_set_verify_algorithm_prefs|) preferences.
 //
 // This API is compatible with OpenSSL. However, BoringSSL-specific code should
 // prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
@@ -5422,8 +5500,10 @@ OPENSSL_EXPORT int SSL_set1_sigalgs(SSL *ssl, const int *values,
                                     size_t num_values);
 
 // SSL_CTX_set1_sigalgs_list takes a textual specification of a set of signature
-// algorithms and configures them on |ctx|. It returns one on success and zero
-// on error. See
+// algorithms and configures them on |ctx| as both the signing
+// (|SSL_CTX_set_signing_algorithm_prefs|) and the peer-verification
+// (|SSL_CTX_set_verify_algorithm_prefs|) preferences. It returns one on success
+// and zero on error. See
 // https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set1_sigalgs_list.html for
 // a description of the text format. Also note that TLS 1.3 names (e.g.
 // "rsa_pkcs1_md5_sha1") can also be used (as in OpenSSL, although OpenSSL
@@ -5435,8 +5515,10 @@ OPENSSL_EXPORT int SSL_set1_sigalgs(SSL *ssl, const int *values,
 OPENSSL_EXPORT int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set1_sigalgs_list takes a textual specification of a set of signature
-// algorithms and configures them on |ssl|. It returns one on success and zero
-// on error. See
+// algorithms and configures them on |ssl| as both the signing
+// (|SSL_set_signing_algorithm_prefs|) and the peer-verification
+// (|SSL_set_verify_algorithm_prefs|) preferences. It returns one on success and
+// zero on error. See
 // https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set1_sigalgs_list.html for
 // a description of the text format. Also note that TLS 1.3 names (e.g.
 // "rsa_pkcs1_md5_sha1") can also be used (as in OpenSSL, although OpenSSL

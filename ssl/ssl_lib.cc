@@ -2285,6 +2285,34 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
 }
 
+int SSL_set1_cipher_lists_from_ctx(SSL *ssl, const SSL_CTX *ctx) {
+  if (!ssl->config) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  // Copy both lists, as |SSL_new| does, before replacing either, so that |ssl|
+  // is unchanged on failure.
+  UniquePtr<SSLCipherPreferenceList> cipher_list, tls13_cipher_list;
+  if (ctx->cipher_list) {
+    cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    if (!cipher_list || !cipher_list->Init(*ctx->cipher_list)) {
+      return 0;
+    }
+  }
+  if (ctx->tls13_cipher_list) {
+    tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    if (!tls13_cipher_list ||
+        !tls13_cipher_list->Init(*ctx->tls13_cipher_list)) {
+      return 0;
+    }
+  }
+
+  ssl->config->cipher_list = std::move(cipher_list);
+  ssl->config->tls13_cipher_list = std::move(tls13_cipher_list);
+  return 1;
+}
+
 const char *SSL_get_servername(const SSL *ssl, const int type) {
   if (type != TLSEXT_NAMETYPE_host_name) {
     return NULL;
