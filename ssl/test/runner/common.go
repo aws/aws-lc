@@ -1440,6 +1440,11 @@ type ProtocolBugs struct {
 	// receipt of a NewSessionTicket message.
 	ExpectNoNewSessionTicket bool
 
+	// ReadNewSessionTickets causes the runner to read the given number of TLS 1.3
+	// NewSessionTicket messages immediately after the handshake, before writing
+	// application data.
+	ReadNewSessionTickets int
+
 	// DuplicateTicketEarlyData causes an extra empty extension of early_data to
 	// be sent in NewSessionTicket.
 	DuplicateTicketEarlyData bool
