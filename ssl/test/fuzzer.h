@@ -434,7 +434,8 @@ class TLSFuzzer {
     }
     SSL_CTX_set_tls_channel_id_enabled(ctx_.get(), 1);
 
-    if (role_ == kServer) {
+    // ECH requires TLS 1.3, so |SSL_CTX_set1_ech_keys| rejects DTLS contexts.
+    if (role_ == kServer && protocol_ != kDTLS) {
       bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
       bssl::ScopedEVP_HPKE_KEY key;
       uint8_t *ech_config;
