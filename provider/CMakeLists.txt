@@ -154,6 +154,9 @@ if(BUILD_TESTING AND NOT ANDROID)
   target_compile_definitions(awslc_provider_test PRIVATE
     "AWSLC_PROVIDER_MODULE_DIR=\"$<TARGET_FILE_DIR:awslc_provider>\""
     "AWSLC_PROVIDER_CONFIG_FILE=\"${CMAKE_CURRENT_SOURCE_DIR}/test/provider.cnf\"")
+  if(FIPS)
+    target_compile_definitions(awslc_provider_test PRIVATE AWSLC_FIPS)
+  endif()
 
   # Both test binaries run straight out of the build tree, so they carry the
   # paths to the OpenSSL they link and to the build's own shared libraries.
