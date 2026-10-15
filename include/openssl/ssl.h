@@ -1249,10 +1249,11 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
 
 // SSL_CTX_get0_signing_algorithm_prefs sets |*out_prefs| to the signing
 // algorithm preferences configured on |ctx| and returns how many there are. It
-// returns zero if none are configured, in which case the defaults are used.
-// The result may be passed to |SSL_set_signing_algorithm_prefs| to apply the
-// same preferences to an |SSL| without parsing them again. |*out_prefs| remains
-// valid until |ctx|'s preferences change or |ctx| is freed.
+// returns zero if none are configured, in which case the defaults are used and
+// |*out_prefs| may be NULL. The result may be passed to
+// |SSL_set_signing_algorithm_prefs| to apply the same preferences to an |SSL|
+// without parsing them again. |*out_prefs| remains valid until |ctx|'s
+// preferences change or |ctx| is freed.
 OPENSSL_EXPORT size_t SSL_CTX_get0_signing_algorithm_prefs(
     const SSL_CTX *ctx, const uint16_t **out_prefs);
 
@@ -3250,9 +3251,9 @@ OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
 // SSL_CTX_get0_verify_algorithm_prefs sets |*out_prefs| to the
 // peer-verification signature algorithm preferences configured on |ctx| and
 // returns how many there are. It returns zero if none are configured, in which
-// case the defaults are used. The result may be passed to
-// |SSL_set_verify_algorithm_prefs| to apply the same preferences to an |SSL|
-// without parsing them again. |*out_prefs| remains valid until |ctx|'s
+// case the defaults are used and |*out_prefs| may be NULL. The result may be
+// passed to |SSL_set_verify_algorithm_prefs| to apply the same preferences to
+// an |SSL| without parsing them again. |*out_prefs| remains valid until |ctx|'s
 // preferences change or |ctx| is freed.
 OPENSSL_EXPORT size_t SSL_CTX_get0_verify_algorithm_prefs(
     const SSL_CTX *ctx, const uint16_t **out_prefs);

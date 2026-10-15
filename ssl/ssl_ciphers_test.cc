@@ -1294,9 +1294,13 @@ TEST(SSLTest, TLS12ConfigCtxInteraction) {
 // during the handshake, as servers do to select per-hostname configuration, and
 // check which settings follow the switch.
 
+// ContextSwitchCallback selects which of the server callbacks that run before
+// cipher suite selection performs the switch.
 enum class ContextSwitchCallback {
-  kServerName,
+  kClientHello,
   kSelectCertificate,
+  kServerName,
+  kCertCb,
 };
 
 struct ContextSwitchParam {
@@ -1306,12 +1310,16 @@ struct ContextSwitchParam {
 };
 
 static const ContextSwitchParam kContextSwitchParams[] = {
-    {TLS1_2_VERSION, ContextSwitchCallback::kServerName, "TLS1_2_ServerName"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kClientHello, "TLS1_2_ClientHello"},
     {TLS1_2_VERSION, ContextSwitchCallback::kSelectCertificate,
      "TLS1_2_SelectCertificate"},
-    {TLS1_3_VERSION, ContextSwitchCallback::kServerName, "TLS1_3_ServerName"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kServerName, "TLS1_2_ServerName"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kCertCb, "TLS1_2_CertCb"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kClientHello, "TLS1_3_ClientHello"},
     {TLS1_3_VERSION, ContextSwitchCallback::kSelectCertificate,
      "TLS1_3_SelectCertificate"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kServerName, "TLS1_3_ServerName"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kCertCb, "TLS1_3_CertCb"},
 };
 
 // The initial context allows both suites of each pair below. The selected
@@ -1410,20 +1418,41 @@ class SSLContextSwitchTest : public testing::TestWithParam<ContextSwitchParam> {
     ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx_.get(), version()));
 
     state_.ctx = sni_ctx_.get();
-    if (GetParam().callback == ContextSwitchCallback::kServerName) {
-      SSL_CTX_set_tlsext_servername_callback(
-          server_ctx_.get(), [](SSL *ssl, int *out_alert, void *arg) -> int {
-            return SwitchContextForTest(ssl) ? SSL_TLSEXT_ERR_OK
-                                             : SSL_TLSEXT_ERR_ALERT_FATAL;
-          });
-    } else {
-      SSL_CTX_set_select_certificate_cb(
-          server_ctx_.get(),
-          [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-            return SwitchContextForTest(client_hello->ssl)
-                       ? ssl_select_cert_success
-                       : ssl_select_cert_error;
-          });
+    switch (GetParam().callback) {
+      case ContextSwitchCallback::kClientHello:
+        SSL_CTX_set_client_hello_cb(
+            server_ctx_.get(),
+            [](SSL *ssl, int *out_alert, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? SSL_CLIENT_HELLO_SUCCESS
+                                               : SSL_CLIENT_HELLO_ERROR;
+            },
+            nullptr);
+        break;
+      case ContextSwitchCallback::kSelectCertificate:
+        SSL_CTX_set_select_certificate_cb(
+            server_ctx_.get(),
+            [](const SSL_CLIENT_HELLO *client_hello)
+                -> ssl_select_cert_result_t {
+              return SwitchContextForTest(client_hello->ssl)
+                         ? ssl_select_cert_success
+                         : ssl_select_cert_error;
+            });
+        break;
+      case ContextSwitchCallback::kServerName:
+        SSL_CTX_set_tlsext_servername_callback(
+            server_ctx_.get(), [](SSL *ssl, int *out_alert, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? SSL_TLSEXT_ERR_OK
+                                               : SSL_TLSEXT_ERR_ALERT_FATAL;
+            });
+        break;
+      case ContextSwitchCallback::kCertCb:
+        SSL_CTX_set_cert_cb(
+            server_ctx_.get(),
+            [](SSL *ssl, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? 1 : 0;
+            },
+            nullptr);
+        break;
     }
   }
 
