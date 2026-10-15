@@ -675,7 +675,7 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
   // that "foo@example.com." cannot evade an excluded "example.com". This
   // matches the normalization in nc_dns() and nc_uri().
   if (ends_with_byte(&eml_domain, '.')) {
-    uint8_t dot;
+    uint8_t dot = 0;
     CBS_get_last_u8(&eml_domain, &dot);
   }
 
@@ -703,7 +703,7 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
       return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
     }
     if (ends_with_byte(&base_domain, '.')) {
-      uint8_t dot;
+      uint8_t dot = 0;
       CBS_get_last_u8(&base_domain, &dot);
     }
     if (!is_valid_rfc822_local_part(&base_local) ||
@@ -728,7 +728,7 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
   }
 
   if (ends_with_byte(&base_cbs, '.')) {
-    uint8_t dot;
+    uint8_t dot = 0;
     CBS_get_last_u8(&base_cbs, &dot);
   }
   if (!is_valid_rfc822_domain(&base_cbs)) {
