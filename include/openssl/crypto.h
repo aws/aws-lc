@@ -106,8 +106,10 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // which case it returns one.
 OPENSSL_EXPORT int FIPS_mode(void);
 
-// FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
-// for AWS-LC. Otherwise, returns 0;
+// FIPS_is_entropy_cpu_jitter returns one if CPU Jitter is currently used to
+// seed AWS-LC's DRBGs and zero otherwise. Non-FIPS builds switch to operating
+// system entropy if CPU Jitter fails, after which this returns zero. Before the
+// RNG is first used, it reports whether CPU Jitter will be tried.
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
 // FIPS_version returns the FIPS version number of the current build,
