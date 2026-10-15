@@ -9,15 +9,8 @@
 
 #include "internal/backend.h"
 
-void awslc_prov_error_mark(void) {
-  // Marking an empty queue marks nothing and reports zero, which needs no
-  // handling: the discard then clears the queue, exactly the records this call
-  // is answerable for.
-  ERR_set_mark();
-}
-
-void awslc_prov_error_discard(void) {
-  ERR_pop_to_mark();
+void awslc_prov_error_clear(void) {
+  ERR_clear_error();
 }
 
 int awslc_prov_error_shift(AWSLC_PROV_ERROR *out) {

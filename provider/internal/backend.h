@@ -155,11 +155,10 @@ typedef struct {
   char detail[AWSLC_PROV_ERROR_DETAIL_SIZE];
 } AWSLC_PROV_ERROR;
 
-// Primitives for scoping the AWS-LC error queue to one dispatch call.
-// Set the mark prior to calling an AWS-LC operation.
-void awslc_prov_error_mark(void);
-// Clear the AWS-LC error queue to the mark and discard any reported errors
-void awslc_prov_error_discard(void);
+// Each dispatch call owns its thread's whole AWS-LC error queue: the provider
+// assumes it is AWS-LC's only error-queue user in the process.
+// Empty the AWS-LC queue.
+void awslc_prov_error_clear(void);
 // Pop one error off of the AWS-LC error-queue and write it to |out|
 int awslc_prov_error_shift(AWSLC_PROV_ERROR *out);
 

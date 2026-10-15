@@ -125,12 +125,9 @@ TEST_F(BackendErrorTest, LeavesCrossLibraryReasonsUntagged) {
   EXPECT_EQ((uint32_t)cross_library_reason, Shift().reason);
 }
 
-// AWS-LC queues records on recoverable internal paths, which a successful dispatch
-// call must not leak to the application.
-TEST_F(BackendErrorTest, DiscardsRecordsQueuedSinceTheMark) {
-  awslc_prov_error_mark();
+TEST_F(BackendErrorTest, ClearDropsQueuedRecords) {
   Put(ERR_LIB_EC, kEcBufferTooSmall, "ec.c", 1);
-  awslc_prov_error_discard();
+  awslc_prov_error_clear();
 
   AWSLC_PROV_ERROR record;
   EXPECT_FALSE(awslc_prov_error_shift(&record));
