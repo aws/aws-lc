@@ -1726,7 +1726,10 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // anything meaningless. It updates |ctx->cipher_list| with any values in
 // |ctx->tls13_cipher_list|.
 //
-// It returns one on success and zero on failure.
+// It returns one on success and zero on failure. If |str| parses successfully
+// but selects no TLS 1.2 and below suites (including an empty |str|), it returns
+// zero and clears those suites, preserving the TLS 1.3 suites. Other failures,
+// including parsing errors, leave the configuration unchanged.
 OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
                                                   const char *str);
 
@@ -1734,11 +1737,17 @@ OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
 // |str| as a cipher string. It updates |ctx->cipher_list| with any values in
 // |ctx->tls13_cipher_list|. It returns one on success and zero on failure.
 //
-// Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
-// garbage inputs, unless an empty cipher list results. However, an empty
-// string which also results in an empty cipher list, is allowed. This
-// behavior is strongly advised against and only meant for OpenSSL
-// compatibility.
+// Prefer to use |SSL_CTX_set_strict_cipher_list|. This function ignores
+// unrecognized cipher names for OpenSSL compatibility. This leniency is
+// strongly discouraged.
+//
+// If a non-empty |str| parses successfully but selects no TLS 1.2 and below
+// suites, this function returns zero and clears those suites, preserving the
+// TLS 1.3 suites. Other failures leave the configuration unchanged.
+//
+// An empty |str| clears the TLS 1.2 and below suites and returns one,
+// preserving the TLS 1.3 suites. OpenSSL instead returns zero with
+// |SSL_R_NO_CIPHER_MATCH| while still installing the TLS 1.3-only list.
 //
 // Note: this API only sets the TLSv1.2 and below ciphers.
 // Use |SSL_CTX_set_ciphersuites| to configure TLS 1.3 specific ciphers.
@@ -1751,13 +1760,24 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 // TLS 1.3 cipher suites by first checking |ssl->config->tls13_cipher_list| and
 // otherwise falling back to |ssl->ctx->tls13_cipher_list|.
 //
-// It returns one on success and zero on failure.
+// It returns one on success and zero on failure. If |str| parses successfully
+// but selects no TLS 1.2 and below suites (including an empty |str|), it returns
+// zero and clears those suites, preserving the TLS 1.3 suites. Other failures,
+// including parsing errors, leave the configuration unchanged.
 OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 
 // SSL_CTX_set_ciphersuites configures the available TLSv1.3 ciphersuites on
 // |ctx|, evaluating |str| as a cipher string. It updates |ctx->cipher_list|
 // with any values in |ctx->tls13_cipher_list|. It returns one on success and
 // zero on failure.
+//
+// An empty |str| succeeds and configures no TLS 1.3 suites. Any failure,
+// including a non-empty |str| that matches none, leaves the configuration
+// unchanged.
+//
+// An empty list does not disable the TLS 1.3 protocol or enable automatic
+// fallback to TLS 1.2. To disable TLS 1.3, use |SSL_CTX_set_max_proto_version|
+// with |TLS1_2_VERSION| instead.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
 // SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
@@ -1765,6 +1785,14 @@ OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 // |ssl->config->cipher_list| with any values in
 // |ssl->config->tls13_cipher_list|. It returns one on success and zero on
 // failure.
+//
+// An empty |str| succeeds and configures no TLS 1.3 suites. Any failure,
+// including a non-empty |str| that matches none, leaves the configuration
+// unchanged.
+//
+// An empty list does not disable the TLS 1.3 protocol or enable automatic
+// fallback to TLS 1.2. To disable TLS 1.3, use |SSL_set_max_proto_version| with
+// |TLS1_2_VERSION| instead.
 OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
@@ -1777,10 +1805,17 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 //
 // It returns one on success and zero on failure.
 //
-// Prefer to use |SSL_set_strict_cipher_list|. This function tolerates garbage
-// inputs, unless an empty cipher list results. However, an empty string which
-// also results in an empty cipher list, is allowed. This behavior is strongly
-// advised against and only meant for OpenSSL compatibility.
+// Prefer to use |SSL_set_strict_cipher_list|. This function ignores
+// unrecognized cipher names for OpenSSL compatibility. This leniency is
+// strongly discouraged.
+//
+// If a non-empty |str| parses successfully but selects no TLS 1.2 and below
+// suites, this function returns zero and clears those suites, preserving the
+// TLS 1.3 suites. Other failures leave the configuration unchanged.
+//
+// An empty |str| clears the TLS 1.2 and below suites and returns one,
+// preserving the TLS 1.3 suites. OpenSSL instead returns zero with
+// |SSL_R_NO_CIPHER_MATCH| while still installing the TLS 1.3-only list.
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
