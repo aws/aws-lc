@@ -2140,7 +2140,7 @@ static DIST_POINT_NAME *MakeDistPointName(const char *uri) {
 // Helper to create a leaf cert with a CRLDP extension and sign it.
 static bssl::UniquePtr<X509> MakeCRLDPLeaf(
     X509 *issuer_cert, EVP_PKEY *issuer_key, int serial,
-    CRL_DIST_POINTS *crldp) {
+    CRL_DIST_POINTS *crldp, int critical = 0) {
   bssl::UniquePtr<EVP_PKEY> leaf_key(EVP_PKEY_new());
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -2169,7 +2169,7 @@ static bssl::UniquePtr<X509> MakeCRLDPLeaf(
     return nullptr;
   }
   if (!X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points, crldp,
-                         /*crit=*/0, /*flags=*/0)) {
+                         critical, /*flags=*/0)) {
     return nullptr;
   }
   if (!X509_sign(leaf.get(), issuer_key, EVP_sha256())) {
@@ -2342,6 +2342,60 @@ TEST(X509Test, CRLDistributionPointScope) {
               Verify(leaf.get(), {root.get()}, {root.get()},
                      {crl_a.get(), crl_b.get()}, X509_V_FLAG_CRL_CHECK));
   }
+}
+
+// A critical CRL distribution points extension is only handled when CRL
+// checking will process it. Otherwise it is an unhandled critical extension,
+// per RFC 5280 Section 4.2.
+TEST(X509Test, CriticalCRLDistributionPoints) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kCRLTestRootKey));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(key);
+
+  const int kLeafSerial = 0x1000;
+  const char *kCRLURI = "http://example.com/crl.pem";
+
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  auto leaf = MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get(),
+                            /*critical=*/1);
+  ASSERT_TRUE(leaf);
+  auto noncrit_leaf =
+      MakeCRLDPLeaf(root.get(), key.get(), kLeafSerial, crldp.get());
+  ASSERT_TRUE(noncrit_leaf);
+  auto crl = MakeTestCRL(root.get(), key.get(), kCRLURI, {});
+  ASSERT_TRUE(crl);
+  auto revoking_crl = MakeTestCRL(root.get(), key.get(), kCRLURI,
+                                  {kLeafSerial});
+  ASSERT_TRUE(revoking_crl);
+
+  // Without CRL checking, the extension is not processed.
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {}, {crl.get()}, /*flags=*/0));
+  // |X509_V_FLAG_CRL_CHECK_ALL| has no effect without |X509_V_FLAG_CRL_CHECK|.
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {}, {crl.get()},
+                   X509_V_FLAG_CRL_CHECK_ALL));
+  // |X509_V_FLAG_IGNORE_CRITICAL| skips the check.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {crl.get()},
+                              X509_V_FLAG_IGNORE_CRITICAL));
+  // A non-critical extension is unaffected.
+  EXPECT_EQ(X509_V_OK, Verify(noncrit_leaf.get(), {root.get()}, {},
+                              {crl.get()}, /*flags=*/0));
+
+  // With CRL checking, the extension is processed.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {crl.get()},
+                              X509_V_FLAG_CRL_CHECK));
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+            Verify(leaf.get(), {root.get()}, {}, {revoking_crl.get()},
+                   X509_V_FLAG_CRL_CHECK));
 }
 
 static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {
