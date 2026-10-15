@@ -154,7 +154,16 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJSON(needs.define_images.outputs.images).* }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
