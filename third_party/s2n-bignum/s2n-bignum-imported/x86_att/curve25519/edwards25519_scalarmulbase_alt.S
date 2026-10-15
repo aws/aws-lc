@@ -22,6 +22,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_scalarmulbase_alt)
 
         .text
+        .balign 32
 
 // Size of individual field elements
 
@@ -521,8 +522,8 @@ Ledwards25519_scalarmulbase_alt_standard:
 // Initialize accumulator "acc" to either 0 or 2^251 * B depending on
 // bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-        leaq    Ledwards25519_scalarmulbase_alt_0g(%rip), %r10
-        leaq    Ledwards25519_scalarmulbase_alt_251g(%rip), %r11
+        leaq    S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt_constant)(%rip), %r10
+        leaq    8*12(%r10), %r11
 
         movq    (%r10), %rax
         movq    (%r11), %rcx
@@ -605,7 +606,7 @@ Ledwards25519_scalarmulbase_alt_standard:
 // end because we made sure bit 251 is clear in the reduced scalar.
 
         movq    $0, i
-        leaq    Ledwards25519_scalarmulbase_alt_gtable(%rip), %rax
+        leaq    8*24(%r10), %rax
         movq    %rax, tab
         movq    $0, bias
 
@@ -2388,18 +2389,26 @@ S2N_BN_SIZE_DIRECTIVE(Ledwards25519_scalarmulbase_alt_standard)
 S2N_BN_SIZE_DIRECTIVE(edwards25519_scalarmulbase_alt)
 #endif
 
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif
+
 // ****************************************************************************
-// The precomputed data (all read-only). This is currently part of the same
-// text section, which gives position-independent code with simple PC-relative
-// addressing. However it could be put in a separate section via something like
-//
-// .section .rodata
+// The precomputed data (all read-only).
 // ****************************************************************************
+
+#if defined(__ELF__)
+.section .rodata
+.type S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt_constant), %object
+.size S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt_constant), 48576
+#elif defined(__APPLE__)
+.section __TEXT,__const
+#endif
+
+S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt_constant):
 
 // 0 * B = 0 and 2^251 * B in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
-
-Ledwards25519_scalarmulbase_alt_0g:
 
         .quad   0x0000000000000000
         .quad   0x0000000000000000
@@ -2416,8 +2425,6 @@ Ledwards25519_scalarmulbase_alt_0g:
         .quad   0x0000000000000000
         .quad   0x0000000000000000
 
-Ledwards25519_scalarmulbase_alt_251g:
-
         .quad   0x525f946d7c7220e7
         .quad   0x4636b0b2f1e35444
         .quad   0x796e9d70e892ae0f
@@ -2433,8 +2440,6 @@ Ledwards25519_scalarmulbase_alt_251g:
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
-
-Ledwards25519_scalarmulbase_alt_gtable:
 
         // 2^0 * 1 * G
 
@@ -9995,7 +10000,3 @@ Ledwards25519_scalarmulbase_alt_gtable:
         .quad   0xeb848e0f7f19547e
         .quad   0x2503a1d065a497b9
         .quad   0x0fef911191df895f
-
-#if defined(__linux__) && defined(__ELF__)
-.section .note.GNU-stack, "", %progbits
-#endif
