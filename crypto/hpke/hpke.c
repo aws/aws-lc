@@ -17,6 +17,10 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/nid.h>
+
 #include "../internal.h"
 #include "../fipsmodule/ml_kem/ml_kem.h"
 #include "../fipsmodule/service_indicator/internal.h"
@@ -25,10 +29,11 @@
 // This file implements RFC 9180 and draft-ietf-hpke-pq-05.
 
 // MAX_SEED_LEN is the largest |seed_len| of any KEM and MAX_SHARED_SECRET_LEN
-// the largest Nsecret. Both are 32 for every KEM this file implements: X25519
-// seeds an ephemeral private key with 32 bytes and ML-KEM takes 32 bytes of
-// encapsulation entropy, and both produce a 32-byte shared secret.
-#define MAX_SEED_LEN 32
+// the largest Nsecret. X25519 seeds an ephemeral private key with 32 bytes and
+// ML-KEM takes 32 bytes of encapsulation entropy. The PQ/T hybrids need the
+// most: 32 bytes for the ML-KEM half plus the group's RandomScalar seed, which
+// is 128 bytes for P-256. Every KEM here produces a 32-byte shared secret.
+#define MAX_SEED_LEN 160
 #define MAX_SHARED_SECRET_LEN 32
 
 struct evp_hpke_kem_st {
@@ -842,6 +847,514 @@ int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
 }
 
 
+// PQ/T hybrid KEMs (draft-ietf-hpke-pq-05, section 4).
+//
+// These are the concrete hybrids of draft-irtf-cfrg-concrete-hybrid-kems, built
+// on the CG framework of draft-irtf-cfrg-hybrid-kems. HPKE consumes them
+// through an identity serialization: an encapsulation key is ek_PQ || ek_T, a
+// ciphertext is ct_PQ || ct_T -- PQ part first in both -- and the private key
+// is the 32-byte seed that both halves are derived from.
+//
+// The shared secret is
+//
+//   SHA3-256(ss_PQ || ss_T || ct_T || ek_T || label)
+//
+// where ss_T is the traditional shared secret and |label| names the instance.
+// The combiner deliberately does not cover ct_PQ or ek_PQ; the framework relies
+// on ML-KEM's ciphertext collision resistance instead.
+
+#define HYBRID_SEED_LEN 32
+#define HYBRID_MAX_GROUP_SEED_LEN 128
+#define HYBRID_MAX_GROUP_PRIVATE_LEN 48
+#define HYBRID_MAX_ELEM_LEN 97
+#define HYBRID_MAX_GROUP_SS_LEN 48
+
+// HYBRID_GROUP abstracts the traditional half. The NIST curves derive a scalar
+// by rejection sampling and serialize elements as uncompressed SEC1 points;
+// X25519 uses the seed as the scalar directly and elements are 32 bytes.
+typedef struct hybrid_group_st HYBRID_GROUP;
+struct hybrid_group_st {
+  size_t seed_len;     // PRG bytes consumed by |derive|
+  size_t private_len;  // cached private key
+  size_t elem_len;     // serialized element
+  size_t ss_len;
+  // scalar_len is the rejection-sampling block size for the NIST curves, and
+  // zero for X25519, which does not reject.
+  size_t scalar_len;
+  int (*derive)(const HYBRID_GROUP *group, uint8_t *out_private,
+                uint8_t *out_elem, const uint8_t *seed);
+  // dh writes the traditional shared secret for |private_key| and |peer_elem|.
+  // |peer_elem| is attacker-supplied, so a malformed value must fail rather
+  // than abort, and must not leave an error on the queue.
+  int (*dh)(const HYBRID_GROUP *group, uint8_t *out_ss,
+            const uint8_t *private_key, const uint8_t *peer_elem);
+  const EC_GROUP *(*ec_group)(void);  // NULL for X25519
+};
+
+// -- NIST curves -------------------------------------------------------------
+
+// ec_hybrid_random_scalar implements the framework's RandomScalar: it walks
+// |seed| in scalar-sized blocks, big-endian, and returns the first value in
+// [1, order). Running out of blocks is an error rather than a wrap-around, so a
+// caller cannot be steered onto a biased scalar.
+static BIGNUM *ec_hybrid_random_scalar(const HYBRID_GROUP *group,
+                                       const uint8_t *seed) {
+  const BIGNUM *order = EC_GROUP_get0_order(group->ec_group());
+  for (size_t off = 0; off + group->scalar_len <= group->seed_len;
+       off += group->scalar_len) {
+    BIGNUM *scalar = BN_bin2bn(seed + off, group->scalar_len, NULL);
+    if (scalar == NULL) {
+      return NULL;
+    }
+    if (!BN_is_zero(scalar) && BN_cmp(scalar, order) < 0) {
+      return scalar;
+    }
+    BN_free(scalar);
+  }
+  OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+  return NULL;
+}
+
+static int ec_hybrid_derive(const HYBRID_GROUP *group, uint8_t *out_private,
+                            uint8_t *out_elem, const uint8_t *seed) {
+  const EC_GROUP *ec = group->ec_group();
+  BIGNUM *scalar = ec_hybrid_random_scalar(group, seed);
+  if (scalar == NULL) {
+    return 0;
+  }
+  EC_POINT *point = EC_POINT_new(ec);
+  int ok =
+      point != NULL && EC_POINT_mul(ec, point, scalar, NULL, NULL, NULL) &&
+      EC_POINT_point2oct(ec, point, POINT_CONVERSION_UNCOMPRESSED, out_elem,
+                         group->elem_len, NULL) == group->elem_len &&
+      BN_bn2bin_padded(out_private, group->private_len, scalar);
+  EC_POINT_free(point);
+  BN_free(scalar);
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+  }
+  return ok;
+}
+
+static int ec_hybrid_dh(const HYBRID_GROUP *group, uint8_t *out_ss,
+                        const uint8_t *private_key, const uint8_t *peer_elem) {
+  const EC_GROUP *ec = group->ec_group();
+  // The construction fixes elements as the uncompressed encoding, and the
+  // combiner hashes those exact bytes. |EC_POINT_oct2point| also accepts the
+  // SEC1 hybrid forms (0x06/0x07), which are the same length and decode to the
+  // same point, so two encodings of one element would otherwise derive two
+  // different shared secrets instead of being rejected. Compressed points are
+  // a different length and are already refused by |elem_len|.
+  if (peer_elem[0] != POINT_CONVERSION_UNCOMPRESSED) {
+    return 0;
+  }
+  // Mark the queue so a malformed |peer_elem| does not leave the EC layer's
+  // error behind for the caller to report on top of its own.
+  ERR_set_mark();
+  BIGNUM *scalar = BN_bin2bn(private_key, group->private_len, NULL);
+  EC_POINT *peer_point = EC_POINT_new(ec);
+  EC_POINT *shared = EC_POINT_new(ec);
+  BIGNUM *x = BN_new();
+  int ok =
+      scalar != NULL && peer_point != NULL && shared != NULL && x != NULL &&
+      EC_POINT_oct2point(ec, peer_point, peer_elem, group->elem_len, NULL) &&
+      EC_POINT_mul(ec, shared, NULL, peer_point, scalar, NULL) &&
+      EC_POINT_get_affine_coordinates_GFp(ec, shared, x, NULL, NULL) &&
+      // ElementToSharedSecret is the X coordinate, per SEC1.
+      BN_bn2bin_padded(out_ss, group->ss_len, x);
+  BN_free(x);
+  BN_free(scalar);
+  EC_POINT_free(peer_point);
+  EC_POINT_free(shared);
+  // This only removes errors added since the mark, so a caller's pre-existing
+  // queue survives.
+  ERR_pop_to_mark();
+  return ok;
+}
+
+// P-256 draws four 32-byte rejection-sampling tries; P-384 needs only one,
+// since rejection there is under 2^-192.
+#define HYBRID_P256_SEED_LEN 128
+#define HYBRID_P256_SCALAR_LEN 32
+#define HYBRID_P256_ELEM_LEN 65
+#define HYBRID_P384_SEED_LEN 48
+#define HYBRID_P384_SCALAR_LEN 48
+#define HYBRID_P384_ELEM_LEN 97
+
+static const HYBRID_GROUP kHybridP256 = {
+    /*seed_len=*/HYBRID_P256_SEED_LEN,
+    /*private_len=*/HYBRID_P256_SCALAR_LEN,
+    /*elem_len=*/HYBRID_P256_ELEM_LEN,
+    /*ss_len=*/HYBRID_P256_SCALAR_LEN,
+    /*scalar_len=*/HYBRID_P256_SCALAR_LEN,
+    ec_hybrid_derive,
+    ec_hybrid_dh,
+    EC_group_p256,
+};
+
+static const HYBRID_GROUP kHybridP384 = {
+    /*seed_len=*/HYBRID_P384_SEED_LEN,
+    /*private_len=*/HYBRID_P384_SCALAR_LEN,
+    /*elem_len=*/HYBRID_P384_ELEM_LEN,
+    /*ss_len=*/HYBRID_P384_SCALAR_LEN,
+    /*scalar_len=*/HYBRID_P384_SCALAR_LEN,
+    ec_hybrid_derive,
+    ec_hybrid_dh,
+    EC_group_p384,
+};
+
+// -- X25519 ------------------------------------------------------------------
+
+static int x25519_hybrid_derive(const HYBRID_GROUP *group, uint8_t *out_private,
+                                uint8_t *out_elem, const uint8_t *seed) {
+  (void)group;
+  // X25519 has no rejection sampling: the seed is the scalar, and clamping
+  // happens inside the primitive.
+  OPENSSL_memcpy(out_private, seed, X25519_PRIVATE_KEY_LEN);
+  X25519_public_from_private(out_elem, out_private);
+  return 1;
+}
+
+static int x25519_hybrid_dh(const HYBRID_GROUP *group, uint8_t *out_ss,
+                            const uint8_t *private_key,
+                            const uint8_t *peer_elem) {
+  (void)group;
+  // The construction defines an output for every 32-byte element, so unlike
+  // DHKEM(X25519) this must not reject a small-order peer element. |X25519|
+  // always writes the scalar-multiplication result and only then reports
+  // whether it was all-zero, so ignoring the return value gives exactly the
+  // non-rejecting operation the construction calls for.
+  (void)X25519(out_ss, private_key, peer_elem);
+  return 1;
+}
+
+static const HYBRID_GROUP kHybridX25519 = {
+    /*seed_len=*/X25519_PRIVATE_KEY_LEN,
+    /*private_len=*/X25519_PRIVATE_KEY_LEN,
+    /*elem_len=*/X25519_PUBLIC_VALUE_LEN,
+    /*ss_len=*/X25519_SHARED_KEY_LEN,
+    /*scalar_len=*/0,  // X25519 clamps instead of rejecting
+    x25519_hybrid_derive,
+    x25519_hybrid_dh,
+    /*ec_group=*/NULL,
+};
+
+// -- The hybrid KEMs ---------------------------------------------------------
+
+typedef struct {
+  const MLKEM_METHOD *pq;
+  const HYBRID_GROUP *group;
+  // label is the combiner's domain separator. Note [CONCRETE] gives
+  // MLKEM768-X25519 a six-byte label rather than its suite name.
+  const uint8_t *label;
+  size_t label_len;
+} HYBRID_METHOD;
+
+static const uint8_t kMLKEM768P256Label[] = "MLKEM768-P256";
+static const uint8_t kMLKEM1024P384Label[] = "MLKEM1024-P384";
+static const uint8_t kMLKEM768X25519Label[] = {0x5c, 0x2e, 0x2f,
+                                               0x2f, 0x5e, 0x5c};
+
+static const HYBRID_METHOD kMLKEM768P256Method = {
+    &kMLKEM768Method,
+    &kHybridP256,
+    kMLKEM768P256Label,
+    sizeof(kMLKEM768P256Label) - 1,
+};
+
+static const HYBRID_METHOD kMLKEM1024P384Method = {
+    &kMLKEM1024Method,
+    &kHybridP384,
+    kMLKEM1024P384Label,
+    sizeof(kMLKEM1024P384Label) - 1,
+};
+
+static const HYBRID_METHOD kMLKEM768X25519Method = {
+    &kMLKEM768Method,
+    &kHybridX25519,
+    kMLKEM768X25519Label,
+    sizeof(kMLKEM768X25519Label),
+};
+
+OPENSSL_STATIC_ASSERT(HYBRID_SEED_LEN <= EVP_HPKE_MAX_PRIVATE_KEY_LENGTH,
+                      hybrid_seed_too_large_for_evp_hpke_key)
+OPENSSL_STATIC_ASSERT(MLKEM1024_PUBLIC_KEY_BYTES + HYBRID_MAX_ELEM_LEN <=
+                          EVP_HPKE_MAX_PUBLIC_KEY_LENGTH,
+                      evp_hpke_max_public_key_length_too_small_for_hybrid)
+OPENSSL_STATIC_ASSERT(MLKEM1024_CIPHERTEXT_BYTES + HYBRID_MAX_ELEM_LEN <=
+                          EVP_HPKE_MAX_ENC_LENGTH,
+                      evp_hpke_max_enc_length_too_small_for_hybrid)
+OPENSSL_STATIC_ASSERT(MLKEM1024_SECRET_KEY_BYTES +
+                              HYBRID_MAX_GROUP_PRIVATE_LEN <=
+                          EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH,
+                      evp_hpke_max_expanded_private_key_length_too_small)
+OPENSSL_STATIC_ASSERT(MLKEM768_ENCAPS_SEED_LEN + HYBRID_MAX_GROUP_SEED_LEN <=
+                          MAX_SEED_LEN,
+                      max_seed_len_too_small_for_hybrid)
+
+static size_t hybrid_public_key_len(const HYBRID_METHOD *meth) {
+  return meth->pq->public_key_len + meth->group->elem_len;
+}
+
+static size_t hybrid_enc_len(const HYBRID_METHOD *meth) {
+  return meth->pq->enc_len + meth->group->elem_len;
+}
+
+// hybrid_shake_expand writes |out_len| bytes of SHAKE256(|in|) to |out|.
+static int hybrid_shake_expand(uint8_t *out, size_t out_len, const uint8_t *in,
+                               size_t in_len) {
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  int ok = EVP_DigestInit_ex(&ctx, EVP_shake256(), NULL) &&
+           EVP_DigestUpdate(&ctx, in, in_len) &&
+           EVP_DigestFinalXOF(&ctx, out, out_len);
+  EVP_MD_CTX_cleanup(&ctx);
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+  }
+  return ok;
+}
+
+static int hybrid_combiner(const HYBRID_METHOD *meth, const uint8_t *ss_pq,
+                           const uint8_t *ss_t, const uint8_t *ct_t,
+                           const uint8_t *ek_t, uint8_t *out) {
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  unsigned out_len = 0;
+  int ok = EVP_DigestInit_ex(&ctx, EVP_sha3_256(), NULL) &&
+           EVP_DigestUpdate(&ctx, ss_pq, MLKEM_SHARED_SECRET_LEN) &&
+           EVP_DigestUpdate(&ctx, ss_t, meth->group->ss_len) &&
+           EVP_DigestUpdate(&ctx, ct_t, meth->group->elem_len) &&
+           EVP_DigestUpdate(&ctx, ek_t, meth->group->elem_len) &&
+           EVP_DigestUpdate(&ctx, meth->label, meth->label_len) &&
+           EVP_DigestFinal_ex(&ctx, out, &out_len) &&
+           out_len == MLKEM_SHARED_SECRET_LEN;
+  EVP_MD_CTX_cleanup(&ctx);
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+  }
+  return ok;
+}
+
+// hybrid_expand_seed_into_key derives both halves of the key pair from the
+// 32-byte |seed| straight into |key|: the public key becomes ek_PQ || ek_T and
+// the cached private key becomes dk_PQ || dk_T. As with ML-KEM, caching keeps
+// key generation -- and, in FIPS builds, its pairwise consistency test -- off
+// the decapsulation path.
+static int hybrid_expand_seed_into_key(EVP_HPKE_KEY *key,
+                                       const HYBRID_METHOD *meth,
+                                       const uint8_t *seed) {
+  uint8_t expanded[MLKEM_SEED_LEN + HYBRID_MAX_GROUP_SEED_LEN];
+  const size_t expanded_len = MLKEM_SEED_LEN + meth->group->seed_len;
+  // Declared before the first goto so it does not jump past an initialization.
+  size_t public_key_len = meth->pq->public_key_len;
+  size_t expanded_private_key_len = meth->pq->expanded_private_key_len;
+  int ret = 0;
+  if (!hybrid_shake_expand(expanded, expanded_len, seed, HYBRID_SEED_LEN)) {
+    goto out;
+  }
+
+  // The PQ seed comes first.
+  if (meth->pq->keypair_deterministic(
+          key->public_key, &public_key_len, key->expanded_private_key,
+          &expanded_private_key_len, expanded) != 0) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto out;
+  }
+  ret = meth->group->derive(
+      meth->group,
+      key->expanded_private_key + meth->pq->expanded_private_key_len,
+      key->public_key + meth->pq->public_key_len, expanded + MLKEM_SEED_LEN);
+
+out:
+  OPENSSL_cleanse(expanded, sizeof(expanded));
+  return ret;
+}
+
+static int hybrid_init_key(EVP_HPKE_KEY *key, const HYBRID_METHOD *meth,
+                           const uint8_t *priv_key, size_t priv_key_len) {
+  if (priv_key_len != HYBRID_SEED_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+  if (!hybrid_expand_seed_into_key(key, meth, priv_key)) {
+    return 0;
+  }
+  OPENSSL_memcpy(key->private_key, priv_key, HYBRID_SEED_LEN);
+  return 1;
+}
+
+static int hybrid_generate_key(EVP_HPKE_KEY *key, const HYBRID_METHOD *meth) {
+  uint8_t seed[HYBRID_SEED_LEN];
+  AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(seed, sizeof(seed)));
+  int ret = hybrid_init_key(key, meth, seed, sizeof(seed));
+  OPENSSL_cleanse(seed, sizeof(seed));
+  return ret;
+}
+
+static int hybrid_encap_with_seed(
+    const HYBRID_METHOD *meth, uint8_t *out_shared_secret,
+    size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
+    size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *seed, size_t seed_len) {
+  const size_t enc_len = hybrid_enc_len(meth);
+  if (max_enc < enc_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+  // A malformed seed and a malformed peer key are different failures, as in
+  // |mlkem_encap_with_seed|.
+  if (seed_len != meth->pq->encaps_seed_len + meth->group->seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+  if (peer_public_key_len != hybrid_public_key_len(meth)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+  // Reject a malformed ML-KEM half up front, so an encapsulation-key check
+  // failure surfaces as an HPKE EncapError. The group half is validated by the
+  // group's own deserialization, inside |dh| below.
+  if (meth->pq->check_pk(peer_public_key, meth->pq->public_key_len) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+
+  const uint8_t *ek_t = peer_public_key + meth->pq->public_key_len;
+  uint8_t ss_pq[MLKEM_SHARED_SECRET_LEN];
+  uint8_t ss_t[HYBRID_MAX_GROUP_SS_LEN];
+  uint8_t ephemeral_private[HYBRID_MAX_GROUP_PRIVATE_LEN];
+  size_t ss_pq_len = sizeof(ss_pq);
+  size_t ct_pq_len = meth->pq->enc_len;
+  uint8_t *ct_t = out_enc + meth->pq->enc_len;
+  int ret = 0;
+  if (meth->pq->encapsulate_deterministic(
+          out_enc, &ct_pq_len, ss_pq, &ss_pq_len, peer_public_key, seed) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    goto out;
+  }
+
+  if (!meth->group->derive(meth->group, ephemeral_private, ct_t,
+                           seed + meth->pq->encaps_seed_len)) {
+    goto out;
+  }
+  if (!meth->group->dh(meth->group, ss_t, ephemeral_private, ek_t)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    goto out;
+  }
+  if (!hybrid_combiner(meth, ss_pq, ss_t, ct_t, ek_t, out_shared_secret)) {
+    goto out;
+  }
+  *out_shared_secret_len = MLKEM_SHARED_SECRET_LEN;
+  *out_enc_len = enc_len;
+  ret = 1;
+
+out:
+  OPENSSL_cleanse(ss_pq, sizeof(ss_pq));
+  OPENSSL_cleanse(ss_t, sizeof(ss_t));
+  OPENSSL_cleanse(ephemeral_private, sizeof(ephemeral_private));
+  return ret;
+}
+
+static int hybrid_decap(const EVP_HPKE_KEY *key, const HYBRID_METHOD *meth,
+                        uint8_t *out_shared_secret,
+                        size_t *out_shared_secret_len, const uint8_t *enc,
+                        size_t enc_len) {
+  if (enc_len != hybrid_enc_len(meth)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+
+  // ML-KEM decapsulation is implicitly rejecting, so a corrupt ct_PQ yields an
+  // unrelated ss_PQ rather than an error, and the failure surfaces at the AEAD.
+  // The expanded key was derived when |key| was initialized, so this path does
+  // no key generation. See |mlkem_decap|.
+  uint8_t ss_pq[MLKEM_SHARED_SECRET_LEN];
+  uint8_t ss_t[HYBRID_MAX_GROUP_SS_LEN];
+  size_t ss_pq_len = sizeof(ss_pq);
+  const uint8_t *ct_t = enc + meth->pq->enc_len;
+  const uint8_t *ek_t = key->public_key + meth->pq->public_key_len;
+  int ret = 0;
+  if (meth->pq->decapsulate(ss_pq, &ss_pq_len, enc,
+                            key->expanded_private_key) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    goto out;
+  }
+
+  // ct_t is attacker-controlled; a malformed element fails here.
+  if (!meth->group->dh(
+          meth->group, ss_t,
+          key->expanded_private_key + meth->pq->expanded_private_key_len,
+          ct_t)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    goto out;
+  }
+  if (!hybrid_combiner(meth, ss_pq, ss_t, ct_t, ek_t, out_shared_secret)) {
+    goto out;
+  }
+  *out_shared_secret_len = MLKEM_SHARED_SECRET_LEN;
+  ret = 1;
+
+out:
+  OPENSSL_cleanse(ss_pq, sizeof(ss_pq));
+  OPENSSL_cleanse(ss_t, sizeof(ss_t));
+  return ret;
+}
+
+#define DEFINE_HYBRID_KEM(lower, Method, kem_id, npk, nseed, nenc)             \
+  static int lower##_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,      \
+                              size_t priv_key_len) {                           \
+    return hybrid_init_key(key, &Method, priv_key, priv_key_len);              \
+  }                                                                            \
+  static int lower##_generate_key(EVP_HPKE_KEY *key) {                         \
+    return hybrid_generate_key(key, &Method);                                  \
+  }                                                                            \
+  static int lower##_encap_with_seed(                                          \
+      const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,                     \
+      size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,    \
+      size_t max_enc, const uint8_t *peer_public_key,                          \
+      size_t peer_public_key_len, const uint8_t *seed, size_t seed_len) {      \
+    return hybrid_encap_with_seed(&Method, out_shared_secret,                  \
+                                  out_shared_secret_len, out_enc, out_enc_len, \
+                                  max_enc, peer_public_key,                    \
+                                  peer_public_key_len, seed, seed_len);        \
+  }                                                                            \
+  static int lower##_decap(                                                    \
+      const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,                     \
+      size_t *out_shared_secret_len, const uint8_t *enc, size_t enc_len) {     \
+    return hybrid_decap(key, &Method, out_shared_secret,                       \
+                        out_shared_secret_len, enc, enc_len);                  \
+  }                                                                            \
+  const EVP_HPKE_KEM *EVP_hpke_##lower(void) {                                 \
+    static const EVP_HPKE_KEM kKEM = {                                         \
+        /*id=*/kem_id,                                                         \
+        /*public_key_len=*/npk,                                                \
+        /*private_key_len=*/HYBRID_SEED_LEN,                                   \
+        /*seed_len=*/nseed,                                                    \
+        /*enc_len=*/nenc,                                                      \
+        lower##_init_key,                                                      \
+        lower##_generate_key,                                                  \
+        lower##_encap_with_seed,                                               \
+        lower##_decap,                                                         \
+        /*auth_encap_with_seed=*/NULL,                                         \
+        /*auth_decap=*/NULL,                                                   \
+    };                                                                         \
+    return &kKEM;                                                              \
+  }
+
+DEFINE_HYBRID_KEM(mlkem768_p256, kMLKEM768P256Method, EVP_HPKE_MLKEM768_P256,
+                  MLKEM768_PUBLIC_KEY_BYTES + HYBRID_P256_ELEM_LEN,
+                  MLKEM768_ENCAPS_SEED_LEN + HYBRID_P256_SEED_LEN,
+                  MLKEM768_CIPHERTEXT_BYTES + HYBRID_P256_ELEM_LEN)
+DEFINE_HYBRID_KEM(mlkem1024_p384, kMLKEM1024P384Method, EVP_HPKE_MLKEM1024_P384,
+                  MLKEM1024_PUBLIC_KEY_BYTES + HYBRID_P384_ELEM_LEN,
+                  MLKEM1024_ENCAPS_SEED_LEN + HYBRID_P384_SEED_LEN,
+                  MLKEM1024_CIPHERTEXT_BYTES + HYBRID_P384_ELEM_LEN)
+DEFINE_HYBRID_KEM(mlkem768_x25519, kMLKEM768X25519Method,
+                  EVP_HPKE_MLKEM768_X25519,
+                  MLKEM768_PUBLIC_KEY_BYTES + X25519_PUBLIC_VALUE_LEN,
+                  MLKEM768_ENCAPS_SEED_LEN + X25519_PRIVATE_KEY_LEN,
+                  MLKEM768_CIPHERTEXT_BYTES + X25519_PUBLIC_VALUE_LEN)
 // Supported KDFs and AEADs.
 
 const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void) {
