@@ -205,6 +205,21 @@ TEST(GCMTest, ABI) {
       CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
                 Htable);
     }
+#if defined(HW_GCM_S2N_BIGNUM)
+    {
+      AES_KEY aes_key;
+      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+      CHECK_ABI(aes128_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      CHECK_ABI(aes128_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      aes_hw_set_encrypt_key(kKey, 256, &aes_key);
+      CHECK_ABI(aes256_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      CHECK_ABI(aes256_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+    }
+#endif  // HW_GCM_S2N_BIGNUM
   }
 #endif
 
@@ -218,4 +233,78 @@ TEST(GCMTest, ABI) {
   }
 #endif  // GHASH_ASM_PPC64LE
 }
-#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM && !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+#endif  // SUPPORTS_ABI_TEST
+
+#if defined(OPENSSL_AARCH64) && defined(HW_GCM) && defined(HW_GCM_S2N_BIGNUM)
+// The s2n-bignum AES-GCM kernels are only selected on Neoverse N1, so check
+// them against the generic AArch64 kernels on whatever CPU runs the tests:
+// same ciphertext, same GHASH accumulator and same advanced counter.
+TEST(GCMTest, S2nBignumKernels) {
+  if (!hwaes_capable() || !gcm_pmull_capable()) {
+    GTEST_SKIP() << "AES or PMULL not supported";
+  }
+  static const size_t kBlockCounts[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 16,
+                                        17, 31, 32, 33, 64};
+  uint8_t key[32], in[16 * 64], out_ref[16 * 64], out_s2n[16 * 64];
+  for (size_t i = 0; i < sizeof(key); i++) {
+    key[i] = static_cast<uint8_t>(0x11 * i + 3);
+  }
+  for (size_t i = 0; i < sizeof(in); i++) {
+    in[i] = static_cast<uint8_t>(i * 7 + 1);
+  }
+  for (size_t key_bits = 128; key_bits <= 256; key_bits += 128) {
+    AES_KEY aes_key;
+    ASSERT_EQ(0, aes_hw_set_encrypt_key(key, key_bits, &aes_key));
+    uint8_t h[16] = {0};
+    aes_hw_encrypt(h, h, &aes_key);
+    uint64_t H[2];
+    OPENSSL_memcpy(H, h, 16);
+    H[0] = CRYPTO_bswap8(H[0]);
+    H[1] = CRYPTO_bswap8(H[1]);
+    alignas(16) u128 Htable[16];
+    gcm_init_v8(Htable, H);
+    for (size_t blocks : kBlockCounts) {
+      for (int decrypt = 0; decrypt < 2; decrypt++) {
+        SCOPED_TRACE(key_bits);
+        SCOPED_TRACE(blocks);
+        SCOPED_TRACE(decrypt);
+        uint8_t ivec_ref[16], ivec_s2n[16], xi_ref[16], xi_s2n[16];
+        for (size_t i = 0; i < 16; i++) {
+          ivec_ref[i] = ivec_s2n[i] = static_cast<uint8_t>(0xa0 + i);
+          xi_ref[i] = xi_s2n[i] = static_cast<uint8_t>(0x5c ^ i);
+        }
+        ivec_ref[15] = ivec_s2n[15] = 0xfd;  // exercise the counter carry
+        const uint64_t bits = blocks * 128;
+        if (decrypt) {
+          aes_gcm_dec_kernel(in, bits, out_ref, xi_ref, ivec_ref, &aes_key,
+                             Htable);
+          if (key_bits == 128) {
+            aes128_gcm_dec(in, bits, out_s2n, (uint64_t *)xi_s2n, ivec_s2n,
+                           (const s2n_bignum_AES_KEY *)&aes_key,
+                           (const uint64_t *)Htable);
+          } else {
+            aes256_gcm_dec(in, bits, out_s2n, (uint64_t *)xi_s2n, ivec_s2n,
+                           (const s2n_bignum_AES_KEY *)&aes_key,
+                           (const uint64_t *)Htable);
+          }
+        } else {
+          aes_gcm_enc_kernel(in, bits, out_ref, xi_ref, ivec_ref, &aes_key,
+                             Htable);
+          if (key_bits == 128) {
+            aes128_gcm_enc(in, bits, out_s2n, (uint64_t *)xi_s2n, ivec_s2n,
+                           (const s2n_bignum_AES_KEY *)&aes_key,
+                           (const uint64_t *)Htable);
+          } else {
+            aes256_gcm_enc(in, bits, out_s2n, (uint64_t *)xi_s2n, ivec_s2n,
+                           (const s2n_bignum_AES_KEY *)&aes_key,
+                           (const uint64_t *)Htable);
+          }
+        }
+        EXPECT_EQ(Bytes(out_ref, blocks * 16), Bytes(out_s2n, blocks * 16));
+        EXPECT_EQ(Bytes(xi_ref), Bytes(xi_s2n));
+        EXPECT_EQ(Bytes(ivec_ref), Bytes(ivec_s2n));
+      }
+    }
+  }
+}
+#endif  // OPENSSL_AARCH64 && HW_GCM && HW_GCM_S2N_BIGNUM && !OPENSSL_NO_ASM && !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
