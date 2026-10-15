@@ -24,6 +24,13 @@
 
 // This file implements RFC 9180 and draft-ietf-hpke-pq-05.
 
+// Callers stack-allocate |EVP_HPKE_KEY|, so its size is ABI: a caller built
+// against one release and run against a later one reserves the older size and
+// overflows it. The struct is four pointers on any ABI, so spelling that out
+// fails the build if KEM-dependent key material moves back inline.
+OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) == 4 * sizeof(void *),
+                      evp_hpke_key_must_not_hold_inline_buffers)
+
 // MAX_SEED_LEN is the largest |seed_len| of any KEM and MAX_SHARED_SECRET_LEN
 // the largest Nsecret. Both are 32 for every KEM this file implements: X25519
 // seeds an ephemeral private key with 32 bytes and ML-KEM takes 32 bytes of
@@ -35,6 +42,10 @@ struct evp_hpke_kem_st {
   uint16_t id;
   size_t public_key_len;
   size_t private_key_len;
+  // expanded_private_key_len is the length of the KEM's internal private key
+  // representation, or zero for KEMs which use the serialized private key
+  // directly.
+  size_t expanded_private_key_len;
   size_t seed_len;
   size_t enc_len;
   int (*init_key)(EVP_HPKE_KEY *key, const uint8_t *priv_key,
@@ -340,6 +351,7 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
       /*id=*/EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
+      /*expanded_private_key_len=*/0,
       /*seed_len=*/X25519_PRIVATE_KEY_LEN,
       /*enc_len=*/X25519_PUBLIC_VALUE_LEN,
       x25519_init_key,
@@ -383,9 +395,6 @@ OPENSSL_STATIC_ASSERT(MLKEM_SEED_LEN == MLKEM512_KEYGEN_SEED_LEN &&
                       ml_kem_keygen_seed_is_not_64_bytes)
 OPENSSL_STATIC_ASSERT(MLKEM_SEED_LEN <= EVP_HPKE_MAX_PRIVATE_KEY_LENGTH,
                       evp_hpke_key_private_key_too_small_for_ml_kem)
-OPENSSL_STATIC_ASSERT(MLKEM1024_SECRET_KEY_BYTES <=
-                          EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH,
-                      evp_hpke_key_expanded_private_key_too_small)
 OPENSSL_STATIC_ASSERT(MLKEM1024_PUBLIC_KEY_BYTES <=
                           EVP_HPKE_MAX_PUBLIC_KEY_LENGTH,
                       evp_hpke_key_public_key_too_small_for_ml_kem)
@@ -592,6 +601,7 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem512(void) {
       /*id=*/EVP_HPKE_MLKEM512,
       /*public_key_len=*/MLKEM512_PUBLIC_KEY_BYTES,
       /*private_key_len=*/MLKEM_SEED_LEN,
+      /*expanded_private_key_len=*/MLKEM512_SECRET_KEY_BYTES,
       /*seed_len=*/MLKEM512_ENCAPS_SEED_LEN,
       /*enc_len=*/MLKEM512_CIPHERTEXT_BYTES,
       mlkem512_init_key,
@@ -637,6 +647,7 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem768(void) {
       /*id=*/EVP_HPKE_MLKEM768,
       /*public_key_len=*/MLKEM768_PUBLIC_KEY_BYTES,
       /*private_key_len=*/MLKEM_SEED_LEN,
+      /*expanded_private_key_len=*/MLKEM768_SECRET_KEY_BYTES,
       /*seed_len=*/MLKEM768_ENCAPS_SEED_LEN,
       /*enc_len=*/MLKEM768_CIPHERTEXT_BYTES,
       mlkem768_init_key,
@@ -682,6 +693,7 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem1024(void) {
       /*id=*/EVP_HPKE_MLKEM1024,
       /*public_key_len=*/MLKEM1024_PUBLIC_KEY_BYTES,
       /*private_key_len=*/MLKEM_SEED_LEN,
+      /*expanded_private_key_len=*/MLKEM1024_SECRET_KEY_BYTES,
       /*seed_len=*/MLKEM1024_ENCAPS_SEED_LEN,
       /*enc_len=*/MLKEM1024_CIPHERTEXT_BYTES,
       mlkem1024_init_key,
@@ -706,6 +718,45 @@ size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem) {
 
 size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem) { return kem->enc_len; }
 
+// hpke_key_buffer_len returns the size of the single allocation backing a key
+// for |kem|, which is partitioned by |hpke_key_alloc|.
+static size_t hpke_key_buffer_len(const EVP_HPKE_KEM *kem) {
+  return kem->private_key_len + kem->public_key_len +
+         kem->expanded_private_key_len;
+}
+
+// hpke_key_alloc points |key|'s buffers into one allocation sized for
+// |key->kem|, which must already be set. It returns one on success and zero on
+// allocation failure, after which the buffers are left NULL.
+static int hpke_key_alloc(EVP_HPKE_KEY *key) {
+  const EVP_HPKE_KEM *kem = key->kem;
+  uint8_t *buf = OPENSSL_zalloc(hpke_key_buffer_len(kem));
+  if (buf == NULL) {
+    return 0;
+  }
+  // |private_key| owns the allocation, so it comes first and is what
+  // |hpke_key_free| frees.
+  key->private_key = buf;
+  key->public_key = buf + kem->private_key_len;
+  key->expanded_private_key =
+      kem->expanded_private_key_len == 0
+          ? NULL
+          : buf + kem->private_key_len + kem->public_key_len;
+  return 1;
+}
+
+// hpke_key_free cleanses and releases |key|'s buffers, leaving the pointers
+// dangling for the caller to clear.
+static void hpke_key_free(EVP_HPKE_KEY *key) {
+  if (key->private_key == NULL) {
+    return;
+  }
+  // Cleanse with a barrier, which |OPENSSL_free| does not guarantee for the
+  // whole buffer and which a plain memset does not guarantee at all.
+  OPENSSL_cleanse(key->private_key, hpke_key_buffer_len(key->kem));
+  OPENSSL_free(key->private_key);
+}
+
 void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key) {
   OPENSSL_memset(key, 0, sizeof(EVP_HPKE_KEY));
 }
@@ -714,18 +765,15 @@ void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
   if (key == NULL) {
     return;
   }
-  // Cleanse the private key with a barrier, which |EVP_HPKE_KEY_zero|'s plain
-  // memset does not guarantee on its own, then return the whole struct to the
-  // zero state so that the result is indistinguishable from a key which has
-  // only ever been passed to |EVP_HPKE_KEY_zero|.
+  // Return the struct to the zero state so that the result is indistinguishable
+  // from a key which has only ever been passed to |EVP_HPKE_KEY_zero|.
   //
   // Clearing |kem| in particular means that using |key| after cleanup fails,
   // rather than silently operating on whatever key the all-zero private key
   // describes: every 64-byte string is a valid ML-KEM seed, and a zero X25519
   // scalar is clamped to a valid one, so a cleansed key would otherwise still
   // "work".
-  OPENSSL_cleanse(key->private_key, sizeof(key->private_key));
-  OPENSSL_cleanse(key->expanded_private_key, sizeof(key->expanded_private_key));
+  hpke_key_free(key);
   EVP_HPKE_KEY_zero(key);
 }
 
@@ -751,13 +799,18 @@ int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
     // undefined. There is also nothing to do.
     return 1;
   }
-  // The copy below already overwrites every byte of |dst|, including any key
-  // material it held, so this cleanse is not load-bearing today. It is here so
-  // that a future field which the copy does not cover cannot silently leave a
-  // private key behind, and to match |EVP_HPKE_KEY_move|.
   EVP_HPKE_KEY_cleanup(dst);
-  // For now, |EVP_HPKE_KEY| is trivially copyable.
-  OPENSSL_memcpy(dst, src, sizeof(EVP_HPKE_KEY));
+  if (src->kem == NULL) {
+    // |src| is in the zero state, which |dst| now matches.
+    return 1;
+  }
+  dst->kem = src->kem;
+  if (!hpke_key_alloc(dst)) {
+    EVP_HPKE_KEY_cleanup(dst);
+    return 0;
+  }
+  OPENSSL_memcpy(dst->private_key, src->private_key,
+                 hpke_key_buffer_len(src->kem));
   return 1;
 }
 
@@ -768,24 +821,21 @@ void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in) {
     return;
   }
   EVP_HPKE_KEY_cleanup(out);
-  // For now, |EVP_HPKE_KEY| is trivially movable.
   OPENSSL_memcpy(out, in, sizeof(EVP_HPKE_KEY));
-  // Cleanse rather than zero |in|: it still holds the private key and, for
-  // ML-KEM, the expanded private key, and |EVP_HPKE_KEY_zero| alone is a plain
-  // memset. |EVP_HPKE_KEY_cleanup| leaves |in| in the zero state as well.
-  EVP_HPKE_KEY_cleanup(in);
+  // |out| now owns the buffers, so |in| is only cleared. Cleansing it here
+  // would erase and free key material |out| still points at.
+  EVP_HPKE_KEY_zero(in);
 }
 
 static int hpke_key_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                          const uint8_t *priv_key, size_t priv_key_len) {
-  // |key| may already hold key material, so cleanse it before reusing the
-  // struct. |EVP_HPKE_KEY_zero| alone would be a plain memset, which is not a
-  // guaranteed erase, and |EVP_HPKE_KEY_cleanup| leaves |key| in the zero state
-  // anyway. It only writes to |key|, so it is also safe on an uninitialized one
-  // and imposes no precondition on callers.
+  // |key| may already own buffers, so release them before reusing the struct.
+  // |EVP_HPKE_KEY_zero| would drop the pointers and leak. Callers reach this
+  // from the zero state or from an initialized key, which is what
+  // |EVP_HPKE_KEY_cleanup| requires.
   EVP_HPKE_KEY_cleanup(key);
   key->kem = kem;
-  if (!kem->init_key(key, priv_key, priv_key_len)) {
+  if (!hpke_key_alloc(key) || !kem->init_key(key, priv_key, priv_key_len)) {
     // |init_key| may have failed partway and left key material behind, so
     // cleanse rather than only clearing |kem|.
     EVP_HPKE_KEY_cleanup(key);
@@ -795,10 +845,10 @@ static int hpke_key_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
 }
 
 static int hpke_key_generate(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem) {
-  // See |hpke_key_init| for why |key| is cleansed before it is reused.
+  // See |hpke_key_init| for why |key| is cleaned up before it is reused.
   EVP_HPKE_KEY_cleanup(key);
   key->kem = kem;
-  if (!kem->generate_key(key)) {
+  if (!hpke_key_alloc(key) || !kem->generate_key(key)) {
     // As in |hpke_key_init|, cleanse in case |generate_key| failed partway.
     EVP_HPKE_KEY_cleanup(key);
     return 0;
