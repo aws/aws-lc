@@ -753,7 +753,10 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
       NAME_CONSTRAINTS *nc = sk_X509_value(ctx->chain, j)->nc;
       if (nc) {
         rv = NAME_CONSTRAINTS_check(x, nc);
-        if (rv == X509_V_OK &&
+        // Only the CN of the target certificate may be used as a DNS identity
+        // by hostname verification; intermediate CNs are not hostname
+        // identities.
+        if (rv == X509_V_OK && i == 0 &&
             (ctx->param->hostflags & X509_CHECK_FLAG_NEVER_CHECK_SUBJECT) ==
                 0 &&
             ((ctx->param->hostflags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) !=
