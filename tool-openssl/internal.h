@@ -175,6 +175,7 @@ int encTool(const args_list_t &args);
 int genpkeyTool(const args_list_t &args);
 int genrsaTool(const args_list_t &args);
 int md5Tool(const args_list_t &args);
+int ocspTool(const args_list_t &args);
 int pkcs8Tool(const args_list_t &args);
 int pkcs12Tool(const args_list_t &args);
 int pkeyTool(const args_list_t &args);
