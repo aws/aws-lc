@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // Front side: reporting into OpenSSL's error queue under the provider's private
-// error library.
+// error library, and the per-call bracket around AWS-LC services.
 
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 
+#include <assert.h>
 #include <stdarg.h>
 
 #include "internal/backend.h"
@@ -72,18 +73,43 @@ static size_t awslc_prov_error_flush(const AWSLC_PROV_CTX *ctx) {
   return drained;
 }
 
-int awslc_prov_error_settle(const AWSLC_PROV_CTX *ctx, int succeeded,
-                            uint32_t reason, const char *file, int line,
-                            const char *detail) {
+void awslc_prov_call_begin(AWSLC_PROV_CALL *call,
+                           const AWSLC_PROV_CTX *provctx) {
+  call->provctx = provctx;
+  awslc_prov_error_clear();
+  call->indicator = awslc_prov_service_indicator_before_call();
+}
+
+int awslc_prov_call_end(AWSLC_PROV_CALL *call, int succeeded,
+                        const char *detail, const char *file, int line) {
   if (succeeded) {
-    awslc_prov_error_discard();
-    return succeeded;
+    awslc_prov_error_clear();
+    return 1;
   }
-  // A failed dispatch call must never leave the queue empty, or the caller cannot
-  // tell a lost cause from no cause. Backend paths that queue nothing, and the
-  // provider's own checks, fall back to the slot's reason.
-  if (awslc_prov_error_flush(ctx) == 0) {
-    awslc_prov_error_raise(ctx, reason, file, line, detail);
+  if (awslc_prov_error_flush(call->provctx) == 0) {
+    awslc_prov_error_raise(call->provctx, AWSLC_PROV_R_BACKEND_ERROR, file,
+                           line, detail);
   }
-  return succeeded;
+  return 0;
+}
+
+int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
+                                       const char *type,
+                                       const char *description, int *approved,
+                                       const char *file, int line) {
+  assert(type != NULL && description != NULL && approved != NULL);
+  if (!awslc_prov_call_end(call, succeeded, type, file, line)) {
+    return 0;
+  }
+  if (awslc_prov_service_indicator_after_call(call->indicator)) {
+    return 1;
+  }
+  *approved = 0;
+  if (!awslc_prov_ctx_is_fips(call->provctx) ||
+      awslc_prov_ctx_run_fips_callback(call->provctx, type, description)) {
+    return 1;
+  }
+  awslc_prov_error_raise(call->provctx, AWSLC_PROV_R_UNAPPROVED_OPERATION, file,
+                         line, type);
+  return 0;
 }

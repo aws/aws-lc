@@ -49,29 +49,13 @@ int awslc_prov_ctx_is_fips(const AWSLC_PROV_CTX *ctx) {
   return ctx != NULL && ctx->is_fips;
 }
 
-static int awslc_prov_indicator_on_unapproved(AWSLC_PROV_CTX *ctx,
-                                              const char *type,
-                                              const char *description) {
+int awslc_prov_ctx_run_fips_callback(const AWSLC_PROV_CTX *ctx,
+                                     const char *type,
+                                     const char *description) {
   OSSL_INDICATOR_CALLBACK *callback = NULL;
 
-  // A NULL |callback| is the application not having registered one, which
-  // permits.
   ctx->upcalls.indicator_cb(ctx->corectx, &callback);
   return callback == NULL || callback(type, description, NULL);
-}
-
-int awslc_prov_indicator_end(AWSLC_PROV_CTX *ctx, uint64_t before,
-                             const char *type, const char *description,
-                             int *approved) {
-  if (ctx == NULL || type == NULL || description == NULL || approved == NULL) {
-    return 0;
-  }
-  if (awslc_prov_service_indicator_after_call(before)) {
-    return 1;
-  }
-  *approved = 0;
-  return !ctx->is_fips ||
-         awslc_prov_indicator_on_unapproved(ctx, type, description);
 }
 
 // Parameters we answer about ourselves.
@@ -138,10 +122,14 @@ static void awslc_prov_teardown(void *provctx) {
 }
 
 static int awslc_prov_self_test(void *provctx) {
+  AWSLC_PROV_CALL call;
+
   if (provctx == NULL) {
     return 0;
   }
-  return awslc_prov_backend_self_test();
+  awslc_prov_call_begin(&call, provctx);
+  int ok = awslc_prov_backend_self_test();
+  return AWSLC_PROV_CALL_END(&call, ok, NULL);
 }
 
 // Functions we provide to the core.

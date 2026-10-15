@@ -6,6 +6,8 @@
 // Shared behavior is ordinary C at the family level. Each algorithm then has
 // thin, typed wrappers naming its own backend entry points.
 
+#include <assert.h>
+
 #include "internal/backend.h"
 #include "internal/backend/digests.h"
 #include "internal/frontend/digests.h"
@@ -34,8 +36,9 @@ static void *awslc_prov_sha2_newctx(void *provctx, size_t backend_ctx_size,
                                     const char *algorithm_name) {
   AWSLC_PROV_SHA2_CTX *ctx = NULL;
   void *backend_ctx = NULL;
+  AWSLC_PROV_CALL call;
 
-  awslc_prov_error_mark();
+  awslc_prov_call_begin(&call, provctx);
   ctx = awslc_prov_zalloc(sizeof(*ctx));
   if (ctx != NULL) {
     backend_ctx = awslc_prov_zalloc(backend_ctx_size);
@@ -44,8 +47,7 @@ static void *awslc_prov_sha2_newctx(void *provctx, size_t backend_ctx_size,
       ctx = NULL;
     }
   }
-  if (!AWSLC_PROV_ERROR_SETTLE((AWSLC_PROV_CTX *)provctx, ctx != NULL,
-                              AWSLC_PROV_R_BACKEND_ERROR, algorithm_name)) {
+  if (!AWSLC_PROV_CALL_END(&call, ctx != NULL, algorithm_name)) {
     return NULL;
   }
 
@@ -96,9 +98,9 @@ static void awslc_prov_sha2_copyctx(void *outctx, void *inctx,
   if (out == NULL || in == NULL) {
     return;
   }
+  // Unreachable: EVP calls copyctx only for two contexts of the same digest.
+  assert(out->backend_ctx_size == in->backend_ctx_size);
   if (out->backend_ctx_size != in->backend_ctx_size) {
-    AWSLC_PROV_ERROR_RAISE(in->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           in->algorithm_name);
     return;
   }
   (void)copy(out->backend_ctx, in->backend_ctx);
@@ -112,6 +114,7 @@ static void awslc_prov_sha2_copyctx(void *outctx, void *inctx,
 static int awslc_prov_sha2_init_op(void *dctx, const OSSL_PARAM params[],
                                    awslc_prov_sha2_init_fn init) {
   AWSLC_PROV_SHA2_CTX *ctx = (AWSLC_PROV_SHA2_CTX *)dctx;
+  AWSLC_PROV_CALL call;
 
   (void)params;
   if (ctx == NULL) {
@@ -119,16 +122,16 @@ static int awslc_prov_sha2_init_op(void *dctx, const OSSL_PARAM params[],
   }
   ctx->fips_approved = awslc_prov_ctx_is_fips(ctx->provctx);
 
-  awslc_prov_error_mark();
+  awslc_prov_call_begin(&call, ctx->provctx);
   int ok = init(ctx->backend_ctx);
-  return AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
-                                ctx->algorithm_name);
+  return AWSLC_PROV_CALL_END(&call, ok, ctx->algorithm_name);
 }
 
 static int awslc_prov_sha2_update_op(void *dctx, const unsigned char *in,
                                      size_t inl,
                                      awslc_prov_sha2_update_fn update) {
   AWSLC_PROV_SHA2_CTX *ctx = (AWSLC_PROV_SHA2_CTX *)dctx;
+  AWSLC_PROV_CALL call;
 
   if (ctx == NULL) {
     return 0;
@@ -145,10 +148,9 @@ static int awslc_prov_sha2_update_op(void *dctx, const unsigned char *in,
     return 0;
   }
 
-  awslc_prov_error_mark();
+  awslc_prov_call_begin(&call, ctx->provctx);
   int ok = update(ctx->backend_ctx, in, inl);
-  return AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
-                                ctx->algorithm_name);
+  return AWSLC_PROV_CALL_END(&call, ok, ctx->algorithm_name);
 }
 
 static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl,
@@ -156,6 +158,7 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
                                     awslc_prov_sha2_final_fn final_fn,
                                     size_t digest_size) {
   AWSLC_PROV_SHA2_CTX *ctx = (AWSLC_PROV_SHA2_CTX *)dctx;
+  AWSLC_PROV_CALL call;
 
   if (ctx == NULL) {
     return 0;
@@ -165,19 +168,12 @@ static int awslc_prov_sha2_final_op(void *dctx, unsigned char *out, size_t *outl
                            ctx->algorithm_name);
     return 0;
   }
-  awslc_prov_error_mark();
-  uint64_t before = awslc_prov_service_indicator_before_call();
+  awslc_prov_call_begin(&call, ctx->provctx);
   int ok = final_fn(ctx->backend_ctx, out, outsz);
-  if (!AWSLC_PROV_ERROR_SETTLE(ctx->provctx, ok, AWSLC_PROV_R_BACKEND_ERROR,
-                               ctx->algorithm_name)) {
-    return 0;
-  }
-  if (!awslc_prov_indicator_end(ctx->provctx, before, ctx->algorithm_name,
-                                AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION,
-                                &ctx->fips_approved)) {
-    awslc_prov_cleanse(out, digest_size);
-    AWSLC_PROV_ERROR_RAISE(ctx->provctx, AWSLC_PROV_R_UNAPPROVED_OPERATION,
-                           ctx->algorithm_name);
+  if (!AWSLC_PROV_CALL_END_CHECK_APPROVED(
+          &call, ok, ctx->algorithm_name,
+          AWSLC_PROV_DIGEST_OPERATION_DESCRIPTION, &ctx->fips_approved)) {
+    awslc_prov_cleanse(out, outsz < digest_size ? outsz : digest_size);
     return 0;
   }
   *outl = digest_size;

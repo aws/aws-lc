@@ -90,7 +90,7 @@ banner "Building AWS-LC and the provider"
 # what keeps the provider's AWS-LC references from being satisfied by OpenSSL's
 # libcrypto.
 cmake_args=(
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE=RelWithAsserts
   -DBUILD_SHARED_LIBS=1
   -DENABLE_DIST_PKG=ON
   -DBUILD_AWSLC_PROVIDER=ON
