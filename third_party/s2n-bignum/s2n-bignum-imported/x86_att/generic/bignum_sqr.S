@@ -21,6 +21,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr)
         .text
+        .balign 32
 
 // First three are where arguments come in, but n is moved.
 

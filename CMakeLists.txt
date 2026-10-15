@@ -347,10 +347,9 @@ else()
   message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-  # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
-  # 1. The FIPS shared and static builds need to compute the module signature hash by reading the .text section
-  # 2. s2n-bignum x86 assembly sources still have references to static data in the .text section
+if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+  # OpenBSD links with --execute-only by default. FIPS builds must be able to
+  # read .text for the integrity check and, in static builds, delocated constants.
   if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
   else()
