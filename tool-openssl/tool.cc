@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <array>
 #include <iostream>
+#include <string>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -109,13 +111,26 @@ int main(int argc, char **argv) {
   int starting_arg = 1;
   tool_func_t tool = FindTool(argc, argv, starting_arg);
 
-  // Print help option menu.
+  // If no tool matched, check if the command name is a cipher (e.g.
+  // "aes-256-cbc"). OpenSSL treats cipher names as aliases for "enc".
+  std::string cipher_flag;
+  if (tool == nullptr && starting_arg > 0 && starting_arg <= argc) {
+    const char *cmd = argv[starting_arg - 1];
+    if (EVP_get_cipherbyname(cmd) != nullptr) {
+      tool = encTool;
+      cipher_flag = std::string("-") + cmd;
+    }
+  }
+
   if (tool == nullptr) {
     usage(argv[0]);
     return 1;
   }
 
   args_list_t args{};
+  if (!cipher_flag.empty()) {
+    args.emplace_back(cipher_flag);
+  }
   for (int i = starting_arg; i < argc; i++) {
     args.emplace_back(argv[i]);
   }
