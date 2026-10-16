@@ -18,20 +18,19 @@ else
 fi
 echo "$BUILD_ID"
 
-# Only trusted runs may write the shared corpus/crash store; PR builds are
-# network-isolated from it (see the fuzz CDK stack). FUZZ_CORPUS_WRITABLE is
-# set per-project by the CDK.
+# Only trusted runs (push to main/fips-*) mount the canonical EFS and may write
+# the shared corpus/crash store. PR builds have no EFS mount at all; they pull a
+# read-only copy of the corpus from S3 (s3:GetObject, enforced by IAM) and
+# never write back. FUZZ_CORPUS_WRITABLE and FUZZ_CORPUS_BUCKET are set
+# per-project by the CDK (see the fuzz CDK stack for why S3, not a second EFS,
+# is used for the PR path).
 CORPUS_WRITE_ALLOWED=false
 if [ -v CODEBUILD_FUZZING_ROOT ] && [ "${FUZZ_CORPUS_WRITABLE:-false}" == "true" ]; then
   CORPUS_WRITE_ALLOWED=true
 fi
 echo "CORPUS_WRITE_ALLOWED=${CORPUS_WRITE_ALLOWED}"
 
-if [ -v CODEBUILD_FUZZING_REPLICA_ROOT ]; then
-  REPLICA_CORPUS_ROOT="${CODEBUILD_FUZZING_REPLICA_ROOT}/fuzzing"
-else
-  REPLICA_CORPUS_ROOT=""
-fi
+CORPUS_BUCKET="${FUZZ_CORPUS_BUCKET:-}"
 
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
@@ -61,6 +60,25 @@ function run_fuzz_test {
   LOCAL_FUZZ_RUN_LOGS="${LOCAL_FUZZ_TEST_ROOT}/logs"
   SUMMARY_LOG="${LOCAL_FUZZ_RUN_LOGS}/summary.log"
   mkdir -p "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_FUZZ_TEST_ROOT" "$LOCAL_RUN_CORPUS" "$LOCAL_ARTIFACTS_FOLDER" "$LOCAL_FUZZ_RUN_LOGS"
+
+  # On PR builds there is no EFS mount, so SHARED_FUZZ_TEST_CORPUS starts empty.
+  # Seed it from the read-only S3 corpus snapshot the trusted build published.
+  # This replaces the old EFS read with a download; downstream steps are
+  # unchanged. Failure to download is non-fatal: the fuzzer still runs against
+  # the in-repo SRC_CORPUS.
+  if [ "$CORPUS_WRITE_ALLOWED" == false ] && [ -n "$CORPUS_BUCKET" ]; then
+    CORPUS_TARBALL="${LOCAL_FUZZ_TEST_ROOT}/corpus_download.tar.gz"
+    if aws s3 cp "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz" "$CORPUS_TARBALL"; then
+      # --strip-components so the archived shared_corpus/ contents land directly
+      # in SHARED_FUZZ_TEST_CORPUS. Guard against path traversal/symlink entries
+      # in the downloaded archive even though we control its producer.
+      tar -xzf "$CORPUS_TARBALL" -C "$SHARED_FUZZ_TEST_CORPUS" --strip-components=1 \
+        --no-same-owner --no-same-permissions || echo "Corpus extract failed, continuing with SRC_CORPUS only"
+      rm -f "$CORPUS_TARBALL"
+    else
+      echo "No published corpus for ${FUZZ_NAME} (or download failed), continuing with SRC_CORPUS only"
+    fi
+  fi
 
   # To avoid having each libfuzzer thread read from the shared corpus copy it to the local CodeBuild directory one time
   cp -r "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_SHARED_CORPUS"
@@ -139,16 +157,16 @@ function run_fuzz_test {
   if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
     time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
 
-    # Mirror the corpus subtree one-way to the replica for PR builds.
-    if [ -n "$REPLICA_CORPUS_ROOT" ]; then
-      REPLICA_FUZZ_TEST_CORPUS="${REPLICA_CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
-      mkdir -p "$REPLICA_FUZZ_TEST_CORPUS"
-      if command -v rsync >/dev/null 2>&1; then
-        rsync -a --delete "${SHARED_FUZZ_TEST_CORPUS}/" "${REPLICA_FUZZ_TEST_CORPUS}/"
-      else
-        rm -rf "${REPLICA_FUZZ_TEST_CORPUS:?}"/*
-        cp -r "${SHARED_FUZZ_TEST_CORPUS}/." "${REPLICA_FUZZ_TEST_CORPUS}/"
-      fi
+    # Publish the merged corpus to S3 for PR builds to consume. This is a
+    # one-way upload from the trusted build: it only ever writes to S3 and
+    # never reads PR-controlled storage, so there is no path for a PR to
+    # influence the canonical corpus. A plain object PUT also means there is no
+    # delete/sync step that could follow a PR-planted symlink.
+    if [ -n "$CORPUS_BUCKET" ]; then
+      UPLOAD_TARBALL="${LOCAL_FUZZ_TEST_ROOT}/corpus_upload.tar.gz"
+      tar -czf "$UPLOAD_TARBALL" -C "$(dirname "$SHARED_FUZZ_TEST_CORPUS")" "$(basename "$SHARED_FUZZ_TEST_CORPUS")"
+      aws s3 cp "$UPLOAD_TARBALL" "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz"
+      rm -f "$UPLOAD_TARBALL"
     fi
   else
     echo "Skipping shared corpus merge-back for untrusted/local run"

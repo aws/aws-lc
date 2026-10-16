@@ -9,6 +9,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_ec2 as ec2,
     aws_efs as efs,
+    aws_s3 as s3,
     Environment,
 )
 from constructs import Construct
@@ -18,20 +19,31 @@ from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import (
     code_build_batch_policy_in_json,
     code_build_publish_metrics_in_json,
+    s3_read_write_policy_in_json,
+    s3_read_only_policy_in_json,
 )
 from util.metadata import GITHUB_PUSH_CI_BRANCH_TARGETS
 from util.build_spec_loader import BuildSpecLoader
-
-NFS_PORT = 2049
 
 
 class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
     """Batch-execute AWS-LC fuzz tests in GitHub.
 
     A trusted project (push to main/fips-*) mounts the canonical EFS
-    read-write; an untrusted PR project mounts only a read-replica of the
-    corpus and has no network path to the canonical filesystem. The trusted
-    build syncs the corpus one-way to the replica.
+    read-write and uploads the merged corpus to an S3 bucket. An untrusted PR
+    project has no EFS mount at all; it downloads the corpus from S3 with an
+    IAM-enforced read-only (s3:GetObject) role.
+
+    S3 is used for the PR path rather than a second EFS "replica" on purpose.
+    CodeBuild has no IAM authorization for EFS mounts and the containers run
+    privileged, so a PR-writable replica cannot be made read-only to the PR
+    build. Any shared filesystem the PR build can write and the trusted build
+    later reads is exploitable: a PR can plant a symlink and the trusted
+    build's own write (running as the trusted principal) follows it back into
+    the canonical store. In-band symlink checks are racy because the PR build
+    can mutate the replica concurrently. With S3 the read-only grant is
+    enforced by IAM outside the container, and the trusted build only ever
+    uploads, so it never reads storage that PR code controls.
     """
 
     def __init__(
@@ -72,7 +84,8 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             description="Allow all traffic inside security group",
         )
 
-        # Deliberately not admitted to the canonical EFS SG.
+        # The PR project has no path to the canonical EFS: it is in its own
+        # security group and mounts no filesystem.
         pr_security_group = ec2.SecurityGroup(
             scope=self, id="{}-PRFuzzingSecurityGroup".format(id), vpc=fuzz_vpc
         )
@@ -103,32 +116,23 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             provisioned_throughput_per_second=Size.mebibytes(100),
         )
 
-        replica_efs_security_group = ec2.SecurityGroup(
-            scope=self, id="{}-ReplicaEFSSecurityGroup".format(id), vpc=fuzz_vpc
-        )
-        replica_efs_security_group.add_ingress_rule(
-            peer=pr_security_group,
-            connection=ec2.Port.tcp(NFS_PORT),
-            description="Allow PR fuzz builds to read the replica corpus",
-        )
-        replica_efs_security_group.add_ingress_rule(
-            peer=trusted_security_group,
-            connection=ec2.Port.tcp(NFS_PORT),
-            description="Allow trusted fuzz builds to sync the replica corpus",
-        )
-
-        replica_filesystem = efs.FileSystem(
+        # Corpus distribution bucket for PR builds. The trusted build uploads
+        # the merged corpus here; PR builds get s3:GetObject only (enforced by
+        # IAM, outside the privileged container), so they can never write it.
+        corpus_bucket = s3.Bucket(
             scope=self,
-            id="{}-FuzzingReplicaEFS".format(id),
-            file_system_name="AWS-LC-Fuzz-Corpus-PR-Replica",
-            enable_automatic_backups=False,
-            encrypted=True,
-            security_group=replica_efs_security_group,
-            vpc=fuzz_vpc,
-            vpc_subnets=efs_subnet_selection,
-            performance_mode=efs.PerformanceMode.GENERAL_PURPOSE,
-            throughput_mode=efs.ThroughputMode.PROVISIONED,
-            provisioned_throughput_per_second=Size.mebibytes(100),
+            id="{}-CorpusBucket".format(id),
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            enforce_ssl=True,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            versioned=True,
+        )
+        # Keep storage bounded: the corpus tarball is overwritten on every
+        # trusted run, so old versions have no long-term value.
+        corpus_bucket.add_lifecycle_rule(
+            enabled=True,
+            noncurrent_version_expiration=Duration.days(30),
+            abort_incomplete_multipart_upload_after=Duration.days(7),
         )
 
         # Trusted project: push to main/fips-*, canonical EFS read-write.
@@ -155,6 +159,10 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
                 ),
+                # Upload the merged corpus for PR builds to consume.
+                "corpus_s3_policy": iam.PolicyDocument.from_json(
+                    s3_read_write_policy_in_json(corpus_bucket.bucket_name)
+                ),
             },
         )
 
@@ -172,7 +180,10 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 environment_variables={
                     "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
                         value="true"
-                    )
+                    ),
+                    "FUZZ_CORPUS_BUCKET": codebuild.BuildEnvironmentVariable(
+                        value=corpus_bucket.bucket_name
+                    ),
                 },
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env),
@@ -199,17 +210,10 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                     "MountPoint": "/efs_fuzzing_root",
                     "Type": "EFS",
                 },
-                {
-                    "Identifier": "fuzzing_replica_root",
-                    "Location": "%s.efs.%s.amazonaws.com:/"
-                    % (replica_filesystem.file_system_id, env.region),
-                    "MountPoint": "/efs_fuzzing_replica_root",
-                    "Type": "EFS",
-                },
             ],
         )
 
-        # Untrusted PR project: replica EFS only, isolated security group.
+        # Untrusted PR project: no EFS mount, corpus pulled read-only from S3.
         pr_source = codebuild.Source.git_hub(
             owner=self.github_repo_owner,
             repo=self.github_repo_name,
@@ -235,6 +239,10 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
                 ),
+                # Download-only: IAM enforces s3:GetObject with no write action.
+                "corpus_s3_policy": iam.PolicyDocument.from_json(
+                    s3_read_only_policy_in_json(corpus_bucket.bucket_name)
+                ),
             },
         )
 
@@ -252,7 +260,10 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 environment_variables={
                     "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
                         value="false"
-                    )
+                    ),
+                    "FUZZ_CORPUS_BUCKET": codebuild.BuildEnvironmentVariable(
+                        value=corpus_bucket.bucket_name
+                    ),
                 },
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env),
@@ -262,18 +273,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
         pr_codebuild.enable_batch_builds()
 
         cfn_pr_codebuild = pr_codebuild.node.default_child
-        cfn_pr_codebuild.add_override(
-            "Properties.FileSystemLocations",
-            [
-                {
-                    "Identifier": "fuzzing_root",
-                    "Location": "%s.efs.%s.amazonaws.com:/"
-                    % (replica_filesystem.file_system_id, env.region),
-                    "MountPoint": "/efs_fuzzing_root",
-                    "Type": "EFS",
-                }
-            ],
-        )
         cfn_pr_codebuild.add_property_override(
             "Triggers.PullRequestBuildPolicy", self.pull_request_policy
         )
