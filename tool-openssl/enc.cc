@@ -79,64 +79,6 @@ static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
   return true;
 }
 
-static bool ReadPassphraseFromFile(const std::string &path,
-                                   Password &passphrase) {
-  ScopedFILE f(fopen(path.c_str(), "r"));
-  if (!f) {
-    fprintf(stderr, "Error: cannot open passphrase file '%s'\n", path.c_str());
-    return false;
-  }
-  char buf[1024];
-  if (!fgets(buf, sizeof(buf), f.get())) {
-    fprintf(stderr, "Error: cannot read passphrase from '%s'\n", path.c_str());
-    return false;
-  }
-  size_t len = strlen(buf);
-  while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
-    buf[--len] = '\0';
-  }
-  passphrase = Password(std::string(buf, len));
-  OPENSSL_cleanse(buf, sizeof(buf));
-  return true;
-}
-
-static bool ResolvePassphrase(const std::string &source,
-                              Password &passphrase) {
-  if (source.size() >= 5 && source.substr(0, 5) == "pass:") {
-    passphrase = Password(source.substr(5));
-    return true;
-  }
-  if (source.size() >= 5 && source.substr(0, 5) == "file:") {
-    return ReadPassphraseFromFile(source.substr(5), passphrase);
-  }
-  if (source.size() >= 4 && source.substr(0, 4) == "env:") {
-    const char *val = getenv(source.substr(4).c_str());
-    if (!val) {
-      fprintf(stderr, "Error: environment variable '%s' not set\n",
-              source.substr(4).c_str());
-      return false;
-    }
-    passphrase = Password(std::string(val));
-    return true;
-  }
-  if (source == "stdin") {
-    char buf[1024];
-    if (!fgets(buf, sizeof(buf), stdin)) {
-      fprintf(stderr, "Error: cannot read passphrase from stdin\n");
-      return false;
-    }
-    size_t len = strlen(buf);
-    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
-      buf[--len] = '\0';
-    }
-    passphrase = Password(std::string(buf, len));
-    OPENSSL_cleanse(buf, sizeof(buf));
-    return true;
-  }
-  fprintf(stderr, "Error: unknown passphrase source '%s'\n", source.c_str());
-  return false;
-}
-
 int encTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -181,15 +123,20 @@ int encTool(const args_list_t &args) {
   Password passphrase;
   bool has_passphrase = false;
   if (!kfile_path.empty()) {
-    if (!ReadPassphraseFromFile(kfile_path, passphrase)) {
+    passphrase = Password("file:" + kfile_path);
+    if (!pass_util::ExtractPassword(passphrase)) {
       return kToolExitFailure;
     }
     has_passphrase = true;
   } else if (!k_value.empty()) {
-    passphrase = Password(k_value);
+    passphrase = Password("pass:" + k_value);
+    if (!pass_util::ExtractPassword(passphrase)) {
+      return kToolExitFailure;
+    }
     has_passphrase = true;
   } else if (!pass_source.empty()) {
-    if (!ResolvePassphrase(pass_source, passphrase)) {
+    passphrase = Password(pass_source);
+    if (!pass_util::ExtractPassword(passphrase)) {
       return kToolExitFailure;
     }
     has_passphrase = true;
@@ -254,15 +201,21 @@ int encTool(const args_list_t &args) {
       }
 
       bool use_salt = !nosalt;
-      if (!hex_salt.empty()) {
-        if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
-          fprintf(stderr, "Error: Invalid hex salt value\n");
-          return kToolExitFailure;
-        }
-        use_salt = true;
-      } else if (use_salt) {
+
+      if (use_salt) {
         if (encode) {
-          RAND_bytes(salt, SALT_SIZE);
+          if (!hex_salt.empty()) {
+            if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
+              fprintf(stderr, "Error: Invalid hex salt value\n");
+              return kToolExitFailure;
+            }
+          } else {
+            if (!RAND_bytes(salt, SALT_SIZE)) {
+              fprintf(stderr, "Error: RAND_bytes failed\n");
+              return kToolExitFailure;
+            }
+          }
+          write_salt_header = true;
         } else {
           uint8_t salt_header[sizeof(kSaltMagic) + SALT_SIZE];
           if (fread(salt_header, 1, sizeof(salt_header), input) !=
@@ -274,7 +227,14 @@ int encTool(const args_list_t &args) {
             fprintf(stderr, "Error: bad magic number\n");
             return kToolExitFailure;
           }
-          memcpy(salt, salt_header + sizeof(kSaltMagic), SALT_SIZE);
+          if (!hex_salt.empty()) {
+            if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
+              fprintf(stderr, "Error: Invalid hex salt value\n");
+              return kToolExitFailure;
+            }
+          } else {
+            memcpy(salt, salt_header + sizeof(kSaltMagic), SALT_SIZE);
+          }
         }
       }
 
@@ -293,10 +253,6 @@ int encTool(const args_list_t &args) {
           fprintf(stderr, "Error: Invalid hex IV value\n");
           return kToolExitFailure;
         }
-      }
-
-      if (encode && use_salt) {
-        write_salt_header = true;
       }
     } else {
       fprintf(stderr,

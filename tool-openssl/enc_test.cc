@@ -662,3 +662,245 @@ TEST_F(EncComparisonTest, RegisteredCiphersMatchOpenSSL) {
   RemoveFile(decrypted_path_tool);
   RemoveFile(decrypted_path_openssl);
 }
+
+TEST_F(EncComparisonTest, PassphraseInterop) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  const std::string pass = "pass:interoptest";
+  const std::string salt = "AABBCCDD11223344";
+
+  // Encrypt with our tool, decrypt with OpenSSL
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(tool_executable_path) +
+      " enc -e -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(in_path) +
+      " -out " + ShellEscape(encrypted_path)));
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(openssl_executable_path) +
+      " enc -d -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(encrypted_path) +
+      " -out " + ShellEscape(decrypted_path)));
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+
+  // Encrypt with OpenSSL, decrypt with our tool
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(openssl_executable_path) +
+      " enc -e -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(in_path) +
+      " -out " + ShellEscape(encrypted_path)));
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(tool_executable_path) +
+      " enc -d -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(encrypted_path) +
+      " -out " + ShellEscape(decrypted_path)));
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+
+  // Ciphertext should be identical with the same fixed salt
+  std::string tool_encrypted, openssl_encrypted;
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(tool_executable_path) +
+      " enc -e -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(in_path) +
+      " -out " + ShellEscape(out_path_tool)));
+  ASSERT_EQ(0, ExecuteCommandExitCode(
+      ShellEscape(openssl_executable_path) +
+      " enc -e -aes-256-cbc -pass " + ShellEscape(pass) +
+      " -S " + salt + " -md sha256" +
+      " -in " + ShellEscape(in_path) +
+      " -out " + ShellEscape(out_path_openssl)));
+  EXPECT_EQ(ReadFileToString(out_path_tool), ReadFileToString(out_path_openssl));
+
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+// -------------------- Enc Passphrase Tests ---------------------------------
+
+TEST_F(EncTest, PassphraseRoundTrip) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",   "-aes-256-cbc", "-pass", "pass:secret123",
+                          "-in",  in_path,         "-out",  encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",   "-aes-256-cbc",  "-pass", "pass:secret123",
+                          "-in",  encrypted_path,   "-out",  decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseKFlag) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",  "-aes-256-cbc", "-k", "mypassword",
+                          "-in", in_path,         "-out", encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",  "-aes-256-cbc",  "-k", "mypassword",
+                          "-in", encrypted_path,   "-out", decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseKfileFlag) {
+  char pass_path[PATH_MAX], encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(pass_path), 0u);
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  {
+    ScopedFILE f(fopen(pass_path, "w"));
+    ASSERT_TRUE(f);
+    fprintf(f.get(), "filepassword\n");
+  }
+
+  args_list_t enc_args = {"-e",    "-aes-256-cbc", "-kfile", pass_path,
+                          "-in",   in_path,         "-out",   encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",    "-aes-256-cbc",  "-kfile", pass_path,
+                          "-in",   encrypted_path,   "-out",   decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(pass_path);
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseEnvSource) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  setenv("AWSLC_TEST_ENC_PASS", "envpassword", 1);
+
+  args_list_t enc_args = {"-e",   "-aes-256-cbc",
+                          "-pass", "env:AWSLC_TEST_ENC_PASS",
+                          "-in",  in_path,
+                          "-out",  encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",   "-aes-256-cbc",
+                          "-pass", "env:AWSLC_TEST_ENC_PASS",
+                          "-in",  encrypted_path,
+                          "-out",  decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  unsetenv("AWSLC_TEST_ENC_PASS");
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseNosaltRoundTrip) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",       "-aes-256-cbc", "-nosalt",
+                          "-pass",    "pass:nosaltpw",
+                          "-in",      in_path,
+                          "-out",     encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  std::string ciphertext = ReadFileToString(encrypted_path);
+  EXPECT_FALSE(ciphertext.empty());
+  EXPECT_NE(0, memcmp(ciphertext.data(), "Salted__", 8));
+
+  args_list_t dec_args = {"-d",       "-aes-256-cbc", "-nosalt",
+                          "-pass",    "pass:nosaltpw",
+                          "-in",      encrypted_path,
+                          "-out",     decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseExplicitSaltRoundTrip) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",   "-aes-256-cbc",
+                          "-pass", "pass:salttest",
+                          "-S",   "AABBCCDD11223344",
+                          "-in",  in_path,
+                          "-out",  encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  std::string ciphertext = ReadFileToString(encrypted_path);
+  ASSERT_GE(ciphertext.size(), 16u);
+  EXPECT_EQ(0, memcmp(ciphertext.data(), "Salted__", 8));
+  const uint8_t expected_salt[] = {0xAA, 0xBB, 0xCC, 0xDD,
+                                   0x11, 0x22, 0x33, 0x44};
+  EXPECT_EQ(0, memcmp(ciphertext.data() + 8, expected_salt, 8));
+
+  args_list_t dec_args = {"-d",   "-aes-256-cbc",
+                          "-pass", "pass:salttest",
+                          "-S",   "AABBCCDD11223344",
+                          "-in",  encrypted_path,
+                          "-out",  decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseCustomDigest) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",   "-aes-256-cbc", "-pass", "pass:mdtest",
+                          "-md",  "sha1",          "-in",   in_path,
+                          "-out",  encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",   "-aes-256-cbc",  "-pass", "pass:mdtest",
+                          "-md",  "sha1",           "-in",   encrypted_path,
+                          "-out",  decrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(dec_args));
+
+  EXPECT_EQ(ReadFileToString(in_path), ReadFileToString(decrypted_path));
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
+TEST_F(EncTest, PassphraseWrongPasswordFails) {
+  char encrypted_path[PATH_MAX], decrypted_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(encrypted_path), 0u);
+  ASSERT_GT(createTempFILEpath(decrypted_path), 0u);
+
+  args_list_t enc_args = {"-e",   "-aes-256-cbc", "-pass", "pass:right",
+                          "-in",  in_path,         "-out",  encrypted_path};
+  ASSERT_EQ(kToolExitSuccess, encTool(enc_args));
+
+  args_list_t dec_args = {"-d",   "-aes-256-cbc",  "-pass", "pass:wrong",
+                          "-in",  encrypted_path,   "-out",  decrypted_path};
+  EXPECT_EQ(kToolExitFailure, encTool(dec_args));
+
+  RemoveFile(encrypted_path);
+  RemoveFile(decrypted_path);
+}
+
