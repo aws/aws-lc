@@ -145,6 +145,7 @@ if(BUILD_TESTING)
         pkeyutl.cc
         pkeyutl_test.cc
         rand.cc
+        rand_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
