@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <cerrno>
+#include <climits>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -9,6 +11,8 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+
+static const size_t kMaxRandBytes = 256 * 1024 * 1024;
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
@@ -54,32 +58,43 @@ int randTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
+  if (extra_args[0].empty() || extra_args[0][0] == '-') {
+    fprintf(stderr, "error: invalid num value '%s'\n", extra_args[0].c_str());
+    return kToolExitFailure;
+  }
+
+  errno = 0;
   char *endptr = nullptr;
   unsigned long long num = strtoull(extra_args[0].c_str(), &endptr, 10);
-  if (*endptr != '\0' || extra_args[0].empty()) {
+  if (*endptr != '\0' || errno == ERANGE) {
     fprintf(stderr, "error: invalid num value '%s'\n", extra_args[0].c_str());
+    return kToolExitFailure;
+  }
+
+  if (num > kMaxRandBytes) {
+    fprintf(stderr, "error: num too large (max %zu)\n", kMaxRandBytes);
     return kToolExitFailure;
   }
 
   std::string out_path;
   GetString(&out_path, "-out", "", parsed_args);
 
+  ScopedFILE out_scoped;
   FILE *out_file = stdout;
   if (!out_path.empty()) {
-    out_file = fopen(out_path.c_str(), "wb");
-    if (out_file == nullptr) {
+    out_scoped.reset(fopen(out_path.c_str(), "wb"));
+    if (!out_scoped) {
       fprintf(stderr, "error: cannot open '%s' for writing\n",
               out_path.c_str());
       return kToolExitFailure;
     }
+    out_file = out_scoped.get();
   }
 
-  std::vector<uint8_t> buf(num);
-  if (num > 0 && !RAND_bytes(buf.data(), num)) {
+  const size_t nbytes = static_cast<size_t>(num);
+  std::vector<uint8_t> buf(nbytes);
+  if (nbytes > 0 && !RAND_bytes(buf.data(), nbytes)) {
     fprintf(stderr, "error: RAND_bytes failed\n");
-    if (out_file != stdout) {
-      fclose(out_file);
-    }
     return kToolExitFailure;
   }
 
@@ -95,14 +110,14 @@ int randTool(const args_list_t &args) {
       ret = kToolExitFailure;
     } else {
       BIO_push(b64, bio_out);
-      if (num > 0) {
-        BIO_write(b64, buf.data(), static_cast<int>(num));
+      if (nbytes > 0) {
+        BIO_write(b64, buf.data(), static_cast<int>(nbytes));
       }
       BIO_flush(b64);
       BIO_free_all(b64);
     }
   } else if (hex) {
-    for (size_t i = 0; i < num; i++) {
+    for (size_t i = 0; i < nbytes; i++) {
       if (fprintf(out_file, "%02x", buf[i]) < 0) {
         ret = kToolExitFailure;
         break;
@@ -112,13 +127,9 @@ int randTool(const args_list_t &args) {
       fprintf(out_file, "\n");
     }
   } else {
-    if (num > 0 && fwrite(buf.data(), 1, num, out_file) != num) {
+    if (nbytes > 0 && fwrite(buf.data(), 1, nbytes, out_file) != nbytes) {
       ret = kToolExitFailure;
     }
-  }
-
-  if (out_file != stdout) {
-    fclose(out_file);
   }
 
   return ret;
