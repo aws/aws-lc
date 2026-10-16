@@ -24,15 +24,18 @@ make && make install_sw
 # shared libraries and the upstream OpenSSL build for header files and testing.
 cd aws-lc
 cmake -GNinja -Bbuild -DBUILD_SHARED_LIBS=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 cd build
 ninja
 
 # Build with symbol versioning via ENABLE_DIST_PKG in AWS-LC (Linux only)
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 ```
+
+To build against the distribution's OpenSSL instead, install its development package (`openssl-devel`,
+3.5 or later) and omit `OPENSSL_ROOT_DIR`. CMake finds it in the system paths.
 
 The provider artifact is `build/provider/awslc.so` (`awslc.dylib` on macOS).
 
@@ -47,7 +50,7 @@ satisfy the requirements of that validation:
 # Building AWS-LC-FIPS with aws-lc-provider
 cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DFIPS=1 -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 ```
 
 | Feature | Provider behavior |
@@ -89,27 +92,24 @@ keep the module's AWS-LC references off OpenSSL's libcrypto. Linux only; elsewhe
 build tree.
 
 ```bash
-# Install AWS-LC, then put its library directory on the loader path.
+# Determine where your openssl searches for providers.
+MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //; s/"//g')"
+
+# Install AWS-LC and the module, then put AWS-LC's library directory on the loader path.
 export AWSLC_ROOT="${PWD}/build/install"
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}" \
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}" \
+  -DAWSLC_PROVIDER_MODULESDIR="${MODULES_DIR}" \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_ROOT}"
 ninja -C build install
 export LD_LIBRARY_PATH="${AWSLC_ROOT}/lib64:${AWSLC_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ```
 
 OpenSSL loads a provider by bare name from its modules directory, appending the platform's suffix.
-The install above does not carry the module, so copy it there:
+`AWSLC_PROVIDER_MODULESDIR` is where the install puts the module. It defaults to `${CMAKE_INSTALL_PREFIX}/lib/ossl-modules`.
 
-```bash
-# The OpenSSL being configured, not whichever one is on PATH.
-MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //; s/"//g')"
-
-cp build/provider/awslc.so "${MODULES_DIR}/"
-```
-
-`LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the copy.
+`LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the install.
 Check what the module resolves to:
 
 ```console
