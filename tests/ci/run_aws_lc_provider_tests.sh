@@ -13,10 +13,6 @@
 # source the way the other CI scripts here build theirs. No runner image ships an
 # OpenSSL new enough to use instead, and probing for one would make what the
 # provider was compiled against a property of the host.
-#
-# It takes no arguments and reads no configuration. To build against some other
-# OpenSSL, invoke cmake directly with AWSLC_PROVIDER_OPENSSL_ROOT; see
-# provider/README.md.
 
 set -euo pipefail
 
@@ -32,6 +28,14 @@ function fail {
   echo >&2 "FAILED: $*"
   exit 1
 }
+
+FIPS=0
+for arg in "$@"; do
+  case "${arg}" in
+    --fips) FIPS=1 ;;
+    *) fail "unknown argument: ${arg}" ;;
+  esac
+done
 
 # Before sourcing anything, so the refusal is the first thing printed rather than
 # being buried under the setup script's environment dump.
@@ -92,7 +96,11 @@ cmake_args=(
   -DBUILD_AWSLC_PROVIDER=ON
   "-DAWSLC_PROVIDER_OPENSSL_ROOT=${OPENSSL_ROOT}"
 )
+if [[ "${FIPS}" == "1" ]]; then
+  cmake_args+=(-DFIPS=1)
+fi
 
+echo "FIPS build: $([[ "${FIPS}" == "1" ]] && echo yes || echo no)"
 echo "cmake flags: ${cmake_args[*]}"
 run_build "${cmake_args[@]}"
 
