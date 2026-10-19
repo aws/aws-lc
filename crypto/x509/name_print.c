@@ -4,6 +4,7 @@
 #include <openssl/x509.h>
 
 #include <inttypes.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/asn1.h>
@@ -14,6 +15,17 @@
 static int maybe_write(BIO *out, const void *buf, int len) {
   // If |out| is NULL, ignore the output but report the length.
   return out == NULL || BIO_write(out, buf, len) == len;
+}
+
+// add_outlen adds |len| to |*outlen|, both tracking the total number of
+// characters |do_name_ex| has written across a loop over an attacker-sized
+// number of name entries. It returns 0 if the addition would overflow.
+static int add_outlen(int *outlen, int len) {
+  if (len > INT_MAX - *outlen) {
+    return 0;
+  }
+  *outlen += len;
+  return 1;
 }
 
 // do_indent prints |indent| spaces to |out|.
@@ -104,16 +116,22 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
         if (!maybe_write(out, sep_mv, sep_mv_len)) {
           return -1;
         }
-        outlen += sep_mv_len;
+        if (!add_outlen(&outlen, sep_mv_len)) {
+          return -1;
+        }
       } else {
         if (!maybe_write(out, sep_dn, sep_dn_len)) {
           return -1;
         }
-        outlen += sep_dn_len;
+        if (!add_outlen(&outlen, sep_dn_len)) {
+          return -1;
+        }
         if (!do_indent(out, indent)) {
           return -1;
         }
-        outlen += indent;
+        if (!add_outlen(&outlen, indent)) {
+          return -1;
+        }
       }
     }
     prev = X509_NAME_ENTRY_set(ent);
@@ -151,12 +169,16 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
         if (!do_indent(out, fld_len - objlen)) {
           return -1;
         }
-        outlen += fld_len - objlen;
+        if (!add_outlen(&outlen, fld_len - objlen)) {
+          return -1;
+        }
       }
       if (!maybe_write(out, sep_eq, sep_eq_len)) {
         return -1;
       }
-      outlen += objlen + sep_eq_len;
+      if (!add_outlen(&outlen, objlen) || !add_outlen(&outlen, sep_eq_len)) {
+        return -1;
+      }
     }
     // If the field name is unknown then fix up the DER dump flag. We
     // might want to limit this further so it will DER dump on anything
@@ -171,7 +193,9 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
     if (len < 0) {
       return -1;
     }
-    outlen += len;
+    if (!add_outlen(&outlen, len)) {
+      return -1;
+    }
   }
   return outlen;
 }
