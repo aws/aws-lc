@@ -24,12 +24,11 @@
 
 // This file implements RFC 9180 and draft-ietf-hpke-pq-05.
 
-// Callers stack-allocate |EVP_HPKE_KEY|, so its size is ABI: a caller built
-// against one release and run against a later one reserves the older size and
-// overflows it. The struct is four pointers on any ABI, so spelling that out
-// fails the build if KEM-dependent key material moves back inline.
-OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) == 4 * sizeof(void *),
-                      evp_hpke_key_must_not_hold_inline_buffers)
+// Callers stack-allocate |EVP_HPKE_KEY|, so its size is ABI. Hold it at the
+// size it had before the ML-KEM KEMs grew the key material: a KEM pointer plus
+// the 32-byte X25519 private and public keys that used to sit inline.
+OPENSSL_STATIC_ASSERT(sizeof(EVP_HPKE_KEY) == sizeof(void *) + 64,
+                      evp_hpke_key_size_must_not_change)
 
 // MAX_SEED_LEN is the largest |seed_len| of any KEM and MAX_SHARED_SECRET_LEN
 // the largest Nsecret. Both are 32 for every KEM this file implements: X25519

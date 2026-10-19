@@ -390,7 +390,8 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 // |EVP_HPKE_KEY| holds its key material out of line, sized for the configured
 // KEM, so that adding a KEM cannot change the structure's size. A caller which
 // stack-allocates one against one release and runs against a later one would
-// otherwise overflow it.
+// otherwise overflow it. It is padded to the size it had before the ML-KEM KEMs
+// were added, so that callers built against either reserve the same space.
 
 struct evp_hpke_ctx_st {
   const EVP_HPKE_KEM *kem;
@@ -413,6 +414,9 @@ struct evp_hpke_key_st {
   // generation. KEMs which use the serialized private key directly leave it
   // NULL.
   uint8_t *expanded_private_key;
+  // reserved holds the space the X25519 private and public keys occupied inline
+  // before the key material moved out of line. Those were 32 bytes each.
+  uint8_t reserved[64 - 3 * sizeof(void *)];
 };
 
 
