@@ -31,7 +31,7 @@ static const argument_t kArguments[] = {
     {"-iv", kOptionalArgument, "IV to use, in hex form"},
     {"-k", kOptionalArgument, "Passphrase"},
     {"-kfile", kOptionalArgument, "Read passphrase from file"},
-    {"-pass", kOptionalArgument, "Passphrase source (pass:, file:, env:)"},
+    {"-pass", kOptionalArgument, "Passphrase source (pass:, file:, env:, fd:, stdin)"},
     {"-md", kOptionalArgument,
      "Message digest for key derivation (default sha256)"},
     {"-S", kOptionalArgument, "Salt in hex form"},
@@ -203,17 +203,15 @@ int encTool(const args_list_t &args) {
       bool use_salt = !nosalt;
 
       if (use_salt) {
-        if (encode) {
-          if (!hex_salt.empty()) {
-            if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
-              fprintf(stderr, "Error: Invalid hex salt value\n");
-              return kToolExitFailure;
-            }
-          } else {
-            if (!RAND_bytes(salt, SALT_SIZE)) {
-              fprintf(stderr, "Error: RAND_bytes failed\n");
-              return kToolExitFailure;
-            }
+        if (!hex_salt.empty()) {
+          if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
+            fprintf(stderr, "Error: Invalid hex salt value\n");
+            return kToolExitFailure;
+          }
+        } else if (encode) {
+          if (!RAND_bytes(salt, SALT_SIZE)) {
+            fprintf(stderr, "Error: RAND_bytes failed\n");
+            return kToolExitFailure;
           }
           write_salt_header = true;
         } else {
@@ -227,14 +225,7 @@ int encTool(const args_list_t &args) {
             fprintf(stderr, "Error: bad magic number\n");
             return kToolExitFailure;
           }
-          if (!hex_salt.empty()) {
-            if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
-              fprintf(stderr, "Error: Invalid hex salt value\n");
-              return kToolExitFailure;
-            }
-          } else {
-            memcpy(salt, salt_header + sizeof(kSaltMagic), SALT_SIZE);
-          }
+          memcpy(salt, salt_header + sizeof(kSaltMagic), SALT_SIZE);
         }
       }
 
