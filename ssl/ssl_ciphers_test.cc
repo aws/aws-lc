@@ -1672,6 +1672,26 @@ TEST_P(SSLContextSwitchTest, CopyWithoutSwitching) {
             kSNISigningPrefs[0]);
 }
 
+// An empty TLS 1.3 list allows no TLS 1.3 cipher suites, even when it is copied
+// to a connection whose |SSL_CTX| has some. TLS 1.2 is unaffected.
+TEST_P(SSLContextSwitchTest, CopyEmptyTLS13List) {
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(sni_ctx_.get(), ""));
+  state_.switch_ctx = false;
+  state_.copy_cipher_lists = true;
+
+  ASSERT_TRUE(ClientOffers(kSwitchAllowedTLS12, kSwitchAllowedTLS13));
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  if (version() == TLS1_3_VERSION) {
+    EXPECT_FALSE(CompleteHandshakes(client.get(), server.get()));
+    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+  } else {
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+    EXPECT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server.get())),
+              AllowedCipher());
+  }
+}
+
 // SameCipherPreferences returns whether |a| and |b| list the same cipher suites
 // in the same equal-preference groups.
 static bool SameCipherPreferences(const SSLCipherPreferenceList *a,
@@ -1792,6 +1812,89 @@ TEST(SSLTest, GetAlgorithmPrefs) {
   ASSERT_TRUE(SSL_set_verify_algorithm_prefs(ssl.get(), prefs, num));
   EXPECT_TRUE(ssl->config->cert->sigalgs.empty());
   EXPECT_TRUE(ssl->config->verify_sigalgs.empty());
+}
+
+// An empty TLS 1.3 list allows no TLS 1.3 cipher suites, whether it is set on
+// the |SSL_CTX| or the |SSL|.
+TEST(SSLTest, EmptyTLS13CipherList) {
+  for (bool on_ssl : {false, true}) {
+    SCOPED_TRACE(on_ssl);
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+    if (!on_ssl) {
+      ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), ""));
+    }
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    if (on_ssl) {
+      ASSERT_TRUE(SSL_set_ciphersuites(server.get(), ""));
+    }
+    ERR_clear_error();
+    EXPECT_FALSE(CompleteHandshakes(client.get(), server.get()));
+    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+  }
+}
+
+// As in OpenSSL, a failed |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|
+// call leaves the configuration unchanged. Some applications pass the same
+// string to both kinds of cipher function, so a string that names only TLS 1.2
+// cipher suites must not disable TLS 1.3.
+TEST(SSLTest, FailedSetCiphersuitesLeavesConfigUnchanged) {
+  static const char kTLS12Only[] =
+      "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_RSA_WITH_AES_128_CBC_SHA";
+  // Start with either the default TLS 1.3 cipher suites or a restricted list.
+  for (const char *tls13 :
+       {static_cast<const char *>(nullptr), "TLS_AES_256_GCM_SHA384"}) {
+    SCOPED_TRACE(tls13 == nullptr ? "defaults" : tls13);
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), kTLS12Only));
+    if (tls13 != nullptr) {
+      ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), tls13));
+    }
+
+    // |SSL_new| copies the lists, so |before| snapshots them through the public
+    // API.
+    bssl::UniquePtr<SSL> before(SSL_new(server_ctx.get()));
+    ASSERT_TRUE(before);
+    EXPECT_FALSE(SSL_CTX_set_ciphersuites(server_ctx.get(), kTLS12Only));
+    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
+    EXPECT_TRUE(SameCipherPreferences(server_ctx->tls13_cipher_list.get(),
+                                      before->config->tls13_cipher_list.get()));
+    EXPECT_TRUE(SameCipherPreferences(server_ctx->cipher_list.get(),
+                                      before->config->cipher_list.get()));
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    EXPECT_FALSE(SSL_set_ciphersuites(server.get(), kTLS12Only));
+    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
+    EXPECT_TRUE(SameCipherPreferences(server->config->tls13_cipher_list.get(),
+                                      server_ctx->tls13_cipher_list.get()));
+    EXPECT_TRUE(SameCipherPreferences(server->config->cipher_list.get(),
+                                      server_ctx->cipher_list.get()));
+
+    ERR_clear_error();
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+    EXPECT_EQ(SSL_version(server.get()), TLS1_3_VERSION);
+    if (tls13 != nullptr) {
+      EXPECT_STREQ(
+          SSL_CIPHER_standard_name(SSL_get_current_cipher(server.get())),
+          tls13);
+    }
+  }
 }
 
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {

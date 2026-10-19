@@ -100,17 +100,15 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
 }
 
 static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl) {
-  STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
-  // First check config, otherwise fallback to ctx preferences.
-  if (ssl->config && ssl->config->tls13_cipher_list &&
-      ssl->config->tls13_cipher_list.get()->ciphers &&
-      sk_SSL_CIPHER_num(ssl->config->tls13_cipher_list.get()->ciphers.get()) > 0) {
-    tls13_ciphers = ssl->config->tls13_cipher_list.get()->ciphers.get();
-  } else if (ssl->ctx->tls13_cipher_list &&
-      ssl->ctx->tls13_cipher_list.get()->ciphers &&
-      sk_SSL_CIPHER_num(ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
-    tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
-  }
+  // Use the connection's TLS 1.3 cipher suites if it has its own, even if the
+  // list is empty, and otherwise its |SSL_CTX|'s, as the client does. An empty
+  // list allows none.
+  const SSLCipherPreferenceList *list =
+      ssl->config && ssl->config->tls13_cipher_list
+          ? ssl->config->tls13_cipher_list.get()
+          : ssl->ctx->tls13_cipher_list.get();
+  const STACK_OF(SSL_CIPHER) *tls13_ciphers =
+      list != nullptr ? list->ciphers.get() : nullptr;
 
   return ssl_choose_tls13_cipher(ssl->client_cipher_suites.get(),
                                  ssl->config->aes_hw_override

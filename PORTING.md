@@ -343,4 +343,14 @@ The behavior described above applies to AWS-LC 1.47.0 and later, including the 4
 * Before 1.47.0, `SSL_new` does not copy the cipher suites, so a connection that has not set its own uses those of its current `SSL_CTX`, as in OpenSSL.
 * Before 1.46.0, including the AWS-LC FIPS 2.x and 3.x branches, TLS 1.3 cipher suites always come from the current `SSL_CTX`, and `SSL_set_cipher_list` and `SSL_set_ciphersuites` replace the same per-connection list. So `SSL_set_ciphersuites` never affects TLS 1.3, and calling it last leaves the connection with no TLS 1.2 cipher suites.
 
-`AWSLC_API_VERSION` is 32 in every release from 1.40.0 through 1.49.1, so it cannot distinguish 1.46.0-1.49.1 from earlier releases. Every release with 33 or later (1.50.0 and later) behaves as described above.
+`AWSLC_API_VERSION` is 32 in every release from 1.40.0 through 1.49.1, so it cannot distinguish 1.46.0-1.49.1 from earlier releases; `AWSLC_VERSION_NUMBER_STRING` can, but it must be parsed in code rather than compared in `#if`. Every release with `AWSLC_API_VERSION` 33 or later (1.50.0 and later) behaves as described above. The FIPS 2.x and 3.x branches report 2.x and 3.x version strings but have the pre-1.46.0 behavior.
+
+## TLS 1.3 cipher suites
+
+`SSL_CTX_set_ciphersuites` and `SSL_set_ciphersuites` configure only TLS 1.3 cipher suites, and the `cipher_list` functions only those for TLS 1.2 and below. An empty TLS 1.3 list, on an `SSL_CTX` or an `SSL`, allows no TLS 1.3 cipher suites, so handshakes that negotiate TLS 1.3 fail; to disable TLS 1.3, use `SSL_CTX_set_max_proto_version` instead. As in OpenSSL, a failed `SSL_CTX_set_ciphersuites` or `SSL_set_ciphersuites` call leaves the configuration unchanged, so an application that passes the same string to both kinds of function keeps its previous TLS 1.3 cipher suites if the string names none.
+
+Releases before `AWSLC_API_VERSION` 38 differ:
+
+* A failed `SSL_CTX_set_ciphersuites` or `SSL_set_ciphersuites` call leaves an empty TLS 1.3 list. From 1.46.0, that allows no TLS 1.3 cipher suites on an `SSL_CTX`.
+* From 1.46.0, a server whose `SSL` has an empty TLS 1.3 list, for example after `SSL_set_ciphersuites(ssl, "")`, uses its current `SSL_CTX`'s TLS 1.3 cipher suites instead.
+* Before 1.46.0, including the AWS-LC FIPS 2.x and 3.x branches, an empty TLS 1.3 list on an `SSL_CTX` allows every TLS 1.3 cipher suite the client offers.
