@@ -31,3 +31,6 @@ parameters:
   TriggerType:
     type: String
     description: Specifies how this command was initiated.
+    allowedValues:
+    - manual
+    - pipeline
