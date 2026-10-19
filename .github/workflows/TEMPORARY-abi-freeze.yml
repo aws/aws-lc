@@ -27,33 +27,8 @@ permissions:
   contents: read
 
 jobs:
-  expiry:
-    if: github.repository_owner == 'aws'
-    name: TEMPORARY ABI FREEZE (expiry check)
-    runs-on: ubuntu-latest
-    outputs:
-      frozen: ${{ steps.version.outputs.frozen }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Read mainline major version
-        id: version
-        run: |
-          major="$(sed -n 's/^set(SOFTWARE_VERSION "\([0-9]\+\)\..*/\1/p' CMakeLists.txt)"
-          # An unparsable version must not quietly lift the freeze.
-          if [[ ! "${major}" =~ ^[0-9]+$ ]]; then
-            echo "could not read SOFTWARE_VERSION from CMakeLists.txt" >&2
-            exit 1
-          fi
-          if (( major >= 6 )); then
-            echo "frozen=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice title=ABI freeze expired::Mainline is at ${major}.x. Delete .github/workflows/TEMPORARY-abi-freeze.yml and drop its required status checks."
-          else
-            echo "frozen=true" >> "${GITHUB_OUTPUT}"
-          fi
-
   freeze:
-    needs: expiry
-    if: needs.expiry.outputs.frozen == 'true'
+    if: github.repository_owner == 'aws'
     name: TEMPORARY ABI FREEZE (${{ matrix.lib }}) -- DELETE AT 6.0.0
     strategy:
       fail-fast: false

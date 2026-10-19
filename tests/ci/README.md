@@ -222,9 +222,9 @@ AWS-LC-FIPS 5 branch and are required status checks on `main`.
 New public API still lands freely. These jobs pass `--no-added-syms` to `abidiff`, so an added
 function or variable is not a failure; a change to API that AWS-LC-FIPS 5 already shipped is.
 
-The jobs stop running once `SOFTWARE_VERSION` in `CMakeLists.txt` reaches a major version of 6.
-At that point delete `.github/workflows/TEMPORARY-abi-freeze.yml`, drop its two required status
-checks from the `main` ruleset, and remove this section.
+Nothing lifts the freeze on its own. When mainline bumps `SOFTWARE_VERSION` to 6.0.0, delete
+`.github/workflows/TEMPORARY-abi-freeze.yml`, drop its two required status checks from the `main`
+ruleset, and remove this section. Until someone does, the jobs keep blocking.
 
 #### Symbol Version Registry Checks
 
