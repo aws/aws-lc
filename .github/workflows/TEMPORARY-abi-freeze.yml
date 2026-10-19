@@ -1,0 +1,80 @@
+# TEMPORARY: DELETE THIS FILE WHEN MAINLINE BUMPS TO 6.0.0.
+#
+# AWS-LC-FIPS 6 is being designated LTS as a one-off divergence from our
+# versioning policy, so consumers moving from AWS-LC-FIPS 5 to 6 must not meet
+# an ABI break on the way. Mainline is normally free to break ABI; this job
+# holds that freedom until the 6.x snapshot branch is cut.
+#
+# Unlike the "ABI Monitoring" jobs, which report every ABI difference for a
+# human to judge, this job tolerates new public API and fails only on changes
+# to API that AWS-LC-FIPS 5 already shipped.
+name: TEMPORARY ABI FREEZE
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  DOCKER_BUILDKIT: 1
+  GOPROXY: https://proxy.golang.org,direct
+  # Tip of fips-2026-06-26-snapshot, the AWS-LC-FIPS 5 branch. Pinned by commit
+  # so a backport to that branch cannot move the baseline.
+  ABI_BASELINE: e001605840d91e45bb38eca2fd5692c41ef8e3aa
+permissions:
+  contents: read
+
+jobs:
+  expiry:
+    if: github.repository_owner == 'aws'
+    name: TEMPORARY ABI FREEZE (expiry check)
+    runs-on: ubuntu-latest
+    outputs:
+      frozen: ${{ steps.version.outputs.frozen }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read mainline major version
+        id: version
+        run: |
+          major="$(sed -n 's/^set(SOFTWARE_VERSION "\([0-9]\+\)\..*/\1/p' CMakeLists.txt)"
+          # An unparsable version must not quietly lift the freeze.
+          if [[ ! "${major}" =~ ^[0-9]+$ ]]; then
+            echo "could not read SOFTWARE_VERSION from CMakeLists.txt" >&2
+            exit 1
+          fi
+          if (( major >= 6 )); then
+            echo "frozen=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice title=ABI freeze expired::Mainline is at ${major}.x. Delete .github/workflows/TEMPORARY-abi-freeze.yml and drop its required status checks."
+          else
+            echo "frozen=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+  freeze:
+    needs: expiry
+    if: needs.expiry.outputs.frozen == 'true'
+    name: TEMPORARY ABI FREEZE (${{ matrix.lib }}) -- DELETE AT 6.0.0
+    strategy:
+      fail-fast: false
+      matrix:
+        lib: [crypto, ssl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/next
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc
+          ref: ${{ env.ABI_BASELINE }}
+          path: ${{ github.workspace }}/previous
+      - name: Build Docker Image
+        working-directory: ${{ github.workspace }}/next/.github/docker_images/abidiff
+        run: |
+          docker build -t abidiff .
+      - name: Perform lib${{ matrix.lib }} ABI diff against AWS-LC-FIPS 5
+        run: |
+          docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" \
+            abidiff ${{ matrix.lib }} ignore-additions

@@ -18,8 +18,19 @@ else
   exit 1
 fi
 
+# New public API sets ABIDIFF_ABI_CHANGE just as a changed signature does, so a
+# job that must stay green while the API grows asks for "ignore-additions".
+ABIDIFF_ARGS=()
+MODE="${2:-all-changes}"
+case "${MODE}" in
+  all-changes) ;;
+  ignore-additions) ABIDIFF_ARGS+=(--no-added-syms) ;;
+  *) echo "unknown mode: ${MODE}" >&2; exit 2 ;;
+esac
+
 set +e
-abidiff --hd1 "/previous/include" --hd2 "/next/include" "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
+abidiff "${ABIDIFF_ARGS[@]}" --hd1 "/previous/include" --hd2 "/next/include" \
+  "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
 ABIDIFF_RC=$?
 set -e
 
