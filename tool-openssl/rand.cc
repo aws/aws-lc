@@ -37,14 +37,10 @@ int randTool(const args_list_t &args) {
     return kToolExitSuccess;
   }
 
-  bool base64 = false, hex = false;
-  GetBoolArgument(&base64, "-base64", parsed_args);
-  GetBoolArgument(&hex, "-hex", parsed_args);
-
-  if (base64 && hex) {
-    fprintf(stderr, "error: -base64 and -hex are mutually exclusive\n");
-    return kToolExitFailure;
-  }
+  const std::string format =
+      GetLastOption({"-base64", "-hex"}, "", parsed_args);
+  const bool base64 = format == "-base64";
+  const bool hex = format == "-hex";
 
   if (extra_args.empty()) {
     fprintf(stderr, "error: missing num argument\n");
@@ -58,15 +54,19 @@ int randTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  if (extra_args[0].empty() || extra_args[0][0] == '-') {
+  const char *num_str = extra_args[0].c_str();
+  while (*num_str == ' ' || *num_str == '\t') {
+    num_str++;
+  }
+  if (*num_str == '\0' || *num_str == '-') {
     fprintf(stderr, "error: invalid num value '%s'\n", extra_args[0].c_str());
     return kToolExitFailure;
   }
 
   errno = 0;
   char *endptr = nullptr;
-  unsigned long long num = strtoull(extra_args[0].c_str(), &endptr, 10);
-  if (*endptr != '\0' || errno == ERANGE) {
+  unsigned long long num = strtoull(num_str, &endptr, 0);
+  if (*endptr != '\0' || errno == ERANGE || num == 0) {
     fprintf(stderr, "error: invalid num value '%s'\n", extra_args[0].c_str());
     return kToolExitFailure;
   }
@@ -77,11 +77,11 @@ int randTool(const args_list_t &args) {
   }
 
   std::string out_path;
-  GetString(&out_path, "-out", "", parsed_args);
+  GetLastString(&out_path, "-out", "", parsed_args);
 
   ScopedFILE out_scoped;
   FILE *out_file = stdout;
-  if (!out_path.empty()) {
+  if (!out_path.empty() && out_path != "-") {
     out_scoped.reset(fopen(out_path.c_str(), "wb"));
     if (!out_scoped) {
       fprintf(stderr, "error: cannot open '%s' for writing\n",
@@ -110,10 +110,13 @@ int randTool(const args_list_t &args) {
       ret = kToolExitFailure;
     } else {
       BIO_push(b64, bio_out);
-      if (nbytes > 0) {
-        BIO_write(b64, buf.data(), static_cast<int>(nbytes));
+      if (nbytes > 0 &&
+          BIO_write(b64, buf.data(), static_cast<int>(nbytes)) <= 0) {
+        ret = kToolExitFailure;
       }
-      BIO_flush(b64);
+      if (ret == kToolExitSuccess && BIO_flush(b64) != 1) {
+        ret = kToolExitFailure;
+      }
       BIO_free_all(b64);
     }
   } else if (hex) {
@@ -123,13 +126,17 @@ int randTool(const args_list_t &args) {
         break;
       }
     }
-    if (ret == kToolExitSuccess) {
-      fprintf(out_file, "\n");
+    if (ret == kToolExitSuccess && fprintf(out_file, "\n") < 0) {
+      ret = kToolExitFailure;
     }
   } else {
     if (nbytes > 0 && fwrite(buf.data(), 1, nbytes, out_file) != nbytes) {
       ret = kToolExitFailure;
     }
+  }
+
+  if (ret == kToolExitSuccess && out_file != stdout && fflush(out_file) != 0) {
+    ret = kToolExitFailure;
   }
 
   return ret;

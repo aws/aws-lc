@@ -4,6 +4,10 @@
 #include <gtest/gtest.h>
 #include <climits>
 #include <string>
+#if !defined(OPENSSL_WINDOWS)
+#include <signal.h>
+#include <sys/resource.h>
+#endif
 #include "internal.h"
 #include "test_util.h"
 
@@ -73,17 +77,47 @@ TEST(RandTest, HexOutput) {
 }
 
 TEST(RandTest, ZeroBytes) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
-  args_list_t args = {"-out", out_path, "0"};
-  EXPECT_EQ(kToolExitSuccess, randTool(args));
-  std::string content = ReadFileToString(out_path);
-  EXPECT_EQ(0u, content.size());
+  args_list_t args = {"0"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
 }
 
-TEST(RandTest, Base64AndHexMutuallyExclusive) {
-  args_list_t args = {"-base64", "-hex", "16"};
-  EXPECT_EQ(kToolExitFailure, randTool(args));
+TEST(RandTest, LastFormatWins) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+
+  args_list_t args1 = {"-base64", "-hex", "-out", out_path, "16"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args1));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_EQ(33u, content.size());
+  EXPECT_EQ('\n', content[32]);
+
+  args_list_t args2 = {"-hex", "-base64", "-out", out_path, "16"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args2));
+  content = ReadFileToString(out_path);
+  EXPECT_GT(content.size(), 16u);
+  for (char c : content) {
+    EXPECT_TRUE(isalnum(c) || c == '+' || c == '/' || c == '=' || c == '\n');
+  }
+}
+
+TEST(RandTest, LastOutWins) {
+  char path1[PATH_MAX], path2[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(path1), 0u);
+  ASSERT_GT(createTempFILEpath(path2), 0u);
+  args_list_t args = {"-out", path1, "-out", path2, "32"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content1 = ReadFileToString(path1);
+  std::string content2 = ReadFileToString(path2);
+  EXPECT_TRUE(content1.empty());
+  EXPECT_EQ(32u, content2.size());
+}
+
+TEST(RandTest, DashOutMeansStdout) {
+  testing::internal::CaptureStdout();
+  args_list_t args = {"-out", "-", "16"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string captured = testing::internal::GetCapturedStdout();
+  EXPECT_EQ(16u, captured.size());
 }
 
 TEST(RandTest, OutputIsRandom) {
@@ -105,3 +139,65 @@ TEST(RandTest, NumTooLarge) {
   args_list_t args = {"999999999999"};
   EXPECT_EQ(kToolExitFailure, randTool(args));
 }
+
+TEST(RandTest, OctalNum) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  args_list_t args = {"-out", out_path, "010"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_EQ(8u, content.size());
+}
+
+TEST(RandTest, HexNum) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  args_list_t args = {"-out", out_path, "0x10"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_EQ(16u, content.size());
+}
+
+TEST(RandTest, WhitespacePrefixedNegative) {
+  args_list_t args = {" -1"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
+#if !defined(OPENSSL_WINDOWS)
+static void WriteFailureTest(const char *out_path, const char *format_flag) {
+  struct rlimit limit = {0, 0};
+  if (setrlimit(RLIMIT_FSIZE, &limit) != 0 ||
+      signal(SIGXFSZ, SIG_IGN) == SIG_ERR) {
+    _exit(2);
+  }
+  args_list_t args;
+  if (format_flag != nullptr) {
+    args.push_back(format_flag);
+  }
+  args.push_back("-out");
+  args.push_back(out_path);
+  args.push_back("32");
+  _exit(randTool(args));
+}
+
+TEST(RandTest, WriteFailureRaw) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  ASSERT_EXIT(WriteFailureTest(out_path, nullptr),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+TEST(RandTest, WriteFailureBase64) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  ASSERT_EXIT(WriteFailureTest(out_path, "-base64"),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+TEST(RandTest, WriteFailureHex) {
+  char out_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  ASSERT_EXIT(WriteFailureTest(out_path, "-hex"),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+#endif
