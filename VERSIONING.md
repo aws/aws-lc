@@ -69,6 +69,8 @@ LTS release characteristics:
 * Cut from mainline every 2 years and supported for 5 years from the date the branch is cut.
 * Each LTS branch is submitted for FIPS validation.
 
+AWS-LC-FIPS 6 is a one-off exception to this cadence. We are designating it LTS less than two years after the previous LTS, so that consumers who need an LTS with a current FIPS certificate have one on their timeline. The LTS after it returns to the two-year schedule.
+
 Both rolling mainline releases and LTS releases are tagged in the public repository; non-LTS FIPS branches are not.
 
 ## LTS release policy
@@ -111,13 +113,21 @@ At any given time, at least one LTS branch is within its support window. Consecu
 
 FIPS validation requires a fixed snapshot of the cryptographic module's source code. Each time AWS-LC is submitted for FIPS validation, a branch is cut from mainline that preserves the exact code submitted. Most of these branches are not designated as LTS. LTS designation is decided at branch-cut time; existing non-LTS branches are never promoted to LTS.
 
-Non-LTS FIPS branches exist solely to preserve the validated snapshot. They do not receive release tags, and consumers should not depend on them.
+Non-LTS FIPS branches exist solely to preserve the validated snapshot. They do not receive release tags.
 
 We may apply critical security fixes to a non-LTS FIPS branch from the time it is cut until a newer FIPS branch (LTS or non-LTS) receives NIST certification and supersedes it. This is a maintenance concession; these branches are not supported for consumption. Once superseded, the previous non-LTS branch is frozen and receives no further updates.
 
 A non-LTS FIPS branch inherits its version from mainline at cut time and only ever issues patch-level increments (e.g., a branch cut at `5.6.0` becomes `5.6.1` after a security fix). Because mainline only produces minor increments (`5.6.0` → `5.7.0`), patch versions on a non-LTS branch cannot collide with mainline.
 
 At branch-cut time, the non-LTS branch and mainline are the same build; `awslc_version_string()` and `FIPS_version()` return identical values on both. They diverge afterward — mainline through its next minor release, the non-LTS branch through any patch-level security fixes.
+
+### ABI stability on non-LTS branches
+
+A non-LTS FIPS branch holds the ABI it was validated with. If you have pinned to one of these branches, you can take a security fix from it without relinking.
+
+CI enforces this. Every change is compared against the validated snapshot using [abidiff](https://sourceware.org/libabigail/manual/abidiff.html), and the job fails on any change to API the snapshot already shipped. New API still lands.
+
+We may break ABI on these branches anyway. A vulnerability can be severe enough that the fix is worth the breakage, and an ABI-preserving fix does not always exist. We will say so in the commit that makes the break.
 
 ## Branch naming conventions
 
