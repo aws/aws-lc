@@ -1,0 +1,52 @@
+# This branch preserves the source code submitted for FIPS validation, so its
+# ABI must not drift from the snapshot that validation covers. Every change is
+# compared against the commit the branch was cut at, however many changes have
+# landed since.
+#
+# The "ABI Monitoring" jobs compare against the previous commit and report every
+# difference for a human to judge. These fail only on changes to API the
+# validated snapshot already shipped, so new API still lands.
+name: ABI Stability
+on:
+  push:
+    branches: ['fips-2026-06-26-snapshot']
+  pull_request:
+    branches: ['fips-2026-06-26-snapshot']
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  DOCKER_BUILDKIT: 1
+  GOPROXY: https://proxy.golang.org,direct
+  # v5.1.0, the mainline commit this branch was cut from.
+  ABI_BASELINE: 6283365b1d43abadfa9b997812cef06b095f7f04
+permissions:
+  contents: read
+
+jobs:
+  abi-stability:
+    if: github.repository_owner == 'aws'
+    name: ABI stability (${{ matrix.lib }}) vs validated snapshot
+    strategy:
+      fail-fast: false
+      matrix:
+        lib: [crypto, ssl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/next
+      - uses: actions/checkout@v7
+        with:
+          repository: aws/aws-lc
+          ref: ${{ env.ABI_BASELINE }}
+          path: ${{ github.workspace }}/previous
+      - name: Build Docker Image
+        working-directory: ${{ github.workspace }}/next/.github/docker_images/abidiff
+        run: |
+          docker build -t abidiff .
+      - name: Perform lib${{ matrix.lib }} ABI diff against the validated snapshot
+        run: |
+          docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" \
+            abidiff ${{ matrix.lib }} ignore-additions
