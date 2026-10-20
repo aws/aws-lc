@@ -87,13 +87,15 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
                                    const std::string &outform, bool trustout) {
   const bool der = !outform.empty() && isStringUpperCaseEqual(outform, "DER");
   if (trustout) {
-    uint8_t *data = nullptr;
-    const int len = i2d_X509_AUX(x509, &data);
-    const bool ok =
-        len > 0 && (der ? BIO_write(output_bio.get(), data, len) == len
-                        : PEM_write_bio(output_bio.get(), "TRUSTED CERTIFICATE",
-                                        "", data, len) > 0);
-    OPENSSL_free(data);
+    bool ok;
+    if (der) {
+      uint8_t *data = nullptr;
+      const int len = i2d_X509_AUX(x509, &data);
+      bssl::UniquePtr<uint8_t> data_owner(data);
+      ok = len > 0 && BIO_write(output_bio.get(), data, len) == len;
+    } else {
+      ok = PEM_write_bio_X509_AUX(output_bio.get(), x509) > 0;
+    }
     if (!ok) {
       fprintf(stderr, "Error: error writing certificate to '%s'\n",
               out_path.c_str());
@@ -682,6 +684,36 @@ static bool ProcessArgument(const std::string &arg_name,
 }
 
 // Map arguments using tool/args.cc
+static bool ApplyTrustObjects(X509 *x509,
+                              const std::vector<std::string> &add_trusts) {
+  for (const auto &trust : add_trusts) {
+    bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj(trust.c_str(), 0));
+    if (!obj || !X509_add1_trust_object(x509, obj.get())) {
+      fprintf(stderr, "Error: unable to add trust '%s'\n", trust.c_str());
+      return false;
+    }
+  }
+  return true;
+}
+
+// Opens the output destination. Call this only after all parsing, signing, and
+// validation have succeeded so that opening a file (which truncates it) cannot
+// destroy the input of an in-place -in/-out rewrite on a failure path.
+static bssl::UniquePtr<BIO> OpenOutputBio(const std::string &out_path) {
+  bssl::UniquePtr<BIO> output_bio;
+  if (out_path.empty()) {
+    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else {
+    output_bio.reset(BIO_new(BIO_s_file()));
+    if (!output_bio ||
+        BIO_write_filename(output_bio.get(), out_path.c_str()) != 1) {
+      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+      return nullptr;
+    }
+  }
+  return output_bio;
+}
+
 int X509Tool(const args_list_t &args) {
   // Use the ordered argument list instead of the standard map
   ordered_args::ordered_args_map_t parsed_args;
@@ -814,41 +846,38 @@ int X509Tool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  // Read the entire input up front so that an in-place rewrite (-in and -out
-  // naming the same file) does not truncate the input before it is read.
-  bssl::UniquePtr<BIO> in_bio;
-  if (in_path.empty()) {
-    in_bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
-  } else {
-    ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to load certificate from '%s'\n",
-              in_path.c_str());
-      return kToolExitFailure;
-    }
-    in_bio.reset(BIO_new(BIO_s_mem()));
-    if (!in_bio) {
-      return kToolExitFailure;
-    }
-    uint8_t buf[4096];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), in_file.get())) > 0) {
-      if (BIO_write(in_bio.get(), buf, static_cast<int>(n)) <= 0) {
+  // Read the entire input up front (bounded at 1 MiB by ReadAll) so an in-place
+  // rewrite (-in and -out naming the same file) never reads from a file the
+  // output has already truncated, and so the DER path can see trailing trust
+  // data.
+  std::vector<uint8_t> input_data;
+  {
+    ScopedFILE in_file;
+    FILE *in = stdin;
+    if (!in_path.empty()) {
+      in_file.reset(fopen(in_path.c_str(), "rb"));
+      if (!in_file) {
+        fprintf(stderr, "Error: unable to load certificate from '%s'\n",
+                in_path.c_str());
         return kToolExitFailure;
       }
+      in = in_file.get();
     }
-  }
-
-  bssl::UniquePtr<BIO> output_bio;
-  if (out_path.empty()) {
-    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
-  } else {
-    output_bio.reset(BIO_new(BIO_s_file()));
-    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+    if (!ReadAll(&input_data, in)) {
+      fprintf(stderr, "Error: unable to read input from '%s'\n",
+              in_path.empty() ? "stdin" : in_path.c_str());
       return kToolExitFailure;
     }
   }
+  bssl::UniquePtr<BIO> in_bio(
+      BIO_new_mem_buf(input_data.data(), static_cast<int>(input_data.size())));
+  if (!in_bio) {
+    return kToolExitFailure;
+  }
+
+  // Declared here but opened lazily (OpenOutputBio) only after all fallible
+  // work succeeds, so a failure never truncates an in-place output.
+  bssl::UniquePtr<BIO> output_bio;
 
   // Load CA and CA key
   bssl::UniquePtr<X509> ca;
@@ -861,6 +890,15 @@ int X509Tool(const args_list_t &args) {
     if (!LoadPrivateKey(pkey, signkey_path, passin)) {
       return kToolExitFailure;
     }
+  }
+
+  std::vector<std::string> add_trusts;
+  ordered_args::FindAll(add_trusts, "-addtrust", parsed_args);
+  const bool trustout = ordered_args::HasArgument(parsed_args, "-trustout");
+  if (!add_trusts.empty() && !trustout) {
+    fprintf(stderr,
+            "Warning: -addtrust without -trustout writes a plain certificate; "
+            "trust settings will not be saved\n");
   }
 
   if (req) {
@@ -955,17 +993,28 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
+    if (!ApplyTrustObjects(x509.get(), add_trusts)) {
+      return kToolExitFailure;
+    }
+    output_bio = OpenOutputBio(out_path);
+    if (!output_bio) {
+      return kToolExitFailure;
+    }
     if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform,
-                                false)) {
+                                trustout)) {
       return kToolExitFailure;
     }
   } else {
     // Parse x509 certificate from input file
     bssl::UniquePtr<X509> x509;
     if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
-      x509.reset(d2i_X509_bio(in_bio.get(), nullptr));
+      // d2i_X509_AUX (unlike d2i_X509_bio) preserves trailing trust data.
+      const uint8_t *der = input_data.data();
+      x509.reset(
+          d2i_X509_AUX(nullptr, &der, static_cast<long>(input_data.size())));
     } else {
-      x509.reset(PEM_read_bio_X509(in_bio.get(), nullptr, nullptr, nullptr));
+      // PEM_read_bio_X509_AUX accepts both CERTIFICATE and TRUSTED CERTIFICATE.
+      x509.reset(PEM_read_bio_X509_AUX(in_bio.get(), nullptr, nullptr, nullptr));
     }
 
     if (!x509) {
@@ -1002,15 +1051,12 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
-    std::vector<std::string> add_trusts;
-    ordered_args::FindAll(add_trusts, "-addtrust", parsed_args);
-    const bool trustout = ordered_args::HasArgument(parsed_args, "-trustout");
-    for (const auto &trust : add_trusts) {
-      bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj(trust.c_str(), 0));
-      if (!obj || !X509_add1_trust_object(x509.get(), obj.get())) {
-        fprintf(stderr, "Error: unable to add trust '%s'\n", trust.c_str());
-        return kToolExitFailure;
-      }
+    if (!ApplyTrustObjects(x509.get(), add_trusts)) {
+      return kToolExitFailure;
+    }
+    output_bio = OpenOutputBio(out_path);
+    if (!output_bio) {
+      return kToolExitFailure;
     }
 
     // Process arguments in the order they were provided

@@ -2520,3 +2520,102 @@ TEST_F(X509Test, MultipleAddTrust) {
   EXPECT_EQ(X509_TRUST_TRUSTED,
             X509_check_trust(cert, X509_TRUST_SSL_SERVER, 0));
 }
+
+// Negative: a failed in-place rewrite must not truncate/destroy the input.
+TEST_F(X509Test, FailedInPlaceAddTrustPreservesInput) {
+  const std::string before = ReadFileToString(in_path);
+  ASSERT_FALSE(before.empty());
+
+  args_list_t args = {"-in",       in_path, "-addtrust", "notATrust",
+                      "-trustout", "-out",  in_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  EXPECT_EQ(before, ReadFileToString(in_path));
+}
+
+// Positive: the tool can read back a certificate it wrote with -trustout,
+// including a second in-place -addtrust.
+TEST_F(X509Test, ReadsOwnTrustedOutput) {
+  args_list_t make_trusted = {"-in",       in_path, "-addtrust", "clientAuth",
+                              "-trustout", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(make_trusted));
+
+  char serial_out[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(serial_out), 0u);
+  args_list_t read_back = {"-in",   out_path, "-serial",
+                           "-noout", "-out",  serial_out};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(read_back));
+
+  args_list_t rewrite = {"-in",       out_path,    "-addtrust", "serverAuth",
+                         "-trustout", "-out",      out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(rewrite));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(infos);
+  ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+  X509 *cert = sk_X509_INFO_value(infos.get(), 0)->x509;
+  ASSERT_TRUE(cert);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_CLIENT, 0));
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_SERVER, 0));
+
+  RemoveFile(serial_out);
+}
+
+// -serial output parity with OpenSSL. The print output goes to stdout
+// (redirected to a file here), which matches OpenSSL across versions.
+TEST_F(X509ComparisonTest, Serial) {
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -serial -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -serial -noout > " +
+      ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// -trustout output parity with OpenSSL (trusted certificate, no added trust).
+TEST_F(X509ComparisonTest, Trustout) {
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -trustout -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -trustout -out " +
+      ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// -addtrust + -trustout output parity with OpenSSL. -trustout is passed
+// explicitly because, unlike OpenSSL, this tool does not imply it from
+// -addtrust.
+TEST_F(X509ComparisonTest, AddTrustTrustout) {
+  std::string args = " -addtrust clientAuth -addtrust serverAuth -trustout";
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + args + " -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) + args +
+                                " -out " + ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
