@@ -37,10 +37,11 @@ static OPENSSL_INLINE size_t compute_buffer_offset(size_t header_len,
 
 void SSLBuffer::Clear() {
   if (buf_allocated_) {
-    free(buf_);  // Allocated with malloc().
+    OPENSSL_raw_free(buf_, buf_hooked_);
   }
   buf_ = nullptr;
   buf_allocated_ = false;
+  buf_hooked_ = 0;
   buf_cap_ = 0;
   buf_size_ = 0;
   header_len_ = 0;
@@ -62,6 +63,7 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
 
   uint8_t *new_buf;
   bool new_buf_allocated;
+  int new_buf_hooked = 0;
   size_t new_offset;
   if (new_cap <= sizeof(inline_buf_)) {
     // This function is called twice per TLS record, first for the five-byte
@@ -74,10 +76,11 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
     // Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment.
     //
     // Since this buffer gets allocated quite frequently and doesn't contain any
-    // sensitive data, we allocate with malloc rather than |OPENSSL_malloc| and
-    // avoid zeroing on free.
+    // sensitive data, we allocate with |OPENSSL_raw_malloc| rather than
+    // |OPENSSL_malloc| and avoid zeroing on free. This still uses a custom
+    // allocator if one is installed.
     buf_size_ = compute_buffer_size(new_cap);
-    new_buf = (uint8_t *)malloc(buf_size_);
+    new_buf = (uint8_t *)OPENSSL_raw_malloc(buf_size_, &new_buf_hooked);
     if (new_buf == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
@@ -92,11 +95,12 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
   OPENSSL_memmove(new_buf + new_offset, buf_ + offset_, size_);
 
   if (buf_allocated_) {
-    free(buf_);  // Allocated with malloc().
+    OPENSSL_raw_free(buf_, buf_hooked_);
   }
 
   buf_ = new_buf;
   buf_allocated_ = new_buf_allocated;
+  buf_hooked_ = new_buf_hooked;
   header_len_ = header_len;
   offset_ = new_offset;
   buf_cap_ = cap_ = new_cap;
@@ -276,7 +280,7 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
       return false;
     }
     buf_allocated_ = true;
-    buf_ = (uint8_t *)malloc(CBS_len(&buf));
+    buf_ = (uint8_t *)OPENSSL_raw_malloc(CBS_len(&buf), &buf_hooked_);
     if (buf_ == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
@@ -339,7 +343,7 @@ bool SSLBuffer::DoDeserializationV2(CBS &cbs) {
   if (buf_allocated) {
     buf_allocated_ = true;
     buf_size_ = compute_buffer_size(buf_cap);
-    buf_ = (uint8_t *)malloc(buf_size_);
+    buf_ = (uint8_t *)OPENSSL_raw_malloc(buf_size_, &buf_hooked_);
     if (buf_ == NULL) {
       Clear();
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);

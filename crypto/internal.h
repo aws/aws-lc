@@ -1326,6 +1326,26 @@ extern uint8_t BORINGSSL_function_hit[15];
 // This function is defined in |bcm.c|, see the comment therein for explanation.
 void dummy_func_for_constructor(void);
 #endif
+// OPENSSL_raw_malloc allocates |size| bytes for internal buffers that cannot
+// use |OPENSSL_malloc|, either because they are performance sensitive or
+// because pushing |ERR_R_MALLOC_FAILURE| onto the error queue would recurse.
+// If the caller has customized the allocator with |CRYPTO_set_mem_functions|
+// or the |OPENSSL_memory_*| symbols, that allocator is used and |*out_hooked|
+// is set to one. Otherwise the system |malloc| is used and |*out_hooked| is set
+// to zero. Unlike |OPENSSL_malloc|, it never touches the error queue, never
+// adds a size prefix, and the memory is not zeroed when freed.
+//
+// The memory must be freed with |OPENSSL_raw_free|, passing back the value of
+// |*out_hooked|. Callers must record it per allocation because the allocator
+// may be customized after the allocation is made, e.g. after the FIPS
+// power-on self tests.
+OPENSSL_EXPORT void *OPENSSL_raw_malloc(size_t size, int *out_hooked)
+    OPENSSL_WARN_UNUSED_RESULT;
+
+// OPENSSL_raw_free frees |ptr|, which must have been returned by
+// |OPENSSL_raw_malloc| along with |hooked|. It does nothing if |ptr| is NULL.
+OPENSSL_EXPORT void OPENSSL_raw_free(void *ptr, int hooked);
+
 // OPENSSL_vasprintf_internal is just like |vasprintf(3)|. If |system_malloc| is
 // 0, memory will be allocated with |OPENSSL_malloc| and must be freed with
 // |OPENSSL_free|. Otherwise the system |malloc| function is used and the memory

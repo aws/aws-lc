@@ -2,7 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <gtest/gtest.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
+
+#include <string.h>
+
+#include "err/internal.h"
+#include "internal.h"
+#if defined(AWSLC_MEM_SET_TEST_SSL)
+#include "../ssl/internal.h"
+#endif
 
 int alloc_count = 0;
 size_t test_size = 0;
@@ -16,20 +25,85 @@ extern "C" {
   void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
+// The custom allocator puts |kMagic| in a header before each allocation. If
+// AWS-LC frees one of these pointers with the system |free|, the allocator
+// aborts on an invalid pointer. If AWS-LC passes a system |malloc| pointer to
+// |new_free_impl|, the magic check fails. This mirrors a shared-memory
+// allocator, where mixing the two corrupts the heap.
+static const uint64_t kMagic = 0x6177732d6c63ULL;
+static const size_t kHeaderSize = 16;
+
+static void *to_user(void *raw) {
+  if (raw == nullptr) {
+    return nullptr;
+  }
+  memcpy(raw, &kMagic, sizeof(kMagic));
+  return static_cast<uint8_t *>(raw) + kHeaderSize;
+}
+
+static void *to_raw(void *ptr) {
+  void *raw = static_cast<uint8_t *>(ptr) - kHeaderSize;
+  uint64_t magic;
+  memcpy(&magic, raw, sizeof(magic));
+  if (magic != kMagic) {
+    abort();
+  }
+  return raw;
+}
+
 void *new_malloc_impl(size_t size, const char *file, int line) {
   alloc_count++;
   test_size = size;
-  return malloc(size);
+  return to_user(malloc(size + kHeaderSize));
 }
 
 void new_free_impl(void *ptr, const char *file, int line) {
   free_count++;
-  free(ptr);
+  free(to_raw(ptr));
 }
 
 void *new_realloc_impl(void *ptr, size_t size, const char *file, int line) {
   realloc_count++;
-  return realloc(ptr, size);
+  return to_user(realloc(to_raw(ptr), size + kHeaderSize));
+}
+
+// |CRYPTO_set_mem_functions| may only succeed once per process, so every test
+// installs the allocator through this.
+static bool g_installed = false;
+static void InstallMemFunctions() {
+  if (!g_installed) {
+    ASSERT_EQ(1, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl,
+                                          new_free_impl));
+    g_installed = true;
+  }
+}
+
+// |OPENSSL_raw_malloc| must use the custom allocator once one is installed, and
+// memory from before then must still be freed with the system |free|. This test
+// is first so it runs before the allocator is installed.
+TEST(MemTest, RawMallocUsesMemSet) {
+  int hooked;
+  void *before = nullptr;
+  if (!g_installed) {
+    before = OPENSSL_raw_malloc(10, &hooked);
+    ASSERT_TRUE(before);
+    EXPECT_EQ(0, hooked);
+  }
+
+  ASSERT_NO_FATAL_FAILURE(InstallMemFunctions());
+
+  int starting_alloc = alloc_count;
+  int starting_free = free_count;
+  void *after = OPENSSL_raw_malloc(10, &hooked);
+  ASSERT_TRUE(after);
+  EXPECT_EQ(1, hooked);
+  EXPECT_EQ(starting_alloc + 1, alloc_count);
+  OPENSSL_raw_free(after, hooked);
+  EXPECT_EQ(starting_free + 1, free_count);
+
+  // Must not reach |new_free_impl|, which would abort on the missing header.
+  OPENSSL_raw_free(before, 0);
+  EXPECT_EQ(starting_free + 1, free_count);
 }
 
 // This test is copy of |MemTest.BasicOverrides| in mem_test.cc.
@@ -52,7 +126,9 @@ TEST(MemTest, BasicMemSet) {
   ASSERT_EQ(malloc_ptr, nullptr);
 
   // Call |CRYPTO_set_mem_functions| to override |OPENSSL_malloc/realloc/free|.
-  ASSERT_EQ(1, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl, new_free_impl));
+  ASSERT_NO_FATAL_FAILURE(InstallMemFunctions());
+  ASSERT_EQ(0, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl,
+                                        new_free_impl));
 
   // Verify malloc calls |new_malloc_impl| and doesn't do anything else
   test_size = 10;
@@ -91,3 +167,57 @@ TEST(MemTest, BasicMemSet) {
   ASSERT_EQ(0, size_count);
   OPENSSL_free(realloc_ptr_2);
 }
+
+// Error data and |ERR_SAVE_STATE| are stored in |SSL| objects, so they must use
+// the custom allocator.
+TEST(MemTest, ErrUsesMemSet) {
+  ASSERT_NO_FATAL_FAILURE(InstallMemFunctions());
+  ERR_clear_error();
+
+  int starting_alloc = alloc_count;
+  int starting_free = free_count;
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  ERR_add_error_data(2, "hello ", "world");
+  ERR_add_error_dataf("%s %d", "number", 42);
+  // The error data strings go through the custom allocator.
+  EXPECT_GT(alloc_count, starting_alloc);
+
+  int saved_alloc = alloc_count;
+  ERR_SAVE_STATE *saved = ERR_save_state();
+  ASSERT_TRUE(saved);
+  // The state, its errors, and the copied data string.
+  EXPECT_EQ(saved_alloc + 3, alloc_count);
+
+  ERR_clear_error();
+  ERR_restore_state(saved);
+  const char *data;
+  int flags;
+  ERR_peek_error_line_data(nullptr, nullptr, &data, &flags);
+  EXPECT_STREQ("number 42", data);
+  ERR_SAVE_STATE_free(saved);
+
+  ERR_clear_error();
+  // Everything allocated by this test has been freed with |new_free_impl|.
+  EXPECT_EQ(alloc_count - starting_alloc, free_count - starting_free);
+}
+
+#if defined(AWSLC_MEM_SET_TEST_SSL)
+// |SSLBuffer| backs the TLS record buffers in |SSL| objects, so it must use the
+// custom allocator.
+TEST(MemTest, SSLBufferUsesMemSet) {
+  ASSERT_NO_FATAL_FAILURE(InstallMemFunctions());
+
+  int starting_alloc = alloc_count;
+  int starting_free = free_count;
+  {
+    bssl::SSLBuffer buf;
+    ASSERT_TRUE(buf.EnsureCap(SSL3_RT_HEADER_LENGTH, 1000));
+    EXPECT_EQ(starting_alloc + 1, alloc_count);
+    // Growing the buffer frees the old allocation with the custom allocator.
+    ASSERT_TRUE(buf.EnsureCap(SSL3_RT_HEADER_LENGTH, 2000));
+    EXPECT_EQ(starting_alloc + 2, alloc_count);
+    EXPECT_EQ(starting_free + 1, free_count);
+  }
+  EXPECT_EQ(starting_free + 2, free_count);
+}
+#endif
