@@ -154,7 +154,12 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies={
                 "code_build_batch_policy": iam.PolicyDocument.from_json(
-                    code_build_batch_policy_in_json([trusted_project_name], env)
+                    # Exact-match: trusted_project_name is a prefix of
+                    # pr_project_name ("{id}" vs "{id}-pr"), so a wildcard here
+                    # would also grant control over the PR project.
+                    code_build_batch_policy_in_json(
+                        [trusted_project_name], env, exact_match=True
+                    )
                 ),
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
@@ -234,7 +239,9 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies={
                 "code_build_batch_policy": iam.PolicyDocument.from_json(
-                    code_build_batch_policy_in_json([pr_project_name], env)
+                    code_build_batch_policy_in_json(
+                        [pr_project_name], env, exact_match=True
+                    )
                 ),
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
