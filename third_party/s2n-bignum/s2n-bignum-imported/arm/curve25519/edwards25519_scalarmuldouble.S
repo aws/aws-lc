@@ -3069,7 +3069,7 @@ S2N_BN_SIZE_DIRECTIVE(Ledwards25519_scalarmuldouble_pepadd)
 .type S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant), %object
 .size S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant), 768
 #elif defined(__APPLE__)
-.const_data
+.section __TEXT,__const
 #endif
 
 // Precomputed table of multiples of generator for edwards25519
