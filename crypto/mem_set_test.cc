@@ -5,7 +5,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include <string.h>
+#include <mutex>
+#include <set>
 
 #include "err/internal.h"
 #include "internal.h"
@@ -25,46 +26,52 @@ extern "C" {
   void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
-// The custom allocator puts |kMagic| in a header before each allocation. If
-// AWS-LC frees one of these pointers with the system |free|, the allocator
-// aborts on an invalid pointer. If AWS-LC passes a system |malloc| pointer to
-// |new_free_impl|, the magic check fails. This mirrors a shared-memory
-// allocator, where mixing the two corrupts the heap.
-static const uint64_t kMagic = 0x6177732d6c63ULL;
-static const size_t kHeaderSize = 16;
+// The custom allocator tracks its live allocations. If AWS-LC passes a system
+// |malloc| pointer to |new_free_impl|, it aborts. This mirrors a shared-memory
+// allocator, where mixing the two corrupts the heap. The tests check the
+// allocation and free counts to catch the reverse, a custom allocation freed
+// with the system |free|. The set is never destroyed because AWS-LC may free
+// memory from thread-local destructors during process exit.
+static std::mutex *g_live_lock = new std::mutex;
+static std::set<void *> *g_live = new std::set<void *>;
 
-static void *to_user(void *raw) {
-  if (raw == nullptr) {
-    return nullptr;
+static void *track(void *ptr) {
+  if (ptr != nullptr) {
+    std::lock_guard<std::mutex> lock(*g_live_lock);
+    g_live->insert(ptr);
   }
-  memcpy(raw, &kMagic, sizeof(kMagic));
-  return static_cast<uint8_t *>(raw) + kHeaderSize;
+  return ptr;
 }
 
-static void *to_raw(void *ptr) {
-  void *raw = static_cast<uint8_t *>(ptr) - kHeaderSize;
-  uint64_t magic;
-  memcpy(&magic, raw, sizeof(magic));
-  if (magic != kMagic) {
+static void untrack(void *ptr) {
+  std::lock_guard<std::mutex> lock(*g_live_lock);
+  if (g_live->erase(ptr) != 1) {
     abort();
   }
-  return raw;
 }
 
 void *new_malloc_impl(size_t size, const char *file, int line) {
   alloc_count++;
   test_size = size;
-  return to_user(malloc(size + kHeaderSize));
+  return track(malloc(size));
 }
 
 void new_free_impl(void *ptr, const char *file, int line) {
   free_count++;
-  free(to_raw(ptr));
+  untrack(ptr);
+  free(ptr);
 }
 
 void *new_realloc_impl(void *ptr, size_t size, const char *file, int line) {
   realloc_count++;
-  return to_user(realloc(to_raw(ptr), size + kHeaderSize));
+  untrack(ptr);
+  void *ret = realloc(ptr, size);
+  if (ret == nullptr) {
+    // On failure, |ptr| is still live.
+    track(ptr);
+    return nullptr;
+  }
+  return track(ret);
 }
 
 // |CRYPTO_set_mem_functions| may only succeed once per process, so every test
@@ -82,7 +89,7 @@ static void InstallMemFunctions() {
 // memory from before then must still be freed with the system |free|. This test
 // is first so it runs before the allocator is installed.
 TEST(MemTest, RawMallocUsesMemSet) {
-  int hooked;
+  int hooked = 0;
   void *before = nullptr;
   if (!g_installed) {
     before = OPENSSL_raw_malloc(10, &hooked);
@@ -101,7 +108,7 @@ TEST(MemTest, RawMallocUsesMemSet) {
   OPENSSL_raw_free(after, hooked);
   EXPECT_EQ(starting_free + 1, free_count);
 
-  // Must not reach |new_free_impl|, which would abort on the missing header.
+  // Must not reach |new_free_impl|, which would abort on an untracked pointer.
   OPENSSL_raw_free(before, 0);
   EXPECT_EQ(starting_free + 1, free_count);
 }
@@ -190,8 +197,8 @@ TEST(MemTest, ErrUsesMemSet) {
 
   ERR_clear_error();
   ERR_restore_state(saved);
-  const char *data;
-  int flags;
+  const char *data = nullptr;
+  int flags = 0;
   ERR_peek_error_line_data(nullptr, nullptr, &data, &flags);
   EXPECT_STREQ("number 42", data);
   ERR_SAVE_STATE_free(saved);

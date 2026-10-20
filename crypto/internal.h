@@ -1339,8 +1339,7 @@ void dummy_func_for_constructor(void);
 // |*out_hooked|. Callers must record it per allocation because the allocator
 // may be customized after the allocation is made, e.g. after the FIPS
 // power-on self tests.
-OPENSSL_EXPORT void *OPENSSL_raw_malloc(size_t size, int *out_hooked)
-    OPENSSL_WARN_UNUSED_RESULT;
+OPENSSL_EXPORT void *OPENSSL_raw_malloc(size_t size, int *out_hooked);
 
 // OPENSSL_raw_free frees |ptr|, which must have been returned by
 // |OPENSSL_raw_malloc| along with |hooked|. It does nothing if |ptr| is NULL.
