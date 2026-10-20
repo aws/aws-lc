@@ -5,7 +5,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include <mutex>
 #include <set>
 
 #include "err/internal.h"
@@ -31,20 +30,19 @@ extern "C" {
 // allocator, where mixing the two corrupts the heap. The tests check the
 // allocation and free counts to catch the reverse, a custom allocation freed
 // with the system |free|. The set is never destroyed because AWS-LC may free
-// memory from thread-local destructors during process exit.
-static std::mutex *g_live_lock = new std::mutex;
+// memory from thread-local destructors during process exit. It is not locked
+// because these tests are single-threaded, and some targets, such as WASI, have
+// no |std::mutex|.
 static std::set<void *> *g_live = new std::set<void *>;
 
 static void *track(void *ptr) {
   if (ptr != nullptr) {
-    std::lock_guard<std::mutex> lock(*g_live_lock);
     g_live->insert(ptr);
   }
   return ptr;
 }
 
 static void untrack(void *ptr) {
-  std::lock_guard<std::mutex> lock(*g_live_lock);
   if (g_live->erase(ptr) != 1) {
     abort();
   }
