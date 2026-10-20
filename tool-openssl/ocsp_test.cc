@@ -117,6 +117,8 @@ class OcspTest : public ::testing::Test {
               "R\t350101000000Z\t250101000000Z\t1000\tunknown\t/CN=end\n");
     } else if (type == 'V') {
       fprintf(f.get(), "V\t350101000000Z\t\t1000\tunknown\t/CN=end\n");
+    } else if (type == 'E') {
+      fprintf(f.get(), "E\t350101000000Z\t\t1000\tunknown\t/CN=end\n");
     } else {
       // An entry for an unrelated serial, so the leaf is absent.
       fprintf(f.get(), "V\t350101000000Z\t\t2000\tunknown\t/CN=other\n");
@@ -203,6 +205,14 @@ TEST_F(OcspTest, RespondsUnknownForAbsentCertificate) {
   EXPECT_EQ(V_OCSP_CERTSTATUS_UNKNOWN, RespondAndFindLeafStatus());
 }
 
+// Expired-but-not-revoked entries ('E') report GOOD, matching OpenSSL's
+// apps/ocsp.c responder (expired is not the same as revoked).
+TEST_F(OcspTest, RespondsGoodForExpiredCertificate) {
+  BuildRequest();
+  WriteIndex('E');
+  EXPECT_EQ(V_OCSP_CERTSTATUS_GOOD, RespondAndFindLeafStatus());
+}
+
 TEST_F(OcspTest, FailsWithoutOperation) {
   args_list_t args = {"-issuer", ca_cert_path, "-cert", leaf_cert_path};
   EXPECT_EQ(kToolExitFailure, ocspTool(args));
@@ -236,6 +246,41 @@ TEST_F(OcspTest, ResponderRejectsCorruptRequest) {
                       "-rkey",    ca_key_path,  "-respout", respout_path,
                       "-ndays",   "1"};
   EXPECT_EQ(kToolExitFailure, ocspTool(args));
+}
+
+// Negative: a syntactically valid request carrying an empty requestList
+// (DER 30 04 30 02 30 00) is rejected rather than producing a signed,
+// successful-but-empty response that verification would later reject.
+TEST_F(OcspTest, ResponderRejectsEmptyRequest) {
+  {
+    static const uint8_t kEmptyReq[] = {0x30, 0x04, 0x30, 0x02, 0x30, 0x00};
+    ScopedFILE f(fopen(reqout_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_EQ(sizeof(kEmptyReq),
+              fwrite(kEmptyReq, 1, sizeof(kEmptyReq), f.get()));
+  }
+  WriteIndex('V');
+  args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
+                      "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
+                      "-rkey",    ca_key_path,  "-respout", respout_path,
+                      "-ndays",   "1"};
+  EXPECT_EQ(kToolExitFailure, ocspTool(args));
+}
+
+// Negative: -ndays must be a positive whole number within int range. OpenSSL
+// rejects non-numeric, zero, negative, trailing-garbage, and out-of-range
+// values instead of silently reinterpreting them.
+TEST_F(OcspTest, ResponderRejectsInvalidNdays) {
+  BuildRequest();
+  WriteIndex('V');
+  for (const char *bad :
+       {"abc", "-1", "0", "5x", "2147483648", "4294967297"}) {
+    args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
+                        "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
+                        "-rkey",    ca_key_path,  "-respout", respout_path,
+                        "-ndays",   bad};
+    EXPECT_EQ(kToolExitFailure, ocspTool(args)) << "ndays=" << bad;
+  }
 }
 
 // Negative: a missing responder key file is an error.
@@ -306,4 +351,40 @@ TEST_F(OcspTest, RevokedResponseHasRevocationTime) {
                                     &revtime, &thisupd, &nextupd));
   EXPECT_EQ(V_OCSP_CERTSTATUS_REVOKED, status);
   EXPECT_NE(nullptr, revtime);
+}
+
+// A valid -ndays produces a nextUpdate; omitting -ndays leaves it absent.
+TEST_F(OcspTest, NdaysControlsNextUpdate) {
+  BuildRequest();
+  WriteIndex('V');
+
+  auto next_update_present = [&](const char *ndays) -> bool {
+    args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
+                        "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
+                        "-rkey",    ca_key_path,  "-respout", respout_path};
+    if (ndays != nullptr) {
+      args.push_back("-ndays");
+      args.push_back(ndays);
+    }
+    EXPECT_EQ(kToolExitSuccess, ocspTool(args));
+    bssl::UniquePtr<BIO> bio(BIO_new_file(respout_path, "rb"));
+    EXPECT_TRUE(bio);
+    bssl::UniquePtr<OCSP_RESPONSE> resp(
+        d2i_OCSP_RESPONSE_bio(bio.get(), nullptr));
+    EXPECT_TRUE(resp);
+    bssl::UniquePtr<OCSP_BASICRESP> basic(
+        OCSP_response_get1_basic(resp.get()));
+    EXPECT_TRUE(basic);
+    bssl::UniquePtr<OCSP_CERTID> id = LeafId();
+    EXPECT_TRUE(id);
+    int status = -1, reason = 0;
+    ASN1_GENERALIZEDTIME *revtime = nullptr, *thisupd = nullptr,
+                         *nextupd = nullptr;
+    EXPECT_TRUE(OCSP_resp_find_status(basic.get(), id.get(), &status, &reason,
+                                      &revtime, &thisupd, &nextupd));
+    return nextupd != nullptr;
+  };
+
+  EXPECT_TRUE(next_update_present("1"));
+  EXPECT_FALSE(next_update_present(nullptr));
 }

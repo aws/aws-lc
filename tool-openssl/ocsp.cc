@@ -9,6 +9,10 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
+#include <cctype>
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -22,6 +26,7 @@
 #define DB_serial 3
 #define DB_TYPE_REV 'R'
 #define DB_TYPE_VAL 'V'
+#define DB_TYPE_EXP 'E'
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
@@ -65,7 +70,7 @@ static uint32_t index_serial_hash(const OPENSSL_STRING *a) {
 }
 
 static int index_serial_cmp(const OPENSSL_STRING *a, const OPENSSL_STRING *b) {
-  const char *aa, *bb;
+  const char *aa = nullptr, *bb = nullptr;
   for (aa = a[DB_serial]; *aa == '0'; aa++) {
   }
   for (bb = b[DB_serial]; *bb == '0'; bb++) {
@@ -179,11 +184,15 @@ static bool MakeResponse(const std::string &reqin_path,
   bssl::UniquePtr<ASN1_TIME> thisupd(X509_gmtime_adj(nullptr, 0));
   bssl::UniquePtr<ASN1_TIME> nextupd(
       ndays > 0 ? X509_time_adj_ex(nullptr, ndays, 0, nullptr) : nullptr);
-  if (!thisupd) {
+  if (!thisupd || (ndays > 0 && !nextupd)) {
     return false;
   }
 
   const int count = OCSP_request_onereq_count(req.get());
+  if (count <= 0) {
+    fprintf(stderr, "OCSP request contains no certificate IDs\n");
+    return false;
+  }
   for (int i = 0; i < count; i++) {
     OCSP_ONEREQ *one = OCSP_request_onereq_get0(req.get(), i);
     OCSP_CERTID *cid = OCSP_onereq_get0_id(one);
@@ -200,30 +209,41 @@ static bool MakeResponse(const std::string &reqin_path,
     OCSP_id_get0_info(nullptr, nullptr, nullptr, &serial, cid);
     OPENSSL_STRING *row = found ? LookupSerial(db, serial) : nullptr;
 
+    int status = V_OCSP_CERTSTATUS_UNKNOWN;
+    int reason = 0;
+    bssl::UniquePtr<ASN1_TIME> revtm;
     if (!found || row == nullptr) {
-      OCSP_basic_add1_status(bs.get(), cid, V_OCSP_CERTSTATUS_UNKNOWN, 0,
-                             nullptr, thisupd.get(), nextupd.get());
-    } else if (row[DB_type][0] == DB_TYPE_VAL) {
-      OCSP_basic_add1_status(bs.get(), cid, V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
-                             thisupd.get(), nextupd.get());
+      status = V_OCSP_CERTSTATUS_UNKNOWN;
+    } else if (row[DB_type][0] == DB_TYPE_VAL ||
+               row[DB_type][0] == DB_TYPE_EXP) {
+      // OpenSSL's responder treats an expired-but-not-revoked entry ('E') the
+      // same as a valid one ('V'): GOOD from the CA's perspective.
+      status = V_OCSP_CERTSTATUS_GOOD;
     } else if (row[DB_type][0] == DB_TYPE_REV) {
+      status = V_OCSP_CERTSTATUS_REVOKED;
+      // AWS-LC requires a concrete reason code for revoked entries; the index
+      // produced by `ca -revoke` carries no reason, so report "unspecified".
+      reason = OCSP_REVOKED_STATUS_UNSPECIFIED;
       std::string rev(row[DB_rev_date] ? row[DB_rev_date] : "");
       const size_t comma = rev.find(',');
       if (comma != std::string::npos) {
         rev = rev.substr(0, comma);
       }
-      bssl::UniquePtr<ASN1_TIME> revtm(ASN1_TIME_new());
+      revtm.reset(ASN1_TIME_new());
       if (!revtm || !ASN1_TIME_set_string(revtm.get(), rev.c_str())) {
         fprintf(stderr, "invalid revocation date in index\n");
         return false;
       }
-      // AWS-LC requires a concrete reason code for revoked entries; the index
-      // produced by `ca -revoke` carries no reason, so report "unspecified".
-      if (OCSP_basic_add1_status(bs.get(), cid, V_OCSP_CERTSTATUS_REVOKED,
-                                 OCSP_REVOKED_STATUS_UNSPECIFIED, revtm.get(),
-                                 thisupd.get(), nextupd.get()) == nullptr) {
-        return false;
-      }
+    } else {
+      // Unrecognized index entry type: report UNKNOWN so the client gets a
+      // definitive answer instead of a certificate with no status.
+      status = V_OCSP_CERTSTATUS_UNKNOWN;
+    }
+
+    if (OCSP_basic_add1_status(bs.get(), cid, status, reason, revtm.get(),
+                               thisupd.get(), nextupd.get()) == nullptr) {
+      fprintf(stderr, "unable to add certificate status to OCSP response\n");
+      return false;
     }
   }
 
@@ -245,6 +265,24 @@ static bool MakeResponse(const std::string &reqin_path,
             respout_path.c_str());
     return false;
   }
+  return true;
+}
+
+// Parse a -ndays value: the whole token must be a positive decimal integer
+// within the range X509_time_adj_ex accepts (an int day count). OpenSSL
+// rejects non-numeric, negative, zero, trailing-garbage, and out-of-range
+// values rather than silently reinterpreting them.
+static bool ParseNdays(const std::string &s, long *out) {
+  if (s.empty() || !isdigit(static_cast<unsigned char>(s[0]))) {
+    return false;
+  }
+  errno = 0;
+  char *end = nullptr;
+  const long v = strtol(s.c_str(), &end, 10);
+  if (errno != 0 || end != s.c_str() + s.size() || v <= 0 || v > INT_MAX) {
+    return false;
+  }
+  *out = v;
   return true;
 }
 
@@ -288,7 +326,11 @@ int ocspTool(const args_list_t &args) {
     return kToolExitFailure;
   }
   if (!respout.empty()) {
-    const long ndays = ndays_str.empty() ? -1 : std::atol(ndays_str.c_str());
+    long ndays = -1;
+    if (!ndays_str.empty() && !ParseNdays(ndays_str, &ndays)) {
+      fprintf(stderr, "invalid -ndays value '%s'\n", ndays_str.c_str());
+      return kToolExitFailure;
+    }
     if (!MakeResponse(reqin, respout, index, ca, rsigner, rkey, ndays)) {
       return kToolExitFailure;
     }
