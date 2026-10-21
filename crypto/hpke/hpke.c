@@ -798,7 +798,9 @@ int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
     // undefined. There is also nothing to do.
     return 1;
   }
-  EVP_HPKE_KEY_cleanup(dst);
+  // As in |hpke_key_init|, |dst| may be uninitialized. Copying onto a live key
+  // requires |EVP_HPKE_KEY_cleanup| first.
+  EVP_HPKE_KEY_zero(dst);
   if (src->kem == NULL) {
     // |src| is in the zero state, which |dst| now matches.
     return 1;
@@ -828,11 +830,11 @@ void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in) {
 
 static int hpke_key_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                          const uint8_t *priv_key, size_t priv_key_len) {
-  // |key| may already own buffers, so release them before reusing the struct.
-  // |EVP_HPKE_KEY_zero| would drop the pointers and leak. Callers reach this
-  // from the zero state or from an initialized key, which is what
-  // |EVP_HPKE_KEY_cleanup| requires.
-  EVP_HPKE_KEY_cleanup(key);
+  // |key| may be uninitialized, so zero it rather than clean it up. Every
+  // release has accepted a stack |EVP_HPKE_KEY| passed straight to this
+  // function, and cleaning up would free whatever the stack bytes hold.
+  // Re-initializing a live key requires |EVP_HPKE_KEY_cleanup| first.
+  EVP_HPKE_KEY_zero(key);
   key->kem = kem;
   if (!hpke_key_alloc(key) || !kem->init_key(key, priv_key, priv_key_len)) {
     // |init_key| may have failed partway and left key material behind, so
@@ -844,8 +846,8 @@ static int hpke_key_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
 }
 
 static int hpke_key_generate(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem) {
-  // See |hpke_key_init| for why |key| is cleaned up before it is reused.
-  EVP_HPKE_KEY_cleanup(key);
+  // See |hpke_key_init| for why |key| is zeroed rather than cleaned up.
+  EVP_HPKE_KEY_zero(key);
   key->kem = kem;
   if (!hpke_key_alloc(key) || !kem->generate_key(key)) {
     // As in |hpke_key_init|, cleanse in case |generate_key| failed partway.

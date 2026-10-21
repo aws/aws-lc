@@ -150,6 +150,9 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_free(EVP_HPKE_KEY *key);
 // and zero on error. On success, the caller must call |EVP_HPKE_KEY_cleanup| to
 // release |dst|. On failure, calling |EVP_HPKE_KEY_cleanup| is safe, but not
 // necessary.
+//
+// |dst| doesn't need to be initialized. Copying onto a key that already holds
+// key material leaks it unless |EVP_HPKE_KEY_cleanup| is called first.
 OPENSSL_EXPORT int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst,
                                      const EVP_HPKE_KEY *src);
 
@@ -162,12 +165,18 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in);
 // |priv_key| was invalid. On success, the caller must call
 // |EVP_HPKE_KEY_cleanup| to release the key. On failure, calling
 // |EVP_HPKE_KEY_cleanup| is safe, but not necessary.
+//
+// |key| doesn't need to be initialized. Re-initializing a key that already
+// holds key material leaks it unless |EVP_HPKE_KEY_cleanup| is called first.
 OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                                      const uint8_t *priv_key,
                                      size_t priv_key_len);
 
 // EVP_HPKE_KEY_generate sets |key| to a newly-generated key using |kem|. It
 // returns one on success and zero on error.
+//
+// As with |EVP_HPKE_KEY_init|, |key| doesn't need to be initialized, and
+// generating over a key that already holds key material leaks it.
 OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
                                          const EVP_HPKE_KEM *kem);
 
@@ -391,7 +400,8 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 // KEM, so that adding a KEM cannot change the structure's size. A caller which
 // stack-allocates one against one release and runs against a later one would
 // otherwise overflow it. It is padded to the size it had before the ML-KEM KEMs
-// were added, so that callers built against either reserve the same space.
+// were added. v5.9.0 through v5.11.0 shipped a larger, inline layout, so
+// callers built against this header must not run against those libraries.
 
 struct evp_hpke_ctx_st {
   const EVP_HPKE_KEM *kem;
