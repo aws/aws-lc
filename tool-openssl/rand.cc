@@ -55,7 +55,8 @@ int randTool(const args_list_t &args) {
   }
 
   const char *num_str = extra_args[0].c_str();
-  while (*num_str == ' ' || *num_str == '\t') {
+  while (*num_str == ' ' || *num_str == '\t' || *num_str == '\n' ||
+         *num_str == '\r' || *num_str == '\f' || *num_str == '\v') {
     num_str++;
   }
   if (*num_str == '\0' || *num_str == '-') {
@@ -110,8 +111,7 @@ int randTool(const args_list_t &args) {
       ret = kToolExitFailure;
     } else {
       BIO_push(b64, bio_out);
-      if (nbytes > 0 &&
-          BIO_write(b64, buf.data(), static_cast<int>(nbytes)) <= 0) {
+      if (nbytes > 0 && !BIO_write_all(b64, buf.data(), nbytes)) {
         ret = kToolExitFailure;
       }
       if (ret == kToolExitSuccess && BIO_flush(b64) != 1) {
@@ -135,7 +135,7 @@ int randTool(const args_list_t &args) {
     }
   }
 
-  if (ret == kToolExitSuccess && out_file != stdout && fflush(out_file) != 0) {
+  if (ret == kToolExitSuccess && fflush(out_file) != 0) {
     ret = kToolExitFailure;
   }
 

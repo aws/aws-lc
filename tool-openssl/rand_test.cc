@@ -1,12 +1,15 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
+
 #include <gtest/gtest.h>
 #include <climits>
 #include <string>
 #if !defined(OPENSSL_WINDOWS)
 #include <signal.h>
 #include <sys/resource.h>
+#include <unistd.h>
 #endif
 #include "internal.h"
 #include "test_util.h"
@@ -114,10 +117,10 @@ TEST(RandTest, LastOutWins) {
 
 TEST(RandTest, DashOutMeansStdout) {
   testing::internal::CaptureStdout();
-  args_list_t args = {"-out", "-", "16"};
+  args_list_t args = {"-hex", "-out", "-", "16"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string captured = testing::internal::GetCapturedStdout();
-  EXPECT_EQ(16u, captured.size());
+  EXPECT_EQ(33u, captured.size());
 }
 
 TEST(RandTest, OutputIsRandom) {
@@ -163,6 +166,31 @@ TEST(RandTest, WhitespacePrefixedNegative) {
   EXPECT_EQ(kToolExitFailure, randTool(args));
 }
 
+TEST(RandTest, NegativeCountWrap) {
+  args_list_t args = {" -18446744073709551615"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
+TEST(RandTest, NewlinePrefixedNegative) {
+  args_list_t args = {"\n-18446744073709551615"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
+TEST(RandTest, CarriageReturnPrefixedNegative) {
+  args_list_t args = {"\r-1"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
+TEST(RandTest, VerticalTabPrefixedNegative) {
+  args_list_t args = {"\v-1"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
+TEST(RandTest, FormFeedPrefixedNegative) {
+  args_list_t args = {"\f-1"};
+  EXPECT_EQ(kToolExitFailure, randTool(args));
+}
+
 #if !defined(OPENSSL_WINDOWS)
 static void WriteFailureTest(const char *out_path, const char *format_flag) {
   struct rlimit limit = {0, 0};
@@ -198,6 +226,64 @@ TEST(RandTest, WriteFailureHex) {
   char out_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(out_path), 0u);
   ASSERT_EXIT(WriteFailureTest(out_path, "-hex"),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+static void BrokenPipeTest(const char *format_flag) {
+  int pipefd[2];
+  if (pipe(pipefd) != 0) {
+    _exit(2);
+  }
+  close(pipefd[0]);
+  if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+    _exit(2);
+  }
+  close(pipefd[1]);
+  signal(SIGPIPE, SIG_IGN);
+
+  args_list_t args;
+  if (format_flag != nullptr) {
+    args.push_back(format_flag);
+  }
+  args.push_back("32");
+  _exit(randTool(args));
+}
+
+TEST(RandTest, BrokenPipeRaw) {
+  ASSERT_EXIT(BrokenPipeTest(nullptr),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+TEST(RandTest, BrokenPipeBase64) {
+  ASSERT_EXIT(BrokenPipeTest("-base64"),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+TEST(RandTest, BrokenPipeHex) {
+  ASSERT_EXIT(BrokenPipeTest("-hex"),
+              testing::ExitedWithCode(kToolExitFailure), "");
+}
+
+static void UnbufferedBrokenPipeBase64Test() {
+  int pipefd[2];
+  if (pipe(pipefd) != 0) {
+    _exit(2);
+  }
+  close(pipefd[0]);
+  if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+    _exit(2);
+  }
+  close(pipefd[1]);
+  signal(SIGPIPE, SIG_IGN);
+  setvbuf(stdout, NULL, _IONBF, 0);
+  alarm(2);
+
+  args_list_t args = {"-base64", "32"};
+  _exit(randTool(args));
+}
+
+TEST(RandTest, UnbufferedBrokenPipeBase64) {
+  ASSERT_EXIT(UnbufferedBrokenPipeBase64Test(),
               testing::ExitedWithCode(kToolExitFailure), "");
 }
 #endif
