@@ -22,7 +22,7 @@ needs "arm/proofs/base.ml";;
   Let's prove that x1 in the final state is (x1 + x0) * 2.
   As done in "simple.ml", this can be done using symbolic execution. However,
   in this file, we will try a slightly different approach:
-  (1) The program will be splitted into two smaller programs:
+  (1) The program will be split into two smaller programs:
 
   First prog:
    0:   8b000021        add     x1, x1, x0
