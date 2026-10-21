@@ -107,7 +107,7 @@ export LD_LIBRARY_PATH="${AWSLC_ROOT}/lib64:${AWSLC_ROOT}/lib${LD_LIBRARY_PATH:+
 ```
 
 OpenSSL loads a provider by bare name from its modules directory, appending the platform's suffix.
-`AWSLC_PROVIDER_MODULESDIR` is where the install puts the module. It defaults to `${CMAKE_INSTALL_PREFIX}/lib/ossl-modules`.
+`AWSLC_PROVIDER_MODULESDIR` is where the install puts the module. It defaults to `${CMAKE_INSTALL_LIBDIR}/ossl-modules`.
 
 `LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the install.
 Check what the module resolves to:

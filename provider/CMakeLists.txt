@@ -14,7 +14,9 @@ if(OPENSSL_ROOT_DIR)
     NO_DEFAULT_PATH)
   if(NOT OPENSSL_INCLUDE_DIR OR NOT OPENSSL_CRYPTO_LIBRARY)
     message(FATAL_ERROR
-      "Could NOT find OpenSSL headers and libcrypto.")
+      "OPENSSL_ROOT_DIR (${OPENSSL_ROOT_DIR}) must be the install prefix of an "
+      "OpenSSL 3.5+ build. Found include: ${OPENSSL_INCLUDE_DIR}, "
+      "libcrypto: ${OPENSSL_CRYPTO_LIBRARY}")
   endif()
 endif()
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
@@ -103,7 +105,7 @@ endif()
 # hiding everything else does not hide it too.
 set_target_properties(awslc_provider PROPERTIES C_VISIBILITY_PRESET hidden)
 
-set(AWSLC_PROVIDER_MODULESDIR "${CMAKE_INSTALL_LIBDIR}/ossl-modules" CACHE PATH
+set(AWSLC_PROVIDER_MODULESDIR "${CMAKE_INSTALL_LIBDIR}/ossl-modules" CACHE STRING
   "Install directory of the provider module.")
 install(TARGETS awslc_provider LIBRARY DESTINATION "${AWSLC_PROVIDER_MODULESDIR}")
 
