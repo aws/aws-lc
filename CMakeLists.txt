@@ -347,17 +347,6 @@ else()
   message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-  # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
-  # 1. The FIPS shared and static builds need to compute the module signature hash by reading the .text section
-  # 2. s2n-bignum x86 assembly sources still have references to static data in the .text section
-  if(NOT BUILD_SHARED_LIBS)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
-  else()
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
-  endif()
-endif()
-
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
   # Determine if the host is running an illumos distribution:
   execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
@@ -1272,6 +1261,21 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND
+   (FIPS OR NOT ARCH STREQUAL "x86_64"))
+  # OpenBSD links with --execute-only by default. Keep the workaround except
+  # for non-FIPS x86_64, whose s2n-bignum tables now live in .rodata.
+  # AArch64's keccak1600-armv8.pl still reads iotas_hw from .text; other
+  # architectures and OPENSSL_NO_ASM builds retain their existing behavior.
+  # FIPS builds need readable .text for the integrity check and, in static
+  # builds, delocated constants.
+  if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
+  else()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
+  endif()
 endif()
 
 # On x86_64, OPENSSL_SMALL disables AVX-512 but keeps ADX/AVX2 (#3355). This
