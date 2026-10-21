@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/evp.h>
+#include <openssl/obj.h>
 #include <openssl/ssl.h>
 #include <array>
 #include <iostream>
@@ -116,9 +117,10 @@ int main(int argc, char **argv) {
   std::string cipher_flag;
   if (tool == nullptr && starting_arg > 0 && starting_arg <= argc) {
     const char *cmd = argv[starting_arg - 1];
-    if (EVP_get_cipherbyname(cmd) != nullptr) {
+    const EVP_CIPHER *cipher = EVP_get_cipherbyname(cmd);
+    if (cipher != nullptr) {
       tool = encTool;
-      cipher_flag = std::string("-") + cmd;
+      cipher_flag = std::string("-") + OBJ_nid2ln(EVP_CIPHER_nid(cipher));
     }
   }
 

@@ -46,12 +46,12 @@ TEST_F(CipherAliasTest, EncryptMatchesEnc) {
   std::string key(64, '1');
   std::string iv(32, '2');
 
-  std::string alias_cmd = ShellEscape(tool_path) +
-      " aes-256-cbc -e -K " + key + " -iv " + iv +
-      " -in " + ShellEscape(in_path) + " -out " + ShellEscape(out_path1);
-  std::string enc_cmd = ShellEscape(tool_path) +
-      " enc -aes-256-cbc -e -K " + key + " -iv " + iv +
-      " -in " + ShellEscape(in_path) + " -out " + ShellEscape(out_path2);
+  std::string alias_cmd = ShellEscape(tool_path) + " aes-256-cbc -e -K " + key +
+                          " -iv " + iv + " -in " + ShellEscape(in_path) +
+                          " -out " + ShellEscape(out_path1);
+  std::string enc_cmd = ShellEscape(tool_path) + " enc -aes-256-cbc -e -K " +
+                        key + " -iv " + iv + " -in " + ShellEscape(in_path) +
+                        " -out " + ShellEscape(out_path2);
 
   ASSERT_EQ(0, ExecuteCommandExitCode(alias_cmd));
   ASSERT_EQ(0, ExecuteCommandExitCode(enc_cmd));
@@ -66,14 +66,14 @@ TEST_F(CipherAliasTest, DecryptRoundTrip) {
   std::string key(64, '1');
   std::string iv(32, '2');
 
-  std::string enc_cmd = ShellEscape(tool_path) +
-      " enc -aes-256-cbc -e -K " + key + " -iv " + iv +
-      " -in " + ShellEscape(in_path) + " -out " + ShellEscape(out_path1);
+  std::string enc_cmd = ShellEscape(tool_path) + " enc -aes-256-cbc -e -K " +
+                        key + " -iv " + iv + " -in " + ShellEscape(in_path) +
+                        " -out " + ShellEscape(out_path1);
   ASSERT_EQ(0, ExecuteCommandExitCode(enc_cmd));
 
-  std::string alias_cmd = ShellEscape(tool_path) +
-      " aes-256-cbc -d -K " + key + " -iv " + iv +
-      " -in " + ShellEscape(out_path1) + " -out " + ShellEscape(out_path2);
+  std::string alias_cmd = ShellEscape(tool_path) + " aes-256-cbc -d -K " + key +
+                          " -iv " + iv + " -in " + ShellEscape(out_path1) +
+                          " -out " + ShellEscape(out_path2);
   ASSERT_EQ(0, ExecuteCommandExitCode(alias_cmd));
 
   std::string original = ReadFileToString(in_path);
@@ -94,8 +94,8 @@ TEST_F(CipherAliasTest, UnknownCommandFails) {
 TEST_F(CipherAliasTest, UnsupportedCipherFails) {
   std::string key(64, '1');
   std::string iv(24, '2');
-  std::string cmd = ShellEscape(tool_path) +
-      " aes-256-gcm -e -K " + key + " -iv " + iv +
-      " -in " + ShellEscape(in_path) + " -out " + ShellEscape(out_path1);
+  std::string cmd = ShellEscape(tool_path) + " aes-256-gcm -e -K " + key +
+                    " -iv " + iv + " -in " + ShellEscape(in_path) + " -out " +
+                    ShellEscape(out_path1);
   EXPECT_NE(0, ExecuteCommandExitCode(cmd));
 }
