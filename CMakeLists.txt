@@ -1263,14 +1263,10 @@ else()
   set(ARCH "generic")
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND
-   (FIPS OR NOT ARCH STREQUAL "x86_64"))
-  # OpenBSD links with --execute-only by default. Keep the workaround except
-  # for non-FIPS x86_64, whose s2n-bignum tables now live in .rodata.
-  # AArch64's keccak1600-armv8.pl still reads iotas_hw from .text; other
-  # architectures and OPENSSL_NO_ASM builds retain their existing behavior.
-  # FIPS builds need readable .text for the integrity check and, in static
-  # builds, delocated constants.
+if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND FIPS)
+  # OpenBSD links with --execute-only by default, which breaks assembly that
+  # reads readonly tables from .text instead of .rodata. FIPS must keeps the
+  # workaround since it needs readable .text for the integrity check.
   if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
   else()
