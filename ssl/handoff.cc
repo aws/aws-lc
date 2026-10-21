@@ -642,6 +642,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       }
       break;
     case handback_after_ecdhe:
+      if (!(hs->new_cipher->algorithm_mkey & SSL_kECDHE)) {
+        return false;
+      }
       hs->state = state12_read_client_certificate;
       if (session_reused) {
         return false;
