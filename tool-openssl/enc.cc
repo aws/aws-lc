@@ -122,19 +122,21 @@ int encTool(const args_list_t &args) {
 
   Password passphrase;
   bool has_passphrase = false;
-  if (!kfile_path.empty()) {
+  const std::string pass_flag =
+      GetLastOption({"-kfile", "-k", "-pass"}, "", parsed_args);
+  if (pass_flag == "-kfile") {
     passphrase = Password("file:" + kfile_path);
     if (!pass_util::ExtractPassword(passphrase)) {
       return kToolExitFailure;
     }
     has_passphrase = true;
-  } else if (!k_value.empty()) {
+  } else if (pass_flag == "-k") {
     passphrase = Password("pass:" + k_value);
     if (!pass_util::ExtractPassword(passphrase)) {
       return kToolExitFailure;
     }
     has_passphrase = true;
-  } else if (!pass_source.empty()) {
+  } else if (pass_flag == "-pass") {
     passphrase = Password(pass_source);
     if (!pass_util::ExtractPassword(passphrase)) {
       return kToolExitFailure;
@@ -171,28 +173,7 @@ int encTool(const args_list_t &args) {
     uint8_t key[EVP_MAX_KEY_LENGTH] = {0};
     uint8_t iv[EVP_MAX_IV_LENGTH] = {0};
 
-    if (has_key) {
-      if (!HexToBinary(key, hex_key.get(), key_length)) {
-        OPENSSL_cleanse(key, sizeof(key));
-        fprintf(stderr, "Error: Invalid hex key value\n");
-        return kToolExitFailure;
-      }
-      if (has_iv) {
-        if (iv_length == 0) {
-          fprintf(stderr, "Warning: IV is not used by cipher %s\n",
-                  cipher_name.c_str());
-        } else if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
-          OPENSSL_cleanse(key, sizeof(key));
-          fprintf(stderr, "Error: Invalid hex IV value\n");
-          return kToolExitFailure;
-        }
-      } else if (iv_length != 0) {
-        fprintf(stderr, "Error: IV is required for cipher %s\n",
-                cipher_name.c_str());
-        OPENSSL_cleanse(key, sizeof(key));
-        return kToolExitFailure;
-      }
-    } else if (has_passphrase) {
+    if (has_passphrase) {
       const EVP_MD *md = EVP_get_digestbyname(md_name.c_str());
       if (!md) {
         fprintf(stderr, "Error: Unknown message digest '%s'\n",
@@ -238,12 +219,40 @@ int encTool(const args_list_t &args) {
         return kToolExitFailure;
       }
 
+      if (has_key) {
+        if (!HexToBinary(key, hex_key.get(), key_length)) {
+          OPENSSL_cleanse(key, sizeof(key));
+          fprintf(stderr, "Error: Invalid hex key value\n");
+          return kToolExitFailure;
+        }
+      }
       if (has_iv) {
         if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
           OPENSSL_cleanse(key, sizeof(key));
           fprintf(stderr, "Error: Invalid hex IV value\n");
           return kToolExitFailure;
         }
+      }
+    } else if (has_key) {
+      if (!HexToBinary(key, hex_key.get(), key_length)) {
+        OPENSSL_cleanse(key, sizeof(key));
+        fprintf(stderr, "Error: Invalid hex key value\n");
+        return kToolExitFailure;
+      }
+      if (has_iv) {
+        if (iv_length == 0) {
+          fprintf(stderr, "Warning: IV is not used by cipher %s\n",
+                  cipher_name.c_str());
+        } else if (!HexToBinary(iv, hex_iv.get(), iv_length)) {
+          OPENSSL_cleanse(key, sizeof(key));
+          fprintf(stderr, "Error: Invalid hex IV value\n");
+          return kToolExitFailure;
+        }
+      } else if (iv_length != 0) {
+        fprintf(stderr, "Error: IV is required for cipher %s\n",
+                cipher_name.c_str());
+        OPENSSL_cleanse(key, sizeof(key));
+        return kToolExitFailure;
       }
     } else {
       fprintf(stderr,
