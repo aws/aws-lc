@@ -120,12 +120,45 @@ static bool BuildRequest(const std::string &issuer_path,
     OCSP_CERTID_free(id);
     return false;
   }
-  bssl::UniquePtr<BIO> out(BIO_new_file(reqout_path.c_str(), "w"));
+  bssl::UniquePtr<BIO> out(BIO_new_file(reqout_path.c_str(), "wb"));
   if (!out || !i2d_OCSP_REQUEST_bio(out.get(), req.get())) {
     fprintf(stderr, "unable to write OCSP request to %s\n", reqout_path.c_str());
     return false;
   }
   return true;
+}
+
+// Maps an index CRL reason string to an OCSP_REVOKED_STATUS_* code (same reason
+// set as ca.cc's UnpackRevinfo), or OCSP_REVOKED_STATUS_NOSTATUS (-1) if
+// unknown. The reason's argument is dropped, unlike OpenSSL; see README.
+static int OcspReasonFromString(const std::string &reason) {
+  static const char *const kReasons[] = {
+      "unspecified",          "keyCompromise",   "CACompromise",
+      "affiliationChanged",   "superseded",      "cessationOfOperation",
+      "certificateHold",      "removeFromCRL",   "holdInstruction",
+      "keyTime",              "CAkeyTime"};
+  int idx = -1;
+  for (int i = 0; i < static_cast<int>(sizeof(kReasons) / sizeof(kReasons[0]));
+       i++) {
+    if (OPENSSL_strcasecmp(reason.c_str(), kReasons[i]) == 0) {
+      idx = i;
+      break;
+    }
+  }
+  switch (idx) {
+    case 0: return OCSP_REVOKED_STATUS_UNSPECIFIED;
+    case 1: return OCSP_REVOKED_STATUS_KEYCOMPROMISE;
+    case 2: return OCSP_REVOKED_STATUS_CACOMPROMISE;
+    case 3: return OCSP_REVOKED_STATUS_AFFILIATIONCHANGED;
+    case 4: return OCSP_REVOKED_STATUS_SUPERSEDED;
+    case 5: return OCSP_REVOKED_STATUS_CESSATIONOFOPERATION;
+    case 6: return OCSP_REVOKED_STATUS_CERTIFICATEHOLD;
+    case 7: return OCSP_REVOKED_STATUS_REMOVEFROMCRL;
+    case 8: return OCSP_REVOKED_STATUS_CERTIFICATEHOLD;  // holdInstruction
+    case 9: return OCSP_REVOKED_STATUS_KEYCOMPROMISE;    // keyTime
+    case 10: return OCSP_REVOKED_STATUS_CACOMPROMISE;    // CAkeyTime
+    default: return OCSP_REVOKED_STATUS_NOSTATUS;
+  }
 }
 
 // Responder mode: read -reqin, determine each certificate's status from the
@@ -144,7 +177,7 @@ static bool MakeResponse(const std::string &reqin_path,
     return false;
   }
 
-  bssl::UniquePtr<BIO> reqin(BIO_new_file(reqin_path.c_str(), "r"));
+  bssl::UniquePtr<BIO> reqin(BIO_new_file(reqin_path.c_str(), "rb"));
   bssl::UniquePtr<OCSP_REQUEST> req(
       reqin ? d2i_OCSP_REQUEST_bio(reqin.get(), nullptr) : nullptr);
   if (!req) {
@@ -200,6 +233,13 @@ static bool MakeResponse(const std::string &reqin_path,
     ASN1_OBJECT *md_oid = nullptr;
     OCSP_id_get0_info(nullptr, &md_oid, nullptr, nullptr, cid);
     const EVP_MD *req_md = EVP_get_digestbyobj(md_oid);
+    if (req_md == nullptr) {
+      // Without the request's hash we cannot build a comparable CertID, so the
+      // issuer check would spuriously miss and we'd sign an "unknown" the
+      // client might cache. Reject instead, as OpenSSL's responder does.
+      fprintf(stderr, "unsupported certificate ID hash\n");
+      return false;
+    }
 
     bssl::UniquePtr<OCSP_CERTID> ca_id(
         OCSP_cert_to_id(req_md, nullptr, ca_cert.get()));
@@ -216,21 +256,33 @@ static bool MakeResponse(const std::string &reqin_path,
       status = V_OCSP_CERTSTATUS_UNKNOWN;
     } else if (row[DB_type][0] == DB_TYPE_VAL ||
                row[DB_type][0] == DB_TYPE_EXP) {
-      // OpenSSL's responder treats an expired-but-not-revoked entry ('E') the
-      // same as a valid one ('V'): GOOD from the CA's perspective.
+      // Deliberate deviation: OpenSSL emits no response for an expired ('E')
+      // entry; we report GOOD instead (see README differences list).
       status = V_OCSP_CERTSTATUS_GOOD;
     } else if (row[DB_type][0] == DB_TYPE_REV) {
       status = V_OCSP_CERTSTATUS_REVOKED;
-      // AWS-LC requires a concrete reason code for revoked entries; the index
-      // produced by `ca -revoke` carries no reason, so report "unspecified".
+      // The index field is "date[,reason[,arg]]". Honor the stored reason and
+      // fall back to "unspecified" only when none is present, since AWS-LC's
+      // OCSP_basic_add1_status rejects OCSP_REVOKED_STATUS_NOSTATUS (-1).
       reason = OCSP_REVOKED_STATUS_UNSPECIFIED;
-      std::string rev(row[DB_rev_date] ? row[DB_rev_date] : "");
-      const size_t comma = rev.find(',');
+      std::string field(row[DB_rev_date] ? row[DB_rev_date] : "");
+      std::string date = field;
+      const size_t comma = field.find(',');
       if (comma != std::string::npos) {
-        rev = rev.substr(0, comma);
+        date = field.substr(0, comma);
+        std::string rest = field.substr(comma + 1);
+        const size_t comma2 = rest.find(',');
+        const std::string reason_str =
+            comma2 == std::string::npos ? rest : rest.substr(0, comma2);
+        reason = OcspReasonFromString(reason_str);
+        if (reason == OCSP_REVOKED_STATUS_NOSTATUS) {
+          fprintf(stderr, "invalid revocation reason '%s' in index\n",
+                  reason_str.c_str());
+          return false;
+        }
       }
       revtm.reset(ASN1_TIME_new());
-      if (!revtm || !ASN1_TIME_set_string(revtm.get(), rev.c_str())) {
+      if (!revtm || !ASN1_TIME_set_string(revtm.get(), date.c_str())) {
         fprintf(stderr, "invalid revocation date in index\n");
         return false;
       }
@@ -259,7 +311,7 @@ static bool MakeResponse(const std::string &reqin_path,
   if (!resp) {
     return false;
   }
-  bssl::UniquePtr<BIO> out(BIO_new_file(respout_path.c_str(), "w"));
+  bssl::UniquePtr<BIO> out(BIO_new_file(respout_path.c_str(), "wb"));
   if (!out || !i2d_OCSP_RESPONSE_bio(out.get(), resp.get())) {
     fprintf(stderr, "unable to write OCSP response to %s\n",
             respout_path.c_str());

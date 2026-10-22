@@ -205,8 +205,8 @@ TEST_F(OcspTest, RespondsUnknownForAbsentCertificate) {
   EXPECT_EQ(V_OCSP_CERTSTATUS_UNKNOWN, RespondAndFindLeafStatus());
 }
 
-// Expired-but-not-revoked entries ('E') report GOOD, matching OpenSSL's
-// apps/ocsp.c responder (expired is not the same as revoked).
+// Deliberate deviation: OpenSSL emits no response for an expired ('E') entry;
+// we report GOOD (see README differences list).
 TEST_F(OcspTest, RespondsGoodForExpiredCertificate) {
   BuildRequest();
   WriteIndex('E');
@@ -258,6 +258,28 @@ TEST_F(OcspTest, ResponderRejectsEmptyRequest) {
     ASSERT_TRUE(f);
     ASSERT_EQ(sizeof(kEmptyReq),
               fwrite(kEmptyReq, 1, sizeof(kEmptyReq), f.get()));
+  }
+  WriteIndex('V');
+  args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
+                      "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
+                      "-rkey",    ca_key_path,  "-respout", respout_path,
+                      "-ndays",   "1"};
+  EXPECT_EQ(kToolExitFailure, ocspTool(args));
+}
+
+// Negative: a CertID whose hash the responder cannot resolve (SHA3-256, which
+// EVP_get_digestbyobj does not map) is rejected rather than answered "unknown".
+TEST_F(OcspTest, ResponderRejectsUnsupportedCertIDHash) {
+  {
+    bssl::UniquePtr<OCSP_REQUEST> req(OCSP_REQUEST_new());
+    ASSERT_TRUE(req);
+    OCSP_CERTID *id =
+        OCSP_cert_to_id(EVP_sha3_256(), leaf_.get(), ca_cert_.get());
+    ASSERT_TRUE(id);
+    ASSERT_TRUE(OCSP_request_add0_id(req.get(), id));
+    bssl::UniquePtr<BIO> bio(BIO_new_file(reqout_path, "wb"));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(i2d_OCSP_REQUEST_bio(bio.get(), req.get()));
   }
   WriteIndex('V');
   args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
@@ -325,10 +347,17 @@ TEST_F(OcspTest, ResponseIsSignedByResponder) {
                                  OCSP_NOVERIFY));
 }
 
-// Positive: a revoked status carries a revocation time.
-TEST_F(OcspTest, RevokedResponseHasRevocationTime) {
+// A revoked entry carries a revocation time, and when the index field includes
+// a reason that reason is reported (rather than always "unspecified").
+TEST_F(OcspTest, RevokedResponseCarriesIndexReason) {
   BuildRequest();
-  WriteIndex('R');
+  {
+    ScopedFILE f(fopen(index_path, "w"));
+    ASSERT_TRUE(f);
+    fprintf(f.get(),
+            "R\t350101000000Z\t250101000000Z,keyCompromise\t1000\tunknown\t"
+            "/CN=end\n");
+  }
   args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
                       "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
                       "-rkey",    ca_key_path,  "-respout", respout_path,
@@ -351,6 +380,25 @@ TEST_F(OcspTest, RevokedResponseHasRevocationTime) {
                                     &revtime, &thisupd, &nextupd));
   EXPECT_EQ(V_OCSP_CERTSTATUS_REVOKED, status);
   EXPECT_NE(nullptr, revtime);
+  EXPECT_EQ(OCSP_REVOKED_STATUS_KEYCOMPROMISE, reason);
+}
+
+// Negative: an unrecognized revocation reason in the index is rejected rather
+// than signed with a defaulted reason.
+TEST_F(OcspTest, ResponderRejectsInvalidIndexReason) {
+  BuildRequest();
+  {
+    ScopedFILE f(fopen(index_path, "w"));
+    ASSERT_TRUE(f);
+    fprintf(f.get(),
+            "R\t350101000000Z\t250101000000Z,bogusReason\t1000\tunknown\t"
+            "/CN=end\n");
+  }
+  args_list_t args = {"-reqin",   reqout_path,  "-index",   index_path,
+                      "-CA",      ca_cert_path, "-rsigner", ca_cert_path,
+                      "-rkey",    ca_key_path,  "-respout", respout_path,
+                      "-ndays",   "1"};
+  EXPECT_EQ(kToolExitFailure, ocspTool(args));
 }
 
 // A valid -ndays produces a nextUpdate; omitting -ndays leaves it absent.
