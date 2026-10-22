@@ -44,7 +44,8 @@ struct err_error_st {
   // file contains the filename where the error occurred.
   const char *file;
   // data contains a NUL-terminated string with optional data. It is allocated
-  // with system |malloc| and must be freed with |free| (not |OPENSSL_free|)
+  // with |OPENSSL_raw_malloc| and must be freed with |OPENSSL_raw_free| (not
+  // |OPENSSL_free|), passing |data_hooked|.
   char *data;
   // packed contains the error library and reason, as packed by ERR_PACK.
   uint32_t packed;
@@ -52,6 +53,8 @@ struct err_error_st {
   uint16_t line;
   // mark indicates a reversion point in the queue. See |ERR_pop_to_mark|.
   unsigned mark : 1;
+  // data_hooked is the |OPENSSL_raw_malloc| hooked flag for |data|.
+  unsigned data_hooked : 1;
 };
 
 // ERR_STATE contains the per-thread, error queue.
@@ -68,6 +71,11 @@ typedef struct err_state_st {
   // to_free, if not NULL, contains a pointer owned by this structure that was
   // previously a |data| pointer of one of the elements of |errors|.
   void *to_free;
+  // to_free_hooked is the |OPENSSL_raw_malloc| hooked flag for |to_free|.
+  int to_free_hooked;
+
+  // hooked is the |OPENSSL_raw_malloc| hooked flag for this structure.
+  int hooked;
 
   // suppress counts the active |ERR_suppress_errors_begin| scopes. While it is
   // non-zero the queue accepts no new errors. It is a depth rather than a flag
@@ -79,11 +87,12 @@ extern const uint32_t kOpenSSLReasonValues[];
 extern const size_t kOpenSSLReasonValuesLen;
 extern const char kOpenSSLReasonStringData[];
 
-static char *strdup_libc_malloc(const char *str) {
-  // |strdup| is not in C until C23, so MSVC triggers deprecation warnings, and
-  // glibc and musl gate it on a feature macro. Reimplementing it is easier.
+// err_strdup duplicates |str| with |OPENSSL_raw_malloc|. We can't use
+// |OPENSSL_strdup| because we don't want to call |OPENSSL_malloc|, which can
+// affect the error stack.
+static char *err_strdup(const char *str, int *out_hooked) {
   size_t len = strlen(str);
-  char *ret = malloc(len + 1);
+  char *ret = OPENSSL_raw_malloc(len + 1, out_hooked);
   if (ret != NULL) {
     memcpy(ret, str, len + 1);
   }
@@ -92,7 +101,7 @@ static char *strdup_libc_malloc(const char *str) {
 
 // err_clear clears the given queued error.
 static void err_clear(struct err_error_st *error) {
-  free(error->data);
+  OPENSSL_raw_free(error->data, error->data_hooked);
   OPENSSL_memset(error, 0, sizeof(struct err_error_st));
 }
 
@@ -100,9 +109,9 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   err_clear(dst);
   dst->file = src->file;
   if (src->data != NULL) {
-    // We can't use OPENSSL_strdup because we don't want to call OPENSSL_malloc,
-    // which can affect the error stack.
-    dst->data = strdup_libc_malloc(src->data);
+    int hooked;
+    dst->data = err_strdup(src->data, &hooked);
+    dst->data_hooked = hooked;
   }
   dst->packed = src->packed;
   dst->line = src->line;
@@ -131,19 +140,21 @@ static void err_state_free(void *statep) {
   for (unsigned i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
   }
-  free(state->to_free);
-  free(state);
+  OPENSSL_raw_free(state->to_free, state->to_free_hooked);
+  OPENSSL_raw_free(state, state->hooked);
 }
 
 // err_get_state gets the ERR_STATE object for the current thread.
 static ERR_STATE *err_get_state(void) {
   ERR_STATE *state = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_ERR);
   if (state == NULL) {
-    state = malloc(sizeof(ERR_STATE));
+    int hooked;
+    state = OPENSSL_raw_malloc(sizeof(ERR_STATE), &hooked);
     if (state == NULL) {
       return NULL;
     }
     OPENSSL_memset(state, 0, sizeof(ERR_STATE));
+    state->hooked = hooked;
     if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_ERR, state,
                                  err_state_free)) {
       return NULL;
@@ -207,8 +218,9 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
       // error queue.
       if (inc) {
         if (error->data != NULL) {
-          free(state->to_free);
+          OPENSSL_raw_free(state->to_free, state->to_free_hooked);
           state->to_free = error->data;
+          state->to_free_hooked = error->data_hooked;
         }
         error->data = NULL;
       }
@@ -275,7 +287,7 @@ void ERR_clear_error(void) {
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
   }
-  free(state->to_free);
+  OPENSSL_raw_free(state->to_free, state->to_free_hooked);
   state->to_free = NULL;
 
   state->top = state->bottom = 0;
@@ -562,8 +574,10 @@ void ERR_print_errors_fp(FILE *file) {
   ERR_print_errors_cb(print_errors_to_file, file);
 }
 
-// err_set_error_data sets the data on the most recent error.
-static void err_set_error_data(char *data) {
+// err_set_error_data sets the data on the most recent error. It takes ownership
+// of |data|, which must have been allocated with |OPENSSL_raw_malloc| with
+// hooked flag |hooked|.
+static void err_set_error_data(char *data, int hooked) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
@@ -571,14 +585,15 @@ static void err_set_error_data(char *data) {
   // would collect data from a suppressed |ERR_add_error_data| that follows a
   // suppressed |ERR_put_error|.
   if (state == NULL || state->top == state->bottom || state->suppress != 0) {
-    free(data);
+    OPENSSL_raw_free(data, hooked);
     return;
   }
 
   error = &state->errors[state->top];
 
-  free(error->data);
+  OPENSSL_raw_free(error->data, error->data_hooked);
   error->data = data;
+  error->data_hooked = hooked;
 }
 
 void ERR_put_error(int library, int unused, int reason, const char *file,
@@ -637,7 +652,8 @@ static void err_add_error_vdata(unsigned num, va_list args) {
       return; // Would overflow.
   }
   total_size += 1; // NUL terminator.
-  if ((buf = malloc(total_size)) == NULL) {
+  int hooked;
+  if ((buf = OPENSSL_raw_malloc(total_size, &hooked)) == NULL) {
     return;
   }
   buf[0] = '\0';
@@ -650,7 +666,7 @@ static void err_add_error_vdata(unsigned num, va_list args) {
       assert(0); // should not be possible.
     }
   }
-  err_set_error_data(buf);
+  err_set_error_data(buf, hooked);
 }
 
 void ERR_add_error_data(unsigned count, ...) {
@@ -671,7 +687,14 @@ void ERR_add_error_dataf(const char *format, ...) {
   }
   va_end(ap);
 
-  err_set_error_data(buf);
+  // |OPENSSL_vasprintf_internal| reallocates, which |OPENSSL_raw_malloc| does
+  // not support, so copy the result. This is not a hot path.
+  int hooked;
+  char *copy = err_strdup(buf, &hooked);
+  free(buf);
+  if (copy != NULL) {
+    err_set_error_data(copy, hooked);
+  }
 }
 
 void ERR_set_error_data(char *data, int flags) {
@@ -680,15 +703,14 @@ void ERR_set_error_data(char *data, int flags) {
     assert(0);
     return;
   }
-  // We can not use OPENSSL_strdup because we don't want to call OPENSSL_malloc,
-  // which can affect the error stack.
-  char *copy = strdup_libc_malloc(data);
+  int hooked;
+  char *copy = err_strdup(data, &hooked);
   if (copy != NULL) {
-    err_set_error_data(copy);
+    err_set_error_data(copy, hooked);
   }
   if (flags & ERR_FLAG_MALLOCED) {
     // We can not take ownership of |data| directly because it is allocated with
-    // |OPENSSL_malloc| and we will free it with system |free| later.
+    // |OPENSSL_malloc| and we will free it with |OPENSSL_raw_free| later.
     OPENSSL_free(data);
   }
 }
@@ -768,6 +790,10 @@ void ERR_load_RAND_strings(void) {}
 struct err_save_state_st {
   struct err_error_st *errors;
   size_t num_errors;
+  // hooked and errors_hooked are the |OPENSSL_raw_malloc| hooked flags for this
+  // structure and |errors|, respectively.
+  int hooked;
+  int errors_hooked;
 };
 
 void ERR_SAVE_STATE_free(ERR_SAVE_STATE *state) {
@@ -777,8 +803,8 @@ void ERR_SAVE_STATE_free(ERR_SAVE_STATE *state) {
   for (size_t i = 0; i < state->num_errors; i++) {
     err_clear(&state->errors[i]);
   }
-  free(state->errors);
-  free(state);
+  OPENSSL_raw_free(state->errors, state->errors_hooked);
+  OPENSSL_raw_free(state, state->hooked);
 }
 
 ERR_SAVE_STATE *ERR_save_state(void) {
@@ -787,19 +813,22 @@ ERR_SAVE_STATE *ERR_save_state(void) {
     return NULL;
   }
 
-  ERR_SAVE_STATE *ret = malloc(sizeof(ERR_SAVE_STATE));
+  int hooked;
+  ERR_SAVE_STATE *ret = OPENSSL_raw_malloc(sizeof(ERR_SAVE_STATE), &hooked);
   if (ret == NULL) {
     return NULL;
   }
+  ret->hooked = hooked;
 
   // Errors are stored in the range (bottom, top].
   size_t num_errors = state->top >= state->bottom
                           ? state->top - state->bottom
                           : ERR_NUM_ERRORS + state->top - state->bottom;
   assert(num_errors < ERR_NUM_ERRORS);
-  ret->errors = malloc(num_errors * sizeof(struct err_error_st));
+  ret->errors = OPENSSL_raw_malloc(num_errors * sizeof(struct err_error_st),
+                                   &ret->errors_hooked);
   if (ret->errors == NULL) {
-    free(ret);
+    OPENSSL_raw_free(ret, ret->hooked);
     return NULL;
   }
   OPENSSL_memset(ret->errors, 0, num_errors * sizeof(struct err_error_st));
