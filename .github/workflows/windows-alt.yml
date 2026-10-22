@@ -124,6 +124,11 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+      - name: Static libcrypto in a DLL survives process teardown
+        # MSVC ABI: shutdown handler registered with atexit from a .CRT$XCU
+        # initializer.
+        shell: bash
+        run: bash ./tests/ci/run_windows_dll_detach_test.sh ./build "C:/Program Files/LLVM/bin/clang.exe"
   clang-cl-msbuild:
     if: github.repository_owner == 'aws'
     strategy:
@@ -362,3 +367,10 @@ jobs:
       - name: Run tests
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests
+      - name: Static libcrypto in a DLL survives process teardown
+        # MinGW ABI. gcc get -D_WIN32_WINNT=_WIN32_WINNT_WIN7
+        # (`MINGW AND NOT CLANG`) and use statically imported bcrypt.dll, which
+        # the loader keeps alive. One generator is enough.
+        if: ${{ matrix.sys == 'clang64' && matrix.generator == 'Ninja' }}
+        shell: 'msys2 {0}'
+        run: bash ./tests/ci/run_windows_dll_detach_test.sh ./build clang
