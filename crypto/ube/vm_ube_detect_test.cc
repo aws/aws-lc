@@ -148,17 +148,9 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockRetrievalTesting) {
 
 // A wedged seqlock (stuck at an odd value, i.e. a write perpetually "in
 // progress") must not spin the reader forever. |CRYPTO_get_vm_ube_generation|
-// must give up after a bounded number of retries and, rather than hang, hand
-// back a "poison" generation number: it still returns 1 (success), but the
-// value has bit 63 set and differs from any real counter and from the previous
-// poison, so the DRBG layer sees a generation change and reseeds
-// conservatively. Once the seqlock is released (even value again), reads must
-// succeed with the real value.
+// must give up after a bounded number of retries and return 0, which the UBE
+// layer treats as a permanent failure.
 TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
-  // Bit 63 marks a synthesized transient-failure generation number; see
-  // VM_UBE_TRANSIENT_POISON_BIT in vm_ube_detect.c.
-  const uint64_t kPoisonBit = (uint64_t)1 << 63;
-
   vmclock_test_s vmc_test;
   ASSERT_TRUE(init_vmclock_test(&vmc_test));
 
@@ -173,20 +165,8 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
   ASSERT_TRUE(set_vmclock_seq_count(&vmc_test, 0x7FFFFFFF));
 
   // The read must terminate (bounded retries) rather than hang -- this test
-  // hanging *is* the failure signal for the unbounded-loop bug. It returns 1
-  // with a poison value: bit 63 set (so it never collides with a real counter)
-  // and different from the cached baseline (so the UBE layer reseeds).
-  gen = 0xdeadbeef;
-  ASSERT_EQ(1, CRYPTO_get_vm_ube_generation(&gen));
-  ASSERT_NE((uint64_t)0, gen & kPoisonBit);
-  ASSERT_NE((uint64_t)100, gen);
-
-  // A second wedged read yields a *different* poison, so repeated transient
-  // failures each present as a generation change and keep reseeding.
-  uint64_t gen2 = 0;
-  ASSERT_EQ(1, CRYPTO_get_vm_ube_generation(&gen2));
-  ASSERT_NE((uint64_t)0, gen2 & kPoisonBit);
-  ASSERT_NE(gen, gen2);
+  // hanging *is* the failure signal for the unbounded-loop bug.
+  ASSERT_EQ(0, CRYPTO_get_vm_ube_generation(&gen));
 
   // Release the seqlock. Reset seq_count to an even value first: the seqlock
   // was left odd (0x7FFFFFFF), and set_vmclock_generation() applies two
@@ -206,16 +186,10 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   vmclock_test_s vmc_test;
   ASSERT_TRUE(init_vmclock_test(&vmc_test));
 
-  // Bit 63 marks a synthesized transient-failure ("poison") generation number;
-  // see VM_UBE_TRANSIENT_POISON_BIT in vm_ube_detect.c. The two whole values
-  // below keep bit 63 *clear* so a poison return is unambiguously distinct from
-  // both a whole value and any torn mix of their halves.
-  const uint64_t kPoisonBit = (uint64_t)1 << 63;
-
   // Two values whose 32-bit halves are distinct bit patterns. Any torn read
   // that mixes a low half from one write with a high half from the other
   // yields a value equal to neither kValueA nor kValueB (e.g. 0x2AAAAAAA15555555
-  // or 0x155555552AAAAAAA), all with bit 63 clear.
+  // or 0x155555552AAAAAAA).
   const uint64_t kValueA = 0x2AAAAAAA2AAAAAAAULL;
   const uint64_t kValueB = 0x1555555515555555ULL;
 
@@ -250,13 +224,10 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
     }
   });
 
-  // Read many times. |CRYPTO_get_vm_ube_generation| always returns 1, but the
-  // value is one of three things: a whole value (kValueA/kValueB), a poison
-  // value (bit 63 set) when the reader could not obtain a consistent read
-  // within the retry bound, or -- if the seqlock were broken -- a torn mix of
-  // the two halves. The poison case is acceptable (the writer happened to keep
-  // the lock held past the retry bound); a torn value is the failure we are
-  // guarding against. We record any torn read and stop, but must NOT return
+  // Read many times. Each read returns 0 if the writer held the lock past the
+  // retry bound (acceptable), or 1 with either a whole value (kValueA/kValueB)
+  // or -- if the seqlock were broken -- a torn mix of the two halves, which is
+  // the failure we are guarding against. We record any torn read and stop, but must NOT return
   // before join()ing the writer -- letting a std::thread destruct while
   // joinable calls std::terminate() and would mask the real failure.
   // 20k iterations is enough to land in the writer's torn window many times
@@ -268,10 +239,6 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   for (size_t i = 0; i < 20000 && !torn_read; i++) {
     uint64_t gen = 0;
     if (CRYPTO_get_vm_ube_generation(&gen) == 1) {
-      if (gen & kPoisonBit) {
-        // Retry bound exhausted this call; not a torn read. Retry later.
-        continue;
-      }
       if (gen != kValueA && gen != kValueB) {
         torn_read = true;
         torn_value = gen;

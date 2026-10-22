@@ -18,19 +18,11 @@ extern "C" {
   #define AWSLC_VMCLOCK_PATH "/dev/vmclock0"
 #endif
 
-// VM_UBE_TRANSIENT_POISON_BIT marks a synthesized "transient failure" VM UBE
-// generation number (see CRYPTO_get_vm_ube_generation). A real counter
-// increments slowly per snapshot and never reaches 2^63, so a poison value
-// never collides with a genuine one. Consumers that must distinguish a
-// transient reading from a real generation change (e.g. the DRBG's
-// mid-generation validity check) test this bit.
-#define VM_UBE_TRANSIENT_POISON_BIT (UINT64_C(1) << 63)
-
 // VM UBE-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_vm_ube_generation provides the VM UBE generation number for
-// the current process. For a genuine reading the VM UBE generation number is a
-// non-zero, strictly-monotonic counter with the property that, if queried in an
+// the current process. The VM UBE generation number is a non-zero,
+// strictly-monotonic counter with the property that, if queried in an
 // address space and then again in a subsequently resumed snapshot/VM, the
 // resumed address space will observe a greater value.
 //
@@ -43,18 +35,10 @@ extern "C" {
 // vmclock is preferred when available. If neither is available, the function
 // reports that VM UBE detection is not supported.
 //
-// Return values:
-//   1  |*vm_ube_generation_number| holds a usable value:
-//        - the current generation number for a consistent read;
-//        - 0 if no VM UBE interface is present (not supported);
-//        - a "poison" value (bit 63 set) on a transient read failure (e.g. a
-//          wedged vmclock seqlock). It differs from any cached or genuine
-//          counter, so the caller reseeds via its normal "changed" path and
-//          recovers on the next consistent read.
-//      Callers must only test whether the value changed, not its magnitude.
-//   0  Permanent failure: an interface is present but uninitializable. Not
-//      returned on Linux (degrades to "not supported"), but reserved for
-//      callers that must distinguish it.
+// It returns 0 if an initialized interface cannot be read consistently (a
+// vmclock seqlock that never settles); the UBE layer treats this as a
+// permanent failure. Otherwise, it returns 1, with a generation number of 0 if
+// VM UBE detection is not supported.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
                                           uint64_t *vm_ube_generation_number);
 

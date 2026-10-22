@@ -47,8 +47,8 @@ static void vm_ube_acquire_fence(void) {
 // Iteration budget for a contended or wedged seqlock, not a guarantee a VMM
 // update completes. A VMM update flips the seqcount only momentarily, so a
 // small budget is ample; it exists only so a stuck |seq_count| can't spin
-// |RAND_bytes| forever. Exhausting it reports a transient read failure (see
-// vm_ube_read_vmclock_gn).
+// |RAND_bytes| forever. Exhausting it is a permanent UBE failure (see
+// CRYPTO_get_vm_ube_generation).
 #define VMCLOCK_SEQLOCK_MAX_RETRIES 64
 
 static CRYPTO_once_t vm_ube_init = CRYPTO_ONCE_INIT;
@@ -238,29 +238,6 @@ static int vm_ube_read_generation(const struct vm_ube_state_st *st,
   return 0;
 }
 
-// VM_UBE_TRANSIENT_POISON_BIT is defined in vm_ube_detect.h so consumers (the
-// DRBG's mid-generation check) can recognize a transient reading.
-//
-// vm_ube_transient_poison returns a distinct poison value on each call (a
-// monotonic counter with bit 63 set), so it differs from any real counter and
-// from the previous poison. This drives the UBE layer's normal "changed" path
-// (a conservative reseed) without a dedicated failure state. Atomic, gated for
-// gcc 4.1 like the fence above.
-#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
-    __STDC_VERSION__ >= 201112L
-static uint64_t vm_ube_transient_poison(void) {
-  static _Atomic uint64_t transient_seq;
-  uint64_t n = atomic_fetch_add(&transient_seq, 1) + 1;
-  return VM_UBE_TRANSIENT_POISON_BIT | n;
-}
-#else
-static uint64_t vm_ube_transient_poison(void) {
-  static uint64_t transient_seq;
-  uint64_t n = (uint64_t)__sync_add_and_fetch(&transient_seq, 1);
-  return VM_UBE_TRANSIENT_POISON_BIT | n;
-}
-#endif
-
 int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
   CRYPTO_once(&vm_ube_init, do_vm_ube_init);
 
@@ -269,14 +246,9 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
       *vm_ube_generation_number = 0;
       return 1;
     case VM_UBE_STATE_SUCCESS_INITIALISE:
-      if (vm_ube_read_generation(&vm_ube, vm_ube_generation_number) != 1) {
-        // Initialized but no consistent read this call (e.g. a wedged seqlock):
-        // a transient failure. Hand back a poison value so the UBE layer reseeds
-        // conservatively; detection recovers on the next consistent read.
-        *vm_ube_generation_number = vm_ube_transient_poison();
-        return 1;
-      }
-      return 1;
+      // A seqlock that never settles is treated as permanent: the UBE layer
+      // disables detection and the DRBG reseeds on every call.
+      return vm_ube_read_generation(&vm_ube, vm_ube_generation_number);
     default:
       abort();
   }
