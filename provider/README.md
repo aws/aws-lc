@@ -198,17 +198,11 @@ algorithm count from what does not.
 
 | Path | Sees | Contents |
 |---|---|---|
-| `internal/backend.h` | neither | The one header either side may include. The contract between them, in plain C types only. |
-| `internal/backend/<operation>.h` | neither | Operation-wide backend shapes, in plain C types |
-| `internal/backend/operations/<family>.h` | neither | One family's backend entry points, in plain C types |
-| `internal/frontend/<operation>.h` | OpenSSL | Operation-wide frontend contract |
-| `internal/frontend/operations/<family>.h` | OpenSSL | One family's dispatch tables, for `registry.c` |
-| `frontend/provider.c` | OpenSSL | The entry point. Implements provider-level dispatch table functions. |
-| `frontend/registry.c` | OpenSSL | One `OSSL_ALGORITHM` table per operation. |
-| `frontend/<service>.c` | OpenSSL | Provider-wide frontend services, such as error reporting. |
-| `frontend/operations/<operation>/<operation>.c` | OpenSSL | Operation-wide frontend behavior |
-| `frontend/operations/<operation>/<family>.c` | OpenSSL | Dispatch slots and their `OSSL_PARAM` plumbing |
-| `backend/<service>.c` | AWS-LC | Provider-wide AWS-LC bindings: allocation, introspection, the error queue. |
-| `backend/operations/<operation>/<family>.c` | AWS-LC | The calls that actually compute |
-| `test/frontend/**` | OpenSSL | Main test suite driving from the OpenSSL Provider interface. |
-| `test/backend/**` | AWS-LC | Test suite for invoking `backend/` functions directly. |
+| `internal/backend.h`, `internal/backend/` | neither | The contract between the two sides, in plain C types only. Operation-wide shapes in `<operation>.h`, one family's entry points in `operations/<family>.h`. |
+| `internal/frontend/` | OpenSSL | Frontend declarations shared across files, split the same way. |
+| `frontend/` | OpenSSL | The provider entry point, the algorithm registry, and provider-wide services. |
+| `frontend/operations/<operation>/` | OpenSSL | Dispatch slots, one file per family. |
+| `backend/` | AWS-LC | Provider-wide AWS-LC bindings. |
+| `backend/operations/<operation>/` | AWS-LC | The calls that actually compute, one file per family. |
+| `test/frontend/` | OpenSSL | Main test suite, driven through the OpenSSL provider interface. |
+| `test/backend/` | AWS-LC | Tests that call `backend/` functions directly. |
