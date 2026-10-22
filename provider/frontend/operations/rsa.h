@@ -14,6 +14,9 @@ extern "C" {
 extern const OSSL_DISPATCH awslc_prov_rsa_keymgmt_functions[];
 extern const OSSL_DISPATCH awslc_prov_rsa_pss_keymgmt_functions[];
 
+// frontend/operations/signature/rsa.c
+extern const OSSL_DISPATCH awslc_prov_rsa_signature_functions[];
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif

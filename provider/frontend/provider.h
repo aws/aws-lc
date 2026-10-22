@@ -118,6 +118,9 @@ void awslc_prov_error_raise(const AWSLC_PROV_CTX *ctx, uint32_t reason,
 //                                final, keygen, sign, verify, derive. AWS-LC
 //                                bumps its FIPS service-indicator counter only
 //                                here, and only when the service ran approved.
+//   AWSLC_PROV_CALL_END_UNAPPROVED
+//                                As above, for an entry point AWS-LC does not
+//                                approve.
 //
 // AWS-LC's service indicator tests
 // (crypto/fipsmodule/service_indicator/service_indicator_test.cc) are the
@@ -154,6 +157,11 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
                                        const char *description, int *approved,
                                        const char *file, int line);
 
+// As awslc_prov_call_end_check_approved, reporting every success unapproved.
+int awslc_prov_call_end_unapproved(AWSLC_PROV_CALL *call, int succeeded,
+                                   const char *type, const char *description,
+                                   int *approved, const char *file, int line);
+
 #define AWSLC_PROV_CALL_END(call, succeeded, detail) \
   awslc_prov_call_end((call), (succeeded), (detail), __FILE__, __LINE__)
 
@@ -162,6 +170,11 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
   awslc_prov_call_end_check_approved((call), (succeeded), (type),              \
                                      (description), (approved), __FILE__,      \
                                      __LINE__)
+
+#define AWSLC_PROV_CALL_END_UNAPPROVED(call, succeeded, type, description, \
+                                       approved)                           \
+  awslc_prov_call_end_unapproved((call), (succeeded), (type), (description), \
+                                 (approved), __FILE__, __LINE__)
 
 #if defined(__cplusplus)
 }  // extern "C"

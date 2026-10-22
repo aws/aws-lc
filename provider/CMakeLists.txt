@@ -45,7 +45,8 @@ add_library(awslc_provider_front OBJECT
   frontend/utils.c
   frontend/operations/digests/digests.c
   frontend/operations/digests/sha2.c
-  frontend/operations/keymgmt/rsa.c)
+  frontend/operations/keymgmt/rsa.c
+  frontend/operations/signature/rsa.c)
 set_target_properties(awslc_provider_front PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Replace the directory-level AWS-LC include paths inherited from the parent.
 set_property(TARGET awslc_provider_front PROPERTY INCLUDE_DIRECTORIES
@@ -60,7 +61,8 @@ add_library(awslc_provider_back OBJECT
   backend/utils.c
   backend/operations/rsa.c
   backend/operations/digests/sha2.c
-  backend/operations/keymgmt/rsa.c)
+  backend/operations/keymgmt/rsa.c
+  backend/operations/signature/rsa.c)
 set_target_properties(awslc_provider_back PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_add_awslc_include_paths(TARGET awslc_provider_back SCOPE PRIVATE)
 target_include_directories(awslc_provider_back PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -128,7 +130,8 @@ if(BUILD_TESTING AND NOT ANDROID)
     test/frontend/reachability_test.cc
     test/frontend/operations/digests/digests_test.cc
     test/frontend/operations/digests/sha2_test.cc
-    test/frontend/operations/keymgmt/rsa_test.cc)
+    test/frontend/operations/keymgmt/rsa_test.cc
+    test/frontend/operations/signature/rsa_test.cc)
 
   # Replace the directory-level AWS-LC include paths inherited from the parent.
   set_property(TARGET awslc_provider_test PROPERTY INCLUDE_DIRECTORIES
@@ -174,6 +177,7 @@ if(BUILD_TESTING AND NOT ANDROID)
     test/backend/errors_test.cc
     test/backend/operations/digests/sha2_test.cc
     test/backend/operations/keymgmt/rsa_test.cc
+    test/backend/operations/signature/rsa_test.cc
     test/backend/utils_test.cc
     $<TARGET_OBJECTS:awslc_provider_back>)
 

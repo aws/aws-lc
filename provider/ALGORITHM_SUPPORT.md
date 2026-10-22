@@ -48,4 +48,6 @@ None yet.
 
 ## Signatures (`OSSL_OP_SIGNATURE`)
 
-None yet.
+| Family | Variants |
+|---|---|
+| RSA | `RSA` |
