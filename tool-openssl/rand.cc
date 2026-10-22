@@ -4,15 +4,15 @@
 #include <cerrno>
 #include <climits>
 #include <cstdio>
+#include <cstring>
 #include <string>
-#include <vector>
 
 #include <openssl/bio.h>
 #include <openssl/rand.h>
 
 #include "internal.h"
 
-static const size_t kMaxRandBytes = 256 * 1024 * 1024;
+static const size_t kChunkSize = 65536;
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
@@ -72,11 +72,6 @@ int randTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  if (num > kMaxRandBytes) {
-    fprintf(stderr, "error: num too large (max %zu)\n", kMaxRandBytes);
-    return kToolExitFailure;
-  }
-
   std::string out_path;
   GetLastString(&out_path, "-out", "", parsed_args);
 
@@ -92,14 +87,9 @@ int randTool(const args_list_t &args) {
     out_file = out_scoped.get();
   }
 
-  const size_t nbytes = static_cast<size_t>(num);
-  std::vector<uint8_t> buf(nbytes);
-  if (nbytes > 0 && !RAND_bytes(buf.data(), nbytes)) {
-    fprintf(stderr, "error: RAND_bytes failed\n");
-    return kToolExitFailure;
-  }
-
   int ret = kToolExitSuccess;
+  uint8_t chunk[kChunkSize];
+  unsigned long long remaining = num;
 
   if (base64) {
     BIO *bio_out = BIO_new_fp(out_file, BIO_NOCLOSE);
@@ -111,31 +101,71 @@ int randTool(const args_list_t &args) {
       ret = kToolExitFailure;
     } else {
       BIO_push(b64, bio_out);
-      if (nbytes > 0 && !BIO_write_all(b64, buf.data(), nbytes)) {
-        ret = kToolExitFailure;
+      while (remaining > 0 && ret == kToolExitSuccess) {
+        size_t n = remaining < kChunkSize ? static_cast<size_t>(remaining)
+                                          : kChunkSize;
+        if (!RAND_bytes(chunk, n)) {
+          fprintf(stderr, "error: RAND_bytes failed\n");
+          ret = kToolExitFailure;
+          break;
+        }
+        if (!BIO_write_all(b64, chunk, n)) {
+          fprintf(stderr, "error: failed to write output: %s\n",
+                  strerror(errno));
+          ret = kToolExitFailure;
+          break;
+        }
+        remaining -= n;
       }
       if (ret == kToolExitSuccess && BIO_flush(b64) != 1) {
+        fprintf(stderr, "error: failed to flush output: %s\n", strerror(errno));
         ret = kToolExitFailure;
       }
       BIO_free_all(b64);
     }
   } else if (hex) {
-    for (size_t i = 0; i < nbytes; i++) {
-      if (fprintf(out_file, "%02x", buf[i]) < 0) {
+    while (remaining > 0 && ret == kToolExitSuccess) {
+      size_t n = remaining < kChunkSize ? static_cast<size_t>(remaining)
+                                        : kChunkSize;
+      if (!RAND_bytes(chunk, n)) {
+        fprintf(stderr, "error: RAND_bytes failed\n");
         ret = kToolExitFailure;
         break;
       }
+      for (size_t i = 0; i < n; i++) {
+        if (fprintf(out_file, "%02x", chunk[i]) < 0) {
+          fprintf(stderr, "error: failed to write output: %s\n",
+                  strerror(errno));
+          ret = kToolExitFailure;
+          break;
+        }
+      }
+      remaining -= n;
     }
     if (ret == kToolExitSuccess && fprintf(out_file, "\n") < 0) {
+      fprintf(stderr, "error: failed to write output: %s\n", strerror(errno));
       ret = kToolExitFailure;
     }
   } else {
-    if (nbytes > 0 && fwrite(buf.data(), 1, nbytes, out_file) != nbytes) {
-      ret = kToolExitFailure;
+    while (remaining > 0 && ret == kToolExitSuccess) {
+      size_t n = remaining < kChunkSize ? static_cast<size_t>(remaining)
+                                        : kChunkSize;
+      if (!RAND_bytes(chunk, n)) {
+        fprintf(stderr, "error: RAND_bytes failed\n");
+        ret = kToolExitFailure;
+        break;
+      }
+      if (fwrite(chunk, 1, n, out_file) != n) {
+        fprintf(stderr, "error: failed to write output: %s\n", strerror(errno));
+        ret = kToolExitFailure;
+        break;
+      }
+      remaining -= n;
     }
   }
 
   if (ret == kToolExitSuccess && fflush(out_file) != 0) {
+    fprintf(stderr, "error: failed to flush output: %s\n", strerror(errno));
     ret = kToolExitFailure;
   }
 

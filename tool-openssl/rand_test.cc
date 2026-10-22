@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 #include <climits>
 #include <string>
+#include <vector>
 #if !defined(OPENSSL_WINDOWS)
 #include <signal.h>
 #include <sys/resource.h>
@@ -39,18 +40,41 @@ TEST(RandTest, TooManyArgs) {
   EXPECT_EQ(kToolExitFailure, randTool(args));
 }
 
-TEST(RandTest, RawOutput) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+class RandTempFileTest : public ::testing::Test {
+ protected:
+  void TearDown() override {
+    for (const auto &path : temp_paths_) {
+      RemoveFile(path);
+    }
+  }
+
+  char *CreateTempPath() {
+    temp_paths_.push_back(new char[PATH_MAX]);
+    char *path = temp_paths_.back();
+    EXPECT_GT(createTempFILEpath(path), 0u);
+    return path;
+  }
+
+  ~RandTempFileTest() override {
+    for (auto *p : temp_paths_) {
+      delete[] p;
+    }
+  }
+
+ private:
+  std::vector<char *> temp_paths_;
+};
+
+TEST_F(RandTempFileTest, RawOutput) {
+  char *out_path = CreateTempPath();
   args_list_t args = {"-out", out_path, "32"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content = ReadFileToString(out_path);
   EXPECT_EQ(32u, content.size());
 }
 
-TEST(RandTest, Base64Output) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, Base64Output) {
+  char *out_path = CreateTempPath();
   args_list_t args = {"-base64", "-out", out_path, "32"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content = ReadFileToString(out_path);
@@ -64,9 +88,8 @@ TEST(RandTest, Base64Output) {
   }
 }
 
-TEST(RandTest, HexOutput) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, HexOutput) {
+  char *out_path = CreateTempPath();
   args_list_t args = {"-hex", "-out", out_path, "16"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content = ReadFileToString(out_path);
@@ -84,9 +107,8 @@ TEST(RandTest, ZeroBytes) {
   EXPECT_EQ(kToolExitFailure, randTool(args));
 }
 
-TEST(RandTest, LastFormatWins) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, LastFormatWins) {
+  char *out_path = CreateTempPath();
 
   args_list_t args1 = {"-base64", "-hex", "-out", out_path, "16"};
   EXPECT_EQ(kToolExitSuccess, randTool(args1));
@@ -103,10 +125,9 @@ TEST(RandTest, LastFormatWins) {
   }
 }
 
-TEST(RandTest, LastOutWins) {
-  char path1[PATH_MAX], path2[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(path1), 0u);
-  ASSERT_GT(createTempFILEpath(path2), 0u);
+TEST_F(RandTempFileTest, LastOutWins) {
+  char *path1 = CreateTempPath();
+  char *path2 = CreateTempPath();
   args_list_t args = {"-out", path1, "-out", path2, "32"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content1 = ReadFileToString(path1);
@@ -123,10 +144,9 @@ TEST(RandTest, DashOutMeansStdout) {
   EXPECT_EQ(33u, captured.size());
 }
 
-TEST(RandTest, OutputIsRandom) {
-  char path1[PATH_MAX], path2[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(path1), 0u);
-  ASSERT_GT(createTempFILEpath(path2), 0u);
+TEST_F(RandTempFileTest, OutputIsRandom) {
+  char *path1 = CreateTempPath();
+  char *path2 = CreateTempPath();
   args_list_t args1 = {"-out", path1, "32"};
   args_list_t args2 = {"-out", path2, "32"};
   EXPECT_EQ(kToolExitSuccess, randTool(args1));
@@ -138,23 +158,50 @@ TEST(RandTest, OutputIsRandom) {
   EXPECT_NE(content1, content2);
 }
 
-TEST(RandTest, NumTooLarge) {
-  args_list_t args = {"999999999999"};
+TEST(RandTest, NumOverflow) {
+  args_list_t args = {"99999999999999999999999"};
   EXPECT_EQ(kToolExitFailure, randTool(args));
 }
 
-TEST(RandTest, OctalNum) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, LargeRawOutput) {
+  char *out_path = CreateTempPath();
+  args_list_t args = {"-out", out_path, "100000"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_EQ(100000u, content.size());
+}
+
+TEST_F(RandTempFileTest, LargeBase64Output) {
+  char *out_path = CreateTempPath();
+  args_list_t args = {"-base64", "-out", out_path, "100000"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_FALSE(content.empty());
+  for (char c : content) {
+    EXPECT_TRUE(isalnum(c) || c == '+' || c == '/' || c == '=' || c == '\n')
+        << "unexpected character: " << static_cast<int>(c);
+  }
+}
+
+TEST_F(RandTempFileTest, LargeHexOutput) {
+  char *out_path = CreateTempPath();
+  args_list_t args = {"-hex", "-out", out_path, "100000"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_EQ(200001u, content.size());
+  EXPECT_EQ('\n', content[200000]);
+}
+
+TEST_F(RandTempFileTest, OctalNum) {
+  char *out_path = CreateTempPath();
   args_list_t args = {"-out", out_path, "010"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content = ReadFileToString(out_path);
   EXPECT_EQ(8u, content.size());
 }
 
-TEST(RandTest, HexNum) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, HexNum) {
+  char *out_path = CreateTempPath();
   args_list_t args = {"-out", out_path, "0x10"};
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string content = ReadFileToString(out_path);
@@ -208,23 +255,20 @@ static void WriteFailureTest(const char *out_path, const char *format_flag) {
   _exit(randTool(args));
 }
 
-TEST(RandTest, WriteFailureRaw) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, WriteFailureRaw) {
+  char *out_path = CreateTempPath();
   ASSERT_EXIT(WriteFailureTest(out_path, nullptr),
               testing::ExitedWithCode(kToolExitFailure), "");
 }
 
-TEST(RandTest, WriteFailureBase64) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, WriteFailureBase64) {
+  char *out_path = CreateTempPath();
   ASSERT_EXIT(WriteFailureTest(out_path, "-base64"),
               testing::ExitedWithCode(kToolExitFailure), "");
 }
 
-TEST(RandTest, WriteFailureHex) {
-  char out_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+TEST_F(RandTempFileTest, WriteFailureHex) {
+  char *out_path = CreateTempPath();
   ASSERT_EXIT(WriteFailureTest(out_path, "-hex"),
               testing::ExitedWithCode(kToolExitFailure), "");
 }
