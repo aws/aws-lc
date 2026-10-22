@@ -256,6 +256,19 @@ class CATest : public ::testing::Test {
     return result;
   }
 
+  // Writes a single revoked entry to the database. |rev_field| is the index's
+  // revocation-date column (a timestamp, optionally followed by ",reason" and
+  // any reason argument). Serial "AA" avoids colliding with the serial file,
+  // which starts at 01.
+  void WriteSingleRevokedEntry(const char *rev_field) {
+    // Format: type\texp_date\trev_date\tserial\tfile\tname
+    ScopedFILE db_file(fopen(db_path, "w"));
+    ASSERT_TRUE(db_file);
+    fprintf(db_file.get(),
+            "R\t251231235959Z\t%s\tAA\tunknown\t/CN=revoked.example.com\n",
+            rev_field);
+  }
+
   void CreateBasicConfig() {
     ScopedFILE config_file(fopen(config_path, "w"));
     ASSERT_TRUE(config_file);
@@ -1862,453 +1875,56 @@ commonName = supplied
 
 // MakeRevoked and UnpackRevinfo Tests - Exercised through database validation in caTool
 
-TEST_F(CATest, DatabaseWithRevokedEntryBasicTimestamp) {
-  // Test database with revoked entry containing only timestamp (no reason)
-  // This exercises MakeRevoked and UnpackRevinfo basic parsing
-  CreateBasicConfig();
-
-  // Create database with a revoked entry - just timestamp
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Format: type\texp_date\trev_date\tserial\tfile\tname
-  // R = Revoked, timestamp format is YYMMDDHHMMSSZ
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
+// Valid revocation-info fields (the index's rev_date column) parse and load,
+// so signing against such a database succeeds. Covers a bare timestamp, each
+// reason code, and the holdInstruction/keyTime/CAkeyTime argument forms.
+TEST_F(CATest, DatabaseRevokedEntryValidFields) {
+  const char *const valid_fields[] = {
+      "240101120000Z",
+      "240101120000Z,unspecified",
+      "240101120000Z,keyCompromise",
+      "240101120000Z,CACompromise",
+      "240101120000Z,affiliationChanged",
+      "240101120000Z,superseded",
+      "240101120000Z,cessationOfOperation",
+      "240101120000Z,certificateHold",
+      "240101120000Z,removeFromCRL",
+      "240101120000Z,holdInstruction,1.2.840.10040.2.1",
+      "240101120000Z,keyTime,20240101120000Z",
+      "240101120000Z,CAkeyTime,20240101120000Z",
   };
-
-  // Should succeed - database with valid revoked entry loads correctly
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(ValidateCertificateKeyPair(cert.get(), test_ca_key_.get()));
+  for (const char *field : valid_fields) {
+    SCOPED_TRACE(field);
+    CreateBasicConfig();
+    WriteSingleRevokedEntry(field);
+    args_list_t args = {"-config", config_path, "-selfsign", "-in", csr_path,
+                        "-out",    output_path};
+    ASSERT_EQ(kToolExitSuccess, caTool(args));
+    ASSERT_TRUE(LoadPEMCertificate(output_path));
+  }
 }
 
-TEST_F(CATest, DatabaseWithRevokedEntryUnspecifiedReason) {
-  // Test database with revoked entry using "unspecified" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,unspecified\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
+// Malformed revocation-info fields fail during database validation: a bad
+// timestamp, an unknown reason, a missing holdInstruction OID or key-time
+// argument, and invalid OID/time arguments.
+TEST_F(CATest, DatabaseRevokedEntryRejectsMalformedFields) {
+  const char *const invalid_fields[] = {
+      "invalid_timestamp",
+      "240101120000Z,invalidReason",
+      "240101120000Z,holdInstruction",
+      "240101120000Z,keyTime",
+      "240101120000Z,CAkeyTime",
+      "240101120000Z,holdInstruction,not.a.valid.oid",
+      "240101120000Z,keyTime,invalid_time",
   };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryKeyCompromise) {
-  // Test database with revoked entry using "keyCompromise" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyCompromise\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryCACompromise) {
-  // Test database with revoked entry using "CACompromise" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CACompromise\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryAffiliationChanged) {
-  // Test database with revoked entry using "affiliationChanged" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,affiliationChanged\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntrySuperseded) {
-  // Test database with revoked entry using "superseded" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,superseded\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryCessationOfOperation) {
-  // Test database with revoked entry using "cessationOfOperation" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,cessationOfOperation\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryCertificateHold) {
-  // Test database with revoked entry using "certificateHold" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,certificateHold\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryRemoveFromCRL) {
-  // Test database with revoked entry using "removeFromCRL" reason code
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,removeFromCRL\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryHoldInstruction) {
-  // Test database with revoked entry using "holdInstruction" reason with OID argument
-  // This exercises the hold instruction parsing path in UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // holdInstruction requires an OID argument - using holdInstructionNone (1.2.840.10040.2.1)
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction,1.2.840.10040.2.1\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryKeyTime) {
-  // Test database with revoked entry using "keyTime" reason with compromised time
-  // This exercises the keyTime parsing path in UnpackRevinfo (maps to OCSP_REVOKED_STATUS_KEYCOMPROMISE)
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // keyTime requires a GeneralizedTime argument
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime,20240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTime) {
-  // Test database with revoked entry using "CAkeyTime" reason with compromised time
-  // This exercises the CAkeyTime parsing path in UnpackRevinfo (maps to OCSP_REVOKED_STATUS_CACOMPROMISE)
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // CAkeyTime requires a GeneralizedTime argument
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CAkeyTime,20240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  ASSERT_EQ(kToolExitSuccess, caTool(args));
-
-  auto cert = LoadPEMCertificate(output_path);
-  ASSERT_TRUE(cert);
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryInvalidTimestamp) {
-  // Test database with revoked entry having invalid timestamp format.
-  // This should fail during database validation via MakeRevoked/UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Invalid timestamp format (missing Z, wrong format)
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\tinvalid_timestamp\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - invalid revocation date format
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryInvalidReasonCode) {
-  // Test database with revoked entry having invalid reason code
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // Invalid reason code
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,invalidReason\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - invalid reason code
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryHoldInstructionMissingArg) {
-  // Test database with revoked entry using holdInstruction but missing OID argument
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // holdInstruction without required OID argument
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - missing hold instruction argument
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryKeyTimeMissingArg) {
-  // Test database with revoked entry using keyTime but missing compromised time argument
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // keyTime without required compromised time argument
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - missing compromised time argument
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTimeMissingArg) {
-  // Test database with revoked entry using CAkeyTime but missing compromised time argument
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // CAkeyTime without required compromised time argument
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CAkeyTime\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - missing compromised time argument
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryInvalidHoldInstructionOID) {
-  // Test database with revoked entry using holdInstruction with invalid OID
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // holdInstruction with invalid OID
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction,not.a.valid.oid\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - invalid OID format
-  ASSERT_EQ(kToolExitFailure, caTool(args));
-}
-
-TEST_F(CATest, DatabaseWithRevokedEntryInvalidKeyTimeFormat) {
-  // Test database with revoked entry using keyTime with invalid time format
-  // This should fail during database validation via UnpackRevinfo
-  CreateBasicConfig();
-
-  ScopedFILE db_file(fopen(db_path, "w"));
-  ASSERT_TRUE(db_file);
-  // keyTime with invalid GeneralizedTime format
-  // Use serial "AA" to avoid conflict with serial file starting at "01"
-  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime,invalid_time\tAA\tunknown\t/CN=revoked.example.com\n");
-  fclose(db_file.release());
-
-  args_list_t args = {
-      "-config", config_path,
-      "-selfsign",
-      "-in", csr_path,
-      "-out", output_path
-  };
-
-  // Should fail - invalid compromised time format
-  ASSERT_EQ(kToolExitFailure, caTool(args));
+  for (const char *field : invalid_fields) {
+    SCOPED_TRACE(field);
+    CreateBasicConfig();
+    WriteSingleRevokedEntry(field);
+    args_list_t args = {"-config", config_path, "-selfsign", "-in", csr_path,
+                        "-out",    output_path};
+    ASSERT_EQ(kToolExitFailure, caTool(args));
+  }
 }
 
 TEST_F(CATest, DatabaseWithMultipleRevokedEntries) {
@@ -2445,6 +2061,31 @@ TEST_F(CATest, RevokeAlreadyRevokedCertificate) {
   ASSERT_EQ(kToolExitFailure, caTool(revoke));
 }
 
+// Negative: -revoke must not revoke an unrelated certificate that merely shares
+// a serial number with a database entry. The fixture CA cert is serial 01, the
+// same serial as the first issued certificate, but its subject differs, so
+// revocation must be rejected rather than corrupting the issued cert's entry.
+TEST_F(CATest, RevokeRejectsCollidingSerialDifferentName) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  const std::string db_before = ReadFileToString(db_path);
+  ASSERT_FALSE(db_before.empty());
+  ASSERT_EQ('V', db_before[0]);
+
+  // ca_cert_path is self-signed with serial 01 and subject "Test CA",
+  // colliding with the issued cert's serial 01 / subject "test.example.com".
+  args_list_t revoke = {"-config", config_path, "-revoke", ca_cert_path};
+  ASSERT_EQ(kToolExitFailure, caTool(revoke));
+
+  // The issued cert's entry is untouched: still valid, database unchanged.
+  const std::string db_after = ReadFileToString(db_path);
+  EXPECT_EQ(db_before, db_after);
+}
+
 TEST_F(CATest, GenerateEmptyCRL) {
   CreateBasicConfig();
 
@@ -2501,6 +2142,10 @@ TEST_F(CATest, GenerateCRLWithRevokedCertificate) {
   ASSERT_TRUE(bn);
   EXPECT_TRUE(BN_is_one(bn.get()));
 
+  // -revoke stores no reason code, so the CRL carries no entry extensions and
+  // stays v1 (X509_CRL_get_version returns 0).
+  EXPECT_EQ(0L, X509_CRL_get_version(crl.get()));
+
   EXPECT_EQ(1, X509_CRL_verify(crl.get(), test_ca_key_.get()));
 
   RemoveFile(crl_path);
@@ -2514,6 +2159,68 @@ TEST_F(CATest, GenCRLRequiresCrlDays) {
 
   args_list_t gencrl = {"-config", config_path, "-gencrl", "-out", crl_path};
   ASSERT_EQ(kToolExitFailure, caTool(gencrl));
+
+  RemoveFile(crl_path);
+}
+
+// -gencrl must emit a v2 CRL when an entry carries a CRL entry extension (here
+// a reason code); RFC 5280 requires v2 whenever crlEntryExtensions are present.
+// X509_CRL_get_version returns X509_CRL_VERSION_2 (1) for v2.
+TEST_F(CATest, GenCRLIsV2WithEntryReasonCode) {
+  CreateBasicConfig();
+  {
+    ScopedFILE db_file(fopen(db_path, "w"));
+    ASSERT_TRUE(db_file);
+    fprintf(db_file.get(),
+            "R\t251231235959Z\t240101120000Z,keyCompromise\tAA\tunknown\t"
+            "/CN=revoked.example.com\n");
+  }
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+  args_list_t gencrl = {"-config",  config_path, "-gencrl",
+                        "-crldays", "1",         "-out",     crl_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(gencrl));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(crl_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509_CRL> crl(
+      PEM_read_bio_X509_CRL(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(crl);
+  EXPECT_EQ(static_cast<long>(X509_CRL_VERSION_2),
+            X509_CRL_get_version(crl.get()));
+
+  RemoveFile(crl_path);
+}
+
+// -crldays must reject non-numeric input rather than silently falling back to
+// the config default.
+TEST_F(CATest, GenCRLRejectsInvalidCrlDays) {
+  CreateBasicConfig();
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+  args_list_t gencrl = {"-config",  config_path, "-gencrl",
+                        "-crldays", "abc",       "-out",     crl_path};
+  ASSERT_EQ(kToolExitFailure, caTool(gencrl));
+
+  RemoveFile(crl_path);
+}
+
+// -revoke and -gencrl are mutually exclusive: combining them must fail rather
+// than revoking without writing the CRL.
+TEST_F(CATest, RejectsRevokeCombinedWithGencrl) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path, "-in", csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  char crl_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(crl_path), 0u);
+  args_list_t both = {"-config", config_path, "-revoke",  output_path, "-gencrl",
+                      "-crldays", "1",        "-out",     crl_path};
+  ASSERT_EQ(kToolExitFailure, caTool(both));
 
   RemoveFile(crl_path);
 }
@@ -2601,6 +2308,81 @@ commonName = supplied
   ASSERT_TRUE(issued);
   EXPECT_EQ(0, X509_NAME_cmp(X509_get_issuer_name(issued.get()),
                              X509_get_subject_name(test_ca_cert_.get())));
+}
+
+// Positive: issue a certificate for a CSR whose key differs from the CA key --
+// the headline "sign for someone else" use case. Assert the issued certificate
+// verifies under the CA and carries the requester's public key, not the CA's.
+TEST_F(CATest, SignCsrWithSeparateKey) {
+  CreateBasicConfig();
+
+  // Fresh requester key, distinct from the CA key.
+  bssl::UniquePtr<EVP_PKEY> leaf_key(EVP_PKEY_new());
+  {
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> e(BN_new());
+    ASSERT_TRUE(e && BN_set_word(e.get(), RSA_F4) &&
+                RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(leaf_key.get(), rsa.release()));
+  }
+
+  char leaf_csr_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(leaf_csr_path), 0u);
+  {
+    bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
+    ASSERT_TRUE(req);
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name && X509_NAME_add_entry_by_txt(
+                            name.get(), "CN", MBSTRING_ASC,
+                            (unsigned char *)"leaf.example.com", -1, -1, 0));
+    ASSERT_TRUE(X509_REQ_set_subject_name(req.get(), name.get()));
+    ASSERT_TRUE(X509_REQ_set_pubkey(req.get(), leaf_key.get()));
+    ASSERT_TRUE(X509_REQ_sign(req.get(), leaf_key.get(), EVP_sha256()));
+    ScopedFILE f(fopen(leaf_csr_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_TRUE(PEM_write_X509_REQ(f.get(), req.get()));
+  }
+
+  args_list_t sign = {"-config", config_path, "-in", leaf_csr_path, "-out",
+                      output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(output_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> issued(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(issued);
+
+  // Issued under the CA, and carrying the requester's key, not the CA's.
+  EXPECT_EQ(1, X509_verify(issued.get(), X509_get0_pubkey(test_ca_cert_.get())));
+  EXPECT_EQ(1, EVP_PKEY_cmp(X509_get0_pubkey(issued.get()), leaf_key.get()));
+  EXPECT_EQ(0,
+            EVP_PKEY_cmp(X509_get0_pubkey(issued.get()), test_ca_key_.get()));
+
+  RemoveFile(leaf_csr_path);
+}
+
+// Positive: -subj overrides the subject of the issued certificate.
+TEST_F(CATest, SignWithSubjOverride) {
+  CreateBasicConfig();
+
+  args_list_t sign = {"-config", config_path,
+                      "-in",     csr_path,
+                      "-subj",   "/CN=overridden.example.com",
+                      "-out",    output_path};
+  ASSERT_EQ(kToolExitSuccess, caTool(sign));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(output_path, "r"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> issued(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(issued);
+
+  bssl::UniquePtr<X509_NAME> want(X509_NAME_new());
+  ASSERT_TRUE(want && X509_NAME_add_entry_by_txt(
+                          want.get(), "CN", MBSTRING_ASC,
+                          (unsigned char *)"overridden.example.com", -1, -1, 0));
+  EXPECT_EQ(0, X509_NAME_cmp(X509_get_subject_name(issued.get()), want.get()));
 }
 
 // Positive: the CA certificate is a "TRUSTED CERTIFICATE" (X509 AUX) PEM block,

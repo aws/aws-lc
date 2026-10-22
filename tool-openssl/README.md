@@ -18,7 +18,9 @@ Current status:
 
 `ca` can act as a CA that signs CSRs, not only self-sign. The signing key comes from `-keyfile` (otherwise the config `private_key`) and the signing certificate from `-cert` (otherwise the config `certificate`), and the two must correspond. `-subj` overrides the subject of the issued certificate. The CA certificate may be supplied as either a plain `CERTIFICATE` or a `TRUSTED CERTIFICATE` PEM block.
 
-`-revoke <cert>` marks an existing entry revoked in the index database, and `-gencrl` writes a CRL covering the revoked entries. `-crldays` sets the CRL's next-update interval (falling back to the config `default_crl_days`) and is required for `-gencrl`.
+`-revoke <cert>` marks an existing entry revoked in the index database, and `-gencrl` writes a CRL covering the revoked entries. `-crldays` sets the CRL's next-update interval (falling back to the config `default_crl_days`) and is required for `-gencrl`; it must be a non-negative integer. `-in`, `-revoke`, and `-gencrl` are mutually exclusive in a single invocation.
+
+Unlike OpenSSL, `-revoke` fails when the certificate is not already in the index database; OpenSSL instead adds the certificate to the database and then revokes it. The certificate's subject name must also match the index entry sharing its serial number, so an unrelated certificate with a colliding serial is rejected.
 
 The certificate validity period is taken from the config `default_days`, falling back to `days`, unless `-enddate` is given. The `<index>.attr` sidecar is optional: when it is absent, `unique_subject` defaults to `yes`, as in OpenSSL.
 

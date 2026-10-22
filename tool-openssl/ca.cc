@@ -1513,6 +1513,20 @@ static int DoRevoke(X509 *cert, bssl::UniquePtr<CA_DB> &db) {
         serial_hex.get());
     return 0;
   }
+  // Match on subject name as well as serial, like OpenSSL's do_revoke: a serial
+  // alone can collide with an unrelated certificate (e.g. the CA's own cert),
+  // and revoking the wrong entry would corrupt the database.
+  ossl_char_ptr name(X509_NAME_oneline(X509_get_subject_name(cert), nullptr, 0),
+                     OPENSSL_free);
+  if (!name) {
+    return 0;
+  }
+  // Entries with an empty subject store the serial instead (see DoBody).
+  const char *want = name.get()[0] == '\0' ? serial_hex.get() : name.get();
+  if (strcmp(rrow[DB_name], want) != 0) {
+    BIO_printf(bio_err.get(), "ERROR: name does not match %s\n", want);
+    return 0;
+  }
   if (rrow[DB_type][0] == DB_TYPE_REV) {
     BIO_printf(bio_err.get(),
                "ERROR: certificate with serial number %s is already revoked\n",
@@ -1546,6 +1560,7 @@ static int DoGenCRL(bssl::UniquePtr<CA_DB> &db, X509 *ca_cert,
   if (!crl) {
     return 0;
   }
+  bool crl_v2 = false;
   if (!X509_CRL_set_issuer_name(crl.get(), X509_get_subject_name(ca_cert))) {
     return 0;
   }
@@ -1582,13 +1597,23 @@ static int DoGenCRL(bssl::UniquePtr<CA_DB> &db, X509 *ca_cert,
     if (!ai || !X509_REVOKED_set_serialNumber(rev.get(), ai.get())) {
       return 0;
     }
-    if (!MakeRevoked(rev.get(), row[DB_rev_date])) {
+    const int mr = MakeRevoked(rev.get(), row[DB_rev_date]);
+    if (mr == 0) {
       return 0;
+    }
+    if (mr == 2) {
+      // The entry added a CRL entry extension (e.g. a reason code). RFC 5280
+      // requires a v2 CRL whenever crlEntryExtensions are present.
+      crl_v2 = true;
     }
     if (!X509_CRL_add0_revoked(crl.get(), rev.get())) {
       return 0;
     }
     rev.release();
+  }
+
+  if (crl_v2 && !X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2)) {
+    return 0;
   }
 
   X509_CRL_sort(crl.get());
@@ -1615,25 +1640,12 @@ static bssl::UniquePtr<X509> LoadCertificate(const std::string &cert_path) {
   if (!in) {
     return nullptr;
   }
-  // Accept both "CERTIFICATE" and "TRUSTED CERTIFICATE" PEM blocks, matching
-  // OpenSSL's load_cert, so a trusted certificate (e.g. from `x509 -addtrust`)
-  // can be used as the CA certificate.
-  STACK_OF(X509_INFO) *infos =
-      PEM_X509_INFO_read_bio(in.get(), nullptr, nullptr, nullptr);
-  if (!infos) {
-    return nullptr;
-  }
-  bssl::UniquePtr<X509> cert;
-  for (size_t i = 0; i < sk_X509_INFO_num(infos); i++) {
-    X509_INFO *info = sk_X509_INFO_value(infos, i);
-    if (info->x509 != nullptr) {
-      X509_up_ref(info->x509);
-      cert.reset(info->x509);
-      break;
-    }
-  }
-  sk_X509_INFO_pop_free(infos, X509_INFO_free);
-  return cert;
+  // PEM_read_bio_X509_AUX accepts both "CERTIFICATE" and "TRUSTED CERTIFICATE"
+  // blocks (see check_pem in crypto/pem), matching OpenSSL's load_cert, so a
+  // trusted certificate (e.g. from `x509 -addtrust`) can be used as the CA
+  // certificate.
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509_AUX(in.get(), nullptr, nullptr, nullptr));
 }
 
 int caTool(const args_list_t &args) {
@@ -1652,7 +1664,7 @@ int caTool(const args_list_t &args) {
        rand_serial = false;
   std::string ca_section, policy, keyfile, serialfile, extensions;
   std::string cert_path, key_path_cli, subj;
-  std::string revoke_file, crldays_str;
+  std::string revoke_file;
   bool gencrl = false, signing_mode = true;
   long crldays = 0;
   bssl::UniquePtr<X509> ca_cert;
@@ -1688,11 +1700,35 @@ int caTool(const args_list_t &args) {
   GetString(&subj, "-subj", "", parsed_args);
   GetString(&revoke_file, "-revoke", "", parsed_args);
   GetBoolArgument(&gencrl, "-gencrl", parsed_args);
-  GetString(&crldays_str, "-crldays", "", parsed_args);
-  if (!crldays_str.empty()) {
-    crldays = std::atol(crldays_str.c_str());
+
+  // Display tool option summary before validating other options.
+  if (help) {
+    PrintUsage(kArguments);
+    goto err;
+  }
+
+  // Parse -crldays strictly: reject non-numeric or negative input rather than
+  // silently falling back to default_crl_days or narrowing a huge value. Absent
+  // leaves crldays at 0, handled later via default_crl_days.
+  {
+    unsigned crldays_arg = 0;
+    if (!GetUnsigned(&crldays_arg, "-crldays", 0, parsed_args) ||
+        crldays_arg > INT_MAX) {
+      fprintf(stderr, "-crldays requires a non-negative integer\n");
+      goto err;
+    }
+    crldays = static_cast<long>(crldays_arg);
   }
   signing_mode = revoke_file.empty() && !gencrl;
+
+  // -in, -revoke, and -gencrl are mutually exclusive; combining them silently
+  // dropped all but one (e.g. -revoke with -gencrl updated the index but never
+  // wrote the CRL), so reject the combination rather than appear to succeed.
+  if ((!revoke_file.empty() && gencrl) ||
+      (!signing_mode && !in_path.empty())) {
+    fprintf(stderr, "-in, -revoke and -gencrl are mutually exclusive\n");
+    goto err;
+  }
 
   // Assumption: we default as if `-noemailDN` was provided and don't support
   // `email_in_dn` attribute in the configuration file Per RFC 5280 for v3
@@ -1700,12 +1736,6 @@ int caTool(const args_list_t &args) {
   //  electronic mail addresses MUST use the rfc822Name in the subject
   //  alternative name extension (Section 4.2.1.6) to describe such
   //  identities."
-
-  // Display asn1parse tool option summary
-  if (help) {
-    PrintUsage(kArguments);
-    goto err;
-  }
 
   if (signing_mode && in_path.empty()) {
     fprintf(stderr,
@@ -1762,7 +1792,7 @@ int caTool(const args_list_t &args) {
 
   if (!self_sign) {
     if (cert_path.empty()) {
-      auto value = GetSectionValue(ca_conf, ca_section, "certificate");
+      auto value = GetSectionValue(ca_conf, ca_section, CA_CERTIFICATE_OPT);
       if (value) {
         cert_path = std::move(*value);
       }
@@ -1914,7 +1944,7 @@ int caTool(const args_list_t &args) {
   if (gencrl) {
     if (crldays <= 0) {
       crldays =
-          ParseNumberSectionValue(ca_conf, ca_section, "default_crl_days", 0);
+          ParseNumberSectionValue(ca_conf, ca_section, CA_DFLT_CRL_DAYS_OPT, 0);
     }
     if (crldays <= 0) {
       fprintf(stderr,
@@ -2000,7 +2030,7 @@ int caTool(const args_list_t &args) {
     }
   }
 
-  days = ParseNumberSectionValue(ca_conf, ca_section, "default_days", 0);
+  days = ParseNumberSectionValue(ca_conf, ca_section, CA_DFLT_DAYS_OPT, 0);
   if (days <= 0) {
     days = ParseNumberSectionValue(ca_conf, ca_section, CA_DAYS_OPT, 0);
   }
