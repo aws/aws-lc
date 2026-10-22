@@ -34,18 +34,6 @@
 #define AWSLC_PROV_RSA_PRIMES 2
 #define AWSLC_PROV_RSA_PUBLIC_EXPONENT 65537
 
-// The keydata of both RSA key managers.
-typedef struct {
-  AWSLC_PROV_CTX *provctx;
-  // NULL until an import or generation fills it.
-  void *rsa;
-  // An RSA-PSS key, which signs with PSS padding only.
-  int pss;
-  // Whether AWS-LC enforces |restrictions| on |rsa|.
-  int restricted;
-  AWSLC_PROV_RSA_PSS_PARAMS restrictions;
-} AWSLC_PROV_RSA_KEY;
-
 typedef struct {
   AWSLC_PROV_CTX *provctx;
   unsigned bits;

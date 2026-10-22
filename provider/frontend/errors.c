@@ -93,6 +93,20 @@ int awslc_prov_call_end(AWSLC_PROV_CALL *call, int succeeded,
   return 0;
 }
 
+static int awslc_prov_report_unapproved(AWSLC_PROV_CALL *call,
+                                        const char *type,
+                                        const char *description, int *approved,
+                                        const char *file, int line) {
+  *approved = 0;
+  if (!awslc_prov_ctx_is_fips(call->provctx) ||
+      awslc_prov_ctx_run_fips_callback(call->provctx, type, description)) {
+    return 1;
+  }
+  awslc_prov_error_raise(call->provctx, AWSLC_PROV_R_UNAPPROVED_OPERATION, file,
+                         line, type);
+  return 0;
+}
+
 int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
                                        const char *type,
                                        const char *description, int *approved,
@@ -104,12 +118,17 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
   if (awslc_prov_service_indicator_after_call(call->indicator)) {
     return 1;
   }
-  *approved = 0;
-  if (!awslc_prov_ctx_is_fips(call->provctx) ||
-      awslc_prov_ctx_run_fips_callback(call->provctx, type, description)) {
-    return 1;
+  return awslc_prov_report_unapproved(call, type, description, approved, file,
+                                      line);
+}
+
+int awslc_prov_call_end_unapproved(AWSLC_PROV_CALL *call, int succeeded,
+                                   const char *type, const char *description,
+                                   int *approved, const char *file, int line) {
+  assert(type != NULL && description != NULL && approved != NULL);
+  if (!awslc_prov_call_end(call, succeeded, type, file, line)) {
+    return 0;
   }
-  awslc_prov_error_raise(call->provctx, AWSLC_PROV_R_UNAPPROVED_OPERATION, file,
-                         line, type);
-  return 0;
+  return awslc_prov_report_unapproved(call, type, description, approved, file,
+                                      line);
 }
