@@ -9,6 +9,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/pem.h>
+#include <openssl/sha.h>
 #include "../test/test_util.h"
 
 #include <vector>
@@ -2725,6 +2726,27 @@ TEST_P(PerMLDSATest, ACVPSigGen) {
                                   signature.data(), sig_len,
                                   data.data(), data.size(),
                                   nullptr, 0));
+
+    // The rejection-path vectors from Section 6.1.2 of draft-celi-acvp-ml-dsa
+    // are published as SHA2-256 digests of pk || sk and of the signature rather
+    // than as the values themselves. Where a record carries those digests,
+    // check the expanded key and signature against them so the published values
+    // stay pinned.
+    uint8_t digest[SHA256_DIGEST_LENGTH];
+    if (t->HasAttribute("siggen_key_hash")) {
+      std::vector<uint8_t> key_hash;
+      ASSERT_TRUE(t->GetBytes(&key_hash, "siggen_key_hash"));
+      std::vector<uint8_t> key_concat(pk);
+      key_concat.insert(key_concat.end(), sk.begin(), sk.end());
+      SHA256(key_concat.data(), key_concat.size(), digest);
+      EXPECT_EQ(Bytes(key_hash), Bytes(digest)) << "SHA2-256(pk || sk) mismatch";
+    }
+    if (t->HasAttribute("siggen_sig_hash")) {
+      std::vector<uint8_t> sig_hash;
+      ASSERT_TRUE(t->GetBytes(&sig_hash, "siggen_sig_hash"));
+      SHA256(signature.data(), sig_len, digest);
+      EXPECT_EQ(Bytes(sig_hash), Bytes(digest)) << "SHA2-256(sig) mismatch";
+    }
   });
 }
 
