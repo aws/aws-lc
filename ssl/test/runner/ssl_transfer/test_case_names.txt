@@ -811,6 +811,11 @@ TLS13-Configured-Ciphersuites-Server-TLS_CHACHA20_POLY1305_SHA256
 TLS13-Empty-Client-CA-List
 TLS13-ExpectNoSessionTicketOnBadKEMode-Server
 TLS13-ExpectTicketEarlyDataSupport
+TLS13-FlushTickets-EarlyData-Server
+TLS13-FlushTickets-Server
+TLS13-FlushTickets-Server-Async
+TLS13-FlushTickets-Server-Async-ImplicitHandshake
+TLS13-FlushTickets-Server-ImplicitHandshake
 TLS13-HelloRetryRequest-Server-TLS-Async
 TLS13-HelloRetryRequest-Server-TLS-Async-ImplicitHandshake
 TLS13-HelloRetryRequest-Server-TLS-Async-PackHandshake
