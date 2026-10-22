@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/digest.h>
+#include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "internal.h"
@@ -500,6 +501,62 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
 
   EVP_MD_unstable_sha3_enable(false);
 }
+
+#if defined(KECCAK1600_ASM) && defined(OPENSSL_AARCH64) && \
+    !defined(BORINGSSL_SHARED_LIBRARY)
+// |KeccakF1600| only dispatches to |KeccakF1600_hw| on CPUs for which no
+// s2n-bignum implementation is selected, so call the fallback directly. The
+// expected values are the Keccak-f[1600] outputs for the all-zero state,
+// applied once and twice. They depend on every round constant and on the
+// permutation stopping after exactly 24 rounds, which |KeccakF1600_hw| detects
+// from the address of its round-constant table.
+TEST(KeccakInternalTest, KeccakF1600HwFallback) {
+  static const uint64_t kZeroStateOnce[25] = {
+      UINT64_C(0xf1258f7940e1dde7), UINT64_C(0x84d5ccf933c0478a),
+      UINT64_C(0xd598261ea65aa9ee), UINT64_C(0xbd1547306f80494d),
+      UINT64_C(0x8b284e056253d057), UINT64_C(0xff97a42d7f8e6fd4),
+      UINT64_C(0x90fee5a0a44647c4), UINT64_C(0x8c5bda0cd6192e76),
+      UINT64_C(0xad30a6f71b19059c), UINT64_C(0x30935ab7d08ffc64),
+      UINT64_C(0xeb5aa93f2317d635), UINT64_C(0xa9a6e6260d712103),
+      UINT64_C(0x81a57c16dbcf555f), UINT64_C(0x43b831cd0347c826),
+      UINT64_C(0x01f22f1a11a5569f), UINT64_C(0x05e5635a21d9ae61),
+      UINT64_C(0x64befef28cc970f2), UINT64_C(0x613670957bc46611),
+      UINT64_C(0xb87c5a554fd00ecb), UINT64_C(0x8c3ee88a1ccf32c8),
+      UINT64_C(0x940c7922ae3a2614), UINT64_C(0x1841f924a2c509e4),
+      UINT64_C(0x16f53526e70465c2), UINT64_C(0x75f644e97f30a13b),
+      UINT64_C(0xeaf1ff7b5ceca249),
+  };
+  static const uint64_t kZeroStateTwice[25] = {
+      UINT64_C(0x2d5c954df96ecb3c), UINT64_C(0x6a332cd07057b56d),
+      UINT64_C(0x093d8d1270d76b6c), UINT64_C(0x8a20d9b25569d094),
+      UINT64_C(0x4f9c4f99e5e7f156), UINT64_C(0xf957b9a2da65fb38),
+      UINT64_C(0x85773dae1275af0d), UINT64_C(0xfaf4f247c3d810f7),
+      UINT64_C(0x1f1b9ee6f79a8759), UINT64_C(0xe4fecc0fee98b425),
+      UINT64_C(0x68ce61b6b9ce68a1), UINT64_C(0xdeea66c4ba8f974f),
+      UINT64_C(0x33c43d836eafb1f5), UINT64_C(0xe00654042719dbd9),
+      UINT64_C(0x7cf8a9f009831265), UINT64_C(0xfd5449a6bf174743),
+      UINT64_C(0x97ddad33d8994b40), UINT64_C(0x48ead5fc5d0be774),
+      UINT64_C(0xe3b8c8ee55b7b03c), UINT64_C(0x91a0226e649e42e9),
+      UINT64_C(0x900e3129e7badd7b), UINT64_C(0x202a9ec5faa3cce8),
+      UINT64_C(0x5b3402464e1c3db6), UINT64_C(0x609f4e62a44c1059),
+      UINT64_C(0x20d06cd26a8fbf5c),
+  };
+
+  uint64_t state[25] = {0};
+  KeccakF1600_hw(state);
+  EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t *>(kZeroStateOnce),
+                  sizeof(kZeroStateOnce)),
+            Bytes(reinterpret_cast<const uint8_t *>(state), sizeof(state)));
+  KeccakF1600_hw(state);
+  EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t *>(kZeroStateTwice),
+                  sizeof(kZeroStateTwice)),
+            Bytes(reinterpret_cast<const uint8_t *>(state), sizeof(state)));
+
+#if defined(SUPPORTS_ABI_TEST)
+  CHECK_ABI(KeccakF1600_hw, state);
+#endif
+}
+#endif
 
 // Test x4 batched SHAKE against 4 consecutive SHAKE calls
 // Assert success when digest and digest_x4 values are equal
