@@ -28,6 +28,7 @@ int Keccak256_Init(KECCAK1600_CTX *ctx) {
   ctx->block_size = KECCAK256_CBLOCK;
   ctx->md_size = KECCAK256_DIGEST_LENGTH;
   ctx->pad = KECCAK256_PAD_CHAR;
+  ctx->state = KECCAK1600_STATE_ABSORB;
   return 1;
 }
 

@@ -107,11 +107,11 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
  * KeccakSponge APIs manage internal input/output buffer on top of Keccak1600
  * API layer
  */
-// KeccakSponge_Reset zero's |ctx| fields.
+// KeccakSponge_Reset zeroes the state |A| and |buf_load| fields in |ctx|.
 void KeccakSponge_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
-  ctx->state = KECCAK1600_STATE_ABSORB;
+  ctx->state = KECCAK1600_STATE_UNINIT;
 }
 
 // KeccakSponge_Init checks the correctness of the padding character and size of
@@ -129,6 +129,7 @@ static int KeccakSponge_Init(KECCAK1600_CTX *ctx, uint8_t pad,
       ctx->block_size = block_size;
       ctx->md_size = bit_len / 8;
       ctx->pad = pad;
+      ctx->state = KECCAK1600_STATE_ABSORB;
       return 1;
     }
     return 0;

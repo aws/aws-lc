@@ -69,8 +69,8 @@ extern "C" {
 // Define state flag values for Keccak-based functions
 // KECCAK1600_STATE_UNINIT prevents from using |KECCAK1600_CTX| uninitialised.
 #define KECCAK1600_STATE_UNINIT     0
-// KECCAK1600_STATE_ABSORB is set by |KeccakSponge_Reset| and is the only
-// phase that accepts input.
+// KECCAK1600_STATE_ABSORB is set by |KeccakSponge_Init| and |Keccak256_Init|
+// and is the only phase that accepts input.
 #define KECCAK1600_STATE_ABSORB     1
 // KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
 // It remains set while |SHAKE_Squeeze| is called repeatedly to output 
@@ -454,8 +454,8 @@ OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
 // accepts only FIPS 202 padding characters and is therefore kept private to
 // this module.
 
-// KeccakSponge_Reset zeroes the Keccak state and buffer of |ctx| and returns it
-// to the absorb phase.
+// KeccakSponge_Reset clears the Keccak state and buffered-byte
+// count, and leaves |ctx| in the uninitialised phase.
 void KeccakSponge_Reset(KECCAK1600_CTX *ctx);
 
 // KeccakSponge_Absorb absorbs |len| bytes from |data| into |ctx|, buffering any
