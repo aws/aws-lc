@@ -1,48 +1,38 @@
 # The AWS-LC OpenSSL provider. Off by default: it needs OpenSSL's provider
 # headers, which AWS-LC's own tree does not carry.
 
-if(NOT AWSLC_PROVIDER_OPENSSL_ROOT)
-  message(FATAL_ERROR
-    "BUILD_AWSLC_PROVIDER requires AWSLC_PROVIDER_OPENSSL_ROOT, the install "
-    "prefix of an OpenSSL 3.5 or later build supplying the provider headers.")
-endif()
-
 if(NOT BUILD_SHARED_LIBS)
   message(FATAL_ERROR
     "BUILD_AWSLC_PROVIDER requires BUILD_SHARED_LIBS.")
 endif()
 
-find_path(AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR
-  NAMES openssl/core_dispatch.h
-  PATHS "${AWSLC_PROVIDER_OPENSSL_ROOT}/include"
-  NO_DEFAULT_PATH)
-
-if(NOT AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR)
-  message(FATAL_ERROR
-    "openssl/core_dispatch.h not found under "
-    "${AWSLC_PROVIDER_OPENSSL_ROOT}/include. AWSLC_PROVIDER_OPENSSL_ROOT must "
-    "point at the install prefix of an OpenSSL 3.5 or later build.")
+if(OPENSSL_ROOT_DIR)
+  find_path(OPENSSL_INCLUDE_DIR NAMES openssl/ssl.h
+    PATHS "${OPENSSL_ROOT_DIR}" PATH_SUFFIXES include NO_DEFAULT_PATH)
+  find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto
+    PATHS "${OPENSSL_ROOT_DIR}" PATH_SUFFIXES lib lib64 lib/${CMAKE_LIBRARY_ARCHITECTURE}
+    NO_DEFAULT_PATH)
+  if(NOT OPENSSL_INCLUDE_DIR OR NOT OPENSSL_CRYPTO_LIBRARY)
+    message(FATAL_ERROR
+      "OPENSSL_ROOT_DIR (${OPENSSL_ROOT_DIR}) must be the install prefix of an "
+      "OpenSSL 3.5+ build. Found include: ${OPENSSL_INCLUDE_DIR}, "
+      "libcrypto: ${OPENSSL_CRYPTO_LIBRARY}")
+  endif()
 endif()
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
-# Check the version for a 3.5 minimum, not just that the header exists.
-file(STRINGS "${AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR}/openssl/opensslv.h"
-  AWSLC_PROVIDER_OPENSSL_VERSION_LINE
-  REGEX "^# *define +OPENSSL_VERSION_STR +\"[0-9.]+\"")
-string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+"
-  AWSLC_PROVIDER_OPENSSL_VERSION "${AWSLC_PROVIDER_OPENSSL_VERSION_LINE}")
-
-if(NOT AWSLC_PROVIDER_OPENSSL_VERSION)
+if(NOT OPENSSL_VERSION)
   message(WARNING
-    "Could not determine the OpenSSL version at "
-    "${AWSLC_PROVIDER_OPENSSL_ROOT}; the provider needs 3.5 or later.")
-elseif(AWSLC_PROVIDER_OPENSSL_VERSION VERSION_LESS "3.5")
+    "Could not determine the OpenSSL version at ${OPENSSL_INCLUDE_DIR}; "
+    "the provider needs 3.5 or later.")
+elseif(OPENSSL_VERSION VERSION_LESS "3.5")
   message(FATAL_ERROR
-    "The provider requires OpenSSL 3.5 or later; found "
-    "${AWSLC_PROVIDER_OPENSSL_VERSION} at ${AWSLC_PROVIDER_OPENSSL_ROOT}.")
-else()
-  message(STATUS "aws-lc-provider: building against OpenSSL "
-    "${AWSLC_PROVIDER_OPENSSL_VERSION}")
+    "The provider requires OpenSSL 3.5 or later; found ${OPENSSL_VERSION} at "
+    "${OPENSSL_INCLUDE_DIR}.")
 endif()
+
+message(STATUS "aws-lc-provider: building against OpenSSL ${OPENSSL_VERSION} "
+  "(headers: ${OPENSSL_INCLUDE_DIR})")
 
 # The two object libraries below exist because OpenSSL's and AWS-LC's headers
 # cannot share a translation unit. Their include paths are disjoint.
@@ -57,7 +47,7 @@ add_library(awslc_provider_front OBJECT
 set_target_properties(awslc_provider_front PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Replace the directory-level AWS-LC include paths inherited from the parent.
 set_property(TARGET awslc_provider_front PROPERTY INCLUDE_DIRECTORIES
-  "${AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR}"
+  "${OPENSSL_INCLUDE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Back side: AWS-LC's headers only.
@@ -115,6 +105,10 @@ endif()
 # hiding everything else does not hide it too.
 set_target_properties(awslc_provider PROPERTIES C_VISIBILITY_PRESET hidden)
 
+set(AWSLC_PROVIDER_MODULESDIR "${CMAKE_INSTALL_LIBDIR}/ossl-modules" CACHE STRING
+  "Install directory of the provider module.")
+install(TARGETS awslc_provider LIBRARY DESTINATION "${AWSLC_PROVIDER_MODULESDIR}")
+
 if(BUILD_TESTING AND NOT ANDROID)
   # Two test binaries, for the same reason there are two object libraries: one
   # links OpenSSL's libcrypto and one links AWS-LC's, and a single binary linking
@@ -132,21 +126,15 @@ if(BUILD_TESTING AND NOT ANDROID)
 
   # Replace the directory-level AWS-LC include paths inherited from the parent.
   set_property(TARGET awslc_provider_test PROPERTY INCLUDE_DIRECTORIES
-    "${AWSLC_PROVIDER_OPENSSL_INCLUDE_DIR}"
+    "${OPENSSL_INCLUDE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}")
 
   # The suite drives the public OpenSSL 3.x EVP API with the provider loaded, so
   # it is the one component that links OpenSSL's libcrypto rather than AWS-LC's.
   # It reaches the provider only through dlopen, never by linking it.
-  find_library(AWSLC_PROVIDER_OPENSSL_CRYPTO
-    NAMES crypto
-    PATHS "${AWSLC_PROVIDER_OPENSSL_ROOT}/lib64" "${AWSLC_PROVIDER_OPENSSL_ROOT}/lib"
-    PATH_SUFFIXES "${CMAKE_LIBRARY_ARCHITECTURE}"
-    NO_DEFAULT_PATH REQUIRED)
-
   target_link_libraries(awslc_provider_test
     boringssl_gtest
-    "${AWSLC_PROVIDER_OPENSSL_CRYPTO}")
+    OpenSSL::Crypto)
 
   # The test binary needs the provider built, but must not link it.
   add_dependencies(awslc_provider_test awslc_provider)
@@ -166,7 +154,7 @@ if(BUILD_TESTING AND NOT ANDROID)
   # rpath shows up as a provider that will not load, which reads like a code
   # fault rather than a build one.
   set_target_properties(awslc_provider_test PROPERTIES
-    BUILD_RPATH "${AWSLC_PROVIDER_OPENSSL_ROOT}/lib64;${AWSLC_PROVIDER_OPENSSL_ROOT}/lib;${CMAKE_BINARY_DIR}")
+    BUILD_RPATH "${CMAKE_BINARY_DIR}")
 
   # awslc_provider_backend_test links AWS-LC and no OpenSSL. It covers the
   # guarantees the back side adds on top of AWS-LC that the EVP API above cannot
