@@ -122,8 +122,10 @@ int encTool(const args_list_t &args) {
 
   Password passphrase;
   bool has_passphrase = false;
-  const std::string pass_flag =
-      GetLastOption({"-kfile", "-k", "-pass"}, "", parsed_args);
+  std::string pass_flag = GetLastOption({"-kfile", "-k"}, "", parsed_args);
+  if (pass_flag.empty() && HasArgument(parsed_args, "-pass")) {
+    pass_flag = "-pass";
+  }
   if (pass_flag == "-kfile") {
     passphrase = Password("file:" + kfile_path);
     if (!pass_util::ExtractPassword(passphrase)) {
@@ -182,9 +184,10 @@ int encTool(const args_list_t &args) {
       }
 
       bool use_salt = !nosalt;
+      const bool has_explicit_salt = HasArgument(parsed_args, "-S");
 
       if (use_salt) {
-        if (!hex_salt.empty()) {
+        if (has_explicit_salt) {
           if (!HexToBinary(salt, hex_salt, SALT_SIZE)) {
             fprintf(stderr, "Error: Invalid hex salt value\n");
             return kToolExitFailure;
