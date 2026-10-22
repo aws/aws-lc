@@ -9,8 +9,9 @@
 #include <assert.h>
 
 #include "internal/backend.h"
-#include "internal/backend/digests.h"
+#include "internal/backend/operations/sha2.h"
 #include "internal/frontend/digests.h"
+#include "internal/frontend/operations/sha2.h"
 #include "internal/provider.h"
 
 // Changes the DER OpenSSL emits for this digest inside PKI structures. The value

@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_PROVIDER_BACKEND_H
-#define AWSLC_PROVIDER_BACKEND_H
+#ifndef AWSLC_PROVIDER_INTERNAL_BACKEND_H
+#define AWSLC_PROVIDER_INTERNAL_BACKEND_H
 
 // ===========================================================================
 // How this provider is put together.
@@ -47,19 +47,25 @@
 // Layout follows from keeping what scales with the algorithm count separate from
 // what does not:
 //
-//   internal/backend.h                       this file: the contract
-//   internal/backend/<class>.h               per-class backend entry points
-//   internal/frontend/<class>.h              per-class frontend contract
-//   frontend/<service>.c                     provider-wide frontend services
-//   backend/<service>.c                      provider-wide AWS-LC bindings
-//   frontend/operations/<class>/<class>.c    class-wide frontend behavior
-//   frontend/operations/<class>/<family>.c   family helpers and dispatch slots
-//   backend/operations/<class>/<family>.c    explicit AWS-LC bindings
+//   internal/backend.h                             this file: the contract
+//   internal/backend/<operation>.h                 operation-wide backend shapes
+//   internal/backend/operations/<family>.h         one family's backend entry points
+//   internal/frontend/<operation>.h                operation-wide frontend contract
+//   internal/frontend/operations/<family>.h        one family's dispatch tables
+//   frontend/<service>.c                           provider-wide frontend services
+//   backend/<service>.c                            provider-wide AWS-LC bindings
+//   frontend/operations/<operation>/<operation>.c  operation-wide frontend behavior
+//   frontend/operations/<operation>/<family>.c     family helpers and dispatch slots
+//   backend/operations/<operation>/<family>.c      explicit AWS-LC bindings
 //
-// The two operations/ trees correspond one to one where the shape allows it.
+// frontend/operations/ and backend/operations/ correspond one to one where the
+// shape allows it.
 //
 // Anything the whole provider needs regardless of algorithm is declared in this
-// file. Anything that arrives per algorithm belongs in internal/backend/<class>.h.
+// file. Anything shared by a whole operation goes in <operation>.h, and anything
+// that arrives per algorithm goes in operations/<family>.h. An operation header
+// never includes its family headers; consumers include the family header they
+// use.
 //
 // Every function declared here or under internal/backend/ returns 1 on success
 // and 0 on failure, matching AWS-LC's convention. The front side translates that
@@ -166,4 +172,4 @@ int awslc_prov_error_shift(AWSLC_PROV_ERROR *out);
 }  // extern "C"
 #endif
 
-#endif  // AWSLC_PROVIDER_BACKEND_H
+#endif  // AWSLC_PROVIDER_INTERNAL_BACKEND_H

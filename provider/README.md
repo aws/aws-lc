@@ -199,13 +199,16 @@ algorithm count from what does not.
 | Path | Sees | Contents |
 |---|---|---|
 | `internal/backend.h` | neither | The one header either side may include. The contract between them, in plain C types only. |
-| `internal/backend/<operation>.h` | neither | Per-operation backend entry points, in plain C types |
-| `internal/frontend/<operation>.h` | OpenSSL | Per-operation dispatch tables, for `registry.c` |
+| `internal/backend/<operation>.h` | neither | Operation-wide backend shapes, in plain C types |
+| `internal/backend/operations/<family>.h` | neither | One family's backend entry points, in plain C types |
+| `internal/frontend/<operation>.h` | OpenSSL | Operation-wide frontend contract |
+| `internal/frontend/operations/<family>.h` | OpenSSL | One family's dispatch tables, for `registry.c` |
 | `frontend/provider.c` | OpenSSL | The entry point. Implements provider-level dispatch table functions. |
 | `frontend/registry.c` | OpenSSL | One `OSSL_ALGORITHM` table per operation. |
 | `frontend/<service>.c` | OpenSSL | Provider-wide frontend services, such as error reporting. |
-| `frontend/operations/<operation>/<alg>.c` | OpenSSL | Dispatch slots and their `OSSL_PARAM` plumbing |
+| `frontend/operations/<operation>/<operation>.c` | OpenSSL | Operation-wide frontend behavior |
+| `frontend/operations/<operation>/<family>.c` | OpenSSL | Dispatch slots and their `OSSL_PARAM` plumbing |
 | `backend/<service>.c` | AWS-LC | Provider-wide AWS-LC bindings: allocation, introspection, the error queue. |
-| `backend/operations/<operation>/<alg>.c` | AWS-LC | The calls that actually compute |
+| `backend/operations/<operation>/<family>.c` | AWS-LC | The calls that actually compute |
 | `test/frontend/**` | OpenSSL | Main test suite driving from the OpenSSL Provider interface. |
 | `test/backend/**` | AWS-LC | Test suite for invoking `backend/` functions directly. |

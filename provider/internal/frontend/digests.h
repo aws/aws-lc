@@ -4,9 +4,8 @@
 #ifndef AWSLC_PROVIDER_INTERNAL_FRONTEND_DIGESTS_H
 #define AWSLC_PROVIDER_INTERNAL_FRONTEND_DIGESTS_H
 
-// The frontend contract for the digest operation class: class-wide parameter
-// helpers, fixed-length dispatch shapes, and the per-algorithm tables registry.c
-// hands to the core.
+// The frontend contract for the digest operation: operation-wide parameter
+// helpers and fixed-length dispatch shapes.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -74,14 +73,6 @@ int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
 
 #define AWSLC_PROV_DECLARE_DIGEST_TABLE(algorithm) \
   extern const OSSL_DISPATCH awslc_prov_##algorithm##_functions[]
-
-// frontend/operations/digests/sha2.c
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha224);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha256);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha384);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_224);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_256);
 
 #if defined(__cplusplus)
 }  // extern "C"
