@@ -4,8 +4,8 @@
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 
-#include "internal/frontend/operations/sha2.h"
-#include "internal/provider.h"
+#include "frontend/operations/sha2.h"
+#include "frontend/provider.h"
 
 // A macro for defining algorithm rows for the OpenSSL provider dispatch table.
 //

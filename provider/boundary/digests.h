@@ -1,13 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_PROVIDER_INTERNAL_BACKEND_DIGESTS_H
-#define AWSLC_PROVIDER_INTERNAL_BACKEND_DIGESTS_H
+#ifndef AWSLC_PROVIDER_BOUNDARY_DIGESTS_H
+#define AWSLC_PROVIDER_BOUNDARY_DIGESTS_H
 
 // The shape of the digest entry points the back side implements, one set per
 // algorithm.
 //
-// This header crosses the boundary, so it obeys the rule ../backend.h states:
+// This header crosses the boundary, so it obeys the rule ../boundary.h states:
 // plain C types only. Read that file first; it documents the whole arrangement.
 //
 // Every digest algorithm has the same shape, which is what lets the front
@@ -21,7 +21,7 @@
 //   final(ctx, out, size)    write the digest, rejecting an undersized |out|
 //   copy(dst, src)           duplicate context state
 //
-// Returning 1 on success and 0 on failure, per ../backend.h.
+// Returning 1 on success and 0 on failure, per ../boundary.h.
 
 #include <stddef.h>
 
@@ -46,4 +46,4 @@ extern "C" {
 }  // extern "C"
 #endif
 
-#endif  // AWSLC_PROVIDER_INTERNAL_BACKEND_DIGESTS_H
+#endif  // AWSLC_PROVIDER_BOUNDARY_DIGESTS_H

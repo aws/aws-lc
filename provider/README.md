@@ -198,11 +198,11 @@ algorithm count from what does not.
 
 | Path | Sees | Contents |
 |---|---|---|
-| `internal/backend.h`, `internal/backend/` | neither | The contract between the two sides, in plain C types only. Operation-wide shapes in `<operation>.h`, one family's entry points in `operations/<family>.h`. |
-| `internal/frontend/` | OpenSSL | Frontend declarations shared across files, split the same way. |
-| `frontend/` | OpenSSL | The provider entry point, the algorithm registry, and provider-wide services. |
-| `frontend/operations/<operation>/` | OpenSSL | Dispatch slots, one file per family. |
-| `backend/` | AWS-LC | Provider-wide AWS-LC bindings. |
+| `boundary.h`, `boundary/` | neither | The contract between the two sides, in plain C types only and includable by either. Operation-wide shapes in `<operation>.h`, one family's entry points in `operations/<family>.h`. |
+| `frontend/` | OpenSSL | Private to the OpenSSL side, with headers next to the sources they pair with. The provider entry point, the algorithm registry, and provider-wide services. |
+| `frontend/operations/` | OpenSSL | One family's dispatch tables in `<family>.h`. |
+| `frontend/operations/<operation>/` | OpenSSL | Operation-wide behavior and its header, and dispatch slots, one file per family. |
+| `backend/` | AWS-LC | Private to the AWS-LC side, laid out the same way. Provider-wide AWS-LC bindings. |
 | `backend/operations/<operation>/` | AWS-LC | The calls that actually compute, one file per family. |
 | `test/frontend/` | OpenSSL | Main test suite, driven through the OpenSSL provider interface. |
 | `test/backend/` | AWS-LC | Tests that call `backend/` functions directly. |

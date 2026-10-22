@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#include "internal/backend/operations/sha2.h"
+#include "boundary/operations/sha2.h"
 
 namespace {
 
