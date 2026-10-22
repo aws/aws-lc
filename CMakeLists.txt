@@ -1265,7 +1265,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND FIPS)
   # OpenBSD links with --execute-only by default, which breaks assembly that
-  # reads readonly tables from .text instead of .rodata. FIPS must keeps the
+  # reads readonly tables from .text instead of .rodata. FIPS must keep the
   # workaround since it needs readable .text for the integrity check.
   if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
