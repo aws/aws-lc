@@ -30,7 +30,7 @@ Exit status follows OpenSSL: 1 for option or trust store setup errors (including
 
 `-serial` prints the certificate serial number as `serial=<HEX>`.
 
-`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. Unlike OpenSSL, `-addtrust` does not imply `-trustout`; pass `-trustout` explicitly to emit the trusted form. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
+`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
 
 When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
 
