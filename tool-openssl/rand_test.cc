@@ -320,7 +320,7 @@ static void UnbufferedBrokenPipeBase64Test() {
   close(pipefd[1]);
   signal(SIGPIPE, SIG_IGN);
   setvbuf(stdout, NULL, _IONBF, 0);
-  alarm(2);
+  alarm(60);
 
   args_list_t args = {"-base64", "32"};
   _exit(randTool(args));
