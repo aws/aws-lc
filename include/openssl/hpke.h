@@ -133,6 +133,10 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
 // initialized with |EVP_HPKE_KEY_zero| or one of the functions that set up a
 // key. This clears the KEM too, so, as with a zeroed key, |key| must be
 // re-initialized before it is used again.
+//
+// Passing a |key| that was never zeroed or set up reads uninitialized memory
+// and will typically crash, as it does for |EVP_CIPHER_CTX_cleanup|. Earlier
+// releases ignored such a call.
 OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_new returns a newly-allocated |EVP_HPKE_KEY|, or NULL on error.
@@ -402,6 +406,12 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 // otherwise overflow it. It is padded to the size it had before the ML-KEM KEMs
 // were added. v5.9.0 through v5.11.0 shipped a larger, inline layout, so
 // callers built against this header must not run against those libraries.
+//
+// An |EVP_HPKE_KEY| owns the memory its fields point at, so assigning one by
+// value leaves two keys owning the same allocation and the second cleanup
+// double-frees. Duplicate a key with |EVP_HPKE_KEY_copy| or transfer it with
+// |EVP_HPKE_KEY_move|. Earlier releases held the key material inline, where an
+// assignment was a complete copy.
 
 struct evp_hpke_ctx_st {
   const EVP_HPKE_KEM *kem;

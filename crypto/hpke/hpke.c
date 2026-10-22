@@ -466,8 +466,11 @@ static const MLKEM_METHOD kMLKEM1024Method = {
 static int mlkem_expand_seed_into_key(EVP_HPKE_KEY *key,
                                       const MLKEM_METHOD *meth,
                                       const uint8_t *seed) {
-  size_t public_key_len = meth->public_key_len;
-  size_t expanded_private_key_len = meth->expanded_private_key_len;
+  // The capacities come from |key->kem|, which sized the allocation, so that a
+  // disagreement with |meth| fails the KEM's own length check rather than
+  // overrunning the buffer.
+  size_t public_key_len = key->kem->public_key_len;
+  size_t expanded_private_key_len = key->kem->expanded_private_key_len;
   if (meth->keypair_deterministic(key->public_key, &public_key_len,
                                   key->expanded_private_key,
                                   &expanded_private_key_len, seed) != 0) {

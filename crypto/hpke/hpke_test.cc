@@ -1422,10 +1422,10 @@ TEST(HPKETest, SelfCopyAndMoveAreSafe) {
   }
 }
 
-// A key's buffers are sized for its KEM, so re-initializing one across KEMs
-// resizes them. The smallest KEM goes first so that growing into the largest
-// runs past a buffer that was reused rather than reallocated, which is what
-// makes a missing reallocation visible under ASan.
+// A key's buffers are sized for its KEM, so regenerating a cleaned-up key under
+// a KEM with larger keys must allocate a correspondingly larger buffer. The
+// smallest KEM goes first, so a buffer sized for it is too small for what
+// follows and ASan reports the write.
 TEST(HPKETest, ReinitAcrossKEMsResizesBuffers) {
   const EVP_HPKE_KEM *kems[] = {EVP_hpke_x25519_hkdf_sha256(),
                                 EVP_hpke_mlkem1024(),
