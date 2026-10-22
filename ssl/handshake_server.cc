@@ -396,6 +396,12 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
 static bool decrypt_ech(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                         const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
+  if (SSL_is_dtls(ssl)) {
+    // ECH requires TLS 1.3, which has no DTLS counterpart in this library, so
+    // the extension carries no meaning here. |SSL_CTX_set1_ech_keys| rejects
+    // DTLS contexts, so there is nothing to decrypt with either.
+    return true;
+  }
   CBS body;
   if (!ssl_client_hello_get_extension(client_hello, &body,
                                       TLSEXT_TYPE_encrypted_client_hello)) {

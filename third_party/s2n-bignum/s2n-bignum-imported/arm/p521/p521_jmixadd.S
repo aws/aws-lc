@@ -260,7 +260,7 @@ S2N_BN_SIZE_DIRECTIVE(p521_jmixadd)
 
 // Local versions of the three field operations, almost identical to
 // bignum_mul_p521, bignum_sqr_p521 and bignum_sub_p521 except for
-// avoiding all intial register save-restore, and in the case of
+// avoiding all initial register save-restore, and in the case of
 // local_mul_p521, using the tmp buffer as temporary storage and
 // avoiding x26.
 

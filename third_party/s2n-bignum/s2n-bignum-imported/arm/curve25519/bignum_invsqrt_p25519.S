@@ -213,7 +213,7 @@ S2N_BN_SYMBOL(bignum_invsqrt_p25519):
         stp     x10, x11, [x2]
         stp     x12, x13, [x2, #16]
 
-// Determine if it is is indeed an inverse square root, also distinguishing
+// Determine if it is indeed an inverse square root, also distinguishing
 // the degenerate x * z^2 == 0 (mod p_25519) case, which is equivalent to
 // x == 0 (mod p_25519). Hence return the Legendre-Jacobi symbol as required.
 

@@ -155,6 +155,7 @@ if(BUILD_TESTING)
         s_client.cc
         s_client_test.cc
         test_util.cc
+        tool_test.cc
         tool_util.cc
         verify.cc
         verify_test.cc
