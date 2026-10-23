@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/base.h>
+#include <openssl/base64.h>
 
 #include <gtest/gtest.h>
 #include <climits>
@@ -88,6 +89,32 @@ TEST_F(RandTempFileTest, Base64Output) {
   }
 }
 
+TEST_F(RandTempFileTest, Base64FileDecodesCorrectly) {
+  char *out_path = CreateTempPath();
+  args_list_t args = {"-base64", "-out", out_path, "32"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string content = ReadFileToString(out_path);
+  EXPECT_FALSE(content.empty());
+
+  // Strip trailing newlines for decoding
+  size_t len = content.size();
+  while (len > 0 && content[len - 1] == '\n') {
+    len--;
+  }
+
+  std::vector<uint8_t> decoded(len);
+  int decoded_len = EVP_DecodeBlock(decoded.data(),
+                                    reinterpret_cast<const uint8_t *>(content.data()),
+                                    static_cast<int>(len));
+  ASSERT_GT(decoded_len, 0);
+  // EVP_DecodeBlock doesn't subtract padding, adjust manually
+  size_t padding = 0;
+  while (len > 0 && content[len - 1 - padding] == '=') {
+    padding++;
+  }
+  EXPECT_EQ(32u, static_cast<size_t>(decoded_len) - padding);
+}
+
 TEST_F(RandTempFileTest, HexOutput) {
   char *out_path = CreateTempPath();
   args_list_t args = {"-hex", "-out", out_path, "16"};
@@ -142,6 +169,27 @@ TEST(RandTest, DashOutMeansStdout) {
   EXPECT_EQ(kToolExitSuccess, randTool(args));
   std::string captured = testing::internal::GetCapturedStdout();
   EXPECT_EQ(33u, captured.size());
+}
+
+TEST(RandTest, Base64StdoutOutput) {
+  testing::internal::CaptureStdout();
+  args_list_t args = {"-base64", "32"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string captured = testing::internal::GetCapturedStdout();
+  EXPECT_FALSE(captured.empty());
+  EXPECT_GT(captured.size(), 32u);
+  for (char c : captured) {
+    EXPECT_TRUE(isalnum(c) || c == '+' || c == '/' || c == '=' || c == '\n')
+        << "unexpected character: " << static_cast<int>(c);
+  }
+}
+
+TEST(RandTest, RawStdoutOutput) {
+  testing::internal::CaptureStdout();
+  args_list_t args = {"-out", "-", "32"};
+  EXPECT_EQ(kToolExitSuccess, randTool(args));
+  std::string captured = testing::internal::GetCapturedStdout();
+  EXPECT_EQ(32u, captured.size());
 }
 
 TEST_F(RandTempFileTest, OutputIsRandom) {
