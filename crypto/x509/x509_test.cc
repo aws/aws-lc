@@ -10024,3 +10024,60 @@ TEST(X509Test, StoreLookupCRLs) {
   // Lookup_crls callback should now be set and match the stored pointer
   EXPECT_EQ(lookup_crls, X509_STORE_get_lookup_crls(store.get()));
 }
+
+// BlockedSPKICerts returns the contents of blocked_spki_certs.pem: a trust
+// anchor followed by one certificate for each entry in |blocked_spkis|.
+static bssl::UniquePtr<STACK_OF(X509)> BlockedSPKICerts() {
+  return CertChainFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_certs.pem").c_str());
+}
+
+// Every blocked key must be rejected, in an otherwise valid chain.
+TEST(X509Test, BlockedSPKI) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  X509 *root = sk_X509_value(certs.get(), 0);
+
+  // The trust anchor is not blocked, so it verifies on its own. Without this
+  // the rejections below could just as well be a problem with the test fixture.
+  EXPECT_EQ(X509_V_OK, Verify(root, {root}, /*intermediates=*/{}, /*crls=*/{}));
+
+  // Test callback is invoked on the blocked list path.
+  auto suppress_revoked = [](X509_STORE_CTX *ctx) {
+    X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REVOKED;
+    });
+  };
+
+  for (size_t i = 1; i < sk_X509_num(certs.get()); i++) {
+    SCOPED_TRACE(i);
+    X509 *cert = sk_X509_value(certs.get(), i);
+    int depth = -1;
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                     /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+    EXPECT_EQ(0, depth);
+
+    EXPECT_EQ(X509_V_OK, Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                                /*flags=*/0, suppress_revoked));
+  }
+}
+
+// A blocked key must be rejected when it is an issuer rather than the
+// certificate being verified.
+TEST(X509Test, BlockedSPKIAtDepth) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_leaf.pem").c_str()));
+  ASSERT_TRUE(leaf);
+
+  int depth = -1;
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+            Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
+                   {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
+                   /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+  EXPECT_EQ(1, depth);
+}
