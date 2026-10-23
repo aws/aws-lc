@@ -3,6 +3,8 @@
 
 #include "openssl/x509.h"
 #include <gtest/gtest.h>
+#include <openssl/ec.h>
+#include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <cctype>
 #include <ctime>
@@ -306,22 +308,32 @@ TEST_F(X509Test, CheckendWindowParsing) {
   const struct {
     const char *seconds;
     int expected_exit;
+    bool writes_output;
     const char *expected_output;
   } cases[] = {
-      {"0000", kToolExitSuccess, "Certificate will not expire\n"},
-      {"00002678400", kToolExitFailure, "Certificate will expire\n"},
-      {"9223372036854775807", kToolExitFailure, "Certificate will expire\n"},
-      {"9223372036854775808", kToolExitFailure, ""},
-      {"18446744073709551616", kToolExitFailure, ""},
-      {"", kToolExitFailure, ""},
-      {"1x", kToolExitFailure, ""},
+      {"0000", kToolExitSuccess, true, "Certificate will not expire\n"},
+      {"00002678400", kToolExitFailure, true, "Certificate will expire\n"},
+      {"9223372036854775807", kToolExitFailure, true,
+       "Certificate will expire\n"},
+      // Out-of-range and malformed values are rejected during option parsing,
+      // before the output is opened, so the file is left untouched (as in
+      // OpenSSL) rather than truncated.
+      {"9223372036854775808", kToolExitFailure, false, nullptr},
+      {"18446744073709551616", kToolExitFailure, false, nullptr},
+      {"", kToolExitFailure, false, nullptr},
+      {"1x", kToolExitFailure, false, nullptr},
   };
   for (const auto &test : cases) {
     SCOPED_TRACE(test.seconds);
+    const std::string before = ReadFileToString(out_path);
     args_list_t args = {"-in",        in_path, "-checkend",
                         test.seconds, "-out",  out_path};
     EXPECT_EQ(test.expected_exit, X509Tool(args));
-    EXPECT_EQ(test.expected_output, ReadFileToString(out_path));
+    if (test.writes_output) {
+      EXPECT_EQ(test.expected_output, ReadFileToString(out_path));
+    } else {
+      EXPECT_EQ(before, ReadFileToString(out_path));
+    }
   }
 }
 
@@ -2428,4 +2440,376 @@ TEST_F(X509Test, SubjectControlCharactersEscaped) {
   std::string escaped_cr = std::string("line2") + kBackslash + "0Dline3";
   EXPECT_NE(std::string::npos, output.find(escaped_newline));
   EXPECT_NE(std::string::npos, output.find(escaped_cr));
+}
+
+// Test -serial
+TEST_F(X509Test, Serial) {
+  args_list_t args = {"-in", in_path, "-serial", "-noout", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  bssl::UniquePtr<X509> cert = LoadPEMCertificate(in_path);
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(mem);
+  ASSERT_TRUE(i2a_ASN1_INTEGER(mem.get(), X509_get_serialNumber(cert.get())));
+  const uint8_t *data = nullptr;
+  size_t len = 0;
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &data, &len));
+  const std::string expected =
+      "serial=" + std::string(reinterpret_cast<const char *>(data), len) + "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+// Invalid -checkend is rejected during option parsing, before the output is
+// opened, so an in-place -in/-out target is left intact (matching OpenSSL).
+TEST_F(X509Test, InvalidCheckendDoesNotTruncate) {
+  const std::string before = ReadFileToString(in_path);
+  ASSERT_FALSE(before.empty());
+  args_list_t args = {"-in", in_path, "-checkend", "abc", "-out", in_path};
+  EXPECT_EQ(kToolExitFailure, X509Tool(args));
+  EXPECT_EQ(before, ReadFileToString(in_path));
+}
+
+// A print option that fails mid-loop (here -modulus on a non-RSA certificate)
+// must not truncate an in-place -in/-out target; print output is buffered and
+// the real output is opened only after every option succeeds.
+TEST_F(X509Test, FailingPrintOptionDoesNotTruncate) {
+  // Build a self-signed EC certificate, which has no RSA modulus.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EC_KEY> ec(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(ec && EC_KEY_generate_key(ec.get()));
+  ASSERT_TRUE(EVP_PKEY_assign_EC_KEY(pkey.get(), ec.release()));
+
+  bssl::UniquePtr<X509> cert(X509_new());
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(X509_set_version(cert.get(), 2));
+  ASSERT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
+  ASSERT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
+  ASSERT_TRUE(X509_gmtime_adj(X509_getm_notAfter(cert.get()), 3600));
+  ASSERT_TRUE(X509_set_pubkey(cert.get(), pkey.get()));
+  X509_NAME *name = X509_get_subject_name(cert.get());
+  ASSERT_TRUE(X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                                         (const uint8_t *)"ec", -1, -1, 0));
+  ASSERT_TRUE(X509_set_issuer_name(cert.get(), name));
+  ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha256()));
+
+  char ec_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(ec_path), 0u);
+  {
+    ScopedFILE f(fopen(ec_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_TRUE(PEM_write_X509(f.get(), cert.get()));
+  }
+  const std::string before = ReadFileToString(ec_path);
+  ASSERT_FALSE(before.empty());
+
+  args_list_t args = {"-in", ec_path, "-modulus", "-out", ec_path};
+  EXPECT_EQ(kToolExitFailure, X509Tool(args));
+  EXPECT_EQ(before, ReadFileToString(ec_path));
+
+  RemoveFile(ec_path);
+}
+
+// DER input with trailing bytes that are not valid X509_CERT_AUX data (e.g. a
+// trailing newline or concatenated certs) is still accepted, falling back to a
+// plain certificate as OpenSSL 3 does.
+TEST_F(X509Test, DerInputWithTrailingBytes) {
+  std::string der = ReadFileToString(der_cert_path);
+  ASSERT_FALSE(der.empty());
+  der.push_back('\n');  // trailing byte that is not valid aux data
+
+  char der_trailing_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(der_trailing_path), 0u);
+  {
+    ScopedFILE f(fopen(der_trailing_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_EQ(der.size(), fwrite(der.data(), 1, der.size(), f.get()));
+  }
+
+  args_list_t args = {"-in",     der_trailing_path, "-inform", "DER",
+                      "-serial", "-noout",          "-out",    out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+  EXPECT_EQ(0u, ReadFileToString(out_path).rfind("serial=", 0));
+
+  RemoveFile(der_trailing_path);
+}
+
+// DER input carrying X509_CERT_AUX trust data (as written by i2d_X509_AUX) is
+// read via d2i_X509_AUX and its trust is preserved.
+TEST_F(X509Test, DerInputWithAuxTrust) {
+  bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "rb"));
+  ASSERT_TRUE(in_bio);
+  bssl::UniquePtr<X509> cert(
+      PEM_read_bio_X509(in_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<ASN1_OBJECT> trust(OBJ_txt2obj("serverAuth", 0));
+  ASSERT_TRUE(trust && X509_add1_trust_object(cert.get(), trust.get()));
+
+  int len = i2d_X509_AUX(cert.get(), nullptr);
+  ASSERT_GT(len, 0);
+  std::vector<uint8_t> der(static_cast<size_t>(len));
+  uint8_t *p = der.data();
+  ASSERT_EQ(len, i2d_X509_AUX(cert.get(), &p));
+
+  char der_aux_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(der_aux_path), 0u);
+  {
+    ScopedFILE f(fopen(der_aux_path, "wb"));
+    ASSERT_TRUE(f);
+    ASSERT_EQ(der.size(), fwrite(der.data(), 1, der.size(), f.get()));
+  }
+
+  args_list_t args = {"-in",       der_aux_path, "-inform", "DER",
+                      "-trustout", "-out",       out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(out_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+
+  bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(out_bio);
+  bssl::UniquePtr<X509> read_back(
+      PEM_read_bio_X509_AUX(out_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(read_back);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(read_back.get(), X509_TRUST_SSL_SERVER, 0));
+
+  RemoveFile(der_aux_path);
+}
+
+// Test -addtrust / -trustout
+TEST_F(X509Test, AddTrustTrustout) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "clientAuth",
+                      "-trustout", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(out_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+
+  // A plain certificate reader must not accept a trusted certificate.
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> plain(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  EXPECT_FALSE(plain);
+}
+
+// -addtrust implies -trustout (as in OpenSSL), so a trusted certificate is
+// written even without an explicit -trustout.
+TEST_F(X509Test, AddTrustImpliesTrustout) {
+  args_list_t args = {"-in", in_path, "-addtrust", "clientAuth", "-out",
+                      out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(out_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+
+  // A plain certificate reader must not accept the trusted certificate.
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<X509> plain(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  EXPECT_FALSE(plain);
+}
+
+// Test -addtrust with -in and -out naming the same file (in-place rewrite).
+TEST_F(X509Test, AddTrustInPlace) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "clientAuth",
+                      "-trustout", "-out",  in_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(in_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+}
+
+// Negative: an unrecognized trust name is rejected.
+TEST_F(X509Test, AddTrustRejectsInvalidObject) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "notATrust",
+                      "-trustout", "-out",  out_path};
+  EXPECT_EQ(kToolExitFailure, X509Tool(args));
+}
+
+// Positive: -addtrust actually records the trust, not just the trusted wrapper.
+TEST_F(X509Test, AddTrustRecordsTrust) {
+  args_list_t args = {"-in",       in_path, "-addtrust", "clientAuth",
+                      "-trustout", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(infos);
+  ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+  X509 *cert = sk_X509_INFO_value(infos.get(), 0)->x509;
+  ASSERT_TRUE(cert);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_CLIENT, 0));
+}
+
+// Positive: -addtrust is repeatable and records each trust.
+TEST_F(X509Test, MultipleAddTrust) {
+  args_list_t args = {"-in",       in_path,      "-addtrust", "clientAuth",
+                      "-addtrust", "serverAuth", "-trustout", "-out",
+                      out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(infos);
+  ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+  X509 *cert = sk_X509_INFO_value(infos.get(), 0)->x509;
+  ASSERT_TRUE(cert);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_CLIENT, 0));
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_SERVER, 0));
+}
+
+// -req honors -addtrust/-trustout: a certificate issued from a CSR is written
+// in trusted form and actually records the trust. Guards the trust handling on
+// the -req branch, which otherwise has no coverage.
+TEST_F(X509Test, ReqSignkeyAddTrustRecordsTrust) {
+  args_list_t args = {"-in",        csr_path,    "-req",       "-signkey",
+                      signkey_path, "-addtrust", "clientAuth", "-trustout",
+                      "-out",       out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string out = ReadFileToString(out_path);
+  EXPECT_NE(out.find("-----BEGIN TRUSTED CERTIFICATE-----"), std::string::npos);
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(infos);
+  ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+  X509 *cert = sk_X509_INFO_value(infos.get(), 0)->x509;
+  ASSERT_TRUE(cert);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_CLIENT, 0));
+}
+
+// -trustout with DER output writes a plain certificate, not the AUX/trusted
+// form: DER ignores -trustout, matching OpenSSL. The whole file must decode as
+// a single X509 with no trailing bytes, so strict DER parsers accept it.
+TEST_F(X509Test, TrustoutDerWritesPlainCert) {
+  args_list_t args = {"-in",       in_path,    "-addtrust", "clientAuth",
+                      "-trustout", "-outform", "DER",       "-out",
+                      out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+
+  const std::string der = ReadFileToString(out_path);
+  ASSERT_FALSE(der.empty());
+  const uint8_t *begin = reinterpret_cast<const uint8_t *>(der.data());
+  const uint8_t *p = begin;
+  bssl::UniquePtr<X509> cert(
+      d2i_X509(nullptr, &p, static_cast<long>(der.size())));
+  ASSERT_TRUE(cert);
+  // The entire file is consumed: no AUX/trust bytes were appended.
+  EXPECT_EQ(p, begin + der.size());
+}
+
+// Negative: a failed in-place rewrite must not truncate/destroy the input.
+TEST_F(X509Test, FailedInPlaceAddTrustPreservesInput) {
+  const std::string before = ReadFileToString(in_path);
+  ASSERT_FALSE(before.empty());
+
+  args_list_t args = {"-in",       in_path, "-addtrust", "notATrust",
+                      "-trustout", "-out",  in_path};
+  ASSERT_EQ(kToolExitFailure, X509Tool(args));
+
+  EXPECT_EQ(before, ReadFileToString(in_path));
+}
+
+// Positive: the tool can read back a certificate it wrote with -trustout,
+// including a second in-place -addtrust.
+TEST_F(X509Test, ReadsOwnTrustedOutput) {
+  args_list_t make_trusted = {"-in",       in_path, "-addtrust", "clientAuth",
+                              "-trustout", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(make_trusted));
+
+  char serial_out[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(serial_out), 0u);
+  args_list_t read_back = {"-in",   out_path, "-serial",
+                           "-noout", "-out",  serial_out};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(read_back));
+  // -serial must actually print for a TRUSTED CERTIFICATE input, not just exit
+  // 0; the output begins with "serial=".
+  EXPECT_EQ(0u, ReadFileToString(serial_out).rfind("serial=", 0));
+
+  args_list_t rewrite = {"-in",       out_path,    "-addtrust", "serverAuth",
+                         "-trustout", "-out",      out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(rewrite));
+
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(infos);
+  ASSERT_EQ(1u, sk_X509_INFO_num(infos.get()));
+  X509 *cert = sk_X509_INFO_value(infos.get(), 0)->x509;
+  ASSERT_TRUE(cert);
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_CLIENT, 0));
+  EXPECT_EQ(X509_TRUST_TRUSTED,
+            X509_check_trust(cert, X509_TRUST_SSL_SERVER, 0));
+
+  RemoveFile(serial_out);
+}
+
+// -serial output parity with OpenSSL. The print output goes to stdout
+// (redirected to a file here), which matches OpenSSL across versions.
+TEST_F(X509ComparisonTest, Serial) {
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -serial -noout > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -serial -noout > " +
+      ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// -trustout output parity with OpenSSL (trusted certificate, no added trust).
+TEST_F(X509ComparisonTest, Trustout) {
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + " -trustout -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command =
+      ShellEscape(openssl_executable_path) + " x509 -in " +
+      ShellEscape(in_path) + " -trustout -out " +
+      ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// -addtrust output parity with OpenSSL. -addtrust implies -trustout in both
+// tools, so the trusted form is emitted without an explicit -trustout.
+TEST_F(X509ComparisonTest, AddTrustTrustout) {
+  std::string args = " -addtrust clientAuth -addtrust serverAuth";
+  std::string tool_command = ShellEscape(tool_executable_path) + " x509 -in " +
+                             ShellEscape(in_path) + args + " -out " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) + args +
+                                " -out " + ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
 }
