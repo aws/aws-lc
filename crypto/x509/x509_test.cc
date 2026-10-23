@@ -10025,90 +10025,59 @@ TEST(X509Test, StoreLookupCRLs) {
   EXPECT_EQ(lookup_crls, X509_STORE_get_lookup_crls(store.get()));
 }
 
-// CertsFromPEM parses every PEM-encoded certificate in |pem|, in order.
-static std::vector<bssl::UniquePtr<X509>> CertsFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  std::vector<bssl::UniquePtr<X509>> certs;
-  for (;;) {
-    bssl::UniquePtr<X509> cert(
-        PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-    if (cert == nullptr) {
-      break;
-    }
-    certs.push_back(std::move(cert));
-  }
-  // The loop above ends on a parse error at end of file, so discard that.
-  ERR_clear_error();
-  return certs;
-}
-
-struct VerifyResult {
-  int error;
-  int depth;
-};
-
-// VerifyChain is |Verify| plus the depth the error was reported at.
-static VerifyResult VerifyChain(X509 *leaf, const std::vector<X509 *> &roots,
-                                const std::vector<X509 *> &intermediates) {
-  bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
-  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
-      CertsToStack(intermediates));
-  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
-  if (!roots_stack || !intermediates_stack || !ctx || !store ||
-      !X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
-                           intermediates_stack.get())) {
-    return {X509_V_ERR_UNSPECIFIED, -1};
-  }
-  X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
-  X509_VERIFY_PARAM_set_time_posix(X509_STORE_CTX_get0_param(ctx.get()),
-                                   kReferenceTime);
-
-  ERR_clear_error();
-  if (X509_verify_cert(ctx.get()) == 1) {
-    return {X509_V_OK, -1};
-  }
-  return {X509_STORE_CTX_get_error(ctx.get()),
-          X509_STORE_CTX_get_error_depth(ctx.get())};
-}
-
 // BlockedSPKICerts returns the contents of blocked_spki_certs.pem: a trust
 // anchor followed by one certificate for each entry in |blocked_spkis|.
-static std::vector<bssl::UniquePtr<X509>> BlockedSPKICerts() {
-  return CertsFromPEM(
+static bssl::UniquePtr<STACK_OF(X509)> BlockedSPKICerts() {
+  return CertChainFromPEM(
       GetTestData("crypto/x509/test/blocked_spki_certs.pem").c_str());
 }
 
 // Every blocked key must be rejected, in an otherwise valid chain.
 TEST(X509Test, BlockedSPKI) {
-  std::vector<bssl::UniquePtr<X509>> certs = BlockedSPKICerts();
-  ASSERT_EQ(9u, certs.size());
-  X509 *root = certs[0].get();
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  X509 *root = sk_X509_value(certs.get(), 0);
 
   // The trust anchor is not blocked, so it verifies on its own. Without this
   // the rejections below could just as well be a problem with the test fixture.
-  VerifyResult result = VerifyChain(root, {root}, {});
-  EXPECT_EQ(X509_V_OK, result.error);
+  EXPECT_EQ(X509_V_OK, Verify(root, {root}, /*intermediates=*/{}, /*crls=*/{}));
 
-  for (size_t i = 1; i < certs.size(); i++) {
+  // Test callback is invoked on the blocked list path.
+  auto suppress_revoked = [](X509_STORE_CTX *ctx) {
+    X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REVOKED;
+    });
+  };
+
+  for (size_t i = 1; i < sk_X509_num(certs.get()); i++) {
     SCOPED_TRACE(i);
-    result = VerifyChain(certs[i].get(), {root}, {});
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED, result.error);
-    EXPECT_EQ(0, result.depth);
+    X509 *cert = sk_X509_value(certs.get(), i);
+    int depth = -1;
+    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+              Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                     /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+    EXPECT_EQ(0, depth);
+
+    EXPECT_EQ(X509_V_OK, Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                                /*flags=*/0, suppress_revoked));
   }
 }
 
 // A blocked key must be rejected when it is an issuer rather than the
 // certificate being verified.
 TEST(X509Test, BlockedSPKIAtDepth) {
-  std::vector<bssl::UniquePtr<X509>> certs = BlockedSPKICerts();
-  ASSERT_EQ(9u, certs.size());
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
   bssl::UniquePtr<X509> leaf(CertFromPEM(
       GetTestData("crypto/x509/test/blocked_spki_leaf.pem").c_str()));
   ASSERT_TRUE(leaf);
 
-  VerifyResult result =
-      VerifyChain(leaf.get(), {certs[0].get()}, {certs[1].get()});
-  EXPECT_EQ(X509_V_ERR_CERT_REVOKED, result.error);
-  EXPECT_EQ(1, result.depth);
+  int depth = -1;
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+            Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
+                   {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
+                   /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+  EXPECT_EQ(1, depth);
 }

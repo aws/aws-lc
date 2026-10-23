@@ -937,6 +937,7 @@ err:
 // blocked_spkis contains the SHA-256 digests of the DER-encoded
 // SubjectPublicKeyInfos that are rejected regardless of revocation or trust
 // configuration. For more information, see:
+//  - https://github.com/aws/aws-lc/issues/3679
 //  - P542986882
 //
 // Every entry below is a P-384 key, whose SubjectPublicKeyInfo encodes to
