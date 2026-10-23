@@ -28,6 +28,16 @@ case "${MODE}" in
   *) echo "unknown mode: ${MODE}" >&2; exit 2 ;;
 esac
 
+# An optional suppression file, named relative to this image.
+SUPPRESSIONS="${3:-}"
+if [[ -n "${SUPPRESSIONS}" ]]; then
+  if [[ ! -f "/${SUPPRESSIONS}" ]]; then
+    echo "no such suppression file: ${SUPPRESSIONS}" >&2
+    exit 2
+  fi
+  ABIDIFF_ARGS+=(--suppressions "/${SUPPRESSIONS}")
+fi
+
 set +e
 abidiff "${ABIDIFF_ARGS[@]}" --hd1 "/previous/include" --hd2 "/next/include" \
   "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"

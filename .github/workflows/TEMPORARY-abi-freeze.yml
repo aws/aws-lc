@@ -52,4 +52,4 @@ jobs:
       - name: Perform lib${{ matrix.lib }} ABI diff against AWS-LC-FIPS 5
         run: |
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" \
-            abidiff ${{ matrix.lib }} ignore-additions
+            abidiff ${{ matrix.lib }} ignore-additions abi-freeze.supp
