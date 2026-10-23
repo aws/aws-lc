@@ -421,7 +421,7 @@ static long b64_ctrl(BIO *b, int cmd, long num, void *ptr) {
     again:
       while (ctx->buf_len != ctx->buf_off) {
         i = b64_write(b, NULL, 0);
-        if (i < 0) {
+        if (i < 0 || (i == 0 && ctx->buf_len != ctx->buf_off)) {
           return i;
         }
       }
