@@ -5,7 +5,7 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64) && defined(__ELF__)
 #include <openssl/arm_arch.h>
-.text
+.section	.rodata
 .align	8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 .quad	0,0,0,0,0,0,0,0
@@ -36,11 +36,13 @@ iotas_hw:
 .quad	0x0000000080000001
 .quad	0x8000000080008008
 .size	iotas_hw,.-iotas_hw
+.text
 .type	KeccakF1600_int,%function
 .align	5
 KeccakF1600_int:
 	AARCH64_SIGN_LINK_REGISTER
-	adr	x28,iotas_hw
+	adrp	x28,iotas_hw
+	add	x28,x28,:lo12:iotas_hw
 	stp	x28,x30,[sp,#16]		// 32 bytes on top are mine
 	b	.Loop
 .align	4
