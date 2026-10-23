@@ -238,6 +238,7 @@ def save_run(
     base: str,
     branches: Sequence[str],
     verdicts: Dict[str, str],
+    decided_by: Optional[Dict[str, str]] = None,
     fips_files: Optional[Sequence[str]] = None,
 ) -> None:
     """
@@ -249,6 +250,7 @@ def save_run(
         base          what the fix was compared against
         branches      every release branch that was looked at
         verdicts      one of the four verdicts per branch, the part apply acts on
+        decided_by    what settled each branch, quoted in the pull request body
         fips_files    the files inside the validated FIPS module, so publish can carry
                       the warning into every pull request it opens
     """
@@ -261,6 +263,7 @@ def save_run(
                 "base": base,
                 "branches": list(branches),
                 "verdicts": verdicts,
+                "decided_by": decided_by or {},
                 "fips_files": list(fips_files or []),
             },
             indent=2,
