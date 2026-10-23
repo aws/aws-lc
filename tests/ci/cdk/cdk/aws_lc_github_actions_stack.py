@@ -78,16 +78,16 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                             x.repository_arn for x in ecr_repos
                         ], [x.repository_arn for x in pull_through_caches])],
                     ),
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        actions=[
-                            "ecr:CompleteLayerUpload",
-                            "ecr:InitiateLayerUpload",
-                            "ecr:PutImage",
-                            "ecr:UploadLayerPart",
-                        ],
-                        resources=[x.repository_arn for x in ecr_repos[3:]],
-                    ),
+                    # Every job on these runners shares this role, including the
+                    # jobs that build a pull request, so it grants no image
+                    # write at all. Builds on a trusted ref stage an image under
+                    # AwsLcGitHubActionDockerImageBuildRole and promote it under
+                    # AwsLcGitHubActionDockerImagePromotionRole; neither is
+                    # assumable from a pull request.
+                    #
+                    # BatchImportUpstreamImage is a pull: it copies a tag from
+                    # the configured upstream registry into the pull through
+                    # cache, and the caller chooses the tag but not its content.
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
                         actions=[
