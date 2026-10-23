@@ -210,6 +210,22 @@ between the current commit and:
 
 ABI-incompatible changes block the build. See `.github/workflows/abidiff.yml` for configuration.
 
+#### TEMPORARY ABI Freeze (remove at 6.0.0)
+
+AWS-LC-FIPS 6 is being designated LTS as a one-off divergence from our versioning policy. Consumers
+moving from AWS-LC-FIPS 5 to 6 must not meet an ABI break on the way, so until the 6.x snapshot
+branch is cut, mainline holds the ABI it shipped in AWS-LC-FIPS 5.
+
+The `TEMPORARY ABI FREEZE` jobs enforce that. They diff each library against a pinned commit of the
+AWS-LC-FIPS 5 branch and are required status checks on `main`.
+
+New public API still lands freely. These jobs pass `--no-added-syms` to `abidiff`, so an added
+function or variable is not a failure; a change to API that AWS-LC-FIPS 5 already shipped is.
+
+Nothing lifts the freeze on its own. When mainline bumps `SOFTWARE_VERSION` to 6.0.0, delete
+`.github/workflows/TEMPORARY-abi-freeze.yml`, drop its two required status checks from the `main`
+ruleset, and remove this section. Until someone does, the jobs keep blocking.
+
 #### Symbol Version Registry Checks
 
 The symbol version registries (`crypto/libcrypto.txt`, `ssl/libssl.txt`) record
