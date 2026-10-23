@@ -25,7 +25,6 @@ static const struct CipherParams Ciphers[] = {
     {"AES_256_CBC", EVP_aes_256_cbc},
     {"AES_256_CTR", EVP_aes_256_ctr},
     {"AES_256_OFB", EVP_aes_256_ofb},
-    {"ChaCha20Poly1305", EVP_chacha20_poly1305},
     {"DES_EDE3_CBC", EVP_des_ede3_cbc},
 };
 
@@ -66,6 +65,11 @@ TEST_P(BIOCipherTest, Basic) {
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_GET_CIPHER_CTX, 0, NULL));
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_SSL_MODE, 0, NULL));
   EXPECT_FALSE(BIO_set_cipher(bio_cipher.get(), EVP_rc4(), key, iv, /*enc*/ 1));
+  // AEADs are unsupported because the BIO cannot handle their tags.
+  EXPECT_FALSE(BIO_set_cipher(bio_cipher.get(), EVP_chacha20_poly1305(), key,
+                              iv, /*enc*/ 1));
+  EXPECT_FALSE(
+      BIO_set_cipher(bio_cipher.get(), EVP_aes_128_gcm(), key, iv, /*enc*/ 1));
   ASSERT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 1));
 
   // Round-trip using |BIO_write| for encryption with same BIOs, reset between
