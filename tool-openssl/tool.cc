@@ -1,9 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/evp.h>
+#include <openssl/obj.h>
 #include <openssl/ssl.h>
 #include <array>
 #include <iostream>
+#include <string>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -15,7 +18,7 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 23> kTools = {{
+static const std::array<Tool, 24> kTools = {{
     {"asn1parse", asn1parseTool},
     {"ca", caTool},
     {"crl", CRLTool},
@@ -31,6 +34,7 @@ static const std::array<Tool, 23> kTools = {{
     {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
     {"pkeyutl", pkeyutlTool},
+    {"rand", randTool},
     {"rehash", RehashTool},
     {"req", reqTool},
     {"rsa", rsaTool},
@@ -109,13 +113,27 @@ int main(int argc, char **argv) {
   int starting_arg = 1;
   tool_func_t tool = FindTool(argc, argv, starting_arg);
 
-  // Print help option menu.
+  // If no tool matched, check if the command name is a cipher (e.g.
+  // "aes-256-cbc"). OpenSSL treats cipher names as aliases for "enc".
+  std::string cipher_flag;
+  if (tool == nullptr && starting_arg > 0 && starting_arg <= argc) {
+    const char *cmd = argv[starting_arg - 1];
+    const EVP_CIPHER *cipher = EVP_get_cipherbyname(cmd);
+    if (cipher != nullptr) {
+      tool = encTool;
+      cipher_flag = std::string("-") + OBJ_nid2ln(EVP_CIPHER_nid(cipher));
+    }
+  }
+
   if (tool == nullptr) {
     usage(argv[0]);
     return 1;
   }
 
   args_list_t args{};
+  if (!cipher_flag.empty()) {
+    args.emplace_back(cipher_flag);
+  }
   for (int i = starting_arg; i < argc; i++) {
     args.emplace_back(argv[i]);
   }
