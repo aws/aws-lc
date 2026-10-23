@@ -67,8 +67,11 @@ extern "C" {
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
 // Define state flag values for Keccak-based functions
-// KECCAK1600_STATE_UNINIT prevents from using |KECCAK1600_CTX| uninitialised.
-#define KECCAK1600_STATE_UNINIT     0
+// KECCAK1600_STATE_UNINIT is the phase of a zeroed (uninitialised or cleansed)
+// |KECCAK1600_CTX|.
+#define KECCAK1600_STATE_UNINIT 0
+OPENSSL_STATIC_ASSERT(KECCAK1600_STATE_UNINIT == 0,
+                      KECCAK1600_STATE_UNINIT_is_not_zero)
 // KECCAK1600_STATE_ABSORB is set by |KeccakSponge_Init| and |Keccak256_Init|
 // and is the only phase that accepts input.
 #define KECCAK1600_STATE_ABSORB     1
