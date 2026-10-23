@@ -24,17 +24,43 @@ make && make install_sw
 # shared libraries and the upstream OpenSSL build for header files and testing.
 cd aws-lc
 cmake -GNinja -Bbuild -DBUILD_SHARED_LIBS=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 cd build
 ninja
 
 # Build with symbol versioning via ENABLE_DIST_PKG in AWS-LC (Linux only)
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}"
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 ```
 
+To build against the distribution's OpenSSL instead, install its development package (`openssl-devel`,
+3.5 or later) and omit `OPENSSL_ROOT_DIR`. CMake finds it in the system paths.
+
 The provider artifact is `build/provider/awslc.so` (`awslc.dylib` on macOS).
+
+## FIPS
+
+The provider maps OpenSSL's FIPS-facing provider interfaces onto AWS-LC's FIPS
+build, self-tests, and service indicator. A deployment claiming FIPS compliance
+must build and package the provider with an applicable FIPS build of AWS-LC and
+satisfy the requirements of that validation:
+
+```bash
+# Building AWS-LC-FIPS with aws-lc-provider
+cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
+  -DFIPS=1 -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
+```
+
+| Feature | Provider behavior |
+|---|---|
+| `fips=yes` algorithm property | Published only when the linked AWS-LC reports FIPS mode, on implementations of algorithms AWS-LC can approve. Approved-only fetches must include `fips=yes`. |
+| `fips-indicator` operation parameter | Reports whether AWS-LC reports FIPS mode and approved the completed operation. Applications enforcing per-operation approval must read it after each operation. |
+| Indicator callback | When AWS-LC reports FIPS mode, invokes OpenSSL's configured indicator callback if an operation is not approved. If the callback vetoes the result, the provider clears the output and returns an error. |
+| Provider `status` parameter | Reports one after successful provider initialization. AWS-LC terminates the process if a FIPS self-test puts the module into a failure state. |
+| `OSSL_PROVIDER_self_test()` | Runs AWS-LC's known-answer self-tests through `BORINGSSL_self_test()`. In FIPS builds a failure terminates the process; otherwise the result is propagated. |
+| Provider `buildinfo` parameter | Reports the linked AWS-LC version string, including AWS-LC's FIPS build identity when applicable. |
 
 ## Testing
 
@@ -66,27 +92,24 @@ keep the module's AWS-LC references off OpenSSL's libcrypto. Linux only; elsewhe
 build tree.
 
 ```bash
-# Install AWS-LC, then put its library directory on the loader path.
+# Determine where your openssl searches for providers.
+MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //; s/"//g')"
+
+# Install AWS-LC and the module, then put AWS-LC's library directory on the loader path.
 export AWSLC_ROOT="${PWD}/build/install"
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
-  -DBUILD_AWSLC_PROVIDER=ON -DAWSLC_PROVIDER_OPENSSL_ROOT="${OPENSSL_ROOT}" \
+  -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}" \
+  -DAWSLC_PROVIDER_MODULESDIR="${MODULES_DIR}" \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_ROOT}"
 ninja -C build install
 export LD_LIBRARY_PATH="${AWSLC_ROOT}/lib64:${AWSLC_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ```
 
 OpenSSL loads a provider by bare name from its modules directory, appending the platform's suffix.
-The install above does not carry the module, so copy it there:
+`AWSLC_PROVIDER_MODULESDIR` is where the install puts the module. It defaults to `${CMAKE_INSTALL_LIBDIR}/ossl-modules`.
 
-```bash
-# The OpenSSL being configured, not whichever one is on PATH.
-MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //; s/"//g')"
-
-cp build/provider/awslc.so "${MODULES_DIR}/"
-```
-
-`LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the copy.
+`LD_LIBRARY_PATH` has to be set for whatever process loads the provider, not just for the install.
 Check what the module resolves to:
 
 ```console
@@ -180,7 +203,9 @@ algorithm count from what does not.
 | `internal/frontend/<operation>.h` | OpenSSL | Per-operation dispatch tables, for `registry.c` |
 | `frontend/provider.c` | OpenSSL | The entry point. Implements provider-level dispatch table functions. |
 | `frontend/registry.c` | OpenSSL | One `OSSL_ALGORITHM` table per operation. |
+| `frontend/<service>.c` | OpenSSL | Provider-wide frontend services, such as error reporting. |
 | `frontend/operations/<operation>/<alg>.c` | OpenSSL | Dispatch slots and their `OSSL_PARAM` plumbing |
+| `backend/<service>.c` | AWS-LC | Provider-wide AWS-LC bindings: allocation, introspection, the error queue. |
 | `backend/operations/<operation>/<alg>.c` | AWS-LC | The calls that actually compute |
 | `test/frontend/**` | OpenSSL | Main test suite driving from the OpenSSL Provider interface. |
 | `test/backend/**` | AWS-LC | Test suite for invoking `backend/` functions directly. |

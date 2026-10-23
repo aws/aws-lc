@@ -21,6 +21,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_of_word)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_of_word)
         .text
+        .balign 32
 
 S2N_BN_SYMBOL(bignum_of_word):
         CFI_START

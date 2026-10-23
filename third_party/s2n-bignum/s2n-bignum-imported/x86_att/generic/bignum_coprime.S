@@ -27,6 +27,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_coprime)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)
         .text
+        .balign 32
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a bit for proxy errors
 

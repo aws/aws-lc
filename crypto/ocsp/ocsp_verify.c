@@ -124,6 +124,43 @@ static int ocsp_setup_untrusted(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 }
 
 
+// ocsp_verify_issuer_chain checks the certificates above the responder
+// certificate in |signer_chain| against the revocation settings of |st|. It
+// returns one on success, zero on verification failure, and -1 on fatal error.
+static int ocsp_verify_issuer_chain(STACK_OF(X509) *signer_chain,
+                                    X509_STORE *st,
+                                    STACK_OF(X509) *untrusted) {
+  if (sk_X509_num(signer_chain) < 2) {
+    // The responder certificate is itself trusted, so there is no issuer left
+    // to check.
+    return 1;
+  }
+
+  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  int ret = -1;
+
+  if (ctx == NULL) {
+    goto end;
+  }
+  if (!X509_STORE_CTX_init(ctx, st, sk_X509_value(signer_chain, 1),
+                           untrusted) ||
+      !X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
+    goto end;
+  }
+
+  ret = X509_verify_cert(ctx);
+  if (ret <= 0) {
+    int err = X509_STORE_CTX_get_error(ctx);
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_CERTIFICATE_VERIFY_ERROR);
+    ERR_add_error_data(2, "Verify error: ", X509_verify_cert_error_string(err));
+  }
+
+end:
+  X509_STORE_CTX_free(ctx);
+  return ret;
+}
+
 static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
                               STACK_OF(X509) *untrusted,
                               STACK_OF(X509) **chain) {
@@ -134,6 +171,8 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
 
   // Set up |X509_STORE_CTX| with |*signer|, |*st|, and |*untrusted|.
   X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  STACK_OF(X509) *signer_chain = NULL;
+  int check_issuer_revocation = 0;
   int ret = -1;
 
   if (ctx == NULL) {
@@ -146,13 +185,17 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
   // RFC 6960 section 4.2.2.2.1: if the responder certificate has the
   // id-pkix-ocsp-nocheck extension, the CA has indicated that the client
   // should trust the responder for its lifetime without revocation checking.
-  // Locally disable CRL-based revocation checking in this case.
+  // Locally disable CRL-based revocation checking in this case. The extension
+  // speaks for the responder certificate alone, so a caller that asked for the
+  // whole chain still gets the issuers checked below.
   if (X509_get_ext_by_NID(signer, NID_id_pkix_OCSP_noCheck, -1) >= 0) {
     X509_VERIFY_PARAM *vp = X509_STORE_CTX_get0_param(ctx);
     if (vp == NULL) {
       OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
       goto end;
     }
+    check_issuer_revocation =
+        (X509_VERIFY_PARAM_get_flags(vp) & X509_V_FLAG_CRL_CHECK_ALL) != 0;
     X509_VERIFY_PARAM_clear_flags(vp, X509_V_FLAG_CRL_CHECK);
   }
   if (!X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
@@ -168,11 +211,25 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     ERR_add_error_data(2, "Verify error: ", X509_verify_cert_error_string(err));
     goto end;
   }
+
+  signer_chain = X509_STORE_CTX_get1_chain(ctx);
+  if (signer_chain == NULL) {
+    ret = -1;
+    goto end;
+  }
+  if (check_issuer_revocation) {
+    ret = ocsp_verify_issuer_chain(signer_chain, st, untrusted);
+    if (ret <= 0) {
+      goto end;
+    }
+  }
   if (chain != NULL) {
-    *chain = X509_STORE_CTX_get1_chain(ctx);
+    *chain = signer_chain;
+    signer_chain = NULL;
   }
 
 end:
+  sk_X509_pop_free(signer_chain, X509_free);
   X509_STORE_CTX_free(ctx);
   return ret;
 }

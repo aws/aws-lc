@@ -34,6 +34,12 @@ Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing r
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
 
+`-serial` prints the certificate serial number as `serial=<HEX>`.
+
+`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
+
+When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
+
 ### enc
 
 `enc` supports raw-key encryption and decryption with `-K` and, when required by the cipher, `-iv`. Supported ciphers are AES-128, AES-192, and AES-256 in CBC, CFB, CTR, ECB, and OFB modes; DES-CBC; and 3DES-CBC. The OpenSSL aliases `aes128` and `aes256` are also supported.

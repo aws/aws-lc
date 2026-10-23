@@ -26,6 +26,7 @@ add_executable(
     pkcs12.cc
     pkey.cc
     pkeyutl.cc
+    rand.cc
     rehash.cc
     req.cc
     ordered_args.cc
@@ -146,6 +147,8 @@ if(BUILD_TESTING)
         pkey_test.cc
         pkeyutl.cc
         pkeyutl_test.cc
+        rand.cc
+        rand_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
@@ -155,6 +158,7 @@ if(BUILD_TESTING)
         s_client.cc
         s_client_test.cc
         test_util.cc
+        tool_test.cc
         tool_util.cc
         verify.cc
         verify_test.cc

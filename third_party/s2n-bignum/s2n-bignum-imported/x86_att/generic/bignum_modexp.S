@@ -24,6 +24,7 @@
 
 
         .text
+        .balign 32
 
 // Local variables, all kept on the stack
 

@@ -180,6 +180,7 @@ int pkcs8Tool(const args_list_t &args);
 int pkcs12Tool(const args_list_t &args);
 int pkeyTool(const args_list_t &args);
 int pkeyutlTool(const args_list_t &args);
+int randTool(const args_list_t &args);
 int RehashTool(const args_list_t &args);
 int reqTool(const args_list_t &args);
 int rsaTool(const args_list_t &args);

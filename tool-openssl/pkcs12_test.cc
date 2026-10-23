@@ -14,6 +14,7 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -22,6 +23,7 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 #include "internal.h"
@@ -1207,42 +1209,28 @@ class PKCS12ExportTest : public ::testing::Test {
       ADD_FAILURE() << "failed to write stdin file";
       return -1;
     }
+
+#if defined(OPENSSL_WINDOWS)
     ScopedFILE input_file(fopen(stdin_path, "rb"));
     if (!input_file) {
       ADD_FAILURE() << "failed to open stdin file";
       RemoveFile(stdin_path);
       return -1;
     }
-#if defined(OPENSSL_WINDOWS)
     _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", "1");
     ScopedFD saved_stdin(_dup(_fileno(stdin)));
     bool redirected = saved_stdin.get() >= 0 &&
                       _dup2(_fileno(input_file.get()), _fileno(stdin)) == 0;
-#else
-    setenv("AWSLC_CONSOLE_NO_TTY_DETECT", "1", 1);
-    ScopedFD saved_stdin(dup(STDIN_FILENO));
-    bool redirected =
-        saved_stdin.get() >= 0 &&
-        dup2(fileno(input_file.get()), STDIN_FILENO) == STDIN_FILENO;
-#endif
     int result = -1;
     if (redirected) {
       clearerr(stdin);
       testing::internal::CaptureStderr();
       result = pkcs12Tool(args);
       *errors = testing::internal::GetCapturedStderr();
-#if defined(OPENSSL_WINDOWS)
       redirected = _dup2(saved_stdin.get(), _fileno(stdin)) == 0;
-#else
-      redirected = dup2(saved_stdin.get(), STDIN_FILENO) == STDIN_FILENO;
-#endif
       clearerr(stdin);
     }
-#if defined(OPENSSL_WINDOWS)
     _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", "");
-#else
-    unsetenv("AWSLC_CONSOLE_NO_TTY_DETECT");
-#endif
     input_file.reset();
     RemoveFile(stdin_path);
     if (!redirected) {
@@ -1250,6 +1238,53 @@ class PKCS12ExportTest : public ::testing::Test {
       return -1;
     }
     return result;
+#else
+    // Replacing a descriptor under an active FILE leaves its buffered state
+    // intact. Run in a child so freopen can reset both streams without
+    // corrupting the test process's stdin or stderr state.
+    char stderr_path[PATH_MAX];
+    if (createTempFILEpath(stderr_path) == 0) {
+      ADD_FAILURE() << "failed to create stderr file";
+      RemoveFile(stdin_path);
+      return -1;
+    }
+
+    pid_t child = fork();
+    if (child == -1) {
+      ADD_FAILURE() << "failed to fork pkcs12Tool child process";
+      RemoveFile(stderr_path);
+      RemoveFile(stdin_path);
+      return -1;
+    }
+    if (child == 0) {
+      if (freopen(stdin_path, "rb", stdin) == nullptr ||
+          freopen(stderr_path, "wb", stderr) == nullptr ||
+          setenv("AWSLC_CONSOLE_NO_TTY_DETECT", "1", 1) != 0) {
+        _exit(255);
+      }
+      int result = pkcs12Tool(args);
+      if (fflush(stderr) != 0) {
+        _exit(255);
+      }
+      _exit(result);
+    }
+
+    int status = 0;
+    pid_t wait_result;
+    do {
+      wait_result = waitpid(child, &status, 0);
+    } while (wait_result == -1 && errno == EINTR);
+
+    *errors = ReadFileToString(stderr_path);
+    RemoveFile(stderr_path);
+    RemoveFile(stdin_path);
+    if (wait_result != child || !WIFEXITED(status) ||
+        WEXITSTATUS(status) == 255) {
+      ADD_FAILURE() << "failed to run pkcs12Tool child process";
+      return -1;
+    }
+    return WEXITSTATUS(status);
+#endif
   }
 
   void ExpectImportedContentsMatch(const char *path, const char *password,

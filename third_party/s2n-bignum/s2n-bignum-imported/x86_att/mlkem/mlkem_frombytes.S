@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
 
 // ----------------------------------------------------------------------------
-// Unppack ML-KEM polynomial coefficients as 12-bit numbers
+// Unpack ML-KEM polynomial coefficients as 12-bit numbers
 // Input a[384] (bytes); output r[256] (signed 16-bit words)
 //
-// This accepts an array of 384 bytes and unpcaks them into 256 16-bit numbers
+// This accepts an array of 384 bytes and unpacks them into 256 16-bit numbers
 // in the range 0 <= a[i] < 2^12 (typically they will be < 3329, the ML-KEM prime).
 //
 // extern void mlkem_frombytes(int16_t r[static 256],const uint8_t a[static 384]);
