@@ -20,7 +20,10 @@ if(WIN32)
     if(MSVC)
         set(JITTER_COMPILE_FLAGS "/Od /W4 /DYNAMICBASE /DAWSLC")
     else()
-        set(JITTER_COMPILE_FLAGS "-DAWSLC -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -O0 -fwrapv -Wconversion")
+        # Without BORINGSSL_IMPLEMENTATION, on MinGW shared builds,
+        # symbols are treated as imported rather than exported, causing
+        # undefined references at link time.
+        set(JITTER_COMPILE_FLAGS "-DAWSLC -DBORINGSSL_IMPLEMENTATION -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -O0 -fwrapv -Wconversion")
     endif()
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE true)
