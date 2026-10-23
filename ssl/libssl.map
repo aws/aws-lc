@@ -80,6 +80,8 @@ AWS_LC_1.0 {
     SSL_CTX_get0_param;
     SSL_CTX_get0_privatekey;
     SSL_CTX_get0_security_ex_data;
+    SSL_CTX_get0_signing_algorithm_prefs;
+    SSL_CTX_get0_verify_algorithm_prefs;
     SSL_CTX_get_cert_store;
     SSL_CTX_get_ciphers;
     SSL_CTX_get_client_CA_list;
@@ -487,6 +489,7 @@ AWS_LC_1.0 {
     SSL_set0_verify_cert_store;
     SSL_set0_wbio;
     SSL_set1_chain;
+    SSL_set1_cipher_lists_from_ctx;
     SSL_set1_curves;
     SSL_set1_curves_list;
     SSL_set1_delegated_credential;

@@ -762,6 +762,12 @@ int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
                           MakeConstSpan(prefs, num_prefs));
 }
 
+size_t SSL_CTX_get0_signing_algorithm_prefs(const SSL_CTX *ctx,
+                                            const uint16_t **out_prefs) {
+  *out_prefs = ctx->cert->sigalgs.data();
+  return ctx->cert->sigalgs.size();
+}
+
 static constexpr struct {
   int pkey_type;
   int hash_nid;
@@ -1091,4 +1097,10 @@ int SSL_set_verify_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
 
   return set_sigalg_prefs(&ssl->config->verify_sigalgs,
                           MakeConstSpan(prefs, num_prefs));
+}
+
+size_t SSL_CTX_get0_verify_algorithm_prefs(const SSL_CTX *ctx,
+                                           const uint16_t **out_prefs) {
+  *out_prefs = ctx->verify_sigalgs.data();
+  return ctx->verify_sigalgs.size();
 }
