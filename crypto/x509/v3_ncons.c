@@ -671,6 +671,14 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // Normalize absolute domain names by removing the trailing dot, if any, so
+  // that "foo@example.com." cannot evade an excluded "example.com". This
+  // matches the normalization in nc_dns() and nc_uri().
+  if (ends_with_byte(&eml_domain, '.')) {
+    uint8_t dot = 0;
+    CBS_get_last_u8(&eml_domain, &dot);
+  }
+
   // Reject subject emails with characters outside RFC 5321 atext in the
   // local-part (rejects quoted local-parts like "user"@example.com) or
   // invalid domain characters.
@@ -694,6 +702,10 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     if (CBS_get_until_first(&base_cbs, &unused, '@')) {
       return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
     }
+    if (ends_with_byte(&base_domain, '.')) {
+      uint8_t dot = 0;
+      CBS_get_last_u8(&base_domain, &dot);
+    }
     if (!is_valid_rfc822_local_part(&base_local) ||
         !is_valid_rfc822_domain(&base_domain)) {
       return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
@@ -715,6 +727,10 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     return X509_V_OK;
   }
 
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t dot = 0;
+    CBS_get_last_u8(&base_cbs, &dot);
+  }
   if (!is_valid_rfc822_domain(&base_cbs)) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
