@@ -15,7 +15,6 @@
 
 
 //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
-//= type=test
 //# The context (if present at all) MUST be empty.
 // RFC 8032 §7.1 known-answer vectors for plain Ed25519 (dom2 empty, no
 // context), exercised through ED25519_sign / ED25519_verify.
@@ -127,10 +126,8 @@ TEST(Ed25519Test, KeypairFromSeed) {
 }
 
 //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
-//= type=test
 //# If the resulting value is >= p, decoding fails.
 //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
-//= type=test
 //# If x = 0, and x_0 = 1, decoding fails.
 // RFC 8032 5.1.3 requires rejecting non-canonical public-key encodings:
 // y >= p, and x = 0 with the sign bit set. The s2n-bignum decoder already
@@ -177,7 +174,6 @@ TEST(Ed25519Test, NonCanonicalPublicKey) {
 }
 
 //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
-//= type=test
 //# For Ed25519ph, phflag=1 and PH is SHA512 instead.
 // RFC 8032 §7.3 known-answer vectors for Ed25519ph. These KATs gate the
 // pre-hash implementation and catch double-hashing / digest-handling
