@@ -934,17 +934,18 @@ err:
   return ok;
 }
 
-// blockedSPKIs contains the SHA-256 digests of the DER-encoded
+// blocked_spkis contains the SHA-256 digests of the DER-encoded
 // SubjectPublicKeyInfos that are rejected regardless of revocation or trust
 // configuration. For more information, see:
 //  - P542986882
 //
-// Every entry below is a P-384 key, encoding to |blockedSPKILen| bytes, which
-// lets keys of any other size skip the digest. If entries with a different
-// digest output size is needed at some point, this needs another implementation.
-static const int blockedSPKILen = 120;
+// Every entry below is a P-384 key, whose SubjectPublicKeyInfo encodes to
+// |blocked_spki_len| bytes, which lets keys of any other size skip the digest.
+// If entries encoding to a different length are needed at some point, this
+// needs another implementation.
+static const int blocked_spki_len = 120;
 
-static const uint8_t blockedSPKIs[][SHA256_DIGEST_LENGTH] = {
+static const uint8_t blocked_spkis[][SHA256_DIGEST_LENGTH] = {
     {0x43, 0xbf, 0xfa, 0x19, 0xd6, 0xef, 0x65, 0x14, 0x51, 0xf6, 0x84,
      0x1e, 0x01, 0x99, 0x31, 0xe9, 0x6f, 0x6f, 0x2e, 0xae, 0xff, 0x28,
      0xab, 0x4b, 0x6f, 0x1c, 0xe4, 0x57, 0x6d, 0xe2, 0x71, 0x7b},
@@ -972,7 +973,7 @@ static const uint8_t blockedSPKIs[][SHA256_DIGEST_LENGTH] = {
 };
 
 // spki_is_blocked sets |*out_blocked| to one if the public key of |x| is in
-// |blockedSPKIs| and to zero otherwise. It returns one on success and zero if
+// |blocked_spkis| and to zero otherwise. It returns one on success and zero if
 // the public key could not be marshalled.
 static int spki_is_blocked(const X509 *x, int *out_blocked) {
   *out_blocked = 0;
@@ -986,7 +987,7 @@ static int spki_is_blocked(const X509 *x, int *out_blocked) {
   if (spki_len <= 0) {
     return 0;
   }
-  if (spki_len != blockedSPKILen) {
+  if (spki_len != blocked_spki_len) {
     return 1;
   }
 
@@ -999,8 +1000,8 @@ static int spki_is_blocked(const X509 *x, int *out_blocked) {
   SHA256(spki, (size_t)spki_len, spki_hash);
   OPENSSL_free(spki);
 
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(blockedSPKIs); i++) {
-    if (OPENSSL_memcmp(spki_hash, blockedSPKIs[i], SHA256_DIGEST_LENGTH) ==
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(blocked_spkis); i++) {
+    if (OPENSSL_memcmp(spki_hash, blocked_spkis[i], SHA256_DIGEST_LENGTH) ==
         0) {
       *out_blocked = 1;
       break;
@@ -1010,7 +1011,7 @@ static int spki_is_blocked(const X509 *x, int *out_blocked) {
 }
 
 // check_blocked_spki rejects chains containing a certificate whose public key
-// is in |blockedSPKIs|.
+// is in |blocked_spkis|.
 static int check_blocked_spki(X509_STORE_CTX *ctx) {
   for (size_t i = 0; i < sk_X509_num(ctx->chain); i++) {
     X509 *x = sk_X509_value(ctx->chain, i);
@@ -1023,7 +1024,9 @@ static int check_blocked_spki(X509_STORE_CTX *ctx) {
       ctx->current_cert = x;
       ctx->error_depth = (int)i;
       ctx->error = X509_V_ERR_CERT_REVOKED;
-      return 0;
+      if (!call_verify_cb(0, ctx)) {
+        return 0;
+      }
     }
   }
   return 1;

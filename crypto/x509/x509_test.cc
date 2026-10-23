@@ -10073,7 +10073,7 @@ static VerifyResult VerifyChain(X509 *leaf, const std::vector<X509 *> &roots,
 }
 
 // BlockedSPKICerts returns the contents of blocked_spki_certs.pem: a trust
-// anchor followed by one certificate for each entry in |blockedSPKIs|.
+// anchor followed by one certificate for each entry in |blocked_spkis|.
 static std::vector<bssl::UniquePtr<X509>> BlockedSPKICerts() {
   return CertsFromPEM(
       GetTestData("crypto/x509/test/blocked_spki_certs.pem").c_str());
