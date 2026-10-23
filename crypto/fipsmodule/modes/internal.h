@@ -338,6 +338,14 @@ size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
 size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
                             const u128 Htable[16]);
+
+// The s2n-bignum AES-GCM kernels (aes128_gcm_enc etc.), formally verified and
+// tuned for Neoverse N1 (Graviton2), are built with the other s2n-bignum
+// assembly, i.e. on Unix-like platforms only (see crypto/fipsmodule/CMakeLists.txt).
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+#define HW_GCM_S2N_BIGNUM
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
+#endif
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
