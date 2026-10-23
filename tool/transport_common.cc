@@ -251,6 +251,18 @@ bool Listener::Init(const std::string &port) {
   return true;
 }
 
+int Listener::GetLocalPort() const {
+  if (server_sock_ < 0) {
+    return -1;
+  }
+  struct sockaddr_in6 addr;
+  socklen_t addr_len = sizeof(addr);
+  if (getsockname(server_sock_, (struct sockaddr *)&addr, &addr_len) != 0) {
+    return -1;
+  }
+  return ntohs(addr.sin6_port);
+}
+
 bool Listener::Accept(int *out_sock) {
   struct sockaddr_in6 addr;
   socklen_t addr_len = sizeof(addr);
