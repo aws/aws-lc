@@ -61,7 +61,7 @@ The modules below have been tested by an accredited lab and have been submitted 
 
 ## Randomness generation design AWS-LC-FIPS v4.0
 
-FIPS 140-3 requires the use of Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBGs instantiated with AES-256 exclusively. The public interfaces, declared in `rand.h`, produces its output using a CTR-DRBG. The AWS-LC randomness generation implementation is the same no matter whether you build the FIPS module or not.
+FIPS 140-3 requires the use of Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBGs instantiated with AES-256 exclusively. The public interfaces, declared in `rand.h`, produces its output using a CTR-DRBG. The AWS-LC randomness generation implementation is the same no matter whether you build the FIPS module or not, except for how the seed source handles CPU Jitter failures (described below).
 
 The AWS-LC randomness generation system is an implementation of a SP800-90C tree-DRBG. The construction is illustrated below. The "front-end" per-thread CTR-DRBGs generates the random bytes output from the public interface functions e.g. `RAND_bytes`. The front-end CTR-DRBGs are seeded from per-thread "tree-DRBG" CTR-DRBGs by calling their "generate" function. The tree-DRBG per-thread CTR-DRBGs are generated for a global tree-DRBG CTR-DRBG which itself is seeded by a SP800-90B validated Jitter Entropy version.
 
@@ -98,7 +98,9 @@ CTR-DRBGs in the tree-DRBG are also zeroed. Technically, this is done by overwri
 
 ### Entropy source configuration
 
-Seed source: Jitter Entropy
+Entropy-source selection and fallback policy are defined in `rand/entropy/entropy_sources.c`; the tree-DRBG consumes the configured root provider without choosing alternative entropy sources.
+
+Seed source: Jitter Entropy. Non-FIPS builds raise the Jitter oversampling rate when its health tests fail and, if Jitter still cannot produce a seed, use operating system entropy for the rest of the process. This gives up Jitter as an independent source, as the build-time CPU Jitter opt-out does. FIPS builds keep the default rate and abort instead.
 
 Addition input / personalization string source: Operating system configured as follows
 
