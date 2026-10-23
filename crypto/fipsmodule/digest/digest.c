@@ -231,6 +231,7 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
                       ctx->pctx->engine)) {
       return 0;
     }
+    ctx->flags &= ~EVP_MD_CTX_FINALISED;
     return 1;
   }
 
@@ -246,6 +247,10 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
   if (ctx->update == NULL) {
+    return 0;
+  }
+  if (ctx->flags & EVP_MD_CTX_FINALISED) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
   return ctx->update(ctx, data, len);
