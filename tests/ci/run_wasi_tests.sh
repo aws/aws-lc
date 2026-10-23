@@ -139,6 +139,10 @@ function run_wasi_tests {
         failed_tests+=("ssl_test")
     fi
 
+    if ! run_single_wasi_test "ssl/ssl_ciphers_mem_test"; then
+        failed_tests+=("ssl_ciphers_mem_test")
+    fi
+
     cd "$SRC_ROOT"
 
     if [ ${#failed_tests[@]} -ne 0 ]; then

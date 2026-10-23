@@ -7,6 +7,9 @@
 
 #include <gtest/gtest.h>
 
+#include <tuple>
+#include <vector>
+
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
@@ -719,6 +722,249 @@ TEST(SSLTest, TLSv13CipherRules) {
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
     ERR_clear_error();
   }
+}
+
+// Exercise both setters on both endpoints.
+class TLS13CipherSuitesTest
+    : public testing::TestWithParam<std::tuple<bool, bool>> {
+ protected:
+  bool UseContext() const { return std::get<0>(GetParam()); }
+  bool IsServer() const { return std::get<1>(GetParam()); }
+
+  void SetUp() override {
+    client_ctx_.reset(SSL_CTX_new(TLS_method()));
+    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx_);
+    ASSERT_TRUE(server_ctx_);
+    for (SSL_CTX *ctx : {client_ctx_.get(), server_ctx_.get()}) {
+      ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION));
+      ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION));
+    }
+    // Context configuration must precede SSL_new's configuration snapshot.
+    if (!UseContext()) {
+      ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                        server_ctx_.get()));
+    }
+  }
+
+  SSL_CTX *Context() const {
+    return IsServer() ? server_ctx_.get() : client_ctx_.get();
+  }
+  SSL *Connection() const { return IsServer() ? server_.get() : client_.get(); }
+  int SetCipherSuites(const char *rule) {
+    return UseContext() ? SSL_CTX_set_ciphersuites(Context(), rule)
+                        : SSL_set_ciphersuites(Connection(), rule);
+  }
+  int SetCipherList(const char *rule) {
+    return UseContext() ? SSL_CTX_set_cipher_list(Context(), rule)
+                        : SSL_set_cipher_list(Connection(), rule);
+  }
+  int SetStrictCipherList(const char *rule) {
+    return UseContext() ? SSL_CTX_set_strict_cipher_list(Context(), rule)
+                        : SSL_set_strict_cipher_list(Connection(), rule);
+  }
+
+  static std::vector<uint32_t> CipherIDs(const STACK_OF(SSL_CIPHER) *ciphers,
+                                         bool tls13_only = false) {
+    std::vector<uint32_t> ids;
+    for (const SSL_CIPHER *cipher : ciphers) {
+      if (!tls13_only || SSL_CIPHER_get_min_version(cipher) == TLS1_3_VERSION) {
+        ids.push_back(SSL_CIPHER_get_id(cipher));
+      }
+    }
+    return ids;
+  }
+  std::vector<uint32_t> CipherIDs(bool tls13_only = false) const {
+    return CipherIDs(UseContext() ? SSL_CTX_get_ciphers(Context())
+                                  : SSL_get_ciphers(Connection()),
+                     tls13_only);
+  }
+
+  // TLS13List returns the endpoint's internal TLS 1.3 list. The public getters
+  // only expose the combined list, so check this one directly to catch a
+  // setter that updates one list but not the other.
+  const STACK_OF(SSL_CIPHER) *TLS13List() const {
+    return (UseContext() ? Context()->tls13_cipher_list
+                         : Connection()->config->tls13_cipher_list)
+        ->ciphers.get();
+  }
+
+  void ExpectNoMatch() {
+    // A TLS 1.2 suite and an unknown name both match no TLS 1.3 suites.
+    for (const char *rule : {"ECDHE-RSA-AES128-GCM-SHA256", "BOGUS"}) {
+      SCOPED_TRACE(rule);
+      const auto before = CipherIDs();
+      const auto before_tls13 = CipherIDs(TLS13List());
+      EXPECT_EQ(0, SetCipherSuites(rule));
+      const uint32_t err = ERR_get_error();
+      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+      EXPECT_EQ(SSL_R_NO_CIPHER_MATCH, ERR_GET_REASON(err));
+      ERR_clear_error();
+      // Compare the entire combined list, including its order and legacy
+      // suites, as well as the TLS 1.3 list itself.
+      EXPECT_EQ(before, CipherIDs());
+      EXPECT_EQ(before_tls13, CipherIDs(TLS13List()));
+    }
+  }
+
+  void CheckHandshake(const char *peer_suite, bool should_succeed) {
+    const auto expected = CipherIDs();
+    if (UseContext()) {
+      SSL_CTX *peer = IsServer() ? client_ctx_.get() : server_ctx_.get();
+      ASSERT_EQ(1, SSL_CTX_set_ciphersuites(peer, peer_suite));
+      ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                        server_ctx_.get()));
+    } else {
+      SSL *peer = IsServer() ? client_.get() : server_.get();
+      ASSERT_EQ(1, SSL_set_ciphersuites(peer, peer_suite));
+    }
+    EXPECT_EQ(expected, CipherIDs(SSL_get_ciphers(Connection())));
+    SSL_set_shed_handshake_config(client_.get(), 0);
+    SSL_set_shed_handshake_config(server_.get(), 0);
+    ASSERT_EQ(0u, ERR_peek_error());
+    const bool connected = CompleteHandshakes(client_.get(), server_.get());
+    EXPECT_EQ(should_succeed, connected);
+    if (connected) {
+      for (SSL *ssl : {client_.get(), server_.get()}) {
+        EXPECT_EQ(TLS1_3_VERSION, SSL_version(ssl));
+        EXPECT_STREQ(peer_suite,
+                     SSL_CIPHER_standard_name(SSL_get_current_cipher(ssl)));
+      }
+    } else if (!should_succeed) {
+      const uint32_t err = ERR_get_error();
+      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+      EXPECT_EQ(SSL_R_NO_SHARED_CIPHER, ERR_GET_REASON(err));
+    }
+    ERR_clear_error();
+    EXPECT_EQ(expected, CipherIDs(SSL_get_ciphers(Connection())));
+  }
+
+ private:
+  UniquePtr<SSL_CTX> client_ctx_, server_ctx_;
+  UniquePtr<SSL> client_, server_;
+};
+
+INSTANTIATE_TEST_SUITE_P(Setters, TLS13CipherSuitesTest,
+                         testing::Combine(testing::Bool(), testing::Bool()));
+
+TEST_P(TLS13CipherSuitesTest, NoMatchPreservesDefaults) {
+  ASSERT_FALSE(CipherIDs(true).empty());
+  ExpectNoMatch();
+  CheckHandshake("TLS_AES_128_GCM_SHA256", true);
+}
+
+TEST_P(TLS13CipherSuitesTest, NoMatchPreservesCustomPolicy) {
+  ASSERT_EQ(1, SetCipherSuites("TLS_AES_256_GCM_SHA384"));
+  EXPECT_EQ((std::vector<uint32_t>{TLS1_3_CK_AES_256_GCM_SHA384}),
+            CipherIDs(true));
+  ExpectNoMatch();
+  CheckHandshake("TLS_AES_256_GCM_SHA384", true);
+}
+
+TEST_P(TLS13CipherSuitesTest, NoMatchPreservesOrder) {
+  ASSERT_EQ(1,
+            SetCipherSuites("TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256"));
+  EXPECT_EQ((std::vector<uint32_t>{TLS1_3_CK_AES_256_GCM_SHA384,
+                                   TLS1_3_CK_AES_128_GCM_SHA256}),
+            CipherIDs(true));
+  ExpectNoMatch();
+  CheckHandshake("TLS_AES_256_GCM_SHA384", true);
+}
+
+TEST_P(TLS13CipherSuitesTest, NoMatchRejectsExcludedSuite) {
+  ASSERT_EQ(1, SetCipherSuites("TLS_AES_256_GCM_SHA384"));
+  ExpectNoMatch();
+  CheckHandshake("TLS_AES_128_GCM_SHA256", false);
+}
+
+TEST_P(TLS13CipherSuitesTest, LegacyOnlyDualSetter) {
+  auto expected = CipherIDs(true);
+  ASSERT_FALSE(expected.empty());
+  ASSERT_EQ(1, SetCipherList("ECDHE-RSA-AES128-GCM-SHA256"));
+  expected.push_back(TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256);
+  EXPECT_EQ(expected, CipherIDs());
+  ExpectNoMatch();
+  CheckHandshake("TLS_AES_128_GCM_SHA256", true);
+}
+
+TEST_P(TLS13CipherSuitesTest, DefaultAliases) {
+  const auto defaults = CipherIDs();
+  for (const char *rule : {"DEFAULT", "ALL"}) {
+    SCOPED_TRACE(rule);
+    ASSERT_EQ(1, SetCipherSuites(""));
+    ASSERT_EQ(1, SetCipherSuites(rule));
+    EXPECT_EQ(defaults, CipherIDs());
+  }
+  CheckHandshake("TLS_AES_128_GCM_SHA256", true);
+}
+
+// Unlike OpenSSL, the non-strict legacy setters succeed for an empty string.
+// They clear only the legacy suites, without broadening the TLS 1.3 policy.
+TEST_P(TLS13CipherSuitesTest, LegacyEmptyKeepsTLS13Suites) {
+  for (const char *policy : {"DEFAULT", "TLS_AES_256_GCM_SHA384", ""}) {
+    SCOPED_TRACE(*policy == '\0' ? "empty TLS 1.3 policy" : policy);
+    ASSERT_EQ(1, SetCipherSuites(policy));
+    const auto tls13 = CipherIDs(TLS13List());
+    ASSERT_EQ(1, SetCipherList("ECDHE-RSA-AES128-GCM-SHA256"));
+    ASSERT_EQ(0u, ERR_peek_error());
+    EXPECT_EQ(1, SetCipherList(""));
+    EXPECT_EQ(0u, ERR_peek_error());
+    EXPECT_EQ(tls13, CipherIDs());
+    EXPECT_EQ(tls13, CipherIDs(TLS13List()));
+  }
+}
+
+// A successfully parsed legacy rule that matches nothing fails (except an
+// empty string in non-strict mode), clearing only the legacy suites.
+TEST_P(TLS13CipherSuitesTest, LegacyNoMatchKeepsTLS13Suites) {
+  struct Case {
+    bool strict;
+    const char *rule;
+  };
+  // A TLS 1.3 suite name matches nothing in a legacy rule.
+  const Case kCases[] = {{false, "BOGUS"},
+                         {false, "TLS_AES_128_GCM_SHA256"},
+                         {true, ""},
+                         {true, "ALL:!ALL"}};
+  for (const char *policy : {"DEFAULT", "TLS_AES_256_GCM_SHA384", ""}) {
+    SCOPED_TRACE(*policy == '\0' ? "empty TLS 1.3 policy" : policy);
+    ASSERT_EQ(1, SetCipherSuites(policy));
+    const auto tls13 = CipherIDs(TLS13List());
+    for (const Case &c : kCases) {
+      SCOPED_TRACE(std::string(c.strict ? "strict " : "lax ") + c.rule);
+      ASSERT_EQ(1, SetCipherList("ECDHE-RSA-AES128-GCM-SHA256"));
+      ASSERT_EQ(0u, ERR_peek_error());
+      EXPECT_EQ(0,
+                c.strict ? SetStrictCipherList(c.rule) : SetCipherList(c.rule));
+      const uint32_t err = ERR_get_error();
+      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+      EXPECT_EQ(SSL_R_NO_CIPHER_MATCH, ERR_GET_REASON(err));
+      ERR_clear_error();
+      // Only the TLS 1.3 suites remain, in both the combined and internal
+      // lists.
+      EXPECT_EQ(tls13, CipherIDs());
+      EXPECT_EQ(tls13, CipherIDs(TLS13List()));
+    }
+  }
+}
+
+// A client rejects a server-chosen suite missing from its combined list.
+TEST_P(TLS13CipherSuitesTest, LegacyNoMatchStillHandshakes) {
+  EXPECT_EQ(0, SetCipherList("TLS_AES_128_GCM_SHA256"));
+  ERR_clear_error();
+  CheckHandshake("TLS_AES_128_GCM_SHA256", true);
+}
+
+// A rule rejected before it produces any list changes nothing.
+TEST_P(TLS13CipherSuitesTest, LegacyInvalidRuleLeavesConfigUnchanged) {
+  ASSERT_EQ(1, SetCipherList("ECDHE-RSA-AES128-GCM-SHA256"));
+  const auto before = CipherIDs();
+  const auto before_tls13 = CipherIDs(TLS13List());
+  EXPECT_EQ(0, SetStrictCipherList("ECDHE-RSA-AES128-GCM-SHA256:BOGUS"));
+  ERR_clear_error();
+  EXPECT_EQ(before, CipherIDs());
+  EXPECT_EQ(before_tls13, CipherIDs(TLS13List()));
+  CheckHandshake("TLS_AES_128_GCM_SHA256", true);
 }
 
 TEST(SSLTest, CurveRules) {
