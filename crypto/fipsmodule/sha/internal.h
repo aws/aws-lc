@@ -662,14 +662,15 @@ void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]
                                  size_t num_blocks, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
-// multiple times when used as eXtendable Output Function. |state| defines
-// whether the state is already permuted for the first output block: pass
-// |KECCAK1600_STATE_ABSORB| only right after the padded final block was
-// absorbed, |KECCAK1600_STATE_SQUEEZE| otherwise. It squeezes full blocks of
-// |r| bytes, except the last, which may be shorter.
+// multiple times when used as eXtendable Output Function. If |padded| is 0, the
+// processing of the padded final input block is not yet complete because the first
+// output block still needs to be emitted. If |padded| is 1, the special padded block
+// has been fully processed, and the state needs to be permuted before producing
+// the next output block. It squeezes full blocks of |r| bytes, except the
+// last, which may be shorter.
 OPENSSL_EXPORT void Keccak1600_Squeeze(
     uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len,
-    size_t r, int state);
+    size_t r, int padded);
 
 #if defined(__cplusplus)
 }  // extern "C"

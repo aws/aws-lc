@@ -68,7 +68,12 @@ int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx) {
   if (KeccakSponge_AbsorbFinal(out, ctx) == 0) {
     return 0;
   }
-  Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size, ctx->state);
+
+  // If |ctx->state| is in the absorb phase, finish processing the final padded
+  // block without permuting. In the squeeze phase, process subsequent output
+  // normally.
+  Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
 
   // Intentionally no FIPS_service_indicator_update_state(): Keccak-256 with

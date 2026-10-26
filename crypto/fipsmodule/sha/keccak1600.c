@@ -306,14 +306,14 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
     }
 }
 
-void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int state) {
+void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded) {
     assert(r < (25 * sizeof(A[0][0])) && (r % 8) == 0);
 
     while (len != 0) {
-        if (state != KECCAK1600_STATE_ABSORB) {
+        if (padded) {
             KeccakF1600(A);
         }
-        state = KECCAK1600_STATE_SQUEEZE;
+        padded = 1;
 
         size_t extract_len = len < r ? len : r;
         KeccakF1600_ExtractBytes(A, out, extract_len);

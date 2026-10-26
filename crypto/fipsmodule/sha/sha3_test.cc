@@ -494,7 +494,7 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
     out.resize(out_len + canary.size());
     std::copy(canary.begin(), canary.end(), out.end() - canary.size());
     Keccak1600_Squeeze(ctx.A, out.data(), out_len, ctx.block_size,
-                       KECCAK1600_STATE_ABSORB);
+                       /*padded=*/1);
     EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(),
                            canary.begin()) == true);
   }
@@ -541,11 +541,12 @@ TEST(SHAKETest, ZeroedContextFailsCleanly) {
 }
 
 // Absorbing the padded last block already permutes, leaving a block of output
-// extractable, so |KECCAK1600_STATE_ABSORB| makes |Keccak1600_Squeeze| skip the
-// permutation before its first block.
-TEST(KeccakInternalTest, SqueezePhaseSemantics) {
+// extractable. Passing |padded| as zero extracts that block directly, while one
+// treats it as consumed and applies the next permutation. These values
+// correspond to the absorb and squeeze phases, respectively.
+TEST(KeccakInternalTest, SqueezePaddedSemantics) {
   static const uint8_t kMsg[] = {'a', 'b', 'c'};
-  uint8_t expected[64], manual[64], wrong_phase[64];
+  uint8_t expected[64], manual[64], extra_permutation[64];
   KECCAK1600_CTX ctx;
 
   ASSERT_TRUE(SHAKE128(kMsg, sizeof(kMsg), expected, sizeof(expected)));
@@ -554,16 +555,16 @@ TEST(KeccakInternalTest, SqueezePhaseSemantics) {
   ASSERT_TRUE(SHAKE_Absorb(&ctx, kMsg, sizeof(kMsg)));
   ASSERT_TRUE(KeccakSponge_AbsorbFinal(manual, &ctx));
   Keccak1600_Squeeze(ctx.A, manual, sizeof(manual), ctx.block_size,
-                     KECCAK1600_STATE_ABSORB);
+                     /*padded=*/0);
   EXPECT_EQ(Bytes(expected, sizeof(expected)), Bytes(manual, sizeof(manual)));
 
   ASSERT_TRUE(SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE));
   ASSERT_TRUE(SHAKE_Absorb(&ctx, kMsg, sizeof(kMsg)));
-  ASSERT_TRUE(KeccakSponge_AbsorbFinal(wrong_phase, &ctx));
-  Keccak1600_Squeeze(ctx.A, wrong_phase, sizeof(wrong_phase), ctx.block_size,
-                     KECCAK1600_STATE_SQUEEZE);
+  ASSERT_TRUE(KeccakSponge_AbsorbFinal(extra_permutation, &ctx));
+  Keccak1600_Squeeze(ctx.A, extra_permutation, sizeof(extra_permutation),
+                     ctx.block_size, /*padded=*/1);
   EXPECT_NE(Bytes(expected, sizeof(expected)),
-            Bytes(wrong_phase, sizeof(wrong_phase)));
+            Bytes(extra_permutation, sizeof(extra_permutation)));
 }
 
 // The |ctx->state| guards added for uninitialised contexts must not change the

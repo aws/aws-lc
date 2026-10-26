@@ -269,7 +269,8 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
@@ -386,7 +387,8 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
@@ -414,8 +416,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  // Skip KeccakSponge_AbsorbFinal if the input has been padded and
-  // the last block has been processed
+  // In the absorb phase, the final input block still needs padding. In the
+  // squeeze phase, a previous call already padded it.
   if (ctx->state == KECCAK1600_STATE_ABSORB) {
     if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
       return 0;
@@ -438,7 +440,12 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   // Process all full size output requested blocks
   if (len > ctx->block_size) {
     block_bytes = ctx->block_size * (len / ctx->block_size);
-    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size, ctx->state);
+
+    // If |ctx->state| is in the absorb phase, finish processing the final padded
+    // block without permuting. In the squeeze phase, process subsequent output
+    // normally.
+    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size,
+                       ctx->state == KECCAK1600_STATE_SQUEEZE);
     md += block_bytes;
     len -= block_bytes;
     ctx->state = KECCAK1600_STATE_SQUEEZE;
@@ -449,7 +456,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     // Generated output is store in |ctx->buf|. Only requested bytes are transfered
     // to the output. The 'unused' output data is kept for processing in a sequenctual
     // call to SHAKE_Squeeze (incremental byte-wise SHAKE_Squeeze)
-    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
+    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size,
+                       ctx->state == KECCAK1600_STATE_SQUEEZE);
     OPENSSL_memcpy(md, ctx->buf, len);
     ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed
     ctx->state = KECCAK1600_STATE_SQUEEZE;
