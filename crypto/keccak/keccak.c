@@ -42,14 +42,6 @@ int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (len == 0) {
     return 1;
   }
-  // As in |Keccak256_Final|, refuse any context that is not mid-absorb:
-  // uninitialised, or already finalised. |KeccakSponge_Absorb| rejects these
-  // too; checking here reports the caller error at this layer instead of
-  // silently doing nothing. Left unchecked, |Keccak1600_Absorb| would spin
-  // forever on |while (len >= r)| with |r == 0|.
-  if (ctx->state != KECCAK1600_STATE_ABSORB) {
-    return 0;
-  }
   return KeccakSponge_Absorb(ctx, data, len);
 }
 
