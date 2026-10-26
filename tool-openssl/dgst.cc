@@ -16,6 +16,8 @@ static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-binary", kBooleanArgument, "Output in binary form"},
     {"-hex", kBooleanArgument, "Output as hex dump"},
+    {"-r", kBooleanArgument,
+     "Output digest in coreutils format: <hash> *<file>"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
     {"-ripemd160", kExclusiveBooleanArgument, "Supported digest function"},
     {"-sha1", kExclusiveBooleanArgument, "Supported digest function"},
@@ -305,9 +307,21 @@ end:
 static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
                         const std::string &sig_name,
                         const std::string &digest_name,
-                        const std::string &in_path, bool out_bin) {
+                        const std::string &in_path, bool out_bin,
+                        bool reverse) {
   if (out_bin) {
     if (BIO_write(out_bio, data.data(), data.size()) <= 0) {
+      goto end;
+    }
+  } else if (reverse) {
+    // coreutils-style output matching `openssl dgst -r`: "<hash> *<file>".
+    for (size_t i = 0; i < data.size(); i++) {
+      if (BIO_printf(out_bio, "%02x", data[i]) <= 0) {
+        goto end;
+      }
+    }
+    if (BIO_printf(out_bio, " *%s\n",
+                   in_path.empty() ? "stdin" : in_path.c_str()) <= 0) {
       goto end;
     }
   } else {
@@ -365,7 +379,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       signature_file, keyform;
   std::vector<std::string> sigopts;
   Password passin;
-  bool out_bin = false, binary = false, hex = false;
+  bool out_bin = false, binary = false, hex = false, reverse = false;
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
@@ -374,6 +388,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
 
   GetBoolArgument(&binary, "-binary", parsed_args);
   GetBoolArgument(&hex, "-hex", parsed_args);
+  GetBoolArgument(&reverse, "-r", parsed_args);
   GetString(&hmac, "-hmac", "", parsed_args);
   GetString(&passin.get(), "-passin", "", parsed_args);
   GetString(&sign_key_file, "-sign", "", parsed_args);
@@ -463,7 +478,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), mac, "HMAC", EVP_MD_get0_name(digest), in_path,
-                  out_bin);
+                  out_bin, reverse);
     } else if (!verify_key_file.empty()) {
       if (!LoadPublicKey(verify_key_file, pkey)) {
         return false;
@@ -485,7 +500,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), signature, GetSigName(EVP_PKEY_id(pkey.get())),
-                  EVP_MD_get0_name(digest), in_path, out_bin);
+                  EVP_MD_get0_name(digest), in_path, out_bin, reverse);
     } else {
       std::vector<uint8_t> hash(EVP_MAX_MD_SIZE);
 
@@ -494,7 +509,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), hash, "", EVP_MD_get0_name(digest), in_path,
-                  out_bin);
+                  out_bin, reverse);
     }
 
     if (in_files.empty()) {

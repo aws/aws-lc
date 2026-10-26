@@ -171,6 +171,39 @@ TEST_F(DgstComparisonTest, Digest) {
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 }
 
+// -r selects coreutils-style output ("<hash> *<file>"). Compare the full
+// formatted output against OpenSSL to confirm byte-for-byte parity.
+TEST_F(DgstComparisonTest, Reverse) {
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -sha256 -r -out " +
+                              ShellEscape(out_path_awslc) + " " +
+                              ShellEscape(in_path);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -sha256 -r -out " +
+                                ShellEscape(out_path_openssl) + " " +
+                                ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  // stdin input: the digest line labels the source "stdin".
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -sha256 -r -out " + ShellEscape(out_path_awslc) +
+                  " < " + ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -sha256 -r -out " + ShellEscape(out_path_openssl) +
+                    " < " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+}
+
 TEST_F(DgstComparisonTest, SignAndVerify) {
   // default binary output
   std::string awslc_command = ShellEscape(awslc_executable_path) +
@@ -482,6 +515,28 @@ TEST_F(DgstTest, FileInput) {
   EXPECT_EQ(kToolExitSuccess, dgstTool(multi_args));
 
   RemoveFile(in_path2);
+}
+
+// Regression guard: -r emits coreutils format "<hash> *<file>". Pin the exact
+// bytes (including the trailing newline) so the output format cannot drift.
+TEST_F(DgstTest, ReverseOutput) {
+  args_list_t args = {"-sha256", "-r", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "cd8465678c8a28c26d117d6215f32de0c2652cbc78d25d86baeaee5a57a8999b *" +
+      std::string(in_path) + "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+// The -r format is independent of the digest algorithm: the hash still comes
+// first, followed by " *<file>".
+TEST_F(DgstTest, ReverseOutputCustomDigest) {
+  args_list_t args = {"-sha1", "-r", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "bc222991b8c14f11a3689721346090471a14adbf *" + std::string(in_path) +
+      "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
 }
 
 class DgstOptionUsageErrorsTest : public DgstTest {
