@@ -17,6 +17,9 @@ extern "C" {
 // without case, or NULL.
 const EVP_MD *awslc_prov_digest_md(const char *name);
 
+// OpenSSL's canonical name for |md|, or NULL.
+const char *awslc_prov_digest_md_name(const EVP_MD *md);
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif

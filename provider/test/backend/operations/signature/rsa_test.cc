@@ -30,9 +30,8 @@ TEST(BackendSignatureTest, MapsOpenSslDigestNames) {
   }
   EXPECT_STREQ("SHA2-512/224", awslc_prov_digest_md_name(EVP_sha512_224()));
 
-  // A prefix of an alias, a signature algorithm, and a digest no RSA
-  // signature can use.
-  for (const char *name : {"SHA2-25", "RSA-SHA256", "SHAKE128"}) {
+  // A prefix of an alias, a signature algorithm, and a digest AWS-LC lacks.
+  for (const char *name : {"SHA2-25", "RSA-SHA256", "SHA2-256/192"}) {
     SCOPED_TRACE(name);
     EXPECT_EQ(nullptr, awslc_prov_digest_md(name));
     EXPECT_EQ(nullptr, awslc_prov_digest_canonical_name(name));

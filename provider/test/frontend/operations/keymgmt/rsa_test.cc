@@ -758,7 +758,6 @@ TEST_F(RsaKeymgmtTest, RefusesRestrictionsOnPlainRsaKey) {
   EXPECT_EQ((unsigned long)AWSLC_PROV_R_INVALID_PARAMETER, ours[0].reason());
 }
 
-
 TEST_F(RsaKeymgmtTest, RefusesUnsupportedGenParams) {
   PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), "RSA", kRequireAwslc));
   ASSERT_TRUE(ctx);
