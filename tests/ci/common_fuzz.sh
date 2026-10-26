@@ -51,6 +51,28 @@ function put_metric {
   set -e
 }
 
+# Publish the merged corpus to S3 for PR builds to seed from. This is best effort: the corpus is already merged into
+# EFS, and PR builds fall back to SRC_CORPUS when no object exists, so a failure here must not fail the trusted build.
+# Callers invoke this with "|| echo ..." and every step is checked explicitly so it behaves the same with or without
+# errexit.
+function publish_corpus_to_s3 {
+  local tarball="${LOCAL_FUZZ_TEST_ROOT}/corpus_upload.tar.gz"
+  local rc=0
+  # The x86 and arm builds merge into the same EFS corpus concurrently, so files can change while tar reads them. GNU
+  # tar reports that as exit status 1 but still writes a usable archive (any bytes are a valid libFuzzer input), so only
+  # a status above 1 is treated as a failure.
+  tar -czf "$tarball" -C "$(dirname "$SHARED_FUZZ_TEST_CORPUS")" "$(basename "$SHARED_FUZZ_TEST_CORPUS")" || rc=$?
+  if [ "$rc" -gt 1 ]; then
+    echo "tar failed with status ${rc} while archiving the corpus"
+    rm -f "$tarball"
+    return 1
+  fi
+  rc=0
+  aws s3 cp "$tarball" "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz" || rc=$?
+  rm -f "$tarball"
+  return "$rc"
+}
+
 function run_fuzz_test {
   SHARED_FUZZ_TEST_CORPUS="${CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
   LOCAL_FUZZ_TEST_ROOT="${LOCAL_RUN_ROOT}/${FUZZ_NAME}"
@@ -70,8 +92,11 @@ function run_fuzz_test {
     CORPUS_TARBALL="${LOCAL_FUZZ_TEST_ROOT}/corpus_download.tar.gz"
     if aws s3 cp "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz" "$CORPUS_TARBALL"; then
       # --strip-components so the archived shared_corpus/ contents land directly
-      # in SHARED_FUZZ_TEST_CORPUS. Guard against path traversal/symlink entries
-      # in the downloaded archive even though we control its producer.
+      # in SHARED_FUZZ_TEST_CORPUS. --no-same-owner/--no-same-permissions keep
+      # extracted files owned by the build user with default modes. GNU tar
+      # already drops leading "/" and rejects ".." members; symlink members are
+      # not filtered, which is acceptable because only the trusted build's role
+      # can write this object.
       tar -xzf "$CORPUS_TARBALL" -C "$SHARED_FUZZ_TEST_CORPUS" --strip-components=1 \
         --no-same-owner --no-same-permissions || echo "Corpus extract failed, continuing with SRC_CORPUS only"
       rm -f "$CORPUS_TARBALL"
@@ -163,10 +188,7 @@ function run_fuzz_test {
     # influence the canonical corpus. A plain object PUT also means there is no
     # delete/sync step that could follow a PR-planted symlink.
     if [ -n "$CORPUS_BUCKET" ]; then
-      UPLOAD_TARBALL="${LOCAL_FUZZ_TEST_ROOT}/corpus_upload.tar.gz"
-      tar -czf "$UPLOAD_TARBALL" -C "$(dirname "$SHARED_FUZZ_TEST_CORPUS")" "$(basename "$SHARED_FUZZ_TEST_CORPUS")"
-      aws s3 cp "$UPLOAD_TARBALL" "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz"
-      rm -f "$UPLOAD_TARBALL"
+      publish_corpus_to_s3 || echo "Publishing the ${FUZZ_NAME} corpus to S3 failed, continuing with the rest of the build"
     fi
   else
     echo "Skipping shared corpus merge-back for untrusted/local run"
