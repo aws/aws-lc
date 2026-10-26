@@ -48,11 +48,18 @@ static int ignore_inheritzero = 0;
 static CRYPTO_once_t fork_detect_ube_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX fork_detect_ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 
-// This value (pointed to) is |volatile| because the value pointed to may be
-// changed by external forces (i.e. the kernel wiping the page) thus the
-// compiler must not assume that it has exclusive access to it.
+// The kernel can clear the flag's backing page after fork or VM cloning.
+// On Linux, use lock-free atomics to avoid the reader lock in the common case.
+// Other platforms retain the original mutex-protected volatile implementation.
+#if defined(OPENSSL_LINUX) && defined(OPENSSL_C11_ATOMIC) && \
+    ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_LLONG_LOCK_FREE == 2
+#define AWSLC_FORK_UBE_ATOMIC_FAST_PATH
+static _Atomic uint32_t *fork_detect_addr = NULL;
+static _Atomic uint64_t fgn = 0;
+#else
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fgn = 0;
+#endif
 
 static int ignore_all_fork_ube_detection(void) {
 
@@ -215,9 +222,16 @@ static void init_fork_detect(void) {
   // might be available. Fail-open.
   init_fork_detect_methods_best_effort(addr, page_size);
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  _Atomic uint32_t *atomic_addr = (_Atomic uint32_t *)addr;
+  atomic_init(atomic_addr, 1);
+  fork_detect_addr = atomic_addr;
+  atomic_store_explicit(&fgn, 1, memory_order_relaxed);
+#else
   *((volatile char *) addr) = 1;
   fork_detect_addr = addr;
   fgn = 1;
+#endif
 }
 
 uint64_t CRYPTO_get_fork_ube_generation(void) {
@@ -237,7 +251,11 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
   // https://github.com/aws/s2n-tls/issues/3107.
   CRYPTO_once(&fork_detect_ube_once, init_fork_detect);
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  _Atomic uint32_t *const flag_ptr = fork_detect_addr;
+#else
   volatile char *const flag_ptr = fork_detect_addr;
+#endif
   if (flag_ptr == NULL) {
     // Our kernel does not support fork detection.
     return 0;
@@ -245,6 +263,26 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
 
   struct CRYPTO_STATIC_MUTEX *const lock = &fork_detect_ube_lock;
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  if (atomic_load_explicit(flag_ptr, memory_order_acquire) != 0) {
+    return atomic_load_explicit(&fgn, memory_order_acquire);
+  }
+
+  CRYPTO_STATIC_MUTEX_lock_write(lock);
+  uint64_t current_fgn = atomic_load_explicit(&fgn, memory_order_relaxed);
+  if (atomic_load_explicit(flag_ptr, memory_order_relaxed) == 0) {
+    current_fgn++;
+    if (current_fgn == 0) {
+      current_fgn = 1;
+    }
+    // Publish the new generation before rearming the flag. An acquire
+    // load observing the rearmed flag must also see the new generation.
+    atomic_store_explicit(&fgn, current_fgn, memory_order_release);
+    atomic_store_explicit(flag_ptr, 1, memory_order_release);
+  }
+  CRYPTO_STATIC_MUTEX_unlock_write(lock);
+  return current_fgn;
+#else
   CRYPTO_STATIC_MUTEX_lock_read(lock);
   uint64_t current_fgn = fgn;
   if (*flag_ptr) {
@@ -268,6 +306,7 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
   CRYPTO_STATIC_MUTEX_unlock_write(lock);
 
   return current_fgn;
+#endif
 }
 
 #elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
