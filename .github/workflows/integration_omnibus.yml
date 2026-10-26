@@ -615,18 +615,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
-      - name: Emit failure metric
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -exo pipefail
-          # Count the number of failing tests, excluding tests which are allowed to fail.
-          failure_count=$(gh api --paginate \
-            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not)) | .name' \
-            | wc -l | tr -d ' ')
-
-          aws cloudwatch put-metric-data \
-            --namespace AWS-LC \
-            --metric-name IntegrationOmnibusFailure \
-            --value "$failure_count"
+      - uses: ./.github/actions/report-workflow-failures
+        with:
+          metric-name: IntegrationOmnibusFailure

@@ -1,0 +1,32 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: 'report-workflow-failures'
+description: 'Publish the number of failed jobs in the current workflow run as a CloudWatch metric'
+# The namespace is fixed to AWS-LC because that is the only namespace the GitHub Actions roles may
+# publish to (see tests/ci/cdk/cdk/aws_lc_github_oidc_stack.py). The calling job must have run
+# configure-aws-credentials first and needs the `actions: read` permission to list its own jobs.
+inputs:
+  metric-name:
+    description: 'CloudWatch metric name (in the AWS-LC namespace) to publish the failed job count under'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Emit failure metric
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        INPUT_METRIC_NAME: ${{ inputs.metric-name }}
+      run: |
+        set -exo pipefail
+        # Count the number of failing tests, excluding tests which are allowed to fail.
+        failure_count=$(gh api --paginate \
+          "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+          --jq '.jobs[] | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not)) | .name' \
+          | wc -l | tr -d ' ')
+
+        aws cloudwatch put-metric-data \
+          --namespace AWS-LC \
+          --metric-name "${INPUT_METRIC_NAME}" \
+          --value "$failure_count"
