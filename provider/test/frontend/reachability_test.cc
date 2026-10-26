@@ -35,7 +35,7 @@ constexpr ReachabilityCell kReachabilityCells[] = {
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512},
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_224},
     {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_256},
-    {OSSL_OP_KEYMGMT, "RSA:rsaEncryption:1.2.840.113549.1.1.1"},
+    {OSSL_OP_KEYMGMT, AWSLC_PROV_NAMES_RSA},
 };
 
 std::vector<std::string> SplitNames(const std::string &names) {

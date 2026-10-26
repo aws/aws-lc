@@ -48,10 +48,8 @@ static const OSSL_ALGORITHM awslc_prov_digests[] = {
 
 // The key management rows, expanded the same way as the digest rows.
 #define AWSLC_PROV_KEYMGMT(fips_property_definition)                           \
-  /* PROV_NAMES_RSA */                                                         \
-  AWSLC_PROV_ALG("RSA:rsaEncryption:1.2.840.113549.1.1.1",                     \
-                 fips_property_definition, rsa_keymgmt,                        \
-                 "AWS-LC RSA implementation")
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_RSA, fips_property_definition,               \
+                 rsa_keymgmt, "AWS-LC RSA implementation")
 
 static const OSSL_ALGORITHM awslc_prov_keymgmt_fips[] = {
     AWSLC_PROV_KEYMGMT(AWSLC_PROV_FIPS_PROPERTIES)
