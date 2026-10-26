@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "boundary/names.h"
+
 namespace awslc_provider_test {
 namespace {
 
@@ -27,14 +29,12 @@ struct ReachabilityCell {
 // verbatim. Duplicates stay duplicated so the comparison below detects both
 // missing coverage and accidental registrations.
 constexpr ReachabilityCell kReachabilityCells[] = {
-    {OSSL_OP_DIGEST, "SHA2-224:SHA-224:SHA224:2.16.840.1.101.3.4.2.4"},
-    {OSSL_OP_DIGEST, "SHA2-256:SHA-256:SHA256:2.16.840.1.101.3.4.2.1"},
-    {OSSL_OP_DIGEST, "SHA2-384:SHA-384:SHA384:2.16.840.1.101.3.4.2.2"},
-    {OSSL_OP_DIGEST, "SHA2-512:SHA-512:SHA512:2.16.840.1.101.3.4.2.3"},
-    {OSSL_OP_DIGEST,
-     "SHA2-512/224:SHA-512/224:SHA512-224:2.16.840.1.101.3.4.2.5"},
-    {OSSL_OP_DIGEST,
-     "SHA2-512/256:SHA-512/256:SHA512-256:2.16.840.1.101.3.4.2.6"},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_224},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_256},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_384},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_224},
+    {OSSL_OP_DIGEST, AWSLC_PROV_NAMES_SHA2_512_256},
 };
 
 std::vector<std::string> SplitNames(const std::string &names) {
