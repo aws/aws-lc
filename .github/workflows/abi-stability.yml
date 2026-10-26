@@ -47,6 +47,8 @@ jobs:
         run: |
           docker build -t abidiff .
       - name: Perform lib${{ matrix.lib }} ABI diff against the validated snapshot
+        env:
+          LIB: ${{ matrix.lib }}
         run: |
           docker run -v "${GITHUB_WORKSPACE}/previous:/previous" -v "${GITHUB_WORKSPACE}/next:/next" \
-            abidiff ${{ matrix.lib }} ignore-additions
+            abidiff "${LIB}" ignore-additions
