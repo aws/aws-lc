@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "boundary.h"
+#include "test/rsa_test_key.h"
 
 namespace awslc_provider_test {
 namespace {
@@ -39,37 +40,6 @@ constexpr int kFipsBuild = 1;
 #else
 constexpr int kFipsBuild = 0;
 #endif
-
-// openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048
-constexpr char kRsa2048Pem[] = R"(-----BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDeKYEu72PGoR5r
-13nd4eJ/fwxCXD9PjeDiWNCwxOHI3XfIYEs7xccWagwbANbqJANdOFSYOOAcVkPP
-OC+p8htNSwKnK3qkobLttwVfCM+WxfeV/id62BlJdSqLfYWe8cmmo2P8CkvKzyTG
-59p1qWyNJeQ5zf8RGfGG+TCbuVQO2f+WbC5JFywXbyQLx8VS7vdFXG1od1/ue3sl
-FyCI7tZpEZPnpPioWbPT9JKLwLO31wLLhrcnUUUZqHRmkn/M3YcUghuJllqEZz1g
-FdVJa4dj/neQaGQcT6Ht+EQFVBH7v9rRQ2JV/n2axr/rjy42XZ8hfCn7Fip97Il4
-FHdyVO2RAgMBAAECggEAKuUFIBiRIXoc61IOoeh6CMdxSMPSZowckl93JdZRyOx3
-8vyisg8JFlsR7MnP9SPQcXiNntmGbfo6/ADbdRr9qgIUaE4VD0H4T/0hQJztJe2h
-1PheS5H7aetBNG8fNFX3ayELjk+3nBg8P9pm3AaDIsqg4wdS2wyxDXBCMiMJp5cU
-MlkStLqMjutIU6zt8+/DqSXCK0uHS/rbP3BC0a9MzrixgEq7nDEKEQp25MBXoB+t
-0JbEeIl9qPhDh6kkaUub8xQT3ap8NHnSL+rE9VWyDVlpq7u4vG9sz4joEQVYHjmW
-3zbpx9BgrGXwQDOv82C257Toqvb5qhYM0onm5JKQhQKBgQDupWUtoS7cGJMfH1oH
-UL2PjNbryEkMDoMFdPddby2YacbXEf/1KxdyUOgNCB5yfWBdWj3yS04TELN7XoSf
-v6ROhn4mQV5eorq0hD0y8kaafV/S00WjA80L8QNjJSHKJB45xw6q2xAS8Ur47pwf
-K8ARhsfG8w6y2OsJfdgN8NNWxQKBgQDuUT8P36yveiVyw7AkscuHebH+Sfy4DzUK
-2Kl9mPnf2Jb4HLTz5IFoRKPlvo/5L5faFWhoyAEwRpKMV1JKW4cdtEbvO62qhdGl
-NoXtOAfZtzvmXuvjVCiNYWzWRq8nll8fSpNg3v8Y9T82WkrNogB5BAGq1t/q+yvL
-hNHmyvtIXQKBgG2r6NGNb2GKkaIN4GvYOSVNTj/RLXCzApdxZ3Sy8TtH8S9JgF2F
-TiMk9191ybhH0g9Ut38wCFNOq40YpM5dXf8QY8zk4Z+QHUl0NEPDf5rj3zOeEDSY
-PJUuT6YynFKvQoy+5Ai037A034WC8pCIpJ3pWMofTTP36BvWj4HomNcZAoGARf42
-t0LKRP9q4Dn5Ec3mKPPlAvpX7vcIbRcVMH4tZUEHlfdYbgk+uJDwUhmVz2na/4Iq
-GBwlvTf88pry4EPheyfnbXvplZuX5x4MV4+NPrRCM3bNcQbWoi9q98PqzYWsilQs
-1NaptXrSBfSe46Yg3Wn/010ohqseQbfQrigPhUECgYAQdaY6kGueFlQHU8T+FTsL
-tfu2IVJg67HOn0fTVjLxDxwG8R1BgnU56FBBNS31HyKW0Dh45A+2ZWH/Bo23vePm
-xiWjXvH6nxGHNwBJW1RPFTUyWIvyNrCI+gbpdRKfZQBOPg/+z0/c1xUmmYNrhu5G
-j0No0XJrRPSZpi/nsuYVHQ==
------END PRIVATE KEY-----
-)";
 
 constexpr char kMessage[] = "RSA key management";
 
