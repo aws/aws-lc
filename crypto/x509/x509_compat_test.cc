@@ -2054,7 +2054,7 @@ TEST(X509CompatTest, EECertificateWithCriticalAKID) {
 }
 
 // A critical CRL Distribution Points extension is rejected unless CRL checking
-// is enabled. With CRL checking enabled, verification proceeds to CRL lookup.
+// is enabled. See |X509Test.CriticalCRLDistributionPoints|.
 TEST(X509CompatTest, EECertificateWithCriticalCRLDistributionPointsExt) {
   bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
   ASSERT_TRUE(root);
@@ -2065,9 +2065,6 @@ TEST(X509CompatTest, EECertificateWithCriticalCRLDistributionPointsExt) {
   EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
             Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
                    /*crls=*/{}, /*flags=*/0));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
-            Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
-                   /*crls=*/{}, X509_V_FLAG_CRL_CHECK));
 }
 
 // EE certificate's trust root is missing the basic constraints extension.
