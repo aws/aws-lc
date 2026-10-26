@@ -29,6 +29,12 @@ int awslc_prov_param_set_utf8_ptr(const AWSLC_PROV_CTX *ctx,
                                   OSSL_PARAM params[], const char *key,
                                   const char *value);
 
+// Read the digest name in |p| into |*out| as its canonical name, from
+// awslc_prov_digest_canonical_name. A NULL |p| succeeds and leaves |*out|; an
+// unreadable or unknown name raises AWSLC_PROV_R_INVALID_PARAMETER naming it.
+int awslc_prov_param_get_digest(const AWSLC_PROV_CTX *ctx, const OSSL_PARAM *p,
+                                const char **out);
+
 // Read the integer param |key| from |params| into |out|. An absent key
 // succeeds with |out->data| NULL.
 int awslc_prov_param_get_bn(const AWSLC_PROV_CTX *provctx,

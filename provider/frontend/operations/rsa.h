@@ -12,6 +12,7 @@ extern "C" {
 
 // frontend/operations/keymgmt/rsa.c
 extern const OSSL_DISPATCH awslc_prov_rsa_keymgmt_functions[];
+extern const OSSL_DISPATCH awslc_prov_rsa_pss_keymgmt_functions[];
 
 #if defined(__cplusplus)
 }  // extern "C"
