@@ -1345,6 +1345,9 @@ class OPENSSL_EXPORT SSLBuffer {
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
+  // buf_hooked_ is the |OPENSSL_raw_malloc| hooked flag for |buf_|. It is only
+  // meaningful if |buf_allocated_| is true.
+  int buf_hooked_ = 0;
   // The total capacity requested for this buffer by |EnsureCap|.
   size_t buf_cap_ = 0;
   // buf_size_ is how much memory allocated for |buf_|. This is needed by

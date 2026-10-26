@@ -1672,6 +1672,8 @@ AWS_LC_1.0 {
     OPENSSL_memdup;
     OPENSSL_no_config;
     OPENSSL_posix_to_tm;
+    OPENSSL_raw_free;
+    OPENSSL_raw_malloc;
     OPENSSL_realloc;
     OPENSSL_secure_clear_free;
     OPENSSL_secure_malloc;

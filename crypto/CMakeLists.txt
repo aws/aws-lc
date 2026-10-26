@@ -747,6 +747,11 @@ if(BUILD_TESTING)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
   target_add_awslc_include_paths(TARGET ${MEM_SET_TEST_EXEC} SCOPE PRIVATE)
+  if(BUILD_LIBSSL)
+    # Also checks that |SSLBuffer| uses the custom allocator.
+    target_link_libraries(${MEM_SET_TEST_EXEC} ssl)
+    target_compile_definitions(${MEM_SET_TEST_EXEC} PRIVATE AWSLC_MEM_SET_TEST_SSL)
+  endif()
 
   # Test randomness generation
   add_test_executable(${RANDOM_ISOLATED_EXEC} fipsmodule/rand/rand_isolated_test.cc)

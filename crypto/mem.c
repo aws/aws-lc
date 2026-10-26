@@ -111,6 +111,35 @@ int CRYPTO_set_mem_functions(
   return 1;
 }
 
+void *OPENSSL_raw_malloc(size_t size, int *out_hooked) {
+  if (malloc_impl != NULL) {
+    *out_hooked = 1;
+    return malloc_impl(size, AWSLC_FILE, AWSLC_LINE);
+  }
+  if (OPENSSL_memory_alloc != NULL) {
+    *out_hooked = 1;
+    return OPENSSL_memory_alloc(size);
+  }
+  *out_hooked = 0;
+  return malloc(size);
+}
+
+void OPENSSL_raw_free(void *ptr, int hooked) {
+  if (ptr == NULL) {
+    return;
+  }
+  if (!hooked) {
+    free(ptr);
+    return;
+  }
+  if (free_impl != NULL) {
+    free_impl(ptr, AWSLC_FILE, AWSLC_LINE);
+    return;
+  }
+  assert(OPENSSL_memory_free != NULL);
+  OPENSSL_memory_free(ptr);
+}
+
 void *OPENSSL_malloc(size_t size) {
   if (malloc_impl != NULL) {
     assert(OPENSSL_memory_alloc == NULL);
