@@ -105,6 +105,28 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
+bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
+  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!stack || !bio) {
+    return nullptr;
+  }
+
+  for (;;) {
+    bssl::UniquePtr<X509> cert(
+        PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+    if (cert == nullptr) {
+      break;
+    }
+    if (!bssl::PushToStack(stack.get(), std::move(cert))) {
+      return nullptr;
+    }
+  }
+  // The loop above ends on a parse error at end of file, so discard that.
+  ERR_clear_error();
+  return stack;
+}
+
 bssl::UniquePtr<RSA> RSAFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   if (!bio) {
