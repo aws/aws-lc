@@ -636,19 +636,25 @@ static int is_valid_rfc822_local_part(const CBS *cbs) {
   return 1;
 }
 
-// Returns 1 if |cbs| contains only characters valid in a DNS domain label
-// per RFC 1034 Sec.3.5 (alphanumeric, hyphen, dot).
+// Returns 1 if |cbs| is a DNS domain name per RFC 1034 Sec.3.5: one or more
+// non-empty labels separated by '.', containing only alphanumerics and
+// hyphens.
 static int is_valid_rfc822_domain(const CBS *cbs) {
-  if (CBS_len(cbs) == 0) {
-    return 0;
-  }
+  int label_empty = 1;
   for (size_t i = 0; i < CBS_len(cbs); i++) {
     uint8_t c = CBS_data(cbs)[i];
-    if (!(OPENSSL_isalnum(c) || c == '-' || c == '.')) {
+    if (c == '.') {
+      if (label_empty) {
+        return 0;
+      }
+      label_empty = 1;
+    } else if (OPENSSL_isalnum(c) || c == '-') {
+      label_empty = 0;
+    } else {
       return 0;
     }
   }
-  return 1;
+  return !label_empty;
 }
 
 static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
@@ -731,7 +737,12 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     uint8_t dot = 0;
     CBS_get_last_u8(&base_cbs, &dot);
   }
-  if (!is_valid_rfc822_domain(&base_cbs)) {
+  // A leading '.' is not part of the domain. It selects subdomains below.
+  CBS base_domain = base_cbs;
+  if (starts_with(&base_domain, '.')) {
+    CBS_skip(&base_domain, 1);
+  }
+  if (!is_valid_rfc822_domain(&base_domain)) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
