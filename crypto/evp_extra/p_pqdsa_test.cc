@@ -2330,9 +2330,11 @@ TEST_P(PQDSAParameterTest, ParsePrivateKeyBoth) {
   OPENSSL_memcpy(der_corrupt, der_priv, der_priv_len);
 
   // ASN.1 DER "both" format accumulative offsets:
-  // SEQUENCE(2) + INT(3) + SEQ/OID(13) + OCTET/SEQ(4) + seed(34) =
-  // expanded_key starts at offset 62
-  const size_t asn1_expanded_key_offset = 62;
+  // SEQUENCE(4) + INT(3) + SEQ/OID(13) + OCTET STRING(4) + SEQUENCE(4) +
+  // OCTET STRING(2) = seed starts at offset 30, and the expanded key follows it
+  // behind an OCTET STRING header of its own(4)
+  const size_t asn1_seed_offset = 30;
+  const size_t asn1_expanded_key_offset = asn1_seed_offset + 32 + 4;
   for(size_t i = 0; i < 4; i++) {
     der_corrupt[asn1_expanded_key_offset + i] ^= 0xff;
   }
@@ -2344,8 +2346,6 @@ TEST_P(PQDSAParameterTest, ParsePrivateKeyBoth) {
 
   // ---- 4. Test with corrupted seed ----
   OPENSSL_memcpy(der_corrupt, der_priv, der_priv_len);
-  // The seed is in the 32 bytes immediately before the expanded key
-  const size_t asn1_seed_offset = asn1_expanded_key_offset - 32;
   for(size_t i = 0; i < 4; i++) {
     der_corrupt[asn1_seed_offset + i] ^= 0xff;
   }
@@ -2353,10 +2353,159 @@ TEST_P(PQDSAParameterTest, ParsePrivateKeyBoth) {
   EXPECT_FALSE(EVP_parse_private_key(&cbs_corrupt));
   ERR_clear_error();
 
+  // ---- 5. Test with an expanded key corrupted only in K ----
+  // The private key is skEncode(rho || K || tr || s1 || s2 || t0), so K, the
+  // private random seed used when signing, is the 32 bytes following rho. It
+  // does not contribute to the public key, so comparing the public keys derived
+  // from the seed and the expanded key does not catch this.
+  OPENSSL_memcpy(der_corrupt, der_priv, der_priv_len);
+  const size_t asn1_expanded_key_k_offset = asn1_expanded_key_offset + 32;
+  for(size_t i = 0; i < 4; i++) {
+    der_corrupt[asn1_expanded_key_k_offset + i] ^= 0xff;
+  }
+  CBS_init(&cbs_corrupt, der_corrupt, der_priv_len);
+  EXPECT_FALSE(EVP_parse_private_key(&cbs_corrupt));
+  GET_ERR_AND_CHECK_REASON(EVP_R_DECODE_ERROR);
+  ERR_clear_error();
+
   // Clean up
   OPENSSL_free(der_corrupt);
   OPENSSL_free(der_pub);
   OPENSSL_free(der_priv);
+}
+
+enum class MLDSAPrivateKeyChoice { kSeed, kExpandedKey, kBoth };
+enum class MLDSATrailingData { kNone, kAfterChoice, kInsideBoth };
+
+// Builds an ML-DSA-XX-PrivateKey PKCS#8 encoding for |choice| out of |seed| and
+// |expanded_key|, reusing the version and algorithm of the encoding in |der|,
+// and places a trailing byte where |trailing| directs.
+static bool EncodeMLDSAPrivateKey(const uint8_t *der, long der_len,
+                                  const CBS *seed, const CBS *expanded_key,
+                                  MLDSAPrivateKeyChoice choice,
+                                  MLDSATrailingData trailing,
+                                  std::vector<uint8_t> *out) {
+  CBS pkcs8, algorithm;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der, der_len);
+  if (!CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&pkcs8, &version) ||
+      !CBS_get_asn1_element(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE)) {
+    return false;
+  }
+
+  bssl::ScopedCBB cbb;
+  CBB seq, private_key, both, seed_cbb, expanded_key_cbb;
+  if (!CBB_init(cbb.get(), der_len + 16) ||
+      !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, version) ||
+      !CBB_add_bytes(&seq, CBS_data(&algorithm), CBS_len(&algorithm)) ||
+      !CBB_add_asn1(&seq, &private_key, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+
+  if (choice == MLDSAPrivateKeyChoice::kSeed) {
+    if (!CBB_add_asn1(&private_key, &seed_cbb,
+                      CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+        !CBB_add_bytes(&seed_cbb, CBS_data(seed), CBS_len(seed))) {
+      return false;
+    }
+  } else if (choice == MLDSAPrivateKeyChoice::kExpandedKey) {
+    if (!CBB_add_asn1(&private_key, &expanded_key_cbb, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&expanded_key_cbb, CBS_data(expanded_key),
+                       CBS_len(expanded_key))) {
+      return false;
+    }
+  } else {
+    if (!CBB_add_asn1(&private_key, &both, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1(&both, &seed_cbb, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&seed_cbb, CBS_data(seed), CBS_len(seed)) ||
+        !CBB_add_asn1(&both, &expanded_key_cbb, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&expanded_key_cbb, CBS_data(expanded_key),
+                       CBS_len(expanded_key)) ||
+        (trailing == MLDSATrailingData::kInsideBoth &&
+         !CBB_add_u8(&both, 0x00))) {
+      return false;
+    }
+  }
+
+  uint8_t *buf = nullptr;
+  size_t buf_len = 0;
+  if ((trailing == MLDSATrailingData::kAfterChoice &&
+       !CBB_add_u8(&private_key, 0x00)) ||
+      !CBB_finish(cbb.get(), &buf, &buf_len)) {
+    return false;
+  }
+  out->assign(buf, buf + buf_len);
+  OPENSSL_free(buf);
+  return true;
+}
+
+// The CHOICE is the entire contents of the privateKey OCTET STRING, so trailing
+// data after it is malformed for every format. |EVP_parse_private_key| rejects
+// trailing data inside the outer PKCS#8 SEQUENCE but does not re-examine the
+// privateKey contents, so |pqdsa_priv_decode| has to catch this.
+TEST_P(PQDSAParameterTest, ParsePrivateKeyTrailingData) {
+  uint8_t *der_priv = nullptr;
+  long der_priv_len = 0;
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_both_str, &der_priv,
+                         &der_priv_len));
+  bssl::UniquePtr<uint8_t> free_der_priv(der_priv);
+
+  CBS pkcs8, algorithm, private_key, sequence, seed, expanded_key;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der_priv, der_priv_len);
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1_uint64(&pkcs8, &version));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
+  ASSERT_TRUE(CBS_get_asn1(&private_key, &sequence, CBS_ASN1_SEQUENCE));
+  ASSERT_TRUE(CBS_get_asn1(&sequence, &seed, CBS_ASN1_OCTETSTRING));
+  ASSERT_TRUE(CBS_get_asn1(&sequence, &expanded_key, CBS_ASN1_OCTETSTRING));
+
+  const struct {
+    const char *name;
+    MLDSAPrivateKeyChoice choice;
+  } kChoices[] = {
+    {"seed [0]", MLDSAPrivateKeyChoice::kSeed},
+    {"expandedKey", MLDSAPrivateKeyChoice::kExpandedKey},
+    {"both SEQUENCE", MLDSAPrivateKeyChoice::kBoth},
+  };
+
+  for (const auto &t : kChoices) {
+    SCOPED_TRACE(t.name);
+
+    // The re-encoding without a trailing byte parses, so the rejections below
+    // are attributable to the trailing byte alone.
+    std::vector<uint8_t> encoded;
+    ASSERT_TRUE(EncodeMLDSAPrivateKey(der_priv, der_priv_len, &seed,
+                                      &expanded_key, t.choice,
+                                      MLDSATrailingData::kNone, &encoded));
+    CBS cbs;
+    CBS_init(&cbs, encoded.data(), encoded.size());
+    ASSERT_TRUE(bssl::UniquePtr<EVP_PKEY>(EVP_parse_private_key(&cbs)));
+
+    ASSERT_TRUE(EncodeMLDSAPrivateKey(der_priv, der_priv_len, &seed,
+                                      &expanded_key, t.choice,
+                                      MLDSATrailingData::kAfterChoice,
+                                      &encoded));
+    CBS_init(&cbs, encoded.data(), encoded.size());
+    EXPECT_FALSE(EVP_parse_private_key(&cbs));
+    GET_ERR_AND_CHECK_REASON(EVP_R_DECODE_ERROR);
+    ERR_clear_error();
+  }
+
+  // Trailing data after the seed and expandedKey but still inside the |both|
+  // SEQUENCE, which the check after the SEQUENCE does not reach.
+  std::vector<uint8_t> encoded;
+  ASSERT_TRUE(EncodeMLDSAPrivateKey(der_priv, der_priv_len, &seed, &expanded_key,
+                                    MLDSAPrivateKeyChoice::kBoth,
+                                    MLDSATrailingData::kInsideBoth, &encoded));
+  CBS cbs;
+  CBS_init(&cbs, encoded.data(), encoded.size());
+  EXPECT_FALSE(EVP_parse_private_key(&cbs));
+  GET_ERR_AND_CHECK_REASON(EVP_R_DECODE_ERROR);
+  ERR_clear_error();
 }
 
 TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
