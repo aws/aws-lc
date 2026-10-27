@@ -1140,6 +1140,54 @@ TEST(CipherTest, ChaCha20) {
   }
 }
 
+// Re-initialization must discard buffered keystream, matching OpenSSL.
+TEST(CipherTest, ChaCha20Reinit) {
+  const EVP_CIPHER *cipher = EVP_chacha20();
+  uint8_t key1[32], key2[32], iv[16];
+  RAND_bytes(key1, sizeof(key1));
+  RAND_bytes(key2, sizeof(key2));
+  RAND_bytes(iv, sizeof(iv));
+  iv[3] = 0;  // Keep the counter away from 32-bit wraparound.
+  const uint32_t counter = CRYPTO_load_u32_le(iv);
+  const uint8_t *nonce = iv + 4;
+
+  auto keystream = [](const uint8_t *k, const uint8_t *n, uint32_t ctr) {
+    std::vector<uint8_t> ks(5, 0);
+    CRYPTO_chacha_20(ks.data(), ks.data(), ks.size(), k, n, ctr);
+    return ks;
+  };
+  const uint8_t zero[64] = {0};
+  uint8_t out[64];
+  int n;
+
+  // Re-key mid-block without an IV: the current block is regenerated under
+  // the new key.
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key2, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key2, nonce, counter)), Bytes(out, 5));
+
+  // Exhaust the buffered block exactly, then re-init: the next output starts
+  // at the following block rather than reusing the consumed one.
+  bssl::ScopedEVP_CIPHER_CTX ctx2;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx2.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 59));
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(ctx2.get(), nullptr, nullptr, nullptr, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, nonce, counter + 1)), Bytes(out, 5));
+
+  // A key-only init on a fresh context starts from an all-zero IV.
+  const uint8_t zero_nonce[12] = {0};
+  bssl::ScopedEVP_CIPHER_CTX ctx3;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx3.get(), cipher, nullptr, key1, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx3.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, zero_nonce, 0)), Bytes(out, 5));
+}
+
 OPENSSL_BEGIN_ALLOW_DEPRECATED
 // |EVP_add_cipher| is a no-op that exists for OpenSSL compatibility. Callers
 // such as aioquic register ciphers with it at startup and then look them up.

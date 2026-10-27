@@ -38,9 +38,21 @@ static int chacha20_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   if (iv != NULL) {
     c->counter = CRYPTO_load_u32_le(iv);
     OPENSSL_memcpy(c->nonce, iv + 4, sizeof(c->nonce));
-    c->buf_offset = 0;
   }
+  // Any (re-)initialization discards buffered keystream, as OpenSSL does. The
+  // counter still points at the partially used block, so it is regenerated
+  // under the current key.
+  c->buf_offset = 0;
   return 1;
+}
+
+static int chacha20_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
+  if (type == EVP_CTRL_INIT) {
+    // |cipher_data| is not zero-initialized; start from an all-zero IV state.
+    OPENSSL_memset(ctx->cipher_data, 0, sizeof(struct chacha20_ctx));
+    return 1;
+  }
+  return -1;
 }
 
 static int chacha20_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
@@ -55,6 +67,7 @@ static int chacha20_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     }
     if (c->buf_offset == sizeof(c->buf)) {
       c->buf_offset = 0;
+      c->counter++;
     }
   }
 
@@ -71,11 +84,11 @@ static int chacha20_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
 
   // Final partial block: generate one keystream block and buffer the remainder.
+  // |counter| advances only once the buffered block is fully consumed.
   if (in_len > 0) {
     OPENSSL_memset(c->buf, 0, sizeof(c->buf));
     CRYPTO_chacha_20(c->buf, c->buf, sizeof(c->buf), c->key, c->nonce,
                      c->counter);
-    c->counter++;
     for (size_t i = 0; i < in_len; i++) {
       out[i] = in[i] ^ c->buf[i];
     }
@@ -91,9 +104,10 @@ static const EVP_CIPHER chacha20 = {
     .key_len = 32,
     .iv_len = 16,
     .ctx_size = sizeof(struct chacha20_ctx),
-    .flags = EVP_CIPH_ALWAYS_CALL_INIT,
+    .flags = EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT,
     .init = chacha20_init_key,
     .cipher = chacha20_cipher,
+    .ctrl = chacha20_ctrl,
 };
 
 const EVP_CIPHER *EVP_chacha20(void) { return &chacha20; }
