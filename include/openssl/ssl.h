@@ -4248,6 +4248,9 @@ OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 // valid but none of the ECHConfigs implement supported parameters, it will
 // return success and proceed without ECH.
 //
+// ECH requires TLS 1.3, so this function returns an error if |ssl| is a DTLS
+// connection.
+//
 // If a supported ECHConfig is found, |ssl| will encrypt the true ClientHello
 // parameters. If the server cannot decrypt it, e.g. due to a key mismatch, ECH
 // has a recovery flow. |ssl| will handshake using the cleartext parameters,
@@ -4365,6 +4368,9 @@ OPENSSL_EXPORT int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys,
 // ClientHellos. It returns one on success, and zero on failure. If |keys| does
 // not contain any retry configs, this function will fail. Retry configs are
 // marked as such when they are added to |keys| with |SSL_ECH_KEYS_add|.
+//
+// ECH requires TLS 1.3, so this function fails if |ctx| was created with
+// |DTLS_method|.
 //
 // Once |keys| has been passed to this function, it is immutable. Unlike most
 // |SSL_CTX| configuration functions, this function may be called even if |ctx|
@@ -5347,13 +5353,15 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
 // SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ctx| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
 
 // SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ssl| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);

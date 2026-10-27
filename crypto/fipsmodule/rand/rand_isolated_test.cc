@@ -22,12 +22,11 @@
 static const size_t request_len = 64;
 static const size_t number_of_threads = 8;
 
-static thread_local size_t initialize_count = 0;
-static thread_local size_t zeroize_thread_count = 0;
-static thread_local size_t free_thread_count = 0;
+// Only the seed and extra-entropy calls are counted; |assertSeedOrReseed|
+// checks both. The other overrides below are no-ops that exist so every
+// method in |entropy_methods| is non-null.
 static thread_local size_t get_seed_count = 0;
 static thread_local size_t get_extra_entropy_count = 0;
-static thread_local size_t get_prediction_resistance_count = 0;
 
 static thread_local size_t cached_get_seed_count = 0;
 static thread_local size_t cached_get_extra_entropy_count = 0;
@@ -43,17 +42,12 @@ static entropy_source_methods entropy_methods{
 };
 
 static int overrideInitialize(struct entropy_source_t *entropy_source) {
-  initialize_count++;
   return 1;
 }
 
-static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {
-  zeroize_thread_count++;
-}
+static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {}
 
-static void overrideFreeThread(struct entropy_source_t *entropy_source) {
-  free_thread_count++;
-}
+static void overrideFreeThread(struct entropy_source_t *entropy_source) {}
 
 static int overrideGetSeed(const struct entropy_source_t *entropy_source,
   uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
@@ -70,7 +64,6 @@ static int overrideGetExtraEntropy(const struct entropy_source_t *entropy_source
 static int overrideGetPredictionResistance(
   const struct entropy_source_t *entropy_source,
   uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
-  get_prediction_resistance_count++;
   return 1;
 }
 
@@ -172,6 +165,76 @@ TEST_F(randIsolatedTest, BasicThread) {
 
     bool exit_code = threadTest(number_of_threads, threadFunc);
     exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+// overrideGetSeedBumpUbeOnFirstCall bumps the mocked UBE generation number as a
+// side effect of sourcing the initial seed material. This simulates an UBE
+// landing in the window between sourcing the seed material in
+// |rand_state_initialize| and the uniqueness check in |rand_bytes_core|.
+static int overrideGetSeedBumpUbeOnFirstCall(
+  const struct entropy_source_t *entropy_source,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+
+  get_seed_count++;
+
+  // Bump only on the initial seed, so that the UBE lands strictly before the
+  // uniqueness check that re-syncs |state->generation_number|. A bump during
+  // the forced reseed, or in a second thread, would instead advance the
+  // process-global generation number mid-call and make |rand_ensure_valid_state|
+  // abort rather than fail the assertion below.
+  if (get_seed_count == 1) {
+    set_vm_ube_generation_number_FOR_TESTING(1);
+  }
+
+  return 1;
+}
+
+static void overrideEntropySourceMethodsBumpUbeOnSeed() {
+  entropy_methods = {
+    &overrideInitialize,
+    &overrideZeroizeThread,
+    &overrideFreeThread,
+    &overrideGetSeedBumpUbeOnFirstCall,
+    &overrideGetExtraEntropy,
+    &overrideGetPredictionResistance,
+    OVERRIDDEN_ENTROPY_SOURCE
+  };
+  override_entropy_source_method_FOR_TESTING(&entropy_methods);
+}
+
+// A freshly initialized CTR-DRBG state is exempt from the mandatory reseed only
+// when UBE detection is unavailable.
+TEST_F(randIsolatedTest, FreshStateReseedsOnDetectedUbe) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testFunc = [this]() {
+
+    allowMockedUbe();
+    overrideEntropySourceMethodsBumpUbeOnSeed();
+
+    std::function<void(bool*)> threadFunc = [](bool *result) {
+      // In a fresh thread we expect a seed for the initial state, and a reseed
+      // forced by the UBE that the |get_seed| override triggered in between.
+      bool test1 = assertSeedOrReseed(2, []() {
+        return generateRandomness(request_len);
+      }, "fresh state with detected UBE");
+
+      // The UBE has been absorbed. With the generation number stable again, no
+      // further reseed is expected.
+      bool test2 = assertSeedOrReseed(0, []() {
+        return generateRandomness(request_len);
+      }, "state after absorbed UBE");
+
+      *result = test1 && test2;
+    };
+
+    exit(threadTest(1, threadFunc) ? 0 : 1);
   };
 
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");

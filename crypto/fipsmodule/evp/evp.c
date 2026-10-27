@@ -670,7 +670,7 @@ int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   SET_DIT_AUTO_RESET;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
-                           0, (void *)out_md);
+                           0, (void *)out_md) > 0;
 }
 
 int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
@@ -678,7 +678,7 @@ int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                        size_t context_len) {
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params) > 0;
 }
 
 int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
@@ -693,8 +693,8 @@ int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
   GUARD_PTR(context);
   GUARD_PTR(context_len);
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {NULL, 0};
-  if (!EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                         EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params)) {
+  if (EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                        EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params) <= 0) {
     return 0;
   }
   *context = params.context;

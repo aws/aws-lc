@@ -252,6 +252,22 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              generic/word_negmodinv.o \
              generic/word_popcount.o \
              generic/word_recip.o \
+             mldsa/mldsa_caddq.o \
+             mldsa/mldsa_chknorm.o \
+             mldsa/mldsa_decompose_32.o \
+             mldsa/mldsa_decompose_88.o \
+             mldsa/mldsa_intt.o \
+             mldsa/mldsa_pointwise_acc_l4.o \
+             mldsa/mldsa_pointwise_acc_l5.o \
+             mldsa/mldsa_pointwise_acc_l7.o \
+             mldsa/mldsa_ntt.o \
+             mldsa/mldsa_pointwise.o \
+             mldsa/mldsa_poly_use_hint_32.o \
+             mldsa/mldsa_poly_use_hint_88.o \
+             mldsa/mldsa_polyz_unpack_17.o \
+             mldsa/mldsa_polyz_unpack_19.o \
+             mldsa/mldsa_rej_uniform_eta2_VARIABLE_TIME.o \
+             mldsa/mldsa_rej_uniform_eta4_VARIABLE_TIME.o \
              mlkem/mlkem_basemul_k2.o \
              mlkem/mlkem_basemul_k3.o \
              mlkem/mlkem_basemul_k4.o \
@@ -262,6 +278,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              mlkem/mlkem_tobytes.o \
              mlkem/mlkem_tomont.o \
              mlkem/mlkem_rej_uniform_VARIABLE_TIME.o \
+             mldsa/mldsa_rej_uniform_VARIABLE_TIME.o \
              p256/bignum_add_p256.o \
              p256/bignum_bigendian_4.o \
              p256/bignum_cmul_p256.o \
@@ -342,7 +359,9 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              secp256k1/bignum_demont_p256k1.o \
              secp256k1/bignum_double_p256k1.o \
              secp256k1/bignum_half_p256k1.o \
+             secp256k1/bignum_mod_n256k1.o \
              secp256k1/bignum_mod_n256k1_4.o \
+             secp256k1/bignum_mod_p256k1.o \
              secp256k1/bignum_mod_p256k1_4.o \
              secp256k1/bignum_montmul_p256k1.o \
              secp256k1/bignum_montmul_p256k1_alt.o \
@@ -404,13 +423,17 @@ UNOPT_OBJ = p256/unopt/bignum_montmul_p256_base.o \
             fastmul/unopt/bignum_mul_8_16_base.o \
             fastmul/unopt/bignum_sqr_8_16_base.o
 
-OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
+AES_XTS_OBJ = aes-xts/aes_xts_decrypt.o \
+              aes-xts/aes_xts_encrypt.o
+
+
+OBJ = $(POINT_OBJ) $(BIGNUM_OBJ) $(AES_XTS_OBJ)
 
 # Tutorial assembly files
 
 TUTORIAL_PROOFS = $(wildcard tutorial/*.ml)
 
-TUTORIAL_OBJ = $(filter-out tutorial/safety.o, $(TUTORIAL_PROOFS:.ml=.o)) \
+TUTORIAL_OBJ = $(filter-out tutorial/aes_encrypt_decrypt.o tutorial/safety.o, $(TUTORIAL_PROOFS:.ml=.o)) \
     curve25519/bignum_mod_n25519.o p256/bignum_mux_4.o \
     tutorial/rel_loop2.o \
     tutorial/rel_simp2.o tutorial/rel_veceq2.o tutorial/rel_equivtac2.o \
@@ -421,9 +444,9 @@ TUTORIAL_OBJ = $(filter-out tutorial/safety.o, $(TUTORIAL_PROOFS:.ml=.o)) \
 # x18 should not be used for Apple platforms. Check this using grep.
 
 %.o : %.S
-	cat $< | $(PREPROCESS) | $(SPLIT) | grep -v -E '^\s+\.(quad|hword)\s+(0x|-)?[0-9a-f]+$$' | $(ASSEMBLE) -o $@ -
+	cat $< | $(PREPROCESS) | $(SPLIT) | grep -v -E '^\s+.quad\s+0x[0-9a-f]+$$' | $(ASSEMBLE) -march=armv8-a+crypto -o $@ -
 	$(OBJDUMP) $@ | ( ( ! grep --ignore-case -E 'w18|[^0]x18' ) || ( rm $@ ; exit 1 ) )
-	cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
+	cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -march=armv8-a+crypto -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
@@ -458,7 +481,7 @@ TUTORIAL_PROOF_LOGS = $(TUTORIAL_PROOFS:.ml=.correct)
 
 # Build precompiled native binaries of HOL Light proofs
 
-proofs/simulator.native: proofs/simulator.ml $(BASE_ML) proofs/simulator_iclasses.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+proofs/simulator.native: proofs/simulator.ml ../common/cosim.ml ../common/sematest.ml $(BASE_ML) proofs/simulator_iclasses.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
 
 # For constant-time property and memory safety, collect input/output/temporary
 # buffers from function signatures in s2n-bignum.h .
@@ -525,6 +548,12 @@ sm2/sm2_montjscalarmul_alt.native: sm2/sm2_montjadd_alt.native sm2/sm2_montjdoub
 tutorial/safety.native: tutorial/safety.ml proofs/bignum_mux_4.ml \
                         curve25519/bignum_mod_n25519.o ; \
   ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+
+# aes_encrypt_decrypt tutorial concatenates proofs for both aes_encrypt.S and aes_decrypt.S
+tutorial/aes_encrypt_decrypt.native: tutorial/aes_encrypt_decrypt.ml \
+                                     tutorial/aes_encrypt.o tutorial/aes_decrypt.o ; \
+  ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+
 # other tutorials have their .o files
 .SECONDEXPANSION:
 tutorial/%.native: tutorial/%.ml tutorial/%.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"

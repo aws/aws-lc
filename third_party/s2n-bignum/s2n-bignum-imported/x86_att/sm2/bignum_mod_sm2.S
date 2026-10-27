@@ -18,6 +18,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_sm2)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_sm2)
         .text
+        .balign 32
 
 #define z %rdi
 #define k %rsi

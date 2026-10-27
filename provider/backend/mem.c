@@ -17,3 +17,7 @@ void *awslc_prov_zalloc(size_t size) {
 void awslc_prov_clear_free(void *ptr, size_t size) {
   OPENSSL_clear_free(ptr, size);
 }
+
+void awslc_prov_cleanse(void *ptr, size_t size) {
+  OPENSSL_cleanse(ptr, size);
+}

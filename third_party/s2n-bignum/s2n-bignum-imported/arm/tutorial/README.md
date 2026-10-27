@@ -14,6 +14,8 @@ To verify programs in x86, see `x86/tutorial`.
 6. `bignum.ml`: Writing a specification of a program dealing with big numbers & proving it.
 7. `rodata.ml`: Reading data from the read-only section.
 8. `safety.ml`: Verify the safety property (constant-time and and memory-safe)
+9. `aes_encrypt.ml`: Verifying a simple AES encryption program.
+10. `aes_decrypt.ml`: Verifying a simple AES decryption program.
 
 ### Relational reasoning
 
@@ -22,3 +24,5 @@ To verify programs in x86, see `x86/tutorial`.
 3. `rel_reordertac.ml`: Proving equivalence of two programs where the second one has instructions reordered from that of the first one.
 4. `rel_loop.ml`: Proving equivalence of two simple loops.
 5. `rel_veceq.ml`: Proving equivalence of scalar vs. vectorized 128x128->256-bit squaring.
+
+[doc/program_equivalence.md](../../doc/program_equivalence.md) has detailed explanations about the structures of program equivalence proofs in s2n-bignum.

@@ -75,12 +75,27 @@ static const argument_t kArguments[] = {
      "Config file with X509V3 extensions to add"},
     {"-extensions", kOptionalArgument,
      "Section of extfile to use - default: unnamed section"},
+    {"-serial", kBooleanArgument, "Print the certificate serial number"},
+    {"-addtrust", kOptionalArgument,
+     "Add a trusted use (e.g. clientAuth, serverAuth) to the certificate"},
+    {"-trustout", kBooleanArgument,
+     "Output the certificate as a trusted certificate"},
     {"", kOptionalArgument, ""}};
 
 static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
                                    const std::string &out_path,
-                                   const std::string &outform) {
-  if (!outform.empty() && isStringUpperCaseEqual(outform, "DER")) {
+                                   const std::string &outform, bool trustout) {
+  const bool der = !outform.empty() && isStringUpperCaseEqual(outform, "DER");
+  if (trustout && !der) {
+    if (!PEM_write_bio_X509_AUX(output_bio.get(), x509)) {
+      fprintf(stderr, "Error: error writing certificate to '%s'\n",
+              out_path.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    return true;
+  }
+  if (der) {
     if (!i2d_X509_bio(output_bio.get(), x509)) {
       fprintf(stderr, "Error: error writing certificate to '%s'\n",
               out_path.c_str());
@@ -558,20 +573,31 @@ static bool handleDates(X509 *x509, BIO *output_bio) {
   return true;
 }
 
-// handleCheckend prints whether the certificate expires within |arg_value|
-// seconds and sets |*will_expire| accordingly. It returns false only on error.
-static bool handleCheckend(X509 *x509, BIO *output_bio,
-                           const std::string &arg_value, bool *will_expire) {
+// Parses a -checkend argument: a non-negative integer number of seconds within
+// range. Factored out so the value can be validated up front during option
+// parsing (as OpenSSL does) and reused when the option is handled.
+static bool ParseCheckend(const std::string &arg_value, int64_t *out) {
   if (!IsNumeric(arg_value)) {
     fprintf(stderr,
             "Error: '-checkend' option must include a non-negative integer\n");
     return false;
   }
-
   errno = 0;
-  const int64_t checkend_val = strtoll(arg_value.c_str(), nullptr, 10);
+  const int64_t value = strtoll(arg_value.c_str(), nullptr, 10);
   if (errno == ERANGE) {
     fprintf(stderr, "Error: '-checkend' value is too large\n");
+    return false;
+  }
+  *out = value;
+  return true;
+}
+
+// handleCheckend prints whether the certificate expires within |arg_value|
+// seconds and sets |*will_expire| accordingly. It returns false only on error.
+static bool handleCheckend(X509 *x509, BIO *output_bio,
+                           const std::string &arg_value, bool *will_expire) {
+  int64_t checkend_val = 0;
+  if (!ParseCheckend(arg_value, &checkend_val)) {
     return false;
   }
   bssl::UniquePtr<ASN1_TIME> current_time(
@@ -624,6 +650,12 @@ static bool ProcessArgument(const std::string &arg_name,
   if (arg_name == "-subject") {
     return handleSubject(x509, output_bio.get(), name_flags);
   }
+  if (arg_name == "-serial") {
+    BIO_printf(output_bio.get(), "serial=");
+    i2a_ASN1_INTEGER(output_bio.get(), X509_get_serialNumber(x509));
+    BIO_printf(output_bio.get(), "\n");
+    return true;
+  }
   if (arg_name == "-subject_hash") {
     const uint32_t hash_value = X509_subject_name_hash(x509);
     BIO_printf(output_bio.get(), "%08x\n", hash_value);
@@ -651,6 +683,37 @@ static bool ProcessArgument(const std::string &arg_name,
     return handleCheckend(x509, output_bio.get(), arg_value, will_expire);
   }
   return true;
+}
+
+// Applies -addtrust trust objects to the certificate.
+static bool ApplyTrustObjects(X509 *x509,
+                              const std::vector<std::string> &add_trusts) {
+  for (const auto &trust : add_trusts) {
+    bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj(trust.c_str(), 0));
+    if (!obj || !X509_add1_trust_object(x509, obj.get())) {
+      fprintf(stderr, "Error: unable to add trust '%s'\n", trust.c_str());
+      return false;
+    }
+  }
+  return true;
+}
+
+// Opens the output destination. Call this only after all parsing, signing, and
+// validation have succeeded so that opening a file (which truncates it) cannot
+// destroy the input of an in-place -in/-out rewrite on a failure path.
+static bssl::UniquePtr<BIO> OpenOutputBio(const std::string &out_path) {
+  bssl::UniquePtr<BIO> output_bio;
+  if (out_path.empty()) {
+    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else {
+    output_bio.reset(BIO_new(BIO_s_file()));
+    if (!output_bio ||
+        BIO_write_filename(output_bio.get(), out_path.c_str()) != 1) {
+      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+      return nullptr;
+    }
+  }
+  return output_bio;
 }
 
 // Map arguments using tool/args.cc
@@ -691,16 +754,6 @@ int X509Tool(const args_list_t &args) {
   if (help) {
     PrintUsage(kArguments);
     return kToolExitSuccess;
-  }
-  bssl::UniquePtr<BIO> output_bio;
-  if (out_path.empty()) {
-    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
-  } else {
-    output_bio.reset(BIO_new(BIO_s_file()));
-    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return kToolExitFailure;
-    }
   }
 
   // -req must include a private key
@@ -757,6 +810,17 @@ int X509Tool(const args_list_t &args) {
     days.reset(new unsigned(std::stoul(days_str)));
   }
 
+  // Validate -checkend up front, as OpenSSL rejects the value during option
+  // parsing, so an invalid value fails before any output file is opened.
+  if (ordered_args::HasArgument(parsed_args, "-checkend")) {
+    std::string checkend_str;
+    ordered_args::GetString(&checkend_str, "-checkend", "", parsed_args);
+    int64_t checkend_val = 0;
+    if (!ParseCheckend(checkend_str, &checkend_val)) {
+      return kToolExitFailure;
+    }
+  }
+
   // Check -inform has a valid value
   if (!inform.empty()) {
     if (!isStringUpperCaseEqual(inform, "DER") &&
@@ -796,18 +860,41 @@ int X509Tool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
-  // Read from stdin if no -in path provided
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to load certificate from '%s'\n",
-              in_path.c_str());
+  // Read the entire input up front (bounded at 1 MiB by ReadAll) so an in-place
+  // rewrite (-in and -out naming the same file) never reads from a file the
+  // output has already truncated, and so the DER path can see trailing trust
+  // data.
+  std::vector<uint8_t> input_data;
+  {
+    ScopedFILE in_file;
+    FILE *in = stdin;
+    if (!in_path.empty()) {
+      in_file.reset(fopen(in_path.c_str(), "rb"));
+      if (!in_file) {
+        fprintf(stderr, "Error: unable to load certificate from '%s'\n",
+                in_path.c_str());
+        return kToolExitFailure;
+      }
+      in = in_file.get();
+    }
+    if (!ReadAll(&input_data, in)) {
+      fprintf(stderr, "Error: unable to read input from '%s'\n",
+              in_path.empty() ? "stdin" : in_path.c_str());
       return kToolExitFailure;
     }
   }
+  bssl::UniquePtr<BIO> in_bio(
+      BIO_new_mem_buf(input_data.data(), static_cast<int>(input_data.size())));
+  if (!in_bio) {
+    return kToolExitFailure;
+  }
+
+  // The real output is opened lazily (OpenOutputBio) only after all fallible
+  // work succeeds. In the non-req branch, per-option print output is first
+  // written to an in-memory BIO and copied out only once every option has
+  // succeeded, so a failing option (e.g. -modulus on a non-RSA certificate)
+  // never truncates an in-place -in/-out target.
+  bssl::UniquePtr<BIO> output_bio;
 
   // Load CA and CA key
   bssl::UniquePtr<X509> ca;
@@ -822,16 +909,37 @@ int X509Tool(const args_list_t &args) {
     }
   }
 
+  std::vector<std::string> add_trusts;
+  ordered_args::FindAll(add_trusts, "-addtrust", parsed_args);
+  // As in OpenSSL, -addtrust implies -trustout.
+  const bool trustout = ordered_args::HasArgument(parsed_args, "-trustout") ||
+                        !add_trusts.empty();
+
   if (req) {
     bssl::UniquePtr<X509_REQ> csr;
     if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
-      csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
+      csr.reset(d2i_X509_REQ_bio(in_bio.get(), nullptr));
     } else {
-      csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+      csr.reset(PEM_read_bio_X509_REQ(in_bio.get(), nullptr, nullptr, nullptr));
     }
 
     if (!csr) {
       fprintf(stderr, "Error: error parsing CSR from '%s'\n", in_path.c_str());
+      ERR_print_errors_fp(stderr);
+      return kToolExitFailure;
+    }
+
+    // Verify proof of possession
+    bssl::UniquePtr<EVP_PKEY> req_pubkey(X509_REQ_get_pubkey(csr.get()));
+    if (!req_pubkey) {
+      fprintf(stderr, "Error: unable to get public key from CSR\n");
+      ERR_print_errors_fp(stderr);
+      return kToolExitFailure;
+    }
+
+    if (X509_REQ_verify(csr.get(), req_pubkey.get()) <= 0) {
+      fprintf(stderr,
+              "Error: certificate request signature verification failed\n");
       ERR_print_errors_fp(stderr);
       return kToolExitFailure;
     }
@@ -855,8 +963,8 @@ int X509Tool(const args_list_t &args) {
     // - If no signkey provided: use public key from the CSR
     // - If signkey provided: use public key from the signkey
     if (signkey_path.empty()) {
-      bssl::UniquePtr<EVP_PKEY> csr_pkey(X509_REQ_get_pubkey(csr.get()));
-      if (!csr_pkey || !X509_set_pubkey(x509.get(), csr_pkey.get())) {
+      // Reuse the public key already fetched above for proof of possession
+      if (!X509_set_pubkey(x509.get(), req_pubkey.get())) {
         fprintf(stderr, "Error: unable to set public key from CSR\n");
         return kToolExitFailure;
       }
@@ -899,16 +1007,37 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
+    if (!ApplyTrustObjects(x509.get(), add_trusts)) {
+      return kToolExitFailure;
+    }
+    output_bio = OpenOutputBio(out_path);
+    if (!output_bio) {
+      return kToolExitFailure;
+    }
+    if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform,
+                                trustout)) {
       return kToolExitFailure;
     }
   } else {
     // Parse x509 certificate from input file
     bssl::UniquePtr<X509> x509;
     if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
-      x509.reset(d2i_X509_fp(in_file.get(), nullptr));
+      // d2i_X509_AUX (unlike d2i_X509_bio) preserves trailing trust data.
+      const uint8_t *der = input_data.data();
+      x509.reset(
+          d2i_X509_AUX(nullptr, &der, static_cast<long>(input_data.size())));
+      if (!x509) {
+        // As in OpenSSL 3, fall back to a plain certificate so DER input with
+        // trailing bytes (e.g. a trailing newline or concatenated certs) that
+        // are not a valid X509_CERT_AUX is still accepted.
+        ERR_clear_error();
+        der = input_data.data();
+        x509.reset(
+            d2i_X509(nullptr, &der, static_cast<long>(input_data.size())));
+      }
     } else {
-      x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+      // PEM_read_bio_X509_AUX accepts both CERTIFICATE and TRUSTED CERTIFICATE.
+      x509.reset(PEM_read_bio_X509_AUX(in_bio.get(), nullptr, nullptr, nullptr));
     }
 
     if (!x509) {
@@ -945,6 +1074,17 @@ int X509Tool(const args_list_t &args) {
       }
     }
 
+    if (!ApplyTrustObjects(x509.get(), add_trusts)) {
+      return kToolExitFailure;
+    }
+    // Buffer per-option print output in memory so a failing option never
+    // truncates an in-place -in/-out target; the real output is opened only
+    // after every option has succeeded.
+    bssl::UniquePtr<BIO> print_bio(BIO_new(BIO_s_mem()));
+    if (!print_bio) {
+      return kToolExitFailure;
+    }
+
     // Process arguments in the order they were provided
     bool dates_processed = false;
     bool will_expire = false;
@@ -956,15 +1096,34 @@ int X509Tool(const args_list_t &args) {
       if (arg_name == "-in" || arg_name == "-out" || arg_name == "-inform" ||
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
-          arg_name == "-CAkey" || arg_name == "-nameopt") {
+          arg_name == "-CAkey" || arg_name == "-nameopt" ||
+          arg_name == "-addtrust" || arg_name == "-trustout") {
         continue;
       }
 
-      if (!ProcessArgument(arg_name, arg_value, x509.get(), output_bio,
+      if (!ProcessArgument(arg_name, arg_value, x509.get(), print_bio,
                            &dates_processed, &will_expire, name_flags,
                            nameopt_explicit)) {
         return kToolExitFailure;
       }
+    }
+
+    // All options succeeded; open (and truncate) the output only now, then
+    // copy the buffered print output to it.
+    output_bio = OpenOutputBio(out_path);
+    if (!output_bio) {
+      return kToolExitFailure;
+    }
+    const uint8_t *print_data = nullptr;
+    size_t print_len = 0;
+    if (!BIO_mem_contents(print_bio.get(), &print_data, &print_len)) {
+      return kToolExitFailure;
+    }
+    if (print_len > 0 &&
+        BIO_write(output_bio.get(), print_data, static_cast<int>(print_len)) !=
+            static_cast<int>(print_len)) {
+      fprintf(stderr, "Error: unable to write output\n");
+      return kToolExitFailure;
     }
 
     if (ordered_args::HasArgument(parsed_args, "-checkend")) {
@@ -974,7 +1133,8 @@ int X509Tool(const args_list_t &args) {
     }
 
     if (!noout) {
-      if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform)) {
+      if (!WriteSignedCertificate(x509.get(), output_bio, out_path, outform,
+                                  trustout)) {
         return kToolExitFailure;
       }
     }

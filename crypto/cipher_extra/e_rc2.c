@@ -333,8 +333,11 @@ typedef struct {
 static int rc2_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
   EVP_RC2_KEY *rc2_key = (EVP_RC2_KEY *)ctx->cipher_data;
-  RC2_set_key(&rc2_key->ks, EVP_CIPHER_CTX_key_length(ctx), key,
-              rc2_key->key_bits);
+  unsigned key_len = EVP_CIPHER_CTX_key_length(ctx);
+  if (key_len > 128) {
+    key_len = 128;
+  }
+  RC2_set_key(&rc2_key->ks, key_len, key, rc2_key->key_bits);
   return 1;
 }
 

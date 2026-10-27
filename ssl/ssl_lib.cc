@@ -1737,7 +1737,7 @@ int SSL_get_read_ahead(const SSL *ssl) {
 
 int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
   GUARD_PTR(ctx);
-  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  // SSLBUFFER_MAX_CAPACITY is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
   }
@@ -1750,7 +1750,7 @@ int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
 
 int SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
   GUARD_PTR(ssl);
-  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  // SSLBUFFER_MAX_CAPACITY is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
   }

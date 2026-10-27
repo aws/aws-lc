@@ -877,7 +877,6 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
         stp     x0, x1, [xm]
         ldp     x0, x1, [x+16]
         stp     x0, x1, [xm+16]
-        ldp     x0, x1, [x+32]
         stp     x2, xzr, [zm]
         stp     xzr, xzr, [zm+16]
         mov     swap, xzr

@@ -803,6 +803,14 @@ class SocketLineReader {
         return false;
       }
 
+      if (n == 0) {
+        // The peer closed the connection without terminating the line. Without
+        // this check the loop would spin forever, because |buf_len_| can no
+        // longer grow and no '\n' will be found.
+        fprintf(stderr, "Unexpected EOF from socket\n");
+        return false;
+      }
+
       buf_len_ += n;
     }
   }

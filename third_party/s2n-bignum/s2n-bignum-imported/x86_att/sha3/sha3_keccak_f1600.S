@@ -27,6 +27,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(sha3_keccak_f1600)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sha3_keccak_f1600)
         .text
+        .balign 32
 
 S2N_BN_SYMBOL(sha3_keccak_f1600):
         CFI_START

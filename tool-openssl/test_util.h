@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 #include <openssl/base.h>
+#include <openssl/evp.h>
 #include <sys/stat.h>
 #if !defined(OPENSSL_WINDOWS)
 #include <sys/wait.h>
@@ -132,7 +133,8 @@ std::string ShellEscape(const std::string &argument);
 // ="
 std::string GetHash(const std::string &str);
 void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
-                                  bssl::UniquePtr<EVP_PKEY> *pkey);
+                                  bssl::UniquePtr<EVP_PKEY> *pkey,
+                                  int key_type = EVP_PKEY_RSA);
 bssl::UniquePtr<X509_REQ> LoadPEMCSR(const char *path);
 bssl::UniquePtr<X509_REQ> LoadDERCSR(const char *path);
 bssl::UniquePtr<X509> LoadPEMCertificate(const char *path);
