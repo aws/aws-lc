@@ -101,7 +101,7 @@ int randTool(const args_list_t &args) {
     if (!bio_out || !b64) {
       BIO_free(bio_out);
       BIO_free(b64);
-      if (bio_close == BIO_CLOSE) {
+      if (bio_out != nullptr && bio_close == BIO_CLOSE) {
         out_file = nullptr;
       }
       fprintf(stderr, "error: failed to create BIO\n");
