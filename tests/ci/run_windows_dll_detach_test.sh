@@ -4,8 +4,12 @@
 
 # Regression test for https://github.com/aws/aws-lc/issues/3540: a static
 # libcrypto embedded in a DLL runs its randomness shutdown handler on
-# |DLL_PROCESS_DETACH|, where reaching |CRYPTO_sysrand| faults. Builds that
-# configuration and exits; a non-zero status means the teardown faulted.
+# |DLL_PROCESS_DETACH|, where reaching |CRYPTO_sysrand| can fault.
+#
+# #3540's fault is a detach-ordering hazard, so not reproducible on demand.
+# The probe unmaps bcryptprimitives.dll outright instead, which faults every
+# time; it tests the guard, not the ordering. It asserts its preconditions and
+# exits 2 if it can't set that up, since a vacuous pass is worse than no test.
 #
 # Usage: run_windows_dll_detach_test.sh <build-dir> [c-compiler]
 
@@ -42,9 +46,9 @@ for candidate in "${BUILD_DIR}/crypto/libcrypto.a" "${BUILD_DIR}/crypto/crypto.l
 done
 
 if [ -z "${CRYPTO_LIB}" ]; then
-    echo "No static libcrypto in ${BUILD_DIR}/crypto. This test needs a static" >&2
-    echo "build (BUILD_SHARED_LIBS=OFF); a shared build is already covered by" >&2
-    echo "the existing guard." >&2
+    echo "No static libcrypto in ${BUILD_DIR}/crypto. This test targets the" >&2
+    echo "static-libcrypto-in-a-DLL configuration, so it needs a static build" >&2
+    echo "(BUILD_SHARED_LIBS=OFF)." >&2
     exit 1
 fi
 
@@ -101,22 +105,29 @@ int main(void) {
     return 1;
   }
 
-  // libcrypto holds the only reference to bcryptprimitives.dll, which it
-  // |LoadLibraryW|'d on demand. Drop it so the module is unmapped while
-  // probe.dll and its cached |ProcessPrng| pointer stay alive. Otherwise the
-  // test depends on the loader unmapping bcryptprimitives.dll before probe.dll
-  // detaches. This what was reported in
-  // but ordering is not stable.
+  // libcrypto never releases its on-demand |LoadLibraryW| reference, so
+  // bcryptprimitives.dll stays mapped. Drop that reference to unmap it while
+  // probe.dll and its cached |ProcessPrng| pointer stay alive, making the
+  // teardown call fault deterministically.
   HMODULE bcryptprimitives = GetModuleHandleW(L"bcryptprimitives.dll");
-  if (bcryptprimitives != NULL) {
-    FreeLibrary(bcryptprimitives);
-  } else {
-    fprintf(stderr, "note: bcryptprimitives.dll not loaded; this build may not "
-                    "use the ProcessPrng path\n");
+  if (bcryptprimitives == NULL) {
+    fprintf(stderr, "bcryptprimitives.dll not loaded; this build did not take "
+                    "the ProcessPrng path\n");
+    return 2;
   }
 
-  // Returning runs probe.dll's |DLL_PROCESS_DETACH|, and libcrypto's shutdown
-  // handler with it.
+  FreeLibrary(bcryptprimitives);
+  if (GetModuleHandleW(L"bcryptprimitives.dll") != NULL) {
+    fprintf(stderr, "bcryptprimitives.dll still mapped after FreeLibrary; "
+                    "something else holds a reference (a static import of "
+                    "bcrypt.dll will do this)\n");
+    return 2;
+  }
+
+  // Unload explicitly rather than via |ExitProcess|, so probe.dll's
+  // |DLL_PROCESS_DETACH| runs where a fault is observable.
+  FreeLibrary(dll);
+
   return 0;
 }
 EOF
@@ -125,11 +136,14 @@ PROBE_DLL="$(to_native "${SCRATCH}")/probe.dll"
 PROBE_EXE="$(to_native "${SCRATCH}")/probe_main.exe"
 
 # Clang maps `-lfoo` to foo.lib for MSVC targets, so one spelling covers both.
+# Do not link bcrypt: bcrypt.dll statically imports bcryptprimitives.dll, which
+# would hold a reference the probe cannot drop. Unneeded here anyway, since
+# `AWSLC_WINDOWS_7_COMPAT` is only set for `MINGW AND NOT CLANG`.
 "${CC_BIN}" -shared -o "${PROBE_DLL}" \
     "$(to_native "${SCRATCH}/probe_dll.c")" \
     -I "$(to_native "${SRC_ROOT}/include")" \
     "$(to_native "${CRYPTO_LIB}")" \
-    -lws2_32 -lbcrypt -ladvapi32
+    -lws2_32
 
 "${CC_BIN}" -o "${PROBE_EXE}" "$(to_native "${SCRATCH}/probe_main.c")"
 
@@ -139,9 +153,13 @@ set +e
 PROBE_STATUS=$?
 set -e
 
-if [ "${PROBE_STATUS}" -ne 0 ]; then
+if [ "${PROBE_STATUS}" -eq 2 ]; then
+    echo "FAIL: probe could not set up the configuration under test (see its" >&2
+    echo "diagnostic above) and would have passed vacuously." >&2
+    exit 1
+elif [ "${PROBE_STATUS}" -ne 0 ]; then
     echo "FAIL: probe exited ${PROBE_STATUS}. A static libcrypto embedded in a" >&2
-    echo "DLL faulted or errored during process teardown. See" >&2
+    echo "DLL faulted or errored while that DLL was detached. See" >&2
     echo "https://github.com/aws/aws-lc/issues/3540." >&2
     exit 1
 fi
