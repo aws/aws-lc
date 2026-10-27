@@ -99,11 +99,11 @@ int randTool(const args_list_t &args) {
     }
     BIO *b64 = BIO_new(BIO_f_base64());
     if (!bio_out || !b64) {
-      BIO_free(bio_out);
-      BIO_free(b64);
       if (bio_out != nullptr && bio_close == BIO_CLOSE) {
         out_file = nullptr;
       }
+      BIO_free(bio_out);
+      BIO_free(b64);
       fprintf(stderr, "error: failed to create BIO\n");
       ret = kToolExitFailure;
     } else {
