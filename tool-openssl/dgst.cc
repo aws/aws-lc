@@ -315,13 +315,30 @@ static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
     }
   } else if (reverse) {
     // coreutils-style output matching `openssl dgst -r`: "<hash> *<file>".
+    // A newline in the filename is escaped as "\n" and the record is prefixed
+    // with a backslash so it stays on one line, matching OpenSSL. Backslashes
+    // are not escaped, consistent with OpenSSL.
+    const std::string raw = in_path.empty() ? "stdin" : in_path;
+    bool escaped_newline = false;
+    std::string name;
+    name.reserve(raw.size());
+    for (char c : raw) {
+      if (c == '\n') {
+        escaped_newline = true;
+        name.append("\\n");
+      } else {
+        name.push_back(c);
+      }
+    }
+    if (escaped_newline && BIO_puts(out_bio, "\\") <= 0) {
+      goto end;
+    }
     for (size_t i = 0; i < data.size(); i++) {
       if (BIO_printf(out_bio, "%02x", data[i]) <= 0) {
         goto end;
       }
     }
-    if (BIO_printf(out_bio, " *%s\n",
-                   in_path.empty() ? "stdin" : in_path.c_str()) <= 0) {
+    if (BIO_printf(out_bio, " *%s\n", name.c_str()) <= 0) {
       goto end;
     }
   } else {

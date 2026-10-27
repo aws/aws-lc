@@ -539,6 +539,30 @@ TEST_F(DgstTest, ReverseOutputCustomDigest) {
   EXPECT_EQ(expected, ReadFileToString(out_path));
 }
 
+#if !defined(OPENSSL_WINDOWS)
+// A newline in the filename is escaped as "\n" and the whole record is prefixed
+// with a backslash so it stays on one line, matching OpenSSL. (Newlines are not
+// valid in Windows filenames, so this case is POSIX-only.)
+TEST_F(DgstTest, ReverseOutputNewlineInFilename) {
+  char dir[PATH_MAX];
+  ASSERT_GT(createTempDirPath(dir), 0u);
+  const std::string newline_path = std::string(dir) + "/a\nb";
+  {
+    ScopedFILE f(fopen(newline_path.c_str(), "wb"));
+    ASSERT_TRUE(f);
+    const char *data = "Test data for signing and verification";
+    ASSERT_EQ(fwrite(data, 1, strlen(data), f.get()), strlen(data));
+  }
+  args_list_t args = {"-sha256", "-r", "-out", out_path, newline_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "\\cd8465678c8a28c26d117d6215f32de0c2652cbc78d25d86baeaee5a57a8999b *" +
+      std::string(dir) + "/a\\nb\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+  RemoveFile(newline_path.c_str());
+}
+#endif
+
 class DgstOptionUsageErrorsTest : public DgstTest {
  protected:
   void TestOptionUsageErrors(const std::vector<std::string> &args) {
