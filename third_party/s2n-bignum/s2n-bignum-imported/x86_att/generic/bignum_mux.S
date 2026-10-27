@@ -21,6 +21,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mux)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux)
         .text
+        .balign 32
 
 #define b %rdi
 #define k %rsi

@@ -19,6 +19,40 @@ cd $SRC_ROOT
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo BUILD_ROOT="$BUILD_ROOT"
 
+INTEGRATION_FAILURE_FILE="${SRC_ROOT}/integration-failure.txt"
+
+# Create the failure artifact with the integration name, optional version, and AWS-LC commit.
+# Example: run_python_integration.sh 3.13 records "python<TAB>3.13".
+function record_integration() {
+  local runner="${1##*/}"
+  local integration="${runner#run_}"
+  integration="${integration%_integration.sh}"
+  printf '%s\t%s\nawslc_sha=%s\n' \
+    "${integration}" "${2:-}" "${GITHUB_SHA:-}" > "${INTEGRATION_FAILURE_FILE}"
+}
+
+# Append the cloned repository's URL and exact commit to the failure artifact.
+# A URL is required only for repositories without an origin remote.
+function record_repo_commit() {
+  local dir="$1"
+  local url="${2:-}"
+  local sha
+
+  if [[ -z "${url}" ]]; then
+    url="$(git -C "${dir}" remote get-url origin)" || return 1
+  fi
+  sha="$(git -C "${dir}" rev-parse HEAD)" || return 1
+  printf 'commit=%s %s\n' "${url}" "${sha}" >> "${INTEGRATION_FAILURE_FILE}"
+}
+
+# Every integration runner sources this setup file when it starts, so BASH_SOURCE[1]
+# identifies the integration runner and automatically records its name, version, and AWS-LC commit.
+# Build and setup scripts are skipped so unrelated CI jobs do not create artifacts.
+integration_runner="${BASH_SOURCE[1]:-}"
+if [[ "${integration_runner##*/}" == run_*_integration.sh ]]; then
+  record_integration "${integration_runner}" "${1:-}"
+fi
+
 PLATFORM=$(uname -m)
 
 NUM_CPU_THREADS=''

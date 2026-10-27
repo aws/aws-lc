@@ -63,6 +63,7 @@ main.mysql_upgrade_noengine : upgrade output order does not match the expected
 main.plugin_load : This test generates a warning in Codebuild. Skip over since this isn't relevant to AWS-LC.
 main.desc_index_min_max : This test is flaky and unrelated to aws-lc.
 main.socket_conflict : mariadbd refuses to run as root in CI container; not relevant to AWS-LC.
+main.start_slave_until : This test is flaky and unrelated to AWS-LC.
 "> skiplist
   # mtr's --retry defaults to 1, meaning no retries at all, so --retry-failure
   # (which only caps retries) does nothing on its own.
@@ -80,6 +81,7 @@ function mariadb_patch() {
 
 # Get latest mariadb version, we can pin to a specific version if MariaDB's code changes break us too often.
 git clone https://github.com/MariaDB/server.git ${MARIADB_SRC_FOLDER} --depth 1
+record_repo_commit "${MARIADB_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MARIADB_BUILD_FOLDER}
 ls
 

@@ -3,21 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Build the AWS-LC OpenSSL provider in its shipping configuration and run its
-# provider-level unit suite. Linux only, deliberately: ENABLE_DIST_PKG is a
-# FATAL_ERROR elsewhere, and without it the two-libcrypto linkage checks below
-# have nothing to assert against, so a green run on another platform would claim
-# more than it proved. Other platforms are for development; see
-# provider/README.md.
+# two unit suites. Linux only, deliberately: ENABLE_DIST_PKG is a FATAL_ERROR
+# elsewhere, and without it the two-libcrypto linkage checks below have nothing
+# to assert against, so a green run on another platform would claim more than it
+# proved. Other platforms are for development; see provider/README.md.
 #
 # The provider is off by default and needs OpenSSL's provider headers, which
 # AWS-LC's own tree does not carry, so this script builds the pinned OpenSSL from
 # source the way the other CI scripts here build theirs. No runner image ships an
 # OpenSSL new enough to use instead, and probing for one would make what the
 # provider was compiled against a property of the host.
-#
-# It takes no arguments and reads no configuration. To build against some other
-# OpenSSL, invoke cmake directly with AWSLC_PROVIDER_OPENSSL_ROOT; see
-# provider/README.md.
 
 set -euo pipefail
 
@@ -33,6 +28,14 @@ function fail {
   echo >&2 "FAILED: $*"
   exit 1
 }
+
+FIPS=0
+for arg in "$@"; do
+  case "${arg}" in
+    --fips) FIPS=1 ;;
+    *) fail "unknown argument: ${arg}" ;;
+  esac
+done
 
 # Before sourcing anything, so the refusal is the first thing printed rather than
 # being buried under the setup script's environment dump.
@@ -87,20 +90,24 @@ banner "Building AWS-LC and the provider"
 # what keeps the provider's AWS-LC references from being satisfied by OpenSSL's
 # libcrypto.
 cmake_args=(
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE=RelWithAsserts
   -DBUILD_SHARED_LIBS=1
   -DENABLE_DIST_PKG=ON
   -DBUILD_AWSLC_PROVIDER=ON
-  "-DAWSLC_PROVIDER_OPENSSL_ROOT=${OPENSSL_ROOT}"
+  "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT}"
 )
+if [[ "${FIPS}" == "1" ]]; then
+  cmake_args+=(-DFIPS=1)
+fi
 
+echo "FIPS build: $([[ "${FIPS}" == "1" ]] && echo yes || echo no)"
 echo "cmake flags: ${cmake_args[*]}"
 run_build "${cmake_args[@]}"
 
 # Named explicitly rather than relying on the default target having covered
 # them, so a renamed or unbuilt target fails here instead of showing up as a
 # missing file later.
-run_cmake_custom_target awslc_provider awslc_provider_test
+run_cmake_custom_target awslc_provider awslc_provider_test awslc_provider_backend_test
 
 # --------------------------------------------------------------------------
 # 3. The artifacts must actually exist
@@ -118,6 +125,7 @@ echo "module: ${MODULE}"
 
 TEST_BINARIES=(
   "${PROVIDER_DIR}/awslc_provider_test"
+  "${PROVIDER_DIR}/awslc_provider_backend_test"
 )
 
 for binary in "${TEST_BINARIES[@]}"; do
@@ -138,10 +146,12 @@ echo "exports OSSL_provider_init"
 # 4. aws-lc-provider binary level asserts
 # --------------------------------------------------------------------------
 #
-# This is the one failure the unit suite cannot see, and the reason this script
+# This is the one failure the unit suites cannot see, and the reason this script
 # runs where ENABLE_DIST_PKG can be built. Both libcryptos export ~2100
-# identically-named symbols, so backend calls can silently bind to OpenSSL's
-# implementation rather than AWS-LC's. Only the linkage shows it.
+# identically-named symbols, so if the provider's SHA256_Init binds to OpenSSL's,
+# nothing fails: OpenSSL's SHA-256 is also correct, every known-answer test
+# passes, and the provider quietly delegates to the library it exists to replace.
+# Only the linkage shows it.
 #
 # A missing tool is a failure rather than a skip. Skipping would leave the run
 # green while the only check that can catch a misbinding never executed.
@@ -168,16 +178,18 @@ run_cmake_custom_target awslc_provider_linkage_test
 # 5. The suites
 # --------------------------------------------------------------------------
 #
+# Two binaries, because the provider has two sides that cannot share a process.
 # awslc_provider_test links OpenSSL's libcrypto and reaches AWS-LC only through
 # the provider the loader brings in, which is the arrangement a real consumer
-# has.
+# has. awslc_provider_backend_test links AWS-LC and no OpenSSL, and covers the
+# guarantees the back side adds that the EVP API cannot reach.
 
 for binary in "${TEST_BINARIES[@]}"; do
   banner "$(basename "${binary}")"
   "${binary}" || fail "$(basename "${binary}") reported failures"
 done
 
-banner "Provider build and unit test passed"
+banner "Provider build and unit tests passed"
 
 # Say plainly what a green run here covers, so it is not mistaken for more.
 echo "Covered: the provider builds, loads, and its two unit suites pass, and its"

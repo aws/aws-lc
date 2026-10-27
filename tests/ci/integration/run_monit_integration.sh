@@ -55,6 +55,7 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} -b ${MONIT_VERSION_TAG} --depth 1
+record_repo_commit "${MONIT_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MONIT_BUILD_FOLDER}
 ls
 

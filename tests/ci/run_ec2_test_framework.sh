@@ -35,6 +35,7 @@ create_ec2_instances() {
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
     --instance-type "$2" --security-group-ids "${EC2_SECURITY_GROUP_ID}" --subnet-id "${EC2_SUBNET_ID}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
+    --metadata-options 'HttpEndpoint=enabled,HttpTokens=required,HttpPutResponseHopLimit=1' \
     --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"},
                                                         {Key="ec2-framework-host",Value="ec2-framework-host"},
                                                         {Key="ec-framework-commit-tag",Value="'"$CODEBUILD_SOURCE_VERSION"'"}]' \

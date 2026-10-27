@@ -17,7 +17,7 @@ static const argument_t kArguments[] = {
     {"-outform", kOptionalArgument, "Output format (PEM or DER), default PEM"},
     {"", kOptionalArgument, ""}};
 
-bool ecTool(const args_list_t &args) {
+int ecTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
   std::string in_path, out_path, inform_str, outform_str;
@@ -41,7 +41,7 @@ bool ecTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (isStringUpperCaseEqual(inform_str, "DER")) {
@@ -105,9 +105,9 @@ bool ecTool(const args_list_t &args) {
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 
 err:
   ERR_print_errors_fp(stderr);
-  return false;
+  return kToolExitFailure;
 }

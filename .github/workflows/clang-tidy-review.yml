@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'
       - uses: ZedThree/clang-tidy-review@v0.23.1
@@ -20,6 +20,6 @@ jobs:
           install_commands: >-
             /github/workspace/util/build_compilation_database.sh
             -DBUILD_AWSLC_PROVIDER=ON
-            -DAWSLC_PROVIDER_OPENSSL_ROOT=/usr
+            -DBUILD_SHARED_LIBS=ON
           config_file: '/github/workspace/.clang-tidy'
       - uses: ZedThree/clang-tidy-review/upload@v0.23.1

@@ -18,6 +18,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_nonzero)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero)
         .text
+        .balign 32
 
 #define a %rax
 #define k %rdi

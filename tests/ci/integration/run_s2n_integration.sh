@@ -23,6 +23,7 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER=${SYS_ROOT}/"SCRATCH_AWSLC_S2N_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+S2N_TLS_SRC_FOLDER="${SCRATCH_FOLDER}/s2n-tls"
 S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
 
 # Make script execution idempotent.
@@ -58,7 +59,8 @@ function s2n_tls_prepare_new_build() {
 # Get latest s2n-tls version.
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${S2N_TLS_BUILD_FOLDER}
-git clone https://github.com/aws/s2n-tls.git
+git clone https://github.com/aws/s2n-tls.git "${S2N_TLS_SRC_FOLDER}"
+record_repo_commit "${S2N_TLS_SRC_FOLDER}"
 ls
 
 # s2n-tls's FindLibCrypto.cmake expects to find both the static and shared
@@ -88,6 +90,7 @@ s2n_tls_prepare_new_build
 
 s2n_tls_build -DBUILD_SHARED_LIBS=1 -DS2N_INTERN_LIBCRYPTO=1
 # Sanity check that libcrypto does not appear in the .dynamic ELF section.
-ldd ${S2N_TLS_BUILD_FOLDER}/lib/libs2n.so | grep -q libcrypto && fail "libs2n.so declares a dynamic dependency on libcrypto which should not happen with interned s2n-tls+aws-lc"
+# Drain ldd's output so SIGPIPE cannot hide a match when pipefail is enabled.
+ldd ${S2N_TLS_BUILD_FOLDER}/lib/libs2n.so | grep libcrypto > /dev/null && fail "libs2n.so declares a dynamic dependency on libcrypto which should not happen with interned s2n-tls+aws-lc"
 s2n_tls_run_tests
 s2n_tls_prepare_new_build

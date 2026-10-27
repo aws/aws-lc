@@ -45,6 +45,7 @@ rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
 git clone --depth 1 https://github.com/strongswan/strongswan.git ${STRONGSWAN_SRC_FOLDER}
+record_repo_commit "${STRONGSWAN_SRC_FOLDER}"
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 

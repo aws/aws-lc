@@ -90,6 +90,7 @@ function fetch_crt_python() {
     pushd ${CRT_SRC_FOLDER}
     git clone https://github.com/awslabs/aws-crt-python.git .
     git submodule update --init
+    record_repo_commit "${CRT_SRC_FOLDER}"
     popd
 }
 
@@ -99,8 +100,14 @@ function install_crt_python() {
     # return early and let the CRT use precompiled PyPI wheel backed by AWS-LC.
     python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
     if ! python -c 'import sys; assert sys.version_info.minor < 12, f"{sys.version_info}"'; then
-        python -m pip install awscrt
+        # Resolve boto3's CRT version constraint in the same install, and fail
+        # rather than silently building from source if no matching wheel exists.
+        python -m pip install --only-binary=awscrt awscrt 'boto3[crt]'
         return
+    fi
+    # Multiple Python branches can share this checkout; wheel-only runs need none.
+    if [[ ! -d "${CRT_SRC_FOLDER}" ]]; then
+        fetch_crt_python
     fi
     python -m ensurepip
     # setupttols not installed by default on more recent python versions
@@ -125,6 +132,7 @@ function install_crt_python() {
     else
         test -z "$uses_libcrypto_so"
     fi
+    python -m pip install 'boto3[crt]'
 }
 
 function python_run_3rd_party_tests() {
@@ -139,7 +147,6 @@ function python_run_3rd_party_tests() {
     python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
     echo installing other OpenSSL-dependent modules...
     install_crt_python
-    python -m pip install 'boto3[crt]'
     # cffi install is busted on newer release candidates, so allow install
     # failure for cryptography and pyopenssl on >= 3.15 for now.
     # Pin cryptography version due to cffi change in v46
@@ -186,6 +193,7 @@ function python_patch() {
     git clone https://github.com/python/cpython.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    record_repo_commit "${src_dir}"
     for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
       echo "Apply patch ${patchfile}..."
       cat ${patchfile} \
@@ -218,8 +226,6 @@ aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS} \
     -DFIPS=${FIPS}
-
-fetch_crt_python
 
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}

@@ -118,6 +118,7 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/hpke/hpke_test_vectors_pq.txt
   crypto/keccak/testvectors/KECCAK256LongMsg.txt
   crypto/keccak/testvectors/KECCAK256ShortMsg.txt
   crypto/ocsp/test/aws/certs.txt
@@ -241,6 +242,8 @@ set(
   crypto/x509/test/basic_constraints_ca_pathlen_10.pem
   crypto/x509/test/basic_constraints_leaf.pem
   crypto/x509/test/basic_constraints_none.pem
+  crypto/x509/test/blocked_spki_certs.pem
+  crypto/x509/test/blocked_spki_leaf.pem
   crypto/x509/test/csr-mldsa44.pem
   crypto/x509/test/csr-mldsa65.pem
   crypto/x509/test/csr-mldsa87.pem

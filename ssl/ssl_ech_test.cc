@@ -311,6 +311,18 @@ TEST(SSLTest, UnsupportedECHConfig) {
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
 
+  // Unsupported KEMs are rejected. ECH is only defined over
+  // DHKEM(X25519, HKDF-SHA256), so an ML-KEM config is rejected even though the
+  // ECHConfig and the key agree on the KEM.
+  bssl::ScopedEVP_HPKE_KEY mlkem_key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(mlkem_key.get(), EVP_hpke_mlkem768()));
+  ECHConfigParams unsupported_kem;
+  unsupported_kem.key = mlkem_key.get();
+  ASSERT_TRUE(MakeECHConfig(&ech_config, unsupported_kem));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                mlkem_key.get()));
+
   // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
   ECHConfigParams unsupported_kdf;
   unsupported_kdf.key = key.get();
@@ -383,6 +395,107 @@ TEST(SSLTest, ECHClientRandomsMatch) {
             SSL_get_client_random(server.get(), client_random2,
                                   sizeof(client_random2)));
   EXPECT_EQ(Bytes(client_random1), Bytes(client_random2));
+}
+
+
+// ECH requires TLS 1.3, which has no DTLS counterpart, so DTLS connections
+// cannot be configured for ECH at all.
+TEST(SSLTest, ECHRejectedForDTLS) {
+  bssl::UniquePtr<SSL_ECH_KEYS> keys = MakeTestECHKeys();
+  ASSERT_TRUE(keys);
+
+  bssl::UniquePtr<SSL_CTX> dtls_ctx(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(dtls_ctx);
+  EXPECT_FALSE(SSL_CTX_set1_ech_keys(dtls_ctx.get(), keys.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_WRONG_SSL_VERSION));
+
+  bssl::UniquePtr<SSL> dtls(SSL_new(dtls_ctx.get()));
+  ASSERT_TRUE(dtls);
+  EXPECT_FALSE(InstallECHConfigList(dtls.get(), keys.get()));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_WRONG_SSL_VERSION));
+
+  // The same values are accepted over TLS.
+  bssl::UniquePtr<SSL_CTX> tls_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(tls_ctx);
+  EXPECT_TRUE(SSL_CTX_set1_ech_keys(tls_ctx.get(), keys.get()));
+  bssl::UniquePtr<SSL> tls(SSL_new(tls_ctx.get()));
+  ASSERT_TRUE(tls);
+  EXPECT_TRUE(InstallECHConfigList(tls.get(), keys.get()));
+}
+
+// A DTLS ClientHello carries a cookie that the ClientHelloInner serialization
+// does not write back, so recovering a ClientHelloInner under DTLS would parse
+// the result differently from the copy that was validated.
+TEST(SSLTest, ECHDecodeClientHelloInnerRejectsDTLS) {
+  // WriteClientHello serializes a ClientHello body offering TLS 1.3 and, if
+  // |with_ech_inner| is set, the inner encrypted_client_hello extension. DTLS
+  // adds an empty cookie field.
+  auto WriteClientHello = [](CBB *cbb, bool is_dtls, bool with_ech_inner) {
+    static const uint8_t kRandom[SSL3_RANDOM_SIZE] = {0};
+    CBB child, extensions, extension;
+    if (!CBB_add_u16(cbb, TLS1_2_VERSION) ||
+        !CBB_add_bytes(cbb, kRandom, sizeof(kRandom)) ||
+        !CBB_add_u8_length_prefixed(cbb, &child) ||  // session ID
+        (is_dtls && !CBB_add_u8_length_prefixed(cbb, &child)) ||  // cookie
+        !CBB_add_u16_length_prefixed(cbb, &child) ||
+        !CBB_add_u16(&child, TLS1_CK_AES_128_GCM_SHA256 & 0xffff) ||
+        !CBB_add_u8_length_prefixed(cbb, &child) ||
+        !CBB_add_u8(&child, 0) ||  // compression methods
+        !CBB_add_u16_length_prefixed(cbb, &extensions)) {
+      return false;
+    }
+    if (with_ech_inner &&
+        (!CBB_add_u16(&extensions, TLSEXT_TYPE_encrypted_client_hello) ||
+         !CBB_add_u16_length_prefixed(&extensions, &extension) ||
+         !CBB_add_u8(&extension, ECH_CLIENT_INNER))) {
+      return false;
+    }
+    return !!(CBB_add_u16(&extensions, TLSEXT_TYPE_supported_versions) &&
+              CBB_add_u16_length_prefixed(&extensions, &extension) &&
+              CBB_add_u8_length_prefixed(&extension, &child) &&
+              CBB_add_u16(&child, TLS1_3_VERSION) && CBB_flush(cbb));
+  };
+
+  for (bool is_dtls : {false, true}) {
+    SCOPED_TRACE(is_dtls);
+    bssl::UniquePtr<SSL_CTX> ctx(
+        SSL_CTX_new(is_dtls ? DTLS_method() : TLS_method()));
+    ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
+
+    bssl::ScopedCBB encoded;
+    ASSERT_TRUE(CBB_init(encoded.get(), 128));
+    ASSERT_TRUE(WriteClientHello(encoded.get(), is_dtls,
+                                 /*with_ech_inner=*/true));
+
+    // The ClientHelloOuter supplies the session ID and any extensions the
+    // EncodedClientHelloInner references, of which there are none here.
+    bssl::ScopedCBB outer;
+    ASSERT_TRUE(CBB_init(outer.get(), 128));
+    ASSERT_TRUE(WriteClientHello(outer.get(), is_dtls,
+                                 /*with_ech_inner=*/false));
+
+    SSL_CLIENT_HELLO client_hello_outer;
+    ASSERT_TRUE(ssl_client_hello_init(
+        ssl.get(), &client_hello_outer,
+        MakeConstSpan(CBB_data(outer.get()), CBB_len(outer.get()))));
+
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    Array<uint8_t> client_hello_inner;
+    EXPECT_EQ(!is_dtls,
+              ssl_decode_client_hello_inner(
+                  ssl.get(), &alert, &client_hello_inner,
+                  MakeConstSpan(CBB_data(encoded.get()), CBB_len(encoded.get())),
+                  &client_hello_outer));
+    if (is_dtls) {
+      EXPECT_TRUE(
+          ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_WRONG_SSL_VERSION));
+    }
+    ERR_clear_error();
+  }
 }
 
 

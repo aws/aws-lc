@@ -31,13 +31,13 @@ class ECTest : public ::testing::Test {
       ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
 
       // Use OpenSSL to generate test keys for better cross-compatibility
-      std::string pem_cmd = std::string(openssl_executable_path) +
+      std::string pem_cmd = ShellEscape(openssl_executable_path) +
                             " ecparam -genkey -name prime256v1 -out " +
-                            pem_key_path;
-      std::string der_cmd = std::string(openssl_executable_path) +
+                            ShellEscape(pem_key_path);
+      std::string der_cmd = ShellEscape(openssl_executable_path) +
                             " ecparam -genkey -name prime256v1 | " +
-                            std::string(openssl_executable_path) +
-                            " ec -outform DER -out " + der_key_path;
+                            ShellEscape(openssl_executable_path) +
+                            " ec -outform DER -out " + ShellEscape(der_key_path);
 
       ASSERT_EQ(system(pem_cmd.c_str()), 0)
           << "Failed to generate PEM key with OpenSSL";
@@ -81,7 +81,7 @@ class ECTest : public ::testing::Test {
 
 TEST_F(ECTest, ReadPEMOutputPEM) {
   args_list_t args = {"-in", pem_key_path, "-out", out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -92,7 +92,7 @@ TEST_F(ECTest, ReadPEMOutputPEM) {
 
 TEST_F(ECTest, ReadPEMOutputDER) {
   args_list_t args = {"-in", pem_key_path, "-outform", "DER", "-out", out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -103,7 +103,7 @@ TEST_F(ECTest, ReadPEMOutputDER) {
 
 TEST_F(ECTest, ReadDEROutputPEM) {
   args_list_t args = {"-in", der_key_path, "-inform", "DER", "-out", out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -115,7 +115,7 @@ TEST_F(ECTest, ReadDEROutputPEM) {
 TEST_F(ECTest, ReadDEROutputDER) {
   args_list_t args = {"-in",      der_key_path, "-inform", "DER",
                       "-outform", "DER",        "-out",    out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -126,7 +126,7 @@ TEST_F(ECTest, ReadDEROutputDER) {
 
 TEST_F(ECTest, PublicKeyExtractionPEM) {
   args_list_t args = {"-in", pem_key_path, "-pubout", "-out", out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -138,7 +138,7 @@ TEST_F(ECTest, PublicKeyExtractionPEM) {
 TEST_F(ECTest, PublicKeyExtractionDER) {
   args_list_t args = {"-in",      der_key_path, "-inform", "DER",   "-pubout",
                       "-outform", "DER",        "-out",    out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -159,10 +159,10 @@ TEST_F(ECTest, RoundTripPEMtoDERtoPEM) {
 
   args_list_t args1 = {"-in", pem_key_path, "-outform",
                        "DER", "-out",       temp_der};
-  ASSERT_TRUE(ecTool(args1));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args1));
 
   args_list_t args2 = {"-in", temp_der, "-inform", "DER", "-out", out_path};
-  ASSERT_TRUE(ecTool(args2));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args2));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -190,10 +190,10 @@ TEST_F(ECTest, RoundTripDERtoPEMtoDER) {
   ASSERT_TRUE(orig_key);
 
   args_list_t args1 = {"-in", der_key_path, "-inform", "DER", "-out", temp_pem};
-  ASSERT_TRUE(ecTool(args1));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args1));
 
   args_list_t args2 = {"-in", temp_pem, "-outform", "DER", "-out", out_path};
-  ASSERT_TRUE(ecTool(args2));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args2));
 
   bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(out_bio);
@@ -211,25 +211,25 @@ TEST_F(ECTest, RoundTripDERtoPEMtoDER) {
 
 TEST_F(ECTest, HelpOption) {
   args_list_t args = {"-help"};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 }
 
 TEST_F(ECTest, InvalidInputFile) {
   args_list_t args = {"-in", "/nonexistent/file.pem", "-out", out_path};
-  ASSERT_FALSE(ecTool(args));
+  ASSERT_EQ(kToolExitFailure, ecTool(args));
 }
 
 TEST_F(ECTest, InvalidOutputPath) {
   args_list_t args = {"-in", pem_key_path, "-out",
                       "/nonexistent/dir/output.pem"};
-  ASSERT_FALSE(ecTool(args));
+  ASSERT_EQ(kToolExitFailure, ecTool(args));
 }
 
 // Test that private key output files are created with restrictive permissions
 #if !defined(OPENSSL_WINDOWS)
 TEST_F(ECTest, PrivateKeyFilePermissions) {
   args_list_t args = {"-in", pem_key_path, "-out", out_path};
-  ASSERT_TRUE(ecTool(args));
+  ASSERT_EQ(kToolExitSuccess, ecTool(args));
 
   struct stat st;
   ASSERT_EQ(0, stat(out_path, &st));
@@ -247,10 +247,12 @@ TEST_F(ECTest, CompareWithOpenSSLPEMOutput) {
                     "environment variables are not set";
   }
 
-  std::string tool_cmd = std::string(tool_executable_path) + " ec -in " +
-                         pem_key_path + " -out " + out_path;
-  std::string openssl_cmd = std::string(openssl_executable_path) + " ec -in " +
-                            pem_key_path + " -out " + out_path_openssl;
+  std::string tool_cmd = ShellEscape(tool_executable_path) + " ec -in " +
+                         ShellEscape(pem_key_path) + " -out " +
+                         ShellEscape(out_path);
+  std::string openssl_cmd = ShellEscape(openssl_executable_path) + " ec -in " +
+                            ShellEscape(pem_key_path) + " -out " +
+                            ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_cmd.c_str()), 0);
@@ -274,11 +276,12 @@ TEST_F(ECTest, CompareWithOpenSSLDEROutput) {
                     "environment variables are not set";
   }
 
-  std::string tool_cmd = std::string(tool_executable_path) + " ec -in " +
-                         pem_key_path + " -outform DER -out " + out_path;
-  std::string openssl_cmd = std::string(openssl_executable_path) + " ec -in " +
-                            pem_key_path + " -outform DER -out " +
-                            out_path_openssl;
+  std::string tool_cmd = ShellEscape(tool_executable_path) + " ec -in " +
+                         ShellEscape(pem_key_path) + " -outform DER -out " +
+                         ShellEscape(out_path);
+  std::string openssl_cmd = ShellEscape(openssl_executable_path) + " ec -in " +
+                            ShellEscape(pem_key_path) + " -outform DER -out " +
+                            ShellEscape(out_path_openssl);
 
   ASSERT_EQ(system(tool_cmd.c_str()), 0);
   ASSERT_EQ(system(openssl_cmd.c_str()), 0);

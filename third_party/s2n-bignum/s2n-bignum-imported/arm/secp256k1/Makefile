@@ -27,7 +27,9 @@ OBJ = bignum_add_p256k1.o \
       bignum_demont_p256k1.o \
       bignum_double_p256k1.o \
       bignum_half_p256k1.o \
+      bignum_mod_n256k1.o \
       bignum_mod_n256k1_4.o \
+      bignum_mod_p256k1.o \
       bignum_mod_p256k1_4.o \
       bignum_montmul_p256k1.o \
       bignum_montmul_p256k1_alt.o \

@@ -1,7 +1,7 @@
 name: integration-omnibus
 on:
   push:
-    branches: [ '*' ]
+    branches: ['main', 'fips-*']
   pull_request:
     branches: [ '*' ]
   schedule:
@@ -14,11 +14,10 @@ env:
 permissions:
   contents: read
   actions: read
-  id-token: write
 
 jobs:
   integrations:
-    name: ${{ matrix.name }}-${{ matrix.arch }}
+    name: ${{ matrix.name }}-${{ matrix.arch }}${{ matrix.allow_failure && '-allow-failure' || '' }}
     continue-on-error: ${{ matrix.allow_failure || false }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
@@ -218,14 +217,14 @@ jobs:
             compiler: gcc-12
             allow_failure: false
             run: ./tests/ci/integration/run_librelp_integration.sh v1.13
-          # librelp (tracking upstream master - informational, allowed to fail)
-          - name: librelp-master
+          # librelp (tracking upstream main - informational, allowed to fail)
+          - name: librelp-main
             arch: x86_64
             size: small
             image: ubuntu:22.04
             compiler: gcc-12
             allow_failure: true
-            run: ./tests/ci/integration/run_librelp_integration.sh master
+            run: ./tests/ci/integration/run_librelp_integration.sh main
 
           # HAProxy Integration Tests
           - name: haproxy
@@ -461,6 +460,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
             ACCP_FIPS
+            GITHUB_SHA
           options: ${{ matrix.options || '' }}
           user: ${{ matrix.user || '' }}
           ipv6: ${{ matrix.ipv6 || false }}
@@ -468,34 +468,17 @@ jobs:
           run: |
             source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
             ${{ matrix.run }}
-      # Emit a marker only when the integration test itself fails, not on
-      # operational failures, so the report-failures alarm counts real downstream breakages only, except for tests
-      # that are purely informational and breakages are accepted.
-      - name: Mark integration failure
-        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
-
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure && hashFiles('integration-failure.txt') != ''
         env:
-          INTEGRATION_RUNNER_COMMAND: ${{ matrix.run }}
-        run: |
-          # Read each line so multi-line run blocks (e.g. bind9 runs pip install
-          # before invocating the runner) still resolve to the runner script + its version.
-          while read -r script_path version _; do
-            [[ "$script_path" == *_integration.sh ]] && break
-          done <<< "$INTEGRATION_RUNNER_COMMAND"
-
-          # Strip the path, run_ prefix, and _integration.sh suffix to get the
-          # bare integration name (e.g. .../run_postgres_integration.sh -> postgres).
-          integration=${script_path##*/}              # .../run_postgres_integration.sh -> run_postgres_integration.sh
-          integration=${integration#run_}             # -> postgres_integration.sh
-          integration=${integration%_integration.sh}  # -> postgres
-          version=${version//[\'\"]/}  # strip quotes (e.g. pyopenssl '25.3.0')
-          echo -e "${integration}\t${version}" > integration-failure.txt
-
+          MATRIX: ${{ toJSON(matrix) }}
+        run: echo "job=$(jq -c . <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && !matrix.allow_failure
         with:
           name: integration-failure-${{ matrix.name }}-${{ matrix.arch }}
           path: integration-failure.txt
+          if-no-files-found: ignore
 
   python:
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
@@ -517,6 +500,17 @@ jobs:
           - "3.15"
         buildFIPS: [0, 1]
         crtUseSystemCrypto: [0, 1]
+        # Python 3.12+ uses prebuilt CRT wheels, so the linkage selector
+        # does not change the build or tests for these versions.
+        exclude:
+          - version: "3.12"
+            crtUseSystemCrypto: 1
+          - version: "3.13"
+            crtUseSystemCrypto: 1
+          - version: "3.14"
+            crtUseSystemCrypto: 1
+          - version: "3.15"
+            crtUseSystemCrypto: 1
         include:
           - version: main
             buildFIPS: 0
@@ -538,18 +532,23 @@ jobs:
           env: |
             FIPS
             AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO
+            GITHUB_SHA
           ipv6: true
           run: |
             source /opt/compiler-env/setup-gcc-12.sh
             ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
-      - name: Mark integration failure
-        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: echo -e "python\t${{ matrix.version }}" > integration-failure.txt
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && hashFiles('integration-failure.txt') != ''
+        env:
+          MATRIX: ${{ toJSON(matrix) }}
+        run: |
+          echo "job=$(jq -c '{size: "medium", image: "ubuntu:22.04", compiler: "gcc-12", ipv6: true} + .' <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-python-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.crtUseSystemCrypto }}-${{ matrix.arch }}
           path: integration-failure.txt
+          if-no-files-found: ignore
 
   ruby:
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
@@ -581,23 +580,32 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:24.04
           env: |
             FIPS
+            GITHUB_SHA
           ipv6: true
           run: |
             source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
-      - name: Mark integration failure
-        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
-        run: echo -e "ruby\t${{ matrix.version }}" > integration-failure.txt
+      - name: Record job settings
+        if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule' && hashFiles('integration-failure.txt') != ''
+        env:
+          MATRIX: ${{ toJSON(matrix) }}
+        run: |
+          echo "job=$(jq -c '{size: "medium", image: "ubuntu:24.04", compiler: "gcc-13", ipv6: true} + .' <<< "$MATRIX")" >> integration-failure.txt
       - uses: actions/upload-artifact@v7
         if: always() && steps.integration-test.outcome == 'failure' && github.event_name == 'schedule'
         with:
           name: integration-failure-ruby-${{ matrix.version }}-${{ matrix.buildFIPS }}-${{ matrix.arch }}
           path: integration-failure.txt
+          if-no-files-found: ignore
 
   report-failures:
     name: report-failures
     needs: [integrations, python, ruby]
     if: ${{ always() && github.event_name == 'schedule' }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -612,12 +620,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -exo pipefail
-          # Count the failure artifacts to get the number of broken integration tests.
-          # We keep only the integration-failure-* markers and count lines with wc -l instead of jq length,
-          # since --paginate would make jq emit a separate count for each page.
+          # Count the number of failing tests, excluding tests which are allowed to fail.
           failure_count=$(gh api --paginate \
-            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
-            --jq '.artifacts[] | select(.name | startswith("integration-failure-")) | .name' \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not)) | .name' \
             | wc -l | tr -d ' ')
 
           aws cloudwatch put-metric-data \

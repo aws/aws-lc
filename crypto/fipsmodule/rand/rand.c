@@ -292,17 +292,24 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
 // to ensure uniqueness.
 //
 // Note: If |rand_check_ctr_drbg_uniqueness| returns 0 it does not necessarily
-// imply that an UBE occurred. It can also mean that no UBE detection is
-// supported or that UBE detection failed. In these cases, |state| must also be
-// randomized to ensure uniqueness. Any special future cases can be handled in
-// this function.
+// imply that an UBE occurred. For a state that is not fresh it can also mean
+// that no UBE detection is supported or that UBE detection failed. In these
+// cases, |state| must also be randomized to ensure uniqueness. Any special
+// future cases can be handled in this function.
+//
+// If the state has just been initialized, then |ctr_drbg_state_is_fresh| is 1.
+// Otherwise, 0.
 //
 // Return 0 if |state| must be randomized. 1 otherwise.
-static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
+static int rand_check_ctr_drbg_uniqueness(
+  struct rand_thread_local_state *state, int ctr_drbg_state_is_fresh) {
 
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
-    return 0;
+    // UBE detection is unavailable or failed, so we cannot know whether an UBE
+    // occurred. A freshly initialized state sourced its seed material moments
+    // ago and is therefore unique. Any other state must be randomized.
+    return ctr_drbg_state_is_fresh == 1 ? 1 : 0;
   }
 
   if (current_generation_number != state->generation_number) {
@@ -397,6 +404,25 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 
   GUARD_PTR_ABORT(state);
 
+  // Associate |state| with an UBE generation number sampled before any entropy
+  // that seeds it is sourced. Otherwise, an UBE occurring between sourcing that
+  // entropy and sampling the generation number would associate |state| with a
+  // post-UBE generation number while its seed material predates the UBE.
+  //
+  // The sample must precede |get_entropy_source| as well, not just the seed
+  // draw below. An entropy source's |initialize| may itself derive material
+  // that the seed draw is a deterministic function of, as the tree DRBG does
+  // in |tree_jitter_initialize|. Sampling first means |state| is bound to a
+  // generation number predating all of it, so a UBE anywhere in between forces
+  // a reseed here, without relying on the entropy source to detect the UBE on
+  // its own behalf.
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    state->generation_number = 0;
+  } else {
+    state->generation_number = current_generation_number;
+  }
+
   state->entropy_source = get_entropy_source();
   if (state->entropy_source == NULL) {
     abort();
@@ -418,12 +444,6 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 
   state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
-  uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
-    state->generation_number = 0;
-  } else {
-    state->generation_number = current_generation_number;
-  }
   CRYPTO_MUTEX_init(&state->state_clear_lock);
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
@@ -454,10 +474,8 @@ static void rand_bytes_core(
   // CTR-DRBG generate function CTR_DRBG_generate().
   int must_reseed_before_generate = 0;
 
-  // Ensure that the CTR-DRBG state is unique. If the state is fresh then
-  // uniqueness is guaranteed.
-  if (rand_check_ctr_drbg_uniqueness(state) != 1 &&
-      ctr_drbg_state_is_fresh != 1) {
+  // Ensure that the CTR-DRBG state is unique.
+  if (rand_check_ctr_drbg_uniqueness(state, ctr_drbg_state_is_fresh) != 1) {
     must_reseed_before_generate = 1;
   }
 

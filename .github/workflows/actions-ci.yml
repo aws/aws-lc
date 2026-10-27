@@ -1,7 +1,7 @@
 name: General CI Tests
 on:
   push:
-    branches: ["*"]
+    branches: ["main", "fips-*"]
   pull_request:
     branches: ["*"]
 concurrency:
@@ -51,7 +51,7 @@ jobs:
           - "macos-15-intel"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -72,7 +72,7 @@ jobs:
           - "macos-15-intel"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
@@ -89,12 +89,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # One macOS version, matching macOS-x86 which already runs only
+        # macos-15-intel. macOS has the smallest GitHub-hosted concurrency
+        # ceiling and is the one pool a larger runner group cannot relieve,
+        # because that ceiling is shared between standard and larger runners.
         os:
-          - "macos-14"
           - "macos-15"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Build ${{ env.PACKAGE_NAME }}
@@ -116,7 +119,7 @@ jobs:
           - "windows-11-arm"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install NASM
@@ -139,14 +142,13 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14"
-          - "macos-15"
+          - "macos-15" # one version, see macOS-ARM above
         clang:
           - 22
           - 0 # default
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - if: matrix.clang == 22
@@ -179,8 +181,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fips: [0, 1]
-        shared: [0, 1]
+        # Every compiler version gets the FIPS static build, the most
+        # compiler-sensitive configuration because delocate rewrites the
+        # compiler's own assembly output. The fips and shared axes exercise build
+        # plumbing rather than codegen, so crossing them with all 17 versions cost
+        # 68 cells and 688 minutes per push. The range endpoints of each compiler
+        # family keep the full grid, where a config-specific compiler bug is most
+        # likely to surface.
+        fips: [1]
+        shared: [0]
         compiler:
           - "gcc9"
           - "gcc10"
@@ -199,12 +208,25 @@ jobs:
           - "clang20"
           - "clang21"
           - "clang22"
+        include:
+          - { compiler: "gcc9", fips: 0, shared: 0 }
+          - { compiler: "gcc9", fips: 0, shared: 1 }
+          - { compiler: "gcc9", fips: 1, shared: 1 }
+          - { compiler: "gcc16", fips: 0, shared: 0 }
+          - { compiler: "gcc16", fips: 0, shared: 1 }
+          - { compiler: "gcc16", fips: 1, shared: 1 }
+          - { compiler: "clang14", fips: 0, shared: 0 }
+          - { compiler: "clang14", fips: 0, shared: 1 }
+          - { compiler: "clang14", fips: 1, shared: 1 }
+          - { compiler: "clang22", fips: 0, shared: 0 }
+          - { compiler: "clang22", fips: 0, shared: 1 }
+          - { compiler: "clang22", fips: 1, shared: 1 }
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Setup Clang
@@ -276,7 +298,7 @@ jobs:
             shard_index: 0
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install dependencies
@@ -316,7 +338,7 @@ jobs:
       options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - run: |
@@ -341,13 +363,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; the family endpoints also get non-FIPS. Same
+        # reasoning as compiler-tests above.
         gcc_version: ["9", "10", "11", "12", "13", "14", "15", "16"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { gcc_version: "9", fips: "0" }
+          - { gcc_version: "16", fips: "0" }
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
+      - name: Disable expired Bullseye security repository
+        if: fromJSON(matrix.gcc_version) <= 11
+        run: sed -i '/debian-security/d' /etc/apt/sources.list
       - name: Install build dependencies
         run: |
           apt-get update
@@ -377,11 +407,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # clang22 is a family endpoint, so it keeps both configs.
         clang_version: ["22"]
         fips: ["0", "1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Select compiler
@@ -414,15 +445,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["14", "15", "16", "17", "18", "19"]
-        fips: ["0", "1"]
-        exclude:
-          # TODO: Broken FIPS build w/ clang 18
-          - clang_version: "18"
-            fips: "1"
+        fips: ["1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -456,11 +484,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS only; this range holds no family endpoints.
         clang_version: ["11", "12", "13"]
-        fips: ["0", "1"]
+        fips: ["1"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -494,11 +523,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # FIPS for every version; clang7 is a family endpoint so it also gets
+        # non-FIPS.
         clang_version: ["7", "8", "9", "10"]
-        fips: ["0", "1"]
+        fips: ["1"]
+        include:
+          - { clang_version: "7", fips: "0" }
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build dependencies
@@ -534,7 +567,7 @@ jobs:
     container: gcc:14.4
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Install build deps
@@ -581,7 +614,7 @@ jobs:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
       - name: Setup Clang

@@ -53,14 +53,14 @@ static bool handleModulus(RSA *rsa, BIO* out_file) {
 }
 
 // Map arguments using tool/args.cc
-bool rsaTool(const args_list_t &args) {
+int rsaTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in_path, out_path, inform, outform;
@@ -80,7 +80,7 @@ bool rsaTool(const args_list_t &args) {
   // Display rsa tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (pubin) {
@@ -97,7 +97,7 @@ bool rsaTool(const args_list_t &args) {
       if (!in_file) {
         fprintf(stderr, "Error: unable to load RSA key from '%s'\n",
             in_path.c_str());
-        return false;
+        return kToolExitFailure;
       }
   }
 
@@ -109,7 +109,7 @@ bool rsaTool(const args_list_t &args) {
       input_format = FORMAT_PEM;
     } else {
       fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -121,7 +121,7 @@ bool rsaTool(const args_list_t &args) {
       output_format = FORMAT_PEM;
     } else {
       fprintf(stderr, "Error: '-outform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -179,7 +179,7 @@ bool rsaTool(const args_list_t &args) {
     fprintf(stderr, "Error: unable to read RSA %s key from '%s'\n",
             pubin ? "public" : "private", in_path.c_str());
     ERR_print_errors_fp(stderr);
-    return false;
+    return kToolExitFailure;
   }
 
   bssl::UniquePtr<BIO> out_file;
@@ -193,13 +193,13 @@ bool rsaTool(const args_list_t &args) {
   }
   if (!out_file) {
     fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   // The "rsa" command does not order output based on parameters:
   if (HasArgument(parsed_args, "-modulus")) {
     if (!handleModulus(rsa.get(), out_file.get())) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -218,7 +218,7 @@ bool rsaTool(const args_list_t &args) {
         if (!write_success) {
           fprintf(stderr, "Error: unable to write RSA public key\n");
           ERR_print_errors_fp(stderr);
-          return false;
+          return kToolExitFailure;
         }
       } else {
         // Output private key
@@ -231,11 +231,11 @@ bool rsaTool(const args_list_t &args) {
         if (!write_success) {
           fprintf(stderr, "Error: unable to write RSA private key\n");
           ERR_print_errors_fp(stderr);
-          return false;
+          return kToolExitFailure;
         }
       }
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }

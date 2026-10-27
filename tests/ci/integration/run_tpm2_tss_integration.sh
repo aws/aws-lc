@@ -80,6 +80,10 @@ git clone https://github.com/curl/curl.git "${CURL_SRC_FOLDER}"
 git clone https://github.com/tpm2-software/tpm2-tss.git "${TPM2_TSS_SRC_FOLDER}"
 git clone https://github.com/tpm2-software/tpm2-abrmd.git "${TPM2_ABRMD_SRC_FOLDER}"
 git clone https://github.com/tpm2-software/tpm2-tools.git "${TPM2_TOOLS_SRC_FOLDER}"
+record_repo_commit "${CURL_SRC_FOLDER}"
+record_repo_commit "${TPM2_TSS_SRC_FOLDER}"
+record_repo_commit "${TPM2_ABRMD_SRC_FOLDER}"
+record_repo_commit "${TPM2_TOOLS_SRC_FOLDER}"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${CURL_BUILD_FOLDER}" "${CURL_INSTALL_FOLDER}"
 ls
 

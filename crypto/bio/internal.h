@@ -52,8 +52,13 @@ int bio_socket_nbio(int sock, int on);
 // bio_clear_socket_error clears the last socket error on |sock|.
 void bio_clear_socket_error(int sock);
 
-// bio_sock_error_get_and_clear clears and returns the last socket error on |sock|.
+// bio_sock_error_get_and_clear clears and returns the last socket error on
+// |sock|, or -1 if querying the socket error failed.
 int bio_sock_error_get_and_clear(int sock);
+
+// bio_socket_error_is_retryable returns non-zero if |error| is a non-fatal socket
+// error. |error| is a Winsock error on Windows and an errno value elsewhere.
+int bio_socket_error_is_retryable(int error);
 
 // bio_socket_should_retry returns non-zero if |return_value| indicates an error
 // and the last socket error indicates that it's non-fatal.
@@ -83,6 +88,9 @@ union bio_addr_st {
 // bio_errno_should_retry returns non-zero if |return_value| indicates an error
 // and |errno| indicates that it's non-fatal.
 int bio_errno_should_retry(int return_value);
+
+// bio_errno_is_retryable returns non-zero if |error| is a non-fatal errno value.
+int bio_errno_is_retryable(int error);
 
 #if defined(__cplusplus)
 }  // extern C

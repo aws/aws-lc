@@ -232,9 +232,10 @@ if [[ ${CRYPTO_UNVERSIONED} -eq 0 ]]; then
 else
   print_fail "libcrypto has ${CRYPTO_UNVERSIONED} unversioned exports"
   print_info "First 10 unversioned symbols:"
+  # sed limits the display without closing the pipe early like head.
   nm -D "${LIBCRYPTO_SO}" | \
     awk '$2 == "T" && $3 !~ /@/ && $3 !~ /^_/ && $3 !~ /^OPENSSL_memory/ { print "  " $3 }' | \
-    head -10
+    sed -n '1,10p'
 fi
 
 SSL_UNVERSIONED=$(nm -D "${LIBSSL_SO}" | \
@@ -248,7 +249,7 @@ else
   print_info "First 10 unversioned symbols:"
   nm -D "${LIBSSL_SO}" | \
     awk '$2 == "T" && $3 !~ /@/ && $3 !~ /^_/ { print "  " $3 }' | \
-    head -10
+    sed -n '1,10p'
 fi
 
 # Test 5: Verify specific API symbols are versioned
@@ -406,7 +407,7 @@ check_dropped_symbols() {
   else
     print_fail "${name}: ${dropped_count} exported symbol(s) silently hidden by the version script"
     print_info "These are exported by the compiler but missing from the registry/.map:"
-    echo "${dropped}" | head -10 | sed 's/^/  /'
+    echo "${dropped}" | sed -n '1,10p' | sed 's/^/  /'
     # An explicit "if" rather than "[[ ... ]] && cmd": the latter returns non-zero
     # when the condition is false, which under "set -e" would abort the script if
     # it were ever the function's last command.
@@ -455,8 +456,8 @@ if ! cmake -GNinja -B "${UNVERSIONED_BUILD}" -S "${SOURCE_ROOT}" \
   exit 1
 fi
 
-UV_CRYPTO=$(find "${UNVERSIONED_BUILD}" -name 'libcrypto-awslc.so*' -type f | head -1)
-UV_SSL=$(find "${UNVERSIONED_BUILD}" -name 'libssl-awslc.so*' -type f | head -1)
+UV_CRYPTO=$(find "${UNVERSIONED_BUILD}" -name 'libcrypto-awslc.so*' -type f | sed -n '1p')
+UV_SSL=$(find "${UNVERSIONED_BUILD}" -name 'libssl-awslc.so*' -type f | sed -n '1p')
 
 if [[ -z "${UV_CRYPTO}" || -z "${UV_SSL}" ]]; then
   print_fail "Could not locate unversioned reference libraries after build"
@@ -465,7 +466,8 @@ fi
 
 # Guard: the unversioned reference must actually be unversioned, otherwise the
 # diff is meaningless (both sides hidden identically).
-if readelf --version-info "${UV_CRYPTO}" | grep -q "${SYMBOL_VERSION}"; then
+# Drain readelf's output so SIGPIPE cannot hide an unexpected version.
+if readelf --version-info "${UV_CRYPTO}" | grep "${SYMBOL_VERSION}" > /dev/null; then
   print_fail "Unversioned reference unexpectedly carries version definitions; drop check invalid"
   exit 1
 fi

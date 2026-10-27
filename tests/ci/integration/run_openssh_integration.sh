@@ -20,6 +20,7 @@ source tests/ci/common_posix_setup.sh
 #    - OPENSSH_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER="${SYS_ROOT}/SCRATCH_AWSLC_OPENSSH_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -83,6 +84,7 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_
 
 # Get OpenSSH at the requested ref.
 git clone --depth 1 --branch "${OPENSSH_REF}" https://github.com/openssh/openssh-portable.git "${OPENSSH_WORKSPACE_FOLDER}"
+record_repo_commit "${OPENSSH_WORKSPACE_FOLDER}"
 ls
 
 # Build AWS-LC as a shared library

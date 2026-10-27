@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include <algorithm>
@@ -37,6 +39,10 @@
 // We don't support this default config file interface. For fields that are not
 // overriden by user input, we hardcode default values (e.g. X509 extensions,
 // -keyout defaults to privkey.pem, etc.)
+//
+// 4. -batch only changes behavior when subject or attribute prompts would
+// otherwise occur. It does not affect -subj, prompt=no, or password reads
+// from stdin.
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
@@ -69,6 +75,10 @@ static const argument_t kArguments[] = {
      "This option outputs a certificate instead of"
      "a certificate request. If the -newkey option is not given it "
      "will generate a new private key with 2048 bits length"},
+    {"-batch", kBooleanArgument,
+     "Do not prompt for DN/attributes: use config values/defaults, omitting "
+     "unset fields. Without -config, use built-in DN defaults. Does not "
+     "change -subj, prompt=no, or explicit password-source reads."},
     {"-subj", kOptionalArgument,
      "Sets subject name for new request. The arg must "
      "be formatted as /type0=value0/type1=value1/type2=.... "
@@ -163,9 +173,230 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   return pkey;
 }
 
+// Resolves a batch field using its exact config entry name. An empty _value
+// falls back to _default, while a _value of "." omits the field. Defaults are
+// literal. Invalid bounds and length violations fail rather than reprompt.
+static bool ResolveBatchFieldValue(CONF *conf, const char *section,
+                                   const char *name, const char **out_value) {
+  // OpenSSL uses a 100-byte buffer for these keys. _default is the longest
+  // suffix, so checking it covers every lookup below.
+  char key[100];
+  if (strlen(name) + strlen("_default") + 1 > sizeof(key)) {
+    fprintf(stderr, "Name '%s' too long\n", name);
+    return false;
+  }
+  auto lookup = [&](const char *suffix) -> const char * {
+    snprintf(key, sizeof(key), "%s%s", name, suffix);
+    return NCONF_get_string(conf, section, key);
+  };
+
+  *out_value = nullptr;
+  const char *value = lookup("_value");
+  if (value != nullptr && value[0] == '\0') {
+    value = nullptr;  // Treat an empty value like blank input.
+  }
+
+  const char *resolved = nullptr;
+  if (value != nullptr) {
+    if (strcmp(value, ".") == 0) {
+      return true;
+    }
+    resolved = value;
+  } else {
+    const char *def = lookup("_default");
+    if (def == nullptr || def[0] == '\0') {
+      return true;
+    }
+    resolved = def;
+  }
+
+  // Reject malformed bounds rather than accepting a numeric prefix.
+  auto get_bound = [&](const char *suffix, long *out) -> bool {
+    const char *bound = lookup(suffix);
+    if (bound == nullptr) {
+      *out = -1;
+      return true;
+    }
+    char *endptr = nullptr;
+    errno = 0;
+    long parsed = strtol(bound, &endptr, 10);
+    if (errno == ERANGE || endptr == bound || *endptr != '\0') {
+      fprintf(stderr,
+              "Error: -batch length bound %s%s must be an in-range integer\n",
+              name, suffix);
+      return false;
+    }
+    *out = parsed;
+    return true;
+  };
+  long n_min = -1;
+  long n_max = -1;
+  if (!get_bound("_min", &n_min) || !get_bound("_max", &n_max)) {
+    return false;
+  }
+
+  long len = static_cast<long>(strlen(resolved));
+  if (n_min > 0 && len < n_min) {
+    fprintf(stderr, "String too short, must be at least %ld bytes long\n",
+            n_min);
+    return false;
+  }
+  if (n_max >= 0 && len > n_max) {
+    fprintf(stderr, "String too long, must be at most %ld bytes long\n", n_max);
+    return false;
+  }
+
+  *out_value = resolved;
+  return true;
+}
+
+// Mirrors OpenSSL's check_end(): true if |name| is a field's metadata key.
+static bool HasMetadataSuffix(const char *name) {
+  static const char *const kSuffixes[] = {"_min", "_max", "_default", "_value"};
+  const size_t name_len = strlen(name);
+  for (const char *suffix : kSuffixes) {
+    const size_t suffix_len = strlen(suffix);
+    if (suffix_len <= name_len &&
+        strcmp(name + (name_len - suffix_len), suffix) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Builds a batch subject from the DN/attributes sections' entries in file
+// order, accepting any NID OBJ_txt2nid() recognizes (see no-config path below).
+static bssl::UniquePtr<X509_NAME> BuildBatchSubject(X509_REQ *req, CONF *conf,
+                                                    const std::string &section,
+                                                    bool is_csr,
+                                                    unsigned long chtype) {
+  bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
+  if (!subj) {
+    fprintf(stderr, "Error getting subject name from request\n");
+    return nullptr;
+  }
+
+  if (conf == nullptr) {
+    for (const auto &field : subject_fields) {
+      if (field.default_value[0] != '\0' &&
+          !X509_NAME_add_entry_by_NID(
+              subj.get(), field.nid, chtype,
+              reinterpret_cast<const unsigned char *>(field.default_value), -1,
+              -1, 0)) {
+        fprintf(stderr, "Error adding %s to subject\n", field.field_ln);
+        return nullptr;
+      }
+    }
+    if (X509_NAME_entry_count(subj.get()) == 0) {
+      fprintf(stderr, "Error: At least one subject field must be provided.\n");
+      return nullptr;
+    }
+    return subj;
+  }
+
+  const char *dn_section = NCONF_get_string(conf, section.c_str(), REQ_DN_OPT);
+  const STACK_OF(CONF_VALUE) *dn_entries =
+      dn_section != nullptr ? NCONF_get_section(conf, dn_section) : nullptr;
+  if (dn_entries == nullptr) {
+    fprintf(stderr, "Error: -batch requires a distinguished_name section\n");
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < sk_CONF_VALUE_num(dn_entries); i++) {
+    const CONF_VALUE *entry = sk_CONF_VALUE_value(dn_entries, i);
+    if (HasMetadataSuffix(entry->name)) {
+      continue;
+    }
+    // Strip an instance prefix through the first ':', ',', or '.'. The full
+    // entry name is still used for value and bound lookups.
+    const char *type = entry->name;
+    const char *separator = strpbrk(type, ":,.");
+    if (separator != nullptr && separator[1] != '\0') {
+      type = separator + 1;
+    }
+    // A leading '+' (after any instance prefix) marks a multi-valued RDN:
+    // this entry joins the previous entry's SET instead of starting a new one.
+    int mval = 0;
+    if (*type == '+') {
+      mval = -1;
+      type++;
+    }
+    int nid = OBJ_txt2nid(type);
+    if (nid == NID_undef) {
+      ERR_clear_error();
+      continue;
+    }
+
+    const char *value = nullptr;
+    if (!ResolveBatchFieldValue(conf, dn_section, entry->name, &value)) {
+      return nullptr;
+    }
+    if (value != nullptr &&
+        !X509_NAME_add_entry_by_NID(
+            subj.get(), nid, chtype,
+            reinterpret_cast<const unsigned char *>(value), -1, -1, mval)) {
+      fprintf(stderr, "Error adding %s to subject\n", type);
+      return nullptr;
+    }
+  }
+
+  if (X509_NAME_entry_count(subj.get()) == 0) {
+    fprintf(stderr, "Error: At least one subject field must be provided.\n");
+    return nullptr;
+  }
+
+  const char *attr_section =
+      NCONF_get_string(conf, section.c_str(), REQ_ATTRIBUTES_OPT);
+  if (attr_section == nullptr) {
+    return subj;
+  }
+  const STACK_OF(CONF_VALUE) *attr_entries =
+      NCONF_get_section(conf, attr_section);
+  if (attr_entries == nullptr) {
+    fprintf(stderr, "Error: Unable to get '%s' section\n", attr_section);
+    return nullptr;
+  }
+  if (!is_csr) {
+    return subj;
+  }
+
+  for (size_t i = 0; i < sk_CONF_VALUE_num(attr_entries); i++) {
+    const CONF_VALUE *entry = sk_CONF_VALUE_value(attr_entries, i);
+    if (HasMetadataSuffix(entry->name)) {
+      continue;
+    }
+    int nid = OBJ_txt2nid(entry->name);
+    if (nid == NID_undef) {
+      ERR_clear_error();
+      continue;
+    }
+
+    const char *value = nullptr;
+    if (!ResolveBatchFieldValue(conf, attr_section, entry->name, &value)) {
+      return nullptr;
+    }
+    if (value == nullptr) {
+      continue;
+    }
+    bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
+        nullptr, nid, MBSTRING_ASC,
+        reinterpret_cast<const unsigned char *>(value), -1));
+    if (!x509_attr || !X509_REQ_add1_attr(req, x509_attr.get())) {
+      fprintf(stderr, "Error adding attribute %s to request\n", entry->name);
+      return nullptr;
+    }
+  }
+
+  return subj;
+}
+
 static bssl::UniquePtr<X509_NAME> BuildSubject(
     X509_REQ *req, CONF *req_conf, const std::string &req_section, bool is_csr,
-    bool no_prompt, unsigned long chtype = MBSTRING_ASC) {
+    bool no_prompt, bool batch, unsigned long chtype = MBSTRING_ASC) {
+  if (batch && !no_prompt) {
+    return BuildBatchSubject(req, req_conf, req_section, is_csr, chtype);
+  }
+
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
   if (!subj) {
@@ -290,7 +521,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
                                    std::string &subject_name, CONF *req_conf,
                                    const std::string &req_section, bool is_csr,
-                                   bool no_prompt) {
+                                   bool no_prompt, bool batch) {
   bssl::UniquePtr<X509_NAME> name;
 
   // version 1
@@ -299,12 +530,12 @@ static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
   }
 
   if (subject_name.empty()) {  // Prompt the user
-    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt);
+    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt, batch);
   } else {  // Parse user provided string
     name = ParseSubjectName(subject_name);
-    if (!name) {
-      return false;
-    }
+  }
+  if (!name) {
+    return false;
   }
 
   if (!X509_REQ_set_subject_name(req, name.get())) {
@@ -542,7 +773,7 @@ static bool WritePrivateKey(std::string &out_path, Password &passout,
   return true;
 }
 
-bool reqTool(const args_list_t &args) {
+int reqTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -550,19 +781,21 @@ bool reqTool(const args_list_t &args) {
                                      kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
       outform, cert_ext_section, req_ext_section, digest_name;
   Password passin, passout;
   unsigned int days;
-  bool help = false, new_flag = false, x509_flag = false, nodes = false;
+  bool help = false, new_flag = false, x509_flag = false, nodes = false,
+       batch = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
   GetBoolArgument(&new_flag, "-new", parsed_args);
   GetBoolArgument(&x509_flag, "-x509", parsed_args);
   GetBoolArgument(&nodes, "-nodes", parsed_args);
+  GetBoolArgument(&batch, "-batch", parsed_args);
   GetString(&newkey, "-newkey", "", parsed_args);
   GetUnsigned(&days, "-days", 30u, parsed_args);
   GetString(&subj, "-subj", "", parsed_args);
@@ -579,14 +812,14 @@ bool reqTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   if (!new_flag && !x509_flag && newkey.empty()) {
     fprintf(stderr,
             "Error: Missing required options, -x509, -new, or -newkey must be "
             "specified. \n");
-    return false;
+    return kToolExitFailure;
   }
 
   if (!newkey.empty() && !key_file_path.empty()) {
@@ -602,13 +835,13 @@ bool reqTool(const args_list_t &args) {
       fprintf(
           stderr,
           "Error: '-outform' option must specify a valid encoding DER|PEM\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
   bssl::UniquePtr<CONF> req_conf(nullptr);
   if (!config_path.empty() && !LoadConfig(config_path, req_conf)) {
-    return false;
+    return kToolExitFailure;
   }
 
   std::string req_section = REQ_SECTION;
@@ -635,7 +868,7 @@ bool reqTool(const args_list_t &args) {
   if (req_conf.get() &&
       (!CheckExtensionSection(req_conf.get(), cert_ext_section) ||
        !CheckExtensionSection(req_conf.get(), req_ext_section))) {
-    return false;
+    return kToolExitFailure;
   }
 
   const EVP_MD *digest = nullptr;
@@ -659,7 +892,7 @@ bool reqTool(const args_list_t &args) {
   if (digest == nullptr) {
     fprintf(stderr, "Error: unsupported digest algorithm: %s\n",
             digest_name.c_str());
-    return false;
+    return kToolExitFailure;
   }
 
   bool encrypt_key = true;
@@ -683,7 +916,7 @@ bool reqTool(const args_list_t &args) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (!key_file_path.empty()) {
     if (!LoadPrivateKey(key_file_path, passin, pkey)) {
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Before generating key, check if config has a default key length specified
@@ -718,7 +951,7 @@ bool reqTool(const args_list_t &args) {
 
     if (!pkey) {
       fprintf(stderr, "Error: Failed to generate private key.\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -744,7 +977,7 @@ bool reqTool(const args_list_t &args) {
     }
 
     if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -767,27 +1000,27 @@ bool reqTool(const args_list_t &args) {
   // Always create a CSR first
   if (req == NULL ||
       !MakeCertificateRequest(req.get(), pkey.get(), subj, req_conf.get(),
-                              req_section, !x509_flag, no_prompt)) {
+                              req_section, !x509_flag, no_prompt, batch)) {
     fprintf(stderr, "Failed to create certificate request\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Convert CSR to certificate
   if (x509_flag) {
     if (cert == NULL) {
       fprintf(stderr, "Failed to create X509 structure\n");
-      return false;
+      return kToolExitFailure;
     }
 
     if (!X509_set_version(cert.get(), X509_VERSION_3)) {
       fprintf(stderr, "Failed to set certificate version\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Generate random serial number
     if (!GenerateSerial(cert.get())) {
       fprintf(stderr, "Failed to generate serial number\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set subject and issuer from CSR
@@ -796,47 +1029,47 @@ bool reqTool(const args_list_t &args) {
         !X509_set_issuer_name(cert.get(),
                               X509_REQ_get_subject_name(req.get()))) {
       fprintf(stderr, "Failed to set subject/issuer\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Set expiration to be 'days' days from now
     if (!X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0)) {
       fprintf(stderr, "Failed to set notBefore field\n");
-      return false;
+      return kToolExitFailure;
     }
     if (!X509_time_adj_ex(X509_getm_notAfter(cert.get()), days, 0, NULL)) {
       fprintf(stderr, "Failed to set notAfter field\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Copy public key from CSR
     EVP_PKEY *tmppkey = X509_REQ_get0_pubkey(req.get());
     if (!tmppkey || !X509_set_pubkey(cert.get(), tmppkey)) {
       fprintf(stderr, "Failed to set public key\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Add extensions to certificate
     if (!AddCertExtensions(cert.get(), req_conf.get(), cert_ext_section)) {
       fprintf(stderr, "Failed to add extensions to certificate\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Sign the certificate
     if (!X509_sign(cert.get(), pkey.get(), digest)) {
       fprintf(stderr, "Failed to sign certificate\n");
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Add extensions to request
     if (!AddReqExtensions(req.get(), req_conf.get(), req_ext_section)) {
       fprintf(stderr, "Failed to add extensions to CSR\n");
-      return false;
+      return kToolExitFailure;
     }
 
     // Sign the request
     if (!X509_REQ_sign(req.get(), pkey.get(), digest)) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -845,11 +1078,11 @@ bool reqTool(const args_list_t &args) {
     out_bio.reset(BIO_new(BIO_s_file()));
     if (!out_bio) {
       fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
     if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
       fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return false;
+      return kToolExitFailure;
     }
   } else {
     // Default to stdout
@@ -861,27 +1094,27 @@ bool reqTool(const args_list_t &args) {
     if (isStringUpperCaseEqual(outform, "DER")) {
       if (!i2d_X509_bio(out_bio.get(), cert.get())) {
         fprintf(stderr, "Error: Failed to write certificate\n");
-        return false;
+        return kToolExitFailure;
       }
     } else {
       if (!PEM_write_bio_X509(out_bio.get(), cert.get())) {
         fprintf(stderr, "Error: Failed to write certificate\n");
-        return false;
+        return kToolExitFailure;
       }
     }
   } else {
     if (isStringUpperCaseEqual(outform, "DER")) {
       if (!i2d_X509_REQ_bio(out_bio.get(), req.get())) {
         fprintf(stderr, "Error: Failed to write certificate request\n");
-        return false;
+        return kToolExitFailure;
       }
     } else {
       if (!PEM_write_bio_X509_REQ(out_bio.get(), req.get())) {
         fprintf(stderr, "Error: Failed to write certificate request\n");
-        return false;
+        return kToolExitFailure;
       }
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }

@@ -19,7 +19,7 @@ on:
         required: false
         type: string
   push:
-    branches: ['*']
+    branches: ['main', 'fips-*']
   pull_request:
     branches: ['*']
 concurrency:

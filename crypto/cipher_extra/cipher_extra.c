@@ -83,6 +83,8 @@ static const EVP_CIPHER *get_cipherbyname(const char* name) {
   return NULL;
 }
 
+int EVP_add_cipher(const EVP_CIPHER *cipher) { return cipher != NULL; }
+
 const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
   if (name == NULL) {
     return NULL;

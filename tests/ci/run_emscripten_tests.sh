@@ -24,6 +24,7 @@
 set -ex
 
 source tests/ci/common_posix_setup.sh
+source tests/ci/gtest_util.sh
 
 # Check if EMSDK_PATH is set
 if [ -z "$EMSDK_PATH" ]; then
@@ -220,8 +221,9 @@ function run_wasm_tests {
     echo "==============================="
     echo ""
 
-    # Run crypto_test (excluding fork and socket tests)
-    if ! run_single_wasm_test "crypto/crypto_test.js" --gtest_filter="${WASM_GTEST_FILTER}"; then
+    # NODERAWFS forwards Node's environment into WASM in our pinned Emscripten
+    # version, including the GTEST_* variables used by shard_gtest.
+    if ! shard_gtest "node crypto/crypto_test.js --gtest_filter=${WASM_GTEST_FILTER}" "${NUM_CPU_THREADS}"; then
         failed_tests+=("crypto_test")
     fi
 
@@ -231,7 +233,7 @@ function run_wasm_tests {
     fi
 
     # Run ssl_test (excluding fork and socket tests)
-    if ! run_single_wasm_test "ssl/ssl_test.js" --gtest_filter="${WASM_GTEST_FILTER}"; then
+    if ! shard_gtest "node ssl/ssl_test.js --gtest_filter=${WASM_GTEST_FILTER}" "${NUM_CPU_THREADS}"; then
         failed_tests+=("ssl_test")
     fi
 

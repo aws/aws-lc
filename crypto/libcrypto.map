@@ -987,6 +987,8 @@ AWS_LC_1.0 {
     ERR_save_state;
     ERR_set_error_data;
     ERR_set_mark;
+    ERR_suppress_errors_begin;
+    ERR_suppress_errors_end;
     EVP_AEAD_CTX_aead;
     EVP_AEAD_CTX_cleanup;
     EVP_AEAD_CTX_copy;
@@ -1291,6 +1293,7 @@ AWS_LC_1.0 {
     EVP_VerifyInit;
     EVP_VerifyInit_ex;
     EVP_VerifyUpdate;
+    EVP_add_cipher;
     EVP_add_cipher_alias;
     EVP_add_digest;
     EVP_aead_aes_128_cbc_sha1_tls;
@@ -1389,6 +1392,10 @@ AWS_LC_1.0 {
     EVP_hpke_aes_256_gcm;
     EVP_hpke_chacha20_poly1305;
     EVP_hpke_hkdf_sha256;
+    EVP_hpke_hkdf_sha384;
+    EVP_hpke_mlkem1024;
+    EVP_hpke_mlkem512;
+    EVP_hpke_mlkem768;
     EVP_hpke_x25519_hkdf_sha256;
     EVP_keccak256;
     EVP_marshal_digest_algorithm;
@@ -2705,6 +2712,7 @@ AWS_LC_1.0 {
     d2i_DSA_SIG;
     d2i_DSAparams;
     d2i_ECDSA_SIG;
+    d2i_ECPKParameters;
     d2i_ECPKParameters_bio;
     d2i_ECParameters;
     d2i_ECPrivateKey;
@@ -2813,6 +2821,7 @@ AWS_LC_1.0 {
     get_thread_and_global_tree_drbg_calls_FOR_TESTING;
     have_hw_rng_aarch64_for_testing;
     have_hw_rng_x86_64_for_testing;
+    hw_rng_multiple8_with_retry_FOR_TESTING;
     i2a_ASN1_ENUMERATED;
     i2a_ASN1_INTEGER;
     i2a_ASN1_OBJECT;
@@ -2860,6 +2869,7 @@ AWS_LC_1.0 {
     i2d_DSA_SIG;
     i2d_DSAparams;
     i2d_ECDSA_SIG;
+    i2d_ECPKParameters;
     i2d_ECPKParameters_bio;
     i2d_ECParameters;
     i2d_ECPrivateKey;

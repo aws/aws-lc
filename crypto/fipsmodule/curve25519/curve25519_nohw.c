@@ -490,6 +490,16 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_loose check;
 
   fe_frombytes(&h->Y, s);
+  //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
+  //# If the resulting value is >= p, decoding fails.
+  uint8_t y_canonical[32], y_in[32];
+  fe_tobytes(y_canonical, &h->Y);
+  OPENSSL_memcpy(y_in, s, 32);
+  y_in[31] &= 0x7f;
+  if (CRYPTO_memcmp(y_canonical, y_in, 32) != 0) {
+    return 0;
+  }
+
   fe_1(&h->Z);
   fe_sq_tt(&w, &h->Y);
   fe_mul_ttt(&vxx, &w, &k25519d);
@@ -515,6 +525,11 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   if (fe_isnegative(&h->X) != (s[31] >> 7)) {
     fe_loose t;
     fe_neg(&t, &h->X);
+    //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1.3
+    //# If x = 0, and x_0 = 1, decoding fails.
+    if (!fe_isnonzero(&t)) {
+      return 0;
+    }
     fe_carry(&h->X, &t);
   }
 

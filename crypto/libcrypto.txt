@@ -980,6 +980,8 @@ ERR_restore_state AWS_LC_1.0 PRIVATE
 ERR_save_state AWS_LC_1.0 PRIVATE
 ERR_set_error_data AWS_LC_1.0 PUBLIC
 ERR_set_mark AWS_LC_1.0 PUBLIC
+ERR_suppress_errors_begin AWS_LC_1.0 PRIVATE
+ERR_suppress_errors_end AWS_LC_1.0 PRIVATE
 EVP_AEAD_CTX_aead AWS_LC_1.0 PUBLIC
 EVP_AEAD_CTX_cleanup AWS_LC_1.0 PUBLIC
 EVP_AEAD_CTX_copy AWS_LC_1.0 PUBLIC
@@ -1284,6 +1286,7 @@ EVP_VerifyFinal AWS_LC_1.0 PUBLIC
 EVP_VerifyInit AWS_LC_1.0 PUBLIC
 EVP_VerifyInit_ex AWS_LC_1.0 PUBLIC
 EVP_VerifyUpdate AWS_LC_1.0 PUBLIC
+EVP_add_cipher AWS_LC_1.0 PUBLIC
 EVP_add_cipher_alias AWS_LC_1.0 PUBLIC
 EVP_add_digest AWS_LC_1.0 PUBLIC
 EVP_aead_aes_128_cbc_sha1_tls AWS_LC_1.0 PUBLIC
@@ -1382,6 +1385,10 @@ EVP_hpke_aes_128_gcm AWS_LC_1.0 PUBLIC
 EVP_hpke_aes_256_gcm AWS_LC_1.0 PUBLIC
 EVP_hpke_chacha20_poly1305 AWS_LC_1.0 PUBLIC
 EVP_hpke_hkdf_sha256 AWS_LC_1.0 PUBLIC
+EVP_hpke_hkdf_sha384 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem1024 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem512 AWS_LC_1.0 PUBLIC
+EVP_hpke_mlkem768 AWS_LC_1.0 PUBLIC
 EVP_hpke_x25519_hkdf_sha256 AWS_LC_1.0 PUBLIC
 EVP_keccak256 AWS_LC_1.0 PUBLIC
 EVP_marshal_digest_algorithm AWS_LC_1.0 PUBLIC
@@ -2698,6 +2705,7 @@ d2i_DSA_PUBKEY_fp AWS_LC_1.0 PUBLIC
 d2i_DSA_SIG AWS_LC_1.0 PUBLIC
 d2i_DSAparams AWS_LC_1.0 PUBLIC
 d2i_ECDSA_SIG AWS_LC_1.0 PUBLIC
+d2i_ECPKParameters AWS_LC_1.0 PUBLIC
 d2i_ECPKParameters_bio AWS_LC_1.0 PUBLIC
 d2i_ECParameters AWS_LC_1.0 PUBLIC
 d2i_ECPrivateKey AWS_LC_1.0 PUBLIC
@@ -2806,6 +2814,7 @@ get_public_thread_reseed_calls_since_initialization AWS_LC_1.0 PRIVATE
 get_thread_and_global_tree_drbg_calls_FOR_TESTING AWS_LC_1.0 PRIVATE
 have_hw_rng_aarch64_for_testing AWS_LC_1.0 PRIVATE
 have_hw_rng_x86_64_for_testing AWS_LC_1.0 PRIVATE
+hw_rng_multiple8_with_retry_FOR_TESTING AWS_LC_1.0 PRIVATE
 i2a_ASN1_ENUMERATED AWS_LC_1.0 PUBLIC
 i2a_ASN1_INTEGER AWS_LC_1.0 PUBLIC
 i2a_ASN1_OBJECT AWS_LC_1.0 PUBLIC
@@ -2853,6 +2862,7 @@ i2d_DSA_PUBKEY_fp AWS_LC_1.0 PUBLIC
 i2d_DSA_SIG AWS_LC_1.0 PUBLIC
 i2d_DSAparams AWS_LC_1.0 PUBLIC
 i2d_ECDSA_SIG AWS_LC_1.0 PUBLIC
+i2d_ECPKParameters AWS_LC_1.0 PUBLIC
 i2d_ECPKParameters_bio AWS_LC_1.0 PUBLIC
 i2d_ECParameters AWS_LC_1.0 PUBLIC
 i2d_ECPrivateKey AWS_LC_1.0 PUBLIC
