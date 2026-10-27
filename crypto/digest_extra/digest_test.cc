@@ -395,6 +395,31 @@ TEST(DigestTest, TestVectors) {
   }
 }
 
+TEST(DigestTest, EVPRejectsAfterFinal) {
+  struct {
+    const MD &md;
+    size_t output_len;
+  } kTests[] = {
+      {sha256, SHA256_DIGEST_LENGTH},
+      {sha3_256, SHA3_256_DIGEST_LENGTH},
+      {keccak256, KECCAK256_DIGEST_LENGTH},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.md.name);
+    uint8_t out[EVP_MAX_MD_SIZE];
+    unsigned out_len = 0;
+    bssl::ScopedEVP_MD_CTX ctx;
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test.md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), "abc", 3));
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
+    ASSERT_EQ(test.output_len, out_len);
+    EXPECT_FALSE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
+    EXPECT_FALSE(EVP_DigestUpdate(ctx.get(), "abc", 3));
+    ERR_clear_error();
+  }
+}
+
 TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("RSA-SHA512"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512WithRSAEncryption"));

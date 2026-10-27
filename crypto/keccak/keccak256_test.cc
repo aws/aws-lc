@@ -46,8 +46,8 @@ TEST(Keccak256Test, DiffersFromSHA3_256) {
 // |Keccak256_*| entry points and the KeccakSponge layer reject it.
 //
 // Only |Keccak256| is |OPENSSL_EXPORT|ed, so the streaming primitives are
-// unreachable when this test links against the shared library. The EVP-level
-// test below covers the separate |EVP_DigestFinal_ex| guard.
+// unreachable when this test links against the shared library. The generic EVP
+// finalised-context test separately covers the |EVP_DigestFinal_ex| guard.
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(Keccak256Test, MisuseFailsCleanly) {
   uint8_t out[KECCAK256_DIGEST_LENGTH];
@@ -87,22 +87,6 @@ TEST(Keccak256Test, MisuseFailsCleanly) {
   }
 }
 #endif  // !BORINGSSL_SHARED_LIBRARY
-
-// A second finalisation through EVP must fail cleanly. |EVP_DigestFinal_ex|
-// rejects it at the EVP layer via |EVP_MD_CTX_FINALISED|, so |Keccak256_Final|
-// is never re-entered with the cleansed context; its own |ctx->state| guard is
-// the backstop for direct callers.
-TEST(Keccak256Test, EVPDoubleFinal) {
-  uint8_t out[KECCAK256_DIGEST_LENGTH];
-  unsigned out_len = 0;
-  bssl::ScopedEVP_MD_CTX ctx;
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), EVP_keccak256(), nullptr));
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), "abc", 3));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
-  ASSERT_EQ(static_cast<unsigned>(KECCAK256_DIGEST_LENGTH), out_len);
-  // Rejected, like every other digest: no hang, no abort.
-  EXPECT_FALSE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
-}
 
 // File-driven Keccak-256 KAT vectors. Format mirrors NIST SHA-3 KATs
 // (Len in bits, Msg/MD in lowercase hex). See sha3_test.cc for the same
