@@ -6,6 +6,7 @@ import jsii
 from aws_cdk import (
     Duration,
     Environment,
+    RemovalPolicy,
     Stack,
     aws_cloudwatch as cloudwatch,
 )
@@ -18,7 +19,8 @@ from util.metadata import AWS_LC_METRIC_NS, PROD_ACCOUNT
 # Spaces in a field are encoded as '+'. While a ticket with the same dedup string is open, further
 # ALARM transitions attach to that ticket instead of cutting a new one, and the alarm is placed on
 # the ticket as a hold so that it cannot be resolved while the alarm is in ALARM. Already-open
-# tickets therefore follow the dedup string, not the alarm name: keep the dedup strings stable.
+# tickets therefore follow the dedup string, not the alarm name. The dedup string is
+# AWSLC_<metric name>_PDX, so renaming a metric cuts a new ticket.
 TICKET_ACTION_ARN_PREFIX = "arn:aws:cloudwatch::cwa-internal:ticket"
 TICKET_SEVERITY = 4
 TICKET_CTI = ("AWS", "AWS-LC", "Build Issue")
@@ -84,25 +86,21 @@ class AwsLcCiAlarmsStack(Stack):
         self.cut_tickets = env.account == PROD_ACCOUNT
 
         self.integration_omnibus_alarm = self.nightly_failure_alarm(
-            "IntegrationOmnibusFailure",
             alarm_name="Downstream Integration Tests Failure",
             metric_name="IntegrationOmnibusFailure",
             description=INTEGRATION_OMNIBUS_ALARM_DESCRIPTION,
-            dedup_string="AWSLC_IntegrationOmnibusFailure_PDX",
         )
 
         self.bsd_ci_alarm = self.nightly_failure_alarm(
-            "BsdCiFailure",
             alarm_name="BSD CI Tests Failure",
             metric_name="BsdCiFailure",
             description=BSD_CI_ALARM_DESCRIPTION,
-            dedup_string="AWSLC_BsdCiFailure_PDX",
         )
 
-    def nightly_failure_alarm(self, id: str, *, alarm_name: str, metric_name: str, description: str,
-                              dedup_string: str) -> cloudwatch.Alarm:
+    def nightly_failure_alarm(self, *, alarm_name: str, metric_name: str,
+                              description: str) -> cloudwatch.Alarm:
         alarm = cloudwatch.Alarm(
-            self, id,
+            self, metric_name,
             alarm_name=alarm_name,
             alarm_description=description,
             metric=cloudwatch.Metric(
@@ -118,5 +116,8 @@ class AwsLcCiAlarmsStack(Stack):
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         if self.cut_tickets:
-            alarm.add_alarm_action(SimTicketAlarmAction(dedup_string))
+            # Prod imports the existing omnibus alarm. CloudFormation requires DeletionPolicy
+            # Retain for that import; Delete can remove the live alarm if the import rolls back.
+            alarm.apply_removal_policy(RemovalPolicy.RETAIN)
+            alarm.add_alarm_action(SimTicketAlarmAction(f"AWSLC_{metric_name}_PDX"))
         return alarm

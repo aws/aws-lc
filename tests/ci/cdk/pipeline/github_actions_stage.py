@@ -52,7 +52,6 @@ class GitHubActionsStage(Stage):
             **kwargs
         )
 
-        # Alarms on the metrics published by the nightly GitHub Actions workflows.
         self.alarms_stack = AwsLcCiAlarmsStack(
             self, "aws-lc-ci-alarms", env=deploy_environment, stack_name="aws-lc-ci-alarms", **kwargs)
 
