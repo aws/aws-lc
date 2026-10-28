@@ -592,6 +592,14 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   const SSL_CTX* sctx = ssl->ctx.get();
   if (sctx != NULL && sctx->client_hello_cb != NULL) {
     int al = SSL_AD_INTERNAL_ERROR;
+    // SSL_client_hello_get0_ciphers() reads what this parse stores; without
+    // it the callback sees no cipher suites (OpenSSL's callback does). The
+    // list is parsed again for the negotiation below, which also reports a
+    // malformed one, so a failure here is left to that.
+    if (!ssl_parse_client_cipher_list(ssl, &client_hello,
+                                      &ssl->client_cipher_suites)) {
+      ERR_clear_error();
+    }
     // A failure in the ClientHello callback terminates the connection.
     switch (sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg)) {
       case SSL_CLIENT_HELLO_SUCCESS:
