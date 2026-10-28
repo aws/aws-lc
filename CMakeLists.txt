@@ -817,6 +817,19 @@ if(GCC OR CLANG)
     endif()
   endif()
 
+ if(MINGW AND NOT CLANG)
+    include(CheckCSourceCompiles)
+    check_c_source_compiles("
+      #include <windows.h>
+      #if !defined(_WIN32_WINNT) || _WIN32_WINNT < _WIN32_WINNT_VISTA
+      #error _WIN32_WINNT below Vista
+      #endif
+      int main(void) { return 0; }" AWSLC_WIN32_WINNT_AT_LEAST_VISTA)
+    if(NOT AWSLC_WIN32_WINNT_AT_LEAST_VISTA)
+      add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_WIN7)
+    endif()
+  endif()
+
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
   else()
