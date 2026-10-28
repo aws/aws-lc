@@ -16,8 +16,13 @@ extern "C" {
 #define OVERRIDDEN_ENTROPY_SOURCE 0
 #define TREE_DRBG_JITTER_ENTROPY_SOURCE 1
 #define OPT_OUT_CPU_JITTER_ENTROPY_SOURCE 2
+#define TREE_DRBG_JITTER_WITH_OS_FALLBACK_ENTROPY_SOURCE 3
 
 #define ENTROPY_JITTER_MAX_NUM_TRIES (3)
+
+// TREE_JITTER_MAX_OSR is the highest oversampling rate the Jitter-with-OS-
+// fallback configuration tries. It matches |jent_read_entropy_safe|'s cutoff.
+#define TREE_JITTER_MAX_OSR 20
 
 // TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
 #define TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE 0x1000000
@@ -55,15 +60,74 @@ OPENSSL_EXPORT void override_entropy_source_method_FOR_TESTING(
 
 OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
 
+// entropy_source_uses_cpu_jitter reports the active root source without
+// initializing the tree. Before initialization, it reports the configured
+// initial source. Source configuration and active source are distinct.
+int entropy_source_uses_cpu_jitter(void);
+
 #if !defined(DISABLE_CPU_JITTER_ENTROPY)
+  // Root providers own their state; the global tree owns the provider's
+  // lifetime and serializes all callbacks. Methods remain fixed even if a
+  // provider's explicitly configured policy permits changing sources. A zero
+  // return from |initialize| or |get_seed| is fatal: the tree aborts rather
+  // than run without a seed.
+  struct tree_root_entropy_source {
+    void *state;
+    const struct tree_root_entropy_source_methods *methods;
+  };
+
+  struct tree_root_entropy_source_methods {
+    int (*initialize)(struct tree_root_entropy_source *source);
+    int (*get_seed)(struct tree_root_entropy_source *source,
+                    uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
+    void (*cleanup)(struct tree_root_entropy_source *source);
+    int (*is_cpu_jitter)(const struct tree_root_entropy_source *source);
+  };
+
+  // Selects the process-wide tree root policy in entropy_sources.c. This is
+  // independent of test-only overrides of the frontend entropy interface.
+  const struct tree_root_entropy_source_methods *
+  get_tree_root_entropy_source_methods(void);
+  int tree_jitter_root_is_cpu_jitter(void);
+
   OPENSSL_EXPORT int tree_jitter_initialize(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT int tree_jitter_get_seed(
     const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
+
+  struct rand_data;
+
+  // tree_jitter_get_root_seed_FOR_TESTING exercises the configured root
+  // provider with |*jitter_ec|. The collector may be replaced or, if the
+  // policy permits OS fallback, freed and set to NULL. Aborts if the provider
+  // returns failure. Must not run concurrently with other Jitter users.
+  OPENSSL_EXPORT void tree_jitter_get_root_seed_FOR_TESTING(
+    struct rand_data **jitter_ec, uint8_t seed_out[CTR_DRBG_ENTROPY_LEN]);
+
+#if !defined(BORINGSSL_FIPS)
+  // tree_jitter_test_hooks replaces the Jitter Entropy calls made by the
+  // Jitter-with-OS-fallback root provider, for failure injection. All members
+  // must be set. |read_entropy| returns a byte count or a Jitter error code.
+  // FIPS builds omit the hooks so the module's Jitter calls cannot be
+  // redirected.
+  struct tree_jitter_test_hooks {
+    int (*power_up)(unsigned int osr, unsigned int flags);
+    struct rand_data *(*collector_alloc)(unsigned int osr, unsigned int flags);
+    int (*read_entropy)(struct rand_data **jitter_ec,
+                       uint8_t seed_out[CTR_DRBG_ENTROPY_LEN]);
+  };
+
+  // tree_jitter_set_hooks_FOR_TESTING installs |hooks|, or restores the real
+  // calls if NULL. Install before the tree DRBG initializes. |hooks| must stay
+  // valid until reset to NULL or process exit.
+  OPENSSL_EXPORT void tree_jitter_set_hooks_FOR_TESTING(
+    const struct tree_jitter_test_hooks *hooks);
+#endif  // !defined(BORINGSSL_FIPS)
 #else // !defined(DISABLE_CPU_JITTER_ENTROPY)
   // Define stubs for tree-DRBG functions that implements the entropy source
   // interface.
+  static inline int tree_jitter_root_is_cpu_jitter(void) { return 0; }
   static inline int tree_jitter_initialize(struct entropy_source_t *entropy_source) { return 0; }
   static inline void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source) { abort(); }
   static inline void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) { abort(); }

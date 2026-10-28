@@ -20,10 +20,7 @@ int FIPS_mode(void) {
 }
 
 int FIPS_is_entropy_cpu_jitter(void) {
-  if (OPT_OUT_CPU_JITTER_ENTROPY_SOURCE == get_entropy_source_method_id_FOR_TESTING()) {
-    return 0;
-  }
-  return 1;
+  return entropy_source_uses_cpu_jitter();
 }
 
 uint32_t FIPS_version(void) {
