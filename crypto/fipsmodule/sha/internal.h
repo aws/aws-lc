@@ -666,8 +666,9 @@ void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]
 // processing of the padded final input block is not yet complete because the first
 // output block still needs to be emitted. If |padded| is 1, the special padded block
 // has been fully processed, and the state needs to be permuted before producing
-// the next output block. It squeezes full blocks of |r| bytes, except the
-// last, which may be shorter.
+// the next output block. It squeezes full blocks of |r| bytes. When called
+// multiple times, |len| must be a multiple of |r| for every call except the
+// final one because unused output bytes are not buffered.
 OPENSSL_EXPORT void Keccak1600_Squeeze(
     uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len,
     size_t r, int padded);
