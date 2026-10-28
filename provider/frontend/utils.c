@@ -50,6 +50,23 @@ int awslc_prov_param_set_utf8_ptr(const AWSLC_PROV_CTX *ctx,
          awslc_prov_param_settled(ctx, OSSL_PARAM_set_utf8_ptr(p, value), key);
 }
 
+int awslc_prov_param_get_digest(const AWSLC_PROV_CTX *ctx, const OSSL_PARAM *p,
+                                const char **out) {
+  const char *name = NULL;
+  const char *canonical = NULL;
+
+  if (p == NULL) {
+    return 1;
+  }
+  if (!OSSL_PARAM_get_utf8_string_ptr(p, &name) ||
+      (canonical = awslc_prov_digest_canonical_name(name)) == NULL) {
+    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER, p->key);
+    return 0;
+  }
+  *out = canonical;
+  return 1;
+}
+
 static int awslc_prov_param_is_integer(const OSSL_PARAM *p) {
   return p->data_type == OSSL_PARAM_UNSIGNED_INTEGER ||
          p->data_type == OSSL_PARAM_INTEGER;

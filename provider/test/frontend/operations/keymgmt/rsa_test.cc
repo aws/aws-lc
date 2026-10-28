@@ -43,11 +43,13 @@ constexpr int kFipsBuild = 0;
 
 constexpr char kMessage[] = "RSA key management";
 
-// How the provider tags AWS-LC's RSA reasons. The backend suite pins these
+// How the provider tags AWS-LC's reasons. The backend suite pins the RSA
 // values against AWS-LC's headers.
 constexpr int kAwslcLibRsa = 4;
 constexpr int kAwslcRsaBadRsaParameters = 104;
 constexpr int kAwslcRsaNNotEqualPQ = 132;
+constexpr int kAwslcLibDigest = 29;
+constexpr int kAwslcDigestUnknownHash = 102;
 
 constexpr const char *kRequireDefault = "provider=default";
 
@@ -57,6 +59,11 @@ constexpr const char *kComponents[] = {
     OSSL_PKEY_PARAM_RSA_D,         OSSL_PKEY_PARAM_RSA_FACTOR1,
     OSSL_PKEY_PARAM_RSA_FACTOR2,   OSSL_PKEY_PARAM_RSA_EXPONENT1,
     OSSL_PKEY_PARAM_RSA_EXPONENT2, OSSL_PKEY_PARAM_RSA_COEFFICIENT1};
+
+// The RSASSA-PSS restrictions an RSA-PSS key carries.
+constexpr const char *kPssRestrictions[] = {OSSL_PKEY_PARAM_RSA_DIGEST,
+                                            OSSL_PKEY_PARAM_RSA_MGF1_DIGEST,
+                                            OSSL_PKEY_PARAM_RSA_PSS_SALTLEN};
 
 struct PkeyDeleter {
   void operator()(EVP_PKEY *pkey) const { EVP_PKEY_free(pkey); }
@@ -214,6 +221,42 @@ class RsaKeymgmtTest : public ProviderTest {
     return out;
   }
 
+  // |src|'s key pair plus |digests| and a non-negative |saltlen|, imported
+  // into |type|'s key manager under |propq|.
+  PkeyPtr CopyIntoType(const EVP_PKEY *src, const char *type,
+                       const char *propq,
+                       const std::map<std::string, std::string> &digests = {},
+                       int saltlen = -1) {
+    OSSL_PARAM *exported = nullptr;
+    if (!EVP_PKEY_todata(src, EVP_PKEY_KEYPAIR, &exported)) {
+      return nullptr;
+    }
+    ParamsPtr keypair(exported);
+    ParamBldPtr bld(OSSL_PARAM_BLD_new());
+    if (!bld) {
+      return nullptr;
+    }
+    for (const auto &d : digests) {
+      OSSL_PARAM_BLD_push_utf8_string(bld.get(), d.first.c_str(),
+                                      d.second.c_str(), 0);
+    }
+    if (saltlen >= 0) {
+      OSSL_PARAM_BLD_push_int(bld.get(), OSSL_PKEY_PARAM_RSA_PSS_SALTLEN,
+                              saltlen);
+    }
+    ParamsPtr extra(OSSL_PARAM_BLD_to_param(bld.get()));
+    ParamsPtr params(OSSL_PARAM_merge(keypair.get(), extra.get()));
+
+    PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), type, propq));
+    EVP_PKEY *out = nullptr;
+    if (!params || !ctx || EVP_PKEY_fromdata_init(ctx.get()) <= 0 ||
+        EVP_PKEY_fromdata(ctx.get(), &out, EVP_PKEY_KEYPAIR, params.get()) <=
+            0) {
+      return nullptr;
+    }
+    return PkeyPtr(out);
+  }
+
   PkeyCtxPtr KeygenCtx(const char *propq, int bits, BN_ULONG e = RSA_F4,
                        int primes = 2) {
     PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), "RSA", propq));
@@ -240,9 +283,8 @@ class RsaKeymgmtTest : public ProviderTest {
 
   // RSASSA-PKCS1-v1_5 with SHA-256, which is deterministic, so equal keys sign
   // identically. |propq| picks the signer; a key it does not own is exported
-  // to it.
-  std::vector<unsigned char> Sign(EVP_PKEY *pkey,
-                                  const char *propq = kPreferAwslc,
+  // to it, which is how these tests reach a key manager's export.
+  std::vector<unsigned char> Sign(EVP_PKEY *pkey, const char *propq,
                                   std::string *signer = nullptr) {
     MdCtxPtr ctx(EVP_MD_CTX_new());
     EVP_PKEY_CTX *pctx = nullptr;
@@ -271,7 +313,7 @@ class RsaKeymgmtTest : public ProviderTest {
   }
 
   bool Verify(EVP_PKEY *pkey, const std::vector<unsigned char> &sig,
-              const char *propq = kPreferAwslc) {
+              const char *propq) {
     MdCtxPtr ctx(EVP_MD_CTX_new());
     return ctx &&
            EVP_DigestVerifyInit_ex(ctx.get(), nullptr, "SHA2-256", libctx(),
@@ -412,7 +454,8 @@ TEST_F(RsaKeymgmtTest, ImportsEverySupportedShape) {
     ASSERT_TRUE(theirs);
     EXPECT_EQ(kProviderName, ProviderOf(ours.get()));
     EXPECT_EQ(Exported(theirs.get()), Exported(ours.get()));
-    EXPECT_EQ(Sign(theirs.get()), Sign(ours.get()));
+    EXPECT_EQ(Sign(theirs.get(), kRequireDefault),
+              Sign(ours.get(), kRequireDefault));
   }
   {
     SCOPED_TRACE("unknown keys alongside every component");
@@ -456,7 +499,8 @@ TEST_F(RsaKeymgmtTest, ImportsEverySupportedShape) {
     PkeyPtr ours = CopyInto(large.get(), kRequireAwslc);
     ASSERT_TRUE(ours);
     EXPECT_EQ(Exported(large.get()), Exported(ours.get()));
-    EXPECT_EQ(Sign(large.get()), Sign(ours.get()));
+    EXPECT_EQ(Sign(large.get(), kRequireDefault),
+              Sign(ours.get(), kRequireDefault));
   }
 }
 
@@ -548,32 +592,192 @@ TEST_F(RsaKeymgmtTest, ReportsAwslcOriginImportFailure) {
   }
 }
 
-TEST_F(RsaKeymgmtTest, DeclaresExactParamLists) {
+TEST_F(RsaKeymgmtTest, DeclaresGenParams) {
+  auto gen_settable = [](const EVP_KEYMGMT *keymgmt) {
+    std::map<std::string, unsigned> out;
+    for (const OSSL_PARAM *p = EVP_KEYMGMT_gen_settable_params(keymgmt);
+         p != nullptr && p->key != nullptr; p++) {
+      out[p->key] = p->data_type;
+    }
+    return out;
+  };
+  for (const char *type : {"RSA", "RSA-PSS"}) {
+    SCOPED_TRACE(type);
+    KeymgmtPtr ours(EVP_KEYMGMT_fetch(libctx(), type, kRequireAwslc));
+    KeymgmtPtr theirs(EVP_KEYMGMT_fetch(libctx(), type, kRequireDefault));
+    ASSERT_TRUE(ours);
+    ASSERT_TRUE(theirs);
+    EXPECT_EQ(gen_settable(theirs.get()), gen_settable(ours.get()));
+  }
+
   KeymgmtPtr ours(EVP_KEYMGMT_fetch(libctx(), "RSA", kRequireAwslc));
-  KeymgmtPtr theirs(EVP_KEYMGMT_fetch(libctx(), "RSA", kRequireDefault));
   ASSERT_TRUE(ours);
-  ASSERT_TRUE(theirs);
-
-  std::map<std::string, unsigned> ours_settable;
-  std::map<std::string, unsigned> theirs_settable;
-  for (const OSSL_PARAM *p = EVP_KEYMGMT_gen_settable_params(ours.get());
-       p != nullptr && p->key != nullptr; p++) {
-    ours_settable[p->key] = p->data_type;
-  }
-  for (const OSSL_PARAM *p = EVP_KEYMGMT_gen_settable_params(theirs.get());
-       p != nullptr && p->key != nullptr; p++) {
-    theirs_settable[p->key] = p->data_type;
-  }
-  EXPECT_EQ(theirs_settable, ours_settable);
-
   EXPECT_EQ(std::set<std::string>{OSSL_PKEY_PARAM_FIPS_APPROVED_INDICATOR},
             Names(EVP_KEYMGMT_gen_gettable_params(ours.get())));
+}
 
+TEST_F(RsaKeymgmtTest, DeclaresGettableParams) {
+  KeymgmtPtr ours(EVP_KEYMGMT_fetch(libctx(), "RSA", kRequireAwslc));
+  ASSERT_TRUE(ours);
   std::set<std::string> gettable = {
       OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_SECURITY_BITS,
       OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_DEFAULT_DIGEST};
   gettable.insert(std::begin(kComponents), std::end(kComponents));
   EXPECT_EQ(gettable, Names(EVP_KEYMGMT_gettable_params(ours.get())));
+
+  KeymgmtPtr pss(EVP_KEYMGMT_fetch(libctx(), "RSA-PSS", kRequireAwslc));
+  ASSERT_TRUE(pss);
+  gettable.insert(std::begin(kPssRestrictions), std::end(kPssRestrictions));
+  gettable.insert(OSSL_PKEY_PARAM_MANDATORY_DIGEST);
+  EXPECT_EQ(gettable, Names(EVP_KEYMGMT_gettable_params(pss.get())));
+}
+
+TEST_F(RsaKeymgmtTest, DeclaresPssImportTypes) {
+  PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), "RSA-PSS", kRequireAwslc));
+  ASSERT_TRUE(ctx);
+  ASSERT_GT(EVP_PKEY_fromdata_init(ctx.get()), 0);
+  std::set<std::string> importable(std::begin(kComponents),
+                                   std::end(kComponents));
+  importable.insert(std::begin(kPssRestrictions), std::end(kPssRestrictions));
+  importable.insert(OSSL_PKEY_PARAM_RSA_MASKGENFUNC);
+  EXPECT_EQ(importable,
+            Names(EVP_PKEY_fromdata_settable(ctx.get(), EVP_PKEY_KEYPAIR)));
+}
+
+// AWS-LC's RSASSA-PSS parser decides which restrictions it can enforce, and it
+// refuses before a key is generated.
+TEST_F(RsaKeymgmtTest, RefusesPssRestrictionAwslcCannotEnforce) {
+  PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), "RSA-PSS", kRequireAwslc));
+  ASSERT_TRUE(ctx);
+  ASSERT_GT(EVP_PKEY_keygen_init(ctx.get()), 0);
+
+  ERR_clear_error();
+  EXPECT_LE(
+      EVP_PKEY_CTX_set_rsa_pss_keygen_md_name(ctx.get(), "SHA3-256", nullptr),
+      0);
+  const std::vector<ErrorRecord> ours = ProviderErrors(DrainErrors());
+  ASSERT_EQ(1u, ours.size());
+  EXPECT_EQ((unsigned long)AWSLC_PROV_ERROR_REASON(kAwslcLibDigest,
+                                                   kAwslcDigestUnknownHash),
+            ours[0].reason());
+  EXPECT_NE(std::string::npos, ours[0].data.find("AWS-LC")) << ours[0].data;
+  EXPECT_NE(std::string::npos, ours[0].data.find("UNKNOWN_HASH"))
+      << ours[0].data;
+}
+
+// default -> awslc -> default, restrictions included.
+TEST_F(RsaKeymgmtTest, RsaPssKeysCarryTheirRestrictions) {
+  PkeyPtr rsa = Decode();
+  ASSERT_TRUE(rsa);
+  const std::map<std::string, std::string> digests = {
+      {OSSL_PKEY_PARAM_RSA_DIGEST, "SHA2-256"},
+      {OSSL_PKEY_PARAM_RSA_MGF1_DIGEST, "SHA2-384"}};
+  PkeyPtr theirs =
+      CopyIntoType(rsa.get(), "RSA-PSS", kRequireDefault, digests, 30);
+  ASSERT_TRUE(theirs);
+  PkeyPtr ours = CopyIntoType(theirs.get(), "RSA-PSS", kRequireAwslc);
+  ASSERT_TRUE(ours);
+  EXPECT_EQ(kProviderName, ProviderOf(ours.get()));
+  PkeyPtr back = CopyIntoType(ours.get(), "RSA-PSS", kRequireDefault);
+  ASSERT_TRUE(back);
+
+  auto restrictions = [](const EVP_PKEY *pkey) {
+    std::map<std::string, std::string> out;
+    char name[32];
+    int saltlen = -1;
+    for (const char *key :
+         {OSSL_PKEY_PARAM_RSA_DIGEST, OSSL_PKEY_PARAM_RSA_MGF1_DIGEST,
+          OSSL_PKEY_PARAM_MANDATORY_DIGEST}) {
+      if (EVP_PKEY_get_utf8_string_param(pkey, key, name, sizeof(name),
+                                         nullptr)) {
+        out[key] = name;
+      }
+    }
+    if (EVP_PKEY_get_int_param(pkey, OSSL_PKEY_PARAM_RSA_PSS_SALTLEN,
+                               &saltlen)) {
+      out[OSSL_PKEY_PARAM_RSA_PSS_SALTLEN] = std::to_string(saltlen);
+    }
+    return out;
+  };
+  const std::map<std::string, std::string> expected = {
+      {OSSL_PKEY_PARAM_RSA_DIGEST, "SHA2-256"},
+      {OSSL_PKEY_PARAM_RSA_MGF1_DIGEST, "SHA2-384"},
+      {OSSL_PKEY_PARAM_MANDATORY_DIGEST, "SHA2-256"},
+      {OSSL_PKEY_PARAM_RSA_PSS_SALTLEN, "30"}};
+  ASSERT_EQ(expected, restrictions(theirs.get()));
+  EXPECT_EQ(expected, restrictions(ours.get()));
+  EXPECT_EQ(expected, restrictions(back.get()));
+  EXPECT_EQ(1, EVP_PKEY_eq(back.get(), theirs.get()));
+
+  PkeyPtr unrestricted = CopyIntoType(rsa.get(), "RSA-PSS", kRequireDefault);
+  ASSERT_TRUE(unrestricted);
+  PkeyPtr unrestricted_ours =
+      CopyIntoType(unrestricted.get(), "RSA-PSS", kRequireAwslc);
+  ASSERT_TRUE(unrestricted_ours);
+  EXPECT_TRUE(restrictions(unrestricted_ours.get()).empty());
+  ERR_clear_error();
+}
+
+TEST_F(RsaKeymgmtTest, GeneratesRestrictedRsaPssKey) {
+  PkeyCtxPtr ctx(
+      EVP_PKEY_CTX_new_from_name(libctx(), "RSA-PSS", kRequireAwslc));
+  ASSERT_TRUE(ctx);
+  ASSERT_GT(EVP_PKEY_keygen_init(ctx.get()), 0);
+  ASSERT_GT(
+      EVP_PKEY_CTX_set_rsa_pss_keygen_md_name(ctx.get(), "SHA2-384", nullptr),
+      0);
+  ASSERT_GT(EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(ctx.get(), 48), 0);
+  EVP_PKEY *raw = nullptr;
+  ASSERT_GT(EVP_PKEY_generate(ctx.get(), &raw), 0);
+  PkeyPtr key(raw);
+  EXPECT_EQ(kProviderName, ProviderOf(key.get()));
+
+  char digest[32] = {0};
+  int saltlen = -1;
+  ASSERT_TRUE(EVP_PKEY_get_utf8_string_param(
+      key.get(), OSSL_PKEY_PARAM_RSA_DIGEST, digest, sizeof(digest), nullptr));
+  ASSERT_TRUE(EVP_PKEY_get_int_param(key.get(), OSSL_PKEY_PARAM_RSA_PSS_SALTLEN,
+                                     &saltlen));
+  EXPECT_STREQ("SHA2-384", digest);
+  EXPECT_EQ(48, saltlen);
+}
+
+// Default refuses PSS restrictions on a plain RSA key rather than dropping
+// them, and so does awslc.
+TEST_F(RsaKeymgmtTest, RefusesRestrictionsOnPlainRsaKey) {
+  PkeyPtr rsa = Decode();
+  ASSERT_TRUE(rsa);
+  const std::map<std::string, std::string> digests = {
+      {OSSL_PKEY_PARAM_RSA_DIGEST, "SHA2-256"}};
+  ASSERT_FALSE(CopyIntoType(rsa.get(), "RSA", kRequireDefault, digests));
+
+  ERR_clear_error();
+  EXPECT_FALSE(CopyIntoType(rsa.get(), "RSA", kRequireAwslc, digests));
+  const std::vector<ErrorRecord> ours = ProviderErrors(DrainErrors());
+  ASSERT_EQ(1u, ours.size());
+  EXPECT_EQ((unsigned long)AWSLC_PROV_R_INVALID_PARAMETER, ours[0].reason());
+}
+
+// With no awslc RSA signature, a preference for awslc falls through to
+// default's, which signs an awslc RSA-PSS key exported to its RSA-PSS keymgmt.
+TEST_F(RsaKeymgmtTest, DefaultSignsAwslcRsaPssKey) {
+  PkeyPtr rsa = Decode();
+  ASSERT_TRUE(rsa);
+  PkeyPtr theirs = CopyIntoType(rsa.get(), "RSA-PSS", kRequireDefault,
+                                {{OSSL_PKEY_PARAM_RSA_DIGEST, "SHA2-256"},
+                                 {OSSL_PKEY_PARAM_RSA_MGF1_DIGEST, "SHA2-256"}},
+                                32);
+  ASSERT_TRUE(theirs);
+  PkeyPtr ours = CopyIntoType(theirs.get(), "RSA-PSS", kRequireAwslc);
+  ASSERT_TRUE(ours);
+  ASSERT_EQ(kProviderName, ProviderOf(ours.get()));
+
+  std::string signer;
+  const std::vector<unsigned char> sig =
+      Sign(ours.get(), kPreferAwslc, &signer);
+  ASSERT_FALSE(sig.empty());
+  EXPECT_EQ("default", signer);
+  EXPECT_TRUE(Verify(theirs.get(), sig, kRequireDefault));
 }
 
 TEST_F(RsaKeymgmtTest, RefusesUnsupportedGenParams) {
@@ -760,9 +964,9 @@ TEST_F(RsaKeymgmtTest, ValidatesDuplicatesAndExposesLegacyRsa) {
   PkeyPtr duplicate(EVP_PKEY_dup(ours.get()));
   ASSERT_TRUE(duplicate);
   EXPECT_EQ(kProviderName, ProviderOf(duplicate.get()));
-  const std::vector<unsigned char> sig = Sign(ours.get());
+  const std::vector<unsigned char> sig = Sign(ours.get(), kRequireDefault);
   ASSERT_FALSE(sig.empty());
-  EXPECT_EQ(sig, Sign(duplicate.get()));
+  EXPECT_EQ(sig, Sign(duplicate.get(), kRequireDefault));
 
   BnPtr want_n = GetBn(decoded.get(), OSSL_PKEY_PARAM_RSA_N);
   BnPtr want_d = GetBn(decoded.get(), OSSL_PKEY_PARAM_RSA_D);
@@ -843,12 +1047,7 @@ class RsaKeymgmtSlotsTest : public RsaKeymgmtTest {
     int no_cache = 0;
     algorithms_ =
         OSSL_PROVIDER_query_operation(awslc(), OSSL_OP_KEYMGMT, &no_cache);
-    for (const OSSL_ALGORITHM *a = algorithms_;
-         a != nullptr && a->algorithm_names != nullptr; a++) {
-      if (std::string(a->algorithm_names).rfind("RSA:", 0) == 0) {
-        functions_ = a->implementation;
-      }
-    }
+    functions_ = Functions("RSA:");
     ASSERT_NE(nullptr, functions_);
     provctx_ = OSSL_PROVIDER_get0_provider_ctx(awslc());
 
@@ -864,14 +1063,32 @@ class RsaKeymgmtSlotsTest : public RsaKeymgmtTest {
     RsaKeymgmtTest::TearDown();
   }
 
+  // The dispatch table of the algorithm whose names begin with |prefix|.
+  const OSSL_DISPATCH *Functions(const char *prefix) const {
+    const OSSL_DISPATCH *out = nullptr;
+    for (const OSSL_ALGORITHM *a = algorithms_;
+         a != nullptr && a->algorithm_names != nullptr; a++) {
+      if (std::string(a->algorithm_names).rfind(prefix, 0) == 0) {
+        out = a->implementation;
+      }
+    }
+    return out;
+  }
+
   template <typename Fn>
-  Fn *Slot(int id) {
-    for (const OSSL_DISPATCH *d = functions_; d->function_id != 0; d++) {
+  static Fn *Slot(const OSSL_DISPATCH *functions, int id) {
+    for (const OSSL_DISPATCH *d = functions;
+         d != nullptr && d->function_id != 0; d++) {
       if (d->function_id == id) {
         return reinterpret_cast<Fn *>(d->function);
       }
     }
     return nullptr;
+  }
+
+  template <typename Fn>
+  Fn *Slot(int id) {
+    return Slot<Fn>(functions_, id);
   }
 
   struct KeyDeleter {
@@ -939,6 +1156,16 @@ TEST_F(RsaKeymgmtSlotsTest, ExportsBySelection) {
   EXPECT_EQ(std::set<std::string>{"<export failed>"},
             ExportNames(key, OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS));
   EXPECT_EQ(1u, ProviderErrors(DrainErrors()).size());
+}
+
+// Export, unlike import, takes the restrictions without the key pair.
+TEST_F(RsaKeymgmtSlotsTest, DeclaresPssExportTypes) {
+  auto *export_types = Slot<OSSL_FUNC_keymgmt_export_types_fn>(
+      Functions("RSA-PSS:"), OSSL_FUNC_KEYMGMT_EXPORT_TYPES);
+  ASSERT_NE(nullptr, export_types);
+  EXPECT_EQ(std::set<std::string>(std::begin(kPssRestrictions),
+                                  std::end(kPssRestrictions)),
+            Names(export_types(OSSL_KEYMGMT_SELECT_OTHER_PARAMETERS)));
 }
 
 TEST_F(RsaKeymgmtSlotsTest, MatchesBySelection) {
