@@ -2941,6 +2941,11 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
 // X509_V_FLAG_CRL_CHECK_ALL enables CRL lookup and checking for the entire
 // certificate chain. |X509_V_FLAG_CRL_CHECK| must be set for this flag to take
 // effect.
+//
+// A certificate with a critical CRL distribution points extension is rejected
+// with |X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION| unless CRLs are checked for
+// it. That is, |X509_V_FLAG_CRL_CHECK| must be set and, for certificates other
+// than the leaf, |X509_V_FLAG_CRL_CHECK_ALL| must also be set.
 #define X509_V_FLAG_CRL_CHECK_ALL 0x8
 // X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions. Do not use
 // this option. Critical extensions ensure the verifier does not bypass
