@@ -36,8 +36,9 @@ extern "C" {
 //
 // It returns 0 if an initialized interface cannot be read consistently (a
 // vmclock seqlock that never settles); the UBE layer treats this as a
-// permanent failure. Otherwise, it returns 1, with a generation number of 0 if
-// VM UBE detection is not supported.
+// transient failure of this one call, not a reason to disable detection.
+// Otherwise, it returns 1, with a generation number of 0 if VM UBE detection
+// is not supported.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
                                           uint64_t *vm_ube_generation_number);
 

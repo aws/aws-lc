@@ -288,8 +288,8 @@ int CRYPTO_get_vm_ube_generation(uint64_t *vm_ube_generation_number) {
       *vm_ube_generation_number = 0;
       return 1;
     case VM_UBE_STATE_SUCCESS_INITIALISE:
-      // A seqlock that never settles is treated as permanent: the UBE layer
-      // disables detection and the DRBG reseeds on every call.
+      // A seqlock that never settles fails only this call: the UBE layer
+      // forces a reseed for this call but does not disable detection.
       return vm_ube_read_generation(&vm_ube, vm_ube_generation_number);
     default:
       abort();

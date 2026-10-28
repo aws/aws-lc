@@ -148,8 +148,9 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockRetrievalTesting) {
 
 // A wedged seqlock (stuck at an odd value, i.e. a write perpetually "in
 // progress") must not spin the reader forever. |CRYPTO_get_vm_ube_generation|
-// must give up after a bounded number of retries and return 0, which the UBE
-// layer treats as a permanent failure.
+// must give up after a bounded time budget and return 0, which the UBE layer
+// treats as a transient failure of that one call, not a reason to disable
+// detection.
 TEST(VmUbeGenerationTest, DISABLED_VmclockSeqlockWedged) {
   vmclock_test_s vmc_test;
   ASSERT_TRUE(init_vmclock_test(&vmc_test));
