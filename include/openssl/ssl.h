@@ -1775,9 +1775,11 @@ OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 // including a non-empty |str| that matches none, leaves the configuration
 // unchanged.
 //
-// An empty list does not disable the TLS 1.3 protocol or enable automatic
-// fallback to TLS 1.2. To disable TLS 1.3, use |SSL_CTX_set_max_proto_version|
-// with |TLS1_2_VERSION| instead.
+// An empty list allows no TLS 1.3 suites, so handshakes that negotiate TLS 1.3
+// fail. It does not disable the TLS 1.3 protocol or enable automatic fallback
+// to TLS 1.2; OpenSSL instead fails every handshake while TLS 1.3 is enabled.
+// To disable TLS 1.3, use |SSL_CTX_set_max_proto_version| with
+// |TLS1_2_VERSION| instead.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
 // SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
@@ -1790,9 +1792,11 @@ OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 // including a non-empty |str| that matches none, leaves the configuration
 // unchanged.
 //
-// An empty list does not disable the TLS 1.3 protocol or enable automatic
-// fallback to TLS 1.2. To disable TLS 1.3, use |SSL_set_max_proto_version| with
-// |TLS1_2_VERSION| instead.
+// An empty list allows no TLS 1.3 suites, even if |ssl|'s |SSL_CTX| has some,
+// so handshakes that negotiate TLS 1.3 fail. As with
+// |SSL_CTX_set_ciphersuites|, it does not disable the TLS 1.3 protocol or
+// enable automatic fallback to TLS 1.2. To disable TLS 1.3, use
+// |SSL_set_max_proto_version| with |TLS1_2_VERSION| instead.
 OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as

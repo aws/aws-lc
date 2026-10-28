@@ -967,6 +967,43 @@ TEST_P(TLS13CipherSuitesTest, LegacyInvalidRuleLeavesConfigUnchanged) {
   CheckHandshake("TLS_AES_128_GCM_SHA256", true);
 }
 
+// An empty TLS 1.3 list on the server, whether set on its |SSL_CTX| or on its
+// |SSL|, allows no TLS 1.3 cipher suites. The server does not fall back to TLS
+// 1.2, but clients that only support TLS 1.2 can still connect.
+TEST(SSLTest, EmptyTLS13CipherList) {
+  for (bool on_ssl : {false, true}) {
+    for (uint16_t client_max : {TLS1_3_VERSION, TLS1_2_VERSION}) {
+      SCOPED_TRACE(testing::Message()
+                   << (on_ssl ? "SSL" : "SSL_CTX") << " " << client_max);
+      bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+      bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+      ASSERT_TRUE(client_ctx);
+      ASSERT_TRUE(server_ctx);
+      ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), client_max));
+      if (!on_ssl) {
+        ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), ""));
+      }
+
+      bssl::UniquePtr<SSL> client, server;
+      ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                        server_ctx.get()));
+      if (on_ssl) {
+        ASSERT_TRUE(SSL_set_ciphersuites(server.get(), ""));
+      }
+      ERR_clear_error();
+      if (client_max == TLS1_3_VERSION) {
+        EXPECT_FALSE(CompleteHandshakes(client.get(), server.get()));
+        EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+      } else {
+        ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+        EXPECT_EQ(SSL_version(server.get()), TLS1_2_VERSION);
+      }
+      ERR_clear_error();
+    }
+  }
+}
+
 TEST(SSLTest, CurveRules) {
   for (const CurveTest &t : kCurveTests) {
     SCOPED_TRACE(t.rule);
