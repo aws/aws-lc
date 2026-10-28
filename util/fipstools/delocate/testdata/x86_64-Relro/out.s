@@ -70,7 +70,37 @@ foofoo:
 	movq	%rax, %xmm2
 	popq %rax
 	leaq 128(%rsp), %rsp
+# WAS movq .LC03(%rip), %xmm3
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoo_local_target(%rip), %rax
+	movq	%rax, %xmm3
+	popq %rax
+	leaq 128(%rsp), %rsp
+# WAS movq .LC04(%rip), %xmm4
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoofoo_local_target(%rip), %rax
+	movq	%rax, %xmm4
+	popq %rax
+	leaq 128(%rsp), %rsp
+# WAS movq .LC05(%rip), %xmm5
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoo_local_target(%rip), %rax
+	movq	%rax, %xmm5
+	popq %rax
+	leaq 128(%rsp), %rsp
+# WAS movq .LC06(%rip), %xmm6
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoofoofoo_local_target(%rip), %rax
+	movq	%rax, %xmm6
+	popq %rax
+	leaq 128(%rsp), %rsp
+	movdqa .LC07(%rip), %xmm7
 
+	# GCC 16 may emit relro and .rodata aliases in the same relro section.
 # SKIPPED 	.section .data.rel.ro.local,"aw"
 
 # SKIPPED 	.align 8
@@ -79,9 +109,18 @@ foofoo:
 # SKIPPED newline
 # SKIPPED 	.quad foo
 
+# SKIPPED 	.set .LC03,.L00
+
+# SKIPPED 	.set .LC05,.LC03
+
+# SKIPPED 	.set .LC06,.LD100
+
+	.set	.LC07,.LC34
 # SKIPPED .LC02:
 # SKIPPED newline
 # SKIPPED 	.quad foofoo
+
+# SKIPPED 	.set	.LC04,.LC02
 
 # SKIPPED newline
 	# Should be left alone.
@@ -102,6 +141,10 @@ foofoo:
 # WAS .section .rodata
 .text
 	.align 16
+.LC34:
+
+	.long 1
+	.long 0
 
 	.text
 # WAS movq .LD100(%rip), %xmm1
