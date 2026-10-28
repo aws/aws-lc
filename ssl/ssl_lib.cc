@@ -604,20 +604,9 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
-  if (ctx->cipher_list) {
-    ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    if (!ssl->config->cipher_list ||
-        !ssl->config->cipher_list->Init(*ctx->cipher_list.get())) {
-      return nullptr;
-    }
-  }
-  if (ctx->tls13_cipher_list) {
-    ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    if (!ssl->config->tls13_cipher_list ||
-        !ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get())) {
-      return nullptr;
-    }
-  }
+  // The cipher lists are deliberately not copied. As in OpenSSL, until they are
+  // set on |ssl|, they are read from the current |ssl->ctx|, so they follow
+  // |SSL_set_SSL_CTX|.
 
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
@@ -2829,11 +2818,15 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   }
 
   UniquePtr<CERT> new_cert = ssl_cert_dup(ctx->cert.get());
-  if (!new_cert) {
+  Array<uint16_t> verify_sigalgs;
+  if (!new_cert || !verify_sigalgs.CopyFrom(ctx->verify_sigalgs)) {
     return nullptr;
   }
 
   ssl->config->cert = std::move(new_cert);
+  // OpenSSL keeps the peer-verification preferences with the certificate
+  // configuration, so switching contexts replaces them too.
+  ssl->config->verify_sigalgs = std::move(verify_sigalgs);
   ssl->ctx = UpRef(ctx);
   ssl->enable_early_data = ssl->ctx->enable_early_data;
 

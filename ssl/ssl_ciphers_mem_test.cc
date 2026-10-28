@@ -150,10 +150,12 @@ const SSLCipherPreferenceList *CombinedPolicy(const SSL_CTX *ctx,
 }
 
 const SSLCipherPreferenceList *TLS13Policy(const SSL_CTX *ctx, const SSL *ssl) {
-  // Do not fall back to the context here: the stored policy must also survive
-  // a failed setter, even when the public combined list still looks correct.
-  return ssl != nullptr ? ssl->config->tls13_cipher_list.get()
-                        : ctx->tls13_cipher_list.get();
+  // As in the handshake, a connection without its own TLS 1.3 list uses the
+  // context's. The test separately checks that a failed setter neither adds nor
+  // removes the connection's own list.
+  return ssl != nullptr && ssl->config->tls13_cipher_list
+             ? ssl->config->tls13_cipher_list.get()
+             : ctx->tls13_cipher_list.get();
 }
 
 void ExpectPolicies(const SSL_CTX *ctx, const SSL *ssl,
@@ -260,6 +262,7 @@ TEST_P(SSLCipherAllocationTest, SetterIsAtomic) {
     const CipherPolicy before_tls13 =
         SnapshotPolicy(TLS13Policy(ctx.get(), ssl.get()));
     const bool had_local_list = ssl && ssl->config->cipher_list;
+    const bool had_local_tls13_list = ssl && ssl->config->tls13_cipher_list;
 
     ERR_clear_error();
     int ret;
@@ -286,6 +289,7 @@ TEST_P(SSLCipherAllocationTest, SetterIsAtomic) {
       EXPECT_EQ(0, ret);
       ExpectPolicies(ctx.get(), ssl.get(), before_combined, before_tls13);
       EXPECT_EQ(had_local_list, ssl && ssl->config->cipher_list);
+      EXPECT_EQ(had_local_tls13_list, ssl && ssl->config->tls13_cipher_list);
       if (ssl) {
         ExpectPolicies(ctx.get(), nullptr, initial_combined,
                        kInitialTLS13Policy);

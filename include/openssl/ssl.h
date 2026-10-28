@@ -1715,6 +1715,14 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
+//
+// Until its cipher suites are configured with the functions below, an |SSL|
+// uses those of its current |SSL_CTX|, which |SSL_set_SSL_CTX| may change. A
+// server may call these functions, or |SSL_set_SSL_CTX|, from the callbacks
+// registered by |SSL_CTX_set_client_hello_cb|,
+// |SSL_CTX_set_select_certificate_cb|,
+// |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb|, which
+// run before it selects the cipher suite.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -3386,6 +3394,16 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb| or when
 // the handshake is paused from them. It is typically used to switch
 // certificates based on SNI.
+//
+// As in OpenSSL, this function replaces |ssl|'s certificate configuration with
+// a copy of |ctx|'s, even if it was set on |ssl|. This includes the
+// certificates, private keys, signing and peer-verification signature algorithm
+// preferences, OCSP response, SCT list, certificate callback, and session ID
+// context. It also takes |ctx|'s early data setting. The cipher suites, and
+// other settings that |ssl| reads from its |SSL_CTX|, come from |ctx| after
+// this call unless they were set on |ssl|. Other settings that |SSL_new| copied
+// from the initial |SSL_CTX|, such as the supported groups, protocol versions,
+// options, and verify mode, are unchanged.
 //
 // Note the session cache and related settings will continue to use the initial
 // |SSL_CTX|. Callers should use |SSL_CTX_set_session_id_context| to partition

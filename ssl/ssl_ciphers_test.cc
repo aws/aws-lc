@@ -780,12 +780,17 @@ class TLS13CipherSuitesTest
                      tls13_only);
   }
 
-  // TLS13List returns the endpoint's internal TLS 1.3 list. The public getters
-  // only expose the combined list, so check this one directly to catch a
-  // setter that updates one list but not the other.
+  // TLS13List returns the endpoint's internal TLS 1.3 list, falling back to the
+  // context's as the handshake does. The public getters only expose the
+  // combined list, so check this one directly to catch a setter that updates
+  // one list but not the other.
   const STACK_OF(SSL_CIPHER) *TLS13List() const {
-    return (UseContext() ? Context()->tls13_cipher_list
-                         : Connection()->config->tls13_cipher_list)
+    if (UseContext()) {
+      return Context()->tls13_cipher_list->ciphers.get();
+    }
+    const SSL *ssl = Connection();
+    return (ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list
+                                           : ssl->ctx->tls13_cipher_list)
         ->ciphers.get();
   }
 
@@ -1226,6 +1231,8 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
+// An |SSL| uses its |SSL_CTX|'s cipher suites, including later changes to them,
+// until it sets its own.
 TEST(SSLTest, CheckSSLCipherInheritance) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -1239,62 +1246,58 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
-  ASSERT_TRUE(
-      SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
-  ASSERT_TRUE(
-      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
-                                      "TLS_RSA_WITH_AES_128_CBC_SHA"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(),
-                                      "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  auto set_ctx_ciphers = [&](const char *tls13, const char *tls12) {
+    for (SSL_CTX *ctx : {client_ctx.get(), server_ctx.get()}) {
+      ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx, tls13));
+      ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx, tls12));
+    }
+  };
+  auto expect_ciphers = [](SSL *ssl, uint32_t tls13_id, uint32_t tls12_id) {
+    const STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
+    ASSERT_TRUE(ciphers);
+    EXPECT_EQ(sk_SSL_CIPHER_num(ciphers), 2u);
+    for (uint32_t id : {tls13_id, tls12_id}) {
+      const SSL_CIPHER *cipher = SSL_get_cipher_by_value(id & 0xFFFF);
+      ASSERT_TRUE(cipher);
+      EXPECT_TRUE(sk_SSL_CIPHER_find_awslc(ciphers, nullptr, cipher));
+    }
+  };
 
+  set_ctx_ciphers("TLS_AES_128_GCM_SHA256", "TLS_RSA_WITH_AES_128_CBC_SHA");
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
                                     server_ctx.get()));
 
-  // Modify CTX ciphersuites
-  ASSERT_TRUE(
-      SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(
-      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
-                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(),
-                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  // Changes to the |SSL_CTX| apply to an |SSL| without its own cipher suites.
+  set_ctx_ciphers("TLS_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_256_CBC_SHA");
+  for (SSL *ssl : {client.get(), server.get()}) {
+    expect_ciphers(ssl, TLS1_3_CK_AES_256_GCM_SHA384,
+                   TLS1_CK_RSA_WITH_AES_256_SHA);
+  }
 
-  // Ensure SSL object inherits initial CTX cipher suites
-  STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
-  STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
-  ASSERT_TRUE(client_ciphers);
-  ASSERT_TRUE(server_ciphers);
-  ASSERT_EQ(sk_SSL_CIPHER_num(client_ciphers), 2u);
-  ASSERT_EQ(sk_SSL_CIPHER_num(server_ciphers), 2u);
-  const SSL_CIPHER *tls13_cipher =
-      SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
-  const SSL_CIPHER *tls12_cipher =
-      SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_128_SHA & 0xFFFF);
-  ASSERT_TRUE(tls13_cipher);
-  ASSERT_TRUE(tls12_cipher);
-
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls12_cipher));
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls13_cipher));
+  // Once an |SSL| sets its own, later changes to the |SSL_CTX| do not apply.
+  for (SSL *ssl : {client.get(), server.get()}) {
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl, "TLS_AES_128_GCM_SHA256"));
+    ASSERT_TRUE(SSL_set_cipher_list(ssl, "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  }
+  set_ctx_ciphers("TLS_CHACHA20_POLY1305_SHA256",
+                  "ECDHE-RSA-AES128-GCM-SHA256");
+  for (SSL *ssl : {client.get(), server.get()}) {
+    expect_ciphers(ssl, TLS1_3_CK_AES_128_GCM_SHA256,
+                   TLS1_CK_RSA_WITH_AES_128_SHA);
+  }
 
   SSL_set_shed_handshake_config(client.get(), 1);
   SSL_set_shed_handshake_config(server.get(), 1);
-
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server.get())),
+            static_cast<uint32_t>(TLS1_3_CK_AES_128_GCM_SHA256));
 
-  // Ensure we fall back to ctx once config is shed
-  client_ciphers = SSL_get_ciphers(client.get());
-  server_ciphers = SSL_get_ciphers(server.get());
-
-  tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
-  tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_256_SHA & 0xFFFF);
-
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
+  // Once the configuration is shed, the |SSL_CTX|'s cipher suites are reported.
+  for (SSL *ssl : {client.get(), server.get()}) {
+    expect_ciphers(ssl, TLS1_3_CK_CHACHA20_POLY1305_SHA256,
+                   TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256);
+  }
 }
 
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Default) {
@@ -1534,6 +1537,338 @@ TEST(SSLTest, TLS12ConfigCtxInteraction) {
   // shared TLS 1.2 cipher.
   ASSERT_FALSE(CompleteHandshakes(client2.get(), server2.get()));
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+}
+
+// The following tests switch the server's |SSL_CTX| with |SSL_set_SSL_CTX|
+// during the handshake, as servers do to select per-hostname configuration, and
+// check which settings follow the switch.
+
+// ContextSwitchCallback selects which of the server callbacks that run before
+// cipher suite selection performs the switch.
+enum class ContextSwitchCallback {
+  kClientHello,
+  kSelectCertificate,
+  kServerName,
+  kCertCb,
+};
+
+struct ContextSwitchParam {
+  uint16_t version;
+  ContextSwitchCallback callback;
+  const char *name;
+};
+
+static const ContextSwitchParam kContextSwitchParams[] = {
+    {TLS1_2_VERSION, ContextSwitchCallback::kClientHello, "TLS1_2_ClientHello"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kSelectCertificate,
+     "TLS1_2_SelectCertificate"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kServerName, "TLS1_2_ServerName"},
+    {TLS1_2_VERSION, ContextSwitchCallback::kCertCb, "TLS1_2_CertCb"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kClientHello, "TLS1_3_ClientHello"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kSelectCertificate,
+     "TLS1_3_SelectCertificate"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kServerName, "TLS1_3_ServerName"},
+    {TLS1_3_VERSION, ContextSwitchCallback::kCertCb, "TLS1_3_CertCb"},
+};
+
+// The initial context allows both suites of each pair below. The selected
+// context only allows the first.
+static const char kSwitchAllowedTLS12[] = "ECDHE-RSA-AES128-GCM-SHA256";
+static const char kSwitchExcludedTLS12[] = "ECDHE-RSA-AES256-GCM-SHA384";
+static const char kSwitchAllowedTLS13[] = "TLS_AES_128_GCM_SHA256";
+static const char kSwitchExcludedTLS13[] = "TLS_AES_256_GCM_SHA384";
+
+static std::string JoinCiphers(const char *first, const char *second) {
+  return std::string(first) + ":" + second;
+}
+
+// ContextSwitchState configures |SwitchContextForTest|. It is attached to the
+// server |SSL| with |SSL_set_app_data|.
+struct ContextSwitchState {
+  SSL_CTX *ctx = nullptr;
+  // If not null, these are applied to the connection after switching to |ctx|.
+  const char *cipher_list = nullptr;
+  const char *ciphersuites = nullptr;
+  const uint16_t *verify_prefs = nullptr;
+  size_t num_verify_prefs = 0;
+};
+
+static bool SwitchContextForTest(SSL *ssl) {
+  auto *state = static_cast<ContextSwitchState *>(SSL_get_app_data(ssl));
+  if (state == nullptr || SSL_set_SSL_CTX(ssl, state->ctx) != state->ctx) {
+    return false;
+  }
+  // Apply both cipher lists, in this order, to check that setting the TLS 1.3
+  // list leaves the TLS 1.2 list in place.
+  if (state->cipher_list != nullptr &&
+      !SSL_set_cipher_list(ssl, state->cipher_list)) {
+    return false;
+  }
+  if (state->ciphersuites != nullptr &&
+      !SSL_set_ciphersuites(ssl, state->ciphersuites)) {
+    return false;
+  }
+  if (state->verify_prefs != nullptr &&
+      !SSL_set_verify_algorithm_prefs(ssl, state->verify_prefs,
+                                      state->num_verify_prefs)) {
+    return false;
+  }
+  return true;
+}
+
+class SSLContextSwitchTest : public testing::TestWithParam<ContextSwitchParam> {
+ protected:
+  void SetUp() override {
+    client_ctx_.reset(SSL_CTX_new(TLS_method()));
+    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
+    sni_ctx_.reset(SSL_CTX_new(TLS_method()));
+    sni_cert_ = GetChainTestCertificate();
+    bssl::UniquePtr<EVP_PKEY> sni_key = GetChainTestKey();
+    ASSERT_TRUE(client_ctx_);
+    ASSERT_TRUE(server_ctx_);
+    ASSERT_TRUE(sni_ctx_);
+    ASSERT_TRUE(sni_cert_);
+    ASSERT_TRUE(sni_key);
+    // Both server certificates are RSA, so the same suites work with either.
+    ASSERT_TRUE(SSL_CTX_use_certificate(sni_ctx_.get(), sni_cert_.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(sni_ctx_.get(), sni_key.get()));
+
+    ASSERT_TRUE(SetBothSuites(server_ctx_.get()));
+    ASSERT_TRUE(
+        SSL_CTX_set_strict_cipher_list(sni_ctx_.get(), kSwitchAllowedTLS12));
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(sni_ctx_.get(), kSwitchAllowedTLS13));
+
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx_.get(), version()));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx_.get(), version()));
+
+    state_.ctx = sni_ctx_.get();
+    switch (GetParam().callback) {
+      case ContextSwitchCallback::kClientHello:
+        SSL_CTX_set_client_hello_cb(
+            server_ctx_.get(),
+            [](SSL *ssl, int *out_alert, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? SSL_CLIENT_HELLO_SUCCESS
+                                               : SSL_CLIENT_HELLO_ERROR;
+            },
+            nullptr);
+        break;
+      case ContextSwitchCallback::kSelectCertificate:
+        SSL_CTX_set_select_certificate_cb(
+            server_ctx_.get(),
+            [](const SSL_CLIENT_HELLO *client_hello)
+                -> ssl_select_cert_result_t {
+              return SwitchContextForTest(client_hello->ssl)
+                         ? ssl_select_cert_success
+                         : ssl_select_cert_error;
+            });
+        break;
+      case ContextSwitchCallback::kServerName:
+        SSL_CTX_set_tlsext_servername_callback(
+            server_ctx_.get(), [](SSL *ssl, int *out_alert, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? SSL_TLSEXT_ERR_OK
+                                               : SSL_TLSEXT_ERR_ALERT_FATAL;
+            });
+        break;
+      case ContextSwitchCallback::kCertCb:
+        SSL_CTX_set_cert_cb(
+            server_ctx_.get(),
+            [](SSL *ssl, void *arg) -> int {
+              return SwitchContextForTest(ssl) ? 1 : 0;
+            },
+            nullptr);
+        break;
+    }
+  }
+
+  uint16_t version() const { return GetParam().version; }
+
+  // SetBothSuites configures |ctx| to allow both suites of each pair.
+  static bool SetBothSuites(SSL_CTX *ctx) {
+    const std::string tls12 =
+        JoinCiphers(kSwitchAllowedTLS12, kSwitchExcludedTLS12);
+    const std::string tls13 =
+        JoinCiphers(kSwitchAllowedTLS13, kSwitchExcludedTLS13);
+    return SSL_CTX_set_strict_cipher_list(ctx, tls12.c_str()) &&
+           SSL_CTX_set_ciphersuites(ctx, tls13.c_str());
+  }
+
+  uint32_t AllowedCipher() const {
+    return version() == TLS1_3_VERSION
+               ? TLS1_3_CK_AES_128_GCM_SHA256
+               : TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256;
+  }
+
+  uint32_t ExcludedCipher() const {
+    return version() == TLS1_3_VERSION
+               ? TLS1_3_CK_AES_256_GCM_SHA384
+               : TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384;
+  }
+
+  // ClientOffers configures the client to offer |tls12| or |tls13|, depending
+  // on the version under test.
+  bool ClientOffers(const char *tls12, const char *tls13) {
+    return version() == TLS1_3_VERSION
+               ? SSL_CTX_set_ciphersuites(client_ctx_.get(), tls13)
+               : SSL_CTX_set_strict_cipher_list(client_ctx_.get(), tls12);
+  }
+
+  bool ClientOffersExcludedFirst() {
+    return ClientOffers(
+        JoinCiphers(kSwitchExcludedTLS12, kSwitchAllowedTLS12).c_str(),
+        JoinCiphers(kSwitchExcludedTLS13, kSwitchAllowedTLS13).c_str());
+  }
+
+  // CreateConnection creates a client and server whose handshake has not yet
+  // started. The server switches to |state_.ctx| during the handshake.
+  bool CreateConnection(bssl::UniquePtr<SSL> *out_client,
+                        bssl::UniquePtr<SSL> *out_server) {
+    ERR_clear_error();
+    return CreateClientAndServer(out_client, out_server, client_ctx_.get(),
+                                 server_ctx_.get()) &&
+           SSL_set_tlsext_host_name(out_client->get(), "sni.test") &&
+           SSL_set_app_data(out_server->get(), &state_);
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx_, server_ctx_, sni_ctx_;
+  bssl::UniquePtr<X509> sni_cert_;
+  ContextSwitchState state_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    ContextSwitchTests, SSLContextSwitchTest,
+    testing::ValuesIn(kContextSwitchParams),
+    [](const testing::TestParamInfo<ContextSwitchParam> &info) {
+      return std::string(info.param.name);
+    });
+
+// Switching contexts uses the new context's certificate and, as the connection
+// has not set its own, its cipher suites.
+TEST_P(SSLContextSwitchTest, UsesNewCipherSuites) {
+  // A client that only offers a suite the new context excludes is rejected.
+  ASSERT_TRUE(ClientOffers(kSwitchExcludedTLS12, kSwitchExcludedTLS13));
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  EXPECT_FALSE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+  EXPECT_EQ(SSL_get_SSL_CTX(server.get()), sni_ctx_.get());
+  ERR_clear_error();
+
+  // A client that prefers the excluded suite, but also offers the allowed one,
+  // negotiates the allowed one.
+  ASSERT_TRUE(ClientOffersExcludedFirst());
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server.get())),
+            AllowedCipher());
+  bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
+  ASSERT_TRUE(peer);
+  EXPECT_EQ(X509_cmp(peer.get(), sni_cert_.get()), 0);
+}
+
+// Cipher suites set on the connection before switching contexts are kept, so a
+// suite that only those allow is still accepted.
+TEST_P(SSLContextSwitchTest, KeepsConnectionCipherSuites) {
+  ASSERT_TRUE(ClientOffers(kSwitchExcludedTLS12, kSwitchExcludedTLS13));
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(SSL_set_strict_cipher_list(
+      server.get(),
+      JoinCiphers(kSwitchAllowedTLS12, kSwitchExcludedTLS12).c_str()));
+  ASSERT_TRUE(SSL_set_ciphersuites(
+      server.get(),
+      JoinCiphers(kSwitchAllowedTLS13, kSwitchExcludedTLS13).c_str()));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(SSL_get_SSL_CTX(server.get()), sni_ctx_.get());
+  EXPECT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server.get())),
+            ExcludedCipher());
+}
+
+// Cipher suites applied to the connection in the callback, after switching
+// contexts, are used for the current handshake.
+TEST_P(SSLContextSwitchTest, ApplyCipherSuites) {
+  // Allow both suites in the selected context as well, so that only the lists
+  // applied to the connection exclude one of them.
+  ASSERT_TRUE(SetBothSuites(sni_ctx_.get()));
+  state_.cipher_list = kSwitchAllowedTLS12;
+  state_.ciphersuites = kSwitchAllowedTLS13;
+
+  // A client that only offers a suite the applied lists exclude is rejected.
+  ASSERT_TRUE(ClientOffers(kSwitchExcludedTLS12, kSwitchExcludedTLS13));
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  EXPECT_FALSE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
+  EXPECT_EQ(SSL_get_SSL_CTX(server.get()), sni_ctx_.get());
+  ERR_clear_error();
+
+  ASSERT_TRUE(ClientOffersExcludedFirst());
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server.get())),
+            AllowedCipher());
+}
+
+// As in OpenSSL, switching contexts replaces both the signing and the
+// peer-verification signature algorithm preferences, even if they were set on
+// the connection.
+TEST_P(SSLContextSwitchTest, SignatureAlgorithmPrefs) {
+  static const uint16_t kInitialVerifyPrefs[] = {SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  static const uint16_t kConnectionVerifyPrefs[] = {
+      SSL_SIGN_ECDSA_SECP384R1_SHA384};
+  static const uint16_t kSNIVerifyPrefs[] = {SSL_SIGN_ECDSA_SECP256R1_SHA256};
+  static const uint16_t kSNISigningPrefs[] = {SSL_SIGN_RSA_PSS_RSAE_SHA384};
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+      server_ctx_.get(), kInitialVerifyPrefs,
+      OPENSSL_ARRAY_SIZE(kInitialVerifyPrefs)));
+  ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+      sni_ctx_.get(), kSNIVerifyPrefs, OPENSSL_ARRAY_SIZE(kSNIVerifyPrefs)));
+  ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
+      sni_ctx_.get(), kSNISigningPrefs, OPENSSL_ARRAY_SIZE(kSNISigningPrefs)));
+
+  // Request, but do not require, a client certificate. This is configured on
+  // the initial context because |SSL_new| copies the verify mode. The client
+  // records the signature algorithms in the CertificateRequest.
+  SSL_CTX_set_verify(server_ctx_.get(), SSL_VERIFY_PEER, nullptr);
+  std::vector<uint16_t> requested;
+  SSL_CTX_set_cert_cb(
+      client_ctx_.get(),
+      [](SSL *ssl, void *arg) -> int {
+        const uint16_t *sigalgs = nullptr;
+        size_t num_sigalgs = SSL_get0_peer_verify_algorithms(ssl, &sigalgs);
+        static_cast<std::vector<uint16_t> *>(arg)->assign(
+            sigalgs, sigalgs + num_sigalgs);
+        return 1;
+      },
+      &requested);
+  ASSERT_TRUE(ClientOffers(kSwitchAllowedTLS12, kSwitchAllowedTLS13));
+  const std::vector<uint16_t> sni_verify(std::begin(kSNIVerifyPrefs),
+                                         std::end(kSNIVerifyPrefs));
+
+  // The server signs with, and requests, the new context's preferences.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
+            kSNISigningPrefs[0]);
+  EXPECT_EQ(requested, sni_verify);
+
+  // Preferences set on the connection before the switch are replaced.
+  requested.clear();
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(SSL_set_verify_algorithm_prefs(
+      server.get(), kConnectionVerifyPrefs,
+      OPENSSL_ARRAY_SIZE(kConnectionVerifyPrefs)));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(requested, sni_verify);
+
+  // Preferences set on the connection after the switch are used.
+  state_.verify_prefs = kConnectionVerifyPrefs;
+  state_.num_verify_prefs = OPENSSL_ARRAY_SIZE(kConnectionVerifyPrefs);
+  requested.clear();
+  ASSERT_TRUE(CreateConnection(&client, &server));
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  EXPECT_EQ(requested, std::vector<uint16_t>(std::begin(kConnectionVerifyPrefs),
+                                             std::end(kConnectionVerifyPrefs)));
 }
 
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
