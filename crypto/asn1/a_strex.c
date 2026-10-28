@@ -179,6 +179,12 @@ static int do_hex_dump(BIO *out, unsigned char *buf, int buflen) {
   static const char hexdig[] = "0123456789ABCDEF";
   unsigned char *p, *q;
   char hextmp[2];
+  // Reject negative lengths, and lengths whose hex encoding (two characters
+  // per byte) would not fit in the signed output length.
+  if (buflen < 0 || buflen > INT_MAX / 2) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+    return -1;
+  }
   if (out) {
     p = buf;
     q = buf + buflen;
@@ -293,6 +299,10 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
     if (len < 0) {
       return -1;
     }
+    if (len > INT_MAX - outlen) {
+      OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+      return -1;
+    }
     outlen += len;
     return outlen;
   }
@@ -318,10 +328,14 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
   if (len < 0) {
     return -1;
   }
-  outlen += len;
   if (quotes) {
     outlen += 2;
   }
+  if (len > INT_MAX - outlen) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+    return -1;
+  }
+  outlen += len;
   if (!out) {
     return outlen;
   }
