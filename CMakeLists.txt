@@ -823,9 +823,6 @@ if(GCC OR CLANG)
       #ifndef WIN32_LEAN_AND_MEAN
       #define WIN32_LEAN_AND_MEAN
       #endif
-      #ifndef NOGDI
-      #define NOGDI
-      #endif
       #include <windows.h>
       #if !defined(_WIN32_WINNT) || _WIN32_WINNT < _WIN32_WINNT_VISTA
       #error _WIN32_WINNT below Vista
