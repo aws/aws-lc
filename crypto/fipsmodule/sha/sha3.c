@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include <string.h>
 
 uint8_t *SHA3_224(const uint8_t *data, size_t len,
