@@ -47,8 +47,9 @@ OPENSSL_EXPORT int CRYPTO_get_vm_ube_generation(
 // its use. Otherwise, it returns 0.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_active(void);
 
-// CRYPTO_get_vm_ube_supported returns 1 if the file system presents a VM UBE
-// interface (vmclock or SysGenID). Otherwise, it returns 0.
+// CRYPTO_get_vm_ube_supported returns 1 if a VM UBE interface (vmclock or
+// SysGenID) was successfully initialized. Otherwise, it returns 0. This is
+// currently equivalent to |CRYPTO_get_vm_ube_active|.
 OPENSSL_EXPORT int CRYPTO_get_vm_ube_supported(void);
 
 // CRYPTO_get_sysgenid_path returns the path used for the SysGenId interface.
