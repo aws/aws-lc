@@ -41,6 +41,7 @@ int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig, unsigned *out_sig_len,
   EVP_MD_CTX_init(&tmp_ctx);
   if (!EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) ||
       !EVP_DigestFinal_ex(&tmp_ctx, m, &m_len)) {
+    EVP_MD_CTX_cleanup(&tmp_ctx);
     goto out;
   }
   EVP_MD_CTX_cleanup(&tmp_ctx);

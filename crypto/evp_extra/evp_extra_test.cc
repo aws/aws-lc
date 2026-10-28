@@ -1071,6 +1071,30 @@ TEST(EVPExtraTest, DigestSignInit) {
   ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig_len));
 }
 
+TEST(EVPExtraTest, SignFinalCleansUpFinalizedContext) {
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
+  ASSERT_TRUE(pkey);
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  ASSERT_TRUE(EVP_DigestFinal_ex(md_ctx.get(), digest, &digest_len));
+
+  // |EVP_SignFinal| copies the finalized context, including its digest and
+  // pkey state, before finalization rejects it.
+  std::vector<uint8_t> sig(EVP_PKEY_size(pkey.get()));
+  unsigned sig_len = sig.size();
+  EXPECT_FALSE(
+      EVP_SignFinal(md_ctx.get(), sig.data(), &sig_len, pkey.get()));
+
+  // Rejected |EVP_SignFinal| should zero |sig_len|.
+  EXPECT_EQ(0u, sig_len);
+}
+
 TEST(EVPExtraTest, DigestVerifyInit) {
   bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   bssl::ScopedEVP_MD_CTX md_ctx;
