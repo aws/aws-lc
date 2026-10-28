@@ -155,6 +155,17 @@ static int try_sysgenid_init(struct vm_ube_state_st *st) {
 // "present but failed" state that reports permanent failure up the stack. That
 // keeps the required fork detector working and avoids the per-call reseed tax
 // for what is usually just a permissions issue on a root-only device.
+//
+// This detector also feeds entropy source selection: entropy_sources.c's
+// |is_vm_ube_environment| calls |CRYPTO_get_vm_ube_supported|, which reports
+// success only if this function initialized a backend. SysGenID alone is
+// typically root-only, so before vmclock existed |is_vm_ube_environment| was
+// rarely true in practice and most VM guests defaulted to the CPU jitter
+// entropy source. vmclock's device node is commonly readable by
+// unprivileged processes, so enabling it here moves many more hosts onto the
+// OS-seeded, opt-out-of-jitter entropy path by default -- in both FIPS and
+// non-FIPS builds -- with the outcome now depending on which device nodes
+// the running process can open.
 static void do_vm_ube_init(void) {
   vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
   vm_ube.backend = VM_UBE_BACKEND_NONE;
