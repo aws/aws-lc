@@ -121,7 +121,9 @@ OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
 OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 // EVP_DigestUpdate hashes |len| bytes from |data| into the hashing operation
-// in |ctx|. It returns one.
+// in |ctx|. It returns one on success and zero on error. Updates are rejected
+// after |EVP_DigestFinal_ex| succeeds until |EVP_DigestInit_ex| starts a new
+// hashing operation.
 OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
                                     size_t len);
 
