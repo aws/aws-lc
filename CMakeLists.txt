@@ -820,6 +820,12 @@ if(GCC OR CLANG)
  if(MINGW AND NOT CLANG)
     include(CheckCSourceCompiles)
     check_c_source_compiles("
+      #ifndef WIN32_LEAN_AND_MEAN
+      #define WIN32_LEAN_AND_MEAN
+      #endif
+      #ifndef NOGDI
+      #define NOGDI
+      #endif
       #include <windows.h>
       #if !defined(_WIN32_WINNT) || _WIN32_WINNT < _WIN32_WINNT_VISTA
       #error _WIN32_WINNT below Vista
