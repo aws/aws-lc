@@ -197,6 +197,7 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   ASSERT_TRUE(set_vmclock_generation(&vmc_test, kValueA));
 
   std::atomic<bool> stop(false);
+  std::atomic<uint64_t> write_count(0);
   volatile struct vmclock_abi *abi = vmc_test.addr;
 
   std::thread writer([&]() {
@@ -221,8 +222,15 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
       std::atomic_thread_fence(std::memory_order_release);
       // Leave the write section: make seq_count even.
       abi->seq_count++;
+      write_count.fetch_add(1, std::memory_order_relaxed);
     }
   });
+
+  // Don't start reading until the writer has actually produced at least one
+  // update -- otherwise the test could pass on a read loop that only ever
+  // observed the pre-writer value.
+  while (write_count.load(std::memory_order_relaxed) == 0) {
+  }
 
   // Read many times. Each read returns 0 if the writer held the lock past the
   // retry bound (acceptable), or 1 with either a whole value (kValueA/kValueB)
@@ -252,6 +260,11 @@ TEST(VmUbeGenerationTest, DISABLED_VmclockConcurrentTornRead) {
   writer.join();
 
   EXPECT_FALSE(torn_read) << "torn read observed: 0x" << std::hex << torn_value;
+  // Require a successful read after the writer has stopped, so the test
+  // can't pass merely because every read in the loop above exhausted its
+  // retry budget against a writer that never actually updated the counter.
+  uint64_t post_join_gen = 0;
+  EXPECT_EQ(1, CRYPTO_get_vm_ube_generation(&post_join_gen));
   // Sanity: we should have gotten at least some consistent reads.
   EXPECT_GT(whole_reads, (size_t)0);
 
@@ -367,9 +380,6 @@ TEST(VmUbeGenerationTest, SysGenIDretrievalLinux) {
   ASSERT_TRUE(CRYPTO_get_vm_ube_generation(&current_vm_ube_gen_num));
   if (CRYPTO_get_vm_ube_supported()) {
     ASSERT_TRUE(CRYPTO_get_vm_ube_active());
-    // If we're on a system where a VM UBE interface is available, we won't
-    // know what value to expect, but we assume it's not 0xffffffffffffffff
-    ASSERT_NE((uint64_t)0xffffffffffffffff, current_vm_ube_gen_num);
   } else {
     ASSERT_FALSE(CRYPTO_get_vm_ube_active());
     ASSERT_EQ((uint64_t) 0, current_vm_ube_gen_num);

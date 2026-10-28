@@ -21,10 +21,9 @@ extern "C" {
 // VM UBE-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_vm_ube_generation provides the VM UBE generation number for
-// the current process. The VM UBE generation number is a non-zero,
-// strictly-monotonic counter with the property that, if queried in an
-// address space and then again in a subsequently resumed snapshot/VM, the
-// resumed address space will observe a greater value.
+// the current process. The value changes whenever the address space is
+// resumed from a snapshot or clone; only inequality is meaningful, since
+// vmclock guarantees neither monotonicity nor a non-zero value.
 //
 // Two detection mechanisms are supported:
 //   1. vmclock -- /dev/vmclock0 (preferred). See

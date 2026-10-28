@@ -203,14 +203,23 @@ static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
                                   uint64_t *out) {
   for (size_t i = 0; i < VMCLOCK_SEQLOCK_MAX_RETRIES; i++) {
     uint32_t seq = st->vmclock_addr->seq_count & ~1u;
-    // Keep the first |seq_count| read ordered before the counter read.
+    // Keep the first |seq_count| read ordered before the counter and flags
+    // reads.
     vm_ube_acquire_fence();
 
     uint64_t value = st->vmclock_addr->vm_generation_counter;
+    // The spec does not guarantee |flags| is immutable for the device's
+    // lifetime, so recheck the feature bit within this same snapshot rather
+    // than trusting the one-time check from |try_vmclock_init|.
+    uint64_t flags = st->vmclock_addr->flags;
 
-    // Keep the second |seq_count| read ordered after the counter read.
+    // Keep the second |seq_count| read ordered after the counter and flags
+    // reads.
     vm_ube_acquire_fence();
     if (seq == st->vmclock_addr->seq_count) {
+      if (!(flags & VMCLOCK_FLAG_VM_GEN_COUNTER_PRESENT)) {
+        return 0;
+      }
       *out = value;
       return 1;
     }
