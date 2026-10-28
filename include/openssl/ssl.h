@@ -1715,6 +1715,15 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
+//
+// An |SSL| uses the cipher suites of its current |SSL_CTX|, which
+// |SSL_set_SSL_CTX| may change, until any of the functions below configures
+// its own. A single call fixes both the TLS 1.3 and the TLS 1.2 and below
+// suites, copying from the |SSL_CTX| those it does not set. A server may call
+// these functions, or |SSL_set_SSL_CTX|, from the callbacks registered by
+// |SSL_CTX_set_client_hello_cb|, |SSL_CTX_set_select_certificate_cb|,
+// |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb|, which
+// run before it selects the cipher suite.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1757,8 +1766,10 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 // |str| as a cipher string and returning error if |str| contains anything
 // meaningless.
 // It updates the cipher list |ssl->config->cipher_list| with any configured
-// TLS 1.3 cipher suites by first checking |ssl->config->tls13_cipher_list| and
-// otherwise falling back to |ssl->ctx->tls13_cipher_list|.
+// TLS 1.3 cipher suites from |ssl->config->tls13_cipher_list|. If |ssl| has no
+// TLS 1.3 suites of its own, it first takes a copy of |ssl->ctx|'s, so later
+// changes to the |SSL_CTX|'s, or a switch to another |SSL_CTX| with
+// |SSL_set_SSL_CTX|, no longer apply to |ssl|.
 //
 // It returns one on success and zero on failure. If |str| parses successfully
 // but selects no TLS 1.2 and below suites (including an empty |str|), it returns
@@ -1783,8 +1794,10 @@ OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 // SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
 // |ssl|, evaluating |str| as a cipher string. It updates
 // |ssl->config->cipher_list| with any values in
-// |ssl->config->tls13_cipher_list|. It returns one on success and zero on
-// failure.
+// |ssl->config->tls13_cipher_list|. If |ssl| has no TLS 1.2 and below suites of
+// its own, it first takes a copy of |ssl->ctx|'s, so later changes to the
+// |SSL_CTX|'s, or a switch to another |SSL_CTX| with |SSL_set_SSL_CTX|, no
+// longer apply to |ssl|. It returns one on success and zero on failure.
 //
 // Any failure, including a non-empty |str| that matches none, leaves the
 // configuration unchanged.
@@ -1792,9 +1805,10 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
 // a cipher string. It updates the cipher list |ssl->config->cipher_list| with
-// any configured TLS 1.3 cipher suites by first checking
-// |ssl->config->tls13_cipher_list| and otherwise falling back to
-// |ssl->ctx->tls13_cipher_list|.
+// any configured TLS 1.3 cipher suites from |ssl->config->tls13_cipher_list|.
+// If |ssl| has no TLS 1.3 suites of its own, it first takes a copy of
+// |ssl->ctx|'s, so later changes to the |SSL_CTX|'s, or a switch to another
+// |SSL_CTX| with |SSL_set_SSL_CTX|, no longer apply to |ssl|.
 //
 // Equal-preference groups cannot be configured for TLS 1.3 through these APIs.
 //
@@ -3377,10 +3391,22 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 // SSL_set_SSL_CTX changes |ssl|'s |SSL_CTX|. |ssl| will use the
 // certificate-related settings from |ctx|, and |SSL_get_SSL_CTX| will report
 // |ctx|. This function may be used during the callbacks registered by
-// |SSL_CTX_set_select_certificate_cb|,
+// |SSL_CTX_set_client_hello_cb|, |SSL_CTX_set_select_certificate_cb|,
 // |SSL_CTX_set_tlsext_servername_callback|, and |SSL_CTX_set_cert_cb| or when
 // the handshake is paused from them. It is typically used to switch
 // certificates based on SNI.
+//
+// This function replaces |ssl|'s certificate configuration with a copy of
+// |ctx|'s, even if it was set on |ssl|. This includes the certificates, private
+// keys, signing and peer-verification signature algorithm preferences,
+// certificate verification store, OCSP response, SCT list, certificate
+// callback, and session ID context. OpenSSL behaves the same, except that it
+// keeps an OCSP response or session ID context set on |ssl|. This function also
+// takes |ctx|'s early data setting. The cipher suites, and other settings that
+// |ssl| reads from its |SSL_CTX|, come from |ctx| after this call unless they
+// were set on |ssl|. Other settings that |SSL_new| copied from the initial
+// |SSL_CTX|, such as the supported groups, protocol versions, options, and
+// verify mode, are unchanged.
 //
 // Note the session cache and related settings will continue to use the initial
 // |SSL_CTX|. Callers should use |SSL_CTX_set_session_id_context| to partition
