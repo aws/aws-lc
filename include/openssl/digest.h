@@ -325,7 +325,8 @@ struct env_md_ctx_st {
   // 1. Set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
   //    from being freed when |*pctx| was set externally with
   //    |EVP_MD_CTX_set_pkey_ctx|.
-  // 2. Set flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
+  // 2. Set flag |EVP_MD_CTX_HMAC| while initialised for |EVP_PKEY_HMAC|
+  //    signing.
   // 3. Set flag |EVP_MD_CTX_FINALISED| to reject more than a single call
   //    to |EVP_DigestFinal_ex|.
   unsigned long flags;

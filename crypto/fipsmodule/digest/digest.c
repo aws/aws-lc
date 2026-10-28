@@ -246,8 +246,11 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
     return 1;
   }
 
+  // HMAC replaces |ctx->update|. Restore the digest callback when reusing the
+  // context for a non-HMAC operation.
+  ctx->update = ctx->digest->update;
   ctx->digest->init(ctx);
-  ctx->flags &= ~EVP_MD_CTX_FINALISED;
+  ctx->flags &= ~(EVP_MD_CTX_HMAC | EVP_MD_CTX_FINALISED);
   return 1;
 }
 

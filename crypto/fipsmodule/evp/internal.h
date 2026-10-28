@@ -19,10 +19,11 @@ extern "C" {
 // externally with |EVP_MD_CTX_set_pkey_ctx|.
 #define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX 0x0400
 
-// EVP_MD_CTX_HMAC causes the |EVP_MD|'s |init| function not to
-// be called, the |update| member not to be copied from the |EVP_MD| in
-// |EVP_DigestInit_ex| and for |md_data| not to be initialised.
-// This is an implementation detail of |EVP_PKEY_HMAC|.
+// EVP_MD_CTX_HMAC indicates that an |EVP_MD_CTX| is initialised for
+// |EVP_PKEY_HMAC| signing. It causes the |EVP_MD|'s |init| function not to be
+// called, the |update| member not to be copied from the |EVP_MD| in
+// |EVP_DigestInit_ex| and |md_data| not to be initialised. This is an
+// implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
 // |EVP_DigestFinal_ex| does not propagate internal errors, thus, more than

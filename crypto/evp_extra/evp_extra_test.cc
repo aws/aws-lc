@@ -1071,6 +1071,78 @@ TEST(EVPExtraTest, DigestSignInit) {
   ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig_len));
 }
 
+TEST(EVPExtraTest, DigestSignInitSwitchesFromHMACToExternalRSA) {
+  static const uint8_t kHMACKey[] = "key";
+  bssl::UniquePtr<EVP_PKEY> hmac_key(EVP_PKEY_new_mac_key(
+      EVP_PKEY_HMAC, nullptr, kHMACKey, sizeof(kHMACKey) - 1));
+  ASSERT_TRUE(hmac_key);
+  bssl::UniquePtr<EVP_PKEY_CTX> hmac_ctx(
+      EVP_PKEY_CTX_new(hmac_key.get(), nullptr));
+  ASSERT_TRUE(hmac_ctx);
+
+  bssl::UniquePtr<EVP_PKEY> rsa_key = LoadExampleRSAKey();
+  ASSERT_TRUE(rsa_key);
+  bssl::UniquePtr<EVP_PKEY_CTX> rsa_ctx(
+      EVP_PKEY_CTX_new(rsa_key.get(), nullptr));
+  ASSERT_TRUE(rsa_ctx);
+  ASSERT_TRUE(EVP_PKEY_sign_init(rsa_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(rsa_ctx.get(), EVP_sha256()));
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EXPECT_FALSE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr,
+                                  hmac_key.get()));
+  EXPECT_EQ(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  EXPECT_EQ(nullptr, md_ctx.get()->update);
+
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                 hmac_key.get()));
+  EXPECT_NE(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+
+  // A different HMAC key context also needs its own HMAC state initialised.
+  EVP_MD_CTX_set_pkey_ctx(md_ctx.get(), hmac_ctx.get());
+  EXPECT_EQ(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  EXPECT_EQ(nullptr, md_ctx.get()->digest);
+  EXPECT_EQ(nullptr, md_ctx.get()->update);
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                 hmac_key.get()));
+  EXPECT_NE(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+
+  // Replacing the HMAC key context must also clear HMAC-specific state.
+  EVP_MD_CTX_set_pkey_ctx(md_ctx.get(), rsa_ctx.get());
+  EXPECT_EQ(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  EXPECT_EQ(nullptr, md_ctx.get()->digest);
+  EXPECT_EQ(nullptr, md_ctx.get()->update);
+
+  // The attached |pctx| is RSA, so it must reject initialization with an HMAC
+  // key rather than treating the RSA method data as HMAC state.
+  EXPECT_FALSE(EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                  hmac_key.get()));
+  EXPECT_EQ(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+
+  EVP_PKEY_CTX *returned_ctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &returned_ctx, EVP_sha256(),
+                                 nullptr, rsa_key.get()));
+  EXPECT_EQ(0u, md_ctx.get()->flags & EVP_MD_CTX_HMAC);
+  EXPECT_EQ(rsa_ctx.get(), returned_ctx);
+  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+
+  // Verify that the context reused from HMAC produces a valid RSA signature,
+  // rather than merely returning successful initialization and update calls.
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
+  std::vector<uint8_t> sig(sig_len);
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), sig.data(), &sig_len));
+  sig.resize(sig_len);
+
+  md_ctx.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                   rsa_key.get()));
+  ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
+  EXPECT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig.size()));
+}
+
 TEST(EVPExtraTest, SignFinalCleansUpFinalizedContext) {
   bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
   ASSERT_TRUE(pkey);
