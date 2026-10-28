@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../internal.h"
@@ -44,12 +45,14 @@ static void vm_ube_acquire_fence(void) {
 #define VM_UBE_BACKEND_VMCLOCK 0x01
 #define VM_UBE_BACKEND_SYSGENID 0x02
 
-// Iteration budget for a contended or wedged seqlock, not a guarantee a VMM
-// update completes. A VMM update flips the seqcount only momentarily, so a
-// small budget is ample; it exists only so a stuck |seq_count| can't spin
-// |RAND_bytes| forever. Exhausting it is a permanent UBE failure (see
-// CRYPTO_get_vm_ube_generation).
-#define VMCLOCK_SEQLOCK_MAX_RETRIES 64
+// Wall-clock budget for a contended or wedged seqlock, matching the vmclock
+// kernel reader's own ~100ms deadline (see drivers/ptp/ptp_vmclock.c
+// upstream). A fixed iteration count is the wrong unit: under scheduler
+// contention, a small number of tight spins can exhaust in far less real
+// time than it takes a legitimate VMM update to complete, falsely reporting
+// a wedged device. This is not a guarantee that a VMM update completes
+// within the budget, just ample slack for ordinary contention to settle.
+#define VMCLOCK_SEQLOCK_TIMEOUT_MS 100
 
 static CRYPTO_once_t vm_ube_init = CRYPTO_ONCE_INIT;
 
@@ -206,13 +209,31 @@ void HAZMAT_reinit_vm_ube_FOR_TESTING(void) {
 }
 #endif
 
+// vm_ube_deadline_exceeded returns 1 once |VMCLOCK_SEQLOCK_TIMEOUT_MS| has
+// elapsed since |start|, or if the monotonic clock itself is unavailable
+// (fail closed rather than spin forever).
+static int vm_ube_deadline_exceeded(const struct timespec *start) {
+  struct timespec now;
+  if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+    return 1;
+  }
+  int64_t elapsed_ms = (int64_t)(now.tv_sec - start->tv_sec) * 1000 +
+                       (now.tv_nsec - start->tv_nsec) / 1000000;
+  return elapsed_ms >= VMCLOCK_SEQLOCK_TIMEOUT_MS;
+}
+
 // vm_ube_read_vmclock_gn reads the vmclock generation counter using the
 // seqlock protocol described in the vmclock specification. On success it writes
 // the value to |*out| and returns 1. It returns 0 if it cannot obtain a
-// consistent read within |VMCLOCK_SEQLOCK_MAX_RETRIES| attempts.
+// consistent read within |VMCLOCK_SEQLOCK_TIMEOUT_MS|.
 static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
                                   uint64_t *out) {
-  for (size_t i = 0; i < VMCLOCK_SEQLOCK_MAX_RETRIES; i++) {
+  struct timespec start;
+  if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
+    return 0;
+  }
+
+  do {
     uint32_t seq = st->vmclock_addr->seq_count & ~1u;
     // Keep the first |seq_count| read ordered before the counter and flags
     // reads.
@@ -234,7 +255,8 @@ static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
       *out = value;
       return 1;
     }
-  }
+  } while (!vm_ube_deadline_exceeded(&start));
+
   return 0;
 }
 
