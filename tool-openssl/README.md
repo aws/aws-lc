@@ -48,6 +48,8 @@ Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing r
 
 `-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
 
+The signature digest for `-signkey`/`-CA` signing is selectable with `-sha1`, `-sha224`, `-sha256`, `-sha384`, or `-sha512`, defaulting to `-sha256`. Unlike OpenSSL, which accepts any supported digest (including `md5`), only these SHA digests are exposed, and the flag governs signing only; it does not change the `-fingerprint` digest (which remains SHA-1, matching OpenSSL's fingerprint default).
+
 When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
 
 ### enc

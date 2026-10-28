@@ -80,6 +80,16 @@ static const argument_t kArguments[] = {
      "Add a trusted use (e.g. clientAuth, serverAuth) to the certificate"},
     {"-trustout", kBooleanArgument,
      "Output the certificate as a trusted certificate"},
+    // Signature digest selection, used when signing with -signkey or -CA.
+    {"-sha1", kExclusiveBooleanArgument, "Use SHA-1 as the signature digest"},
+    {"-sha224", kExclusiveBooleanArgument,
+     "Use SHA-224 as the signature digest"},
+    {"-sha256", kExclusiveBooleanArgument,
+     "Use SHA-256 as the signature digest (default)"},
+    {"-sha384", kExclusiveBooleanArgument,
+     "Use SHA-384 as the signature digest"},
+    {"-sha512", kExclusiveBooleanArgument,
+     "Use SHA-512 as the signature digest"},
     {"", kOptionalArgument, ""}};
 
 static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
@@ -239,7 +249,8 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
                                              EVP_PKEY *pkey,
                                              const std::string &pkey_path,
                                              const std::string &ext_file_path,
-                                             std::string &ext_section) {
+                                             std::string &ext_section,
+                                             const EVP_MD *digest) {
   X509V3_CTX ext_ctx;
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
@@ -331,8 +342,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
     return false;
   }
 
-  // TODO: make customizable with -digest option
-  if (!X509_sign(subject, pkey, EVP_sha256())) {
+  if (!X509_sign(subject, pkey, digest)) {
     fprintf(stderr, "Error: error signing certificate with key from '%s'\n",
             pkey_path.c_str());
     ERR_print_errors_fp(stderr);
@@ -729,7 +739,8 @@ int X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, days_str, inform, outform,
-      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str;
+      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str,
+      digest_name;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
   Password passin;
@@ -749,6 +760,15 @@ int X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
   ordered_args::GetString(&nameopt_str, "-nameopt", "", parsed_args);
   ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
+  ordered_args::GetExclusiveBoolArgument(&digest_name, kArguments, "-sha256",
+                                         parsed_args);
+  // digest_name retains its leading '-' (e.g. "-sha256"); skip it for lookup.
+  const EVP_MD *digest = EVP_get_digestbyname(digest_name.c_str() + 1);
+  if (digest == nullptr) {
+    fprintf(stderr, "Error: unsupported digest algorithm '%s'\n",
+            digest_name.c_str() + 1);
+    return kToolExitFailure;
+  }
 
   // Display x509 tool option summary
   if (help) {
@@ -996,13 +1016,13 @@ int X509Tool(const args_list_t &args) {
     if (!ca_file_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, digest)) {
         return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, digest)) {
         return kToolExitFailure;
       }
     }
@@ -1063,13 +1083,13 @@ int X509Tool(const args_list_t &args) {
     if (!ca_file_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, digest)) {
         return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, digest)) {
         return kToolExitFailure;
       }
     }
@@ -1097,7 +1117,10 @@ int X509Tool(const args_list_t &args) {
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
           arg_name == "-CAkey" || arg_name == "-nameopt" ||
-          arg_name == "-addtrust" || arg_name == "-trustout") {
+          arg_name == "-addtrust" || arg_name == "-trustout" ||
+          arg_name == "-sha1" || arg_name == "-sha224" ||
+          arg_name == "-sha256" || arg_name == "-sha384" ||
+          arg_name == "-sha512") {
         continue;
       }
 
