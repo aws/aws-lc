@@ -1457,7 +1457,6 @@ if(BUILD_TESTING)
   set(CRYPTO_TEST_EXEC crypto_test${TEST_EXECUTABLE_EXT})
   set(RANDOM_TEST_EXEC urandom_test${TEST_EXECUTABLE_EXT})
   set(SSL_TEST_EXEC ssl_test${TEST_EXECUTABLE_EXT})
-  set(SSL_CIPHERS_MEM_TEST_EXEC ssl_ciphers_mem_test${TEST_EXECUTABLE_EXT})
   set(MEM_TEST_EXEC mem_test${TEST_EXECUTABLE_EXT})
   set(MEM_SET_TEST_EXEC mem_set_test${TEST_EXECUTABLE_EXT})
   set(INTEGRATION_TEST_EXEC integration_test${TEST_EXECUTABLE_EXT})
@@ -1732,7 +1731,6 @@ if(BUILD_TESTING)
           COMMAND crypto/crypto_test
           COMMAND crypto/urandom_test
           COMMAND ssl/ssl_test
-          COMMAND ssl/ssl_ciphers_mem_test
           WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})

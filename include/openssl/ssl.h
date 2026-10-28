@@ -1786,13 +1786,8 @@ OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 // |ssl->config->tls13_cipher_list|. It returns one on success and zero on
 // failure.
 //
-// An empty |str| succeeds and configures no TLS 1.3 suites. Any failure,
-// including a non-empty |str| that matches none, leaves the configuration
-// unchanged.
-//
-// An empty list does not disable the TLS 1.3 protocol or enable automatic
-// fallback to TLS 1.2. To disable TLS 1.3, use |SSL_set_max_proto_version| with
-// |TLS1_2_VERSION| instead.
+// Any failure, including a non-empty |str| that matches none, leaves the
+// configuration unchanged.
 OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
