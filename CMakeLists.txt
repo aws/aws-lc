@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "5.11.0")
+set(SOFTWARE_VERSION "5.12.0")
 set(AWSLC_FIPS_VERSION 5)
 set(ABI_VERSION 1)
 set(CRYPTO_LIB_NAME "crypto")
@@ -39,8 +39,7 @@ option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an ent
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
-option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires AWSLC_PROVIDER_OPENSSL_ROOT" OFF)
-set(AWSLC_PROVIDER_OPENSSL_ROOT "" CACHE PATH "Install prefix of an OpenSSL 3.5 or later build, supplying the provider headers BUILD_AWSLC_PROVIDER needs")
+option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires OpenSSL 3.5+ headers; set OPENSSL_ROOT_DIR if they are not in system paths" OFF)
 option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
 set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
 
@@ -345,17 +344,6 @@ else()
   # The validated entropy source will always be configured to be CPU Jitter
   # Entropy by default; because it's the root of the Tree DRBG.
   message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
-endif()
-
-if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-  # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
-  # 1. The FIPS shared and static builds need to compute the module signature hash by reading the .text section
-  # 2. s2n-bignum x86 assembly sources still have references to static data in the .text section
-  if(NOT BUILD_SHARED_LIBS)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
-  else()
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
-  endif()
 endif()
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
@@ -1272,6 +1260,17 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" AND FIPS)
+  # OpenBSD links with --execute-only by default, which breaks assembly that
+  # reads readonly tables from .text instead of .rodata. FIPS must keep the
+  # workaround since it needs readable .text for the integrity check.
+  if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
+  else()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
+  endif()
 endif()
 
 # On x86_64, OPENSSL_SMALL disables AVX-512 but keeps ADX/AVX2 (#3355). This

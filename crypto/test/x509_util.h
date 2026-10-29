@@ -9,11 +9,15 @@
 
 #include <openssl/x509.h>
 
+// Verify returns |X509_V_OK| if |leaf| verifies and the error it failed with
+// otherwise. If |out_depth| is non-NULL, it is set to the depth the error was
+// reported at. |out_depth| is left alone when the result is |X509_V_OK|.
 int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
     const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_STORE_CTX *)> configure_callback = nullptr);
+    std::function<void(X509_STORE_CTX *)> configure_callback = nullptr,
+    int *out_depth = nullptr);
 
 // CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
 // STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.

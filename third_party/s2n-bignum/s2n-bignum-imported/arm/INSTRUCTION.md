@@ -59,7 +59,7 @@ More complex instructions that are defined with a deeper chain of functions will
 
 [Location: arm/proofs/simulator.ml](proofs/simulator.ml)
 
-s2n-bignum conducts cosimulation tests against real machines to ensure correctness of instruction modeling. s2n-bignum will generate randomized 32-bit instructions using patterns. For the cosimulation testing, it generates random values for PC, registers, flags, and memory in the *armstate*, run the instruction on the actual machine with state values pre-set to the randomly generated values and then compare the resulting *armstate* on the machine against the model.
+s2n-bignum conducts cosimulation tests against an independent execution backend to ensure correctness of instruction modeling. s2n-bignum will generate randomized 32-bit instructions using patterns. For the cosimulation testing, it generates random values for PC, registers, flags, and memory in the *armstate*, runs the instruction through the backend with state values pre-set to the randomly generated values, and then compares the resulting *armstate* against the model.
 
 For Arm, the instructions are fixed-length, so it is easier to do random instruction generation. The file *arm/proofs/simulator_iclasses.ml* contains patterns for generating the randomized instructions.
 

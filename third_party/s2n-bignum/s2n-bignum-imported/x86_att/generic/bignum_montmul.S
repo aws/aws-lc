@@ -22,6 +22,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul)
         .text
+        .balign 32
 
 // We copy x to %r9 but it comes in in %rdx originally
 

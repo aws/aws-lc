@@ -29,6 +29,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_emontredc)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc)
         .text
+        .balign 32
 
 // Argument m comes in in %rdx but we copy it to %r8
 
@@ -108,6 +109,8 @@ Lbignum_emontredc_outerloop:
         decq    t
         jz      Lbignum_emontredc_montend
 
+        .byte 0x66,0x90  // JCC erratum (SKX102): pad so this loop's
+        // back-edge does not straddle a 32-byte boundary at 0-mod-32 entry
 Lbignum_emontredc_montloop:
         adcq    (z,j,8), h
         sbbq    e, e

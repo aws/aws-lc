@@ -14,6 +14,16 @@ Current status:
 
 ## Notable differences from OpenSSL
 
+### ca
+
+`ca` can act as a CA that signs CSRs, not only self-sign. The signing key comes from `-keyfile` (otherwise the config `private_key`) and the signing certificate from `-cert` (otherwise the config `certificate`), and the two must correspond. `-subj` overrides the subject of the issued certificate. The CA certificate may be supplied as either a plain `CERTIFICATE` or a `TRUSTED CERTIFICATE` PEM block.
+
+`-revoke <cert>` marks an existing entry revoked in the index database, and `-gencrl` writes a CRL covering the revoked entries. `-crldays` sets the CRL's next-update interval (falling back to the config `default_crl_days`) and is required for `-gencrl`; it must be a non-negative integer. `-in`, `-revoke`, and `-gencrl` are mutually exclusive in a single invocation.
+
+Unlike OpenSSL, `-revoke` fails when the certificate is not already in the index database; OpenSSL instead adds the certificate to the database and then revokes it. The certificate's subject name must also match the index entry sharing its serial number, so an unrelated certificate with a colliding serial is rejected.
+
+The certificate validity period is taken from the config `default_days`, falling back to `days`, unless `-enddate` is given. The `<index>.attr` sidecar is optional: when it is absent, `unique_subject` defaults to `yes`, as in OpenSSL.
+
 ### verify
 
 `-CAfile` and `-CApath` may be used independently or together; an explicit path replaces the default for that source, and `-no-CAfile`/`-no-CApath` disable the corresponding default (but not an explicit path). Defaults honor `SSL_CERT_FILE` and `SSL_CERT_DIR`. CA directories must be indexed by subject hash, as produced by `openssl rehash`.
@@ -22,11 +32,23 @@ Current status:
 
 Exit status follows OpenSSL: 1 for option or trust store setup errors (including a `-CApath` that is not a directory), 2 when any input certificate fails to load or verify. `-verbose` is accepted and has no effect.
 
+### ocsp
+
+`ocsp` is file-based only and has two modes. In request mode, `-reqout` writes a DER-encoded OCSP request for the certificate named by `-cert` under its issuer `-issuer`. In responder mode, `-respout` reads a request from `-reqin`, determines each certificate's status from the CA index database (`-index`) for certificates issued under `-CA`, signs the response with `-rsigner`/`-rkey`, and writes it DER-encoded; `-ndays` sets the next-update interval.
+
+Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing request over a URL or host — input and output are files only. The client does not add a nonce, and the responder neither verifies request signatures nor prints responses. Responses are signed with SHA-256. A revoked entry reports the reason stored in its index field (`date,reason`), defaulting to `unspecified` when the index carries none, since AWS-LC's `OCSP_basic_add1_status` requires a concrete reason code. An expired (`E`) index entry is reported as `good`, whereas OpenSSL's responder emits no response for such entries. For a revoked entry, the reason's argument — the `invalidityDate` for `keyTime`/`CAkeyTime` or the `holdInstructionCode` for `holdInstruction` — is not attached as a singleExtension, unlike OpenSSL.
+
 ### x509
 
 `-subject` prints names in modern OpenSSL's `CN=value` form (no spaces around `=`). `-nameopt oneline` restores the previous `CN = value` form.
 
 `-nameopt` accepts only the case-insensitive presets `compat`, `oneline`, `RFC2253`, and `multiline`, not OpenSSL's comma-separated individual flags. When given, it also governs the Issuer/Subject lines of `-text`; otherwise `-text` output is unchanged. `compat` uses `X509_NAME_oneline`, which does not mark multi-valued RDNs with `+`; use `RFC2253` when that distinction matters.
+
+`-serial` prints the certificate serial number as `serial=<HEX>`.
+
+`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
+
+When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
 
 ### enc
 

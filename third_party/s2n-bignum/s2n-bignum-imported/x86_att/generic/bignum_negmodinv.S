@@ -24,6 +24,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_negmodinv)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_negmodinv)
         .text
+        .balign 32
 
 #define k %rdi
 #define z %rsi
@@ -152,6 +153,8 @@ Lbignum_negmodinv_outerloop:
         movq    d, h
         movl    $1, ishort
         movq    k, t
+        .byte 0x0f,0x1f,0x40,0x00  // JCC erratum (SKX102): pad so this loop's
+        // back-edge does not straddle a 32-byte boundary at 0-mod-32 entry
 Lbignum_negmodinv_innerloop:
         adcq    (z,i,8), h
         sbbq    e, e

@@ -25,8 +25,14 @@ class Listener {
   ~Listener();
 
   // Init initializes the listener to listen on |port|, which should be of the
-  // form "123".
+  // form "123". A port of "0" binds an ephemeral port chosen by the OS, which
+  // can then be retrieved with |GetLocalPort|.
   bool Init(const std::string &port);
+
+  // GetLocalPort returns the TCP port the listener is bound to in host byte
+  // order, or -1 on error. This is primarily useful after binding an ephemeral
+  // port via Init("0").
+  int GetLocalPort() const;
 
   // Accept sets |*out_sock| to be a socket connected to the listener.
   bool Accept(int *out_sock);
