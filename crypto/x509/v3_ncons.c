@@ -256,6 +256,12 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# If a name constraints extension that is marked as critical
+//# imposes constraints on a particular name form, and an instance of
+//# that name form appears in the subject field or subjectAltName
+//# extension of a subsequent certificate, then the application MUST
+//# either process the constraint or reject the certificate.
 int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   assert(dnsid != NULL && idlen != NULL);
 
@@ -468,6 +474,12 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# Applications conforming to this profile MUST be able to process name
+//# constraints that are imposed on the directoryName name form and
+//# SHOULD be able to process name constraints that are imposed on the
+//# rfc822Name, uniformResourceIdentifier, dNSName, and iPAddress name
+//# forms.
 static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base,
                            int excluding) {
   switch (base->type) {
@@ -735,6 +747,20 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
   return X509_V_OK;
 }
 
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# If a constraint is applied to the
+//# uniformResourceIdentifier name form and a subsequent certificate
+//# includes a subjectAltName extension with a uniformResourceIdentifier
+//# that does not include an authority component with a host name
+//# specified as a fully qualified domain name (e.g., if the URI either
+//# does not include an authority component or includes an authority
+//# component in which the host name is specified as an IP address), then
+//# the application MUST reject the certificate.
+
+//= https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.10
+//# The
+//# constraint MUST be specified as a fully qualified domain name and MAY
+//# specify a host or a domain.
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
   CBS uri_cbs, base_cbs;
   CBS_init(&uri_cbs, uri->data, uri->length);
