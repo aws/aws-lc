@@ -6880,6 +6880,20 @@ TEST(X509Test, Names) {
           /*invalid_emails=*/{},
           /*flags=*/0,
       },
+
+      // RFC 6125 Section 6.4.4: a duplicate/non-matching SAN must not cause
+      // fallback to an attacker-controlled CN.
+      {
+          /*cert_subject=*/{{NID_commonName, "attacker-chosen.example"}},
+          /*cert_dns_names=*/
+          {"other.example", "other.example", "another.example"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{"other.example", "another.example"},
+          /*invalid_dns_names=*/{"attacker-chosen.example"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
   };
 
   size_t i = 0;
