@@ -1153,7 +1153,7 @@ TEST(EVPExtraTest, SignFinalCleansUpFinalizedContext) {
   ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg)));
 
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned digest_len;
+  unsigned digest_len = 0;
   ASSERT_TRUE(EVP_DigestFinal_ex(md_ctx.get(), digest, &digest_len));
 
   // |EVP_SignFinal| copies the finalized context, including its digest and
