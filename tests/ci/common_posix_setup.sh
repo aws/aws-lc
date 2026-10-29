@@ -21,14 +21,13 @@ echo BUILD_ROOT="$BUILD_ROOT"
 
 INTEGRATION_FAILURE_FILE="${SRC_ROOT}/integration-failure.txt"
 
-# Create the failure artifact with the integration name, optional version, and AWS-LC commit.
+# Create the failure artifact with the integration name and optional version.
 # Example: run_python_integration.sh 3.13 records "python<TAB>3.13".
 function record_integration() {
   local runner="${1##*/}"
   local integration="${runner#run_}"
   integration="${integration%_integration.sh}"
-  printf '%s\t%s\nawslc_sha=%s\n' \
-    "${integration}" "${2:-}" "${GITHUB_SHA:-}" > "${INTEGRATION_FAILURE_FILE}"
+  printf '%s\t%s\n' "${integration}" "${2:-}" > "${INTEGRATION_FAILURE_FILE}"
 }
 
 # Append the cloned repository's URL and exact commit to the failure artifact.
