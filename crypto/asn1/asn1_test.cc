@@ -2520,6 +2520,35 @@ TEST(ASN1Test, LargeString) {
 #endif
 }
 
+TEST(ASN1Test, PrintExLargeStringOverflow) {
+  // |ASN1_STRING_set0| does not enforce |ASN1_STRING_MAX|, so |length| may be
+  // large enough that the printed length does not fit in an |int|. With a NULL
+  // |BIO|, |ASN1_STRING_print_ex| only measures the output and the dump path
+  // never reads |data|, so a tiny allocation suffices.
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_OCTET_STRING));
+  ASSERT_TRUE(str);
+  unsigned char *data = static_cast<unsigned char *>(OPENSSL_malloc(1));
+  ASSERT_TRUE(data);
+  ASN1_STRING_set0(str.get(), data, INT_MAX / 2);
+
+  // A hex dump of |INT_MAX / 2| bytes, plus the leading '#', is exactly
+  // |INT_MAX| characters.
+  EXPECT_EQ(INT_MAX,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+
+  // Prefixing the type name would push the total past |INT_MAX|.
+  EXPECT_EQ(
+      -1, ASN1_STRING_print_ex(nullptr, str.get(),
+                               ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_SHOW_TYPE));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
+
+  // One more byte and the hex dump itself no longer fits.
+  str->length = INT_MAX / 2 + 1;
+  EXPECT_EQ(-1,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
+}
+
 
 // Wrapper functions are needed to get around Control Flow Integrity Sanitizers.
 static int i2d_ASN1_TYPE_void(const void *a, unsigned char **out) {
