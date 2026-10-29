@@ -450,7 +450,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 }
 
 /*
- * SHAKE batched (x4) APIs implement SHAKE functionalities in batches of four on top of SHAKE API layer
+ * SHAKE batched (x4) APIs perform four SHAKE operations on top of the Keccak
+ * x4 primitives.
  */
 int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(KECCAK1600_CTX_x4));
@@ -470,14 +471,14 @@ int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t 
   return 1;
 }
 
-static int SHAKE256_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
+int SHAKE256_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len) {
   Keccak1600_Absorb_once_x4(ctx->A, data0, data1, data2, data3,
                             len, SHAKE256_BLOCKSIZE, SHAKE_PAD_CHAR);
   return 1;
 }
 
-static int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
+int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks) {
   Keccak1600_Squeezeblocks_x4(ctx->A, md0, md1, md2, md3, blks, SHAKE256_BLOCKSIZE);
   return 1;
