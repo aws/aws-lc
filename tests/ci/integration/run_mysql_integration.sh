@@ -6,7 +6,9 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-cluster-9.7.2"
+# MySQL uses calendar versioning (YY.M) after 9.7, with separate Innovation and LTS tracks. We track the latest Innovation release.
+# https://dev.mysql.com/doc/refman/en/mysql-releases.html
+MYSQL_VERSION_TAG="mysql-26.10.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
@@ -39,7 +41,8 @@ cd ${SCRATCH_FOLDER}
 
 function mysql_patch_reminder() {
   # Check latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
-  LATEST_MYSQL_VERSION_TAG=`git tag --sort=-taggerdate | tail -1`
+  # MySQL tags have no tagger date, so sort by version. Only match plain mysql-X.Y.Z release tags.
+  LATEST_MYSQL_VERSION_TAG=`git tag -l 'mysql-[0-9]*' --sort=-version:refname | grep -E '^mysql-[0-9]+\.[0-9]+\.[0-9]+$' | head -1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
     aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
   else
