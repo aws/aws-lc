@@ -575,7 +575,8 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Init_x4 initializes the four independent Keccak states in |ctx|. The
 // same initialization is used by both SHAKE128 and SHAKE256 x4 operations.
-// |ctx| must be non-NULL. This function returns one.
+// |ctx| must be non-NULL. When call-discipline is maintained, this function
+// never fails and returns 1.
 OPENSSL_EXPORT int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx);
 
 /*
@@ -595,28 +596,30 @@ OPENSSL_EXPORT int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx);
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs |len| bytes from each of |data0|, |data1|,
 // |data2|, and |data3|. The caller must provide valid pointers and input
-// buffers containing at least |len| bytes. This function returns one.
+// buffers containing at least |len| bytes. When call-discipline is maintained,
+// this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
 // SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
 // bitstates. It writes |blks| blocks of |SHAKE128_BLOCKSIZE| bytes to each output.
 // The caller must provide valid pointers and sufficiently large output buffers.
-// This function returns one.
+// When call-discipline is maintained, this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks);
 
 // SHAKE256_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs |len| bytes from each of |data0|, |data1|,
 // |data2|, and |data3|. The caller must provide valid pointers and input
-// buffers containing at least |len| bytes. This function returns one.
+// buffers containing at least |len| bytes. When call-discipline is maintained,
+// this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE256_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
 // SHAKE256_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
 // bitstates. It writes |blks| blocks of |SHAKE256_BLOCKSIZE| bytes to each output.
 // The caller must provide valid pointers and sufficiently large output buffers.
-// This function returns one.
+// When call-discipline is maintained, this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks);
 
@@ -628,7 +631,8 @@ OPENSSL_EXPORT int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t
 // SHAKE256_x4 is a batched API that operates on four independent
 // Keccak bitstates. It writes four |out_len|-byte outputs from four
 // |in_len|-byte inputs. The caller must provide valid pointers and input and
-// output buffers of the corresponding lengths. This function returns one.
+// output buffers of the corresponding lengths. When call-discipline is
+// maintained, this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
                                   const uint8_t *data2, const uint8_t *data3,
                                   const size_t in_len, uint8_t *out0, uint8_t *out1,
