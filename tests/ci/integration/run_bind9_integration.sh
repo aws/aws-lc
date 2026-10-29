@@ -13,6 +13,7 @@ if [ -f /etc/debian_version ] && [ "$(id -u)" -eq 0 ]; then
   apt-get update
   apt-get install -y --no-install-recommends liblmdb-dev
 fi
+python3 -m pip install --upgrade meson
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
