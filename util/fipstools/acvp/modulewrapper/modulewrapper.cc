@@ -1663,10 +1663,17 @@ static bool HashXof(const Span<const uint8_t> args[],
   //       https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-capabilities-registration
   uint8_t digest[8192];
   const EVP_MD *md = MDFunc();
-  const uint8_t *outlen_bytes = args[1].data();
+
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t md_out_size = CRYPTO_load_u32_le(outlen_bytes);
+  uint32_t md_out_size = 0;
+  if (args[1].size() != sizeof(md_out_size)) {
+    return false;
+  }
+  md_out_size = CRYPTO_load_u32_le(args[1].data());
+  if (md_out_size > sizeof(digest)) {
+    return false;
+  }
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 

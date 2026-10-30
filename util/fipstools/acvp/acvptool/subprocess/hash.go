@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+// maxSHAKEOutputLengthBits matches modulewrapper's 8192-byte SHAKE output
+// buffer.
+const maxSHAKEOutputLengthBits uint64 = 8192 * 8
+
 // The following structures reflect the JSON of ACVP hash tests. See
 // https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
 
@@ -100,6 +104,11 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 				args := [][]byte{}
 				args = append(args, msg)
 				if test.OutputLength != nil {
+					if strings.HasPrefix(h.algo, "SHAKE") && *test.OutputLength > maxSHAKEOutputLengthBits {
+						return nil, fmt.Errorf(
+							"test case %d/%d requests a SHAKE output length of %d bits, exceeding the maximum of %d bits",
+							group.ID, test.ID, *test.OutputLength, maxSHAKEOutputLengthBits)
+					}
 					outLenBytes := *test.OutputLength / 8
 					args = append(args, uint32le(uint32(outLenBytes)))
 				}
