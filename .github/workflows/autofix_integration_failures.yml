@@ -10,8 +10,7 @@ permissions:
   actions: read
 
 env:
-  TARGET_RUN_ID: ${{ github.event.workflow_run.id }}
-  AUTOFIX_SCRIPT: ./tests/ci/integration/autofix_integration_failures/autofix.sh
+  WORK_DIR: ${{ github.workspace }}/autofix-work
 
 jobs:
   get-failing-integrations:
@@ -26,25 +25,36 @@ jobs:
     outputs:
       targets: ${{ steps.targets.outputs.targets }}
     steps:
-      - uses: actions/checkout@v7
+      - &checkout
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - &install
+        run: python3 -m pip install -r tests/ci/integration/autofix/requirements.txt
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: integration-failure-*
+          path: autofix-reports
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
       - name: Collect failing targets
         id: targets
+        working-directory: tests/ci/integration
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          targets=$("$AUTOFIX_SCRIPT" get-failing-targets "$TARGET_RUN_ID")
-          echo "Targets: $targets"
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          AWSLC_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: echo "targets=$(python3 -m autofix recognize "$GITHUB_WORKSPACE/autofix-reports")" >> "$GITHUB_OUTPUT"
       - name: Download each failing integration's logs
         env:
           GH_TOKEN: ${{ github.token }}
           TARGETS: ${{ steps.targets.outputs.targets }}
         run: |
-          echo "$TARGETS" | jq -r '.[] | "\(.integration)\t\(.version)"' \
-            | while IFS=$'\t' read -r integration version; do
-            "$AUTOFIX_SCRIPT" fetch-logs "$TARGET_RUN_ID" "$integration" "$version"
+          set -o pipefail
+          for log in $(jq -r '.[] | "\(.name)/\(.target.environments[].job_id | select(. != 0))"' <<< "$TARGETS"); do
+            target=${log%/*} job_id=${log#*/}
+            mkdir -p "autofix/$target"
+            # Drop ANSI color codes, then every byte that is not tab, newline, or printable ASCII.
+            gh api --allow-escape-sequences "repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
+              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | tr -cd '\t\n -~' > "autofix/$log.log"
           done
       - uses: actions/upload-artifact@v7
         if: always()
@@ -55,108 +65,97 @@ jobs:
           if-no-files-found: ignore
 
   reason:
-    name: reason (${{ matrix.target.dir }})
+    name: reason (${{ matrix.name }})
     needs: get-failing-integrations
-    if: needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != ''
-    permissions:
-      id-token: write
-      contents: read
-      actions: read
-    strategy:
+    if: needs.get-failing-integrations.outputs.targets != '[]'
+    strategy: &per-target
       fail-fast: false
       max-parallel: 5
       matrix:
-        target: ${{ fromJSON(needs.get-failing-integrations.outputs.targets) }}
-    runs-on:
+        include: ${{ fromJSON(needs.get-failing-integrations.outputs.targets) }}
+    runs-on: &codebuild
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:linux-5.0
-        instance-size:small
-    env:
-      CLAUDE_CODE_USE_BEDROCK: "1"
-      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1" # Strip Anthropic creds from all subprocesses
+        image:${{ matrix.arch == 'aarch64' && 'arm-3.0' || 'linux-5.0' }}
+        instance-size:${{ matrix.size }}
+    permissions: &oidc
+      contents: read
+      id-token: write
+    env: &target
+      TARGET: ${{ toJSON(matrix.target) }}
     steps:
-      - uses: actions/checkout@v7
+      - *checkout
+      - *install
+      - uses: actions/download-artifact@v8
         with:
-          persist-credentials: false
-      - name: Load shared Bedrock settings
-        # .github/workflows/ai-config.json is where configurations for both autofix and backport are located
-        # needs to run before configure-aws-credentials
+          name: autofix-logs
+          path: autofix
+      - env:
+          NAME: ${{ matrix.name }}
+        run: mkdir -p "$WORK_DIR/out" && mv "autofix/$NAME" "$WORK_DIR/out/logs"
+      # Log in to ECR with the runner's own role to pull the CI images, which the Bedrock role cannot pull.
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Pull this arch's CI images and log out of ECR before the agent starts
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          jq -r '"AWS_REGION=\(.aws_region)",
-                 "ANTHROPIC_DEFAULT_OPUS_MODEL=\(.opus)",
-                 "ANTHROPIC_DEFAULT_SONNET_MODEL=\(.sonnet)",
-                 "ANTHROPIC_DEFAULT_HAIKU_MODEL=\(.haiku)"' \
-            .github/workflows/ai-config.json >> "$GITHUB_ENV"
-      - uses: ./.github/actions/configure-aws-credentials
+          for image in $(jq -r --arg arch "$(uname -m)" '[.environments[] | select(.arch == $arch).image] | unique[]' <<< "$TARGET"); do
+            docker pull -q "$ECR_REGISTRY/aws-lc/$image"
+          done
+          docker logout "$ECR_REGISTRY"
+      - &bedrock-region
+        name: Load shared Bedrock settings
+        run: jq -r '"AWS_REGION=\(.aws_region)"' .github/workflows/ai-config.json >> "$GITHUB_ENV"
+      - &bedrock
+        uses: ./.github/actions/configure-aws-credentials
         with:
           oidcRole: AwsLcGitHubActionsAutofixOidcRole
           roleName: AwsLcGitHubActionsBedrockRole
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code@2
-      - name: Install Bash sandbox deps
-        # Claude Code's sandbox needs bubblewrap (filesystem/process isolation)
-        # and socat (relays Bash traffic through the domain-allowlist proxy).
-        run: sudo dnf install -y bubblewrap socat
-      - name: Verify the sandbox hides credentials and blocks non-allowlisted hosts
+      - name: Block containers from the instance and CodeBuild credential endpoints
         run: |
-          "$AUTOFIX_SCRIPT" verify-settings
-      - name: Download pre-fetched logs
-        uses: actions/download-artifact@v8
-        with:
-          name: autofix-logs
-          path: autofix/
-        continue-on-error: true
-      - name: Autofix the patch
+          sudo iptables -I DOCKER-USER -d 169.254.169.254 -j DROP
+          sudo iptables -I DOCKER-USER -d 169.254.170.2 -j DROP
+      - name: Fix the integration and replay the fix
+        working-directory: tests/ci/integration
         env:
-          INTEGRATION: ${{ matrix.target.integration }}
-          VERSION: ${{ matrix.target.version }}
-        run: |
-          set -x
-          "$AUTOFIX_SCRIPT" reason "$TARGET_RUN_ID" "$INTEGRATION" "$VERSION"
-      - uses: actions/upload-artifact@v7
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: python3 -m autofix reason
+      - &upload
+        uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: autofix-${{ matrix.target.dir }}
-          path: autofix/${{ matrix.target.dir }}/
-          if-no-files-found: ignore
+          name: autofix-${{ matrix.name }}
+          path: ${{ env.WORK_DIR }}/out/
+          overwrite: true
 
-  upload:
-    name: upload (${{ matrix.target.dir }})
+  review:
+    name: review (${{ matrix.name }})
     needs: [get-failing-integrations, reason]
-    if: ${{ always() && needs.get-failing-integrations.outputs.targets != '[]' && needs.get-failing-integrations.outputs.targets != '' }}
-    permissions:
-      id-token: write
-      contents: read
-      actions: read
-    strategy:
-      fail-fast: false
-      max-parallel: 5
-      matrix:
-        target: ${{ fromJSON(needs.get-failing-integrations.outputs.targets) }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:linux-5.0
-        instance-size:small
+    if: ${{ !cancelled() && needs.reason.result != 'skipped' }}
+    strategy: *per-target
+    runs-on: *codebuild
+    timeout-minutes: 60
+    permissions: *oidc
+    env: *target
     steps:
-      - uses: actions/checkout@v7
+      - *checkout
+      - *install
+      - uses: actions/download-artifact@v8
         with:
-          persist-credentials: false
-      - uses: ./.github/actions/configure-aws-credentials
-        with:
-          oidcRole: AwsLcGitHubActionsAutofixOidcRole
-          roleName: AwsLcGitHubActionAutofixUploadRole
-      - name: Download results from reason job
-        uses: actions/download-artifact@v8
-        with:
-          name: autofix-${{ matrix.target.dir }}
-          path: autofix/${{ matrix.target.dir }}/
-        continue-on-error: true
-      - name: Upload results to S3
-        env:
-          INTEGRATION: ${{ matrix.target.integration }}
-          VERSION: ${{ matrix.target.version }}
-        run: |
-          set -x
-          # Suffix must match S3_FOR_AUTOFIX_INTEGRATION_FAILURES in tests/ci/cdk/util/metadata.py
-          export AUTOFIX_BUCKET="${AWS_ACCOUNT_ID}-aws-lc-autofix-integration-failures"
-          "$AUTOFIX_SCRIPT" upload "$TARGET_RUN_ID" "$INTEGRATION" "$VERSION"
+          name: autofix-${{ matrix.name }}
+          path: ${{ env.WORK_DIR }}/out/
+      - *bedrock-region
+      - *bedrock
+      - name: Review the fix
+        working-directory: tests/ci/integration
+        run: python3 -m autofix review
+      - *upload
+
+  resolve:
+    needs: [get-failing-integrations, review]
+    if: ${{ !cancelled() && needs.review.result != 'skipped' }}
+    permissions: *oidc
+    uses: ./.github/workflows/autofix_resolve.yml
+    with:
+      targets: ${{ needs.get-failing-integrations.outputs.targets }}

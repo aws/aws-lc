@@ -1,0 +1,4 @@
+docker==7.2.0
+pydantic==2.14.0
+strands-agents==1.59.0
+strands-harness==0.2.0
