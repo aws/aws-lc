@@ -1666,7 +1666,7 @@ static bool HashXof(const Span<const uint8_t> args[],
 
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t md_out_size;
+  uint32_t md_out_size = 0;
   if (args[1].size() != sizeof(md_out_size)) {
     return false;
   }
