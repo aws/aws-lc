@@ -1,0 +1,148 @@
+diff --git a/router/src/openssl/include/tls/details/ssl_operation.h b/router/src/openssl/include/tls/details/ssl_operation.h
+index 44b980d3e4..bdf79319f2 100644
+--- a/router/src/openssl/include/tls/details/ssl_operation.h
++++ b/router/src/openssl/include/tls/details/ssl_operation.h
+@@ -91,7 +91,11 @@ class Operation {
+ 
+     BIO *bio_;
+     SSL *ssl_;
++#if defined (OPENSSL_IS_AWSLC)
++    size_t pending_;
++#else
+     int pending_;
++#endif
+   };
+ };
+ 
+diff --git a/extra/libfido2/libfido2-1.15.0/src/cbor.c b/extra/libfido2/libfido2-1.15.0/src/cbor.c
+index b242cfa..568ee84 100644
+--- a/extra/libfido2/libfido2-1.15.0/src/cbor.c
++++ b/extra/libfido2/libfido2-1.15.0/src/cbor.c
+@@ -710,7 +710,11 @@ cbor_encode_pin_auth(const fido_dev_t *dev, const fido_blob_t *secret,
+ 		key.len = 32;
+ 
+ 	if ((md = EVP_sha256()) == NULL || HMAC(md, key.ptr,
++#if defined(OPENSSL_IS_AWSLC)
++	    key.len, data->ptr, data->len, dgst,
++#else
+ 	    (int)key.len, data->ptr, data->len, dgst,
++#endif
+ 	    &dgst_len) == NULL || dgst_len != SHA256_DIGEST_LENGTH)
+ 		return (NULL);
+ 
+@@ -758,7 +762,11 @@ cbor_encode_change_pin_auth(const fido_dev_t *dev, const fido_blob_t *secret,
+ 
+ 	if ((ctx = HMAC_CTX_new()) == NULL ||
+ 	    (md = EVP_sha256())  == NULL ||
++#if defined(OPENSSL_IS_AWSLC)
++	    HMAC_Init_ex(ctx, key.ptr, key.len, md, NULL) == 0 ||
++#else
+ 	    HMAC_Init_ex(ctx, key.ptr, (int)key.len, md, NULL) == 0 ||
++#endif
+ 	    HMAC_Update(ctx, new_pin_enc->ptr, new_pin_enc->len) == 0 ||
+ 	    HMAC_Update(ctx, pin_hash_enc->ptr, pin_hash_enc->len) == 0 ||
+ 	    HMAC_Final(ctx, dgst, &dgst_len) == 0 ||
+diff --git a/extra/libfido2/libfido2-1.15.0/src/ecdh.c b/extra/libfido2/libfido2-1.15.0/src/ecdh.c
+index 4c790a1..5c449bf 100644
+--- a/extra/libfido2/libfido2-1.15.0/src/ecdh.c
++++ b/extra/libfido2/libfido2-1.15.0/src/ecdh.c
+@@ -55,8 +55,13 @@ hkdf_sha256(uint8_t *key, char *info, fido_blob_t *secret)
+ 	if (EVP_PKEY_derive_init(ctx) < 1 ||
+             EVP_PKEY_CTX_set_hkdf_md(ctx, (EVP_MD *)(uintptr_t)md) < 1 ||
+ 	    EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) < 1 ||
++#if defined(OPENSSL_IS_AWSLC)
++	    EVP_PKEY_CTX_set1_hkdf_key(ctx, secret->ptr, secret->len) < 1 ||
++	    EVP_PKEY_CTX_add1_hkdf_info(ctx, (void *)info, strlen(info)) < 1) {
++#else
+ 	    EVP_PKEY_CTX_set1_hkdf_key(ctx, secret->ptr, (int)secret->len) < 1 ||
+ 	    EVP_PKEY_CTX_add1_hkdf_info(ctx, (void *)info, (int)strlen(info)) < 1) {
++#endif
+ 		fido_log_debug("%s: EVP_PKEY_CTX", __func__);
+ 		goto fail;
+ 	}
+diff --git a/extra/libfido2/libfido2-1.15.0/src/es256.c b/extra/libfido2/libfido2-1.15.0/src/es256.c
+index 17efb0a..2bc5b38 100644
+--- a/extra/libfido2/libfido2-1.15.0/src/es256.c
++++ b/extra/libfido2/libfido2-1.15.0/src/es256.c
+@@ -245,8 +245,8 @@ es256_sk_create(es256_sk_t *key)
+ 
+ 	if ((ec = EVP_PKEY_get0_EC_KEY(k)) == NULL ||
+ 	    (d = EC_KEY_get0_private_key(ec)) == NULL ||
+-	    (n = BN_num_bytes(d)) < 0 || (size_t)n > sizeof(key->d) ||
+-	    (n = BN_bn2bin(d, key->d)) < 0 || (size_t)n > sizeof(key->d)) {
++	    (n = (int)BN_num_bytes(d)) < 0 || (size_t)n > sizeof(key->d) ||
++	    (n = (int)BN_bn2bin(d, key->d)) < 0 || (size_t)n > sizeof(key->d)) {
+ 		fido_log_debug("%s: EC_KEY_get0_private_key", __func__);
+ 		goto fail;
+ 	}
+@@ -365,8 +365,8 @@ es256_pk_from_EC_KEY(es256_pk_t *pk, const EC_KEY *ec)
+ 	}
+ 
+ 	if (EC_POINT_get_affine_coordinates_GFp(g, q, x, y, bnctx) == 0 ||
+-	    (nx = BN_num_bytes(x)) < 0 || (size_t)nx > sizeof(pk->x) ||
+-	    (ny = BN_num_bytes(y)) < 0 || (size_t)ny > sizeof(pk->y)) {
++	    (nx = (int)BN_num_bytes(x)) < 0 || (size_t)nx > sizeof(pk->x) ||
++	    (ny = (int)BN_num_bytes(y)) < 0 || (size_t)ny > sizeof(pk->y)) {
+ 		fido_log_debug("%s: EC_POINT_get_affine_coordinates_GFp",
+ 		    __func__);
+ 		goto fail;
+@@ -375,8 +375,8 @@ es256_pk_from_EC_KEY(es256_pk_t *pk, const EC_KEY *ec)
+ 	dx = sizeof(pk->x) - (size_t)nx;
+ 	dy = sizeof(pk->y) - (size_t)ny;
+ 
+-	if ((nx = BN_bn2bin(x, pk->x + dx)) < 0 || (size_t)nx > sizeof(pk->x) ||
+-	    (ny = BN_bn2bin(y, pk->y + dy)) < 0 || (size_t)ny > sizeof(pk->y)) {
++	if ((nx = (int)BN_bn2bin(x, pk->x + dx)) < 0 || (size_t)nx > sizeof(pk->x) ||
++	    (ny = (int)BN_bn2bin(y, pk->y + dy)) < 0 || (size_t)ny > sizeof(pk->y)) {
+ 		fido_log_debug("%s: BN_bn2bin", __func__);
+ 		goto fail;
+ 	}
+diff --git a/extra/libfido2/libfido2-1.15.0/src/es384.c b/extra/libfido2/libfido2-1.15.0/src/es384.c
+index 013d285..9dc4f19 100644
+--- a/extra/libfido2/libfido2-1.15.0/src/es384.c
++++ b/extra/libfido2/libfido2-1.15.0/src/es384.c
+@@ -208,8 +208,8 @@ es384_pk_from_EC_KEY(es384_pk_t *pk, const EC_KEY *ec)
+ 	}
+ 
+ 	if (EC_POINT_get_affine_coordinates_GFp(g, q, x, y, bnctx) == 0 ||
+-	    (nx = BN_num_bytes(x)) < 0 || (size_t)nx > sizeof(pk->x) ||
+-	    (ny = BN_num_bytes(y)) < 0 || (size_t)ny > sizeof(pk->y)) {
++	    (nx = (int)BN_num_bytes(x)) < 0 || (size_t)nx > sizeof(pk->x) ||
++	    (ny = (int)BN_num_bytes(y)) < 0 || (size_t)ny > sizeof(pk->y)) {
+ 		fido_log_debug("%s: EC_POINT_get_affine_coordinates_GFp",
+ 		    __func__);
+ 		goto fail;
+@@ -218,8 +218,8 @@ es384_pk_from_EC_KEY(es384_pk_t *pk, const EC_KEY *ec)
+ 	dx = sizeof(pk->x) - (size_t)nx;
+ 	dy = sizeof(pk->y) - (size_t)ny;
+ 
+-	if ((nx = BN_bn2bin(x, pk->x + dx)) < 0 || (size_t)nx > sizeof(pk->x) ||
+-	    (ny = BN_bn2bin(y, pk->y + dy)) < 0 || (size_t)ny > sizeof(pk->y)) {
++	if ((nx = (int)BN_bn2bin(x, pk->x + dx)) < 0 || (size_t)nx > sizeof(pk->x) ||
++	    (ny = (int)BN_bn2bin(y, pk->y + dy)) < 0 || (size_t)ny > sizeof(pk->y)) {
+ 		fido_log_debug("%s: BN_bn2bin", __func__);
+ 		goto fail;
+ 	}
+diff --git a/extra/libfido2/libfido2-1.15.0/src/rs256.c b/extra/libfido2/libfido2-1.15.0/src/rs256.c
+index 8873db4..7b7b925 100644
+--- a/extra/libfido2/libfido2-1.15.0/src/rs256.c
++++ b/extra/libfido2/libfido2-1.15.0/src/rs256.c
+@@ -194,14 +194,14 @@ rs256_pk_from_RSA(rs256_pk_t *pk, const RSA *rsa)
+ 		return (FIDO_ERR_INTERNAL);
+ 	}
+ 
+-	if ((k = BN_num_bytes(n)) < 0 || (size_t)k > sizeof(pk->n) ||
+-	    (k = BN_num_bytes(e)) < 0 || (size_t)k > sizeof(pk->e)) {
++	if ((k = (int)BN_num_bytes(n)) < 0 || (size_t)k > sizeof(pk->n) ||
++	    (k = (int)BN_num_bytes(e)) < 0 || (size_t)k > sizeof(pk->e)) {
+ 		fido_log_debug("%s: invalid key", __func__);
+ 		return (FIDO_ERR_INTERNAL);
+ 	}
+ 
+-	if ((k = BN_bn2bin(n, pk->n)) < 0 || (size_t)k > sizeof(pk->n) ||
+-	    (k = BN_bn2bin(e, pk->e)) < 0 || (size_t)k > sizeof(pk->e)) {
++	if ((k = (int)BN_bn2bin(n, pk->n)) < 0 || (size_t)k > sizeof(pk->n) ||
++	    (k = (int)BN_bn2bin(e, pk->e)) < 0 || (size_t)k > sizeof(pk->e)) {
+ 		fido_log_debug("%s: BN_bn2bin", __func__);
+ 		return (FIDO_ERR_INTERNAL);
+ 	}
