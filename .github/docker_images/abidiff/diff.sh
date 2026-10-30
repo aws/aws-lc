@@ -18,8 +18,29 @@ else
   exit 1
 fi
 
+# New public API sets ABIDIFF_ABI_CHANGE just as a changed signature does, so a
+# job that must stay green while the API grows asks for "ignore-additions".
+ABIDIFF_ARGS=()
+MODE="${2:-all-changes}"
+case "${MODE}" in
+  all-changes) ;;
+  ignore-additions) ABIDIFF_ARGS+=(--no-added-syms) ;;
+  *) echo "unknown mode: ${MODE}" >&2; exit 2 ;;
+esac
+
+# An optional suppression file, named relative to this image.
+SUPPRESSIONS="${3:-}"
+if [[ -n "${SUPPRESSIONS}" ]]; then
+  if [[ ! -f "/${SUPPRESSIONS}" ]]; then
+    echo "no such suppression file: ${SUPPRESSIONS}" >&2
+    exit 2
+  fi
+  ABIDIFF_ARGS+=(--suppressions "/${SUPPRESSIONS}")
+fi
+
 set +e
-abidiff --hd1 "/previous/include" --hd2 "/next/include" "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
+abidiff "${ABIDIFF_ARGS[@]}" --hd1 "/previous/include" --hd2 "/next/include" \
+  "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
 ABIDIFF_RC=$?
 set -e
 
