@@ -1158,7 +1158,7 @@ TEST(CipherTest, ChaCha20Reinit) {
   };
   const uint8_t zero[64] = {0};
   uint8_t out[64];
-  int n;
+  int n = 0;
 
   // Re-key mid-block without an IV: the current block is regenerated under
   // the new key.

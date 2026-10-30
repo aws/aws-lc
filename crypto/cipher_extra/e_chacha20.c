@@ -5,6 +5,7 @@
 
 #include <openssl/chacha.h>
 #include <openssl/cipher.h>
+#include <openssl/mem.h>
 #include <openssl/nid.h>
 
 #include "../internal.h"
@@ -41,7 +42,9 @@ static int chacha20_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   }
   // Any (re-)initialization discards buffered keystream, as OpenSSL does. The
   // counter still points at the partially used block, so it is regenerated
-  // under the current key.
+  // under the current key. Wipe the buffer so keystream from a previous key
+  // does not linger in memory.
+  OPENSSL_cleanse(c->buf, sizeof(c->buf));
   c->buf_offset = 0;
   return 1;
 }
