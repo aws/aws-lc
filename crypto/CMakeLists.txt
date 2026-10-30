@@ -382,6 +382,7 @@ add_library(
   cipher_extra/derive_key.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
+  cipher_extra/e_chacha20.c
   cipher_extra/e_chacha20poly1305.c
   cipher_extra/e_aes_cbc_hmac_sha1.c
   cipher_extra/e_aes_cbc_hmac_sha256.c

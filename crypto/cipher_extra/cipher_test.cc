@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
+#include <openssl/chacha.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
@@ -1035,6 +1036,7 @@ TEST(CipherTest, GetCipher) {
   test_get_cipher(NID_aes_256_gcm, "aes-256-gcm");
   test_get_cipher(NID_aes_256_ofb128, "aes-256-ofb");
   test_get_cipher(NID_aes_256_xts, "aes-256-xts");
+  test_get_cipher(NID_chacha20, "chacha20");
   test_get_cipher(NID_chacha20_poly1305, "chacha20-poly1305");
   test_get_cipher(NID_des_cbc, "des-cbc");
   test_get_cipher(NID_des_ecb, "des-ecb");
@@ -1063,6 +1065,127 @@ TEST(CipherTest, GetCipher) {
   EXPECT_FALSE(EVP_CIPHER_block_size(nullptr));
   EXPECT_FALSE(EVP_CIPHER_key_length(nullptr));
   EXPECT_FALSE(EVP_CIPHER_iv_length(nullptr));
+}
+
+// EVP_chacha20 is a raw ChaCha20 stream cipher wrapping |CRYPTO_chacha_20|.
+// aioquic uses it by name for QUIC header protection. These tests validate the
+// EVP wrapper against the already-tested primitive.
+TEST(CipherTest, ChaCha20) {
+  const EVP_CIPHER *cipher = EVP_get_cipherbyname("chacha20");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_chacha20, EVP_CIPHER_nid(cipher));
+  EXPECT_EQ(1u, EVP_CIPHER_block_size(cipher));
+  EXPECT_EQ(32u, EVP_CIPHER_key_length(cipher));
+  EXPECT_EQ(16u, EVP_CIPHER_iv_length(cipher));
+
+  uint8_t key[32], iv[16];
+  RAND_bytes(key, sizeof(key));
+  RAND_bytes(iv, sizeof(iv));
+  // The EVP IV is a 32-bit little-endian counter followed by a 96-bit nonce.
+  const uint32_t counter = CRYPTO_load_u32_le(iv);
+  const uint8_t *nonce = iv + 4;
+
+  // Compare the EVP path (whole and chunked) against the one-shot primitive for
+  // a range of lengths, including sub-block and cross-block split points.
+  for (size_t len : {size_t{0}, size_t{1}, size_t{5}, size_t{63}, size_t{64},
+                     size_t{65}, size_t{127}, size_t{200}}) {
+    std::vector<uint8_t> in(len), expected(len);
+    RAND_bytes(in.data(), len);
+    CRYPTO_chacha_20(expected.data(), in.data(), len, key, nonce, counter);
+
+    // Whole input in one EVP_EncryptUpdate.
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(
+        EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key, iv));
+    std::vector<uint8_t> out(len);
+    int out_len = 0;
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &out_len, in.data(),
+                                  (int)len));
+    EXPECT_EQ((int)len, out_len);
+    EXPECT_EQ(Bytes(expected), Bytes(out.data(), (size_t)out_len));
+
+    // Same input fed one byte at a time to exercise keystream buffering.
+    bssl::ScopedEVP_CIPHER_CTX ctx2;
+    ASSERT_TRUE(
+        EVP_EncryptInit_ex(ctx2.get(), cipher, nullptr, key, iv));
+    std::vector<uint8_t> out2(len);
+    for (size_t i = 0; i < len; i++) {
+      int n = 0;
+      ASSERT_TRUE(
+          EVP_EncryptUpdate(ctx2.get(), out2.data() + i, &n, in.data() + i, 1));
+      EXPECT_EQ(1, n);
+    }
+    EXPECT_EQ(Bytes(expected), Bytes(out2));
+  }
+
+  // aioquic's header-protection pattern: init with the key, then re-init the IV
+  // per sample and encrypt five zero bytes. The counter/nonce must reset on the
+  // IV-only re-init.
+  bssl::ScopedEVP_CIPHER_CTX hp;
+  ASSERT_TRUE(EVP_CipherInit_ex(hp.get(), cipher, nullptr, key, nullptr, 1));
+  for (int trial = 0; trial < 3; trial++) {
+    uint8_t sample[16];
+    RAND_bytes(sample, sizeof(sample));
+    ASSERT_TRUE(
+        EVP_CipherInit_ex(hp.get(), nullptr, nullptr, nullptr, sample, 1));
+    uint8_t zero[5] = {0}, mask[5];
+    int n = 0;
+    ASSERT_TRUE(EVP_CipherUpdate(hp.get(), mask, &n, zero, sizeof(zero)));
+    EXPECT_EQ((int)sizeof(zero), n);
+
+    uint8_t expected[5] = {0};
+    CRYPTO_chacha_20(expected, expected, sizeof(expected), key, sample + 4,
+                     CRYPTO_load_u32_le(sample));
+    EXPECT_EQ(Bytes(expected), Bytes(mask));
+  }
+}
+
+// Re-initialization must discard buffered keystream, matching OpenSSL.
+TEST(CipherTest, ChaCha20Reinit) {
+  const EVP_CIPHER *cipher = EVP_chacha20();
+  uint8_t key1[32], key2[32], iv[16];
+  RAND_bytes(key1, sizeof(key1));
+  RAND_bytes(key2, sizeof(key2));
+  RAND_bytes(iv, sizeof(iv));
+  iv[3] = 0;  // Keep the counter away from 32-bit wraparound.
+  const uint32_t counter = CRYPTO_load_u32_le(iv);
+  const uint8_t *nonce = iv + 4;
+
+  auto keystream = [](const uint8_t *k, const uint8_t *n, uint32_t ctr) {
+    std::vector<uint8_t> ks(5, 0);
+    CRYPTO_chacha_20(ks.data(), ks.data(), ks.size(), k, n, ctr);
+    return ks;
+  };
+  const uint8_t zero[64] = {0};
+  uint8_t out[64];
+  int n = 0;
+
+  // Re-key mid-block without an IV: the current block is regenerated under
+  // the new key.
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key2, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key2, nonce, counter)), Bytes(out, 5));
+
+  // Exhaust the buffered block exactly, then re-init: the next output starts
+  // at the following block rather than reusing the consumed one.
+  bssl::ScopedEVP_CIPHER_CTX ctx2;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx2.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 59));
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(ctx2.get(), nullptr, nullptr, nullptr, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, nonce, counter + 1)), Bytes(out, 5));
+
+  // A key-only init on a fresh context starts from an all-zero IV.
+  const uint8_t zero_nonce[12] = {0};
+  bssl::ScopedEVP_CIPHER_CTX ctx3;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx3.get(), cipher, nullptr, key1, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx3.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, zero_nonce, 0)), Bytes(out, 5));
 }
 
 OPENSSL_BEGIN_ALLOW_DEPRECATED

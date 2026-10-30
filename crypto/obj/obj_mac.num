@@ -980,3 +980,4 @@ MLDSA87		996
 ED25519ph		997
 SecP384r1MLKEM1024		998
 ct_precert_scts		999
+chacha20		1000

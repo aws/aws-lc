@@ -1368,6 +1368,7 @@ AWS_LC_1.0 {
     EVP_blake2b256;
     EVP_cast5_cbc;
     EVP_cast5_ecb;
+    EVP_chacha20;
     EVP_chacha20_poly1305;
     EVP_cleanup;
     EVP_des_cbc;
