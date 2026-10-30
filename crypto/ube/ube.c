@@ -52,14 +52,14 @@ void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static uint32_t override_vm_ube_generation_number = 0;
-void set_vm_ube_generation_number_FOR_TESTING(uint32_t vm_ube_gn) {
+static uint64_t override_vm_ube_generation_number = 0;
+void set_vm_ube_generation_number_FOR_TESTING(uint64_t vm_ube_gn) {
   CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_vm_ube_generation_number = vm_ube_gn;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static int get_vm_ube_generation_number(uint32_t *gn) {
+static int get_vm_ube_generation_number(uint64_t *gn) {
   if (allow_mocked_detection == 1) {
     CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
     *gn = override_vm_ube_generation_number;
@@ -97,7 +97,7 @@ static int get_fork_generation_number(uint64_t *gn) {
 struct ube_state {
   uint64_t generation_number;
   uint64_t cached_fork_gn;
-  uint32_t cached_vm_ube_gn;
+  uint64_t cached_vm_ube_gn;
 };
 static struct ube_state ube_global_state = { 0, 0, 0 };
 
@@ -106,7 +106,7 @@ static struct ube_state ube_global_state = { 0, 0, 0 };
 struct detection_gn {
 #define NUMBER_OF_DETECTION_GENERATION_NUMBERS 2
   uint64_t current_fork_gn;
-  uint32_t current_vm_ube_gn;
+  uint64_t current_vm_ube_gn;
 };
 
 // set_ube_detection_unavailable_once is the single mutation point of
