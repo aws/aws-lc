@@ -214,7 +214,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "2.0.17"
+#define AWSLC_VERSION_NUMBER_STRING "2.0.18"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
