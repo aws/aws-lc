@@ -1,2 +1,3 @@
 ./util/fipstools/acvp/acvptool/testmodulewrapper
+./util/fipstools/acvp/acvptool/subprocess
 ./util/fipstools/delocate
