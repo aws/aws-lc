@@ -396,6 +396,60 @@ TEST(DigestTest, TestVectors) {
   }
 }
 
+TEST(DigestTest, EVPRejectsAfterFinal) {
+  struct {
+    const MD &md;
+    const char *expected_hex;
+  } kTests[] = {
+      {sha256,
+       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+      {sha3_256,
+       "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532"},
+      {keccak256,
+       "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.md.name);
+    const std::vector<uint8_t> expected = HexToBytes(test.expected_hex);
+    uint8_t out[EVP_MAX_MD_SIZE];
+    unsigned out_len = 0;
+    bssl::ScopedEVP_MD_CTX ctx;
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test.md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), "abc", 3));
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
+    ASSERT_EQ(expected.size(), out_len);
+    EXPECT_EQ(Bytes(expected.data(), expected.size()), Bytes(out, out_len));
+
+    EXPECT_FALSE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
+    EXPECT_FALSE(EVP_DigestUpdate(ctx.get(), "abc", 3));
+
+    // Reinitialisation clears the finalised state.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test.md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), "abc", 3));
+    OPENSSL_memset(out, 0, sizeof(out));
+    out_len = 0;
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
+    ASSERT_EQ(expected.size(), out_len);
+    EXPECT_EQ(Bytes(expected.data(), expected.size()), Bytes(out, out_len));
+
+    // Copies of a finalised context must remain finalised.
+    bssl::ScopedEVP_MD_CTX copy;
+    ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
+    EXPECT_FALSE(EVP_DigestFinal_ex(copy.get(), out, &out_len));
+    EXPECT_FALSE(EVP_DigestUpdate(copy.get(), "abc", 3));
+
+    // Reinitialisation also clears the copied context's finalised state.
+    ASSERT_TRUE(EVP_DigestInit_ex(copy.get(), test.md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), "abc", 3));
+    OPENSSL_memset(out, 0, sizeof(out));
+    out_len = 0;
+    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), out, &out_len));
+    ASSERT_EQ(expected.size(), out_len);
+    EXPECT_EQ(Bytes(expected.data(), expected.size()), Bytes(out, out_len));
+  }
+}
+
 TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("RSA-SHA512"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512WithRSAEncryption"));
