@@ -1724,6 +1724,13 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[],
                        ReplyCallback write_reply) {
+
+  if (args[1].size() != sizeof(uint32_t) ||
+      args[2].size() != sizeof(uint32_t) ||
+      args[3].size() != sizeof(uint32_t)) {
+    return false;
+  }
+
   const uint8_t *max_outlen_bytes = args[1].data();
   const uint8_t *min_outlen_bytes = args[2].data();
   const uint8_t *outlen_bytes = args[3].data();
@@ -1733,6 +1740,11 @@ static bool HashMCTXof(const Span<const uint8_t> args[],
   uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
   uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
   uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
+
+  if (min_output_len < 2 || min_output_len > max_output_len ||
+      output_len < min_output_len || output_len > max_output_len) {
+    return false;
+  }
   uint32_t range = max_output_len - min_output_len + 1;
 
   const size_t array_len = 1001;
