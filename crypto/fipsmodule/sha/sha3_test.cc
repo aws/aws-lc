@@ -563,11 +563,11 @@ TEST(KeccakInternalTest, KeccakF1600HwFallback) {
 TEST(SHAKETest_x4, RandomMessages) {
   KECCAK1600_CTX_x4 ctx;
 
-  uint8_t random_in[BATCHED_x4][RAND_BYTES_x4];
+  uint8_t random_in[BATCHED_x4][SHAKE256_BLOCKSIZE + 1];
   uint8_t digest[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
   uint8_t digest_x4[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
 
-  // Test |SHAKE128_Init_x4|, |SHAKE128_Absorb_once_x4|, and |SHAKE128_Squeezeblocks_x4| functions
+  // Test |SHAKE_Init_x4|, |SHAKE128_Absorb_once_x4|, and |SHAKE128_Squeezeblocks_x4| functions
   // Assert success when digest and digest_x4 values are equal
   for (int i = 0; i < NUM_TESTS; i++) {
     for (int j = 0; j < BATCHED_x4; j++) {
@@ -580,7 +580,7 @@ TEST(SHAKETest_x4, RandomMessages) {
     }
 
     // Compute one batched x4 SHAKE128
-    ASSERT_TRUE(SHAKE128_Init_x4(&ctx));
+    ASSERT_TRUE(SHAKE_Init_x4(&ctx));
     ASSERT_TRUE(SHAKE128_Absorb_once_x4(&ctx, random_in[0], random_in[1], random_in[2], random_in[3],
                                                                                           RAND_BYTES_x4));
     ASSERT_TRUE(SHAKE128_Squeezeblocks_x4(digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3],
@@ -589,6 +589,47 @@ TEST(SHAKETest_x4, RandomMessages) {
     for (int j = 0; j < BATCHED_x4; j++) {
       EXPECT_EQ(Bytes(digest_x4[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE),
                 Bytes(digest[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE));
+    }
+  }
+
+  // Test |SHAKE_Init_x4|, |SHAKE256_Absorb_once_x4|, and
+  // |SHAKE256_Squeezeblocks_x4| functions.
+  const size_t input_lengths[] = {
+      0,
+      SHAKE256_BLOCKSIZE - 1,
+      SHAKE256_BLOCKSIZE,
+      SHAKE256_BLOCKSIZE + 1,
+  };
+  for (size_t input_len : input_lengths) {
+    for (int j = 0; j < BATCHED_x4; j++) {
+      OPENSSL_memset(digest[j], 0, RAND_OUT_BLCKS * SHAKE256_BLOCKSIZE);
+      OPENSSL_memset(digest_x4[j], 0, RAND_OUT_BLCKS * SHAKE256_BLOCKSIZE);
+
+      if (input_len > 0) {
+        ASSERT_TRUE(RAND_bytes(random_in[j], input_len));
+      }
+      ASSERT_TRUE(SHAKE256(random_in[j], input_len, digest[j],
+                          RAND_OUT_BLCKS * SHAKE256_BLOCKSIZE));
+    }
+
+    ASSERT_TRUE(SHAKE_Init_x4(&ctx));
+    ASSERT_TRUE(SHAKE256_Absorb_once_x4(&ctx, random_in[0], random_in[1],
+                                       random_in[2], random_in[3],
+                                       input_len));
+    const size_t first_blocks = RAND_OUT_BLCKS / 2;
+    ASSERT_TRUE(SHAKE256_Squeezeblocks_x4(
+        digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3], &ctx,
+        first_blocks));
+    ASSERT_TRUE(SHAKE256_Squeezeblocks_x4(
+        digest_x4[0] + first_blocks * SHAKE256_BLOCKSIZE,
+        digest_x4[1] + first_blocks * SHAKE256_BLOCKSIZE,
+        digest_x4[2] + first_blocks * SHAKE256_BLOCKSIZE,
+        digest_x4[3] + first_blocks * SHAKE256_BLOCKSIZE, &ctx,
+        RAND_OUT_BLCKS - first_blocks));
+
+    for (int j = 0; j < BATCHED_x4; j++) {
+      EXPECT_EQ(Bytes(digest_x4[j], RAND_OUT_BLCKS * SHAKE256_BLOCKSIZE),
+                Bytes(digest[j], RAND_OUT_BLCKS * SHAKE256_BLOCKSIZE));
     }
   }
 
@@ -603,7 +644,7 @@ TEST(SHAKETest_x4, RandomMessages) {
       SHAKE256(random_in[j], RAND_BYTES_x4, digest[j], RAND_OUT_BLCKS);
     }
 
-    // Compute one batched x4 SHAKE128
+    // Compute one batched x4 SHAKE256
     ASSERT_TRUE(SHAKE256_x4(random_in[0], random_in[1], random_in[2], random_in[3], RAND_BYTES_x4,
                             digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3], RAND_OUT_BLCKS));
 
