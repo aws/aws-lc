@@ -1733,6 +1733,11 @@ static bool HashMCTXof(const Span<const uint8_t> args[],
   uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
   uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
   uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
+
+  if (min_output_len < 2 || min_output_len > max_output_len ||
+      output_len < min_output_len || output_len > max_output_len) {
+    return false;
+  }
   uint32_t range = max_output_len - min_output_len + 1;
 
   const size_t array_len = 1001;
