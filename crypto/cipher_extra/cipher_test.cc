@@ -1574,9 +1574,12 @@ TEST(CipherTest, CCMRejectsRepeatedEncryptUpdate) {
     ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), repeated_out_len);
 
     // Reject a second plaintext encryption with the same CCM state.
+    ERR_clear_error();
     EXPECT_FALSE(EVP_EncryptUpdate(repeated_ctx.get(), repeated_ciphertext,
                                    &repeated_out_len, kPlaintext,
                                    sizeof(kPlaintext)));
+    EXPECT_EQ(ERR_GET_REASON(ERR_peek_last_error()),
+              CIPHER_R_INVALID_OPERATION);
     ERR_clear_error();
 
     bssl::ScopedEVP_CIPHER_CTX valid_ctx;

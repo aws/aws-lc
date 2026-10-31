@@ -45,6 +45,7 @@ typedef struct cipher_aes_ccm_ctx {
   uint8_t tag_set;
   uint8_t len_set;
   uint8_t ccm_set;
+  uint8_t data_processed;
 
   // L and M parameters from RFC3610
   uint32_t L; // Number of octets in length field
@@ -503,6 +504,8 @@ static int cipher_aes_ccm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     OPENSSL_memcpy(cipher_ctx->nonce, iv, CCM_L_TO_NONCE_LEN(cipher_ctx->L));
     cipher_ctx->iv_set = 1;
   }
+  // A new key or IV permits another operation.
+  cipher_ctx->data_processed = 0;
   return 1;
 }
 
@@ -516,6 +519,12 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   // n.b. |out| is non-NULL and |in| is NULL despite being a no-op.
   if (in == NULL && out != NULL) {
     return 0;
+  }
+
+  // A key/IV pair may process only one message.
+  if (cipher_ctx->data_processed) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
+    return -1;
   }
 
   if (!cipher_ctx->iv_set || !cipher_ctx->key_set) {
@@ -609,6 +618,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     cipher_ctx->len_set = 0;
     cipher_ctx->ccm_set = 0;
   }
+  cipher_ctx->data_processed = 1;
   return (int) len;
 }
 
@@ -631,6 +641,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       cipher_ctx->tag_set = 0;
       cipher_ctx->len_set = 0;
       cipher_ctx->ccm_set = 0;
+      cipher_ctx->data_processed = 0;
       cipher_ctx->L = 8;
       cipher_ctx->M = 14;
       cipher_ctx->message_len = 0;
