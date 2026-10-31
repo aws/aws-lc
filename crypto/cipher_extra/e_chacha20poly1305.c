@@ -22,6 +22,10 @@
 #define CHACHA_IV_LEN 12
 #define CHACHA_BLOCK_LEN 64
 #define CHACHA_CTR_IV_LEN 16
+// Counter zero is reserved for Poly1305 key generation. This exclusive limit
+// matches EVP_AEAD and prevents the 32-bit payload counter from wrapping.
+#define CHACHA20_POLY1305_INPUT_LIMIT \
+  ((UINT64_C(1) << 32) * CHACHA_BLOCK_LEN - CHACHA_BLOCK_LEN)
 
 // ChaCha-Poly specific context within an EVP_CIPHER_CTX
 #define CCP_CTX(ctx) ((CIPHER_CHACHA_POLY_CTX *) ctx->cipher_data)
@@ -64,6 +68,14 @@ OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                           alignof(AEAD_CHACHA_POLY_CTX),
                       AEAD_state_has_insufficient_alignment)
+
+static int chacha20_poly1305_input_len_valid(uint64_t processed_len,
+                                             size_t current_len) {
+  // |processed_len| and |CHACHA20_POLY1305_INPUT_LIMIT| are uint64_t, so
+  // |current_len| is promoted before comparison when size_t is 32 bits.
+  return processed_len < CHACHA20_POLY1305_INPUT_LIMIT &&
+         current_len < CHACHA20_POLY1305_INPUT_LIMIT - processed_len;
+}
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                        size_t key_len, size_t tag_len) {
@@ -156,12 +168,7 @@ static int chacha20_poly1305_seal_scatter(
 
   // |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
   // individual operations that work on more than 256GB at a time.
-  // |in_len_64| is needed because, on 32-bit platforms, size_t is only
-  // 32-bits and this produces a warning because it's always false.
-  // Casting to uint64_t inside the conditional is not sufficient to stop
-  // the warning.
-  const uint64_t in_len_64 = in_len;
-  if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
+  if (!chacha20_poly1305_input_len_valid(0, in_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
@@ -270,12 +277,7 @@ static int chacha20_poly1305_open_gather(const uint8_t *key, uint8_t *out,
 
   // |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
   // individual operations that work on more than 256GB at a time.
-  // |in_len_64| is needed because, on 32-bit platforms, size_t is only
-  // 32-bits and this produces a warning because it's always false.
-  // Casting to uint64_t inside the conditional is not sufficient to stop
-  // the warning.
-  const uint64_t in_len_64 = in_len;
-  if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
+  if (!chacha20_poly1305_input_len_valid(0, in_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
@@ -541,6 +543,12 @@ static int cipher_chacha20_poly1305_do_cipher(
   CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
   poly1305_state *poly_ctx = POLY_CTX(cipher_ctx);
   size_t remainder;
+
+  if (in != NULL && out != NULL &&
+      !chacha20_poly1305_input_len_valid(cipher_ctx->len.text, in_len)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    return -1;
+  }
 
   if (!cipher_ctx->poly_initialized) {
 #ifdef OPENSSL_BIG_ENDIAN
