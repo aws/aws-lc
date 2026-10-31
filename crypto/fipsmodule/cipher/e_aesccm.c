@@ -580,6 +580,13 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     cipher_ctx->ccm_set = 1;
   }
 
+  // CCM only supports single-shot payload operations. Mark the message state
+  // consumed before processing so it cannot be reused after success or failure.
+  cipher_ctx->data_processed = 1;
+  cipher_ctx->iv_set = 0;
+  cipher_ctx->len_set = 0;
+  cipher_ctx->ccm_set = 0;
+
   if (EVP_CIPHER_CTX_encrypting(ctx)) {
     // Encryption path. Compute CBC-MAC on plaintext and then encrypt.
     if (!ccm128_compute_mac(ccm_ctx, ccm_state, &cipher_ctx->ks.ks,
@@ -589,13 +596,8 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     if (!ccm128_encrypt(ccm_ctx, ccm_state, &cipher_ctx->ks.ks, out, in, len)) {
       return -1;
     }
-    // CCM only supports single-shot operations. Keep the tag available for
-    // EVP_CTRL_AEAD_GET_TAG, but require a new IV and message length before
-    // processing another message.
+    // Keep the tag available for EVP_CTRL_AEAD_GET_TAG.
     cipher_ctx->tag_set = 1;
-    cipher_ctx->iv_set = 0;
-    cipher_ctx->len_set = 0;
-    cipher_ctx->ccm_set = 0;
   } else {
     // Decryption path. Compute the plaintext then compute its CBC-MAC.
     // n.b. The method says encrypt, but it works both ways.
@@ -613,12 +615,8 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       OPENSSL_cleanse(out, len);
       return -1;
     }
-    cipher_ctx->iv_set = 0;
     cipher_ctx->tag_set = 0;
-    cipher_ctx->len_set = 0;
-    cipher_ctx->ccm_set = 0;
   }
-  cipher_ctx->data_processed = 1;
   return (int) len;
 }
 

@@ -1538,7 +1538,7 @@ static_assert(EVP_CTRL_CCM_GET_TAG == EVP_CTRL_AEAD_GET_TAG,
 static_assert(EVP_CTRL_CCM_SET_TAG == EVP_CTRL_AEAD_SET_TAG,
               "EVP_CTRL_CCM_SET_TAG must alias EVP_CTRL_AEAD_SET_TAG");
 
-TEST(CipherTest, CCMRejectsRepeatedEncryptUpdate) {
+TEST(CipherTest, CCMRejectsRepeatedPayloadUpdate) {
   static const uint8_t kPlaintext[16] = {0};
 
   for (const EVP_CIPHER *cipher :
@@ -1607,9 +1607,53 @@ TEST(CipherTest, CCMRejectsRepeatedEncryptUpdate) {
         EVP_EncryptFinal_ex(valid_ctx.get(), &final_output, &final_len));
     ASSERT_EQ(0, final_len);
 
-    uint8_t tag[16];
-    EXPECT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+    uint8_t tag[16] = {0};
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_GET_TAG,
                                     sizeof(tag), tag));
+
+    uint8_t invalid_tag[sizeof(tag)] = {0};
+    OPENSSL_memcpy(invalid_tag, tag, sizeof(tag));
+    invalid_tag[0] ^= 1;
+
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(decrypt_ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    sizeof(invalid_tag), invalid_tag));
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int decrypted_len = 0;
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), /*out=*/nullptr,
+                                  &decrypted_len, /*in=*/nullptr,
+                                  sizeof(ciphertext)));
+    ASSERT_EQ(static_cast<int>(sizeof(ciphertext)), decrypted_len);
+
+    uint8_t decrypted[sizeof(ciphertext)] = {0};
+    ASSERT_FALSE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                   ciphertext, sizeof(ciphertext)));
+
+    // Reject a retry after decryption consumed the message state, even when
+    // authentication failed.
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                   ciphertext, sizeof(ciphertext)));
+    EXPECT_EQ(ERR_GET_REASON(ERR_peek_last_error()),
+              CIPHER_R_INVALID_OPERATION);
+    ERR_clear_error();
+
+    // A new IV starts a new message and clears the consumed state.
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, /*key=*/nullptr,
+                                   iv.data()));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(decrypt_ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    sizeof(tag), tag));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), /*out=*/nullptr,
+                                  &decrypted_len, /*in=*/nullptr,
+                                  sizeof(ciphertext)));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                  ciphertext, sizeof(ciphertext)));
+    EXPECT_EQ(Bytes(decrypted), Bytes(kPlaintext));
   }
 }
 
