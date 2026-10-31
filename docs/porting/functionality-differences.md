@@ -351,6 +351,16 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
 
 **If you have a valid use case for any missing functionality or if anything is not clarified in our documentation, feel free to [cut an issue](https://github.com/aws/aws-lc/issues/new?assignees=&labels=&projects=&template=general-issue.md&title=) or create a PR to let us know.**
 
+### DNS name constraints and legacy common names
+
+AWS-LC applies DNS name constraints to fallback common names (CNs) such as `a-.example.com` and `www.example.com.`; OpenSSL 1.1.1w, 3.0.22, and 3.6.4 skip these forms. Names permitted by the constraints remain accepted. `X509_check_host` is unchanged: trailing dots are normalized only for constraints, not hostname matching.
+
+CN screening applies only to the leaf and only under DNS constraints. DNS SANs suppress it unless `X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT` is set; `X509_CHECK_FLAG_NEVER_CHECK_SUBJECT` disables it. Screening also runs without a reference hostname, so separate chain and hostname checks must use consistent flags. Intermediate SANs and directoryNames remain constrained.
+
+DNS-shaped CNs containing whitespace, control characters, or non-ASCII bytes fail DNS-constraint checks, even during chain-only verification. This includes decorative names such as `Acme Inc.-Root CA` and `Example Co. Ltd.`.
+
+Single-label CNs, empty labels, and punctuation such as `:` retain legacy exemptions despite literal hostname matching. Resolving those remaining inconsistencies is outside this fix.
+
 ### libcrypto No-ops
 
 <table border=0 cellspacing=0 cellpadding=0
