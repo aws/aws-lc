@@ -778,7 +778,7 @@ TEST(CipherTest, ChaCha20Poly1305RejectsCounterWrap) {
   static const uint8_t kIV[12] = {0};
   static const size_t kInputLimit = (UINT64_C(1) << 32) * 64 - 64;
   uint8_t input = 0;
-  uint8_t output;
+  uint8_t output = 0;
 
   bssl::ScopedEVP_CIPHER_CTX ctx;
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_chacha20_poly1305(),
