@@ -27,6 +27,10 @@
 #include <dlfcn.h>
 #include <pthread.h>
 
+#ifndef SYMBOL_PREFIX
+#define SYMBOL_PREFIX ""
+#endif
+
 typedef void (*fp_lc_clear_error_t)(void);
 typedef int (*fp_lc_tl_func_t)(void);
 typedef int (*fp_rand_bytes_t)(uint8_t *buf, size_t len);
@@ -37,9 +41,9 @@ typedef int (*fp_rand_bytes_t)(uint8_t *buf, size_t len);
 
 static void *cycle_thread_local_setup(void *lc_so) {
   uint8_t buffer[BUFFER_SIZE];
-  fp_lc_clear_error_t lc_clear_error = dlsym(lc_so, "ERR_clear_error");
-  fp_rand_bytes_t lc_rand_bytes = dlsym(lc_so, "RAND_bytes");
-  fp_lc_tl_func_t lc_tl_clear = dlsym(lc_so, "AWSLC_thread_local_clear");
+  fp_lc_clear_error_t lc_clear_error = dlsym(lc_so, SYMBOL_PREFIX "ERR_clear_error");
+  fp_rand_bytes_t lc_rand_bytes = dlsym(lc_so, SYMBOL_PREFIX "RAND_bytes");
+  fp_lc_tl_func_t lc_tl_clear = dlsym(lc_so, SYMBOL_PREFIX "AWSLC_thread_local_clear");
 
   for (int i = 0; i < TEST_ITERS; i++) {
     (*lc_clear_error)();
@@ -59,7 +63,7 @@ static void *cycle_thread_local_setup(void *lc_so) {
 static void *load_unload(void *ctx) {
   const char* path = ctx;
   void *lc_so = dlopen(path, RTLD_NOW);
-  fp_lc_tl_func_t lc_tl_shutdown = dlsym(lc_so, "AWSLC_thread_local_shutdown");
+  fp_lc_tl_func_t lc_tl_shutdown = dlsym(lc_so, SYMBOL_PREFIX "AWSLC_thread_local_shutdown");
 
   pthread_t thread_id[THREAD_COUNT];
   for (int i = 0; i < THREAD_COUNT; i++) {
