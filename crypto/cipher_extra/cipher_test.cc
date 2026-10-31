@@ -772,6 +772,26 @@ TEST(CipherTest, WycheproofChaCha20Poly1305) {
   });
 }
 
+#if defined(OPENSSL_64_BIT)
+TEST(CipherTest, ChaCha20Poly1305RejectsCounterWrap) {
+  static const uint8_t kKey[32] = {0};
+  static const uint8_t kIV[12] = {0};
+  static const size_t kInputLimit = (UINT64_C(1) << 32) * 64 - 64;
+  uint8_t input = 0;
+  uint8_t output;
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_chacha20_poly1305(),
+                                 /*impl=*/nullptr, kKey, kIV));
+  ASSERT_EQ(1, EVP_Cipher(ctx.get(), &output, &input, 1));
+
+  // This reaches the counter limit and must fail before accessing the buffers.
+  EXPECT_EQ(-1,
+            EVP_Cipher(ctx.get(), &output, &input, kInputLimit - 1));
+  EXPECT_EQ(CIPHER_R_TOO_LARGE, ERR_GET_REASON(ERR_get_error()));
+}
+#endif
+
 static bool AesCcmIvValidate(size_t iv_size) {
   size_t L = 15 - iv_size;
   if (L < 2 || L > 8) {
