@@ -1598,7 +1598,7 @@ TEST(CipherTest, CCMRejectsRepeatedEncryptUpdate) {
                                   kPlaintext, sizeof(kPlaintext)));
     ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), valid_out_len);
 
-    uint8_t final_output;
+    uint8_t final_output = 0;
     int final_len = 0;
     ASSERT_TRUE(
         EVP_EncryptFinal_ex(valid_ctx.get(), &final_output, &final_len));
