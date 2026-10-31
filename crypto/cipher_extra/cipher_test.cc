@@ -1538,6 +1538,78 @@ static_assert(EVP_CTRL_CCM_GET_TAG == EVP_CTRL_AEAD_GET_TAG,
 static_assert(EVP_CTRL_CCM_SET_TAG == EVP_CTRL_AEAD_SET_TAG,
               "EVP_CTRL_CCM_SET_TAG must alias EVP_CTRL_AEAD_SET_TAG");
 
+TEST(CipherTest, CCMRejectsRepeatedEncryptUpdate) {
+  static const uint8_t kPlaintext[16] = {0};
+
+  for (const EVP_CIPHER *cipher :
+       {EVP_aes_128_ccm(), EVP_aes_192_ccm(), EVP_aes_256_ccm()}) {
+    SCOPED_TRACE(EVP_CIPHER_key_length(cipher));
+    std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher));
+    std::vector<uint8_t> iv(EVP_CIPHER_iv_length(cipher));
+
+    bssl::ScopedEVP_CIPHER_CTX repeated_ctx;
+    // Select and initialize the AES-CCM cipher.
+    ASSERT_TRUE(EVP_EncryptInit_ex(repeated_ctx.get(), cipher,
+                                   /*impl=*/nullptr, /*key=*/nullptr,
+                                   /*iv=*/nullptr));
+    // Configure a 16-byte authentication tag.
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(
+        repeated_ctx.get(), EVP_CTRL_AEAD_SET_TAG, 16, nullptr));
+    // Reuse the selected cipher and set its key and IV.
+    ASSERT_TRUE(EVP_EncryptInit_ex(repeated_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int repeated_out_len = 0;
+    // Declare the total plaintext length without processing data.
+    ASSERT_TRUE(EVP_EncryptUpdate(
+        repeated_ctx.get(), /*out=*/nullptr, &repeated_out_len,
+        /*in=*/nullptr, sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), repeated_out_len);
+
+    uint8_t repeated_ciphertext[sizeof(kPlaintext)];
+    // Encrypt the single permitted plaintext buffer.
+    ASSERT_TRUE(EVP_EncryptUpdate(repeated_ctx.get(), repeated_ciphertext,
+                                  &repeated_out_len, kPlaintext,
+                                  sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), repeated_out_len);
+
+    // Reject a second plaintext encryption with the same CCM state.
+    EXPECT_FALSE(EVP_EncryptUpdate(repeated_ctx.get(), repeated_ciphertext,
+                                   &repeated_out_len, kPlaintext,
+                                   sizeof(kPlaintext)));
+    ERR_clear_error();
+
+    bssl::ScopedEVP_CIPHER_CTX valid_ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(valid_ctx.get(), cipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_SET_TAG, 16,
+                                    nullptr));
+    ASSERT_TRUE(EVP_EncryptInit_ex(valid_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int valid_out_len = 0;
+    ASSERT_TRUE(EVP_EncryptUpdate(valid_ctx.get(), /*out=*/nullptr,
+                                  &valid_out_len, /*in=*/nullptr,
+                                  sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), valid_out_len);
+
+    uint8_t ciphertext[sizeof(kPlaintext)];
+    ASSERT_TRUE(EVP_EncryptUpdate(valid_ctx.get(), ciphertext, &valid_out_len,
+                                  kPlaintext, sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), valid_out_len);
+
+    uint8_t final_output;
+    int final_len = 0;
+    ASSERT_TRUE(
+        EVP_EncryptFinal_ex(valid_ctx.get(), &final_output, &final_len));
+    ASSERT_EQ(0, final_len);
+
+    uint8_t tag[16];
+    EXPECT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                    sizeof(tag), tag));
+  }
+}
+
 #define CHECK_ERROR(function, err) \
     ERR_clear_error();                 \
     EXPECT_FALSE(function);                          \

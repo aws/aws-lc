@@ -580,7 +580,13 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     if (!ccm128_encrypt(ccm_ctx, ccm_state, &cipher_ctx->ks.ks, out, in, len)) {
       return -1;
     }
+    // CCM only supports single-shot operations. Keep the tag available for
+    // EVP_CTRL_AEAD_GET_TAG, but require a new IV and message length before
+    // processing another message.
     cipher_ctx->tag_set = 1;
+    cipher_ctx->iv_set = 0;
+    cipher_ctx->len_set = 0;
+    cipher_ctx->ccm_set = 0;
   } else {
     // Decryption path. Compute the plaintext then compute its CBC-MAC.
     // n.b. The method says encrypt, but it works both ways.
