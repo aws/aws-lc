@@ -327,9 +327,12 @@ TEST_F(ImplDispatchTest, SHAKE256_Batched) {
   // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
   //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
   //   lazy rotations.
-  // - For Neoverse V1, V2, V3, we use SIMD batched hybrid Keccak assembly from s2n-bignum
-  //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
-  //   and scalar assembly with lazy rotations.
+  // - For Neoverse V1, V2, V3, when the SHA3 extension is supported by the
+  //   assembler and available at runtime, we use SIMD batched hybrid Keccak
+  //   assembly from s2n-bignum (`sha3_keccak4_f1600_alt2()`) leveraging Neon,
+  //   Neon SHA3 extension, and scalar assembly with lazy rotations. If either
+  //   SHA3 prerequisite is unavailable, these processors fall back to four
+  //   `sha3_keccak_f1600()` calls through the 1-fold dispatch path.
   // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
   //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600()`) twice,
   //   which is a straightforward implementation using the SHA3 extension.
