@@ -6,7 +6,6 @@ from aws_cdk import (
     Stack,
     pipelines,
 )
-from cdk.aws_lc_ci_alarms_stack import AwsLcCiAlarmsStack
 from cdk.aws_lc_codebuild_fleets import AwsLcCodeBuildFleets
 from cdk.aws_lc_devicefarm_ci_stack import AwsLcDeviceFarmCiStack
 from cdk.aws_lc_github_actions_stack import AwsLcGitHubActionsStack
@@ -51,9 +50,6 @@ class GitHubActionsStage(Stage):
             stack_name="aws-lc-ci-github-actions",
             **kwargs
         )
-
-        self.alarms_stack = AwsLcCiAlarmsStack(
-            self, "aws-lc-ci-alarms", env=deploy_environment, stack_name="aws-lc-ci-alarms", **kwargs)
 
     @property
     def stacks(self):
