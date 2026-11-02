@@ -404,24 +404,39 @@ TEST(AESTest, EVPKeyWrapCopyDoesNotAliasSourceIV) {
   AES_KEY aes;
   ASSERT_EQ(0, AES_set_encrypt_key(kKey, 256, &aes));
   uint8_t expected[24];
-  ASSERT_EQ(24, AES_wrap_key(&aes, kIV, expected, kPlaintext,
-                             sizeof(kPlaintext)));
+  ASSERT_EQ(24,
+            AES_wrap_key(&aes, kIV, expected, kPlaintext, sizeof(kPlaintext)));
 
   bssl::UniquePtr<EVP_CIPHER_CTX> src(EVP_CIPHER_CTX_new());
   ASSERT_TRUE(src);
-  ASSERT_TRUE(EVP_EncryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey,
-                                 kIV));
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey, kIV));
 
   bssl::ScopedEVP_CIPHER_CTX dst;
   ASSERT_TRUE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
   src.reset();
 
   uint8_t out[24];
-  int len;
+  int len = 0;
   ASSERT_TRUE(
       EVP_EncryptUpdate(dst.get(), out, &len, kPlaintext, sizeof(kPlaintext)));
   ASSERT_EQ(24, len);
   EXPECT_EQ(Bytes(expected), Bytes(out, static_cast<size_t>(len)));
+
+  src.reset(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  ASSERT_TRUE(
+      EVP_DecryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey, kIV));
+
+  dst.Reset();
+  ASSERT_TRUE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  src.reset();
+
+  len = 0;
+  ASSERT_TRUE(
+      EVP_DecryptUpdate(dst.get(), out, &len, expected, sizeof(expected)));
+  ASSERT_EQ(16, len);
+  EXPECT_EQ(Bytes(kPlaintext), Bytes(out, static_cast<size_t>(len)));
 }
 
 TEST(AESTest, InvalidKeySize) {
