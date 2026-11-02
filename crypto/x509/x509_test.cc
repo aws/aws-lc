@@ -3137,6 +3137,69 @@ TEST(X509Test, NameConstraints) {
   }
 }
 
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // An intermediate CA whose CN is an organization name with an internal dot
+  // and spaces, and no SAN. The CN fallback is a hostname heuristic and only
+  // applies to the end-entity certificate, so this must not be treated as a
+  // DNS name.
+  static const char kIntermediateCN[] = "ACME Corp. Issuing CA G2";
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", kIntermediateCN, key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf = MakeTestCert(kIntermediateCN, "www.example.com",
+                                            key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The end-entity CN is still checked through the same intermediate.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert(kIntermediateCN, "www.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  bssl::UniquePtr<X509> leaf_space = MakeTestCert(
+      kIntermediateCN, "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(
+      X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+      Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
+}
+
 // Test that wildcard CNs are checked against name constraints when no
 // dNSName SAN is present.
 TEST(X509Test, NameConstraintsWildcardCN) {
@@ -7378,6 +7441,96 @@ TEST(X509Test, NamePrintMissingAttributeName) {
               -1);
     EXPECT_EQ(X509_NAME_print_ex(nullptr, name.get(), /*indent=*/0, t.flags),
               -1);
+  }
+}
+
+TEST(X509Test, NamePrintLargeOutputOverflow) {
+  // Each value dumps as '#' plus two hex digits per byte. Exercise overflow
+  // when adding each part of the printed name, as well as exact-fit outputs.
+  const struct {
+    int value_lengths[2];
+    int second_set;
+    int indent;
+    unsigned long flags;
+    int expected_len;
+  } kTests[] = {
+      // Two values of |INT_MAX / 2| characters and a comma fit exactly.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE,
+       INT_MAX},
+      // A two-character separator overflows when adding the second value.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_NONE,
+       -1},
+      // The first value reaches |INT_MAX|, so the ',' or '+' overflows.
+      {{INT_MAX / 2, 0}, 0, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      {{INT_MAX / 2, 0}, -1, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      // Initial indentation, the first value, and '\n' reach |INT_MAX|.
+      // Indenting the second line overflows.
+      {{(INT_MAX - 3) / 2, 0},
+       0,
+       1,
+       XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_NONE,
+       -1},
+      // "CN=", the first value, and ',' reach |INT_MAX|. The second "CN"
+      // overflows.
+      {{(INT_MAX - 5) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN", but not its '='.
+      {{(INT_MAX - 7) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN=#", reaching |INT_MAX| exactly.
+      {{(INT_MAX - 9) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       INT_MAX},
+      // The padded first "CN=", value, and ',' reach |INT_MAX|. Alignment
+      // padding for the second field overflows.
+      {{(INT_MAX - 13) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN | XN_FLAG_FN_ALIGN,
+       -1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.value_lengths[0]);
+    SCOPED_TRACE(t.second_set);
+    SCOPED_TRACE(t.flags);
+    // Parsed names are bounded, but a caller-constructed name may print more
+    // than |INT_MAX| characters in total. As in
+    // |ASN1Test.PrintExLargeStringOverflow|, fake each value's length. With a
+    // NULL |BIO| and |ASN1_STRFLGS_DUMP_ALL|, the values are only measured and
+    // never read.
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    for (int i = 0; i < 2; i++) {
+      ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+          name.get(), NID_commonName, V_ASN1_UTF8STRING,
+          reinterpret_cast<const uint8_t *>("x"), 1, /*loc=*/-1,
+          /*set=*/i == 0 ? 0 : t.second_set));
+      ASN1_STRING *val =
+          X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name.get(), i));
+      ASSERT_TRUE(val);
+      val->length = t.value_lengths[i];
+    }
+
+    EXPECT_EQ(t.expected_len,
+              X509_NAME_print_ex(nullptr, name.get(), t.indent,
+                                 t.flags | ASN1_STRFLGS_DUMP_ALL));
+    if (t.expected_len < 0) {
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509, ERR_R_OVERFLOW));
+    }
   }
 }
 
