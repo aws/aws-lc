@@ -636,25 +636,30 @@ static int is_valid_rfc822_local_part(const CBS *cbs) {
   return 1;
 }
 
-// Returns 1 if |cbs| is a DNS domain name per RFC 1034 Sec.3.5: one or more
-// non-empty labels separated by '.', containing only alphanumerics and
-// hyphens.
+// Returns 1 if |cbs| is a DNS domain name per RFC 1034 Sec.3.5, as relaxed by
+// RFC 1123 Sec.2.1: one or more labels separated by '.', each 1 to 63
+// alphanumerics and hyphens, beginning and ending with an alphanumeric.
 static int is_valid_rfc822_domain(const CBS *cbs) {
-  int label_empty = 1;
-  for (size_t i = 0; i < CBS_len(cbs); i++) {
-    uint8_t c = CBS_data(cbs)[i];
+  const uint8_t *data = CBS_data(cbs);
+  size_t len = CBS_len(cbs);
+  size_t label_len = 0;
+  for (size_t i = 0; i < len; i++) {
+    uint8_t c = data[i];
     if (c == '.') {
-      if (label_empty) {
+      // Reject empty labels and labels ending in a hyphen.
+      if (label_len == 0 || data[i - 1] == '-') {
         return 0;
       }
-      label_empty = 1;
-    } else if (OPENSSL_isalnum(c) || c == '-') {
-      label_empty = 0;
+      label_len = 0;
+    } else if (OPENSSL_isalnum(c) || (c == '-' && label_len > 0)) {
+      if (++label_len > 63) {
+        return 0;
+      }
     } else {
       return 0;
     }
   }
-  return !label_empty;
+  return label_len > 0 && data[len - 1] != '-';
 }
 
 static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
