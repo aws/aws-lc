@@ -10261,7 +10261,7 @@ TEST(X509Test, BlockedSPKI) {
   // Test callback is invoked on the blocked list path.
   auto suppress_revoked = [](X509_STORE_CTX *ctx) {
     X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
-      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REVOKED;
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REJECTED;
     });
   };
 
@@ -10269,7 +10269,7 @@ TEST(X509Test, BlockedSPKI) {
     SCOPED_TRACE(i);
     X509 *cert = sk_X509_value(certs.get(), i);
     int depth = -1;
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+    EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
               Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
                      /*flags=*/0, /*configure_callback=*/nullptr, &depth));
     EXPECT_EQ(0, depth);
@@ -10290,7 +10290,7 @@ TEST(X509Test, BlockedSPKIAtDepth) {
   ASSERT_TRUE(leaf);
 
   int depth = -1;
-  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
             Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
                    {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
                    /*flags=*/0, /*configure_callback=*/nullptr, &depth));

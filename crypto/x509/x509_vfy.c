@@ -1027,7 +1027,7 @@ static int check_blocked_spki(X509_STORE_CTX *ctx) {
     if (blocked) {
       ctx->current_cert = x;
       ctx->error_depth = (int)i;
-      ctx->error = X509_V_ERR_CERT_REVOKED;
+      ctx->error = X509_V_ERR_CERT_REJECTED;
       if (!call_verify_cb(0, ctx)) {
         return 0;
       }
