@@ -1464,6 +1464,61 @@ TEST(SSLTest, SetLeafChainAndKey) {
   ERR_clear_error();
 }
 
+// After |SSL_certs_clear|, a certificate and key can be set on the same |SSL|
+// again, as on a new one. Servers that pick the certificate per connection
+// clear the default in the certificate callback and set the chosen one.
+TEST(SSLTest, SetCertificateAfterCertsClear) {
+  bssl::UniquePtr<X509> cert = GetECDSATestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetECDSATestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  ASSERT_TRUE(SSL_use_certificate(ssl.get(), cert.get()));
+  ASSERT_TRUE(SSL_use_PrivateKey(ssl.get(), key.get()));
+  SSL_certs_clear(ssl.get());
+  EXPECT_FALSE(SSL_get_certificate(ssl.get()));
+  EXPECT_TRUE(SSL_use_certificate(ssl.get(), cert.get()));
+  EXPECT_TRUE(SSL_use_PrivateKey(ssl.get(), key.get()));
+  EXPECT_TRUE(SSL_check_private_key(ssl.get()));
+
+  // The same in a handshake: the server replaces its default (RSA)
+  // certificate with an ECDSA one in the certificate callback.
+  struct Chosen {
+    X509 *cert;
+    EVP_PKEY *key;
+  } chosen = {cert.get(), key.get()};
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(version);
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+    SSL_CTX_set_cert_cb(
+        server_ctx.get(),
+        [](SSL *ssl, void *arg) -> int {
+          auto *c = static_cast<Chosen *>(arg);
+          SSL_certs_clear(ssl);
+          return SSL_use_certificate(ssl, c->cert) &&
+                 SSL_use_PrivateKey(ssl, c->key);
+        },
+        &chosen);
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+    bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
+    ASSERT_TRUE(peer);
+    EXPECT_EQ(0, X509_cmp(peer.get(), cert.get()));
+  }
+}
+
 TEST(SSLTest, SSLUseCertAndKey) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
