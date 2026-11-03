@@ -76,7 +76,7 @@ The following are generally not considered vulnerabilities in this project's con
 * Caller-supplied invalid arguments, such as NULL pointers or undersized output buffers
 * Use of deprecated OpenSSL compatibility APIs that behave as documented
 * Weak algorithms or parameters that the caller explicitly selects
-* Failure to zeroize long-term or intermediate secret key material
+* Failure to zeroize secrets
 * Differences from OpenSSL behavior documented in the [porting guide](./PORTING.md)
 * Findings requiring the test-only modes described in [FUZZING.md](./FUZZING.md#fuzzer-mode): `BORINGSSL_UNSAFE_FUZZER_MODE` or `BORINGSSL_UNSAFE_DETERMINISTIC_MODE`
 
