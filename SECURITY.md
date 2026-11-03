@@ -64,11 +64,10 @@ An unprivileged process on the same host, or a workload sharing the same physica
 
 Given the adversarial models above, the following are examples of security-relevant issues that should be reported in accordance with [Reporting Security Issues](#reporting-security-issues):
 
-* Implementation defects that compromise confidentiality, integrity, or availability, including memory safety defects, undefined behavior, integer overflow, or reads of uninitialized memory
+* Implementation defects that compromise confidentiality, integrity, or availability, including memory safety defects, undefined behavior, or integer overflow
 * Secret-dependent timing, branching, or memory access in cryptographic operations
 * Incorrect algorithm implementations that weaken confidentiality, integrity, or authentication
 * Verification routines that accept an invalid signature or authentication tag, or a certificate that should be rejected
-* Failure to zeroize long-term or intermediate secret key material
 * Weaknesses in random number generation, such as insufficient seeding or repetition across `fork`
 * A security-relevant failure reported to the caller as success
 
@@ -77,6 +76,7 @@ The following are generally not considered vulnerabilities in this project's con
 * Caller-supplied invalid arguments, such as NULL pointers or undersized output buffers
 * Use of deprecated OpenSSL compatibility APIs that behave as documented
 * Weak algorithms or parameters that the caller explicitly selects
+* Failure to zeroize long-term or intermediate secret key material
 * Differences from OpenSSL behavior documented in the [porting guide](./PORTING.md)
 * Findings requiring the test-only modes described in [FUZZING.md](./FUZZING.md#fuzzer-mode): `BORINGSSL_UNSAFE_FUZZER_MODE` or `BORINGSSL_UNSAFE_DETERMINISTIC_MODE`
 
