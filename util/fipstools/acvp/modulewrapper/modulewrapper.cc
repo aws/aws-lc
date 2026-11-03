@@ -1668,10 +1668,16 @@ static bool HashXof(const Span<const uint8_t> args[],
   // a little-endian unsigned 32-bit integer.
   uint32_t md_out_size = 0;
   if (args[1].size() != sizeof(md_out_size)) {
+    LOG_ERROR(
+        "SHAKE output length argument has size %zu, but expected %zu bytes.\n",
+        args[1].size(), sizeof(md_out_size));
     return false;
   }
   md_out_size = CRYPTO_load_u32_le(args[1].data());
   if (md_out_size > sizeof(digest)) {
+    LOG_ERROR(
+        "SHAKE output length %u bytes exceeds the maximum of %zu bytes.\n",
+        static_cast<unsigned>(md_out_size), sizeof(digest));
     return false;
   }
 
