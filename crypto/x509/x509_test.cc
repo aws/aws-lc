@@ -2409,6 +2409,19 @@ TEST(X509Test, CriticalCRLDistributionPoints) {
     EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
                                 crls, kCheckAll));
   }
+
+  // A non-critical extension is accepted without CRL checking.
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points,
+                                crldp.get(), /*crit=*/0, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {}, /*flags=*/0));
 }
 
 static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {

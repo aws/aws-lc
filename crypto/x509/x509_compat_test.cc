@@ -288,10 +288,10 @@ This certificate has a CRL Distribution Points extension, that per RFC 5280:
 "The [CRL distribution points] extension SHOULD be non-critical, but this
 profile RECOMMENDS support for this extension by CAs and applications."
 
-OpenSSL 1.1.1 supports this extension being marked as critical, and will not
-fail certificate verification because so. AWS-LC only accepts it when CRL
-checking is enabled for the certificate, since RFC 5280 Section 4.2 requires
-rejecting a critical extension that cannot be processed.
+OpenSSL 1.1.1 accepts certificates whose CRL Distribution Points extension is
+marked critical, even when CRL checking is disabled. AWS-LC only accepts them
+when CRL checking is enabled for the certificate, since RFC 5280 Section 4.2
+requires rejecting a critical extension that cannot be processed.
 
 Certificate:
     Data:
