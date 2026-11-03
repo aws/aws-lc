@@ -161,14 +161,17 @@ static int try_sysgenid_init(struct vm_ube_state_st *st) {
 //
 // This detector also feeds entropy source selection: entropy_sources.c's
 // |is_vm_ube_environment| calls |CRYPTO_get_vm_ube_supported|, which reports
-// success only if this function initialized a backend. SysGenID alone is
-// typically root-only, so before vmclock existed |is_vm_ube_environment| was
-// rarely true in practice and most VM guests defaulted to the CPU jitter
-// entropy source. vmclock's device node is commonly readable by
-// unprivileged processes, so enabling it here moves many more hosts onto the
-// OS-seeded, opt-out-of-jitter entropy path by default -- in both FIPS and
-// non-FIPS builds -- with the outcome now depending on which device nodes
-// the running process can open.
+// success only if this function initialized a backend. Previously, a SysGenID
+// node that merely existed was enough to opt out of CPU jitter, even if the
+// process could not open it. Now a backend must open, map, and validate, so in
+// both FIPS and non-FIPS builds:
+//   - a present but unopenable SysGenID, with no usable vmclock, now selects
+//     CPU jitter;
+//   - a usable vmclock now opts out of CPU jitter;
+//   - the choice depends on which device nodes the process can open. These
+//     nodes may be root-only (e.g. /dev/vmclock0 is 0600 root:root on AL2023),
+//     so the same host can select different entropy sources for root and
+//     unprivileged processes.
 static void do_vm_ube_init(void) {
   vm_ube.state = VM_UBE_STATE_NOT_SUPPORTED;
   vm_ube.backend = VM_UBE_BACKEND_NONE;
