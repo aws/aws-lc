@@ -169,11 +169,29 @@ TEST_F(X509Test, SubjectHash) {
   ASSERT_EQ(kToolExitSuccess, result);
 }
 
-// Test -fingerprint
+// Test -fingerprint defaults to SHA-1 and honors explicit digest flags.
 TEST_F(X509Test, Fingerprint) {
-  args_list_t args = {"-in", in_path, "-fingerprint"};
-  int result = X509Tool(args);
-  ASSERT_EQ(kToolExitSuccess, result);
+  args_list_t default_args = {"-in",          in_path, "-noout",
+                              "-fingerprint", "-out",  out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(default_args));
+  EXPECT_EQ(0u, ReadFileToString(out_path).rfind("SHA1 Fingerprint=", 0));
+
+  struct DigestCase {
+    const char *flag;
+    const char *output_prefix;
+  };
+  const DigestCase digest_cases[] = {
+      {"-sha256", "SHA256 Fingerprint="},
+      {"-md5", "MD5 Fingerprint="},
+      {"-ripemd160", "RIPEMD160 Fingerprint="},
+  };
+  for (const auto &test : digest_cases) {
+    SCOPED_TRACE(test.flag);
+    args_list_t args = {"-in",     in_path, "-noout", "-fingerprint",
+                        test.flag, "-out",  out_path};
+    ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+    EXPECT_EQ(0u, ReadFileToString(out_path).rfind(test.output_prefix, 0));
+  }
 }
 
 // Test signkey
@@ -464,9 +482,9 @@ TEST_F(X509Test, ReqCASucceedsWithValidCSR) {
   ASSERT_TRUE(issued);
 }
 
-// A digest flag (e.g. -sha384) on the -req -CA signing path must be honored in
-// the issued certificate's signature algorithm, and the default (no flag) must
-// remain SHA-256.
+// An explicit digest on the -req -CA signing path must be honored in the
+// issued certificate's signature algorithm. With no flag, signing remains
+// SHA-256.
 TEST_F(X509Test, ReqCADigestSelection) {
   args_list_t args = {"-in",    csr_path,    "-req",    "-CA",  ca_cert_path,
                       "-CAkey", ca_key_path, "-sha384", "-out", out_path};
@@ -481,9 +499,9 @@ TEST_F(X509Test, ReqCADigestSelection) {
               X509_get_signature_nid(issued.get()));
   }
 
-  args_list_t default_args = {"-in",        csr_path, "-req",   "-CA",
-                              ca_cert_path, "-CAkey", ca_key_path,
-                              "-out",       out_path};
+  args_list_t default_args = {"-in",       csr_path,     "-req",
+                              "-CA",       ca_cert_path, "-CAkey",
+                              ca_key_path, "-out",       out_path};
   ASSERT_EQ(kToolExitSuccess, X509Tool(default_args));
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
@@ -494,16 +512,6 @@ TEST_F(X509Test, ReqCADigestSelection) {
     ASSERT_EQ(NID_sha256WithRSAEncryption,
               X509_get_signature_nid(issued.get()));
   }
-}
-
-// A digest outside the exposed SHA set (here -md5) is not a registered x509
-// flag, so the argument parser rejects it as unknown before any digest is
-// selected. This pins that such a flag fails loudly rather than silently
-// falling back to the SHA-256 default.
-TEST_F(X509Test, ReqCADigestRejectsUnsupported) {
-  args_list_t args = {"-in",    csr_path,    "-req",  "-CA",  ca_cert_path,
-                      "-CAkey", ca_key_path, "-md5",  "-out", out_path};
-  ASSERT_EQ(kToolExitFailure, X509Tool(args));
 }
 
 // Same rejection as ReqCARejectsBadSignature, but the bad CSR is DER-encoded
@@ -1195,6 +1203,22 @@ TEST_F(X509ComparisonTest, Subject) {
   tool_output_str = normalize_subject(tool_output_str);
   openssl_output_str = normalize_subject(openssl_output_str);
 
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -fingerprint -sha256"
+TEST_F(X509ComparisonTest, FingerprintDigest) {
+  std::string tool_command =
+      ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(in_path) +
+      " -noout -fingerprint -sha256 > " + ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " x509 -in " + ShellEscape(in_path) +
+                                " -noout -fingerprint -sha256 > " +
+                                ShellEscape(out_path_openssl);
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
