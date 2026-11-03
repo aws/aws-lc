@@ -459,7 +459,7 @@ extern "C" {
 }
 
 func sortNIDs(nids []int, objs *objects, cmp func(a, b object) bool) {
-	sort.Slice(nids, func(i, j int) bool { return cmp(objs.byNID[nids[i]], objs.byNID[nids[j]]) })
+	sort.SliceStable(nids, func(i, j int) bool { return cmp(objs.byNID[nids[i]], objs.byNID[nids[j]]) })
 }
 
 func writeData(path string, objs *objects) error {

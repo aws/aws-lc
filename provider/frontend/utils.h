@@ -28,6 +28,9 @@ int awslc_prov_param_set_utf8_string(const AWSLC_PROV_CTX *ctx,
 int awslc_prov_param_set_utf8_ptr(const AWSLC_PROV_CTX *ctx,
                                   OSSL_PARAM params[], const char *key,
                                   const char *value);
+int awslc_prov_param_set_octet_string(const AWSLC_PROV_CTX *ctx,
+                                      OSSL_PARAM params[], const char *key,
+                                      const void *value, size_t len);
 
 // Read the digest name in |p| into |*out| as its canonical name, from
 // awslc_prov_digest_canonical_name. A NULL |p| succeeds and leaves |*out|; an

@@ -35,12 +35,6 @@ namespace {
 #error "AWSLC_PROVIDER_CONFIG_FILE must be defined by the build"
 #endif
 
-#if defined(AWSLC_FIPS)
-constexpr int kFipsBuild = 1;
-#else
-constexpr int kFipsBuild = 0;
-#endif
-
 constexpr char kMessage[] = "RSA key management";
 
 // How the provider tags AWS-LC's reasons. The backend suite pins the RSA
@@ -50,8 +44,6 @@ constexpr int kAwslcRsaBadRsaParameters = 104;
 constexpr int kAwslcRsaNNotEqualPQ = 132;
 constexpr int kAwslcLibDigest = 29;
 constexpr int kAwslcDigestUnknownHash = 102;
-
-constexpr const char *kRequireDefault = "provider=default";
 
 // Every component name OpenSSL uses for a two-prime key, in export order.
 constexpr const char *kComponents[] = {
@@ -65,17 +57,8 @@ constexpr const char *kPssRestrictions[] = {OSSL_PKEY_PARAM_RSA_DIGEST,
                                             OSSL_PKEY_PARAM_RSA_MGF1_DIGEST,
                                             OSSL_PKEY_PARAM_RSA_PSS_SALTLEN};
 
-struct PkeyDeleter {
-  void operator()(EVP_PKEY *pkey) const { EVP_PKEY_free(pkey); }
-};
-struct PkeyCtxDeleter {
-  void operator()(EVP_PKEY_CTX *ctx) const { EVP_PKEY_CTX_free(ctx); }
-};
 struct KeymgmtDeleter {
   void operator()(EVP_KEYMGMT *keymgmt) const { EVP_KEYMGMT_free(keymgmt); }
-};
-struct ParamsDeleter {
-  void operator()(OSSL_PARAM *params) const { OSSL_PARAM_free(params); }
 };
 struct ParamBldDeleter {
   void operator()(OSSL_PARAM_BLD *bld) const { OSSL_PARAM_BLD_free(bld); }
@@ -83,17 +66,10 @@ struct ParamBldDeleter {
 struct BnDeleter {
   void operator()(BIGNUM *bn) const { BN_free(bn); }
 };
-struct BioDeleter {
-  void operator()(BIO *bio) const { BIO_free(bio); }
-};
 
-using PkeyPtr = std::unique_ptr<EVP_PKEY, PkeyDeleter>;
-using PkeyCtxPtr = std::unique_ptr<EVP_PKEY_CTX, PkeyCtxDeleter>;
 using KeymgmtPtr = std::unique_ptr<EVP_KEYMGMT, KeymgmtDeleter>;
-using ParamsPtr = std::unique_ptr<OSSL_PARAM, ParamsDeleter>;
 using ParamBldPtr = std::unique_ptr<OSSL_PARAM_BLD, ParamBldDeleter>;
 using BnPtr = std::unique_ptr<BIGNUM, BnDeleter>;
-using BioPtr = std::unique_ptr<BIO, BioDeleter>;
 
 // Exported components by name, as hex.
 using Components = std::map<std::string, std::string>;
@@ -123,19 +99,6 @@ Components Exported(const EVP_PKEY *pkey, int selection = EVP_PKEY_KEYPAIR) {
   Components out = ComponentsOf(params);
   OSSL_PARAM_free(params);
   return out;
-}
-
-std::set<std::string> Names(const OSSL_PARAM *params) {
-  std::set<std::string> names;
-  for (const OSSL_PARAM *p = params; p != nullptr && p->key != nullptr; p++) {
-    names.insert(p->key);
-  }
-  return names;
-}
-
-std::string ProviderOf(const EVP_PKEY *pkey) {
-  const OSSL_PROVIDER *provider = EVP_PKEY_get0_provider(pkey);
-  return provider == nullptr ? "<none>" : OSSL_PROVIDER_get0_name(provider);
 }
 
 BnPtr GetBn(const EVP_PKEY *pkey, const char *name) {
@@ -644,8 +607,8 @@ TEST_F(RsaKeymgmtTest, DeclaresPssImportTypes) {
             Names(EVP_PKEY_fromdata_settable(ctx.get(), EVP_PKEY_KEYPAIR)));
 }
 
-// AWS-LC's RSASSA-PSS parser decides which restrictions it can enforce, and it
-// refuses before a key is generated.
+// AWS-LC cannot encode a SHA3 digest in RSASSA-PSS-params, so the restriction
+// is refused when set, before a key is generated.
 TEST_F(RsaKeymgmtTest, RefusesPssRestrictionAwslcCannotEnforce) {
   PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx(), "RSA-PSS", kRequireAwslc));
   ASSERT_TRUE(ctx);
@@ -756,28 +719,6 @@ TEST_F(RsaKeymgmtTest, RefusesRestrictionsOnPlainRsaKey) {
   const std::vector<ErrorRecord> ours = ProviderErrors(DrainErrors());
   ASSERT_EQ(1u, ours.size());
   EXPECT_EQ((unsigned long)AWSLC_PROV_R_INVALID_PARAMETER, ours[0].reason());
-}
-
-// With no awslc RSA signature, a preference for awslc falls through to
-// default's, which signs an awslc RSA-PSS key exported to its RSA-PSS keymgmt.
-TEST_F(RsaKeymgmtTest, DefaultSignsAwslcRsaPssKey) {
-  PkeyPtr rsa = Decode();
-  ASSERT_TRUE(rsa);
-  PkeyPtr theirs = CopyIntoType(rsa.get(), "RSA-PSS", kRequireDefault,
-                                {{OSSL_PKEY_PARAM_RSA_DIGEST, "SHA2-256"},
-                                 {OSSL_PKEY_PARAM_RSA_MGF1_DIGEST, "SHA2-256"}},
-                                32);
-  ASSERT_TRUE(theirs);
-  PkeyPtr ours = CopyIntoType(theirs.get(), "RSA-PSS", kRequireAwslc);
-  ASSERT_TRUE(ours);
-  ASSERT_EQ(kProviderName, ProviderOf(ours.get()));
-
-  std::string signer;
-  const std::vector<unsigned char> sig =
-      Sign(ours.get(), kPreferAwslc, &signer);
-  ASSERT_FALSE(sig.empty());
-  EXPECT_EQ("default", signer);
-  EXPECT_TRUE(Verify(theirs.get(), sig, kRequireDefault));
 }
 
 TEST_F(RsaKeymgmtTest, RefusesUnsupportedGenParams) {
@@ -1296,9 +1237,9 @@ TEST(RsaProviderConfigTest, GeneratesSignsAndInteroperates) {
       OSSL_LIB_CTX_load_config(libctx.get(), AWSLC_PROVIDER_CONFIG_FILE));
 
   // This keygen must stay the first RSA operation on this library context. A
-  // preceding operation over a default-origin key caches a default keymgmt
-  // against the same empty property query, and this NULL-propquery keygen would
-  // then be served by default rather than by the preference below.
+  // preceding operation default serves over a default-origin key, such as an
+  // RSA encryption, caches a default keymgmt against the same empty property
+  // query, and this NULL-propquery keygen would then be served by default.
   PkeyCtxPtr ctx(EVP_PKEY_CTX_new_from_name(libctx.get(), "RSA", nullptr));
   ASSERT_TRUE(ctx);
   ASSERT_GT(EVP_PKEY_keygen_init(ctx.get()), 0);
@@ -1308,9 +1249,12 @@ TEST(RsaProviderConfigTest, GeneratesSignsAndInteroperates) {
   EXPECT_EQ(kProviderName, ProviderOf(key.get()));
 
   MdCtxPtr sign(EVP_MD_CTX_new());
+  EVP_PKEY_CTX *signer = nullptr;
   ASSERT_TRUE(sign);
-  ASSERT_TRUE(EVP_DigestSignInit_ex(sign.get(), nullptr, "SHA2-256",
+  ASSERT_TRUE(EVP_DigestSignInit_ex(sign.get(), &signer, "SHA2-256",
                                     libctx.get(), nullptr, key.get(), nullptr));
+  EXPECT_STREQ(kProviderName,
+               OSSL_PROVIDER_get0_name(EVP_PKEY_CTX_get0_provider(signer)));
   size_t len = 0;
   const unsigned char *message =
       reinterpret_cast<const unsigned char *>(kMessage);

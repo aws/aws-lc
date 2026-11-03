@@ -50,6 +50,15 @@ int awslc_prov_param_set_utf8_ptr(const AWSLC_PROV_CTX *ctx,
          awslc_prov_param_settled(ctx, OSSL_PARAM_set_utf8_ptr(p, value), key);
 }
 
+int awslc_prov_param_set_octet_string(const AWSLC_PROV_CTX *ctx,
+                                      OSSL_PARAM params[], const char *key,
+                                      const void *value, size_t len) {
+  OSSL_PARAM *p = OSSL_PARAM_locate(params, key);
+
+  return p == NULL || awslc_prov_param_settled(
+                          ctx, OSSL_PARAM_set_octet_string(p, value, len), key);
+}
+
 int awslc_prov_param_get_digest(const AWSLC_PROV_CTX *ctx, const OSSL_PARAM *p,
                                 const char **out) {
   const char *name = NULL;
