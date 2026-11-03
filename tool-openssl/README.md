@@ -48,6 +48,8 @@ Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing r
 
 `-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
 
+When signing with `-CA`, the CA serial file (`<CAfile>.srl`) is created and updated automatically, and a random serial is used when it does not yet exist. `-CAcreateserial` is accepted for OpenSSL command-line compatibility but has no additional effect; unlike OpenSSL, signing does not require it (and does not fail) when the serial file is absent.
+
 When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
 
 ### enc
