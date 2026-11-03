@@ -1179,6 +1179,49 @@ TEST(ASN1Test, TimeSetString) {
   EXPECT_FALSE(ASN1_TIME_set_string_X509(nullptr, "19700101000000-0400"));
 }
 
+TEST(ASN1Test, UTCTimeTimezoneOffsetSign) {
+  static const struct {
+    const char *str;
+    // The UTC instant |str| denotes, as a POSIX timestamp.
+    int64_t utc_posix;
+  } kTests[] = {
+      // 2000-01-02 04:04:05+01:00 is 2000-01-02 03:04:05Z.
+      {"000102040405+0100", 946782245},
+      // 2000-01-02 04:04:05-01:00 is 2000-01-02 05:04:05Z.
+      {"000102040405-0100", 946789445},
+      // No offset, for comparison: 2000-01-02 04:04:05Z.
+      {"000102040405Z", 946785845},
+      // An offset that moves the time into the previous year.
+      {"000101000000+0100", 946681200},  // 1999-12-31 23:00:00Z
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.str);
+
+    bssl::UniquePtr<ASN1_UTCTIME> utc_time(
+        ASN1_STRING_type_new(V_ASN1_UTCTIME));
+    ASSERT_TRUE(utc_time);
+    ASSERT_TRUE(ASN1_STRING_set(utc_time.get(), t.str, strlen(t.str)));
+    EXPECT_TRUE(ASN1_UTCTIME_check(utc_time.get()));
+
+    EXPECT_EQ(0, ASN1_UTCTIME_cmp_time_t(utc_time.get(),
+                                         static_cast<time_t>(t.utc_posix)));
+    EXPECT_EQ(1, ASN1_UTCTIME_cmp_time_t(
+                     utc_time.get(), static_cast<time_t>(t.utc_posix - 1)));
+    EXPECT_EQ(-1, ASN1_UTCTIME_cmp_time_t(
+                      utc_time.get(), static_cast<time_t>(t.utc_posix + 1)));
+
+    // |ASN1_TIME_diff| must resolve the offset to the same UTC instant.
+    bssl::UniquePtr<ASN1_UTCTIME> expected(
+        ASN1_UTCTIME_set(nullptr, t.utc_posix));
+    ASSERT_TRUE(expected);
+    int days = 1, secs = 1;
+    ASSERT_TRUE(
+        ASN1_TIME_diff(&days, &secs, utc_time.get(), expected.get()));
+    EXPECT_EQ(0, days);
+    EXPECT_EQ(0, secs);
+  }
+}
+
 TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;
