@@ -23,6 +23,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sub)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub)
         .text
+        .balign 32
 
 #define p %rdi
 #define z %rsi

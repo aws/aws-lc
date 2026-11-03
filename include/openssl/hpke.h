@@ -51,10 +51,8 @@ OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 // for all KEMs currently supported by this library.
 //
 // Note this grew from 32 to 1568 when the ML-KEM KEMs were added. Callers which
-// size buffers by this constant must be rebuilt against this header, as must
-// callers which stack-allocate an |EVP_HPKE_KEY|: that struct grew from 72 bytes
-// to 4808, both because of this constant and because it now caches an expanded
-// ML-KEM decapsulation key. See |EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH|.
+// size buffers by this constant must be rebuilt against this header. Prefer
+// |EVP_HPKE_KEM_public_key_len|, which reports the length for one KEM.
 #define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1568
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
@@ -129,10 +127,16 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);
 // This may be used for more uniform cleanup of |EVP_HPKE_KEY|.
 OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
 
-// EVP_HPKE_KEY_cleanup cleanses the private key material in |key| and returns
-// |key| to the zero state, as if it had been passed to |EVP_HPKE_KEY_zero|.
-// |key| may be NULL. This clears the KEM too, so, as with a zeroed key, |key|
-// must be re-initialized before it is used again.
+// EVP_HPKE_KEY_cleanup cleanses the private key material in |key|, releases the
+// memory it references, and returns |key| to the zero state, as if it had been
+// passed to |EVP_HPKE_KEY_zero|. |key| may be NULL, but otherwise must have been
+// initialized with |EVP_HPKE_KEY_zero| or one of the functions that set up a
+// key. This clears the KEM too, so, as with a zeroed key, |key| must be
+// re-initialized before it is used again.
+//
+// Passing a |key| that was never zeroed or set up reads uninitialized memory
+// and will typically crash, as it does for |EVP_CIPHER_CTX_cleanup|. Earlier
+// releases ignored such a call.
 OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_new returns a newly-allocated |EVP_HPKE_KEY|, or NULL on error.
@@ -150,6 +154,9 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_free(EVP_HPKE_KEY *key);
 // and zero on error. On success, the caller must call |EVP_HPKE_KEY_cleanup| to
 // release |dst|. On failure, calling |EVP_HPKE_KEY_cleanup| is safe, but not
 // necessary.
+//
+// |dst| doesn't need to be initialized. Copying onto a key that already holds
+// key material leaks it unless |EVP_HPKE_KEY_cleanup| is called first.
 OPENSSL_EXPORT int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst,
                                      const EVP_HPKE_KEY *src);
 
@@ -162,12 +169,18 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in);
 // |priv_key| was invalid. On success, the caller must call
 // |EVP_HPKE_KEY_cleanup| to release the key. On failure, calling
 // |EVP_HPKE_KEY_cleanup| is safe, but not necessary.
+//
+// |key| doesn't need to be initialized. Re-initializing a key that already
+// holds key material leaks it unless |EVP_HPKE_KEY_cleanup| is called first.
 OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                                      const uint8_t *priv_key,
                                      size_t priv_key_len);
 
 // EVP_HPKE_KEY_generate sets |key| to a newly-generated key using |kem|. It
 // returns one on success and zero on error.
+//
+// As with |EVP_HPKE_KEY_init|, |key| doesn't need to be initialized, and
+// generating over a key that already holds key material leaks it.
 OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
                                          const EVP_HPKE_KEM *kem);
 
@@ -386,6 +399,19 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 //
 // The following structures are exported so their types are stack-allocatable,
 // but accessing or modifying their fields is forbidden.
+//
+// |EVP_HPKE_KEY| holds its key material out of line, sized for the configured
+// KEM, so that adding a KEM cannot change the structure's size. A caller which
+// stack-allocates one against one release and runs against a later one would
+// otherwise overflow it. It is padded to the size it had before the ML-KEM KEMs
+// were added. v5.9.0 through v5.11.0 shipped a larger, inline layout, so
+// callers built against this header must not run against those libraries.
+//
+// An |EVP_HPKE_KEY| owns the memory its fields point at, so assigning one by
+// value leaves two keys owning the same allocation and the second cleanup
+// double-frees. Duplicate a key with |EVP_HPKE_KEY_copy| or transfer it with
+// |EVP_HPKE_KEY_move|. Earlier releases held the key material inline, where an
+// assignment was a complete copy.
 
 struct evp_hpke_ctx_st {
   const EVP_HPKE_KEM *kem;
@@ -398,21 +424,19 @@ struct evp_hpke_ctx_st {
   int is_sender;
 };
 
-// EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH is the maximum length of a KEM's
-// internal private key representation, where it differs from the serialized
-// form. It is sized for an expanded ML-KEM-1024 decapsulation key.
-#define EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH 3168
-
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
-  uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
-  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  uint8_t *private_key;
+  uint8_t *public_key;
   // expanded_private_key holds the KEM's internal private key representation,
   // for KEMs where it differs from the serialized form. It is derived once when
   // the key is initialized, so that decapsulation does not have to repeat key
   // generation. KEMs which use the serialized private key directly leave it
-  // unused.
-  uint8_t expanded_private_key[EVP_HPKE_MAX_EXPANDED_PRIVATE_KEY_LENGTH];
+  // NULL.
+  uint8_t *expanded_private_key;
+  // reserved holds the space the X25519 private and public keys occupied inline
+  // before the key material moved out of line. Those were 32 bytes each.
+  uint8_t reserved[64 - 3 * sizeof(void *)];
 };
 
 

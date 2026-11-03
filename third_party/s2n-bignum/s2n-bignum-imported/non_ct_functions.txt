@@ -6,3 +6,7 @@ p384/bignum_mod_n384o:
 p384/bignum_mod_n384_alto:
 p384/bignum_mod_p384o:
 p384/bignum_mod_p384_alto:
+secp256k1/bignum_mod_n256k1o:
+secp256k1/bignum_mod_n256k1_alto:
+secp256k1/bignum_mod_p256k1o:
+secp256k1/bignum_mod_p256k1_alto:

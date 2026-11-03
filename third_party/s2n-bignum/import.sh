@@ -55,7 +55,7 @@ echo "Cloned s2n-bignum folder"
 ls -la ${TMP}
 
 echo "Remove source code from s2n-bignum that is not needed..."
-code_not_needed=("benchmarks" "codebuild" "common" "tests" "tools" "x86" "arm/proofs")
+code_not_needed=("benchmarks" "codebuild" "common" "tests" "tools" "x86" "arm/proofs" "riscv")
 for code in "${code_not_needed[@]}"; do
   rm -rf ${TMP}/${code}
 done
@@ -90,6 +90,20 @@ do
    cat "${INTERNAL_HEADER}" >> "${TEMP_FILE}"
    mv "${TEMP_FILE}" "${INTERNAL_HEADER}"
    echo "Added ASM prefix header include to ${INTERNAL_HEADER}"
+done
+
+# Keep the Curve25519 and Ed25519 tables inside the macOS FIPS integrity boundary.
+# AWS-LC hashes __TEXT,__const, not the __DATA,__const used by .const_data.
+echo "Moving x86 and ARM Mach-O constants to __TEXT,__const ..."
+for ASM_FILE in \
+  "${SRC}"/x86_att/curve25519/*.S \
+  "${SRC}"/arm/curve25519/*.S; do
+  if grep -q '^\.const_data$' "${ASM_FILE}"; then
+    TEMP_FILE=$(mktemp)
+    sed 's/^\.const_data$/.section __TEXT,__const/' "${ASM_FILE}" > "${TEMP_FILE}"
+    cat "${TEMP_FILE}" > "${ASM_FILE}"
+    rm -f "${TEMP_FILE}"
+  fi
 done
 
 echo "Generating META.yml file ..."

@@ -3048,16 +3048,25 @@ int SSL_client_hello_isv2(SSL *s) {
   return 0;
 }
 
-int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
-                              size_t *outlen) {
+static bool ssl_client_hello_get_current(SSL *s,
+                                         SSL_CLIENT_HELLO *out_client_hello) {
   GUARD_PTR(s);
   GUARD_PTR(s->s3);
-  SSL_HANDSHAKE* hs = s->s3->hs.get();
+  SSL_HANDSHAKE *hs = s->s3->hs.get();
   GUARD_PTR(hs);
 
+  if (!s->server || hs->state != state12_read_client_hello_after_ech) {
+    return false;
+  }
+
   SSLMessage msg_unused;
+  return hs->GetClientHello(&msg_unused, out_client_hello);
+}
+
+int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen) {
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
 
@@ -3127,14 +3136,8 @@ int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
 }
 
 int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
 
@@ -3166,14 +3169,8 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
 }
 
 unsigned int SSL_client_hello_get0_legacy_version(SSL *s) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
   return client_hello.version;

@@ -242,6 +242,8 @@ set(
   crypto/x509/test/basic_constraints_ca_pathlen_10.pem
   crypto/x509/test/basic_constraints_leaf.pem
   crypto/x509/test/basic_constraints_none.pem
+  crypto/x509/test/blocked_spki_certs.pem
+  crypto/x509/test/blocked_spki_leaf.pem
   crypto/x509/test/csr-mldsa44.pem
   crypto/x509/test/csr-mldsa65.pem
   crypto/x509/test/csr-mldsa87.pem

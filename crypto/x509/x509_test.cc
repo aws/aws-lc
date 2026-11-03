@@ -2956,6 +2956,68 @@ TEST(X509Test, NameConstraints) {
       {GEN_EMAIL, "foo@example.com", "a@b@example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Trailing dot on the domain is ignored, in both the name and the
+      // constraint.
+      {GEN_EMAIL, "foo@example.com.", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com.", "foo@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "foo@example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@evil.example.com.", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Only a single trailing dot is removed. Domains with empty labels, or
+      // that are empty after normalization, are rejected.
+      {GEN_EMAIL, "foo@example.com..", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar..example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar.example.com", "..example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels must begin and end with an alphanumeric.
+      {GEN_EMAIL, "foo@-bar.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar-.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@b-r.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@1.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example-.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels are at most 63 bytes.
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".example.com.",
+       ".example.com", X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@" + std::string(64, 'a') + ".example.com.",
+       ".example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".com",
+       std::string(63, 'a') + ".com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "." + std::string(64, 'a') + ".com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.", "example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", ".", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
@@ -3135,6 +3197,69 @@ TEST(X509Test, NameConstraints) {
           << "\"";
     }
   }
+}
+
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // An intermediate CA whose CN is an organization name with an internal dot
+  // and spaces, and no SAN. The CN fallback is a hostname heuristic and only
+  // applies to the end-entity certificate, so this must not be treated as a
+  // DNS name.
+  static const char kIntermediateCN[] = "ACME Corp. Issuing CA G2";
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", kIntermediateCN, key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf = MakeTestCert(kIntermediateCN, "www.example.com",
+                                            key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The end-entity CN is still checked through the same intermediate.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert(kIntermediateCN, "www.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  bssl::UniquePtr<X509> leaf_space = MakeTestCert(
+      kIntermediateCN, "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(
+      X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+      Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
 }
 
 // Test that wildcard CNs are checked against name constraints when no
@@ -7381,6 +7506,96 @@ TEST(X509Test, NamePrintMissingAttributeName) {
   }
 }
 
+TEST(X509Test, NamePrintLargeOutputOverflow) {
+  // Each value dumps as '#' plus two hex digits per byte. Exercise overflow
+  // when adding each part of the printed name, as well as exact-fit outputs.
+  const struct {
+    int value_lengths[2];
+    int second_set;
+    int indent;
+    unsigned long flags;
+    int expected_len;
+  } kTests[] = {
+      // Two values of |INT_MAX / 2| characters and a comma fit exactly.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE,
+       INT_MAX},
+      // A two-character separator overflows when adding the second value.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_NONE,
+       -1},
+      // The first value reaches |INT_MAX|, so the ',' or '+' overflows.
+      {{INT_MAX / 2, 0}, 0, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      {{INT_MAX / 2, 0}, -1, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      // Initial indentation, the first value, and '\n' reach |INT_MAX|.
+      // Indenting the second line overflows.
+      {{(INT_MAX - 3) / 2, 0},
+       0,
+       1,
+       XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_NONE,
+       -1},
+      // "CN=", the first value, and ',' reach |INT_MAX|. The second "CN"
+      // overflows.
+      {{(INT_MAX - 5) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN", but not its '='.
+      {{(INT_MAX - 7) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN=#", reaching |INT_MAX| exactly.
+      {{(INT_MAX - 9) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       INT_MAX},
+      // The padded first "CN=", value, and ',' reach |INT_MAX|. Alignment
+      // padding for the second field overflows.
+      {{(INT_MAX - 13) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN | XN_FLAG_FN_ALIGN,
+       -1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.value_lengths[0]);
+    SCOPED_TRACE(t.second_set);
+    SCOPED_TRACE(t.flags);
+    // Parsed names are bounded, but a caller-constructed name may print more
+    // than |INT_MAX| characters in total. As in
+    // |ASN1Test.PrintExLargeStringOverflow|, fake each value's length. With a
+    // NULL |BIO| and |ASN1_STRFLGS_DUMP_ALL|, the values are only measured and
+    // never read.
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    for (int i = 0; i < 2; i++) {
+      ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+          name.get(), NID_commonName, V_ASN1_UTF8STRING,
+          reinterpret_cast<const uint8_t *>("x"), 1, /*loc=*/-1,
+          /*set=*/i == 0 ? 0 : t.second_set));
+      ASN1_STRING *val =
+          X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name.get(), i));
+      ASSERT_TRUE(val);
+      val->length = t.value_lengths[i];
+    }
+
+    EXPECT_EQ(t.expected_len,
+              X509_NAME_print_ex(nullptr, name.get(), t.indent,
+                                 t.flags | ASN1_STRFLGS_DUMP_ALL));
+    if (t.expected_len < 0) {
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509, ERR_R_OVERFLOW));
+    }
+  }
+}
+
 // kRareRSAPEM is a certificate with the rare |nid_rsa|.
 static const char kRareRSAPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -10023,4 +10238,61 @@ TEST(X509Test, StoreLookupCRLs) {
 
   // Lookup_crls callback should now be set and match the stored pointer
   EXPECT_EQ(lookup_crls, X509_STORE_get_lookup_crls(store.get()));
+}
+
+// BlockedSPKICerts returns the contents of blocked_spki_certs.pem: a trust
+// anchor followed by one certificate for each entry in |blocked_spkis|.
+static bssl::UniquePtr<STACK_OF(X509)> BlockedSPKICerts() {
+  return CertChainFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_certs.pem").c_str());
+}
+
+// Every blocked key must be rejected, in an otherwise valid chain.
+TEST(X509Test, BlockedSPKI) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  X509 *root = sk_X509_value(certs.get(), 0);
+
+  // The trust anchor is not blocked, so it verifies on its own. Without this
+  // the rejections below could just as well be a problem with the test fixture.
+  EXPECT_EQ(X509_V_OK, Verify(root, {root}, /*intermediates=*/{}, /*crls=*/{}));
+
+  // Test callback is invoked on the blocked list path.
+  auto suppress_revoked = [](X509_STORE_CTX *ctx) {
+    X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REJECTED;
+    });
+  };
+
+  for (size_t i = 1; i < sk_X509_num(certs.get()); i++) {
+    SCOPED_TRACE(i);
+    X509 *cert = sk_X509_value(certs.get(), i);
+    int depth = -1;
+    EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+              Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                     /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+    EXPECT_EQ(0, depth);
+
+    EXPECT_EQ(X509_V_OK, Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                                /*flags=*/0, suppress_revoked));
+  }
+}
+
+// A blocked key must be rejected when it is an issuer rather than the
+// certificate being verified.
+TEST(X509Test, BlockedSPKIAtDepth) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_leaf.pem").c_str()));
+  ASSERT_TRUE(leaf);
+
+  int depth = -1;
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+            Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
+                   {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
+                   /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+  EXPECT_EQ(1, depth);
 }

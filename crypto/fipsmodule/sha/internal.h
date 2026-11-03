@@ -657,6 +657,13 @@ void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]
 OPENSSL_EXPORT void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                  uint8_t *out, size_t len, size_t r, int padded);
 
+#if defined(KECCAK1600_ASM) && defined(OPENSSL_AARCH64)
+// KeccakF1600_hw applies the Keccak-f[1600] permutation to |state| using the
+// scalar assembly from keccak1600-armv8.pl. It is the AArch64 fallback that
+// |KeccakF1600| uses when no s2n-bignum implementation is selected.
+void KeccakF1600_hw(uint64_t state[25]);
+#endif
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif
