@@ -286,6 +286,10 @@ static CONF_VALUE *get_section(const CONF *conf, const char *section) {
 
 const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
                                               const char *section) {
+  if (section == NULL) {
+    // A NULL section is the default section, as in |NCONF_get_string|.
+    section = "default";
+  }
   const CONF_VALUE *section_value = get_section(conf, section);
   if (section_value == NULL) {
     return NULL;
