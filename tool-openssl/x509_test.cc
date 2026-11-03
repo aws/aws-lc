@@ -1219,6 +1219,16 @@ TEST_F(X509ComparisonTest, FingerprintDigest) {
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
                               openssl_output_str);
+
+  // OpenSSL versions differ in whether the explicit digest name is printed as
+  // "sha256" or "SHA256". Normalize case while still comparing the selected
+  // algorithm and every fingerprint byte.
+  std::transform(tool_output_str.begin(), tool_output_str.end(),
+                 tool_output_str.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  std::transform(openssl_output_str.begin(), openssl_output_str.end(),
+                 openssl_output_str.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
