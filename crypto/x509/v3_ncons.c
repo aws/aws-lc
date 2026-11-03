@@ -636,19 +636,30 @@ static int is_valid_rfc822_local_part(const CBS *cbs) {
   return 1;
 }
 
-// Returns 1 if |cbs| contains only characters valid in a DNS domain label
-// per RFC 1034 Sec.3.5 (alphanumeric, hyphen, dot).
+// Returns 1 if |cbs| is a DNS domain name per RFC 1034 Sec.3.5, as relaxed by
+// RFC 1123 Sec.2.1: one or more labels separated by '.', each 1 to 63
+// alphanumerics and hyphens, beginning and ending with an alphanumeric.
 static int is_valid_rfc822_domain(const CBS *cbs) {
-  if (CBS_len(cbs) == 0) {
-    return 0;
-  }
-  for (size_t i = 0; i < CBS_len(cbs); i++) {
-    uint8_t c = CBS_data(cbs)[i];
-    if (!(OPENSSL_isalnum(c) || c == '-' || c == '.')) {
+  const uint8_t *data = CBS_data(cbs);
+  size_t len = CBS_len(cbs);
+  size_t label_len = 0;
+  for (size_t i = 0; i < len; i++) {
+    uint8_t c = data[i];
+    if (c == '.') {
+      // Reject empty labels and labels ending in a hyphen.
+      if (label_len == 0 || data[i - 1] == '-') {
+        return 0;
+      }
+      label_len = 0;
+    } else if (OPENSSL_isalnum(c) || (c == '-' && label_len > 0)) {
+      if (++label_len > 63) {
+        return 0;
+      }
+    } else {
       return 0;
     }
   }
-  return 1;
+  return label_len > 0 && data[len - 1] != '-';
 }
 
 static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
@@ -669,6 +680,14 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
   CBS unused;
   if (CBS_get_until_first(&eml_cbs, &unused, '@')) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // Normalize absolute domain names by removing the trailing dot, if any, so
+  // that "foo@example.com." cannot evade an excluded "example.com". This
+  // matches the normalization in nc_dns() and nc_uri().
+  if (ends_with_byte(&eml_domain, '.')) {
+    uint8_t dot = 0;
+    CBS_get_last_u8(&eml_domain, &dot);
   }
 
   // Reject subject emails with characters outside RFC 5321 atext in the
@@ -694,6 +713,10 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     if (CBS_get_until_first(&base_cbs, &unused, '@')) {
       return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
     }
+    if (ends_with_byte(&base_domain, '.')) {
+      uint8_t dot = 0;
+      CBS_get_last_u8(&base_domain, &dot);
+    }
     if (!is_valid_rfc822_local_part(&base_local) ||
         !is_valid_rfc822_domain(&base_domain)) {
       return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
@@ -715,7 +738,16 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base,
     return X509_V_OK;
   }
 
-  if (!is_valid_rfc822_domain(&base_cbs)) {
+  if (ends_with_byte(&base_cbs, '.')) {
+    uint8_t dot = 0;
+    CBS_get_last_u8(&base_cbs, &dot);
+  }
+  // A leading '.' is not part of the domain. It selects subdomains below.
+  CBS base_domain = base_cbs;
+  if (starts_with(&base_domain, '.')) {
+    CBS_skip(&base_domain, 1);
+  }
+  if (!is_valid_rfc822_domain(&base_domain)) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
