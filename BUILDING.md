@@ -322,6 +322,23 @@ Configure device permissions accordingly, and for containers the corresponding
 device access rules. A root-only `/dev/vmclock0` is not usable by an
 unprivileged process; AWS-LC will try SysGenID instead.
 
+## Effect on Entropy Source Selection
+
+VM UBE detection also selects the default entropy source, in both FIPS and
+non-FIPS builds. If a VM UBE backend initializes, AWS-LC seeds from the
+operating system instead of CPU Jitter. If none initializes, AWS-LC uses CPU
+Jitter.
+
+A backend counts as initialized only if the process can open, map, and validate
+its device. Previously, a SysGenID device that merely existed was enough to
+switch off CPU Jitter. As a result:
+
+- A process that can see `/dev/sysgenid` but cannot open it, and has no usable
+  vmclock, now uses CPU Jitter.
+- A process that can use `/dev/vmclock0` now seeds from the operating system.
+- The entropy source depends on device permissions, so root and unprivileged
+  processes on the same host can use different sources.
+
 ## Testing VM UBE Detection
 
 The device nodes are not generally available in build/test environments, so
