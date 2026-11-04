@@ -781,10 +781,8 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // SSL_MODE_FLUSH_TLS13_TICKETS causes a TLS 1.3 server to write its
 // NewSessionTicket messages to the transport as part of the handshake, rather
 // than deferring them to the server's next |SSL_write|. In protocols where the
-// client speaks first after the handshake, the deferred tickets leave the
-// server with nothing to send, so a client using Nagle's algorithm may stall
-// its first message on the server's delayed ACK. Sending the tickets with the
-// handshake removes that stall.
+// client speaks first after the handshake, this avoids a stall between the
+// client's Nagle's algorithm and the server's delayed ACK.
 //
 // With this mode, |SSL_do_handshake| (and |SSL_accept|) does not return success
 // until the tickets have been written to the BIO. If the write cannot complete
@@ -808,7 +806,10 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // tickets are then sent with the server's first flight), or when no tickets are
 // sent, such as with |SSL_OP_NO_TICKET|, a zero ticket count, or a client that
 // does not offer the psk_dhe_ke key exchange mode.
-#define SSL_MODE_FLUSH_TLS13_TICKETS 0x00000800L
+//
+// This mode is specific to AWS-LC. Its value is taken from the high bits to
+// avoid colliding with future BoringSSL modes.
+#define SSL_MODE_FLUSH_TLS13_TICKETS 0x40000000L
 
 // SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
 // of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask

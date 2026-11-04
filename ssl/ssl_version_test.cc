@@ -1722,6 +1722,7 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsSmallBuffer) {
 
   for (bool fail_write : {false, true}) {
     SCOPED_TRACE(fail_write);
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
     g_last_session = nullptr;
     SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
     SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
