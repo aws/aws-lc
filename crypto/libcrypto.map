@@ -2097,10 +2097,12 @@ AWS_LC_1.0 {
     SHA512_get_state;
     SHAKE128;
     SHAKE128_Absorb_once_x4;
-    SHAKE128_Init_x4;
     SHAKE128_Squeezeblocks_x4;
     SHAKE256;
+    SHAKE256_Absorb_once_x4;
+    SHAKE256_Squeezeblocks_x4;
     SHAKE256_x4;
+    SHAKE_Init_x4;
     SIPHASH_24;
     SMIME_read_PKCS7;
     SMIME_write_PKCS7;
