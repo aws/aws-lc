@@ -642,10 +642,23 @@ void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc) {
 
 static ASN1_OCTET_STRING *PKCS7_get_octet_string(PKCS7 *p7) {
   GUARD_PTR(p7);
-  if (PKCS7_type_is_data(p7)) {
-    return p7->d.data;
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_data:
+      return p7->d.data;
+    case NID_pkcs7_signed:
+    case NID_pkcs7_enveloped:
+    case NID_pkcs7_signedAndEnveloped:
+    case NID_pkcs7_digest:
+    case NID_pkcs7_encrypted:
+      return NULL;
+    default:
+      // Other content types are parsed into |d.other|. As in OpenSSL, content
+      // carried as an OCTET STRING is the content to digest.
+      if (p7->d.other != NULL && p7->d.other->type == V_ASN1_OCTET_STRING) {
+        return p7->d.other->value.octet_string;
+      }
+      return NULL;
   }
-  return NULL;
 }
 
 static int pkcs7_bio_add_digest(BIO **pbio, X509_ALGOR *alg) {
@@ -758,6 +771,12 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     case NID_pkcs7_signed:
       md_sk = p7->d.sign->md_algs;
       content = PKCS7_get_octet_string(p7->d.sign->contents);
+      // Attached content that can't be read would otherwise be digested as
+      // the empty string.
+      if (content == NULL && !PKCS7_is_detached(p7)) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_SIGNED_DATA_TYPE);
+        goto err;
+      }
       break;
     case NID_pkcs7_signedAndEnveloped:
       md_sk = p7->d.signed_and_enveloped->md_algs;
