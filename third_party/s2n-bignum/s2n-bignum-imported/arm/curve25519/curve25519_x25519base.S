@@ -1993,7 +1993,7 @@ S2N_BN_SIZE_DIRECTIVE(curve25519_x25519base)
 .type S2N_BN_SYMBOL(curve25519_x25519base_constant), %object
 .size S2N_BN_SYMBOL(curve25519_x25519base_constant), 48576
 #elif defined(__APPLE__)
-.const_data
+.section __TEXT,__const
 #endif
 
 S2N_BN_SYMBOL(curve25519_x25519base_constant):
