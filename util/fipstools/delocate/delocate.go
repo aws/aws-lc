@@ -215,6 +215,22 @@ type setDirective struct {
 
 // parseSetDirective returns nil for statements other than .set.
 func parseSetDirective(file string, statement *node32) (*setDirective, error) {
+	/* .set pattern
+	 Statement "\t.set\t.LC1,.LC0\n"
+		WS "\t"
+		LabelContainingDirective ".set\t.LC1,.LC0"
+		 LabelContainingDirectiveName ".set"
+		 WS "\t"
+		 SymbolArgs ".LC1,.LC0"
+			SymbolArg ".LC1"	<-- alias
+			 SymbolExpr ".LC1"
+				SymbolAtom ".LC1"
+				 LocalSymbol ".LC1"
+			SymbolArg ".LC0"	<-- target
+			 SymbolExpr ".LC0"
+				SymbolAtom ".LC0"
+				 LocalSymbol ".LC0"
+	*/
 	directive := skipWS(statement.up)
 	if directive == nil || directive.pegRule != ruleLabelContainingDirective {
 		return nil, nil
@@ -234,8 +250,9 @@ func parseSetDirective(file string, statement *node32) (*setDirective, error) {
 		return nil, fmt.Errorf("expected two arguments to .set: %q", file[directive.begin:directive.end])
 	}
 
-	// Match SymbolArg -> SymbolExpr -> SymbolAtom -> symbol with no suffix.
-	// "." also parses as SymbolName but depends on the current section.
+	// The target is a plain symbol only if, as above, its SymbolExpr is a lone
+	// LocalSymbol or SymbolName. "." also parses as SymbolName but depends on
+	// the current section.
 	target := file[args[1].begin:args[1].end]
 	sym := args[1].up.up.up
 	targetIsSymbol := (sym.pegRule == ruleLocalSymbol || sym.pegRule == ruleSymbolName) &&
@@ -248,7 +265,10 @@ func parseSetDirective(file string, statement *node32) (*setDirective, error) {
 	}, nil
 }
 
-// maybeSkipRelroStatement handles relro statements, returning false at section end.
+// maybeSkipRelroStatement consumes a statement in a relro section, returning
+// false at the end of the section. Most statements are skipped, i.e. written
+// out as "# SKIPPED" comments. A .set aliasing a non-relro symbol is instead
+// written out unchanged, since it emits no data and its uses are not rewritten.
 func (d *delocation) maybeSkipRelroStatement(node *node32) (bool, error) {
 
 	if isEndOfRelroSection(d.currentInput.contents, node) {
@@ -256,8 +276,8 @@ func (d *delocation) maybeSkipRelroStatement(node *node32) (bool, error) {
 	}
 
 	// Drop relro aliases, whose uses are rewritten; preserve other symbol aliases.
-	// Expressions are unsafe: "." changes meaning when moved, and offsets into
-	// removed relro entries leave undefined references.
+	// Expressions are not supported: "." changes meaning when moved, and
+	// offsets into removed relro entries leave undefined references.
 	set, err := parseSetDirective(d.currentInput.contents, node)
 	if err != nil {
 		return false, err
@@ -2039,8 +2059,9 @@ func isEndOfRelroSection(file string, lineRootNode *node32) bool {
 			 SymbolExpr "foo_init"
 				SymbolAtom "foo_init"
 				 SymbolName "foo_init"
-	GCC 16 may also emit .set aliases between relro entries.
 	*/
+	// GCC 16 may also emit .set aliases (see parseSetDirective) between relro
+	// entries, which share this rule chain.
 	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
 		directiveName := file[node.begin:node.end]
 		return directiveName == ".quad" || directiveName == ".set"
@@ -2137,13 +2158,23 @@ func findLocalLabelsForRelro(file string, node *node32, relroLocalLabelToFuncMap
 			// search for the function symbol. First advance to next statement/line.
 			currentLineRootNode = currentLineRootNode.next
 
-			// We might need to skip a newline
-			if isNewLine(file, currentLineRootNode) {
-				currentLineRootNode = currentLineRootNode.next
+			// Skip newlines and .set aliases, which share the rule chain matched
+			// below. Aliases are collected by relroLocalLabelToFuncMapping.
+			for ; currentLineRootNode != nil; currentLineRootNode = currentLineRootNode.next {
+				if isNewLine(file, currentLineRootNode) {
+					continue
+				}
+				set, err := parseSetDirective(file, currentLineRootNode)
+				if err != nil {
+					return err
+				}
+				if set == nil {
+					break
+				}
 			}
 
 			// The function name should be an argument to a directive
-			if !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
+			if currentLineRootNode == nil || !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
 				functionSymbolName := file[node.begin:node.end]
 				if err := isProbablyAValidSymbol(functionSymbolName); err != nil {
 					panic(err)
@@ -2194,8 +2225,9 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 	// section then we extract all local symbol <-> function symbol mappings and
 	// save them in relroLocalLabelToFuncMap.
 	//
-	// Defer alias resolution to allow forward references.
-	setAliases := make(map[string]string)
+	// Defer alias resolution to allow forward references. Keep every target,
+	// since a redefined alias has a different value before and after each .set.
+	setTargets := make(map[string][]string)
 	currentLineRootNode := input.ast.up
 	for ; currentLineRootNode != nil; currentLineRootNode = currentLineRootNode.next {
 		if matchPatternOneLine(currentLineRootNode, matchRelRoCb,
@@ -2212,11 +2244,15 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 			return locateError(err, currentLineRootNode, input)
 		}
 		if set != nil {
-			setAliases[set.alias] = set.target
+			setTargets[set.alias] = append(setTargets[set.alias], set.target)
 		}
 	}
 
 	// Resolve alias chains to known relro entries.
+	setAliases := make(map[string]string, len(setTargets))
+	for alias, targets := range setTargets {
+		setAliases[alias] = targets[len(targets)-1]
+	}
 	for progress := true; progress; {
 		progress = false
 		for alias, target := range setAliases {
@@ -2224,6 +2260,20 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 				relroLocalLabelToFuncMap[alias] = funcName
 				delete(setAliases, alias)
 				progress = true
+			}
+		}
+	}
+
+	// All uses of a relro alias are rewritten to a single entry, which is wrong
+	// if the alias is redefined. Other redefinitions, e.g. counters in .rep
+	// loops, are left alone.
+	for alias, targets := range setTargets {
+		if len(targets) < 2 {
+			continue
+		}
+		for _, target := range targets {
+			if _, isRelro := relroLocalLabelToFuncMap[target]; isRelro {
+				return fmt.Errorf("redefinition of .set alias %q of relro entry %q is not supported", alias, target)
 			}
 		}
 	}

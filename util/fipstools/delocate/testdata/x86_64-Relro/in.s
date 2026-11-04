@@ -22,6 +22,8 @@ foofoo:
 	movq .LC05(%rip), %xmm5
 	movq .LC06(%rip), %xmm6
 	movdqa .LC07(%rip), %xmm7
+	movq .LC08(%rip), %xmm8
+	movq .LC09(%rip), %xmm9
 
 	# GCC 16 may emit relro and .rodata aliases in the same relro section.
 	.section .data.rel.ro.local,"aw"
@@ -35,6 +37,9 @@ foofoo:
 .LC02:
 	.quad foofoo
 	.set	.LC04,.LC02
+.LC08:
+	.set .LC09,.L00
+	.quad foofoo
 
 	# Should be left alone.
 	.section  .init_array,"aw"
