@@ -571,7 +571,7 @@ static void rand_bytes_core(
     if (attempt >= kRandMaxGenerateAttempts) {
       abort();
     }
-    rand_check_ctr_drbg_uniqueness(state);
+    rand_check_ctr_drbg_uniqueness(state, 0);
     must_reseed_before_generate = 1;
     out = out_start;
     out_len = out_len_start;
