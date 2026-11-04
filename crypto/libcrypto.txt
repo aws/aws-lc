@@ -3049,8 +3049,10 @@ set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING AWS_LC_1.0 PRIVATE
 set_vm_ube_generation_number_FOR_TESTING AWS_LC_1.0 PRIVATE
 sk_pop_free AWS_LC_1.0 PUBLIC
 tree_jitter_free_thread_drbg AWS_LC_1.0 PRIVATE
+tree_jitter_get_root_seed_FOR_TESTING AWS_LC_1.0 PRIVATE
 tree_jitter_get_seed AWS_LC_1.0 PRIVATE
 tree_jitter_initialize AWS_LC_1.0 PRIVATE
+tree_jitter_set_hooks_FOR_TESTING AWS_LC_1.0 PRIVATE
 tree_jitter_zeroize_thread_drbg AWS_LC_1.0 PRIVATE
 validate_cidr_mask AWS_LC_1.0 PRIVATE
 vm_ube_fallback_get_seed AWS_LC_1.0 PRIVATE

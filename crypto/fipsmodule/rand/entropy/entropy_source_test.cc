@@ -10,6 +10,10 @@
 #include "internal.h"
 #include "../../../ube/vm_ube_detect.h"
 
+#if !defined(DISABLE_CPU_JITTER_ENTROPY)
+#include "../../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
+#endif
+
 #define MAX_MULTIPLE_FROM_RNG 16
 
 // We can't easily induce a controllable hardware rng failure, which means the
@@ -193,30 +197,86 @@ TEST(EntropySourceHw, x86_64) {
 }
 
 TEST(EntropySources, Configuration) {
-  uint8_t buf[1];
-  ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
-
-// VM UBE detection is only defined for Linux. So, only strongly assert on
-// that kernel.
-#if defined(AWSLC_VM_UBE_TESTING) && defined(OPENSSL_LINUX)
-  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
-
-// If entropy build configuration choose to explicitly opt-out of CPU Jitter
-// Entropy
-#elif defined(DISABLE_CPU_JITTER_ENTROPY)
-  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
-
+  // VM UBE and explicit opt-out take precedence over either tree policy.
+#if (defined(AWSLC_VM_UBE_TESTING) && defined(OPENSSL_LINUX)) || \
+    defined(DISABLE_CPU_JITTER_ENTROPY)
+  const int expected_entropy_source_id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
 #else
+#if defined(BORINGSSL_FIPS)
   int expected_entropy_source_id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
+#else
+  int expected_entropy_source_id = TREE_DRBG_JITTER_WITH_OS_FALLBACK_ENTROPY_SOURCE;
+#endif
   if (CRYPTO_get_vm_ube_supported()) {
     expected_entropy_source_id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
   }
-
-  EXPECT_EQ(expected_entropy_source_id, get_entropy_source_method_id_FOR_TESTING());
-
-  // For FIPS build we can strongly assert.
-  if (FIPS_mode() == 1 && CRYPTO_get_vm_ube_supported() != 1) {
-    EXPECT_NE(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
-  }
 #endif
+
+  const int selected_id = get_entropy_source_method_id_FOR_TESTING();
+  EXPECT_EQ(expected_entropy_source_id, selected_id);
+  uint8_t buf[1];
+  ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
+  EXPECT_EQ(selected_id, get_entropy_source_method_id_FOR_TESTING());
+
+  if (selected_id == OPT_OUT_CPU_JITTER_ENTROPY_SOURCE) {
+    EXPECT_EQ(0, FIPS_is_entropy_cpu_jitter());
+  } else if (FIPS_mode() == 1) {
+    EXPECT_EQ(1, FIPS_is_entropy_cpu_jitter());
+  }
 }
+
+#if !defined(DISABLE_CPU_JITTER_ENTROPY)
+
+// The following tests set health test state directly on a real Jitter Entropy
+// instance, so they depend on the vendored library's internals. Mocked failure
+// injection is in tree_drbg_jitter_entropy_isolated_test.cc.
+
+TEST(EntropySourceTreeJitter, RootSeedIntermittentHealthFailure) {
+  struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+  ASSERT_TRUE(jitter_ec);
+  const unsigned int osr = jitter_ec->osr;
+
+  // Inject an intermittent APT failure at the end of its window. The safe
+  // reader carries the APT count over, so a mid-window injection could reach
+  // the permanent cutoff on a coarse timer and make the test host-dependent.
+  jitter_ec->apt_base_set = 1;
+  jitter_ec->apt_count = 0;
+  jitter_ec->apt_observations = JENT_APT_WINDOW_SIZE - 1;
+  jitter_ec->health_failure = JENT_APT_FAILURE;
+
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+  tree_jitter_get_root_seed_FOR_TESTING(&jitter_ec, seed);
+#if defined(BORINGSSL_FIPS)
+  // FIPS builds retry with a new instance at the same oversampling rate.
+  ASSERT_TRUE(jitter_ec);
+  EXPECT_EQ(osr, jitter_ec->osr);
+#else
+  // Non-FIPS builds retry at a higher rate. On a coarse timer the retry can
+  // need several rates, or fall back to OS entropy.
+  if (jitter_ec == nullptr) {
+    GTEST_SKIP() << "Jitter Entropy fell back to OS entropy on this host";
+  }
+  EXPECT_GT(jitter_ec->osr, osr);
+#endif
+  EXPECT_EQ(0u, jitter_ec->health_failure);
+
+  jent_entropy_collector_free(jitter_ec);
+}
+
+#if !defined(BORINGSSL_FIPS)
+TEST(EntropySourceTreeJitter, RootSeedPermanentHealthFailure) {
+  struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+  ASSERT_TRUE(jitter_ec);
+  jitter_ec->health_failure = JENT_APT_FAILURE_PERMANENT;
+
+  // The safe reader reports a permanent failure without freeing the collector,
+  // so the root seed source must discard it and use OS entropy instead.
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN] = {0};
+  const uint8_t zeros[CTR_DRBG_ENTROPY_LEN] = {0};
+  tree_jitter_get_root_seed_FOR_TESTING(&jitter_ec, seed);
+  EXPECT_EQ(nullptr, jitter_ec);
+  EXPECT_NE(0, memcmp(seed, zeros, sizeof(seed)));
+}
+#endif
+
+#endif // !defined(DISABLE_CPU_JITTER_ENTROPY)

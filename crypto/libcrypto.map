@@ -3056,8 +3056,10 @@ AWS_LC_1.0 {
     set_vm_ube_generation_number_FOR_TESTING;
     sk_pop_free;
     tree_jitter_free_thread_drbg;
+    tree_jitter_get_root_seed_FOR_TESTING;
     tree_jitter_get_seed;
     tree_jitter_initialize;
+    tree_jitter_set_hooks_FOR_TESTING;
     tree_jitter_zeroize_thread_drbg;
     validate_cidr_mask;
     vm_ube_fallback_get_seed;

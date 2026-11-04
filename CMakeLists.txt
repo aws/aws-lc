@@ -340,10 +340,10 @@ if(DISABLE_CPU_JITTER_ENTROPY)
   add_definitions(-DDISABLE_CPU_JITTER_ENTROPY)
   message(STATUS "Entropy source configuration: CPU Jitter opt-out")
   message(STATUS "Entropy source configured: Dynamic (default: Operating system)")
+elseif(FIPS)
+  message(STATUS "Entropy source configured: Required CPU Jitter (OS-seeded in VM UBE environments)")
 else()
-  # The validated entropy source will always be configured to be CPU Jitter
-  # Entropy by default; because it's the root of the Tree DRBG.
-  message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
+  message(STATUS "Entropy source configured: Jitter with OS fallback (OS-seeded in VM UBE environments)")
 endif()
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
