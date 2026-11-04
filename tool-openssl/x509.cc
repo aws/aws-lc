@@ -163,8 +163,14 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
   // If a CA certificate is provided, replace its filename extension with .srl
   // to obtain the associated serial-file path.
   if (!ca_file_path.empty()) {
-    size_t pos = ca_file_path.find_last_of('.');
-    serial_file_path = ca_file_path.substr(0, pos) + ".srl";
+    const size_t separator_pos = ca_file_path.find_last_of("/\\");
+    const size_t extension_pos = ca_file_path.find_last_of('.');
+    if (extension_pos == std::string::npos ||
+        (separator_pos != std::string::npos && extension_pos < separator_pos)) {
+      serial_file_path = ca_file_path + ".srl";
+    } else {
+      serial_file_path = ca_file_path.substr(0, extension_pos) + ".srl";
+    }
     file.reset(fopen(serial_file_path.c_str(), "r"));  // Check if file exists
   }
 

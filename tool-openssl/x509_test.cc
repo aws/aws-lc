@@ -11,9 +11,20 @@
 #include <functional>
 #include <limits>
 #include <sstream>
+#if !defined(OPENSSL_WINDOWS)
+#include <unistd.h>
+#endif
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
+
+static bool CopyFileContents(const char *input_path,
+                             const std::string &output_path) {
+  const std::string contents = ReadFileToString(input_path);
+  ScopedFILE output(fopen(output_path.c_str(), "wb"));
+  return output && fwrite(contents.data(), 1, contents.size(), output.get()) ==
+                       contents.size();
+}
 
 class X509Test : public ::testing::Test {
  protected:
@@ -488,6 +499,28 @@ TEST_F(X509Test, ReqCACreateSerial) {
   RemoveFile(serial_path.c_str());
 }
 
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(X509Test, SerialPathIgnoresDotsInParentDirectory) {
+  char temp_dir[PATH_MAX];
+  ASSERT_GT(createTempDirPath(temp_dir), 0u);
+  const std::string dotted_dir = std::string(temp_dir) + ".dir";
+  ASSERT_EQ(0, rename(temp_dir, dotted_dir.c_str()));
+
+  const std::string ca_path = dotted_dir + "/ca";
+  const std::string serial_path = ca_path + ".srl";
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, ca_path));
+
+  args_list_t args = {"-in",    csr_path,    "-req", "-CA",   ca_path,
+                      "-CAkey", ca_key_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+  EXPECT_FALSE(ReadFileToString(serial_path.c_str()).empty());
+
+  RemoveFile(ca_path.c_str());
+  RemoveFile(serial_path.c_str());
+  EXPECT_EQ(0, rmdir(dotted_dir.c_str()));
+}
+#endif
+
 // Same rejection as ReqCARejectsBadSignature, but the bad CSR is DER-encoded
 // and read via -inform DER. This exercises the proof-of-possession check on the
 // DER read path (d2i_X509_REQ_fp), which the PEM cases do not cover.
@@ -945,14 +978,6 @@ TEST_F(X509OptionUsageErrorsTest, InvalidPassin) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-
-static bool CopyFileContents(const char *input_path,
-                             const std::string &output_path) {
-  const std::string contents = ReadFileToString(input_path);
-  ScopedFILE output(fopen(output_path.c_str(), "wb"));
-  return output && fwrite(contents.data(), 1, contents.size(), output.get()) ==
-                       contents.size();
-}
 
 static std::string SerialFilePath(const std::string &ca_path) {
   return ca_path.substr(0, ca_path.find_last_of('.')) + ".srl";
