@@ -12552,10 +12552,7 @@ func addSessionTicketTests() {
 		},
 		resumeSession: true,
 		earlyData:     true,
-		flags: []string{
-			"-flush-tls13-tickets",
-			"-enable-early-data",
-		},
+		flags:         []string{"-flush-tls13-tickets"},
 	})
 
 	testCases = append(testCases, testCase{
