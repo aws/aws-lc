@@ -97,7 +97,9 @@ func TestDelocate(t *testing.T) {
 	}
 }
 
-// Relro .set targets must be plain symbols.
+// TestRelroSet covers relro .set directives that must be rejected, which the
+// golden files in TestDelocate cannot express. Targets must be plain symbols,
+// and aliases of relro entries must not be redefined.
 func TestRelroSet(t *testing.T) {
 	tests := []struct {
 		set string
@@ -111,6 +113,8 @@ func TestRelroSet(t *testing.T) {
 		{".set .LC1,.", false},
 		{".set .LC1,1f", false},
 		{".set .LC1", false},
+		{".set .LC1,foo\n\t.set .LC1,.L0", false},
+		{".set .LC1,.L0\n\t.set .LC1,foo", false},
 	}
 	for _, test := range tests {
 		contents := "\t.text\nfoo:\n\tmovq .L0(%rip), %xmm0\n\tret\n" +

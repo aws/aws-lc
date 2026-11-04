@@ -99,6 +99,20 @@ foofoo:
 	popq %rax
 	leaq 128(%rsp), %rsp
 	movdqa .LC07(%rip), %xmm7
+# WAS movq .LC08(%rip), %xmm8
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoofoo_local_target(%rip), %rax
+	movq	%rax, %xmm8
+	popq %rax
+	leaq 128(%rsp), %rsp
+# WAS movq .LC09(%rip), %xmm9
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoo_local_target(%rip), %rax
+	movq	%rax, %xmm9
+	popq %rax
+	leaq 128(%rsp), %rsp
 
 	# GCC 16 may emit relro and .rodata aliases in the same relro section.
 # SKIPPED 	.section .data.rel.ro.local,"aw"
@@ -121,6 +135,12 @@ foofoo:
 # SKIPPED 	.quad foofoo
 
 # SKIPPED 	.set	.LC04,.LC02
+
+# SKIPPED .LC08:
+# SKIPPED newline
+# SKIPPED 	.set .LC09,.L00
+
+# SKIPPED 	.quad foofoo
 
 # SKIPPED newline
 	# Should be left alone.
