@@ -510,4 +510,8 @@ TEST(StackTest, NullIsEmpty) {
   // BoringSSL's function takes 3 arguments in this case
   // and returns False.
   EXPECT_EQ(-1, sk_TEST_INT_find(nullptr, value.get()));
+
+  // Pushing onto a NULL stack, such as one whose allocation failed, fails
+  // and leaves the element with the caller.
+  EXPECT_EQ(0u, sk_TEST_INT_push(nullptr, value.get()));
 }
