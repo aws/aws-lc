@@ -43,6 +43,9 @@ static const argument_t kArguments[] = {
     {"-CAkey", kOptionalArgument,
      "The corresponding CA key. If not specified, the private key is assumed "
      "to be in the CA file"},
+    {"-CAcreateserial", kBooleanArgument,
+     "Accepted for OpenSSL compatibility; the CA serial file (<CAfile>.srl) is "
+     "created and updated automatically when signing with -CA"},
     // Certificate printing
     {"-noout", kBooleanArgument,
      "Prevents output of the encoded version of the certificate"},
@@ -1117,7 +1120,7 @@ int X509Tool(const args_list_t &args) {
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
           arg_name == "-CAkey" || arg_name == "-nameopt" ||
           arg_name == "-addtrust" || arg_name == "-trustout" ||
-          arg_name == digest_name) {
+          arg_name == "-CAcreateserial" || arg_name == digest_name) {
         continue;
       }
 

@@ -1,0 +1,25 @@
+diff --git a/vio/viosslfactories.cc b/vio/viosslfactories.cc
+index 7b16cab..03849dc 100644
+--- a/vio/viosslfactories.cc
++++ b/vio/viosslfactories.cc
+@@ -109,11 +109,20 @@ const char *sslGetErrString(enum enum_ssl_init_error e) {
+   return ssl_error_string[e];
+ }
+ 
++#if defined(OPENSSL_IS_AWSLC)
++// AWS-LC does not support SHA-224 signature algorithms (ECDSA+SHA224,
++// RSA+SHA224) or RSA-PSS with PSS keys (rsa_pss_pss_*).
++#define TLS_SIGALGS_COMMON_LIST                                         \
++  "ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:rsa_pss_rsae_sha256:rsa_pss_" \
++  "rsae_sha384:rsa_pss_rsae_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512"
++#define TLS_SIGALGS_NON_FIPS_EXTRA ":ed25519"
++#else
+ #define TLS_SIGALGS_COMMON_LIST                                         \
+   "ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:rsa_pss_pss_sha256:rsa_"      \
+   "pss_pss_sha384:rsa_pss_pss_sha512:rsa_pss_rsae_sha256:rsa_pss_rsae_" \
+   "sha384:rsa_pss_rsae_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512"
+ #define TLS_SIGALGS_NON_FIPS_EXTRA ":ed25519:ECDSA+SHA224:RSA+SHA224"
++#endif
+ #define TLS_SIGALGS_PQC_EXTRA "ML-DSA-44:ML-DSA-65:ML-DSA-87:"
+ 
+ static const char tls_sigalgs_fips[] = TLS_SIGALGS_COMMON_LIST;
