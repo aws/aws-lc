@@ -38,6 +38,10 @@
 // Headers set, no final \r\n included
 #define OHS_HTTP_HEADER (9 | OHS_NOREAD)
 
+static int has_crlf(const char *s) {
+  return s != NULL && strpbrk(s, "\r\n") != NULL;
+}
+
 static int check_protocol(char *line) {
   if (strlen(line) >= 4 && strncmp(line, "HTTP", 4) == 0) {
     return 1;
@@ -465,6 +469,14 @@ int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op, const char *path) {
   if (path == NULL) {
     path = "/";
   }
+  if (op == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  if (has_crlf(op) || has_crlf(path)) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_INVALID_HTTP_HEADER);
+    return 0;
+  }
 
   if (BIO_printf(rctx->mem, http_hdr, op, path) <= 0) {
     return 0;
@@ -481,6 +493,10 @@ int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req) {
 int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx, const char *name,
                              const char *value) {
   if (name == NULL) {
+    return 0;
+  }
+  if (has_crlf(name) || has_crlf(value)) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_INVALID_HTTP_HEADER);
     return 0;
   }
   // The following being written conforms to the message-header field

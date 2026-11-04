@@ -50,14 +50,14 @@ static bool ProcessArgument(const std::string &arg_name, X509_CRL *crl) {
   return true;
 }
 
-bool CRLTool(const args_list_t &args) {
+int CRLTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   std::string in;
@@ -70,7 +70,7 @@ bool CRLTool(const args_list_t &args) {
   // Display crl tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   // Read from stdin if no -in path provided
@@ -81,7 +81,7 @@ bool CRLTool(const args_list_t &args) {
     in_file.reset(fopen(in.c_str(), "rb"));
     if (!in_file) {
       fprintf(stderr, "unable to load CRL\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
@@ -89,7 +89,7 @@ bool CRLTool(const args_list_t &args) {
 
   if (crl == NULL) {
     fprintf(stderr, "unable to load CRL\n");
-    return false;
+    return kToolExitFailure;
   }
 
   // Process arguments in the order they were provided
@@ -102,16 +102,16 @@ bool CRLTool(const args_list_t &args) {
     }
 
     if (!ProcessArgument(arg_name, crl.get())) {
-      return false;
+      return kToolExitFailure;
     }
   }
 
   if (!noout) {
     if(!PEM_write_X509_CRL(stdout, crl.get())) {
       fprintf(stderr, "unable to write CRL\n");
-      return false;
+      return kToolExitFailure;
     }
   }
 
-  return true;
+  return kToolExitSuccess;
 }

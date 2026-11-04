@@ -613,7 +613,11 @@ static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, long offset,
         goto end;
       }
       current_pos += content_length;
-      if ((tag == V_ASN1_EOC) && (xclass == 0)) {
+      // A valid end-of-contents marker is exactly the two bytes 00 00: tag
+      // [UNIVERSAL 0], primitive, definite length 0. Only signal EOC when the
+      // element strictly matches that form.
+      if (tag == V_ASN1_EOC && xclass == 0 && content_length == 0 &&
+          header_length == 2) {
         return_value = 2; /* End of sequence */
         goto end;
       }

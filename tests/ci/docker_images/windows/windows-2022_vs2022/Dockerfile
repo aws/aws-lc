@@ -6,8 +6,12 @@
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
 FROM aws-lc/windows-2022:base
 
-ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-win
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
+# SDE pins come from .github/docker_images/dependencies.env, passed through as
+# --build-arg by build_images.ps1. No defaults: a build that does not provide
+# them fails below rather than drifting from the pinned versions.
+ARG SDE_VERSION_TAG
+ARG SDE_MIRROR_URL
+ARG SDE_SHA256
 
 SHELL ["cmd", "/S", "/C"]
 RUN `
@@ -27,9 +31,15 @@ RUN `
     && del /q vs_buildtools.exe
 
 RUN `
-    # Install Windows Intel SDE.
-    curl -SL --output temp.tar.xz %SDE_MIRROR_URL% `
+    # Fail fast if the SDE pins were not passed as build args.
+    (if "%SDE_VERSION_TAG%"=="" exit 1) `
+    && (if "%SDE_SHA256%"=="" exit 1) `
     `
+    # Install Windows Intel SDE.
+    && curl -SL --output temp.tar.xz %SDE_MIRROR_URL% `
+    `
+    # Verify the pinned checksum before extracting.
+    && (certutil -hashfile temp.tar.xz SHA256 | findstr /i /c:"%SDE_SHA256%") `
     && 7z x temp.tar.xz `
     && 7z x temp.tar `
     && ren %SDE_VERSION_TAG% windows-sde `

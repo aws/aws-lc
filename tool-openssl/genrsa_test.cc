@@ -131,7 +131,7 @@ class GenRSATestBase : public ::testing::Test {
     } else {
       args = {std::to_string(key_size)};
     }
-    return genrsaTool(args);
+    return genrsaTool(args) == kToolExitSuccess;
   }
 
   bool HasCrossCompatibilityTools() {
@@ -205,8 +205,9 @@ TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   EXPECT_TRUE(GenerateKey(key_size, out_path_tool))
       << "AWS-LC key generation failed";
 
-  std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
-                           out_path_tool + " -check -noout";
+  std::string verify_cmd = ShellEscape(openssl_executable_path) +
+                           " rsa -in " + ShellEscape(out_path_tool) +
+                           " -check -noout";
   EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification failed";
 }
 
@@ -219,7 +220,7 @@ TEST_P(GenRSACipherParamTest, EncryptedKeyGeneration) {
   args_list_t args{cipher_test.cipher_flag, "-passout",
                    "pass:testpassword",     "-out",
                    out_path_tool,           "2048"};
-  EXPECT_TRUE(genrsaTool(args))
+  EXPECT_EQ(kToolExitSuccess, genrsaTool(args))
       << cipher_test.cipher_name << " encrypted key generation should work";
   EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
       << cipher_test.cipher_name << " encrypted key should be valid";
@@ -237,11 +238,11 @@ TEST_P(GenRSACipherParamTest, OpenSSLCompatibility) {
   args_list_t args{cipher_test.cipher_flag, "-passout",
                    "pass:testpassword",     "-out",
                    out_path_tool,           "2048"};
-  EXPECT_TRUE(genrsaTool(args))
+  EXPECT_EQ(kToolExitSuccess, genrsaTool(args))
       << "AWS-LC " << cipher_test.cipher_name << " key generation failed";
 
-  std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
-                           out_path_tool +
+  std::string verify_cmd = ShellEscape(openssl_executable_path) +
+                           " rsa -in " + ShellEscape(out_path_tool) +
                            " -passin pass:testpassword -check -noout";
   EXPECT_EQ(system(verify_cmd.c_str()), 0)
       << "OpenSSL verification of AWS-LC " << cipher_test.cipher_name
@@ -253,14 +254,15 @@ INSTANTIATE_TEST_SUITE_P(AllCiphers, GenRSACipherParamTest,
 
 TEST_F(GenRSATest, DefaultKeyGeneration) {
   args_list_t args{"-out", out_path_tool};
-  EXPECT_TRUE(genrsaTool(args)) << "Default key generation failed";
+  EXPECT_EQ(kToolExitSuccess, genrsaTool(args))
+      << "Default key generation failed";
   EXPECT_TRUE(ValidateKeyFile(out_path_tool))
       << "Default key file validation failed";
 }
 
 TEST_F(GenRSATest, HelpOption) {
   args_list_t args{"-help"};
-  EXPECT_TRUE(genrsaTool(args)) << "Help command failed";
+  EXPECT_EQ(kToolExitSuccess, genrsaTool(args)) << "Help command failed";
 }
 
 TEST_F(GenRSATest, StdoutOutput) {
@@ -273,7 +275,7 @@ TEST_F(GenRSATest, StdoutOutput) {
 TEST_F(GenRSATest, FileOutput) {
   // Test file output
   args_list_t file_args{"-out", out_path_tool, "2048"};
-  EXPECT_TRUE(genrsaTool(file_args)) << "File output failed";
+  EXPECT_EQ(kToolExitSuccess, genrsaTool(file_args)) << "File output failed";
   EXPECT_TRUE(ValidateKeyFile(out_path_tool))
       << "File output validation failed";
 }
@@ -282,21 +284,22 @@ TEST_F(GenRSATest, ArgumentParsingErrors) {
   // Test incorrect argument order
   {
     args_list_t args{"2048", "-out", out_path_tool};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with incorrect argument order";
   }
 
   // Test invalid key size
   {
     args_list_t args{"-out", out_path_tool, "invalid"};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with invalid key size";
   }
 
   // Test zero key size
   {
     args_list_t args{"-out", out_path_tool, "0"};
-    EXPECT_FALSE(genrsaTool(args)) << "Command should fail with zero key size";
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
+        << "Command should fail with zero key size";
   }
 }
 
@@ -304,7 +307,7 @@ TEST_F(GenRSATest, FileIOErrors) {
   // Test invalid output path
   {
     args_list_t args{"-out", "/nonexistent/directory/key.pem", "2048"};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with invalid output path";
   }
 }
@@ -313,7 +316,8 @@ TEST_F(GenRSATest, ArgumentValidation) {
   // Test help takes precedence
   {
     args_list_t args{"-help", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "Help should work even with other args";
+    EXPECT_EQ(kToolExitSuccess, genrsaTool(args))
+        << "Help should work even with other args";
   }
 }
 
@@ -322,21 +326,21 @@ TEST_F(GenRSATest, CipherMutualExclusionValidation) {
   {
     args_list_t args{"-aes128", "-aes256",     "-passout", "pass:testpassword",
                      "-out",    out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with multiple cipher options";
   }
 
   {
     args_list_t args{"-aes128", "-des3",       "-passout", "pass:testpassword",
                      "-out",    out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with multiple cipher options";
   }
 
   {
     args_list_t args{"-aes192", "-des3",       "-passout", "pass:testpassword",
                      "-out",    out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args))
+    EXPECT_EQ(kToolExitFailure, genrsaTool(args))
         << "Command should fail with multiple cipher options";
   }
 }

@@ -16,6 +16,11 @@
 // visibility. C++ symbols are emitted in an "extern C++" block with glob
 // patterns so the linker matches their demangled C++ names.
 //
+// The -namespace flag rewrites the prefix of every version node, so a registry
+// recording AWS_LC_1.0 can emit, say, MYCORP_1.0 instead. This is for consumers
+// who ship a private libcrypto; the resulting symbol versions do not interoperate
+// with a stock AWS-LC build.
+//
 // Usage:
 //
 //	go run ./util/generate_version_script -in crypto/libcrypto.txt -out crypto/libcrypto.map
@@ -27,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,11 +40,22 @@ import (
 
 var inFile string
 var outFile string
+var namespace string
 
 func init() {
 	flag.StringVar(&inFile, "in", "", "Symbol registry file (one '<symbol> <version> [visibility]' per line)")
 	flag.StringVar(&outFile, "out", "", "Output GNU ld version script (.map)")
+	flag.StringVar(&namespace, "namespace", "", "Rewrite version node prefixes to this namespace (default: keep the registry's)")
 }
+
+// namespacePattern matches a version node namespace. A node name is
+// "<namespace>_<major>.<minor>", so the namespace must be a valid linker
+// identifier.
+var namespacePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// nodeNamePattern splits a node name into namespace and version, e.g.
+// "AWS_LC_1.0" -> ("AWS_LC", "1.0").
+var nodeNamePattern = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)_([0-9]+\.[0-9]+)$`)
 
 // visibility classifies a symbol's linkage and export status. It is the third
 // field of a registry line. Go has no native enum; the idiom is a defined
@@ -75,11 +92,24 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+	if namespace != "" && !namespacePattern.MatchString(namespace) {
+		fmt.Fprintf(os.Stderr, "Error: -namespace must match %s, got: %q\n",
+			namespacePattern, namespace)
+		os.Exit(1)
+	}
 
 	versionSymbols, versions, err := readRegistry(inFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading registry %s: %v\n", inFile, err)
 		os.Exit(1)
+	}
+
+	if namespace != "" {
+		versionSymbols, versions, err = applyNamespace(versionSymbols, versions, namespace)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error applying namespace %q: %v\n", namespace, err)
+			os.Exit(1)
+		}
 	}
 
 	if err := writeVersionScript(outFile, versions, versionSymbols); err != nil {
@@ -91,8 +121,40 @@ func main() {
 	for _, syms := range versionSymbols {
 		total += len(syms)
 	}
-	fmt.Fprintf(os.Stderr, "Generated %s (%d symbols across %d version(s))\n",
-		outFile, total, len(versions))
+	namespaceNote := ""
+	if namespace != "" {
+		namespaceNote = fmt.Sprintf(", namespace %s", namespace)
+	}
+	fmt.Fprintf(os.Stderr, "Generated %s (%d symbols across %d version(s)%s)\n",
+		outFile, total, len(versions), namespaceNote)
+}
+
+// applyNamespace rewrites the namespace of every version node, preserving the
+// oldest-first ordering of versions. Its parameters and results mirror
+// readRegistry's, so the two compose directly in main().
+//
+// _awslc_write_namespaced_version_script() in cmake/GenerateVersionScript.cmake
+// implements the same rename textually, so a build can apply a namespace without
+// a Go toolchain (-DDISABLE_GO=ON). The two must produce identical output;
+// tests/ci/run_symbol_version_test.sh asserts that. Keep them in step.
+func applyNamespace(versionSymbols map[string][]symbolInfo, versions []string, namespace string) (map[string][]symbolInfo, []string, error) {
+	renamedVersions := make([]string, 0, len(versions))
+	renamedSymbols := make(map[string][]symbolInfo, len(versionSymbols))
+	for _, version := range versions {
+		m := nodeNamePattern.FindStringSubmatch(version)
+		if m == nil {
+			return nil, nil, fmt.Errorf("version node %q is not of the form <namespace>_<major>.<minor>", version)
+		}
+		renamed := namespace + "_" + m[2]
+		// Distinct nodes must not collapse onto one another; that would silently
+		// drop a node's symbols.
+		if _, exists := renamedSymbols[renamed]; exists {
+			return nil, nil, fmt.Errorf("version node %q collides with another node after renaming to %q", version, renamed)
+		}
+		renamedVersions = append(renamedVersions, renamed)
+		renamedSymbols[renamed] = versionSymbols[version]
+	}
+	return renamedSymbols, renamedVersions, nil
 }
 
 // readRegistry opens a symbol registry file and parses it.

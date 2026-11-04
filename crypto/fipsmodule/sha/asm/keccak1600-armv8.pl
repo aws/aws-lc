@@ -87,9 +87,17 @@ my @subrhotates = ([  64,  63, 2, 36, 37 ],
                 [ 23, 19, 49, 43,  56 ],
                 [ 46,  62, 3, 8, 50 ]);
 
+# iotas_hw is placed in .rodata, rather than .text, so that it remains readable
+# under execute-only mappings, and is addressed with adrp + add because adr's
+# +/-1MiB range cannot reach another section in general.
+#
+# KeccakF1600_int stops after the 24th round, when the post-incremented pointer
+# into iotas_hw has its low 8 bits clear. The 192-byte table must therefore end
+# on a 256-byte boundary, which the .align 8 (2^8 bytes) and 64 bytes of
+# leading padding below guarantee.
 $code.=<<___;
 #include <openssl/arm_arch.h>
-.text
+.section .rodata
 .align 8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 	.quad	0,0,0,0,0,0,0,0
@@ -129,11 +137,13 @@ my @A = map([ "x$_", "x".($_+1), "x".($_+2), "x".($_+3), "x".($_+4) ],
 my @C = map("x$_", (26,27,28,30));
 
 $code.=<<___;
+.text
 .type	KeccakF1600_int,%function
 .align	5
 KeccakF1600_int:
 	AARCH64_SIGN_LINK_REGISTER
-	adr	$C[2],iotas_hw
+	adrp	$C[2],:pg_hi21:iotas_hw
+	add	$C[2],$C[2],:lo12:iotas_hw
 	stp	$C[2],x30,[sp,#16]		// 32 bytes on top are mine
 	b	.Loop
 .align	4

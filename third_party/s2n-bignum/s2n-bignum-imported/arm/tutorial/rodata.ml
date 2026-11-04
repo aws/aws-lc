@@ -5,6 +5,7 @@
 
 (******************************************************************************
           Verifying a program that reads constant data from .rodata
+                            and calls a function.
 ******************************************************************************)
 
 needs "arm/proofs/base.ml";;
@@ -23,7 +24,7 @@ let rodata_mc,rodata_constants_data = define_assert_relocs_from_elf
     "rodata_mc"
     "arm/tutorial/rodata.o"
 (fun w BL ADR ADRP ADD_rri64 -> [
-(* int f(int) *)
+(* int f(uint64_t) *)
   w 0xaa0003e3;         (* arm_MOV X3 X0 *)
 
   ADRP (mk_var("x_data",`:num`),0,4,10);
@@ -40,7 +41,7 @@ let rodata_mc,rodata_constants_data = define_assert_relocs_from_elf
   w 0x0b000020;         (* arm_ADD W0 W1 W0 *)
   w 0xd65f03c0;         (* arm_RET X30 *)
 
-(* int g(int) *)
+(* int g(uint64_t) *)
   ADRP (mk_var("z_data",`:num`),0,44,10);
   ADD_rri64 (mk_var("z_data",`:num`),0,10,10);
   w 0xb9400141;         (* arm_LDR W1 X10 (Immediate_Offset (word 0)) *)
@@ -57,7 +58,7 @@ let rodata_mc,rodata_constants_data = define_assert_relocs_from_elf
       # rodata_constants_data;;
 
       - : thm list =
-      [|- z_data = [word 30; word 0; word 0; word 0];
+      [|- z_data = [word 1; word 0; word 0; word 0];
        |- y_data = [word 1; word 0; word 0; word 0; ...];
        |- x_data = [word 2; word 0; word 0; word 0; ...];
        |- WHOLE_READONLY_data = [word 2; word 0; word 0; word 0; ...]]
@@ -75,7 +76,7 @@ let rodata_mc,rodata_constants_data = define_assert_relocs_from_elf
 
 let EXEC = ARM_MK_EXEC_RULE rodata_mc;;
 
-(* Two helper tactics (unrelevant to treating the readonly section, just for
+(* Two helper tactics (irrelevant to treating the readonly section, just for
      proving the upcoming properties).
 
    1. INTRO_READ_MEMORY_FROM_BYTES8_TAC t:

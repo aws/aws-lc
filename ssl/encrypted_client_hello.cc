@@ -115,6 +115,15 @@ bool ssl_decode_client_hello_inner(
     SSL *ssl, uint8_t *out_alert, Array<uint8_t> *out_client_hello_inner,
     Span<const uint8_t> encoded_client_hello_inner,
     const SSL_CLIENT_HELLO *client_hello_outer) {
+  if (SSL_is_dtls(ssl)) {
+    // A DTLS ClientHello carries a cookie field, which the serialization below
+    // does not write, and |init_message| frames the result with a DTLS
+    // handshake header. Neither round-trips, so the recovered ClientHelloInner
+    // would not describe the message the checks below validated.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return false;
+  }
+
   SSL_CLIENT_HELLO client_hello_inner;
   CBS cbs = encoded_client_hello_inner;
   if (!ssl_parse_client_hello_with_trailing_data(ssl, &cbs,
@@ -490,6 +499,14 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     return false;
   }
   if (!supported) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
+    return false;
+  }
+
+  // ECH is only defined over DHKEM(X25519, HKDF-SHA256), and the client offers
+  // nothing else, but an |EVP_HPKE_KEY| can hold other KEMs, so check
+  // explicitly rather than relying on the key that happens to be configured.
+  if (ech_config_.kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
     return false;
   }
@@ -900,6 +917,12 @@ int SSL_set1_ech_config_list(SSL *ssl, const uint8_t *ech_config_list,
     return 0;
   }
 
+  if (SSL_is_dtls(ssl)) {
+    // ECH requires TLS 1.3, which has no DTLS counterpart in this library.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return 0;
+  }
+
   auto span = MakeConstSpan(ech_config_list, ech_config_list_len);
   if (!ssl_is_valid_ech_config_list(span)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_CONFIG_LIST);
@@ -1057,6 +1080,12 @@ int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys, uint8_t **out,
 }
 
 int SSL_CTX_set1_ech_keys(SSL_CTX *ctx, SSL_ECH_KEYS *keys) {
+  if (ctx->method->is_dtls) {
+    // ECH requires TLS 1.3, which has no DTLS counterpart in this library.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return 0;
+  }
+
   bool has_retry_config = false;
   for (const auto &config : keys->configs) {
     if (config->is_retry_config()) {

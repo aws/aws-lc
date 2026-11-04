@@ -4,7 +4,7 @@
 name: WASI Build & Test
 on:
   push:
-    branches: ["*"]
+    branches: ["main", "fips-*"]
   pull_request:
     branches: ["*"]
 concurrency:

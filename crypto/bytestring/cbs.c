@@ -853,10 +853,10 @@ static int CBS_parse_rfc5280_time_internal(const CBS *cbs, int is_gentime,
     case 'Z':
       break;  // We correctly have 'Z' on the end as per spec.
     case '+':
-      offset_sign = 1;
+      offset_sign = -1;
       break;  // Should not be allowed per RFC 5280.
     case '-':
-      offset_sign = -1;
+      offset_sign = 1;
       break;  // Should not be allowed per RFC 5280.
     default:
       return 0;  // Reject anything else after the time.

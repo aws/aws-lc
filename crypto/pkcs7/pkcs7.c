@@ -682,6 +682,25 @@ err:
   return 0;
 }
 
+// pkcs7_chain_has_digest returns one if |bio|'s chain already has an MD filter
+// for |nid|. Consumers read the first BIO matching a NID, so duplicates are
+// never read and only cost extra passes over the content.
+static int pkcs7_chain_has_digest(BIO *bio, int nid) {
+  while (bio != NULL) {
+    bio = BIO_find_type(bio, BIO_TYPE_MD);
+    if (bio == NULL) {
+      return 0;
+    }
+    EVP_MD_CTX *mdc = NULL;
+    if (BIO_get_md_ctx(bio, &mdc) && mdc != NULL &&
+        EVP_MD_CTX_type(mdc) == nid) {
+      return 1;
+    }
+    bio = BIO_next(bio);
+  }
+  return 0;
+}
+
 static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
                               int keylen) {
   GUARD_PTR(ri);
@@ -777,8 +796,18 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     goto err;
   }
+  // Skip digests already in the chain so each is hashed once; |md_sk| itself is
+  // left intact so the structure re-encodes unchanged.
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
-    if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
+    X509_ALGOR *alg = sk_X509_ALGOR_value(md_sk, i);
+    if (alg == NULL || alg->algorithm == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
+      goto err;
+    }
+    if (pkcs7_chain_has_digest(out, OBJ_obj2nid(alg->algorithm))) {
+      continue;
+    }
+    if (!pkcs7_bio_add_digest(&out, alg)) {
       goto err;
     }
   }
@@ -1203,10 +1232,14 @@ err:
   return NULL;
 }
 
-static int pkcs7_decrypt_rinfo(unsigned char **ek_out, PKCS7_RECIP_INFO *ri,
-                               EVP_PKEY *pkey) {
+// pkcs7_decrypt_rinfo decrypts |ri|'s encrypted key into |*ek_out| and writes its
+// length to |*ek_len_out|. That length is not necessarily the content encryption
+// key length, so callers must check it.
+static int pkcs7_decrypt_rinfo(unsigned char **ek_out, size_t *ek_len_out,
+                               PKCS7_RECIP_INFO *ri, EVP_PKEY *pkey) {
   GUARD_PTR(ri);
   GUARD_PTR(ek_out);
+  GUARD_PTR(ek_len_out);
   unsigned char *ek = NULL;
   int ret = 0;
 
@@ -1230,10 +1263,12 @@ static int pkcs7_decrypt_rinfo(unsigned char **ek_out, PKCS7_RECIP_INFO *ri,
   if (!ok) {
     OPENSSL_free(ek);
     ek = NULL;
+    len = 0;
   }
 
   ret = 1;
   *ek_out = ek;
+  *ek_len_out = len;
 
 err:
   EVP_PKEY_CTX_free(ctx);
@@ -1265,6 +1300,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   STACK_OF(PKCS7_RECIP_INFO) *rsk = NULL;
   PKCS7_RECIP_INFO *ri = NULL;
   uint8_t *cek = NULL, *dummy_key = NULL;  // cek means "content encryption key"
+  size_t cek_len = 0;
 
   if (p7->d.ptr == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
@@ -1343,7 +1379,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     // |pkcs7_decrypt_rinfo| will only return false on critical failure, not
     // on decryption failure. Decryption check happens below, after we populate
     // |dummy_key| with random bytes.
-    if (!pkcs7_decrypt_rinfo(&cek, ri, pkey)) {
+    if (!pkcs7_decrypt_rinfo(&cek, &cek_len, ri, pkey)) {
       goto err;
     }
   } else {
@@ -1352,10 +1388,11 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     for (size_t ii = 0; ii < sk_PKCS7_RECIP_INFO_num(rsk); ii++) {
       ri = sk_PKCS7_RECIP_INFO_value(rsk, ii);
       uint8_t *tmp_cek;
+      size_t tmp_cek_len;
       // |pkcs7_decrypt_rinfo| will only return false on critical failure, not
       // on decryption failure. Check whether |tmp_cek| is present after the
       // call to determine if decryption succeeded.
-      if (!pkcs7_decrypt_rinfo(&tmp_cek, ri, pkey)) {
+      if (!pkcs7_decrypt_rinfo(&tmp_cek, &tmp_cek_len, ri, pkey)) {
         goto err;
       }
       // OpenSSL sets encryption key to last successfully decrypted key. Copy
@@ -1363,6 +1400,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       if (tmp_cek) {
         OPENSSL_free(cek);
         cek = tmp_cek;
+        cek_len = tmp_cek_len;
       }
     }
   }
@@ -1397,9 +1435,11 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   }
   AWSLC_ABORT_IF_NOT_ONE(RAND_bytes(dummy_key, len));
   // At this point, null |cek| indicates that no content encryption key was
-  // successfully decrypted. We don't want to return early due to MMA. So, swap
-  // in the dummy key and proceed. Content decryption result will be gibberish.
-  if (cek == NULL) {
+  // successfully decrypted. A |cek_len| other than |len| is just as unusable, and
+  // signaling either would be an MMA distinguisher, so swap in the dummy key and
+  // proceed. Content decryption result will be gibberish.
+  if (cek == NULL || cek_len != (size_t)len) {
+    OPENSSL_free(cek);
     cek = dummy_key;
     dummy_key = NULL;
   }

@@ -9,31 +9,31 @@
 
 
 int bio_errno_should_retry(int return_value) {
-  if (return_value != -1) {
-    return 0;
-  }
+  return return_value == -1 && bio_errno_is_retryable(errno);
+}
 
+int bio_errno_is_retryable(int error) {
   return
 #ifdef EWOULDBLOCK
-      errno == EWOULDBLOCK ||
+      error == EWOULDBLOCK ||
 #endif
 #ifdef ENOTCONN
-      errno == ENOTCONN ||
+      error == ENOTCONN ||
 #endif
 #ifdef EINTR
-      errno == EINTR ||
+      error == EINTR ||
 #endif
 #ifdef EAGAIN
-      errno == EAGAIN ||
+      error == EAGAIN ||
 #endif
 #ifdef EPROTO
-      errno == EPROTO ||
+      error == EPROTO ||
 #endif
 #ifdef EINPROGRESS
-      errno == EINPROGRESS ||
+      error == EINPROGRESS ||
 #endif
 #ifdef EALREADY
-      errno == EALREADY ||
+      error == EALREADY ||
 #endif
       0;
 }

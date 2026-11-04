@@ -9,6 +9,11 @@ AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha224_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_256_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_3072_256_sha256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt`.
+AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt`.
+AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt`.
+AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt`.
+AWS-LC MUST test against `testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha224_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha512_test.txt`.

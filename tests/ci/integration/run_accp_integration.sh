@@ -23,7 +23,8 @@ mkdir -p "${SCRATCH_FOLDER}"
 rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
-git clone --depth 1 https://github.com/corretto/amazon-corretto-crypto-provider.git
+git clone --depth 1 https://github.com/corretto/amazon-corretto-crypto-provider.git "${ACCP_SRC}"
+record_repo_commit "${ACCP_SRC}"
 
 build_and_test_accp
 

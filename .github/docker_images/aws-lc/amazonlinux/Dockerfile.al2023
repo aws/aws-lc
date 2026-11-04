@@ -23,6 +23,7 @@ dnf install -y \
     clang \
     cmake \
     compiler-rt \
+    crypto-policies \
     diffutils \
     gcc \
     gcc-c++ \
@@ -133,6 +134,17 @@ ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
 COPY --from=scripts setup-go-compiler.sh /tmp
 RUN <<EOF
 setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+# Install Rust
+ENV RUSTUP_HOME="/.rustup"
+ENV CARGO_HOME="/.cargo"
+ENV PATH="${CARGO_HOME}/bin:$PATH"
+
+COPY --from=scripts setup-rust.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-rust.sh"
 ${setup_script}
 EOF
 

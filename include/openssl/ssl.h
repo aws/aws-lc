@@ -438,7 +438,9 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 #define SSL_ERROR_SYSCALL 5
 
 // SSL_ERROR_ZERO_RETURN indicates the operation failed because the connection
-// was cleanly shut down with a close_notify alert.
+// was cleanly shut down with a close_notify alert, or because
+// |SSL_OP_IGNORE_UNEXPECTED_EOF| is set and the peer closed the transport
+// without sending a close_notify alert.
 #define SSL_ERROR_ZERO_RETURN 6
 
 // SSL_ERROR_WANT_CONNECT indicates the operation failed attempting to connect
@@ -638,8 +640,19 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 
 // SSL_OP_IGNORE_UNEXPECTED_EOF configures a connection to treat an unexpected
 // transport EOF (the peer closing the connection without sending a
-// close_notify alert) as a clean shutdown. When set, |SSL_read| reports
-// |SSL_ERROR_ZERO_RETURN| instead of |SSL_ERROR_SYSCALL|. 
+// close_notify alert) as a clean shutdown. This option only applies after the
+// handshake completes. When set, an unexpected EOF causes |SSL_read| and
+// |SSL_peek| to return zero, with |SSL_get_error| reporting
+// |SSL_ERROR_ZERO_RETURN| and an empty error queue. Otherwise, |SSL_get_error|
+// reports |SSL_ERROR_SSL| with |SSL_R_UNEXPECTED_EOF_WHILE_READING| on the
+// error queue.
+//
+// An unexpected EOF is detected when |BIO_read| on the read BIO returns zero
+// without setting retry flags (see |BIO_should_retry|). |BIO_eof| is not
+// consulted, unlike OpenSSL 3.x. Custom BIOs must therefore signal a transient
+// lack of data with |BIO_set_retry_read|, not a bare zero return. A negative
+// |BIO_read| return without retry flags is reported as |SSL_ERROR_SYSCALL|,
+// as before.
 #define SSL_OP_IGNORE_UNEXPECTED_EOF 0x00000080L
 
 // SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
@@ -1796,6 +1809,12 @@ OPENSSL_EXPORT int SSL_in_accept_init(const SSL *ssl);
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
 // and has no pending handshake. It returns zero otherwise.
+//
+// As in OpenSSL 3.x, this also returns zero if |ssl| is in an unexpected
+// transport EOF error state, even if the handshake had completed. This does not
+// apply to EOFs ignored with |SSL_OP_IGNORE_UNEXPECTED_EOF|. Note this makes it
+// distinct from |!SSL_in_init|, which reports only whether a handshake is in
+// progress.
 OPENSSL_EXPORT int SSL_is_init_finished(const SSL *ssl);
 
 // SSL_in_init returns one if |ssl| has a pending handshake and zero
@@ -4229,6 +4248,9 @@ OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 // valid but none of the ECHConfigs implement supported parameters, it will
 // return success and proceed without ECH.
 //
+// ECH requires TLS 1.3, so this function returns an error if |ssl| is a DTLS
+// connection.
+//
 // If a supported ECHConfig is found, |ssl| will encrypt the true ClientHello
 // parameters. If the server cannot decrypt it, e.g. due to a key mismatch, ECH
 // has a recovery flow. |ssl| will handshake using the cleartext parameters,
@@ -4346,6 +4368,9 @@ OPENSSL_EXPORT int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys,
 // ClientHellos. It returns one on success, and zero on failure. If |keys| does
 // not contain any retry configs, this function will fail. Retry configs are
 // marked as such when they are added to |keys| with |SSL_ECH_KEYS_add|.
+//
+// ECH requires TLS 1.3, so this function fails if |ctx| was created with
+// |DTLS_method|.
 //
 // Once |keys| has been passed to this function, it is immutable. Unlike most
 // |SSL_CTX| configuration functions, this function may be called even if |ctx|
@@ -5328,13 +5353,15 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
 // SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ctx| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
 
 // SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// |ssl| if read ahead has been enabled. 0 is the minimum and |INT_MAX| - 7 is the
+// maximum, larger values are clamped to the maximum.
 // A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
@@ -6451,6 +6478,16 @@ BSSL_NAMESPACE_END
 #define SSL_R_VERSION_TOO_HIGH (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 4)
 #define SSL_R_VERSION_TOO_LOW (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 5)
 
+// The following SSL_F_* function codes are defined for compatibility with
+// callers written against OpenSSL, which pass them as the |function| argument
+// to |ERR_put_error|. AWS-LC does not support function codes and ignores that
+// argument, so these are all defined to zero, as OpenSSL 3.0 does for its
+// legacy SSL_F_* names. SSL_F_SSL3_GET_SERVER_CERTIFICATE was removed in
+// OpenSSL 1.1.0 and is retained here for callers that still reference it.
+#define SSL_F_SSL_CTX_SET_SSL_VERSION 0
+#define SSL_F_SSL3_GET_SERVER_CERTIFICATE 0
+#define SSL_F_TLS_PROCESS_SERVER_CERTIFICATE 0
+
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -6681,6 +6718,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
 #define SSL_R_BAD_HYBRID_KEYSHARE 507
 #define SSL_R_BAD_KEM_CIPHERTEXT 508
+#define SSL_R_UNEXPECTED_EOF_WHILE_READING 509
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

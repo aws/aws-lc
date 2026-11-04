@@ -274,6 +274,11 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
     return 0;
   }
 
+  // A rejected record can leave a partial block buffered here, and replaying it
+  // would write more than |in_len| bytes to |out|. Padding is disabled, so this is
+  // the only state that carries over.
+  tls_ctx->cipher_ctx.buf_len = 0;
+
   // Decrypt to get the plaintext + MAC + padding.
   size_t total = 0;
   int len;

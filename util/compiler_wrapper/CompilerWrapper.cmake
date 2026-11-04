@@ -119,12 +119,23 @@ function(setup_compiler_wrapper)
     message(FATAL_ERROR "Failed to generate compiler wrapper script")
   endif()
 
+  # Launch via an explicit interpreter rather than the shebang or executable bit,
+  # neither of which survives every environment this tree is vendored into.
+  # /bin/sh is no new dependency; Make and Ninja already run recipes through it.
+  if(COMPILER_WRAPPER_BAT AND WRAPPER_SCRIPT STREQUAL "${COMPILER_WRAPPER_BAT}")
+    set(WRAPPER_LAUNCHER "${WRAPPER_SCRIPT}")
+  else()
+    set(WRAPPER_LAUNCHER "/bin/sh" "${WRAPPER_SCRIPT}")
+  endif()
+
   # Store wrapper information in cache for use by other functions
   set(COMPILER_WRAPPER_SCRIPT "${WRAPPER_SCRIPT}" CACHE INTERNAL "Path to generated compiler wrapper script")
+  set(COMPILER_WRAPPER_LAUNCHER "${WRAPPER_LAUNCHER}" CACHE INTERNAL "Command used to launch the compiler wrapper")
   set(COMPILER_WRAPPER_REAL_COMPILER "${REAL_COMPILER}" CACHE INTERNAL "Real compiler being wrapped")
   set(COMPILER_WRAPPER_AVAILABLE TRUE CACHE INTERNAL "Whether compiler wrapper is available")
 
   message(STATUS "Compiler wrapper ready: ${WRAPPER_SCRIPT}")
+  message(STATUS "Compiler wrapper launch command: ${WRAPPER_LAUNCHER}")
 endfunction()
 
 # Apply the compiler wrapper to a specific target
@@ -143,7 +154,7 @@ function(use_compiler_wrapper_for_target target_name)
 
   # Set the compiler launcher to use our wrapper
   set_target_properties(${target_name} PROPERTIES
-        C_COMPILER_LAUNCHER "${COMPILER_WRAPPER_SCRIPT}"
+        C_COMPILER_LAUNCHER "${COMPILER_WRAPPER_LAUNCHER}"
     )
 
   message(STATUS "Applied compiler wrapper to target: ${target_name}")

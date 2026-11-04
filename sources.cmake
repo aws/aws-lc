@@ -118,6 +118,9 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/hpke/hpke_test_vectors_pq.txt
+  crypto/keccak/testvectors/KECCAK256LongMsg.txt
+  crypto/keccak/testvectors/KECCAK256ShortMsg.txt
   crypto/ocsp/test/aws/certs.txt
   crypto/ocsp/test/aws/certs_revoked.txt
   crypto/ocsp/test/aws/certs_unknown.txt
@@ -239,6 +242,8 @@ set(
   crypto/x509/test/basic_constraints_ca_pathlen_10.pem
   crypto/x509/test/basic_constraints_leaf.pem
   crypto/x509/test/basic_constraints_none.pem
+  crypto/x509/test/blocked_spki_certs.pem
+  crypto/x509/test/blocked_spki_leaf.pem
   crypto/x509/test/csr-mldsa44.pem
   crypto/x509/test/csr-mldsa65.pem
   crypto/x509/test/csr-mldsa87.pem
@@ -320,6 +325,11 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP224r1_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP256r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP320r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP384r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_brainpoolP512r1_sha512_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt
   third_party/wycheproof_testvectors/hkdf_sha1_test.txt
   third_party/wycheproof_testvectors/hkdf_sha256_test.txt

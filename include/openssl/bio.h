@@ -378,6 +378,10 @@ OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
 // object is indefinite the full contents of |bio| are read, unless it would be
 // greater than |max_len|, in which case the function fails.
 //
+// |max_len| limits how large an object will be accepted, not how much memory is
+// allocated up front. The buffer grows as |bio| delivers content, so a header
+// claiming more than |bio| has does not allocate the larger amount.
+//
 // If the function fails then some unknown amount of data may have been read
 // from |bio|.
 OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,

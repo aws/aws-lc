@@ -14,18 +14,32 @@
 #define MLDSA44_SIGNATURE_BYTES 2420
 #define MLDSA44_KEYGEN_SEED_BYTES 32
 #define MLDSA44_SIGNATURE_SEED_BYTES 32
+#define MLDSA44_EXTMU_BYTES 64
 
 #define MLDSA65_PUBLIC_KEY_BYTES 1952
 #define MLDSA65_PRIVATE_KEY_BYTES 4032
 #define MLDSA65_SIGNATURE_BYTES 3309
 #define MLDSA65_KEYGEN_SEED_BYTES 32
 #define MLDSA65_SIGNATURE_SEED_BYTES 32
+#define MLDSA65_EXTMU_BYTES 64
 
 #define MLDSA87_PUBLIC_KEY_BYTES 2592
 #define MLDSA87_PRIVATE_KEY_BYTES 4896
 #define MLDSA87_SIGNATURE_BYTES 4627
 #define MLDSA87_KEYGEN_SEED_BYTES 32
 #define MLDSA87_SIGNATURE_SEED_BYTES 32
+#define MLDSA87_EXTMU_BYTES 64
+
+// Return-value convention
+// =======================
+//
+// All functions below return ML_DSA_SUCCESS (1) or ML_DSA_FAILURE (0), per
+// AWS-LC's usual convention (API-CONVENTIONS.md). mldsa-native's MLD_ERR_*
+// codes are not propagated at present.
+//
+// WARNING: this is the inverse of ml_kem.h, which returns 0 on success.
+#define ML_DSA_SUCCESS 1
+#define ML_DSA_FAILURE 0
 
 #if defined(__cplusplus)
 extern "C" {

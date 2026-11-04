@@ -11,6 +11,9 @@
 
 #if !defined(OPENSSL_NO_SOCK)
 
+#include <errno.h>
+// Older glibc versions require <time.h> before <fcntl.h> so struct timespec is
+// complete when <fcntl.h> includes <sys/stat.h>.
 #include <time.h>
 #include <fcntl.h>
 #include <string.h>
@@ -108,17 +111,28 @@ int bio_sock_error_get_and_clear(int sock) {
   socklen_t error_size = sizeof(error);
   // Get and clear the pending socket error. The SO_ERROR option is read-only.
   if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) < 0) {
-    return 1;
+    return -1;
   }
   return error;
 }
 
-int bio_socket_should_retry(int return_value) {
+int bio_socket_error_is_retryable(int error) {
 #if defined(OPENSSL_WINDOWS)
-  return return_value == -1 && (WSAGetLastError() == WSAEWOULDBLOCK);
+  return error == WSAEWOULDBLOCK;
 #else
   // On POSIX platforms, sockets and fds are the same.
-  return bio_errno_should_retry(return_value);
+  return bio_errno_is_retryable(error);
+#endif
+}
+
+int bio_socket_should_retry(int return_value) {
+  if (return_value != -1) {
+    return 0;
+  }
+#if defined(OPENSSL_WINDOWS)
+  return bio_socket_error_is_retryable(WSAGetLastError());
+#else
+  return bio_socket_error_is_retryable(errno);
 #endif
 }
 

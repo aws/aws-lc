@@ -12,7 +12,6 @@
 #include <openssl/pkcs7.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include "../fipsmodule/ec/internal.h"
 
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa);
 static DSA *pkey_get_dsa(EVP_PKEY *key, DSA **dsa);

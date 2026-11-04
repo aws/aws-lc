@@ -166,6 +166,9 @@ int mld_sig_unpack_hints(mld_poly *h, const uint8_t sig[MLDSA_CRYPTO_BYTES],
     invariant(j >= old_hint_count && j <= new_hint_count &&
               new_hint_count <= MLDSA_OMEGA)
     invariant(array_bound(h->coeffs, 0, MLDSA_N, 0, 2))
+    invariant(forall(p, 0, MLDSA_N,
+      (h->coeffs[p] == 1) ==
+      exists(hj, old_hint_count, j, packed_hints[hj] == p)))
     decreases(new_hint_count - j)
   )
   {
@@ -192,6 +195,15 @@ int mld_sig_unpack_hints(mld_poly *h, const uint8_t sig[MLDSA_CRYPTO_BYTES],
       }
     }
   }
+
+  /* On success, h->coeffs[p] is 1 exactly for the hint indices decoded for this
+   * row, i.e. packed_hints[old_hint_count, new_hint_count). Asserted here
+   * rather than posted as a contract to not unnecessarily increase proof
+   * complexity at callers that do not need the functional description. */
+  cassert(forall(
+      p, 0, MLDSA_N,
+      (h->coeffs[p] == 1) ==
+          exists(hj, old_hint_count, new_hint_count, packed_hints[hj] == p)));
 
   return 0;
 }

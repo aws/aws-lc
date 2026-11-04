@@ -16,6 +16,8 @@ static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-binary", kBooleanArgument, "Output in binary form"},
     {"-hex", kBooleanArgument, "Output as hex dump"},
+    {"-r", kBooleanArgument,
+     "Output digest in coreutils format: <hash> *<file>"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
     {"-ripemd160", kExclusiveBooleanArgument, "Supported digest function"},
     {"-sha1", kExclusiveBooleanArgument, "Supported digest function"},
@@ -285,24 +287,17 @@ static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
     return false;
   }
 
-  int result =
-      EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size());
-
-  if (result > 0) {
+  if (EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size()) ==
+      1) {
     if (BIO_printf(out_bio, "Verified OK\n") <= 0) {
       goto end;
     }
-  } else if (result == 0) {
-    if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
-      goto end;
-    }
-  } else {
-    if (BIO_printf(out_bio, "Error verifying data\n") <= 0) {
-      goto end;
-    }
+    return true;
   }
-
-  return true;
+  if (BIO_printf(out_bio, "Verification failure\n") <= 0) {
+    goto end;
+  }
+  return false;
 
 end:
   fprintf(stderr, "Error writing output to %s.\n", in_path.c_str());
@@ -312,9 +307,38 @@ end:
 static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
                         const std::string &sig_name,
                         const std::string &digest_name,
-                        const std::string &in_path, bool out_bin) {
+                        const std::string &in_path, bool out_bin,
+                        bool reverse) {
   if (out_bin) {
     if (BIO_write(out_bio, data.data(), data.size()) <= 0) {
+      goto end;
+    }
+  } else if (reverse) {
+    // coreutils-style output matching `openssl dgst -r`: "<hash> *<file>".
+    // A newline in the filename is escaped as "\n" and the record is prefixed
+    // with a backslash so it stays on one line, matching OpenSSL. Backslashes
+    // are not escaped, consistent with OpenSSL.
+    const std::string raw = in_path.empty() ? "stdin" : in_path;
+    bool escaped_newline = false;
+    std::string name;
+    name.reserve(raw.size());
+    for (char c : raw) {
+      if (c == '\n') {
+        escaped_newline = true;
+        name.append("\\n");
+      } else {
+        name.push_back(c);
+      }
+    }
+    if (escaped_newline && BIO_puts(out_bio, "\\") <= 0) {
+      goto end;
+    }
+    for (size_t i = 0; i < data.size(); i++) {
+      if (BIO_printf(out_bio, "%02x", data[i]) <= 0) {
+        goto end;
+      }
+    }
+    if (BIO_printf(out_bio, " *%s\n", name.c_str()) <= 0) {
       goto end;
     }
   } else {
@@ -372,7 +396,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       signature_file, keyform;
   std::vector<std::string> sigopts;
   Password passin;
-  bool out_bin = false, binary = false, hex = false;
+  bool out_bin = false, binary = false, hex = false, reverse = false;
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
@@ -381,6 +405,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
 
   GetBoolArgument(&binary, "-binary", parsed_args);
   GetBoolArgument(&hex, "-hex", parsed_args);
+  GetBoolArgument(&reverse, "-r", parsed_args);
   GetString(&hmac, "-hmac", "", parsed_args);
   GetString(&passin.get(), "-passin", "", parsed_args);
   GetString(&sign_key_file, "-sign", "", parsed_args);
@@ -470,7 +495,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), mac, "HMAC", EVP_MD_get0_name(digest), in_path,
-                  out_bin);
+                  out_bin, reverse);
     } else if (!verify_key_file.empty()) {
       if (!LoadPublicKey(verify_key_file, pkey)) {
         return false;
@@ -492,7 +517,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), signature, GetSigName(EVP_PKEY_id(pkey.get())),
-                  EVP_MD_get0_name(digest), in_path, out_bin);
+                  EVP_MD_get0_name(digest), in_path, out_bin, reverse);
     } else {
       std::vector<uint8_t> hash(EVP_MAX_MD_SIZE);
 
@@ -501,7 +526,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       WriteOutput(out_bio.get(), hash, "", EVP_MD_get0_name(digest), in_path,
-                  out_bin);
+                  out_bin, reverse);
     }
 
     if (in_files.empty()) {
@@ -512,12 +537,14 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   return true;
 }
 
-bool dgstTool(const args_list_t &args) {
-  return dgstToolInternal(args, nullptr);
+int dgstTool(const args_list_t &args) {
+  return dgstToolInternal(args, nullptr) ? kToolExitSuccess : kToolExitFailure;
 }
-bool md5Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_md5());
+int md5Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_md5()) ? kToolExitSuccess
+                                           : kToolExitFailure;
 }
-bool sha1Tool(const args_list_t &args) {
-  return dgstToolInternal(args, EVP_sha1());
+int sha1Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_sha1()) ? kToolExitSuccess
+                                            : kToolExitFailure;
 }

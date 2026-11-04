@@ -11,11 +11,13 @@ on:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
   pull_request:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
       - .github/workflows/image-build-windows.yml
 concurrency:
@@ -46,6 +48,12 @@ jobs:
       - name: Enable long paths
         run: git config --global core.longpaths true
       - uses: actions/checkout@v7
+      - name: Load dependency pins
+        shell: pwsh
+        run: |
+          Get-Content .github/docker_images/dependencies.env `
+            | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]*=' } `
+            | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -93,6 +101,9 @@ jobs:
           docker build
           -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
           -t ${{ steps.images.outputs.vs2017 }}
+          --build-arg SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_WIN }}
+          --build-arg SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_WIN }}
+          --build-arg SDE_SHA256=${{ env.SDE_SHA256_WIN }}
           --target vs2017
           ./.github/docker_images/aws-lc/windows
       - name: Build Container (vs2019)
@@ -101,6 +112,9 @@ jobs:
           docker build
           -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
           -t ${{ steps.images.outputs.vs2019 }}
+          --build-arg SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_WIN }}
+          --build-arg SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_WIN }}
+          --build-arg SDE_SHA256=${{ env.SDE_SHA256_WIN }}
           --target vs2019
           ./.github/docker_images/aws-lc/windows
       - name: Build Container (vs2022)
@@ -109,6 +123,9 @@ jobs:
           docker build
           -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
           -t ${{ steps.images.outputs.vs2022 }}
+          --build-arg SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_WIN }}
+          --build-arg SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_WIN }}
+          --build-arg SDE_SHA256=${{ env.SDE_SHA256_WIN }}
           --target vs2022
           ./.github/docker_images/aws-lc/windows
       - name: Build Container (sde)
@@ -117,6 +134,9 @@ jobs:
           docker build
           -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
           -t ${{ steps.images.outputs.sde }}
+          --build-arg SDE_VERSION_TAG=${{ env.SDE_VERSION_TAG_WIN }}
+          --build-arg SDE_MIRROR_URL=${{ env.SDE_MIRROR_URL_WIN }}
+          --build-arg SDE_SHA256=${{ env.SDE_SHA256_WIN }}
           --target ltsc2022_sde
           ./.github/docker_images/aws-lc/windows
       - name: Push Container to Staging

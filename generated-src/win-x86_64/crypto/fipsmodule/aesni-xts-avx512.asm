@@ -5314,6 +5314,9 @@ shufb_15_7:
 section	.text
 
 %endif
+%ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+	DB	0
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

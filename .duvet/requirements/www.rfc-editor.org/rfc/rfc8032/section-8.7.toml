@@ -1,0 +1,31 @@
+target = "https://www.rfc-editor.org/rfc/rfc8032#section-8.7"
+
+# Signing Large Amounts of Data at Once
+#
+#    Avoid signing large amounts of data at once (where "large" depends on
+#    the expected verifier).  In particular, unless the underlying
+#    protocol does not require it, the receiver MUST buffer the entire
+#    message (or enough information to reconstruct it, e.g., compressed or
+#    encrypted version) to be verified.
+# 
+#    This is needed because most of the time, it is unsafe to process
+#    unverified data, and verifying the signature makes a pass through the
+#    whole message, causing ultimately at least two passes through.
+# 
+#    As an API consideration, this means that any Initialize Update
+#    Finalize (IFU) verification interface is prone to misuse.
+# 
+#    It is a bad idea to modify Ed25519 or Ed448 signing to be able to
+#    create valid Ed25519/Ed448 signatures using an IUF interface with
+#    only constant buffering.  Pretty much any error in such would cause
+#    catastrophic security failure.
+
+[[spec]]
+level = "MUST"
+quote = '''
+In particular, unless the underlying
+protocol does not require it, the receiver MUST buffer the entire
+message (or enough information to reconstruct it, e.g., compressed or
+encrypted version) to be verified.
+'''
+

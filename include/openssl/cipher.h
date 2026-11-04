@@ -37,6 +37,11 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
+
+// EVP_aes_256_xts returns an AES-256-XTS cipher. XTS does not support
+// streaming: the complete data unit must be supplied in one non-empty
+// |EVP_CipherUpdate| or |EVP_Cipher| call. Before processing another data unit,
+// callers must reinitialize the context with a new key or IV.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
 // EVP_aes_256_wrap implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required
@@ -130,10 +135,16 @@ OPENSSL_EXPORT int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx,
 
 // Cipher operations.
 
-// EVP_EncryptUpdate encrypts |in_len| bytes from |in| to |out|. The number
-// of output bytes may be up to |in_len| plus the block length minus one and
-// |out| must have sufficient space. The number of bytes actually output is
-// written to |*out_len|. It returns one on success and zero otherwise.
+// EVP_EncryptUpdate encrypts |in_len| bytes from |in| to |out|. If |out| is
+// non-NULL and this function succeeds, it writes exactly |*out_len| bytes and
+// leaves bytes at offsets |*out_len| and later unmodified. It returns one on
+// success and zero otherwise.
+//
+// For block ciphers, individual calls may output more or less than |in_len|
+// bytes, but at most |in_len| plus the block size minus one. The |out| buffer
+// must have room for this maximum. A partial block is withheld for a later
+// call, so |*out_len| may be zero. Across all data update and final calls, total
+// output is at most total input plus one block.
 //
 // If |ctx| is an AEAD cipher, e.g. |EVP_aes_128_gcm|, and |out| is NULL, this
 // function instead adds |in_len| bytes from |in| to the AAD and sets |*out_len|
@@ -152,10 +163,17 @@ OPENSSL_EXPORT int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                        int *out_len);
 
-// EVP_DecryptUpdate decrypts |in_len| bytes from |in| to |out|. The number of
-// output bytes may be up to |in_len| plus the block length minus one and |out|
-// must have sufficient space. The number of bytes actually output is written
-// to |*out_len|. It returns one on success and zero otherwise.
+// EVP_DecryptUpdate decrypts |in_len| bytes from |in| to |out|. If |out| is
+// non-NULL and this function succeeds, it writes exactly |*out_len| bytes and
+// leaves bytes at offsets |*out_len| and later unmodified. It returns one on
+// success and zero otherwise.
+//
+// For block ciphers, individual calls may output more or less than |in_len|
+// bytes, but at most |in_len| plus the block size minus one. The |out| buffer
+// must have room for this maximum. With padding enabled (the default), the
+// last block of ciphertext seen so far is withheld until a later call or
+// |EVP_DecryptFinal_ex| releases it, so |*out_len| may be zero. Across all data
+// update and final calls, total output is at most total input.
 //
 // If |ctx| is an AEAD cipher, e.g. |EVP_aes_128_gcm|, and |out| is NULL, this
 // function instead adds |in_len| bytes from |in| to the AAD and sets |*out_len|
@@ -440,6 +458,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
+// EVP_aes_128_ccm, EVP_aes_192_ccm, and EVP_aes_256_ccm return AES-CCM
+// ciphers. AWS-LC defaults to 14-byte authentication tags, unlike OpenSSL's
+// 12-byte default. Callers requiring portable behavior should set the tag
+// length explicitly with |EVP_CTRL_CCM_SET_TAG|.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ccm(void);
@@ -524,6 +546,13 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
 // with AWS-LC.
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
+// EVP_add_cipher returns one if |cipher| is non-NULL and zero otherwise. It
+// exists only for compatibility with OpenSSL, which requires ciphers to be
+// registered before they can be found by name. AWS-LC's cipher lookup
+// functions, such as |EVP_get_cipherbyname|, do not use a registry and support
+// a fixed set of ciphers, so this function has no other effect.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher(const EVP_CIPHER *cipher);
+
 // EVP_add_cipher_alias does nothing and returns one.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
                                                            const char *b);
@@ -565,6 +594,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
 #define EVP_CTRL_GCM_GET_TAG EVP_CTRL_AEAD_GET_TAG
 #define EVP_CTRL_GCM_SET_TAG EVP_CTRL_AEAD_SET_TAG
 #define EVP_CTRL_GCM_SET_IV_FIXED EVP_CTRL_AEAD_SET_IV_FIXED
+#define EVP_CTRL_CCM_SET_IVLEN EVP_CTRL_AEAD_SET_IVLEN
+#define EVP_CTRL_CCM_GET_TAG EVP_CTRL_AEAD_GET_TAG
+#define EVP_CTRL_CCM_SET_TAG EVP_CTRL_AEAD_SET_TAG
 
 #define EVP_MAX_KEY_LENGTH 64
 #define EVP_MAX_IV_LENGTH 16

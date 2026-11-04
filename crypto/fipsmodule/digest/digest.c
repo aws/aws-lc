@@ -211,6 +211,17 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
       }
       ctx->md_data = md_data;
       ctx->update = type->update;
+    } else {
+      // |EVP_MD_CTX_copy_ex| and |EVP_MD_CTX_cleanse| size |ctx->md_data| by
+      // |ctx->digest|, which advances below, so resize the buffer to match.
+      // |ctx->update| stays, as |EVP_PKEY_HMAC| owns it. Zero it; nothing else will.
+      assert(type->ctx_size != 0);
+      uint8_t *md_data = OPENSSL_zalloc(type->ctx_size);
+      if (md_data == NULL) {
+        return 0;
+      }
+      OPENSSL_free(ctx->md_data);
+      ctx->md_data = md_data;
     }
     ctx->digest = type;
   }

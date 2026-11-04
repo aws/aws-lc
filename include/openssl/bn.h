@@ -925,8 +925,8 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, c
                                                 const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
                                                 BN_CTX *ctx);
 
-// BN_set_flags does nothing. See comments regarding |BN_FLG_CONSTTIME| being
-// intentionally omitted for more details.
+// BN_set_flags does nothing. See the comments on |BN_FLG_CONSTTIME| for more
+// details.
 OPENSSL_DEPRECATED OPENSSL_EXPORT void BN_set_flags(BIGNUM *b, int n);
 
 
@@ -974,10 +974,13 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
 
-// |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
-// on it will not compile. External consumers should use the higher-level
-// cryptographic algorithms exposed by other modules. Consumers within the
-// library should call the appropriate timing-sensitive algorithm directly.
+// BN_FLG_CONSTTIME is defined as zero and has no effect. It exists only so that
+// code written against OpenSSL still compiles; the flag cannot be set on a
+// |BIGNUM| and |BN_set_flags| ignores it. External consumers should use the
+// higher-level cryptographic algorithms exposed by other modules. Consumers
+// within the library should call the appropriate timing-sensitive algorithm
+// directly.
+#define BN_FLG_CONSTTIME 0
 
 
 #if defined(__cplusplus)

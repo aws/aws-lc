@@ -47,6 +47,7 @@ function xmlsec_run_tests() {
 }
 
 git clone https://github.com/lsh123/xmlsec.git ${XMLSEC_SRC_FOLDER}
+record_repo_commit "${XMLSEC_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 

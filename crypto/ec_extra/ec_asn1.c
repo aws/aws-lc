@@ -26,11 +26,14 @@ static const CBS_ASN1_TAG kPublicKeyTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 // TODO(https://crbug.com/boringssl/497): Allow parsers to specify a list of
-// acceptable groups, so parsers don't have to pull in all four.
+// acceptable groups, so parsers don't have to pull in all ten.
 typedef const EC_GROUP *(*ec_group_func)(void);
 static const ec_group_func kAllGroups[] = {
-    &EC_group_p224, &EC_group_p256,      &EC_group_p384,
-    &EC_group_p521, &EC_group_secp256k1,
+    &EC_group_p224,             &EC_group_p256,
+    &EC_group_p384,             &EC_group_p521,
+    &EC_group_secp256k1,        &EC_group_brainpoolP224r1,
+    &EC_group_brainpoolP256r1,  &EC_group_brainpoolP320r1,
+    &EC_group_brainpoolP384r1,  &EC_group_brainpoolP512r1,
 };
 
 EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
@@ -471,6 +474,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len) {
   if (inp == NULL || len < 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
     return NULL;
   }
 

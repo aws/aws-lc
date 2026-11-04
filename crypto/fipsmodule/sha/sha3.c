@@ -104,26 +104,28 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 }
 
 /*
- * FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
+ * KeccakSponge APIs manage internal input/output buffer on top of Keccak1600
+ * API layer
  */
-// FIPS202_Reset zero's |ctx| fields.
-static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
+// KeccakSponge_Reset zero's |ctx| fields.
+void KeccakSponge_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
   ctx->state = KECCAK1600_STATE_ABSORB;
 }
 
-// FIPS202_Init checks the correctness of the padding character and size of
+// KeccakSponge_Init checks the correctness of the padding character and size of
 // the internal buffer. It initialises the |ctx| fields and returns 1 on
 // success and 0 on failure.
-static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
-  if (pad != SHA3_PAD_CHAR && 
-      pad != SHAKE_PAD_CHAR) { 
+static int KeccakSponge_Init(KECCAK1600_CTX *ctx, uint8_t pad,
+                             size_t block_size, size_t bit_len) {
+  if (pad != SHA3_PAD_CHAR &&
+      pad != SHAKE_PAD_CHAR) {
     return 0;
   }
-      
+
   if (block_size <= sizeof(ctx->buf)) {
-      FIPS202_Reset(ctx);
+      KeccakSponge_Reset(ctx);
       ctx->block_size = block_size;
       ctx->md_size = bit_len / 8;
       ctx->pad = pad;
@@ -132,11 +134,12 @@ static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, siz
     return 0;
 }
 
-// FIPS202_Update checks the state of the |ctx| and processes intermediate buffer from
-// previous calls. It processes |data| in blocks through |Keccak1600_Absorb| and places
-// the rest in the intermediate buffer. FIPS202_Update fails if called from inappropriate
-// |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
-static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+// KeccakSponge_Absorb checks the state of the |ctx| and processes intermediate
+// buffer from previous calls. It processes |data| in blocks through
+// |Keccak1600_Absorb| and places the rest in the intermediate buffer.
+// KeccakSponge_Absorb fails if called from inappropriate |ctx->state| or on
+// |Keccak1600_Absorb| error. Otherwise, it returns 1.
+int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
@@ -184,11 +187,11 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   return 1;
 }
 
-// FIPS202_Finalize processes padding and absorb of last input block
+// KeccakSponge_AbsorbFinal processes padding and absorb of last input block
 // This function should be called once to finalize absorb and initiate
-// squeeze phase. FIPS202_Finalize fails if called from inappropriate
+// squeeze phase. KeccakSponge_AbsorbFinal fails if called from inappropriate
 // |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
-static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
+int KeccakSponge_AbsorbFinal(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
@@ -215,7 +218,7 @@ static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
 }
 
 /*
- * SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+ * SHA3 APIs implement SHA3 functionalities on top of KeccakSponge API layer
  */
 int SHA3_Init(KECCAK1600_CTX *ctx, size_t bit_len) {
   if (ctx == NULL) {
@@ -229,7 +232,8 @@ int SHA3_Init(KECCAK1600_CTX *ctx, size_t bit_len) {
         return 0;
   }
   // |block_size| depends on the SHA3 |bit_len| output (digest) length
-  return FIPS202_Init(ctx, SHA3_PAD_CHAR, SHA3_BLOCKSIZE(bit_len), bit_len);
+  return KeccakSponge_Init(ctx, SHA3_PAD_CHAR, SHA3_BLOCKSIZE(bit_len),
+                           bit_len);
 }
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
@@ -245,7 +249,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
     return 1;
   }
 
-  return FIPS202_Update(ctx, data, len);
+  return KeccakSponge_Absorb(ctx, data, len);
 }
 
 // SHA3_Final should be called once to process final digest value
@@ -258,7 +262,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     return 1;
   }
 
-  if (FIPS202_Finalize(md, ctx) == 0) {
+  if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
     return 0;
   }
 
@@ -326,7 +330,7 @@ int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
 }
 
 /*
- * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
+ * SHAKE APIs implement SHAKE functionalities on top of KeccakSponge API layer
  */
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
   if (ctx == NULL) {
@@ -339,7 +343,7 @@ int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
   }
   // |block_size| depends on the SHAKE security level
   // The output length |bit_len| is initialized to 0
-  return FIPS202_Init(ctx, SHAKE_PAD_CHAR, block_size, 0);
+  return KeccakSponge_Init(ctx, SHAKE_PAD_CHAR, block_size, 0);
 }
 
 int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
@@ -355,11 +359,11 @@ int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
     return 1;
   }
 
-  return FIPS202_Update(ctx, data, len);
+  return KeccakSponge_Absorb(ctx, data, len);
 }
 
 // SHAKE_Final is to be called once to finalize absorb and squeeze phases
-// |ctx->state| restricts consecutive calls to |FIPS202_Finalize|.
+// |ctx->state| restricts consecutive calls to |KeccakSponge_AbsorbFinal|.
 // Function |SHAKE_Squeeze| should be used for incremental XOF output.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   if (ctx == NULL || md == NULL) {
@@ -371,7 +375,7 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 1;
   }
 
-  if (FIPS202_Finalize(md, ctx) == 0) {
+  if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
     return 0;
   }
 
@@ -400,10 +404,10 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  // Skip FIPS202_Finalize if the input has been padded and
+  // Skip KeccakSponge_AbsorbFinal if the input has been padded and
   // the last block has been processed
   if (ctx->state == KECCAK1600_STATE_ABSORB) {
-    if (FIPS202_Finalize(md, ctx) == 0) {
+    if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
       return 0;
     }
   }

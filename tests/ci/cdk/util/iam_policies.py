@@ -163,6 +163,26 @@ def s3_read_write_policy_in_json(s3_bucket_name):
     }
 
 
+def s3_read_only_policy_in_json(s3_bucket_name):
+    """
+    Define a least-privilege IAM policy statement for reading (download-only) from an S3 bucket.
+    Intended for runners that execute untrusted (e.g. fork PR) code and only need to fetch
+    source artifacts, never upload. Use |s3_read_write_policy_in_json| for the write-capable
+    variant required by trusted image-build stacks.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject"],
+                "Resource": ["arn:aws:s3:::{}/*".format(s3_bucket_name)],
+            }
+        ],
+    }
+
+
 def ecr_repo_arn(repo_name, env):
     """
     Create a ECR repository arn.
@@ -208,6 +228,45 @@ def ecr_power_user_policy_in_json(ecr_repo_names, env):
                     "ecr:UploadLayerPart",
                     "ecr:CompleteLayerUpload",
                     "ecr:PutImage",
+                ],
+                "Resource": ecr_arns,
+            },
+        ],
+    }
+
+
+def ecr_pull_only_policy_in_json(ecr_repo_names, env):
+    """
+    Define a least-privilege IAM policy statement for pulling (read-only) images from ECR.
+    Intended for runners that execute untrusted (e.g. fork PR) code and only need to pull
+    prebuilt images, never push. Use |ecr_power_user_policy_in_json| for the push-capable
+    variant required by trusted image-build stacks.
+
+    Note: |ecr:GetAuthorizationToken| does not support resource-level permissions and must
+    be granted on "*"; it only returns a short-lived registry auth token and does not by
+    itself grant read or write access to any repository.
+    :return: an IAM policy statement in json.
+    """
+    ecr_arns = []
+    for ecr_repo_name in ecr_repo_names:
+        ecr_arns.append(ecr_repo_arn(ecr_repo_name, env))
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["ecr:GetAuthorizationToken"],
+                "Resource": "*",
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeRepositories",
+                    "ecr:DescribeImages",
+                    "ecr:ListImages",
                 ],
                 "Resource": ecr_arns,
             },

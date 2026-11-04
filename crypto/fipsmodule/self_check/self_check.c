@@ -798,6 +798,9 @@ err:
   return ret;
 }
 
+// NOTE: ml_kem.h returns ML_KEM_SUCCESS (0), so the checks below test the call
+// result *without* a leading '!' -- the inverse of the ML-DSA self test. Do not
+// copy a condition between the two without inverting it.
 static OPENSSL_NOINLINE int boringssl_self_test_ml_kem(void) {
   int ret = 0;
 
@@ -1499,6 +1502,9 @@ err:
   return ret;
 }
 
+// NOTE: ml_dsa.h returns ML_DSA_SUCCESS (1), so the checks below test the call
+// result *with* a leading '!' -- the inverse of the ML-KEM self test. Do not
+// copy a condition between the two without inverting it.
 static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   int ret = 0;
 

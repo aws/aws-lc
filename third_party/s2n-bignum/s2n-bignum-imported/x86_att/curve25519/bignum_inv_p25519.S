@@ -21,6 +21,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_inv_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_inv_p25519)
         .text
+        .balign 32
 
 // Size in bytes of a 64-bit word
 

@@ -670,7 +670,7 @@ int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   SET_DIT_AUTO_RESET;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
-                           0, (void *)out_md);
+                           0, (void *)out_md) > 0;
 }
 
 int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
@@ -678,7 +678,7 @@ int EVP_PKEY_CTX_set1_signature_context_string(EVP_PKEY_CTX *ctx,
                                        size_t context_len) {
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params) > 0;
 }
 
 int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
@@ -693,8 +693,8 @@ int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
   GUARD_PTR(context);
   GUARD_PTR(context_len);
   EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {NULL, 0};
-  if (!EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                         EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params)) {
+  if (EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                        EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params) <= 0) {
     return 0;
   }
   *context = params.context;
@@ -757,7 +757,13 @@ static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
   if ((NID_secp224r1 != curve_nid) &&
       (NID_X9_62_prime256v1 != curve_nid) &&
       (NID_secp384r1 != curve_nid) &&
-      (NID_secp521r1 != curve_nid)) {
+      (NID_secp521r1 != curve_nid) &&
+      (NID_secp256k1 != curve_nid) &&
+      (NID_brainpoolP224r1 != curve_nid) &&
+      (NID_brainpoolP256r1 != curve_nid) &&
+      (NID_brainpoolP320r1 != curve_nid) &&
+      (NID_brainpoolP384r1 != curve_nid) &&
+      (NID_brainpoolP512r1 != curve_nid)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
     goto err;
   }

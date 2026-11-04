@@ -20,6 +20,7 @@ source tests/ci/common_posix_setup.sh
 #    - OPENSSH_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER="${SYS_ROOT}/SCRATCH_AWSLC_OPENSSH_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -58,7 +59,7 @@ function openssh_build() {
     # The RSA_meth_XXX functions are not implemented by AWS-LC, and the implementation provided by OpenSSH also doesn't compile for us.
     # Fortunately, these functions are only needed for pkcs11 support, which is disabled for our build.
     # See: https://github.com/openssh/openssh-portable/pull/385
-    export CFLAGS="-DBN_FLG_CONSTTIME=0x04 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_GET_FINISH=1 "
+    export CFLAGS="-DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_GET_FINISH=1 "
     ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
   fi
 
@@ -83,6 +84,7 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_
 
 # Get OpenSSH at the requested ref.
 git clone --depth 1 --branch "${OPENSSH_REF}" https://github.com/openssh/openssh-portable.git "${OPENSSH_WORKSPACE_FOLDER}"
+record_repo_commit "${OPENSSH_WORKSPACE_FOLDER}"
 ls
 
 # Build AWS-LC as a shared library

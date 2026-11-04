@@ -345,10 +345,9 @@ $code.=<<___;
 ___
 }
 
-# The .text directive is deliberately emitted outside the #ifndef guard:
-# when MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX elides the body, some NASM
-# versions reject an object with no sections (nasm.us bug 3392738), which
-# would otherwise break win64 builds that assemble this file (#3355).
+# Keep the disabled output non-empty. Some NASM versions reject an object
+# with no sections (nasm.us bug 3392738), and NASM 2.16.01 crashes while
+# generating CodeView debug information for an empty section.
 $code.=<<___;
 .text
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
@@ -831,9 +830,17 @@ rsaz_avx_handler:
     .rva    .Lrsaz_amm52x30_x2_ifma256_body,.Lrsaz_amm52x30_x2_ifma256_epilogue
 
 #endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.byte 0
+#endif
 ___
 } else {
-$code.="#endif";
+$code.=<<___;
+#endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.byte 0
+#endif
+___
 }
 
 }}} else {{{                # fallback for old assembler

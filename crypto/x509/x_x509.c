@@ -35,26 +35,48 @@ ASN1_SEQUENCE_enc(X509_CINF, enc, 0) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509_CINF)
 // X509 top level structure needs a bit of customisation
 
+// |x509v3_cache_extensions| is gated on a sticky |EXFLAG_SET|, so whatever this
+// leaves behind governs the next certificate parsed into |x509|.
+static void x509_invalidate_cache(X509 *x509) {
+  X509_CERT_AUX_free(x509->aux);
+  x509->aux = NULL;
+  ASN1_OCTET_STRING_free(x509->skid);
+  x509->skid = NULL;
+  AUTHORITY_KEYID_free(x509->akid);
+  x509->akid = NULL;
+  CRL_DIST_POINTS_free(x509->crldp);
+  x509->crldp = NULL;
+  GENERAL_NAMES_free(x509->altname);
+  x509->altname = NULL;
+  NAME_CONSTRAINTS_free(x509->nc);
+  x509->nc = NULL;
+  CRYPTO_BUFFER_free(x509->buf);
+  x509->buf = NULL;
+  x509->ex_flags = 0;
+  x509->ex_pathlen = -1;
+  x509->ex_kusage = 0;
+  x509->ex_xkusage = 0;
+  x509->ex_nscert = 0;
+}
+
 static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                    void *exarg) {
   X509 *ret = (X509 *)*pval;
 
   switch (operation) {
     case ASN1_OP_NEW_POST:
-      ret->ex_flags = 0;
-      ret->ex_pathlen = -1;
-      ret->skid = NULL;
-      ret->akid = NULL;
-      ret->aux = NULL;
-      ret->crldp = NULL;
-      ret->buf = NULL;
+      x509_invalidate_cache(ret);
       CRYPTO_new_ex_data(&ret->ex_data);
       CRYPTO_MUTEX_init(&ret->lock);
       break;
 
     case ASN1_OP_D2I_PRE:
-      CRYPTO_BUFFER_free(ret->buf);
-      ret->buf = NULL;
+      x509_invalidate_cache(ret);
+      // Application data describes the certificate that was here, so it cannot
+      // follow a different one. This runs the registered free callbacks at
+      // parse time, as OpenSSL does.
+      CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+      CRYPTO_new_ex_data(&ret->ex_data);
       break;
 
     case ASN1_OP_D2I_POST: {
@@ -90,13 +112,7 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
     case ASN1_OP_FREE_POST:
       CRYPTO_MUTEX_cleanup(&ret->lock);
       CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
-      X509_CERT_AUX_free(ret->aux);
-      ASN1_OCTET_STRING_free(ret->skid);
-      AUTHORITY_KEYID_free(ret->akid);
-      CRL_DIST_POINTS_free(ret->crldp);
-      GENERAL_NAMES_free(ret->altname);
-      NAME_CONSTRAINTS_free(ret->nc);
-      CRYPTO_BUFFER_free(ret->buf);
+      x509_invalidate_cache(ret);
       break;
   }
 

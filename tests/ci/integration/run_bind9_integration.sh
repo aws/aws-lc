@@ -65,6 +65,7 @@ rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
 git clone https://gitlab.isc.org/isc-projects/bind9.git ${BIND9_SRC_FOLDER} --depth 1
+record_repo_commit "${BIND9_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${BIND9_BUILD_FOLDER}
 ls
 

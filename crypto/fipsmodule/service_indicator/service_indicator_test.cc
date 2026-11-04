@@ -5309,6 +5309,22 @@ TEST(ServiceIndicatorTest, ML_KEM) {
                                        ciphertext.size()));
     ASSERT_EQ(approved, AWSLC_APPROVED);
     ASSERT_EQ(encap_shared_secret, decap_shared_secret);
+
+    // Key validation runs a hash and a full encaps/decaps internally. Those
+    // must not each bump the indicator: CALL_SERVICE_AND_CHECK_APPROVED aborts
+    // if the counter moves by more than one, so this only passes while
+    // KEM_check_key keeps the indicator locked for its duration.
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                    ASSERT_TRUE(EVP_PKEY_check(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_public_check(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 }
 

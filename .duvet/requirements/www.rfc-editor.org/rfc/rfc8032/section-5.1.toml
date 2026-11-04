@@ -1,0 +1,63 @@
+target = "https://www.rfc-editor.org/rfc/rfc8032#section-5.1"
+
+# Ed25519ph, Ed25519ctx, and Ed25519
+#
+#    Ed25519 is EdDSA instantiated with:
+# 
+#    +-----------+-------------------------------------------------------+
+#    | Parameter | Value                                                 |
+#    +-----------+-------------------------------------------------------+
+#    |     p     | p of edwards25519 in [RFC7748] (i.e., 2^255 - 19)     |
+#    |     b     | 256                                                   |
+#    |  encoding | 255-bit little-endian encoding of {0, 1, ..., p-1}    |
+#    |  of GF(p) |                                                       |
+#    |    H(x)   | SHA-512(dom2(phflag,context)||x) [RFC6234]            |
+#    |     c     | base 2 logarithm of cofactor of edwards25519 in       |
+#    |           | [RFC7748] (i.e., 3)                                   |
+#    |     n     | 254                                                   |
+#    |     d     | d of edwards25519 in [RFC7748] (i.e., -121665/121666  |
+#    |           | = 370957059346694393431380835087545651895421138798432 |
+#    |           | 19016388785533085940283555)                           |
+#    |     a     | -1                                                    |
+#    |     B     | (X(P),Y(P)) of edwards25519 in [RFC7748] (i.e., (1511 |
+#    |           | 22213495354007725011514095885315114540126930418572060 |
+#    |           | 46113283949847762202, 4631683569492647816942839400347 |
+#    |           | 5163141307993866256225615783033603165251855960))      |
+#    |     L     | order of edwards25519 in [RFC7748] (i.e.,             |
+#    |           | 2^252+27742317777372353535851937790883648493).        |
+#    |   PH(x)   | x (i.e., the identity function)                       |
+#    +-----------+-------------------------------------------------------+
+# 
+#                       Table 1: Parameters of Ed25519
+# 
+#    For Ed25519, dom2(f,c) is the empty string.  The phflag value is
+#    irrelevant.  The context (if present at all) MUST be empty.  This
+#    causes the scheme to be one and the same with the Ed25519 scheme
+#    published earlier.
+# 
+#    For Ed25519ctx, phflag=0.  The context input SHOULD NOT be empty.
+# 
+#    For Ed25519ph, phflag=1 and PH is SHA512 instead.  That is, the input
+#    is hashed using SHA-512 before signing with Ed25519.
+# 
+#    Value of context is set by the signer and verifier (maximum of 255
+#    octets; the default is empty string, except for Ed25519, which can't
+#    have context) and has to match octet by octet for verification to be
+#    successful.
+# 
+#    The curve used is equivalent to Curve25519 [CURVE25519], under a
+#    change of coordinates, which means that the difficulty of the
+#    discrete logarithm problem is the same as for Curve25519.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The context (if present at all) MUST be empty.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+The context input SHOULD NOT be empty.
+'''
+

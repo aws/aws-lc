@@ -49,8 +49,9 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
-git clone --depth 1 https://github.com/haproxy/haproxy.git
-cd haproxy
+git clone --depth 1 https://github.com/haproxy/haproxy.git "${HAPROXY_SRC}"
+record_repo_commit "${HAPROXY_SRC}"
+cd "${HAPROXY_SRC}"
 ./scripts/build-vtest.sh
 
 # Test with static AWS-LC libraries

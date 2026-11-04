@@ -77,8 +77,10 @@ and BSD systems. When built with `-DENABLE_DIST_PKG=1`, AWS-LC enables:
 
 Symbol versioning assigns every public API symbol to a named version node. New symbols
 introduced in future releases get new version nodes that inherit from their predecessors,
-enabling fine-grained compatibility tracking. See [docs/SymbolVersioning.md](docs/SymbolVersioning.md)
-for details.
+enabling fine-grained compatibility tracking. It defaults to on in this mode but is an
+independent option (`-DENABLE_SYMBOL_VERSIONING`), so versioned symbols can be adopted
+without the header relocation and binary renaming. See
+[docs/SymbolVersioning.md](docs/SymbolVersioning.md) for details.
 
 ## Platform Support
 
@@ -210,4 +212,4 @@ Security via our
 [vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
 Please do **not** create a public GitHub issue.
 
-If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
+See our [Security Reporting Policy](./SECURITY.md) for additional guidance on issues considered in-scope for our threat model.

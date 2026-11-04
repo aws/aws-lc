@@ -16,6 +16,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -158,9 +159,25 @@ err:
 
 static const uint8_t kPSSZeroes[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
+int rsa_pss_max_saltlen(const RSA *rsa, size_t hLen) {
+  size_t emLen = RSA_size(rsa);
+  if ((RSA_bits(rsa) & 0x7) == 1) {
+    assert(emLen >= 1);
+    emLen--;
+  }
+  if (emLen < hLen || emLen - hLen < 2) {
+    return -1;
+  }
+  const size_t max_saltlen = emLen - hLen - 2;
+  if (max_saltlen > INT_MAX) {
+    return -1;
+  }
+  return (int)max_saltlen;
+}
+
+int rsa_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
                               const EVP_MD *Hash, const EVP_MD *mgf1Hash,
-                              const uint8_t *EM, int sLen) {
+                              const uint8_t *EM, int sLen, int min_sLen) {
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -175,14 +192,14 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
 
   // Negative sLen has special meanings:
   //   RSA_PSS_SALTLEN_DIGEST  sLen == hLen
-  //   -2      salt length is autorecovered from signature
-  //   -N      reserved
+  //   RSA_PSS_SALTLEN_AUTO    salt length is autorecovered from signature
+  //   -N                      reserved
   size_t hLen = EVP_MD_size(Hash);
   if (sLen == RSA_PSS_SALTLEN_DIGEST) {
     sLen = (int)hLen;
-  } else if (sLen == -2) {
-    sLen = -2;
-  } else if (sLen < -2) {
+  } else if (sLen == RSA_PSS_SALTLEN_AUTO) {
+    sLen = RSA_PSS_SALTLEN_AUTO;
+  } else if (sLen < RSA_PSS_SALTLEN_AUTO) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
   }
@@ -197,7 +214,8 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
     EM++;
     emLen--;
   }
-  // |sLen| may be -2 for the non-standard salt length recovery mode.
+  // |sLen| may be |RSA_PSS_SALTLEN_AUTO| for the non-standard salt length
+  // recovery mode.
   if (emLen < hLen + 2 ||
       (sLen >= 0 && emLen < hLen + (size_t)sLen + 2)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
@@ -237,8 +255,14 @@ OPENSSL_END_ALLOW_DEPRECATED
     goto err;
   }
   salt_start++;
+  size_t recovered_sLen = maskedDBLen - salt_start;
   // If a salt length was specified, check it matches.
-  if (sLen >= 0 && maskedDBLen - salt_start != (size_t)sLen) {
+  if (sLen >= 0 && recovered_sLen != (size_t)sLen) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
+    goto err;
+  }
+  // A restricted |EVP_PKEY_RSA_PSS| key also sets a minimum salt length.
+  if (min_sLen >= 0 && recovered_sLen < (size_t)min_sLen) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
   }
@@ -262,6 +286,13 @@ err:
   EVP_MD_CTX_cleanup(&ctx);
   FIPS_service_indicator_unlock_state();
   return ret;
+}
+
+int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
+                              const EVP_MD *Hash, const EVP_MD *mgf1Hash,
+                              const uint8_t *EM, int sLen) {
+  return rsa_verify_PKCS1_PSS_mgf1(rsa, mHash, Hash, mgf1Hash, EM, sLen,
+                                   RSA_PSS_NO_SALTLEN_MINIMUM);
 }
 
 int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
@@ -295,20 +326,21 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     emLen--;
   }
 
-  if (emLen < hLen + 2) {
+  const int max_saltlen = rsa_pss_max_saltlen(rsa, hLen);
+  if (max_saltlen < 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }
 
   // Negative sLenRequested has special meanings:
   //   RSA_PSS_SALTLEN_DIGEST  sLen == hLen
-  //   -2  salt length is maximized
-  //   -N  reserved
+  //   RSA_PSS_SALTLEN_AUTO    salt length is maximized
+  //   -N                      reserved
   size_t sLen;
   if (sLenRequested == RSA_PSS_SALTLEN_DIGEST) {
     sLen = hLen;
-  } else if (sLenRequested == -2) {
-    sLen = emLen - hLen - 2;
+  } else if (sLenRequested == RSA_PSS_SALTLEN_AUTO) {
+    sLen = (size_t)max_saltlen;
   } else if (sLenRequested < 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_SLEN_CHECK_FAILED);
     goto err;
@@ -316,7 +348,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     sLen = (size_t)sLenRequested;
   }
 
-  if (emLen - hLen - 2 < sLen) {
+  if ((size_t)max_saltlen < sLen) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
   }

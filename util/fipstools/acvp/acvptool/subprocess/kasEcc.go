@@ -204,9 +204,11 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 				serverInfo = append(serverInfo, peerY...)
 			}
 
+			iutIsPartyU := []byte{0}
 			if group.Role == "initiator" {
 				partyUInfo = iutInfo
 				partyVInfo = serverInfo
+				iutIsPartyU[0] = 1
 			} else {
 				partyUInfo = serverInfo
 				partyVInfo = iutInfo
@@ -218,7 +220,7 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 			}
 
 			if privateKeyGiven {
-				result, err := m.Transact(method, 3, peerX, peerY, privateKey, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys)
+				result, err := m.Transact(method, 3, peerX, peerY, privateKey, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys, iutIsPartyU)
 				if err != nil {
 					return nil, err
 				}
@@ -229,7 +231,7 @@ func (k *kasEcc) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 					Passed: &ok,
 				})
 			} else {
-				result, err := m.Transact(method, 3, peerX, peerY, nil, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys)
+				result, err := m.Transact(method, 3, peerX, peerY, nil, fixedInfoPrefix, partyUInfo, partyVInfo, outLenBytes[:], addPubKeys, iutIsPartyU)
 				if err != nil {
 					return nil, err
 				}

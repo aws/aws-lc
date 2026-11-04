@@ -1724,6 +1724,13 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[],
                        ReplyCallback write_reply) {
+
+  if (args[1].size() != sizeof(uint32_t) ||
+      args[2].size() != sizeof(uint32_t) ||
+      args[3].size() != sizeof(uint32_t)) {
+    return false;
+  }
+
   const uint8_t *max_outlen_bytes = args[1].data();
   const uint8_t *min_outlen_bytes = args[2].data();
   const uint8_t *outlen_bytes = args[3].data();
@@ -1733,6 +1740,11 @@ static bool HashMCTXof(const Span<const uint8_t> args[],
   uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
   uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
   uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
+
+  if (min_output_len < 2 || min_output_len > max_output_len ||
+      output_len < min_output_len || output_len > max_output_len) {
+    return false;
+  }
   uint32_t range = max_output_len - min_output_len + 1;
 
   const size_t array_len = 1001;
@@ -3371,50 +3383,26 @@ static bool ECDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(x.get()), BIGNUMBytes(y.get()), output});
 }
 
-static bool BuildFixedInfo(std::unique_ptr<uint8_t[]> &fixed_info,
-                           size_t &fixed_info_size,
-                           const Span<const uint8_t> &fixed_info_prefix,
-                           const Span<const uint8_t> &party_u_info,
-                           const Span<const uint8_t> &party_v_info,
-                           const std::vector<uint8_t> &x,
-                           const std::vector<uint8_t> &y) {
-  // Build fixedInfo: fixed_info_prefix || partyUInfo || partyVInfo
-  fixed_info_size = fixed_info_prefix.size() + party_u_info.size() +
-                    party_v_info.size() + x.size() + y.size();
-
-  fixed_info.reset(new uint8_t[fixed_info_size]);
-
-  if (!fixed_info) {
-    return false;
+static std::vector<uint8_t> BuildFixedInfo(Span<const uint8_t> prefix,
+                                           Span<const uint8_t> party_u_info,
+                                           Span<const uint8_t> party_v_info,
+                                           Span<const uint8_t> x,
+                                           Span<const uint8_t> y,
+                                           bool iut_is_party_u) {
+  std::vector<uint8_t> fixed_info(prefix.begin(), prefix.end());
+  fixed_info.insert(fixed_info.end(), party_u_info.begin(), party_u_info.end());
+  if (iut_is_party_u) {
+    fixed_info.insert(fixed_info.end(), x.begin(), x.end());
+    fixed_info.insert(fixed_info.end(), y.begin(), y.end());
+    fixed_info.insert(fixed_info.end(), party_v_info.begin(),
+                      party_v_info.end());
+  } else {
+    fixed_info.insert(fixed_info.end(), party_v_info.begin(),
+                      party_v_info.end());
+    fixed_info.insert(fixed_info.end(), x.begin(), x.end());
+    fixed_info.insert(fixed_info.end(), y.begin(), y.end());
   }
-
-  uint32_t p = 0;
-  memcpy(fixed_info.get(), fixed_info_prefix.data(), fixed_info_prefix.size());
-  p += fixed_info_prefix.size();
-
-  memcpy(fixed_info.get() + p, party_u_info.data(), party_u_info.size());
-  p += party_u_info.size();
-
-  if (party_u_info.size() < party_v_info.size()) {
-    memcpy(fixed_info.get() + p, x.data(), x.size());
-    p += x.size();
-
-    memcpy(fixed_info.get() + p, y.data(), y.size());
-    p += y.size();
-  }
-
-  memcpy(fixed_info.get() + p, party_v_info.data(), party_v_info.size());
-  p += party_v_info.size();
-
-  if (party_v_info.size() < party_u_info.size()) {
-    memcpy(fixed_info.get() + p, x.data(), x.size());
-    p += x.size();
-
-    memcpy(fixed_info.get() + p, y.data(), y.size());
-    p += y.size();
-  }
-
-  return true;
+  return fixed_info;
 }
 
 template <int Nid, const EVP_MD *(MDFunc)()>
@@ -3428,11 +3416,17 @@ static bool ECDH_SSKDF(const Span<const uint8_t> args[],
   const Span<const uint8_t> party_v_info = args[5];
   const Span<const uint8_t> out_len_bytes = args[6];
   const Span<const uint8_t> add_pub_keys = args[7];
+  const Span<const uint8_t> iut_is_party_u_bytes = args[8];
 
   uint32_t out_len = 0;
+  if (out_len_bytes.size() != sizeof(out_len)) {
+    return false;
+  }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
 
   bool should_add_pub_keys = add_pub_keys.size() > 0 && add_pub_keys[0] != 0;
+  bool iut_is_party_u =
+      iut_is_party_u_bytes.size() > 0 && iut_is_party_u_bytes[0] != 0;
 
   // Step 1: ECDH - compute shared secret Z
   bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
@@ -3478,26 +3472,27 @@ static bool ECDH_SSKDF(const Span<const uint8_t> args[],
     return false;
   }
 
-  // Determine if IUT is party V: in AFT mode, if party_v_info is shorter than
-  // party_u_info, it means IUT is party V (only has ID, no public key yet)
-  std::unique_ptr<uint8_t[]> fixed_info;
-  size_t fixed_info_size = 0;
   std::vector<uint8_t> x_bytes, y_bytes;
 
   if (should_add_pub_keys) {
-    x_bytes = BIGNUMBytes(x.get());
-    y_bytes = BIGNUMBytes(y.get());
+    // Encode the coordinates left-padded with zeros so their length is fixed.
+    const size_t field_len = (EC_GROUP_get_degree(group) + 7) / 8;
+    x_bytes.resize(field_len);
+    y_bytes.resize(field_len);
+    if (!BN_bn2bin_padded(x_bytes.data(), field_len, x.get()) ||
+        !BN_bn2bin_padded(y_bytes.data(), field_len, y.get())) {
+      return false;
+    }
   }
 
-  if (!BuildFixedInfo(fixed_info, fixed_info_size, fixed_info_prefix,
-                      party_u_info, party_v_info, x_bytes, y_bytes)) {
-    return false;
-  }
+  std::vector<uint8_t> fixed_info =
+      BuildFixedInfo(fixed_info_prefix, party_u_info, party_v_info, x_bytes,
+                     y_bytes, iut_is_party_u);
 
   // Step 2: One-Step KDF (SSKDF with digest)
   std::vector<uint8_t> output(out_len);
   if (!::SSKDF_digest(output.data(), out_len, MDFunc(), z.data(), z.size(),
-                      fixed_info.get(), fixed_info_size)) {
+                      fixed_info.data(), fixed_info.size())) {
     return false;
   }
 
@@ -3811,6 +3806,9 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+// NOTE: ml_kem.h returns ML_KEM_SUCCESS (0), the inverse of the ml_dsa.h
+// handlers further down this file (ML_DSA_SUCCESS is 1). Do not copy a
+// condition between the two families without inverting it.
 template <int nid>
 static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
                          ReplyCallback write_reply) {
@@ -3829,7 +3827,7 @@ static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
 
   // The check_sk function validates mandated by FIPS 203 Section 7.2.
   uint8_t success_flag[1] = {0};
-  if(check_fn(ek.data(), ek.size()) != 0) {
+  if(check_fn(ek.data(), ek.size()) != ML_KEM_SUCCESS) {
     return write_reply({Span<const uint8_t>(success_flag)});
   }
 
@@ -3855,7 +3853,7 @@ static bool MLKEM_DECAP_CHECK(const Span<const uint8_t> args[],
 
   // The check_sk function validates mandated by FIPS 203 Section 7.3.
   uint8_t success_flag[1] = {0};
-  if(check_fn(dk.data(), dk.size()) != 0) {
+  if(check_fn(dk.data(), dk.size()) != ML_KEM_SUCCESS) {
     return write_reply({Span<const uint8_t>(success_flag)});
   }
 
@@ -4065,6 +4063,14 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
     // Prepare |pre| exactly how |ml_dsa_sign| is doing. The maximum |context| size
     // for ML-DSA is 255 bytes. We append a 0 and the size as two additional bytes
     // before |context| to become the prefix string.
+    //
+    // Reject any context longer than 255 bytes, matching the validation in
+    // |mld_prepare_domain_separation_prefix|. The internal signing path we use
+    // here does not perform this check, so without it a larger |context| would
+    // overflow the fixed 257-byte |pre| buffer.
+    if (context.size() > 255) {
+      return false;
+    }
     uint8_t pre[257];
     pre[0] = 0;
     pre[1] = context.size();
@@ -4311,9 +4317,9 @@ static struct {
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
-    {"KAS-ECC/OneStep/P-224/SHA2-384", 8,
+    {"KAS-ECC/OneStep/P-224/SHA2-384", 9,
      ECDH_SSKDF<NID_secp224r1, EVP_sha384>},
-    {"KAS-ECC/OneStep/P-384/SHA2-384", 8,
+    {"KAS-ECC/OneStep/P-384/SHA2-384", 9,
      ECDH_SSKDF<NID_secp384r1, EVP_sha384>},
     {"FFDH", 6, FFDH},
     {"PBKDF", 5, PBKDF},

@@ -45,6 +45,7 @@ function curl_run_tests() {
 
 # Get latest curl version.
 git clone https://github.com/curl/curl.git ${CURL_SRC_FOLDER}
+record_repo_commit "${CURL_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${CURL_BUILD_FOLDER}
 ls
 

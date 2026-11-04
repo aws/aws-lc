@@ -225,23 +225,31 @@ that these registries remain accurate:
   `util/read_public_symbols.go` and compare against the registry. No library
   build required.
   - ❌ **Symbols in headers but not in registry**: Error — new public API
-    must be registered with `util/update_symbol_version.sh <version>`
+    must be registered with `util/update_symbol_version.sh --current`
   - ⚠️ **Symbols in registry but not in headers**: Warning — may be
     platform-specific (FIPS-only, ARM-specific) or unimplemented declarations
 
 Symbol checks run using Docker containers in `.github/docker_images/symbol_check/`.
+The `dist-pkg-install-tests-*` jobs additionally verify against built libraries
+that no exported symbol is hidden by the version script.
 See [docs/SymbolVersioning.md](../../docs/SymbolVersioning.md) for full details.
 
 #### Registering New Public API
 
-When new `OPENSSL_EXPORT` symbols are added to public headers:
+When new `OPENSSL_EXPORT` symbols are added to public headers, they must also be
+registered, or the version script will hide them and applications will not be
+able to link against them:
 
 ```bash
-# Assign them to a new version node and regenerate the map files
-./util/update_symbol_version.sh AWS_LC_1.0
+# Add them to the current version node and regenerate the map files
+./util/update_symbol_version.sh --current
 
 # Commit the updated registry and map files
 git add crypto/libcrypto.txt ssl/libssl.txt
 git add crypto/libcrypto.map ssl/libssl.map
-git commit -m "Register new public API symbols in AWS_LC_1.0"
+git commit -m "Register new public API symbols"
 ```
+
+Opening a new version node instead (`./util/update_symbol_version.sh AWS_LC_1.1`)
+closes the current one and is a release-level decision -- see
+[docs/SymbolVersioning.md](../../docs/SymbolVersioning.md).

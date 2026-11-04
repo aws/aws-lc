@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -272,6 +273,152 @@ func TestWriteVersionScriptTo_Empty(t *testing.T) {
 	}
 	if strings.Contains(output, "global:") {
 		t.Error("empty output should not contain version blocks")
+	}
+}
+
+func TestApplyNamespace(t *testing.T) {
+	tests := []struct {
+		name         string
+		versions     []string
+		namespace    string
+		wantVersions []string
+		wantErr      bool
+	}{
+		{
+			name:         "single node",
+			versions:     []string{"AWS_LC_1.0"},
+			namespace:    "MYCORP",
+			wantVersions: []string{"MYCORP_1.0"},
+		},
+		{
+			name:         "multiple nodes keep order",
+			versions:     []string{"AWS_LC_1.0", "AWS_LC_1.1", "AWS_LC_2.0"},
+			namespace:    "MYCORP",
+			wantVersions: []string{"MYCORP_1.0", "MYCORP_1.1", "MYCORP_2.0"},
+		},
+		{
+			// The namespace is everything before the trailing <major>.<minor>, so an
+			// underscore-laden prefix is replaced wholesale rather than in part.
+			name:         "namespace with underscores",
+			versions:     []string{"AWS_LC_1.0"},
+			namespace:    "MY_CORP_LIBCRYPTO",
+			wantVersions: []string{"MY_CORP_LIBCRYPTO_1.0"},
+		},
+		{
+			name:         "renaming to the same namespace is a no-op",
+			versions:     []string{"AWS_LC_1.0"},
+			namespace:    "AWS_LC",
+			wantVersions: []string{"AWS_LC_1.0"},
+		},
+		{
+			name:      "malformed node without numeric version",
+			versions:  []string{"AWS_LC_ONE"},
+			namespace: "MYCORP",
+			wantErr:   true,
+		},
+		{
+			name:      "malformed node without a namespace",
+			versions:  []string{"1.0"},
+			namespace: "MYCORP",
+			wantErr:   true,
+		},
+		{
+			// Two namespaces sharing a numeric version would collapse onto one node
+			// and silently lose one node's symbols.
+			name:      "colliding nodes",
+			versions:  []string{"AWS_LC_1.0", "OTHER_1.0"},
+			namespace: "MYCORP",
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			versionSymbols := make(map[string][]symbolInfo, len(tt.versions))
+			for i, v := range tt.versions {
+				versionSymbols[v] = []symbolInfo{
+					{name: fmt.Sprintf("sym%d", i), visibility: visPublic},
+				}
+			}
+
+			gotSymbols, gotVersions, err := applyNamespace(versionSymbols, tt.versions, tt.namespace)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(gotVersions) != len(tt.wantVersions) {
+				t.Fatalf("versions = %v, want %v", gotVersions, tt.wantVersions)
+			}
+			for i, v := range gotVersions {
+				if v != tt.wantVersions[i] {
+					t.Errorf("version[%d] = %q, want %q", i, v, tt.wantVersions[i])
+				}
+			}
+			// Every renamed node must carry the symbols of the node it came from.
+			for i, want := range tt.wantVersions {
+				syms := gotSymbols[want]
+				if len(syms) != 1 {
+					t.Fatalf("node %q has %d symbols, want 1", want, len(syms))
+				}
+				if expected := fmt.Sprintf("sym%d", i); syms[0].name != expected {
+					t.Errorf("node %q has symbol %q, want %q", want, syms[0].name, expected)
+				}
+			}
+		})
+	}
+}
+
+func TestNamespacePattern(t *testing.T) {
+	valid := []string{"AWS_LC", "MYCORP", "_private", "a", "My_Corp_1"}
+	for _, ns := range valid {
+		if !namespacePattern.MatchString(ns) {
+			t.Errorf("namespace %q should be valid", ns)
+		}
+	}
+	// A namespace has to be a bare linker identifier: anything that would make the
+	// resulting node name unparseable, or let a metacharacter into a version
+	// script, must be rejected.
+	invalid := []string{"", "1CORP", "MY CORP", "MY-CORP", "MY.CORP", "MY_CORP;", "MY_CORP*", "MY\nCORP"}
+	for _, ns := range invalid {
+		if namespacePattern.MatchString(ns) {
+			t.Errorf("namespace %q should be invalid", ns)
+		}
+	}
+}
+
+func TestApplyNamespaceEndToEnd(t *testing.T) {
+	registry := "AES_encrypt AWS_LC_1.0 PUBLIC\nnew_api AWS_LC_1.1 PUBLIC\n"
+	versionSymbols, versions, err := readRegistryFrom(strings.NewReader(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	versionSymbols, versions, err = applyNamespace(versionSymbols, versions, "MYCORP")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := writeVersionScriptTo(&buf, versions, versionSymbols); err != nil {
+		t.Fatal(err)
+	}
+	output := buf.String()
+
+	if !strings.Contains(output, "MYCORP_1.0 {") {
+		t.Error("missing renamed base node")
+	}
+	if !strings.Contains(output, "MYCORP_1.1 {") {
+		t.Error("missing renamed derived node")
+	}
+	// Inheritance must reference the renamed predecessor, not the original.
+	if !strings.Contains(output, "} MYCORP_1.0;") {
+		t.Error("derived node does not inherit from the renamed base node")
+	}
+	if strings.Contains(output, "AWS_LC_") {
+		t.Error("output still references the original namespace")
 	}
 }
 

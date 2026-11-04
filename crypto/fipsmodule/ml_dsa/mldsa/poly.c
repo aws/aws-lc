@@ -217,7 +217,7 @@ static MLD_INLINE void mld_ntt_butterfly_block(int32_t r[MLDSA_N],
                                                const int32_t zeta,
                                                const unsigned start,
                                                const unsigned len,
-                                               const unsigned bound)
+                                               const uint32_t bound)
 __contract__(
   requires(start < MLDSA_N)
   requires(1 <= len && len <= MLDSA_N / 2 && start + 2 * len <= MLDSA_N)

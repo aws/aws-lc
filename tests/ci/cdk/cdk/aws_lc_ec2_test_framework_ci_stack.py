@@ -37,8 +37,8 @@ from util.iam_policies import (
     code_build_batch_policy_in_json,
     ec2_policies_in_json,
     ssm_policies_in_json,
-    s3_read_write_policy_in_json,
-    ecr_power_user_policy_in_json,
+    s3_read_only_policy_in_json,
+    ecr_pull_only_policy_in_json,
 )
 from util.build_spec_loader import BuildSpecLoader
 
@@ -58,18 +58,23 @@ class AwsLcEC2TestingCIStack(AwsLcBaseCiStack):
     ) -> None:
         super().__init__(scope, id, env=env, timeout=120, **kwargs)
 
-        # S3 bucket for testing internal fixes.
-        s3_read_write_policy = iam.PolicyDocument.from_json(
-            s3_read_write_policy_in_json("aws-lc-codebuild")
+        # This instance runs untrusted (fork PR) code, so its role is scoped to the
+        # minimum this workflow actually uses: the SSM document only downloads the PR
+        # source from S3 (s3api get-object) and pulls prebuilt images from ECR
+        # (docker pull). It never uploads to S3 or pushes images, so it must not hold
+        # S3 write or ECR push privileges -- otherwise fork PR code could reach those
+        # via the instance role and tamper with shared CI artifacts.
+        s3_read_only_policy = iam.PolicyDocument.from_json(
+            s3_read_only_policy_in_json("aws-lc-codebuild")
         )
-        ecr_power_user_policy = iam.PolicyDocument.from_json(
-            ecr_power_user_policy_in_json(
+        ecr_pull_only_policy = iam.PolicyDocument.from_json(
+            ecr_pull_only_policy_in_json(
                 [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO], env
             )
         )
         ec2_inline_policies = {
-            "s3_read_write_policy": s3_read_write_policy,
-            "ecr_power_user_policy": ecr_power_user_policy,
+            "s3_read_only_policy": s3_read_only_policy,
+            "ecr_pull_only_policy": ecr_pull_only_policy,
         }
         ec2_role = iam.Role(
             scope=self,

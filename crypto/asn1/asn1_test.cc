@@ -1179,6 +1179,49 @@ TEST(ASN1Test, TimeSetString) {
   EXPECT_FALSE(ASN1_TIME_set_string_X509(nullptr, "19700101000000-0400"));
 }
 
+TEST(ASN1Test, UTCTimeTimezoneOffsetSign) {
+  static const struct {
+    const char *str;
+    // The UTC instant |str| denotes, as a POSIX timestamp.
+    int64_t utc_posix;
+  } kTests[] = {
+      // 2000-01-02 04:04:05+01:00 is 2000-01-02 03:04:05Z.
+      {"000102040405+0100", 946782245},
+      // 2000-01-02 04:04:05-01:00 is 2000-01-02 05:04:05Z.
+      {"000102040405-0100", 946789445},
+      // No offset, for comparison: 2000-01-02 04:04:05Z.
+      {"000102040405Z", 946785845},
+      // An offset that moves the time into the previous year.
+      {"000101000000+0100", 946681200},  // 1999-12-31 23:00:00Z
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.str);
+
+    bssl::UniquePtr<ASN1_UTCTIME> utc_time(
+        ASN1_STRING_type_new(V_ASN1_UTCTIME));
+    ASSERT_TRUE(utc_time);
+    ASSERT_TRUE(ASN1_STRING_set(utc_time.get(), t.str, strlen(t.str)));
+    EXPECT_TRUE(ASN1_UTCTIME_check(utc_time.get()));
+
+    EXPECT_EQ(0, ASN1_UTCTIME_cmp_time_t(utc_time.get(),
+                                         static_cast<time_t>(t.utc_posix)));
+    EXPECT_EQ(1, ASN1_UTCTIME_cmp_time_t(
+                     utc_time.get(), static_cast<time_t>(t.utc_posix - 1)));
+    EXPECT_EQ(-1, ASN1_UTCTIME_cmp_time_t(
+                      utc_time.get(), static_cast<time_t>(t.utc_posix + 1)));
+
+    // |ASN1_TIME_diff| must resolve the offset to the same UTC instant.
+    bssl::UniquePtr<ASN1_UTCTIME> expected(
+        ASN1_UTCTIME_set(nullptr, t.utc_posix));
+    ASSERT_TRUE(expected);
+    int days = 1, secs = 1;
+    ASSERT_TRUE(
+        ASN1_TIME_diff(&days, &secs, utc_time.get(), expected.get()));
+    EXPECT_EQ(0, days);
+    EXPECT_EQ(0, secs);
+  }
+}
+
 TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;
@@ -2520,6 +2563,35 @@ TEST(ASN1Test, LargeString) {
 #endif
 }
 
+TEST(ASN1Test, PrintExLargeStringOverflow) {
+  // |ASN1_STRING_set0| does not enforce |ASN1_STRING_MAX|, so |length| may be
+  // large enough that the printed length does not fit in an |int|. With a NULL
+  // |BIO|, |ASN1_STRING_print_ex| only measures the output and the dump path
+  // never reads |data|, so a tiny allocation suffices.
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_OCTET_STRING));
+  ASSERT_TRUE(str);
+  unsigned char *data = static_cast<unsigned char *>(OPENSSL_malloc(1));
+  ASSERT_TRUE(data);
+  ASN1_STRING_set0(str.get(), data, INT_MAX / 2);
+
+  // A hex dump of |INT_MAX / 2| bytes, plus the leading '#', is exactly
+  // |INT_MAX| characters.
+  EXPECT_EQ(INT_MAX,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+
+  // Prefixing the type name would push the total past |INT_MAX|.
+  EXPECT_EQ(
+      -1, ASN1_STRING_print_ex(nullptr, str.get(),
+                               ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_SHOW_TYPE));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
+
+  // One more byte and the hex dump itself no longer fits.
+  str->length = INT_MAX / 2 + 1;
+  EXPECT_EQ(-1,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
+}
+
 
 // Wrapper functions are needed to get around Control Flow Integrity Sanitizers.
 static int i2d_ASN1_TYPE_void(const void *a, unsigned char **out) {
@@ -2671,6 +2743,44 @@ TEST(ASN1Test, TimeOverflow) {
   EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MAX, LONG_MAX));
   copy = min_time;
   EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MIN, LONG_MIN));
+}
+
+// A [UNIVERSAL 0] element with non-zero content is malformed BER: RFC/X.690
+// reserves that tag for the end-of-contents marker, which must be exactly
+// 00 00. |ASN1_parse| must not treat such an element as EOC, otherwise the
+// enclosing indefinite-length parent truncates and later siblings are
+// mis-rendered.
+TEST(ASN1Test, ParseMalformedUniversalZeroDoesNotTruncateParent) {
+  // Layout (offsets in bytes):
+  //   0-1  : 30 80              indefinite-length SEQUENCE
+  //   2-8  : 00 05 AABBCCDDEE   malformed [UNIVERSAL 0], 5 content bytes
+  //   9-11 : 02 01 01           INTEGER 1 (real sibling)
+  //   12-13: 00 00              real end-of-contents
+  static const uint8_t kBlob[] = {
+      0x30, 0x80,
+      0x00, 0x05, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+      0x02, 0x01, 0x01,
+      0x00, 0x00,
+  };
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(ASN1_parse(bio.get(), kBlob, sizeof(kBlob), /*indent=*/0));
+
+  const uint8_t *out = nullptr;
+  size_t out_len = 0;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &out_len));
+  const std::string text(reinterpret_cast<const char *>(out), out_len);
+
+  // The sibling INTEGER at offset 9 must render as a child of the SEQUENCE
+  // (depth 1). Without the guard on the EOC signal, the parent SEQUENCE
+  // truncates at the fake EOC (offset 2) and the INTEGER instead renders at
+  // depth 0 as a top-level sibling of the SEQUENCE.
+  EXPECT_NE(std::string::npos, text.find("    9:d=1")) << text;
+  EXPECT_EQ(std::string::npos, text.find("    9:d=0")) << text;
+  // And it must be labelled INTEGER with value 01 so we know it wasn't parsed
+  // as some other tag due to the malformed neighbour bleeding into it.
+  EXPECT_NE(std::string::npos, text.find("INTEGER           :01")) << text;
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of

@@ -47,6 +47,7 @@ function tcpdump_run_tests() {
 
 # Get latest tcpdump version.
 git clone https://github.com/the-tcpdump-group/tcpdump.git "${TCPDUMP_SRC_FOLDER}"
+record_repo_commit "${TCPDUMP_SRC_FOLDER}"
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${TCPDUMP_INSTALL_FOLDER}"
 ls
 

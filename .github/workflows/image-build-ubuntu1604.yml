@@ -71,6 +71,9 @@ jobs:
           run: |
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.5
             ./.github/docker_images/scripts/verify-perl-version.sh 5.22
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC 5 Compilers
             source /opt/compiler-env/setup-gcc-5.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 5.4

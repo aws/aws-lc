@@ -1025,6 +1025,9 @@ $L$SEH_info_rsaz_amm52x20_x2_ifma256:
 	DD	$L$rsaz_amm52x20_x2_ifma256_body wrt ..imagebase,$L$rsaz_amm52x20_x2_ifma256_epilogue wrt ..imagebase
 
 %endif
+%ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+	DB	0
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

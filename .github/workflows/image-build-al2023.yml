@@ -70,6 +70,9 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
             ./.github/docker_images/scripts/verify-perl-version.sh 5.32
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check Default GCC Compilers
             source /opt/compiler-env/setup-gcc.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
@@ -149,6 +152,9 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
             ./.github/docker_images/scripts/verify-perl-version.sh 5.32
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check Default GCC Compilers
             source /opt/compiler-env/setup-gcc.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5

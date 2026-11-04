@@ -345,3 +345,361 @@ OPENSSL_UNUSED static const uint32_t ksecp256k1MontGY[] = {
 #else
 #error "unknown word size"
 #endif
+
+// brainpoolP224r1
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1FieldN0 = 0xe24d216ae149c101;
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1OrderN0 = 0x5fc488776cfb37a1;
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1Field[] = {
+    0x97da89f57ec8c0ff, 0x75d1d787b09f0757, 0x264366862a183025,
+    0x00000000d7c134aa};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1Order[] = {
+    0x6ddebca3a5a7939f, 0x75d0fb98d116bc4b, 0x264366862a183025,
+    0x00000000d7c134aa};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1FieldR[] = {
+    0xd682785e20b562f7, 0xa8e8428f5cbf0389, 0x1c3fb2447b576cf5,
+    0x0000000079360611};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1FieldRR[] = {
+    0x3bfbc9bf6b3d58ff, 0x76f9ee46f691d105, 0x7ea5577c77e3d7e4,
+    0x000000002b3d40dd};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1OrderRR[] = {
+    0xf3d67605e0d86b49, 0xf0f40a07bab96b21, 0xb4581327a35371e1,
+    0x000000005234fe17};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1MontB[] = {
+    0xa959a2ca9f9ac530, 0xf8d8ad2184f93130, 0x4a11d01123c3229d,
+    0x00000000508fa146};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1MontGX[] = {
+    0x7993ea716ad29d1b, 0x4d402109cf9a7441, 0x5ddc6352bebd634f,
+    0x000000000211cad8};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1MontGY[] = {
+    0xc4e76c808e956e51, 0x8f3e2bd5f943b361, 0xcac7fbecf98919fa,
+    0x00000000285b6e63};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1Field[] = {
+    0x7ec8c0ff, 0x97da89f5, 0xb09f0757, 0x75d1d787, 0x2a183025, 0x26436686,
+    0xd7c134aa};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1Order[] = {
+    0xa5a7939f, 0x6ddebca3, 0xd116bc4b, 0x75d0fb98, 0x2a183025, 0x26436686,
+    0xd7c134aa};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1FieldR[] = {
+    0x81373f01, 0x6825760a, 0x4f60f8a8, 0x8a2e2878, 0xd5e7cfda, 0xd9bc9979,
+    0x283ecb55};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1FieldRR[] = {
+    0x64dcd04f, 0x7867ca80, 0x43c20e72, 0x96af774c, 0x3fe8a2aa, 0x2e6a6ce4,
+    0x0578fd59};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1OrderRR[] = {
+    0x486ca401, 0xaddaf8aa, 0x9399652c, 0x9f24919b, 0x1e9cae24, 0x3211a561,
+    0x4a73a656};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1MontB[] = {
+    0xaf83166f, 0xc21b9d8a, 0x0034e6d5, 0xce9dac7f, 0xb76ec712, 0xf5331b76,
+    0x9be078e3};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1MontGX[] = {
+    0x234bfb4b, 0x31fdc9d7, 0xb5e4939a, 0x19886fa3, 0xb1cc327a, 0x29c4eb1d,
+    0x9d928506};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1MontGY[] = {
+    0x258adb1a, 0x3ff9013c, 0x3e5d0f80, 0x4c141f60, 0x89de7323, 0x22b9dc72,
+    0xba215755};
+#else
+#error "unknown word size"
+#endif
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP224r1MontA[] = {
+    0x2445385352d02a7e, 0x138210f178836b75, 0x44cb7837c437d367,
+    0x000000004acba11e};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP224r1MontA[] = {
+    0x0a148fa3, 0x38d15f58, 0x4ba447ce, 0x14928da0, 0x0d367346, 0x8cddc740,
+    0x19f07d7c};
+#else
+#error "unknown word size"
+#endif
+
+// brainpoolP256r1
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1FieldN0 = 0xc6a75590cefd89b9;
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1OrderN0 = 0xfbffbebdcbb40ee9;
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1Field[] = {
+    0x2013481d1f6e5377, 0x6e3bf623d5262028, 0x3e660a909d838d72,
+    0xa9fb57dba1eea9bc};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1Order[] = {
+    0x901e0e82974856a7, 0x8c397aa3b561a6f7, 0x3e660a909d838d71,
+    0xa9fb57dba1eea9bc};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1FieldR[] = {
+    0xdfecb7e2e091ac89, 0x91c409dc2ad9dfd7, 0xc199f56f627c728d,
+    0x5604a8245e115643};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1FieldRR[] = {
+    0x8cfedf7ba6465b6c, 0x5cce4c26614d4f4d, 0xa1ecdacd6b1ac807,
+    0x4717aa21e5957fa8};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1OrderRR[] = {
+    0xe1d8d8de3312fca6, 0xf35d176a1134e4a0, 0x9b7f25e76c815cb0,
+    0x0b25f1b9c3236762};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1MontB[] = {
+    0x05d24d72c0c0f36f, 0x0ac34a49cc51bf59, 0x64ca989357f2e9d9,
+    0x1634f57646a3c93e};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1MontGX[] = {
+    0x27c0d92d351fd10c, 0x80de4d9ab97cf30a, 0x704c311d6b892ad3,
+    0x8e1f767a9e119bdf};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1MontGY[] = {
+    0x9a4fe948a0917a17, 0xa618f259cd950162, 0x16fdf6e8dfbd8b03,
+    0x14eb78c6026eb0a2};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1Field[] = {
+    0x1f6e5377, 0x2013481d, 0xd5262028, 0x6e3bf623, 0x9d838d72, 0x3e660a90,
+    0xa1eea9bc, 0xa9fb57db};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1Order[] = {
+    0x974856a7, 0x901e0e82, 0xb561a6f7, 0x8c397aa3, 0x9d838d71, 0x3e660a90,
+    0xa1eea9bc, 0xa9fb57db};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1FieldR[] = {
+    0xe091ac89, 0xdfecb7e2, 0x2ad9dfd7, 0x91c409dc, 0x627c728d, 0xc199f56f,
+    0x5e115643, 0x5604a824};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1FieldRR[] = {
+    0xa6465b6c, 0x8cfedf7b, 0x614d4f4d, 0x5cce4c26, 0x6b1ac807, 0xa1ecdacd,
+    0xe5957fa8, 0x4717aa21};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1OrderRR[] = {
+    0x3312fca6, 0xe1d8d8de, 0x1134e4a0, 0xf35d176a, 0x6c815cb0, 0x9b7f25e7,
+    0xc3236762, 0x0b25f1b9};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1MontB[] = {
+    0xc0c0f36f, 0x05d24d72, 0xcc51bf59, 0x0ac34a49, 0x57f2e9d9, 0x64ca9893,
+    0x46a3c93e, 0x1634f576};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1MontGX[] = {
+    0x351fd10c, 0x27c0d92d, 0xb97cf30a, 0x80de4d9a, 0x6b892ad3, 0x704c311d,
+    0x9e119bdf, 0x8e1f767a};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1MontGY[] = {
+    0xa0917a17, 0x9a4fe948, 0xcd950162, 0xa618f259, 0xdfbd8b03, 0x16fdf6e8,
+    0x026eb0a2, 0x14eb78c6};
+#else
+#error "unknown word size"
+#endif
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP256r1MontA[] = {
+    0xd5d18edf69696261, 0xa68123f1c1d20c64, 0x95ec1e5e6398556e,
+    0x1e4676abd666bc17};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP256r1MontA[] = {
+    0x69696261, 0xd5d18edf, 0xc1d20c64, 0xa68123f1, 0x6398556e, 0x95ec1e5e,
+    0xd666bc17, 0x1e4676ab};
+#else
+#error "unknown word size"
+#endif
+
+// brainpoolP320r1
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1FieldN0 = 0x3d1e9ba22a8a9e69;
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1OrderN0 = 0x6d42e535fc62420f;
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1Field[] = {
+    0xfcd412b1f1b32e27, 0x4f92b9ec7893ec28, 0xf98fcfa6f6f40def,
+    0xe13c785ed201e065, 0xd35e472036bc4fb7};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1Order[] = {
+    0x8691555b44c59311, 0x2d482ec7ee8658e9, 0xf98fcfa5b68f12a3,
+    0xe13c785ed201e065, 0xd35e472036bc4fb7};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1FieldR[] = {
+    0x032bed4e0e4cd1d9, 0xb06d4613876c13d7, 0x06703059090bf210,
+    0x1ec387a12dfe1f9a, 0x2ca1b8dfc943b048};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1FieldRR[] = {
+    0x994ee88a743b52f9, 0xc2478a8d906978ef, 0x1f4c881f30c5b676,
+    0x5455a964e614d6d2, 0xa259ba4a6c2d9252};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1OrderRR[] = {
+    0x679d29df2513e4cd, 0x91c3001be0e16805, 0x86b330bcaf86c409,
+    0xe30d35244e6390fe, 0x31ec87c73200b14f};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1MontB[] = {
+    0xc92e58f8bff1db1a, 0x14babbde20847b05, 0x1856e1da965d8ef9,
+    0x917a9c72229d010d, 0x9336afca29885368};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1MontGX[] = {
+    0xbd925e705d7c0ab9, 0xee70fea4deccf0fb, 0x702afc301cfd939e,
+    0x564fee03bf5221f3, 0x446ef8b341b3f4e4};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1MontGY[] = {
+    0x5401378747cc614c, 0xc67f8607801ee279, 0x54134356af3f0bf7,
+    0xfb6a1a2181e5be79, 0x769a9382bd74ab8a};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1Field[] = {
+    0xf1b32e27, 0xfcd412b1, 0x7893ec28, 0x4f92b9ec, 0xf6f40def, 0xf98fcfa6,
+    0xd201e065, 0xe13c785e, 0x36bc4fb7, 0xd35e4720};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1Order[] = {
+    0x44c59311, 0x8691555b, 0xee8658e9, 0x2d482ec7, 0xb68f12a3, 0xf98fcfa5,
+    0xd201e065, 0xe13c785e, 0x36bc4fb7, 0xd35e4720};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1FieldR[] = {
+    0x0e4cd1d9, 0x032bed4e, 0x876c13d7, 0xb06d4613, 0x090bf210, 0x06703059,
+    0x2dfe1f9a, 0x1ec387a1, 0xc943b048, 0x2ca1b8df};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1FieldRR[] = {
+    0x743b52f9, 0x994ee88a, 0x906978ef, 0xc2478a8d, 0x30c5b676, 0x1f4c881f,
+    0xe614d6d2, 0x5455a964, 0x6c2d9252, 0xa259ba4a};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1OrderRR[] = {
+    0x2513e4cd, 0x679d29df, 0xe0e16805, 0x91c3001b, 0xaf86c409, 0x86b330bc,
+    0x4e6390fe, 0xe30d3524, 0x3200b14f, 0x31ec87c7};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1MontB[] = {
+    0xbff1db1a, 0xc92e58f8, 0x20847b05, 0x14babbde, 0x965d8ef9, 0x1856e1da,
+    0x229d010d, 0x917a9c72, 0x29885368, 0x9336afca};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1MontGX[] = {
+    0x5d7c0ab9, 0xbd925e70, 0xdeccf0fb, 0xee70fea4, 0x1cfd939e, 0x702afc30,
+    0xbf5221f3, 0x564fee03, 0x41b3f4e4, 0x446ef8b3};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1MontGY[] = {
+    0x47cc614c, 0x54013787, 0x801ee279, 0xc67f8607, 0xaf3f0bf7, 0x54134356,
+    0x81e5be79, 0xfb6a1a21, 0xbd74ab8a, 0x769a9382};
+#else
+#error "unknown word size"
+#endif
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP320r1MontA[] = {
+    0x20b3f27b0f7135a2, 0x03f46a6da3c2df86, 0xa139a3e1bb98b013,
+    0x3a3598e8cdeb36df, 0x467bb8b9cec29d66};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP320r1MontA[] = {
+    0x0f7135a2, 0x20b3f27b, 0xa3c2df86, 0x03f46a6d, 0xbb98b013, 0xa139a3e1,
+    0xcdeb36df, 0x3a3598e8, 0xcec29d66, 0x467bb8b9};
+#else
+#error "unknown word size"
+#endif
+
+// brainpoolP384r1
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1FieldN0 = 0x9a6ea96cea9ec825;
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1OrderN0 = 0x5cfedd2a5cb5bb93;
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1Field[] = {
+    0x874700133107ec53, 0xacd3a729901d1a71, 0x12b1da197fb71123,
+    0x152f7109ed5456b4, 0x0f5d6f7e50e641df, 0x8cb91e82a3386d28};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1Order[] = {
+    0x3b883202e9046565, 0xcf3ab6af6b7fc310, 0x1f166e6cac0425a7,
+    0x152f7109ed5456b3, 0x0f5d6f7e50e641df, 0x8cb91e82a3386d28};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1FieldR[] = {
+    0x78b8ffeccef813ad, 0x532c58d66fe2e58e, 0xed4e25e68048eedc,
+    0xead08ef612aba94b, 0xf0a29081af19be20, 0x7346e17d5cc792d7};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1FieldRR[] = {
+    0x087cefff40b64bde, 0x535283343d7fd965, 0x8e28f99cc9940899,
+    0x621401919918d5af, 0xd5c6ef3ba57e052c, 0x36bf6883178df842};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1OrderRR[] = {
+    0xac4ed3a2de771c8e, 0x37264e202f2b6b6e, 0x2a927e3b9802688a,
+    0x574a74cb52d748ff, 0x8f886dc965165fdb, 0x0ce8941a614e97c2};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1MontB[] = {
+    0x1f05fdea00c8e16d, 0x362ef7c8205a0fe3, 0xcdb456c3f7216eda,
+    0x17413827fe77fed8, 0x2b335681d1cd255d, 0x453dcefae84686aa};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1MontGX[] = {
+    0xa189deebd438fbc1, 0x66fc80e8d5a886bf, 0x94c378e99d202f23,
+    0x068b264ef95c2164, 0x9cdd0dcfbacd0099, 0x8500753388f53fc1};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1MontGY[] = {
+    0xe738b3310de140a5, 0xf5e0d246c7996f55, 0xf88309a38f0737fc,
+    0xa180acd4d5719217, 0xc61625664f21ddb6, 0x2cf4a062458968b5};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1Field[] = {
+    0x3107ec53, 0x87470013, 0x901d1a71, 0xacd3a729, 0x7fb71123, 0x12b1da19,
+    0xed5456b4, 0x152f7109, 0x50e641df, 0x0f5d6f7e, 0xa3386d28, 0x8cb91e82};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1Order[] = {
+    0xe9046565, 0x3b883202, 0x6b7fc310, 0xcf3ab6af, 0xac0425a7, 0x1f166e6c,
+    0xed5456b3, 0x152f7109, 0x50e641df, 0x0f5d6f7e, 0xa3386d28, 0x8cb91e82};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1FieldR[] = {
+    0xcef813ad, 0x78b8ffec, 0x6fe2e58e, 0x532c58d6, 0x8048eedc, 0xed4e25e6,
+    0x12aba94b, 0xead08ef6, 0xaf19be20, 0xf0a29081, 0x5cc792d7, 0x7346e17d};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1FieldRR[] = {
+    0x40b64bde, 0x087cefff, 0x3d7fd965, 0x53528334, 0xc9940899, 0x8e28f99c,
+    0x9918d5af, 0x62140191, 0xa57e052c, 0xd5c6ef3b, 0x178df842, 0x36bf6883};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1OrderRR[] = {
+    0xde771c8e, 0xac4ed3a2, 0x2f2b6b6e, 0x37264e20, 0x9802688a, 0x2a927e3b,
+    0x52d748ff, 0x574a74cb, 0x65165fdb, 0x8f886dc9, 0x614e97c2, 0x0ce8941a};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1MontB[] = {
+    0x00c8e16d, 0x1f05fdea, 0x205a0fe3, 0x362ef7c8, 0xf7216eda, 0xcdb456c3,
+    0xfe77fed8, 0x17413827, 0xd1cd255d, 0x2b335681, 0xe84686aa, 0x453dcefa};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1MontGX[] = {
+    0xd438fbc1, 0xa189deeb, 0xd5a886bf, 0x66fc80e8, 0x9d202f23, 0x94c378e9,
+    0xf95c2164, 0x068b264e, 0xbacd0099, 0x9cdd0dcf, 0x88f53fc1, 0x85007533};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1MontGY[] = {
+    0x0de140a5, 0xe738b331, 0xc7996f55, 0xf5e0d246, 0x8f0737fc, 0xf88309a3,
+    0xd5719217, 0xa180acd4, 0x4f21ddb6, 0xc6162566, 0x458968b5, 0x2cf4a062};
+#else
+#error "unknown word size"
+#endif
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP384r1MontA[] = {
+    0xdb26b895466c3c99, 0x75d7f3fef157b07b, 0x936771b9d7f10db4,
+    0xe7ffe9e535529374, 0x400a8fdf42b00c60, 0x7c338021a2e8c0d1};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP384r1MontA[] = {
+    0x466c3c99, 0xdb26b895, 0xf157b07b, 0x75d7f3fe, 0xd7f10db4, 0x936771b9,
+    0x35529374, 0xe7ffe9e5, 0x42b00c60, 0x400a8fdf, 0xa2e8c0d1, 0x7c338021};
+#else
+#error "unknown word size"
+#endif
+
+// brainpoolP512r1
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1FieldN0 = 0x839b32207d89efc5;
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1OrderN0 = 0xad49541f0f1b7027;
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1Field[] = {
+    0x28aa6056583a48f3, 0x2881ff2f2d82c685, 0xaecda12ae6a380e6,
+    0x7d4d9b009bc66842, 0xd6639cca70330871, 0xcb308db3b3c9d20e,
+    0x3fd4e6ae33c9fc07, 0xaadd9db8dbe9c48b};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1Order[] = {
+    0xb58796829ca90069, 0x1db1d381085ddadd, 0x418661197fac1047,
+    0x553e5c414ca92619, 0xd6639cca70330870, 0xcb308db3b3c9d20e,
+    0x3fd4e6ae33c9fc07, 0xaadd9db8dbe9c48b};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1FieldR[] = {
+    0xd7559fa9a7c5b70d, 0xd77e00d0d27d397a, 0x51325ed5195c7f19,
+    0x82b264ff643997bd, 0x299c63358fccf78e, 0x34cf724c4c362df1,
+    0xc02b1951cc3603f8, 0x5522624724163b74};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1FieldRR[] = {
+    0x49ad144a6158f205, 0x793fb13027157905, 0x53b7f9bc905affd3,
+    0xe0c19a7783514a25, 0x19486fd8d5898057, 0xa16daa5fd42bff83,
+    0x202e19402056eecc, 0x3c4c9d05a9ff6450};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1OrderRR[] = {
+    0xd2a3681ecda81671, 0x0886b75895283ddd, 0x3ec64bd033b7627f,
+    0xa6f230c72f0207e8, 0xd7f9cc263b790de3, 0x723c37a22f16bbdf,
+    0x95df1b4c194b2e56, 0xa794586a718407b0};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1MontB[] = {
+    0x507e839620e92a34, 0x009b63c7e58e5a34, 0xe16ba4562d8724aa,
+    0xc73e30e89877be02, 0x97e00c63fe222433, 0xcbda57ac6d17d81d,
+    0x642312a50bb5aaa2, 0x6a4aabb4471e8ea7};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1MontGX[] = {
+    0xc4ce96095161d9d3, 0x683e4d64272c02a4, 0x34ab04146df55e8f,
+    0x8550539514c01fc8, 0x2433d76f905c8737, 0xb2b6ea37f36d3cf7,
+    0x871cb5ca006d4573, 0x5a2ba14c0994e981};
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1MontGY[] = {
+    0x2f90662925042a6d, 0x7518df6f4742f325, 0xbf8455534c859490,
+    0x360ec775598ecc3e, 0x7c170b888fe62fdc, 0x585d2b77cd9d3f8c,
+    0x9a5ed7da870f3f9b, 0x8c50c9d12acb7281};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1Field[] = {
+    0x583a48f3, 0x28aa6056, 0x2d82c685, 0x2881ff2f, 0xe6a380e6, 0xaecda12a,
+    0x9bc66842, 0x7d4d9b00, 0x70330871, 0xd6639cca, 0xb3c9d20e, 0xcb308db3,
+    0x33c9fc07, 0x3fd4e6ae, 0xdbe9c48b, 0xaadd9db8};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1Order[] = {
+    0x9ca90069, 0xb5879682, 0x085ddadd, 0x1db1d381, 0x7fac1047, 0x41866119,
+    0x4ca92619, 0x553e5c41, 0x70330870, 0xd6639cca, 0xb3c9d20e, 0xcb308db3,
+    0x33c9fc07, 0x3fd4e6ae, 0xdbe9c48b, 0xaadd9db8};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1FieldR[] = {
+    0xa7c5b70d, 0xd7559fa9, 0xd27d397a, 0xd77e00d0, 0x195c7f19, 0x51325ed5,
+    0x643997bd, 0x82b264ff, 0x8fccf78e, 0x299c6335, 0x4c362df1, 0x34cf724c,
+    0xcc3603f8, 0xc02b1951, 0x24163b74, 0x55226247};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1FieldRR[] = {
+    0x6158f205, 0x49ad144a, 0x27157905, 0x793fb130, 0x905affd3, 0x53b7f9bc,
+    0x83514a25, 0xe0c19a77, 0xd5898057, 0x19486fd8, 0xd42bff83, 0xa16daa5f,
+    0x2056eecc, 0x202e1940, 0xa9ff6450, 0x3c4c9d05};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1OrderRR[] = {
+    0xcda81671, 0xd2a3681e, 0x95283ddd, 0x0886b758, 0x33b7627f, 0x3ec64bd0,
+    0x2f0207e8, 0xa6f230c7, 0x3b790de3, 0xd7f9cc26, 0x2f16bbdf, 0x723c37a2,
+    0x194b2e56, 0x95df1b4c, 0x718407b0, 0xa794586a};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1MontB[] = {
+    0x20e92a34, 0x507e8396, 0xe58e5a34, 0x009b63c7, 0x2d8724aa, 0xe16ba456,
+    0x9877be02, 0xc73e30e8, 0xfe222433, 0x97e00c63, 0x6d17d81d, 0xcbda57ac,
+    0x0bb5aaa2, 0x642312a5, 0x471e8ea7, 0x6a4aabb4};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1MontGX[] = {
+    0x5161d9d3, 0xc4ce9609, 0x272c02a4, 0x683e4d64, 0x6df55e8f, 0x34ab0414,
+    0x14c01fc8, 0x85505395, 0x905c8737, 0x2433d76f, 0xf36d3cf7, 0xb2b6ea37,
+    0x006d4573, 0x871cb5ca, 0x0994e981, 0x5a2ba14c};
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1MontGY[] = {
+    0x25042a6d, 0x2f906629, 0x4742f325, 0x7518df6f, 0x4c859490, 0xbf845553,
+    0x598ecc3e, 0x360ec775, 0x8fe62fdc, 0x7c170b88, 0xcd9d3f8c, 0x585d2b77,
+    0x870f3f9b, 0x9a5ed7da, 0x2acb7281, 0x8c50c9d1};
+#else
+#error "unknown word size"
+#endif
+#if defined(OPENSSL_64_BIT)
+OPENSSL_UNUSED static const uint64_t kbrainpoolP512r1MontA[] = {
+    0xda1f8a34ea10c446, 0x14e4957dafa7d283, 0x40b04b724675bbab,
+    0xcf8f01119e6e87ff, 0xa5ec30c83f80d1c7, 0x182d0f59f41e8778,
+    0xb83b84fae2d0850c, 0x5ec4f187227d2a83};
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_UNUSED static const uint32_t kbrainpoolP512r1MontA[] = {
+    0xea10c446, 0xda1f8a34, 0xafa7d283, 0x14e4957d, 0x4675bbab, 0x40b04b72,
+    0x9e6e87ff, 0xcf8f0111, 0x3f80d1c7, 0xa5ec30c8, 0xf41e8778, 0x182d0f59,
+    0xe2d0850c, 0xb83b84fa, 0x227d2a83, 0x5ec4f187};
+#else
+#error "unknown word size"
+#endif

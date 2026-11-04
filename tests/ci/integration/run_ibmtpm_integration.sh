@@ -43,6 +43,7 @@ function ibmtpm_build() {
 }
 
 git clone https://github.com/kgoldman/ibmswtpm2.git ${IBMTPM_SRC_FOLDER}
+record_repo_commit "${IBMTPM_SRC_FOLDER}"
 cd ${IBMTPM_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls

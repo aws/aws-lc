@@ -5,10 +5,17 @@ FROM ubuntu-22.04:base
 
 SHELL ["/bin/bash", "-c"]
 
-ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-lin.tar.xz"
+# SDE pins come from .github/docker_images/dependencies.env, passed through as
+# --build-arg by build_images.sh. No defaults: builds that do not provide them
+# fail fast below rather than drifting from the pinned versions.
+ARG SDE_VERSION_TAG
+ARG SDE_MIRROR_URL
+ARG SDE_SHA256
 
 RUN set -ex && \
+    if [ -z "${SDE_VERSION_TAG}" ] || [ -z "${SDE_MIRROR_URL}" ] || [ -z "${SDE_SHA256}" ]; then \
+      echo "Error: SDE build args missing; pass them from .github/docker_images/dependencies.env" >&2; exit 1; \
+    fi && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
@@ -22,7 +29,9 @@ RUN set -ex && \
     # Install Intel® Software Development Emulator
     # This emulator is needed when running BoringSSL/AWS-LC code under Intel's SDE for each supported chip (like ice lake).
     # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
-    wget ${SDE_MIRROR_URL} && tar -xf "${SDE_VERSION_TAG}.tar.xz" && rm "${SDE_VERSION_TAG}.tar.xz" && \
+    wget ${SDE_MIRROR_URL} && \
+    echo "${SDE_SHA256}  ${SDE_VERSION_TAG}.tar.xz" | sha256sum -c - && \
+    tar -xf "${SDE_VERSION_TAG}.tar.xz" && rm "${SDE_VERSION_TAG}.tar.xz" && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

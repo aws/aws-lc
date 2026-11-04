@@ -4291,14 +4291,17 @@ extern "C" {
 #define OBJ_PQDSA 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L
 
 #define SN_MLDSA44 "MLDSA44"
+#define LN_MLDSA44 "ML-DSA-44"
 #define NID_MLDSA44 994
 #define OBJ_MLDSA44 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 17L
 
 #define SN_MLDSA65 "MLDSA65"
+#define LN_MLDSA65 "ML-DSA-65"
 #define NID_MLDSA65 995
 #define OBJ_MLDSA65 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 18L
 
 #define SN_MLDSA87 "MLDSA87"
+#define LN_MLDSA87 "ML-DSA-87"
 #define NID_MLDSA87 996
 #define OBJ_MLDSA87 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 19L
 
@@ -4308,6 +4311,11 @@ extern "C" {
 #define SN_SecP384r1MLKEM1024 "SecP384r1MLKEM1024"
 #define NID_SecP384r1MLKEM1024 998
 #define OBJ_SecP384r1MLKEM1024 1L, 3L, 6L, 1L, 4L, 1L, 42235L, 6L
+
+#define SN_ct_precert_scts "ct_precert_scts"
+#define LN_ct_precert_scts "CT Precertificate SCTs"
+#define NID_ct_precert_scts 999
+#define OBJ_ct_precert_scts 1L, 3L, 6L, 1L, 4L, 1L, 11129L, 2L, 4L, 2L
 
 #if defined(__cplusplus)
 } /* extern C */

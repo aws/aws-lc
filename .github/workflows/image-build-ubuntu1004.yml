@@ -11,11 +11,13 @@ on:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/ubuntu/Dockerfile.1004
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
   pull_request:
     branches: [main]
     paths:
       - .github/docker_images/aws-lc/ubuntu/Dockerfile.1004
+      - .github/docker_images/dependencies.env
       - .github/docker_images/scripts/**
 concurrency:
   group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
@@ -36,6 +38,8 @@ jobs:
       ubuntu1004: ${{ steps.images.outputs.ubuntu1004 }}
     steps:
       - uses: actions/checkout@v7
+      - name: Load dependency pins
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .github/docker_images/dependencies.env >> "$GITHUB_ENV"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -47,12 +51,20 @@ jobs:
         id: images
         run: |
           echo ubuntu1004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
-      - name: Get CMake v3.9.6 Source
+      - name: Get CMake v3.9.6 and Rust Standalone Sources
         id: dependencies
         run: |
           temp_dir="$(mktemp -d)"
           curl -L -o cmake-3.9.6.tar.gz --output-dir "${temp_dir}" \
             https://github.com/Kitware/CMake/releases/download/v3.9.6/cmake-3.9.6.tar.gz
+          # The Rust pin (version, URL, checksum) lives in
+          # .github/docker_images/dependencies.env; see there for why this image
+          # is pinned. It has to be fetched here because the image's TLS stack
+          # is too old to reach static.rust-lang.org itself.
+          curl -L -o "${RUST_STANDALONE_TARBALL}" --output-dir "${temp_dir}" \
+            "${RUST_STANDALONE_URL}"
+          echo "${RUST_STANDALONE_SHA256}  ${temp_dir}/${RUST_STANDALONE_TARBALL}" \
+            | sha256sum -c -
           echo directory=${temp_dir} >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -70,6 +82,8 @@ jobs:
           build-contexts: |
             scripts=./.github/docker_images/scripts
             dependencies=${{ steps.dependencies.outputs.directory }}
+          build-args: |
+            RUST_STANDALONE_TARBALL=${{ env.RUST_STANDALONE_TARBALL }}
           tags: ${{ steps.images.outputs.ubuntu1004 }}
           push: true
       - uses: ./.github/actions/codebuild-docker-run
@@ -79,6 +93,11 @@ jobs:
           run: |
             ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.9
             ./.github/docker_images/scripts/verify-perl-version.sh 5.10
+            # Rust is pinned on this image; the pin lives in dependencies.env
+            ./.github/docker_images/scripts/verify-rust-version.sh rustc ${{ env.RUST_STANDALONE_VERSION_PREFIX }}
+            ./.github/docker_images/scripts/verify-rust-version.sh cargo ${{ env.RUST_STANDALONE_VERSION_PREFIX }}
+            # rustfmt versions independently of rustc (1.63 ships rustfmt 1.5.x), so no pin
+            ./.github/docker_images/scripts/verify-rust-version.sh rustfmt
             # Check GCC 4.1 Compilers
             source /opt/compiler-env/setup-gcc-4.1.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 4.1

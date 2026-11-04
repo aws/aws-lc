@@ -28,9 +28,9 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 function monit_upgrade_reminder() {
   LATEST_MONIT_VERSION_TAG=`git describe --tags --abbrev=0`
   if [[ "${LATEST_MONIT_VERSION_TAG}" != "${MONIT_VERSION_TAG}" ]]; then
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MonitVersionUpdate --value 1
+    put_aws_lc_metric MonitVersionUpdate 1
   else
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MonitVersionUpdate --value 0
+    put_aws_lc_metric MonitVersionUpdate 0
   fi
 }
 
@@ -55,6 +55,7 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} -b ${MONIT_VERSION_TAG} --depth 1
+record_repo_commit "${MONIT_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MONIT_BUILD_FOLDER}
 ls
 

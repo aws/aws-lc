@@ -20,6 +20,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../../ec_extra/internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
 
@@ -250,7 +251,7 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
 
   ret = OPENSSL_zalloc(sizeof(EC_GROUP));
   if (ret == NULL) {
-    return NULL;
+    goto err;
   }
   ret->mutable_ec_group = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
@@ -338,9 +339,14 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
       return (EC_GROUP *)EC_group_p521();
     case NID_secp256k1:
 	  return (EC_GROUP *)EC_group_secp256k1();
-    default:
+    default: {
+      const EC_GROUP *g = ec_group_new_by_curve_name_nonfips(nid);
+      if (g != NULL) {
+        return (EC_GROUP *)g;
+      }
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
+    }
   }
 }
 
@@ -362,9 +368,15 @@ EC_GROUP *EC_GROUP_new_by_curve_name_mutable(int nid) {
     case NID_secp256k1:
       ret = (EC_GROUP *)OPENSSL_memdup(EC_group_secp256k1(), sizeof(EC_GROUP));
       break;
-    default:
+    default: {
+      const EC_GROUP *g = ec_group_new_by_curve_name_nonfips(nid);
+      if (g != NULL) {
+        ret = (EC_GROUP *)OPENSSL_memdup(g, sizeof(EC_GROUP));
+        break;
+      }
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
+    }
   }
   if (ret == NULL) {
     return NULL;
@@ -530,6 +542,10 @@ EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   }
 
   ret->group = EC_GROUP_dup(group);
+  if (ret->group == NULL) {
+    OPENSSL_free(ret);
+    return NULL;
+  }
   ec_GFp_simple_point_init(&ret->raw);
   return ret;
 }

@@ -105,6 +105,7 @@ get_failing_targets() {
 
   local integration version patch_dir
   while IFS=$'\t' read -r integration version _; do
+    [[ "${integration}" == *=* ]] && continue
 
     # Skip integrations with no patch dir (e.g. openssh): they test AWS-LC as a
     # dropin with no patches, so there's no patch to fix.
@@ -163,8 +164,8 @@ fetch_logs() {
 
   local job_id
   for job_id in ${job_ids}; do
-    gh api "/repos/${REPO}/actions/jobs/${job_id}/logs" \
-      | tail -n 200 | sanitize_log > "${logs_dir}/${job_id}.log" || true
+    gh api --allow-escape-sequences "/repos/${REPO}/actions/jobs/${job_id}/logs" \
+      | sanitize_log | tail -n 200 > "${logs_dir}/${job_id}.log"
   done
 }
 

@@ -68,6 +68,7 @@ function openvpn_run_tests() {
 
 git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
 cd ${OPENVPN_SRC_FOLDER} && git checkout $BRANCH_NAME
+record_repo_commit "${OPENVPN_SRC_FOLDER}"
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 

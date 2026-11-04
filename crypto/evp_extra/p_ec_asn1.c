@@ -74,8 +74,10 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
     eckey->group_decoded_from_explicit_params = 0;
   }
 
+  if (!EVP_PKEY_assign_EC_KEY(out, eckey)) {
+    goto err;
+  }
   EC_POINT_free(point);
-  EVP_PKEY_assign_EC_KEY(out, eckey);
   return 1;
 
 err:
@@ -127,7 +129,10 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
     ec_key->group_decoded_from_explicit_params = 0;
   }
 
-  EVP_PKEY_assign_EC_KEY(out, ec_key);
+  if (!EVP_PKEY_assign_EC_KEY(out, ec_key)) {
+    EC_KEY_free(ec_key);
+    return 0;
+  }
   return 1;
 }
 

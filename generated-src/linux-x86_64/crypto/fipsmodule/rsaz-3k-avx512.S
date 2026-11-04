@@ -1321,4 +1321,7 @@ extract_multiplier_2x30_win5:
 .quad	0,0,0,0
 .text	
 #endif
+#ifdef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.byte	0
+#endif
 #endif

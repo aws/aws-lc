@@ -47,7 +47,7 @@ jobs:
 
   build:
     needs: [authorization-check]
-    environment: ${{ needs.authorization-check.outputs.approval-env }}
+    environment: ${{ needs.authorization-check.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
@@ -99,7 +99,7 @@ jobs:
 
   push:
     if: ${{ github.event_name != 'pull_request_target' }}
-    environment: ${{ needs.authorization-check.outputs.approval-env }}
+    environment: ${{ needs.authorization-check.outputs.approval-env == 'manual-approval' && 'manual-approval' || '' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0

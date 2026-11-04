@@ -19,23 +19,21 @@ else
 fi
 
 set +e
+abidiff --hd1 "/previous/include" --hd2 "/next/include" "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
+ABIDIFF_RC=$?
+set -e
 
 # https://sourceware.org/libabigail/manual/abidiff.html
-abidiff --hd1 "/previous/include" --hd2 "/next/include" "/previous/${ARTIFACT_PATH}" "/next/${ARTIFACT_PATH}"
-
-# From the manual page:
 #
-# The exit code of the abidiff command is either 0 if the ABI of the binaries being compared are equal,
-# or non-zero if they differ or if the tool encountered an error.
-# ...
-# The third bit, of value 4, named ABIDIFF_ABI_CHANGE means the ABI of the binaries being compared are different.
-# The fourth bit, of value 8, named ABIDIFF_ABI_INCOMPATIBLE_CHANGE means the ABI of the binaries compared are different
-# in an incompatible way. If this bit is set, then the ABIDIFF_ABI_CHANGE bit must be set as well. If the
-# ABIDIFF_ABI_CHANGE is set and the ABIDIFF_INCOMPATIBLE_CHANGE is NOT set, then it means that the ABIs being compared
-# might or might not be compatible. In that case, a human being needs to review the ABI changes to decide if they are
-# compatible or not.
-if [[ $? -ge 4 ]]; then
-  exit 1
-else
-  exit 0
+# The status is a bitmask and no non-zero value is a pass: bits 1 and 2 mean the
+# comparison did not complete, and bit 4 on its own still needs a human to judge
+# whether the difference is acceptable. Name the bits that are set, then exit
+# with the status so the raw bitmask survives into the failed step.
+if (( ABIDIFF_RC != 0 )); then
+  echo "abidiff exited ${ABIDIFF_RC}:" >&2
+  if (( ABIDIFF_RC & 1 )); then echo "  1 ABIDIFF_ERROR: abidiff failed to run" >&2; fi
+  if (( ABIDIFF_RC & 2 )); then echo "  2 ABIDIFF_USAGE_ERROR: bad invocation" >&2; fi
+  if (( ABIDIFF_RC & 4 )); then echo "  4 ABIDIFF_ABI_CHANGE: lib${CHECK_LIB} ABI differs, needs review" >&2; fi
+  if (( ABIDIFF_RC & 8 )); then echo "  8 ABIDIFF_ABI_INCOMPATIBLE_CHANGE: lib${CHECK_LIB} ABI incompatible" >&2; fi
+  exit "${ABIDIFF_RC}"
 fi

@@ -29,6 +29,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CC_FLAG="${CC:-cc}"
 
+# Keep the intermediate symbol lists and the validation build in a private
+# directory. Fixed paths under /tmp let any local user pre-create them as
+# symlinks or rewrite the contents between the write below and the read in
+# write_registry.
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
+CRYPTO_HEADERSYMS="${TMP_DIR}/libcrypto_headersyms.txt"
+SSL_HEADERSYMS="${TMP_DIR}/libssl_headersyms.txt"
+BUILD_DIR="${TMP_DIR}/build"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cc) CC_FLAG="$2"; shift 2 ;;
@@ -38,9 +48,10 @@ done
 
 # The baseline version node for a from-scratch bootstrap. This is intentionally
 # fixed: this script only ever establishes the initial node. Later additions go
-# through update_symbol_version.sh <version>, which takes the node as an argument
-# rather than hardcoding it. The major component corresponds to ABI_VERSION in
-# CMakeLists.txt (bumped only on an ABI break).
+# through update_symbol_version.sh, which takes the node explicitly (--current to
+# add to the open node, or a version to open a new one) rather than hardcoding it.
+# The major component corresponds to ABI_VERSION in CMakeLists.txt (bumped only
+# on an ABI break).
 INITIAL_VERSION="AWS_LC_1.0"
 CRYPTO_REGISTRY="${SOURCE_ROOT}/crypto/libcrypto.txt"
 SSL_REGISTRY="${SOURCE_ROOT}/ssl/libssl.txt"
@@ -48,20 +59,17 @@ CRYPTO_MAP="${SOURCE_ROOT}/crypto/libcrypto.map"
 SSL_MAP="${SOURCE_ROOT}/ssl/libssl.map"
 
 echo "Step 1: Building shared libraries for validation..."
-BUILD_DIR="$(mktemp -d)"
-rm -rf "${BUILD_DIR}"
 # This build only produces libraries to validate the extracted symbols against
-# (via read_public_symbols -validate-against); it does not need symbol
-# versioning. Crucially, building with -DENABLE_DIST_PKG=ON would require the
-# .map files to already exist (apply_version_script fatal-errors otherwise),
-# which is a chicken-and-egg problem for a script whose job is to regenerate
-# those .map files from scratch. Instead build with SONAME enabled
-# (ENABLE_PRE_SONAME_BUILD=OFF, so the libraries keep the -awslc suffix the
-# find globs below expect) but ENABLE_DIST_PKG=OFF (so no version script is
-# required or applied).
+# (via read_public_symbols -validate-against). Symbol versioning is explicitly off
+# because enabling it would require the .map files to already exist
+# (apply_version_script fatal-errors otherwise) -- a chicken-and-egg problem for a
+# script whose job is to regenerate them from scratch. SONAME stays enabled
+# (ENABLE_PRE_SONAME_BUILD=OFF) so the libraries keep the -awslc suffix the find
+# globs below expect.
 cmake -B "${BUILD_DIR}" -S "${SOURCE_ROOT}" \
   -DBUILD_SHARED_LIBS=ON \
   -DENABLE_DIST_PKG=OFF \
+  -DENABLE_SYMBOL_VERSIONING=OFF \
   -DENABLE_PRE_SONAME_BUILD=OFF \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -GNinja
@@ -87,7 +95,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -internal-dirs crypto,third_party/jitterentropy \
   -emit-visibility \
   -validate-against "${LIBCRYPTO_SO}" \
-  -out /tmp/libcrypto_headersyms.txt 2>&1
+  -out "${CRYPTO_HEADERSYMS}" 2>&1
 
 # libssl: ssl.h only + ssl internal headers (suppress crypto internals)
 go run "${SOURCE_ROOT}/util/read_public_symbols" \
@@ -99,7 +107,7 @@ go run "${SOURCE_ROOT}/util/read_public_symbols" \
   -suppress-internal-dirs crypto \
   -emit-visibility \
   -validate-against "${LIBSSL_SO}" \
-  -out /tmp/libssl_headersyms.txt 2>&1
+  -out "${SSL_HEADERSYMS}" 2>&1
 
 echo ""
 echo "Step 3: Writing symbol registry files (${INITIAL_VERSION})..."
@@ -123,8 +131,8 @@ write_registry() {
   fi
 }
 
-write_registry /tmp/libcrypto_headersyms.txt "${CRYPTO_REGISTRY}"
-write_registry /tmp/libssl_headersyms.txt "${SSL_REGISTRY}"
+write_registry "${CRYPTO_HEADERSYMS}" "${CRYPTO_REGISTRY}"
+write_registry "${SSL_HEADERSYMS}" "${SSL_REGISTRY}"
 
 echo ""
 echo "Step 4: Generating version scripts from registry..."
