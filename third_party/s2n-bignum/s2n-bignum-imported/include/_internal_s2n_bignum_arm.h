@@ -81,6 +81,14 @@
 #define CFI_POP2(lo,hi) ldp     lo, hi, [sp], #16 __LF .cfi_adjust_cfa_offset -16 __LF .cfi_restore lo __LF .cfi_restore hi
 #define CFI_POP1Z(reg) ldp     reg, xzr, [sp], #16 __LF .cfi_adjust_cfa_offset -16 __LF .cfi_restore reg
 
+// Pre/post-index push and pop of a register pair with an arbitrary frame size,
+// for functions whose first save also establishes the whole frame. The size
+// must be a plain numeral. The push writes #-size, which expands to a plain
+// negative literal as in CFI_PUSH2; the AWS-LC FIPS delocator does not parse
+// a parenthesized negative offset such as #(-80 +0).
+#define CFI_PUSH2N(lo,hi,size) stp     lo, hi, [sp, #-size]! __LF .cfi_adjust_cfa_offset size __LF .cfi_rel_offset lo, 0 __LF .cfi_rel_offset hi, 8
+#define CFI_POP2N(lo,hi,size) ldp     lo, hi, [sp], #(size+0) __LF .cfi_adjust_cfa_offset -size __LF .cfi_restore lo __LF .cfi_restore hi
+
 #define CFI_STACKSAVE2(lo,hi,offset) stp     lo, hi, [sp, #(offset)] __LF .cfi_rel_offset lo, offset __LF .cfi_rel_offset hi, offset+8
 
 // This is an alternative to CFI_STACKSAVE2 to work around delocator problems
