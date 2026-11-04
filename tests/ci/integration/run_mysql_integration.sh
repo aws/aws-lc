@@ -44,9 +44,9 @@ function mysql_patch_reminder() {
   # MySQL tags have no tagger date, so sort by version. Only match plain mysql-X.Y.Z release tags.
   LATEST_MYSQL_VERSION_TAG=`git tag -l 'mysql-[0-9]*' --sort=-version:refname | grep -E '^mysql-[0-9]+\.[0-9]+\.[0-9]+$' | head -1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
+    put_aws_lc_metric MySQLVersionMismatch 1
   else
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 0
+    put_aws_lc_metric MySQLVersionMismatch 0
   fi
 }
 

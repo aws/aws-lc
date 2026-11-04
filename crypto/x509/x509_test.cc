@@ -2956,6 +2956,68 @@ TEST(X509Test, NameConstraints) {
       {GEN_EMAIL, "foo@example.com", "a@b@example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Trailing dot on the domain is ignored, in both the name and the
+      // constraint.
+      {GEN_EMAIL, "foo@example.com.", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com.", "foo@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "foo@example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@evil.example.com.", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Only a single trailing dot is removed. Domains with empty labels, or
+      // that are empty after normalization, are rejected.
+      {GEN_EMAIL, "foo@example.com..", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar..example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar.example.com", "..example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels must begin and end with an alphanumeric.
+      {GEN_EMAIL, "foo@-bar.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar-.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@b-r.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@1.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example-.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels are at most 63 bytes.
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".example.com.",
+       ".example.com", X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@" + std::string(64, 'a') + ".example.com.",
+       ".example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".com",
+       std::string(63, 'a') + ".com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "." + std::string(64, 'a') + ".com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.", "example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", ".", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
@@ -10199,7 +10261,7 @@ TEST(X509Test, BlockedSPKI) {
   // Test callback is invoked on the blocked list path.
   auto suppress_revoked = [](X509_STORE_CTX *ctx) {
     X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
-      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REVOKED;
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REJECTED;
     });
   };
 
@@ -10207,7 +10269,7 @@ TEST(X509Test, BlockedSPKI) {
     SCOPED_TRACE(i);
     X509 *cert = sk_X509_value(certs.get(), i);
     int depth = -1;
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+    EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
               Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
                      /*flags=*/0, /*configure_callback=*/nullptr, &depth));
     EXPECT_EQ(0, depth);
@@ -10228,7 +10290,7 @@ TEST(X509Test, BlockedSPKIAtDepth) {
   ASSERT_TRUE(leaf);
 
   int depth = -1;
-  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
             Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
                    {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
                    /*flags=*/0, /*configure_callback=*/nullptr, &depth));
