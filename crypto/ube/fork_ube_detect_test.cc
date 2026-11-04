@@ -159,8 +159,25 @@ TEST(ForkDetect, Test) {
   EXPECT_EQ(start, CRYPTO_get_fork_ube_generation());
 }
 
-
 #if defined(OPENSSL_THREADS)
+// Wait for a child without letting a stuck fork regression block the suite.
+// On timeout or waitpid failure, ensure the child is killed and reaped.
+static bool WaitForForkTestChild(pid_t child, int *status) {
+  for (int tick = 0; tick < 500; ++tick) {
+    const pid_t result = WaitpidEINTR(child, status, WNOHANG);
+    if (result == child) {
+      return true;
+    }
+    if (result < 0) {
+      break;
+    }
+    usleep(10000);
+  }
+  kill(child, SIGKILL);
+  WaitpidEINTR(child, status, 0);
+  return false;
+}
+
 // Every reader enters the fork-generation check simultaneously in a new
 // child. No generation read or RAND call may re-arm the fork flag first.
 TEST(ForkDetect, SimultaneousFirstReadAfterFork) {
@@ -203,23 +220,11 @@ TEST(ForkDetect, SimultaneousFirstReadAfterFork) {
     }
     ASSERT_GT(child, 0) << "fork failed: " << strerror(errno);
     int status = 0;
-    bool exited = false;
-    for (int tick = 0; tick < 500; ++tick) {
-      const pid_t result = WaitpidEINTR(child, &status, WNOHANG);
-      if (result == child) {
-        exited = true;
-        break;
-      }
-      ASSERT_GE(result, 0) << "waitpid failed";
-      usleep(10000);
-    }
-    if (!exited) {
-      kill(child, SIGKILL);
-      WaitpidEINTR(child, &status, 0);
-      FAIL() << "Child timed out in round " << round;
-    }
+    ASSERT_TRUE(WaitForForkTestChild(child, &status))
+        << "Child timed out or waitpid failed in round " << round;
     ASSERT_TRUE(WIFEXITED(status)) << "child terminated abnormally";
-    ASSERT_EQ(0, WEXITSTATUS(status)) << "first read mismatch in round " << round;
+    ASSERT_EQ(0, WEXITSTATUS(status))
+        << "first read mismatch in round " << round;
     EXPECT_EQ(parent_generation, CRYPTO_get_fork_ube_generation());
   }
 }
