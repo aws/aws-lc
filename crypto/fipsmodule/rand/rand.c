@@ -266,24 +266,20 @@ static void rand_thread_local_state_free(void *state_in) {
 // Returns 1 if |state| is in a valid state and 0 otherwise.
 static int rand_ensure_valid_state(const struct rand_thread_local_state *state) {
 
-  // Currently, the Go based test runner cannot execute a unit test stanza with
-  // guaranteed sequential execution. VM UBE testing is using a global file
-  // that all unit tests will read if ever taking a path to |RAND_bytes|. The
-  // validation below will have a high likelihood of triggering. Disable the
-  // validation for VM UBE testing, until Go test runner can guarantee
-  // sequential execution.
-
-#if !defined(AWSLC_VM_UBE_TESTING)
   // We do not allow the UBE generation number to change while executing AWS-LC
   // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
-  // this error is if snapshotting the address space while executing
-  // |RAND_bytes| and while VM UBE is active.
+  // this is if snapshotting the address space while executing |RAND_bytes| and
+  // while VM UBE is active. A failed read is treated the same way: we cannot
+  // rule out a UBE, and an unsettled vmclock is likely mid-update. If detection
+  // is permanently unavailable, every call has already reseeded on entry and
+  // there is nothing more to check.
   uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
-      current_generation_number != state->generation_number) {
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    return CRYPTO_ube_detection_unavailable();
+  }
+  if (current_generation_number != state->generation_number) {
     return 0;
   }
-#endif
 
   return 1;
 }
@@ -480,6 +476,10 @@ static void rand_bytes_core(
   assert(first_pred_resistance_len == 0 ||
          first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
 
+  uint8_t *const out_start = out;
+  const size_t out_len_start = out_len;
+  const size_t pred_resistance_len_start = first_pred_resistance_len;
+
   // Synchronize with |rand_thread_local_state_clear_all|. In case a
   // thread-local state has been zeroized, thread execution will block here
   // because there is no secure way to generate randomness from that state.
@@ -487,65 +487,80 @@ static void rand_bytes_core(
   // process exit.
   CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
 
-  // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
-  // generated. CTR_DRBG_generate can maximally generate
-  // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
-  // SP800-90A Rev 1 Table 3. If user requests more, we must generate output in
-  // chunks and concatenate.
-  while (out_len > 0) {
-    size_t todo = out_len;
+  for (size_t attempt = 1;; attempt++) {
 
-    if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
-      todo = CTR_DRBG_MAX_GENERATE_LENGTH;
+    // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
+    // generated. CTR_DRBG_generate can maximally generate
+    // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
+    // SP800-90A Rev 1 Table 3. If user requests more, we must generate output in
+    // chunks and concatenate.
+    while (out_len > 0) {
+      size_t todo = out_len;
+
+      if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
+        todo = CTR_DRBG_MAX_GENERATE_LENGTH;
+      }
+
+      if (must_reseed_before_generate == 1 ||
+         (state->generate_calls_since_seed + 1) > kCtrDrbgReseedInterval) {
+
+        // An unlock-lock cycle is located here to not acquire any locks while we
+        // might perform system calls (e.g. when sourcing OS entropy). This
+        // shields against known bugs. For example, glibc can implement locks
+        // using memory transactions on powerpc that has been observed to break
+        // when reaching |getrandom| through |syscall|. For this, see
+        // https://github.com/google/boringssl/commit/17ce286e0792fc2855fb7e34a968bed17ae914af
+        // https://www.kernel.org/doc/Documentation/powerpc/transactional_memory.txt
+        //
+        // Even though the unlock-lock cycle is under the loop iteration,
+        // practically a request size (i.e. the value of |out_len|), will
+        // almost-always be strictly less than |CTR_DRBG_MAX_GENERATE_LENGTH|.
+        // Hence, practically, only one lock-unlock rotation will be required.
+        CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
+        uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+        uint8_t additional_data[CTR_DRBG_ENTROPY_LEN];
+        size_t additional_data_len = 0;
+        rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
+          additional_data, &additional_data_len);
+        CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
+
+        rand_ctr_drbg_reseed(state, seed, additional_data,
+          additional_data_len);
+        must_reseed_before_generate = 0;
+
+        OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+        OPENSSL_cleanse(additional_data, CTR_DRBG_ENTROPY_LEN);
+      }
+
+      if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
+            first_pred_resistance_len)) {
+        abort();
+      }
+
+      out += todo;
+      out_len -= todo;
+      state->generate_calls_since_seed++;
+      first_pred_resistance_len = 0;
     }
 
-    if (must_reseed_before_generate == 1 ||
-       (state->generate_calls_since_seed + 1) > kCtrDrbgReseedInterval) {
-
-      // An unlock-lock cycle is located here to not acquire any locks while we
-      // might perform system calls (e.g. when sourcing OS entropy). This
-      // shields against known bugs. For example, glibc can implement locks
-      // using memory transactions on powerpc that has been observed to break
-      // when reaching |getrandom| through |syscall|. For this, see
-      // https://github.com/google/boringssl/commit/17ce286e0792fc2855fb7e34a968bed17ae914af
-      // https://www.kernel.org/doc/Documentation/powerpc/transactional_memory.txt
-      //
-      // Even though the unlock-lock cycle is under the loop iteration,
-      // practically a request size (i.e. the value of |out_len|), will
-      // almost-always be strictly less than |CTR_DRBG_MAX_GENERATE_LENGTH|.
-      // Hence, practically, only one lock-unlock rotation will be required.
-      CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
-      uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-      uint8_t additional_data[CTR_DRBG_ENTROPY_LEN];
-      size_t additional_data_len = 0;
-      rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
-        additional_data, &additional_data_len);
-      CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
-
-      rand_ctr_drbg_reseed(state, seed, additional_data,
-        additional_data_len);
-      must_reseed_before_generate = 0;
-
-      OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
-      OPENSSL_cleanse(additional_data, CTR_DRBG_ENTROPY_LEN);
+    if (rand_ensure_valid_state(state) == 1) {
+      break;
     }
 
-    if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
-          first_pred_resistance_len)) {
+    // A UBE may have occurred while generating. Discard the output and
+    // regenerate it from a freshly reseeded state.
+    OPENSSL_cleanse(out_start, out_len_start);
+    if (attempt >= kRandMaxGenerateAttempts) {
       abort();
     }
-
-    out += todo;
-    out_len -= todo;
-    state->generate_calls_since_seed++;
-    first_pred_resistance_len = 0;
+    rand_check_ctr_drbg_uniqueness(state);
+    must_reseed_before_generate = 1;
+    out = out_start;
+    out_len = out_len_start;
+    first_pred_resistance_len = pred_resistance_len_start;
   }
 
   OPENSSL_cleanse(pred_resistance, RAND_PRED_RESISTANCE_LEN);
-
-  if (rand_ensure_valid_state(state) != 1) {
-    abort();
-  }
 
   CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 }

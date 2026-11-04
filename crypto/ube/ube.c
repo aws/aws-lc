@@ -59,12 +59,25 @@ void set_vm_ube_generation_number_FOR_TESTING(uint64_t vm_ube_gn) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
+static uint64_t mocked_vm_ube_read_failures = 0;
+void set_vm_ube_read_failures_FOR_TESTING(uint64_t num_failures) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
+  mocked_vm_ube_read_failures = num_failures;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
+}
+
 static int get_vm_ube_generation_number(uint64_t *gn) {
   if (allow_mocked_detection == 1) {
-    CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
-    *gn = override_vm_ube_generation_number;
-    CRYPTO_STATIC_MUTEX_unlock_read(&ube_testing_lock);
-    return 1;
+    int ret = 1;
+    CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
+    if (mocked_vm_ube_read_failures > 0) {
+      mocked_vm_ube_read_failures--;
+      ret = 0;
+    } else {
+      *gn = override_vm_ube_generation_number;
+    }
+    CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
+    return ret;
   }
 
   return CRYPTO_get_vm_ube_generation(gn);
@@ -291,6 +304,11 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   return 1;
 }
 
+int CRYPTO_ube_detection_unavailable(void) {
+  CRYPTO_once(&ube_state_initialize_once, ube_state_initialize);
+  return ube_detection_unavailable == 1 && allow_mocked_detection != 1;
+}
+
 // Synchronize writing to |allow_mocked_detection|. But only to more easily
 // reason about ordering. They are supposed to only be used in testing code
 // and called, initially, from a single-threaded process at initialization time.
@@ -309,4 +327,5 @@ void disable_mocked_ube_detection_FOR_TESTING(void) {
 
   set_fork_ube_generation_number_FOR_TESTING(0);
   set_vm_ube_generation_number_FOR_TESTING(0);
+  set_vm_ube_read_failures_FOR_TESTING(0);
 }
