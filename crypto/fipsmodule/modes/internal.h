@@ -332,12 +332,14 @@ size_t aesv8_gcm_8x_enc_192(const uint8_t *in, size_t bit_len, uint8_t *out,
 size_t aesv8_gcm_8x_dec_192(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
                             const u128 Htable[16]);
-size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
-size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
+
+// s2n-bignum AES-GCM kernels are used on Linux and Apple; the 8x "_alt"
+// kernels also need MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION. Other operating
+// systems, e.g. Windows, use the 4x kernels.
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+#define HW_GCM_S2N_BIGNUM
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
+#endif
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
