@@ -304,6 +304,13 @@ static bool WriteConsoleLine(HANDLE in, const wchar_t *line) {
          written == records.size();
 }
 
+// Wine's console emulation does not support driving input this way, and it is
+// not the code path these tests exist to cover.
+static bool RunningUnderWine() {
+  HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+  return ntdll != NULL && GetProcAddress(ntdll, "wine_get_version") != NULL;
+}
+
 // Types |line| into a fresh console and reads it back with a |kMaxSize|-byte
 // buffer followed by a canary. Exits 0 if the result and canary are as
 // expected, nonzero otherwise.
@@ -357,6 +364,9 @@ static void ReadFromConsoleAndExit(const wchar_t *line, int expected_ret,
 // trailing newline the console appends is stripped, but it and the NUL still
 // count against the buffer during conversion.
 TEST(ConsoleWindowsTest, ReadConsoleUtf8FitsExactly) {
+  if (RunningUnderWine()) {
+    GTEST_SKIP() << "Not supported under Wine";
+  }
   // 6 bytes + '\n' + NUL = 8 bytes.
   EXPECT_EXIT(ReadFromConsoleAndExit(L"\u00e9\u00e9\u00e9", 0,
                                      "\xc3\xa9\xc3\xa9\xc3\xa9"),
@@ -364,6 +374,9 @@ TEST(ConsoleWindowsTest, ReadConsoleUtf8FitsExactly) {
 }
 
 TEST(ConsoleWindowsTest, ReadConsoleUtf8OneByteTooLong) {
+  if (RunningUnderWine()) {
+    GTEST_SKIP() << "Not supported under Wine";
+  }
   // 7 bytes + '\n' + NUL = 9 bytes: must be rejected without writing past
   // the buffer.
   EXPECT_EXIT(ReadFromConsoleAndExit(L"\u00e9\u00e9\u00e9a", -1, NULL),
