@@ -343,6 +343,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
 
         # AES-GCM 8x-unrolled kernels (use EOR3 from the SHA3 extension)
         list(APPEND BCM_ASM_SOURCES
+           ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_enc_alt.S
+           ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_dec_alt.S
            ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_enc_alt.S
            ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_dec_alt.S)
 
