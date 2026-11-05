@@ -60,7 +60,8 @@ jobs:
           memory: 12G
           cpu_count: 3
           run: |
-            sudo pkg install -y git gmake cmake go ninja
+            source tests/ci/retry_util.sh
+            retry_with_backoff sudo pkg install -y git gmake cmake go ninja
             tests/ci/run_bsd_tests.sh
 
   OpenBSD:
@@ -88,7 +89,8 @@ jobs:
           shell: bash
           run: |
             set -x
-            sudo pkg_add cmake ninja go gmake
+            source tests/ci/retry_util.sh
+            retry_with_backoff sudo pkg_add cmake ninja go gmake
             sudo pfctl -d
             mkdir "${HOME}/bin"
             ln -s /usr/local/bin/gmake "${HOME}/bin/make"
@@ -150,11 +152,12 @@ jobs:
           cpu_count: 3
           run: |
             set -x
+            source tests/ci/retry_util.sh
             export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
-            sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+            retry_with_backoff sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
             ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
-            curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
+            retry_with_backoff curl -fL -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
             sudo mkdir -p /usr/local
             sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
             export GOROOT=/usr/local/go
