@@ -48,6 +48,8 @@ Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing r
 
 `-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
 
+The digest used for `-signkey`/`-CA` signing and `-fingerprint` is selectable with `-md5`, `-ripemd160`, `-sha1`, `-sha224`, `-sha256`, `-sha384`, or `-sha512`, matching the set exposed by `req`. An explicit digest flag governs both signing and `-fingerprint`. With no digest flag, signing defaults to SHA-256 and `-fingerprint` defaults to SHA-1, matching OpenSSL. Signing succeeds only for digest and key combinations supported by AWS-LC.
+
 When signing with `-CA`, AWS-LC persists the serial in a file formed by replacing the CA file's extension with `.srl` (`ca.pem` becomes `ca.srl`). If that file is absent, AWS-LC generates a random serial and persists it whether or not `-CAcreateserial` is present. OpenSSL 3.x also signs with a random serial when the file and flag are absent, but does not persist it. `-CAcreateserial` is accepted for command-line compatibility and has no additional effect in AWS-LC.
 
 When `-in` and `-out` name the same file, the input is read in full before the output is opened, so an in-place rewrite does not truncate its own input.
