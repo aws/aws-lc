@@ -2,10 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
+#include <openssl/nid.h>
+#include <openssl/obj.h>
 #include <openssl/rsa.h>
 
 #include <limits.h>
 
+#include "backend/operations/rsa.h"
+#include "backend/utils.h"
 #include "boundary.h"
 #include "boundary/operations/rsa.h"
 #include "boundary/utils.h"
@@ -52,8 +59,102 @@ static RSA *awslc_prov_rsa_from_bns(
   return NULL;
 }
 
+// |rsa| restricted by |pss|. AWS-LC attaches restrictions only while parsing
+// an RSASSA-PSS key, so |rsa| makes a round trip through DER. Consumes |rsa|.
+static RSA *awslc_prov_rsa_restrict(RSA *rsa,
+                                    const AWSLC_PROV_RSA_PSS_PARAMS *pss) {
+  const EVP_MD *md = awslc_prov_digest_md(pss->digest);
+  const EVP_MD *mgf1_md = awslc_prov_digest_md(pss->mgf1_digest);
+  const int is_private = RSA_get0_d(rsa) != NULL;
+  CBB cbb, info, algorithm, key;
+  uint8_t *der = NULL;
+  size_t der_len = 0;
+  EVP_PKEY *pkey = NULL;
+  RSA *restricted = NULL;
+
+  if (md == NULL || mgf1_md == NULL || !CBB_init(&cbb, 0)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+  // A private key is a PKCS#8 PrivateKeyInfo (RFC 5208 section 5), a public
+  // key a SubjectPublicKeyInfo (RFC 5280 section 4.1), each with the
+  // RSASSA-PSS AlgorithmIdentifier (RFC 4055 section 3.1):
+  //
+  //   PrivateKeyInfo ::= SEQUENCE {
+  //     version              INTEGER (0),
+  //     privateKeyAlgorithm  AlgorithmIdentifier,
+  //     privateKey           OCTET STRING }  -- RSAPrivateKey
+  //
+  //   SubjectPublicKeyInfo ::= SEQUENCE {
+  //     algorithm            AlgorithmIdentifier,
+  //     subjectPublicKey     BIT STRING }    -- RSAPublicKey
+  //
+  //   AlgorithmIdentifier ::= SEQUENCE {
+  //     algorithm            OBJECT IDENTIFIER,  -- id-RSASSA-PSS
+  //     parameters           RSASSA-PSS-params }
+  int ok = CBB_add_asn1(&cbb, &info, CBS_ASN1_SEQUENCE) &&
+           (!is_private || CBB_add_asn1_uint64(&info, 0)) &&
+           CBB_add_asn1(&info, &algorithm, CBS_ASN1_SEQUENCE) &&
+           OBJ_nid2cbb(&algorithm, NID_rsassaPss) &&
+           awslc_prov_rsa_marshal_pss_params(&algorithm, md, mgf1_md,
+                                             pss->saltlen);
+  if (ok && is_private) {
+    ok = CBB_add_asn1(&info, &key, CBS_ASN1_OCTETSTRING) &&
+         RSA_marshal_private_key(&key, rsa);
+  } else if (ok) {
+    // The leading 0 is the BIT STRING's count of unused bits.
+    ok = CBB_add_asn1(&info, &key, CBS_ASN1_BITSTRING) &&
+         CBB_add_u8(&key, 0) && RSA_marshal_public_key(&key, rsa);
+  }
+  ok = ok && CBB_finish(&cbb, &der, &der_len);
+  if (!ok) {
+    CBB_cleanup(&cbb);
+  }
+  RSA_free(rsa);
+
+  if (ok) {
+    CBS cbs;
+
+    CBS_init(&cbs, der, der_len);
+    pkey = is_private ? EVP_parse_private_key(&cbs)
+                      : EVP_parse_public_key(&cbs);
+    if (pkey != NULL && CBS_len(&cbs) == 0) {
+      restricted = EVP_PKEY_get1_RSA(pkey);
+    }
+  }
+  EVP_PKEY_free(pkey);
+  OPENSSL_cleanse(der, der_len);
+  OPENSSL_free(der);
+  return restricted;
+}
+
+int awslc_prov_rsa_pss_params_supported(const AWSLC_PROV_RSA_PSS_PARAMS *pss) {
+  // AWS-LC's RSASSA-PSS-params parser is internal and reachable only by parsing
+  // a key, hence the placeholder. The parser runs before, and independently of,
+  // the key, and never compares the salt length to the modulus, so the
+  // placeholder need only pass RSA_check_key to leave the answer unchanged.
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  RSA *rsa = NULL;
+  int ok = 0;
+
+  if (n != NULL && e != NULL && BN_set_u64(n, UINT64_MAX) &&
+      BN_set_word(e, RSA_3)) {
+    rsa = RSA_new_public_key(n, e);
+  }
+  BN_free(n);
+  BN_free(e);
+  if (rsa != NULL) {
+    rsa = awslc_prov_rsa_restrict(rsa, pss);
+    ok = rsa != NULL;
+  }
+  RSA_free(rsa);
+  return ok;
+}
+
 void *awslc_prov_rsa_new(
-    const AWSLC_PROV_BN_BYTES components[AWSLC_PROV_RSA_COMPONENT_COUNT]) {
+    const AWSLC_PROV_BN_BYTES components[AWSLC_PROV_RSA_COMPONENT_COUNT],
+    const AWSLC_PROV_RSA_PSS_PARAMS *pss) {
   BIGNUM *owned[AWSLC_PROV_RSA_COMPONENT_COUNT] = {NULL};
   const BIGNUM *view[AWSLC_PROV_RSA_COMPONENT_COUNT] = {NULL};
   RSA *rsa = NULL;
@@ -72,18 +173,27 @@ void *awslc_prov_rsa_new(
   for (int i = 0; i < AWSLC_PROV_RSA_COMPONENT_COUNT; i++) {
     BN_clear_free(owned[i]);
   }
+  if (rsa != NULL && pss != NULL) {
+    rsa = awslc_prov_rsa_restrict(rsa, pss);
+  }
   return rsa;
 }
 
-void *awslc_prov_rsa_new_public(const void *rsa) {
+void *awslc_prov_rsa_new_public(const void *rsa,
+                                const AWSLC_PROV_RSA_PSS_PARAMS *pss) {
   const BIGNUM *view[AWSLC_PROV_RSA_COMPONENT_COUNT] = {NULL};
+  RSA *copy = NULL;
 
   if (rsa == NULL) {
     return NULL;
   }
   view[AWSLC_PROV_RSA_N] = RSA_get0_n((const RSA *)rsa);
   view[AWSLC_PROV_RSA_E] = RSA_get0_e((const RSA *)rsa);
-  return awslc_prov_rsa_from_bns(view);
+  copy = awslc_prov_rsa_from_bns(view);
+  if (copy != NULL && pss != NULL) {
+    copy = awslc_prov_rsa_restrict(copy, pss);
+  }
+  return copy;
 }
 
 void awslc_prov_rsa_free(void *rsa) { RSA_free((RSA *)rsa); }
@@ -156,7 +266,8 @@ int awslc_prov_rsa_check(const void *rsa) {
   return rsa != NULL && RSA_check_key((const RSA *)rsa);
 }
 
-void *awslc_prov_rsa_generate(unsigned bits) {
+void *awslc_prov_rsa_generate(unsigned bits,
+                              const AWSLC_PROV_RSA_PSS_PARAMS *pss) {
   RSA *rsa = NULL;
 
   if (bits > (unsigned)INT_MAX) {
@@ -169,6 +280,9 @@ void *awslc_prov_rsa_generate(unsigned bits) {
   if (!RSA_generate_key_fips(rsa, (int)bits, NULL)) {
     RSA_free(rsa);
     return NULL;
+  }
+  if (pss != NULL) {
+    rsa = awslc_prov_rsa_restrict(rsa, pss);
   }
   return rsa;
 }
