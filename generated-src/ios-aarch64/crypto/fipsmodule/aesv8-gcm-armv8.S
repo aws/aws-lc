@@ -93,13 +93,11 @@ _aes_gcm_enc_kernel:
 	ldr	q13, [x6, #32]                              // load h2l | h2h
 	aese	v3.16b, v19.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 1
-	ldr	q30, [x8, #192]                               // load rk12
 	aese	v2.16b, v20.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 2
 	ldr	q15, [x6, #80]                              // load h4l | h4h
 	aese	v1.16b, v21.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 3
-	ldr	q29, [x8, #176]                               // load rk11
 	aese	v3.16b, v20.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 2
 	ldr	q26, [x8, #128]                                // load rk8
@@ -121,7 +119,6 @@ _aes_gcm_enc_kernel:
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 4
 	aese	v3.16b, v22.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 4
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	aese	v0.16b, v23.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 5
 	aese	v1.16b, v23.16b
@@ -160,7 +157,6 @@ _aes_gcm_enc_kernel:
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 8
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 8
-	b.lt	Lenc_finish_first_blocks                         // branch if AES-128
 
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 9
@@ -178,25 +174,6 @@ _aes_gcm_enc_kernel:
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 10
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 10
-	b.eq	Lenc_finish_first_blocks                         // branch if AES-192
-
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 1 - round 11
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 2 - round 11
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 0 - round 11
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 3 - round 11
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 1 - round 12
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 2 - round 12
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 0 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 3 - round 12
-
 Lenc_finish_first_blocks:
 	cmp	x0, x5                   // check if we have <= 4 blocks
 	eor	v17.16b, v17.16b, v9.16b                  // h4k | h3k
@@ -375,10 +352,8 @@ Lenc_main_loop:	//	main loop start
 	movi	v8.8b, #0xc2
 	pmull	v4.1q, v4.1d, v16.1d                          // GHASH block 4k+3 - mid
 	eor	v9.16b, v9.16b, v5.16b                         // GHASH block 4k+3 - high
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	fmov	d5, x19                               // AES block 4k+5 - mov low
 	ldp	x6, x7, [x0, #0]            // AES block 4k+4 - load plaintext
-	b.lt	Lenc_main_loop_continue                          // branch if AES-128
 
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 9
@@ -396,25 +371,6 @@ Lenc_main_loop:	//	main loop start
 	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 10
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 10
-	b.eq	Lenc_main_loop_continue                          // branch if AES-192
-
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 11
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 11
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 11
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 11
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 12
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 12
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 12
-
 Lenc_main_loop_continue:
 	shl	d8, d8, #56               // mod_constant
 	eor	v11.16b, v11.16b, v6.16b                         // GHASH block 4k+3 - low
@@ -582,7 +538,6 @@ Lenc_prepretail:	//	PREPRETAIL
 	pmull	v6.1q, v7.1d, v12.1d                          // GHASH block 4k+3 - low
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 8
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 8
 	eor	v11.16b, v11.16b, v6.16b                         // GHASH block 4k+3 - low
@@ -594,7 +549,6 @@ Lenc_prepretail:	//	PREPRETAIL
 	pmull	v4.1q, v9.1d, v8.1d
 	ext	v9.16b, v9.16b, v9.16b, #8
 	eor	v10.16b, v10.16b, v11.16b
-	b.lt	Lenc_finish_prepretail                           // branch if AES-128
 
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 9
@@ -612,25 +566,6 @@ Lenc_prepretail:	//	PREPRETAIL
 	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 10
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 10
-	b.eq	Lenc_finish_prepretail                           // branch if AES-192
-
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 11
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 11
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 11
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 11
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 12
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 12
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 12
-
 Lenc_finish_prepretail:
 	eor	v10.16b, v10.16b, v4.16b
 	eor	v10.16b, v10.16b, v9.16b
@@ -845,7 +780,6 @@ _aes_gcm_dec_kernel:
 	ldr	q27, [x8, #144]                                // load rk9
 	aese	v3.16b, v19.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 1
-	ldr	q30, [x8, #192]                               // load rk12
 	aese	v0.16b, v20.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 2
 	ldr	q12, [x6]                                   // load h1l | h1h
@@ -884,7 +818,6 @@ _aes_gcm_dec_kernel:
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 6
 	aese	v3.16b, v24.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 6
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	aese	v1.16b, v24.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 6
 	aese	v2.16b, v24.16b
@@ -903,10 +836,8 @@ _aes_gcm_dec_kernel:
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 8
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 8
-	ldr	q29, [x8, #176]                               // load rk11
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 8
-	b.lt	Ldec_finish_first_blocks                         // branch if AES-128
 
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 9
@@ -924,25 +855,6 @@ _aes_gcm_dec_kernel:
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 10
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 10
-	b.eq	Ldec_finish_first_blocks                         // branch if AES-192
-
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 0 - round 11
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 3 - round 11
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 1 - round 11
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 2 - round 11
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 1 - round 12
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 0 - round 12
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 2 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 3 - round 12
-
 Ldec_finish_first_blocks:
 	cmp	x0, x5                   // check if we have <= 4 blocks
 	trn1	v9.2d, v14.2d,    v15.2d                      // h4h | h3h
@@ -1104,7 +1016,6 @@ Ldec_main_loop:	//	main loop start
 	orr	x9, x11, x9, lsl #32            // CTR block 4k+8
 	eor	v10.16b, v10.16b, v8.16b                         // GHASH block 4k+2 - mid
 	pmull2	v5.1q, v7.2d, v12.2d                          // GHASH block 4k+3 - high
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	eor	v6.8b, v6.8b, v7.8b                          // GHASH block 4k+3 - mid
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 8
@@ -1124,7 +1035,6 @@ Ldec_main_loop:	//	main loop start
 	eor	v10.16b, v10.16b, v6.16b                         // GHASH block 4k+3 - mid
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 8
-	b.lt	Ldec_main_loop_continue                          // branch if AES-128
 
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 9
@@ -1142,25 +1052,6 @@ Ldec_main_loop:	//	main loop start
 	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 10
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 10
-	b.eq	Ldec_main_loop_continue                          // branch if AES-192
-
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 11
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 11
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 11
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 11
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 12
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 12
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 12
-
 Ldec_main_loop_continue:
 	pmull	v7.1q, v9.1d, v8.1d            // MODULO - top 64b align with mid
 	eor	v6.16b, v11.16b, v9.16b                         // MODULO - karatsuba tidy up
@@ -1314,7 +1205,6 @@ Ldec_prepretail:	//	PREPRETAIL
 	pmull	v6.1q, v6.1d, v16.1d                          // GHASH block 4k+3 - mid
 	aese	v3.16b, v25.16b
 	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 7
-	cmp	x17, #12                                      // setup flags for AES-128/192/256 check
 	eor	v9.16b, v9.16b, v5.16b                         // GHASH block 4k+3 - high
 	aese	v1.16b, v25.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 7
@@ -1333,7 +1223,6 @@ Ldec_prepretail:	//	PREPRETAIL
 	shl	d8, d8, #56               // mod_constant
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 8
-	b.lt	Ldec_finish_prepretail                           // branch if AES-128
 
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 9
@@ -1351,25 +1240,6 @@ Ldec_prepretail:	//	PREPRETAIL
 	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 10
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 10
-	b.eq	Ldec_finish_prepretail                           // branch if AES-192
-
-	aese	v2.16b, v29.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 11
-	aese	v0.16b, v29.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 11
-	aese	v1.16b, v29.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 11
-	aese	v2.16b, v30.16b
-	aesmc	v2.16b, v2.16b          // AES block 4k+6 - round 12
-	aese	v3.16b, v29.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 11
-	aese	v1.16b, v30.16b
-	aesmc	v1.16b, v1.16b          // AES block 4k+5 - round 12
-	aese	v0.16b, v30.16b
-	aesmc	v0.16b, v0.16b          // AES block 4k+4 - round 12
-	aese	v3.16b, v30.16b
-	aesmc	v3.16b, v3.16b          // AES block 4k+7 - round 12
-
 Ldec_finish_prepretail:
 	eor	v10.16b, v10.16b, v6.16b                         // MODULO - karatsuba tidy up
 	pmull	v7.1q, v9.1d, v8.1d            // MODULO - top 64b align with mid

@@ -166,6 +166,11 @@
 # conditionally run rounds 9-10 (AES-192 + AES-256) and 11-12 (AES-256), before
 # merging back into code which finishes up the last two rounds.
 #
+# AWS-LC now uses s2n-bignum's 4x-unrolled kernels for AES-128 and AES-256 (see
+# crypto/fipsmodule/modes/gcm.c), so the AES-128 and AES-256 paths have been
+# removed: these functions handle AES-192 only, running rounds 0 through 10
+# before the last two rounds.
+#
 # There is a mostly decision to be made around how much parallel work goes
 # before or after the conditional part. We attempted to preserve the original
 # scheduling where possible, but it's possible other schedulings are more
@@ -347,11 +352,9 @@ aes_gcm_enc_kernel:
 	aese    $ctr1b, $rk2  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 2
 	ldr     $h2q, [$Htable, #32]                              // load h2l | h2h
 	aese    $ctr3b, $rk1  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 1
-	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
 	ldr     $h4q, [$Htable, #80]                              // load h4l | h4h
 	aese    $ctr1b, $rk3  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 3
-	ldr     $rk11q, [$cc, #176]                               // load rk11
 	aese    $ctr3b, $rk2  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 2
 	ldr     $rk8q, [$cc, #128]                                // load rk8
 	aese    $ctr2b, $rk3  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 3
@@ -365,7 +368,6 @@ aes_gcm_enc_kernel:
 	aese    $ctr0b, $rk4  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 4
 	aese    $ctr1b, $rk4  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 4
 	aese    $ctr3b, $rk4  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 4
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	aese    $ctr0b, $rk5  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 5
 	aese    $ctr1b, $rk5  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 5
 	aese    $ctr3b, $rk5  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 5
@@ -388,7 +390,6 @@ aes_gcm_enc_kernel:
 	aese    $ctr2b, $rk8  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 8
 	aese    $ctr3b, $rk8  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 8
 	aese    $ctr0b, $rk8  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 8
-	b.lt	.Lenc_finish_first_blocks                         // branch if AES-128
 
 	aese    $ctr1b, $rk9  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 9
 	aese    $ctr2b, $rk9  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 9
@@ -398,17 +399,6 @@ aes_gcm_enc_kernel:
 	aese    $ctr2b, $rk10 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 10
 	aese    $ctr3b, $rk10 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 10
 	aese    $ctr0b, $rk10 \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 10
-	b.eq	.Lenc_finish_first_blocks                         // branch if AES-192
-
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 11
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 11
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 11
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 11
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 12
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 12
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 12
-
 .Lenc_finish_first_blocks:
 	cmp     $input_ptr, $main_end_input_ptr                   // check if we have <= 4 blocks
 	eor     $h34k.16b, $h34k.16b, $acc_h.16b                  // h4k | h3k
@@ -551,10 +541,8 @@ aes_gcm_enc_kernel:
 	movi    $mod_constant.8b, #0xc2
 	pmull   $t9.1q, $t9.1d, $h12k.1d                          // GHASH block 4k+3 - mid
 	eor     $acc_hb, $acc_hb, $t7.16b                         // GHASH block 4k+3 - high
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	fmov    $ctr_t1d, $input_l1                               // AES block 4k+5 - mov low
 	ldp     $input_l0, $input_h0, [$input_ptr, #0]            // AES block 4k+4 - load plaintext
-	b.lt	.Lenc_main_loop_continue                          // branch if AES-128
 
 	aese    $ctr1b, $rk9  \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 9
 	aese    $ctr0b, $rk9  \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 9
@@ -564,17 +552,6 @@ aes_gcm_enc_kernel:
 	aese    $ctr1b, $rk10 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 10
 	aese    $ctr2b, $rk10 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 10
 	aese    $ctr3b, $rk10 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 10
-	b.eq	.Lenc_main_loop_continue                          // branch if AES-192
-
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 11
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 11
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 11
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 11
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 12
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 12
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 12
-
 .Lenc_main_loop_continue:
 	shl     $mod_constantd, $mod_constantd, #56               // mod_constant
 	eor     $acc_lb, $acc_lb, $t8.16b                         // GHASH block 4k+3 - low
@@ -709,7 +686,6 @@ aes_gcm_enc_kernel:
 	eor     $acc_mb, $acc_mb, $t9.16b                         // GHASH block 4k+3 - mid
 	pmull   $t8.1q, $res3.1d, $h1.1d                          // GHASH block 4k+3 - low
 	aese    $ctr3b, $rk8  \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 8
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	aese    $ctr0b, $rk8  \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 8
 	eor     $acc_lb, $acc_lb, $t8.16b                         // GHASH block 4k+3 - low
 	aese    $ctr2b, $rk7  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 7
@@ -718,7 +694,6 @@ aes_gcm_enc_kernel:
 	pmull   $t1.1q, $acc_h.1d, $mod_constant.1d
 	ext     $acc_hb, $acc_hb, $acc_hb, #8
 	eor     $acc_mb, $acc_mb, $acc_lb
-	b.lt	.Lenc_finish_prepretail                           // branch if AES-128
 
 	aese    $ctr1b, $rk9  \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 9
 	aese    $ctr3b, $rk9  \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 9
@@ -728,17 +703,6 @@ aes_gcm_enc_kernel:
 	aese    $ctr1b, $rk10 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 10
 	aese    $ctr0b, $rk10 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 10
 	aese    $ctr2b, $rk10 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 10
-	b.eq	.Lenc_finish_prepretail                           // branch if AES-192
-
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 11
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 11
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 11
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 11
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 12
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 12
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 12
-
 .Lenc_finish_prepretail:
 	eor     $acc_mb, $acc_mb, $t1.16b
 	eor     $acc_mb, $acc_mb, $acc_hb
@@ -960,7 +924,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr2b, $rk1  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 1
 	ldr     $rk9q, [$cc, #144]                                // load rk9
 	aese    $ctr3b, $rk1  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 1
-	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr0b, $rk2  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 2
 	ldr     $h1q, [$Htable]                                   // load h1l | h1h
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
@@ -981,7 +944,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr2b, $rk5  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 5
 	aese    $ctr0b, $rk6  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 6
 	aese    $ctr3b, $rk6  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 6
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	aese    $ctr1b, $rk6  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 6
 	aese    $ctr2b, $rk6  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 6
 	aese    $ctr0b, $rk7  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 7
@@ -991,9 +953,7 @@ aes_gcm_dec_kernel:
 	aese    $ctr2b, $rk7  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 7
 	aese    $ctr3b, $rk8  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 8
 	aese    $ctr1b, $rk8  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 8
-	ldr     $rk11q, [$cc, #176]                               // load rk11
 	aese    $ctr2b, $rk8  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 8
-	b.lt	.Ldec_finish_first_blocks                         // branch if AES-128
 
 	aese    $ctr0b, $rk9  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 9
 	aese    $ctr1b, $rk9  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 9
@@ -1003,17 +963,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr1b, $rk10 \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 10
 	aese    $ctr3b, $rk10 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 10
 	aese    $ctr2b, $rk10 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 10
-	b.eq	.Ldec_finish_first_blocks                         // branch if AES-192
-
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 11
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 11
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 11
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 11
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 12
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 12
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 12
-
 .Ldec_finish_first_blocks:
 	cmp     $input_ptr, $main_end_input_ptr                   // check if we have <= 4 blocks
 	trn1    $acc_h.2d, $h3.2d,    $h4.2d                      // h4h | h3h
@@ -1145,7 +1094,6 @@ aes_gcm_dec_kernel:
 	orr     $ctr32x, $ctr96_t32x, $ctr32x, lsl #32            // CTR block 4k+8
 	eor     $acc_mb, $acc_mb, $t6.16b                         // GHASH block 4k+2 - mid
 	pmull2  $t7.1q, $res3.2d, $h1.2d                          // GHASH block 4k+3 - high
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	eor     $t9.8b, $t9.8b, $res3.8b                          // GHASH block 4k+3 - mid
 	aese    $ctr1b, $rk8  \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 8
 	aese    $ctr2b, $rk6  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 6
@@ -1159,7 +1107,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr2b, $rk8  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 8
 	eor     $acc_mb, $acc_mb, $t9.16b                         // GHASH block 4k+3 - mid
 	aese    $ctr3b, $rk8  \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 8
-	b.lt	.Ldec_main_loop_continue                          // branch if AES-128
 
 	aese    $ctr0b, $rk9  \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 9
 	aese    $ctr2b, $rk9  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 9
@@ -1169,17 +1116,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr1b, $rk10 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 10
 	aese    $ctr2b, $rk10 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 10
 	aese    $ctr3b, $rk10 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 10
-	b.eq	.Ldec_main_loop_continue                          // branch if AES-192
-
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 11
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 11
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 11
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 11
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 12
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 12
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 12
-
 .Ldec_main_loop_continue:
 	pmull   $mod_t.1q, $acc_h.1d, $mod_constant.1d            // MODULO - top 64b align with mid
 	eor     $t9.16b, $acc_lb, $acc_hb                         // MODULO - karatsuba tidy up
@@ -1304,7 +1240,6 @@ aes_gcm_dec_kernel:
 	eor     $acc_lb, $acc_lb, $t8.16b                         // GHASH block 4k+3 - low
 	pmull   $t9.1q, $t9.1d, $h12k.1d                          // GHASH block 4k+3 - mid
 	aese    $ctr3b, $rk7  \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 7
-	cmp     $rounds, #12                                      // setup flags for AES-128/192/256 check
 	eor     $acc_hb, $acc_hb, $t7.16b                         // GHASH block 4k+3 - high
 	aese    $ctr1b, $rk7  \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 7
 	aese    $ctr0b, $rk7  \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 7
@@ -1316,7 +1251,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr0b, $rk8  \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 8
 	shl     $mod_constantd, $mod_constantd, #56               // mod_constant
 	aese    $ctr2b, $rk8  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 8
-	b.lt	.Ldec_finish_prepretail                           // branch if AES-128
 
 	aese    $ctr1b, $rk9  \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 9
 	aese    $ctr2b, $rk9  \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 9
@@ -1326,17 +1260,6 @@ aes_gcm_dec_kernel:
 	aese    $ctr3b, $rk10 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 10
 	aese    $ctr0b, $rk10 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 10
 	aese    $ctr1b, $rk10 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 10
-	b.eq	.Ldec_finish_prepretail                           // branch if AES-192
-
-	aese    $ctr2b, $rk11 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 11
-	aese    $ctr0b, $rk11 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 11
-	aese    $ctr1b, $rk11 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 11
-	aese    $ctr2b, $rk12 \n  aesmc   $ctr2b, $ctr2b          // AES block 4k+6 - round 12
-	aese    $ctr3b, $rk11 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 11
-	aese    $ctr1b, $rk12 \n  aesmc   $ctr1b, $ctr1b          // AES block 4k+5 - round 12
-	aese    $ctr0b, $rk12 \n  aesmc   $ctr0b, $ctr0b          // AES block 4k+4 - round 12
-	aese    $ctr3b, $rk12 \n  aesmc   $ctr3b, $ctr3b          // AES block 4k+7 - round 12
-
 .Ldec_finish_prepretail:
 	eor     $acc_mb, $acc_mb, $t9.16b                         // MODULO - karatsuba tidy up
 	pmull   $mod_t.1q, $acc_h.1d, $mod_constant.1d            // MODULO - top 64b align with mid

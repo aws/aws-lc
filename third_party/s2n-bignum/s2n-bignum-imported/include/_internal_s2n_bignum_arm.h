@@ -18,21 +18,23 @@
 #ifdef S2N_BN_HIDE_SYMBOLS
 #   ifdef __APPLE__
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .private_extern S2N_BN_SYMBOL(name)
-#   else
+#   elif !defined(_WIN32)
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .hidden S2N_BN_SYMBOL(name)
+#   else
+#      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) /* Not used in COFF */
 #   endif
 #else
 #   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) .type name, %function
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_SIZE_DIRECTIVE(name) .size S2N_BN_SYMBOL(name), .-S2N_BN_SYMBOL(name)
 #endif
