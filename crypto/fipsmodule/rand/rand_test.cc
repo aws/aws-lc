@@ -610,6 +610,42 @@ TEST_F(randTest, ShutdownDoesNotDeadlockExitingThread) {
 #endif  // OPENSSL_THREADS && !OPENSSL_WINDOWS && !OPENSSL_IOS &&
         // !OPENSSL_WASM && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
+#if !defined(DISABLE_CPU_JITTER_ENTROPY)
+// Regression test for https://github.com/aws/aws-lc/issues/3540.
+//
+// The tree-DRBG zeroization reseeds with random data as defence in depth, but
+// on Windows it must not reach |CRYPTO_sysrand|: the shutdown handler driving
+// the zeroization runs from |DLL_PROCESS_DETACH| whenever libcrypto's objects
+// live in a DLL, where the on-demand bcryptprimitives.dll may already have
+// been detached. Zeros are used there instead. The teardown ordering itself is
+// not reproducible on demand, so assert which source the zeroization uses.
+TEST(treeDrbgZeroizeTest, ReseedMaterial) {
+  // A pattern distinct from both candidate outcomes, so the assertions below
+  // can tell "written" from "left untouched".
+  uint8_t material[CTR_DRBG_ENTROPY_LEN];
+  OPENSSL_memset(material, 0xaa, sizeof(material));
+
+  const int used_os_entropy_source =
+      tree_jitter_zeroize_reseed_material_FOR_TESTING(material);
+
+#if defined(OPENSSL_WINDOWS)
+  const uint8_t zeros[CTR_DRBG_ENTROPY_LEN] = {0};
+  EXPECT_EQ(used_os_entropy_source, 0)
+      << "the zeroization must not reach |CRYPTO_sysrand| on Windows";
+  EXPECT_EQ(Bytes(material), Bytes(zeros));
+#else
+  EXPECT_EQ(used_os_entropy_source, 1)
+      << "the zeroization should use the operating system entropy source";
+  // |CRYPTO_sysrand_if_available| fills |material| with entropy, or with zeros
+  // if the entropy pool is not yet initialized. Both are distinct from the
+  // pattern above, which would survive only if nothing wrote the buffer.
+  uint8_t untouched[CTR_DRBG_ENTROPY_LEN];
+  OPENSSL_memset(untouched, 0xaa, sizeof(untouched));
+  EXPECT_NE(Bytes(material), Bytes(untouched));
+#endif
+}
+#endif  // !DISABLE_CPU_JITTER_ENTROPY
+
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST_F(randTest, RdrandABI) {
   if (!have_hw_rng_x86_64_for_testing()) {

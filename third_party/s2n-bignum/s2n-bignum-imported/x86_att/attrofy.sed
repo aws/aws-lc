@@ -17,6 +17,14 @@
 s/\.intel_syntax *noprefix//
 s/_internal_s2n_bignum_x86/_internal_s2n_bignum_x86_att/
 
+# Swap zero-extending loads to AT&T size-suffixed form BEFORE memory-operand
+# reshaping. We rewrite the mnemonic and strip the WORD/BYTE PTR hint so the
+# remaining rules just translate the memory operand and swap register order.
+s/ movzx  +([a-z][a-z_0-9]*d?), *WORD PTR/ movzwl \1,/g
+s/ movzx  +([a-z][a-z_0-9]*d?), *word ptr/ movzwl \1,/g
+s/ movzx  +([a-z][a-z_0-9]*d?), *BYTE PTR/ movzbl \1,/g
+s/ movzx  +([a-z][a-z_0-9]*d?), *byte ptr/ movzbl \1,/g
+
 # Don't make any transforms on lines with most argument-taking macros
 # We need to be more careful with those taking ymm register arguments
 
@@ -36,9 +44,9 @@ s/_internal_s2n_bignum_x86/_internal_s2n_bignum_x86_att/
 # Reverse the argument order for binary, ternary and quaternary instructions
 # Skip all other macros for this step even if we later do ymm replacement.
 
-/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,;]*)([/;].*)*$/\1\4, \3 \5/
-/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\5, \4, \3 \6/
-/shuffle|butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\6, \5, \4, \3 \7/
+/shuffle|butterfly|caddq_vector|chknorm_vector|decompose_vector|zunpack17_block|zunpack19_block/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,;]*)([/;].*)*$/\1\4, \3 \5/
+/shuffle|butterfly|caddq_vector|chknorm_vector|decompose_vector|zunpack17_block|zunpack19_block/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\5, \4, \3 \6/
+/shuffle|butterfly|caddq_vector|chknorm_vector|decompose_vector|zunpack17_block|zunpack19_block/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)([^ (][^,/]*), *([^ ][^/,]*), *([^ ][^/,]*), *([^ ][^/,;]*)([/;].*)*$/\1\6, \5, \4, \3 \7/
 
 # Fix up whitespace just in case
 
@@ -46,7 +54,7 @@ s/ +,/,/
 
 # Decorate literals with $
 
-/butterfly/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)(([-~+*/()A-Z0-9]*(0x[a-zA-Z0-9]*)*)* *\,)/\1$\3/
+/butterfly|caddq_vector|chknorm_vector|decompose_vector|zunpack17_block|zunpack19_block/! s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)(([-~+*/()A-Z0-9]*(0x[a-zA-Z0-9]*)*)* *\,)/\1$\3/
 
 # Translate relative addresses with uppercase base variable
 # Turn defined offset fields into explicit indirections to match
@@ -68,6 +76,7 @@ s/^([^/][^[]+)[[]([a-z_0-9]+)[]]/\1\(\2\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *8\*([a-z][a-z_0-9]*) *\+ *([a-z_A-Z0-9]+)[]]/\1\4\(\2,\3,8\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *([a-z][a-z_0-9]*) *\+ *([a-z_A-Z0-9]+)[]]/\1\4\(\2,\3,1\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *8\*([a-z][a-z_0-9]*) *\- *([a-z_A-Z0-9]+)[]]/\1\-\4\(\2,\3,8\)/
+s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *([a-z][a-z_0-9]*) *\- *([a-z_A-Z0-9]+)[]]/\1\-\4\(\2,\3,1\)/
 s/^([^/][^[]+)[[](rip) *\+ *([a-z_A-Z0-9* ]+)[]]/\1\3\(\2\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\+ *([A-Z0-9* ]+)[]]/\1\3\(\2\)/
 s/^([^/][^[]+)[[]([a-z][a-z_0-9]*) *\- *([A-Z0-9* ]+)[]]/\1\-\3\(\2\)/
@@ -85,6 +94,12 @@ s/ ax *$/ %ax/
 s/ ax,/ %ax,/
 s/ cl *$/ %cl/
 s/ cl,/ %cl,/
+s/ al *$/ %al/
+s/ al,/ %al,/
+s/ bl *$/ %bl/
+s/ bl,/ %bl,/
+s/ dl *$/ %dl/
+s/ dl,/ %dl,/
 s/([[(,.;: ])([re][abcd]x)/\1\%\2/g
 s/([[(,.;: ])([re]sp)/\1\%\2/g
 s/([[(,.;: ])([re]bp)/\1\%\2/g
@@ -99,7 +114,24 @@ s/([[(,.;: ])([xyz]mm[0-9]*)/\1\%\2/g
 
 # Add explicit sizes to instructions
 
+# Byte-sized zero-extending load: "movzx BYTE PTR mem, reg" -> "movzbl mem, reg".
+# The BYTE PTR size annotation is dropped and the mnemonic is given an explicit
+# operand-size suffix, as GNU as cannot otherwise infer the memory operand size.
+# This must run before the generic "BYTE PTR" strip below.
+s/^(([a-z_0-9]+\:)* +)movzx( +)BYTE PTR /\1movzbl\3/
+
+s/YMMWORD PTR//g
+s/ymmword ptr//g
+s/XMMWORD PTR//g
+s/xmmword ptr//g
 s/QWORD PTR//g
+s/qword ptr//g
+s/DWORD PTR//g
+s/dword ptr//g
+s/WORD PTR//g
+s/word ptr//g
+s/BYTE PTR//g
+s/byte ptr//g
 
 s/ adc  / adcq /g
 s/ adcx  / adcxq /g

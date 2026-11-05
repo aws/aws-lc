@@ -1,6 +1,10 @@
-# Delete up to the first line containing Add (i.e. scrub banners)
+# Delete banner and S2N_BIGNUM_STATIC preprocessor guards (through first #endif)
 
-/Add/,$!d
+1,/^#endif$/d
+
+# Drop leading blank lines left after the guard removal
+
+/./,$!d
 
 # Eliminate static qualifiers in function arguments
 

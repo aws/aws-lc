@@ -9,23 +9,13 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/obj.h>
 
 
 static int maybe_write(BIO *out, const void *buf, int len) {
   // If |out| is NULL, ignore the output but report the length.
   return out == NULL || BIO_write(out, buf, len) == len;
-}
-
-// add_outlen adds |len| to |*outlen|, both tracking the total number of
-// characters |do_name_ex| has written across a loop over an attacker-sized
-// number of name entries. It returns 0 if the addition would overflow.
-static int add_outlen(int *outlen, int len) {
-  if (len > INT_MAX - *outlen) {
-    return 0;
-  }
-  *outlen += len;
-  return 1;
 }
 
 // do_indent prints |indent| spaces to |out|.
@@ -35,6 +25,17 @@ static int do_indent(BIO *out, int indent) {
       return 0;
     }
   }
+  return 1;
+}
+
+// add_outlen adds |len| to |*outlen|. Both must be nonnegative. It returns one
+// on success and zero if the sum would overflow an |int|.
+static int add_outlen(int *outlen, int len) {
+  if (len > INT_MAX - *outlen) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+    return 0;
+  }
+  *outlen += len;
   return 1;
 }
 
@@ -113,23 +114,16 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
     }
     if (prev != -1) {
       if (prev == X509_NAME_ENTRY_set(ent)) {
-        if (!maybe_write(out, sep_mv, sep_mv_len)) {
-          return -1;
-        }
-        if (!add_outlen(&outlen, sep_mv_len)) {
+        if (!maybe_write(out, sep_mv, sep_mv_len) ||
+            !add_outlen(&outlen, sep_mv_len)) {
           return -1;
         }
       } else {
-        if (!maybe_write(out, sep_dn, sep_dn_len)) {
+        if (!maybe_write(out, sep_dn, sep_dn_len) ||
+            !add_outlen(&outlen, sep_dn_len)) {
           return -1;
         }
-        if (!add_outlen(&outlen, sep_dn_len)) {
-          return -1;
-        }
-        if (!do_indent(out, indent)) {
-          return -1;
-        }
-        if (!add_outlen(&outlen, indent)) {
+        if (!do_indent(out, indent) || !add_outlen(&outlen, indent)) {
           return -1;
         }
       }
@@ -161,22 +155,24 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
       if (objbuf == NULL) {
         return -1;
       }
-      objlen = strlen(objbuf);
+      // Application-registered attribute names are not bounded to |INT_MAX|.
+      size_t name_len = strlen(objbuf);
+      if (name_len > INT_MAX) {
+        OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+        return -1;
+      }
+      objlen = (int)name_len;
       if (!maybe_write(out, objbuf, objlen)) {
         return -1;
       }
       if ((objlen < fld_len) && (flags & XN_FLAG_FN_ALIGN)) {
-        if (!do_indent(out, fld_len - objlen)) {
-          return -1;
-        }
-        if (!add_outlen(&outlen, fld_len - objlen)) {
+        if (!do_indent(out, fld_len - objlen) ||
+            !add_outlen(&outlen, fld_len - objlen)) {
           return -1;
         }
       }
-      if (!maybe_write(out, sep_eq, sep_eq_len)) {
-        return -1;
-      }
-      if (!add_outlen(&outlen, objlen) || !add_outlen(&outlen, sep_eq_len)) {
+      if (!maybe_write(out, sep_eq, sep_eq_len) ||
+          !add_outlen(&outlen, objlen) || !add_outlen(&outlen, sep_eq_len)) {
         return -1;
       }
     }
@@ -190,10 +186,7 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
     }
 
     len = ASN1_STRING_print_ex(out, val, flags | orflags);
-    if (len < 0) {
-      return -1;
-    }
-    if (!add_outlen(&outlen, len)) {
+    if (len < 0 || !add_outlen(&outlen, len)) {
       return -1;
     }
   }

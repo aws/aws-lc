@@ -339,7 +339,7 @@ bignum_emontredc_8n_cdiff_base_outerloop:
           ldrh q21, x1, #16, t1
 
           // Precompute and cache differences required in the
-          // ADK multiplication conducted by the innerl oop.
+          // ADK multiplication conducted by the inner loop.
           // Save each difference (somewhat inefficiently)
           // as a pair (t,c) of 64-bit + carry.
           //

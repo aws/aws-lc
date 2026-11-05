@@ -1663,10 +1663,23 @@ static bool HashXof(const Span<const uint8_t> args[],
   //       https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-capabilities-registration
   uint8_t digest[8192];
   const EVP_MD *md = MDFunc();
-  const uint8_t *outlen_bytes = args[1].data();
+
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t md_out_size = CRYPTO_load_u32_le(outlen_bytes);
+  uint32_t md_out_size = 0;
+  if (args[1].size() != sizeof(md_out_size)) {
+    LOG_ERROR(
+        "SHAKE output length argument has size %zu, but expected %zu bytes.\n",
+        args[1].size(), sizeof(md_out_size));
+    return false;
+  }
+  md_out_size = CRYPTO_load_u32_le(args[1].data());
+  if (md_out_size > sizeof(digest)) {
+    LOG_ERROR(
+        "SHAKE output length %u bytes exceeds the maximum of %zu bytes.\n",
+        static_cast<unsigned>(md_out_size), sizeof(digest));
+    return false;
+  }
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 
@@ -1724,6 +1737,13 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[],
                        ReplyCallback write_reply) {
+
+  if (args[1].size() != sizeof(uint32_t) ||
+      args[2].size() != sizeof(uint32_t) ||
+      args[3].size() != sizeof(uint32_t)) {
+    return false;
+  }
+
   const uint8_t *max_outlen_bytes = args[1].data();
   const uint8_t *min_outlen_bytes = args[2].data();
   const uint8_t *outlen_bytes = args[3].data();
@@ -1733,6 +1753,11 @@ static bool HashMCTXof(const Span<const uint8_t> args[],
   uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
   uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
   uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
+
+  if (min_output_len < 2 || min_output_len > max_output_len ||
+      output_len < min_output_len || output_len > max_output_len) {
+    return false;
+  }
   uint32_t range = max_output_len - min_output_len + 1;
 
   const size_t array_len = 1001;

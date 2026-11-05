@@ -315,6 +315,10 @@ jobs:
         with:
           msystem: ${{ matrix.sys }}
           update: true
+          # The MSYS Makefiles generator needs a Unix `make` (/usr/bin/make);
+          # the `toolchain` group only provides mingw32-make.
+          install: >-
+            make
           pacboy: >-
             cmake
             toolchain
@@ -338,18 +342,23 @@ jobs:
           cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Setup CMake
-        uses: threeal/cmake-action@v2.1.0
-        with:
-          build-dir: ./build
-          options: |
-            CMAKE_SYSTEM_NAME=Windows
-            CMAKE_SYSTEM_PROCESSOR=x86_64
-            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}\'
-            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
-            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
-            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
-            CMAKE_BUILD_TYPE=Release
+      - name: Configure and build
+        # Run in the MSYS2 (MINGW64) shell so the MSYS Makefiles generator's
+        # recipe `sh` and the compiler it spawns see mingw64/bin first on PATH.
+        # Otherwise mingw64's as.exe loads a foreign subsystem's runtime DLLs
+        # (ucrt64 libintl/zlib/zstd/iconv) and segfaults, which silently fails
+        # CMake's compiler ABI detection.
+        shell: 'msys2 {0}'
+        run: |
+          cmake -B build \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+            -DCMAKE_FIND_ROOT_PATH="$(cygpath -m '${{ steps.setup_msys2.outputs.msys2-location }}')/${{ matrix.sys }}" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
       - name: Run tests
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests

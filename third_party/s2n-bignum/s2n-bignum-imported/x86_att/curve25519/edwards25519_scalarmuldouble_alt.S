@@ -31,6 +31,7 @@
 
 
         .text
+        .balign 32
 
 // Size of individual field elements
 
@@ -791,7 +792,7 @@ Ledwards25519_scalarmuldouble_alt_standard:
         xorl    %r14d, %r14d
         xorl    %r15d, %r15d
 
-        leaq    Ledwards25519_scalarmuldouble_alt_table(%rip), %rbp
+        leaq    S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt_constant)(%rip), %rbp
 
         cmpq    $1, bf
         movq    (%rbp), %rsi
@@ -1427,7 +1428,7 @@ Ledwards25519_scalarmuldouble_alt_loop:
         xorl    %r14d, %r14d
         xorl    %r15d, %r15d
 
-        leaq    Ledwards25519_scalarmuldouble_alt_table(%rip), %rbp
+        leaq    S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt_constant)(%rip), %rbp
 
         cmpq    $1, bf
         movq    (%rbp), %rsi
@@ -3636,18 +3637,26 @@ S2N_BN_SIZE_DIRECTIVE(Ledwards25519_scalarmuldouble_alt_pepadd)
 
 S2N_BN_SIZE_DIRECTIVE(edwards25519_scalarmuldouble_alt)
 
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif
+
 // ****************************************************************************
-// The precomputed data (all read-only). This is currently part of the same
-// text section, which gives position-independent code with simple PC-relative
-// addressing. However it could be put in a separate section via something like
-//
-// .section .rodata
+// The precomputed data (all read-only).
 // ****************************************************************************
+
+#if defined(__ELF__)
+.section .rodata
+.type S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt_constant), %object
+.size S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt_constant), 768
+#elif defined(__APPLE__)
+.section __TEXT,__const
+#endif
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-Ledwards25519_scalarmuldouble_alt_table:
+S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt_constant):
 
         // 1 * G
 
@@ -3768,7 +3777,3 @@ Ledwards25519_scalarmuldouble_alt_table:
         .quad   0xb8a371788bcca7d7
         .quad   0x636412190eb62a32
         .quad   0x26907c5c2ecc4e95
-
-#if defined(__linux__) && defined(__ELF__)
-.section .note.GNU-stack, "", %progbits
-#endif
