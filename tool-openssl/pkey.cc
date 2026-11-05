@@ -139,18 +139,21 @@ int pkeyTool(const args_list_t &args) {
     }
   }
 
-  // Set up output BIO, restricting permissions when it receives a private key.
+  // The output gets private material from an encoded private key, or from
+  // -text printing private components.
+  const bool private_output = !pubin && ((!noout && !pubout) || text);
+
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
-  } else if (pubout || pubin) {
+  } else if (private_output) {
+    output_bio = NewPrivateFileBIO(out_path);
+  } else {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
       fprintf(stderr, "Error: failed to open output file '%s'\n", out_path.c_str());
       return kToolExitFailure;
     }
-  } else {
-    output_bio = NewPrivateFileBIO(out_path);
   }
 
   if (!output_bio) {

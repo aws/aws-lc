@@ -1,6 +1,15 @@
 // Copyright (c) 2017, Google Inc.
 // SPDX-License-Identifier: ISC
 
+#if defined(__linux) || defined(__sun) || defined(__hpux)
+// Aliases the file APIs to their 64-bit variants, so a 32-bit build can open
+// and sequentially access files larger than 2GB. |BIO_new_file| does the same,
+// and these helpers stand in for it. See crypto/bio/file.c.
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#endif
+
 #include <openssl/bytestring.h>
 
 #include <errno.h>
@@ -52,7 +61,7 @@ bool ReadAll(std::vector<uint8_t> *out, FILE *file) {
 // OpenPrivateFD opens |path| for writing and restricts it to its owner. It
 // returns -1 on failure, after printing the reason to stderr.
 static int OpenPrivateFD(const std::string &path, bool append) {
-  int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
+  int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : 0);
   int fd = open(path.c_str(), flags, 0600);
   if (fd < 0) {
     fprintf(stderr, "Failed to open '%s': %s\n", path.c_str(), strerror(errno));
@@ -66,6 +75,14 @@ static int OpenPrivateFD(const std::string &path, bool append) {
       (S_ISREG(st.st_mode) && (st.st_mode & 0777) != 0600 &&
        fchmod(fd, 0600) != 0)) {
     fprintf(stderr, "Failed to restrict permissions on '%s': %s\n", path.c_str(),
+            strerror(errno));
+    close(fd);
+    return -1;
+  }
+  // Truncation waits until the mode is settled, so a file this process cannot
+  // narrow keeps its contents. Only a regular file has a length to truncate.
+  if (!append && S_ISREG(st.st_mode) && ftruncate(fd, 0) != 0) {
+    fprintf(stderr, "Failed to truncate '%s': %s\n", path.c_str(),
             strerror(errno));
     close(fd);
     return -1;

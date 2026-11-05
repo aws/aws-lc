@@ -201,6 +201,61 @@ TEST_F(PKeyTest, PrivateKeyFilePermissions) {
   EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0600))
       << "Private key file should be owner-only, got: 0" << std::oct << perms;
 }
+
+// -noout -text_pub writes only public components, even from a private key, so
+// the output keeps the permissions the caller gave it.
+TEST_F(PKeyTest, PublicTextFilePermissionsUnchanged) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
+  args_list_t args = {"-in", in_path, "-noout", "-text_pub", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, pkeyTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0666))
+      << "Public-only output should keep its mode, got: 0" << std::oct << perms;
+}
+
+// The permission step runs before truncation, so a pre-existing file must still
+// be replaced rather than left with a tail of its old contents.
+TEST_F(PKeyTest, PrivateKeyOutputTruncatesExistingFile) {
+  // '!' is outside the base64 alphabet, so it cannot come from the new key.
+  const std::string filler(8192, '!');
+  {
+    ScopedFILE existing(fopen(out_path, "wb"));
+    ASSERT_TRUE(existing);
+    ASSERT_EQ(filler.size(),
+              fwrite(filler.data(), 1, filler.size(), existing.get()));
+  }
+
+  args_list_t args = {"-in", in_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, pkeyTool(args));
+
+  std::string content = ReadFileToString(out_path);
+  ASSERT_FALSE(content.empty());
+  EXPECT_EQ(std::string::npos, content.find('!'))
+      << "Output still holds bytes from the previous file";
+  const std::string trailer = "-----\n";
+  ASSERT_GE(content.size(), trailer.size());
+  EXPECT_EQ(trailer, content.substr(content.size() - trailer.size()))
+      << "Output does not end at the PEM trailer";
+}
+
+// -noout -text prints private components, so that output is still private.
+TEST_F(PKeyTest, PrivateTextFilePermissions) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
+  args_list_t args = {"-in", in_path, "-noout", "-text", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, pkeyTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0600))
+      << "Private text output should be owner-only, got: 0" << std::oct
+      << perms;
+}
 #endif
 
 // -------------------- PKey OpenSSL Comparison Tests --------------------------
