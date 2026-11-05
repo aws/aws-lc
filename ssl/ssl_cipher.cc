@@ -1308,9 +1308,9 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
   *out_cipher_list = std::move(pref_list);
 
-  // Configuring an empty cipher list is an error when |strict| is true, but
-  // still updates the output. When otherwise, OpenSSL explicitly allows an
-  // empty list.
+  // An empty result is an error, but still updates the output. The exception
+  // is an explicitly empty rule in non-strict mode: the TLS 1.3 setters accept
+  // it as in OpenSSL, and AWS-LC's legacy setters retain that behavior too.
   if ((strict || (*rule_str != '\0')) &&
       sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
