@@ -17,18 +17,24 @@
 // (|EVP_aead_chacha20_poly1305|) and the one-shot |CRYPTO_chacha_20| primitive,
 // so this wrapper adapts the primitive to the streaming EVP contract.
 //
-// The 16-byte IV is interpreted as OpenSSL does: a 32-bit little-endian block
-// counter followed by a 96-bit nonce, i.e. iv = counter(4, LE) || nonce(12).
+// The 16-byte IV is interpreted as OpenSSL does: a 64-bit little-endian block
+// counter followed by a 64-bit nonce, i.e. iv = counter(8, LE) || nonce(8).
 // |CRYPTO_chacha_20| always starts at a block boundary, so the context buffers
 // the unused tail of the current 64-byte keystream block across calls.
 
 struct chacha20_ctx {
   uint8_t key[32];
-  uint8_t nonce[12];
-  uint32_t counter;
+  uint8_t nonce[8];
+  uint64_t counter;
   uint8_t buf[64];
   unsigned buf_offset;
 };
+
+static void chacha20_get_nonce(uint8_t nonce[12],
+                               const struct chacha20_ctx *c) {
+  CRYPTO_store_u32_le(nonce, (uint32_t)(c->counter >> 32));
+  OPENSSL_memcpy(nonce + 4, c->nonce, sizeof(c->nonce));
+}
 
 static int chacha20_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                              const uint8_t *iv, int enc) {
@@ -37,8 +43,8 @@ static int chacha20_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     OPENSSL_memcpy(c->key, key, sizeof(c->key));
   }
   if (iv != NULL) {
-    c->counter = CRYPTO_load_u32_le(iv);
-    OPENSSL_memcpy(c->nonce, iv + 4, sizeof(c->nonce));
+    c->counter = CRYPTO_load_u64_le(iv);
+    OPENSSL_memcpy(c->nonce, iv + 8, sizeof(c->nonce));
   }
   // Any (re-)initialization discards buffered keystream, as OpenSSL does. The
   // counter still points at the partially used block, so it is regenerated
@@ -74,24 +80,37 @@ static int chacha20_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     }
   }
 
-  // Encrypt whole blocks in bulk; |CRYPTO_chacha_20| advances the counter
-  // internally, so advance our copy by the number of blocks consumed.
+  // Encrypt whole blocks in bulk; |CRYPTO_chacha_20| advances only its
+  // 32-bit counter, so split calls at rollover and advance our 64-bit copy.
   if (in_len >= sizeof(c->buf)) {
     size_t blocks = in_len / sizeof(c->buf);
-    size_t bulk = blocks * sizeof(c->buf);
-    CRYPTO_chacha_20(out, in, bulk, c->key, c->nonce, c->counter);
-    c->counter += (uint32_t)blocks;
-    out += bulk;
-    in += bulk;
-    in_len -= bulk;
+    while (blocks > 0) {
+      const uint64_t blocks_until_rollover =
+          (UINT64_C(1) << 32) - (uint32_t)c->counter;
+      size_t todo_blocks = blocks;
+      if ((uint64_t)todo_blocks > blocks_until_rollover) {
+        todo_blocks = (size_t)blocks_until_rollover;
+      }
+      const size_t todo = todo_blocks * sizeof(c->buf);
+      uint8_t nonce[12];
+      chacha20_get_nonce(nonce, c);
+      CRYPTO_chacha_20(out, in, todo, c->key, nonce, (uint32_t)c->counter);
+      c->counter += (uint64_t)todo_blocks;
+      blocks -= todo_blocks;
+      out += todo;
+      in += todo;
+      in_len -= todo;
+    }
   }
 
   // Final partial block: generate one keystream block and buffer the remainder.
   // |counter| advances only once the buffered block is fully consumed.
   if (in_len > 0) {
     OPENSSL_memset(c->buf, 0, sizeof(c->buf));
-    CRYPTO_chacha_20(c->buf, c->buf, sizeof(c->buf), c->key, c->nonce,
-                     c->counter);
+    uint8_t nonce[12];
+    chacha20_get_nonce(nonce, c);
+    CRYPTO_chacha_20(c->buf, c->buf, sizeof(c->buf), c->key, nonce,
+                     (uint32_t)c->counter);
     for (size_t i = 0; i < in_len; i++) {
       out[i] = in[i] ^ c->buf[i];
     }

@@ -1081,7 +1081,7 @@ TEST(CipherTest, ChaCha20) {
   uint8_t key[32], iv[16];
   RAND_bytes(key, sizeof(key));
   RAND_bytes(iv, sizeof(iv));
-  // The EVP IV is a 32-bit little-endian counter followed by a 96-bit nonce.
+  // The EVP IV is a 64-bit little-endian counter followed by a 64-bit nonce.
   const uint32_t counter = CRYPTO_load_u32_le(iv);
   const uint8_t *nonce = iv + 4;
 
@@ -1137,6 +1137,46 @@ TEST(CipherTest, ChaCha20) {
     CRYPTO_chacha_20(expected, expected, sizeof(expected), key, sample + 4,
                      CRYPTO_load_u32_le(sample));
     EXPECT_EQ(Bytes(expected), Bytes(mask));
+  }
+}
+
+TEST(CipherTest, ChaCha20CounterRollover) {
+  const std::vector<uint8_t> key = HexToBytes(
+      "000102030405060708090a0b0c0d0e0f"
+      "101112131415161718191a1b1c1d1e1f");
+  const std::vector<uint8_t> iv =
+      HexToBytes("feffffff0403020108090a0b0c0d0e0f");
+  const std::vector<uint8_t> openssl_expected = HexToBytes(
+      "7feaa58a0d06292287d24ea10e9318c0ab1a897fe5169a5676b0cd6b3cfcb159"
+      "b059ea1be698ce889905f654393212cb1b01a1046e4d5caa1419c234df9814d7"
+      "ecd140157cf30b04b26e855abe1bf204c59ecfc959ec6db589f69f0bea9647bd"
+      "1928f3835340478e7f7c18d694505d77ee8c9bcee4c1e0e69b771c472ef71c5"
+      "f3ea4fa8a0d1fe8df9ba96084fc53bae4633537a7f1e67edf9297ed1a096cf83"
+      "ba2a9731ec2e83b4bce9c2d91d28810492fa14123b3e88a7a472079fb0bc9da"
+      "9240661c9485c9f4bba5d3ee17b2fad026dcfe625085a86028188e8d59395dfd"
+      "db2b43eafc7648666c77f077a61f98318aba9ea00c02e83b55a5a6bc34f0ce3"
+      "df9");
+  ASSERT_EQ(256u, openssl_expected.size());
+  std::vector<uint8_t> input(openssl_expected.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    input[i] = (uint8_t)i;
+  }
+
+  for (size_t chunk_size : {input.size(), size_t{1}, size_t{65}}) {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_chacha20(), nullptr,
+                                   key.data(), iv.data()));
+    std::vector<uint8_t> out(input.size());
+    size_t offset = 0;
+    while (offset < input.size()) {
+      const size_t todo = std::min(chunk_size, input.size() - offset);
+      int out_len = 0;
+      ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data() + offset, &out_len,
+                                    input.data() + offset, (int)todo));
+      ASSERT_EQ(todo, (size_t)out_len);
+      offset += todo;
+    }
+    EXPECT_EQ(Bytes(openssl_expected), Bytes(out));
   }
 }
 
