@@ -152,19 +152,29 @@ unsigned awslc_prov_rsa_security_bits(const void *rsa) {
   return 0;
 }
 
-int awslc_prov_rsa_check(const void *rsa, int check_private) {
+int awslc_prov_rsa_check_keypair(void *rsa) {
+  return rsa != NULL && RSA_check_fips((RSA *)rsa);
+}
+
+int awslc_prov_rsa_check_public(const void *rsa) {
+  RSA *pub = awslc_prov_rsa_new_public(rsa);
+  const int ok = pub != NULL && RSA_check_fips(pub);
+
+  RSA_free(pub);
+  return ok;
+}
+
+int awslc_prov_rsa_check_private(const void *rsa) {
   const RSA *key = (const RSA *)rsa;
+  const BIGNUM *d = NULL;
 
   if (key == NULL) {
     return 0;
   }
-  // Validate that 1 <= d < n
-  if (check_private) {
-    const BIGNUM *d = RSA_get0_d(key);
-    if (d == NULL || BN_cmp(d, BN_value_one()) < 0 ||
-        BN_cmp(d, RSA_get0_n(key)) >= 0) {
-      return 0;
-    }
+  d = RSA_get0_d(key);
+  if (d == NULL || BN_cmp(d, BN_value_one()) < 0 ||
+      BN_cmp(d, RSA_get0_n(key)) >= 0) {
+    return 0;
   }
   return RSA_check_key(key);
 }

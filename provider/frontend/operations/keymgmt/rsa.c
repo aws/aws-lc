@@ -207,6 +207,7 @@ static int awslc_prov_rsa_validate(const void *keydata, int selection,
                                    int checktype) {
   const AWSLC_PROV_RSA_KEY *key = (const AWSLC_PROV_RSA_KEY *)keydata;
   AWSLC_PROV_CALL call;
+  int ok = 0;
 
   (void)checktype;
   if (key == NULL) {
@@ -215,9 +216,10 @@ static int awslc_prov_rsa_validate(const void *keydata, int selection,
   if ((selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0) {
     return 1;
   }
-  // RSA_check_key requires d, p, and q to perform a PCT.
-  if ((selection & OSSL_KEYMGMT_SELECT_KEYPAIR) ==
-          OSSL_KEYMGMT_SELECT_KEYPAIR &&
+  const int keypair = (selection & OSSL_KEYMGMT_SELECT_KEYPAIR) ==
+                      OSSL_KEYMGMT_SELECT_KEYPAIR;
+  // RSA_check_fips passes an (n, e, d) key; a keypair check must not.
+  if (keypair &&
       (awslc_prov_rsa_component(key, AWSLC_PROV_RSA_P) == NULL ||
        awslc_prov_rsa_component(key, AWSLC_PROV_RSA_Q) == NULL)) {
     AWSLC_PROV_ERROR_RAISE(key->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
@@ -226,9 +228,13 @@ static int awslc_prov_rsa_validate(const void *keydata, int selection,
   }
 
   awslc_prov_call_begin(&call, key->provctx);
-  int ok = awslc_prov_rsa_check(key->rsa,
-                                (selection & OSSL_KEYMGMT_SELECT_KEYPAIR) ==
-                                    OSSL_KEYMGMT_SELECT_PRIVATE_KEY);
+  if (keypair) {
+    ok = awslc_prov_rsa_check_keypair(key->rsa);
+  } else if ((selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) != 0) {
+    ok = awslc_prov_rsa_check_private(key->rsa);
+  } else {
+    ok = awslc_prov_rsa_check_public(key->rsa);
+  }
   return AWSLC_PROV_CALL_END(&call, ok, AWSLC_PROV_RSA_NAME);
 }
 
