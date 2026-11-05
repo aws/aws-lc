@@ -2532,6 +2532,23 @@ ___
             $opcode{$mnemonic}|$1|($2<<5)|($3<<16)|(eval($4)<<10),
             $mnemonic,$arg;
     }
+    # EOR3 (FEAT_SHA3) is emitted as two EORs, so that these kernels do not
+    # need the SHA3 extension: Vd = Vn ^ Vm ^ Va. The operand left for the
+    # second EOR must not be Vd, which the first EOR overwrites.
+    sub uneor3 {
+        my $arg=shift;
+
+        $arg =~ m/(v[0-9]+)\.16b,\s*(v[0-9]+)\.16b,\s*(v[0-9]+)\.16b,\s*(v[0-9]+)\.16b(.*)/
+            or die "unexpected eor3 operands: $arg";
+        my ($d,$n,$m,$a,$rest)=($1,$2,$3,$4,$5);
+        my ($x,$y,$z);
+        if    ($a ne $d) { ($x,$y,$z)=($n,$m,$a); }
+        elsif ($m ne $d) { ($x,$y,$z)=($n,$a,$m); }
+        elsif ($n ne $d) { ($x,$y,$z)=($m,$a,$n); }
+        else             { die "eor3 with all operands equal: $arg"; }
+        sprintf "eor\t%s.16b, %s.16b, %s.16b\n\teor\t%s.16b, %s.16b, %s.16b%s",
+            $d,$x,$y,$d,$d,$z,$rest;
+    }
     sub unvmov {
         my $arg=shift;
 
@@ -2545,7 +2562,8 @@ ___
         s/\`([^\`]*)\`/eval($1)/ge;
 
         m/\bld1r\b/ and s/\.16b/.2d/g    or
-        s/\b(eor3|rax1|xar|bcax)\s+(v.*)/unsha3($1,$2)/ge;
+        s/\beor3\s+(v.*)/uneor3($1)/ge   or
+        s/\b(rax1|xar|bcax)\s+(v.*)/unsha3($1,$2)/ge;
         print $_,"\n";
      }
 }
