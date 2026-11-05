@@ -1,0 +1,48 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+// Digest-class parameter handling. The keys are common to the operation class;
+// each family supplies the values and flags appropriate to its algorithms.
+
+#include <openssl/core_names.h>
+#include <openssl/params.h>
+
+#include "frontend/operations/digests/digests.h"
+#include "frontend/utils.h"
+
+static const OSSL_PARAM awslc_prov_digest_gettable[] = {
+    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_BLOCK_SIZE, NULL),
+    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_SIZE, NULL),
+    OSSL_PARAM_int(OSSL_DIGEST_PARAM_XOF, NULL),
+    OSSL_PARAM_int(OSSL_DIGEST_PARAM_ALGID_ABSENT, NULL),
+    OSSL_PARAM_END};
+
+static const OSSL_PARAM awslc_prov_digest_gettable_ctx[] = {
+    OSSL_PARAM_int(OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR, NULL),
+    OSSL_PARAM_END};
+
+const OSSL_PARAM *awslc_prov_digest_gettable_params(void *provctx) {
+  (void)provctx;
+  return awslc_prov_digest_gettable;
+}
+
+const OSSL_PARAM *awslc_prov_digest_gettable_ctx_params(void *dctx,
+                                                        void *provctx) {
+  (void)dctx;
+  (void)provctx;
+  return awslc_prov_digest_gettable_ctx;
+}
+
+int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
+                                 size_t digest_size, uint32_t flags) {
+  // OSSL_FUNC_digest_get_params carries no provctx to raise through.
+  return awslc_prov_param_set_size_t(NULL, params, OSSL_DIGEST_PARAM_BLOCK_SIZE,
+                                     block_size) &&
+         awslc_prov_param_set_size_t(NULL, params, OSSL_DIGEST_PARAM_SIZE,
+                                     digest_size) &&
+         awslc_prov_param_set_int(NULL, params, OSSL_DIGEST_PARAM_XOF,
+                                  (flags & AWSLC_PROV_DIGEST_FLAG_XOF) != 0) &&
+         awslc_prov_param_set_int(
+             NULL, params, OSSL_DIGEST_PARAM_ALGID_ABSENT,
+             (flags & AWSLC_PROV_DIGEST_FLAG_ALGID_ABSENT) != 0);
+}

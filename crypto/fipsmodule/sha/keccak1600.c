@@ -324,9 +324,6 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 
 #if defined(KECCAK1600_ASM)
 
-// Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
-extern void KeccakF1600_hw(uint64_t state[25]);
-
 #if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86_64)
 static void keccak_log_dispatch(size_t id) {
 #if BORINGSSL_DISPATCH_TEST

@@ -4,42 +4,59 @@
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 
-#include "internal/frontend/digests.h"
-#include "internal/provider.h"
+#include "boundary/names.h"
+#include "frontend/operations/sha2.h"
+#include "frontend/provider.h"
 
 // A macro for defining algorithm rows for the OpenSSL provider dispatch table.
 //
-// |names| are provided as ':' separated values and come verbatim from OpenSSL's
-// providers/implementations/include/prov/names.h
-// They include legacy spellings, aliases, and the OID.
+// |names| is the row's AWSLC_PROV_NAMES_* string from boundary/names.h.
+//
+// |property_definition| is the row's property string.
 //
 // |algorithm| is the symbol-name stem for each specific algorithm's macro
 // defined symbols and should be given in lower_snake_case.
 //
 // |description| is a simple string description for the algorithm.
-#define AWSLC_PROV_ALG(names, algorithm, description)                     \
-  { names, AWSLC_PROV_PROPERTIES, awslc_prov_##algorithm##_functions,     \
-    description }
+#define AWSLC_PROV_ALG(names, property_definition, algorithm, description) \
+  {names, property_definition, awslc_prov_##algorithm##_functions, description},
 
-// One table per operation class. Each row cites the names.h macro it copies.
+// The digest rows, expanded once per table below. |fips_property_definition| is
+// given to every algorithm AWS-LC can approve; a row AWS-LC can never approve
+// uses AWSLC_PROV_PROPERTIES directly.
+#define AWSLC_PROV_DIGESTS(fips_property_definition)                           \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_224, fips_property_definition,          \
+                 sha224, "AWS-LC SHA2-224 implementation")                     \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_256, fips_property_definition,          \
+                 sha256, "AWS-LC SHA2-256 implementation")                     \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_384, fips_property_definition,          \
+                 sha384, "AWS-LC SHA2-384 implementation")                     \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_512, fips_property_definition,          \
+                 sha512, "AWS-LC SHA2-512 implementation")                     \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_512_224, fips_property_definition,      \
+                 sha512_224, "AWS-LC SHA2-512/224 implementation")             \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_SHA2_512_256, fips_property_definition,      \
+                 sha512_256, "AWS-LC SHA2-512/256 implementation")
+
+static const OSSL_ALGORITHM awslc_prov_digests_fips[] = {
+    AWSLC_PROV_DIGESTS(AWSLC_PROV_FIPS_PROPERTIES)
+    {NULL, NULL, NULL, NULL}};
 static const OSSL_ALGORITHM awslc_prov_digests[] = {
-    // PROV_NAMES_SHA2_256
-    AWSLC_PROV_ALG("SHA2-256:SHA-256:SHA256:2.16.840.1.101.3.4.2.1", sha256,
-                   "AWS-LC SHA2-256 implementation"),
+    AWSLC_PROV_DIGESTS(AWSLC_PROV_PROPERTIES)
     {NULL, NULL, NULL, NULL}};
 
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
                                                  int operation_id,
                                                  int *no_store) {
-  (void)provctx;
-  // The tables are static and cacheable, so the core may keep them.
+  // FIPS mode is fixed for the process, so the core may cache either table.
   if (no_store != NULL) {
     *no_store = 0;
   }
 
   switch (operation_id) {
     case OSSL_OP_DIGEST:
-      return awslc_prov_digests;
+      return awslc_prov_ctx_is_fips(provctx) ? awslc_prov_digests_fips
+                                             : awslc_prov_digests;
     default:
       // Returning NULL is what lets the fetch fall through to another provider
       // rather than fail, so every class we do not serve must land here.

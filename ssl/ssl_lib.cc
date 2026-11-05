@@ -1737,7 +1737,7 @@ int SSL_get_read_ahead(const SSL *ssl) {
 
 int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
   GUARD_PTR(ctx);
-  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  // SSLBUFFER_MAX_CAPACITY is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
   }
@@ -1750,7 +1750,7 @@ int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
 
 int SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
   GUARD_PTR(ssl);
-  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  // SSLBUFFER_MAX_CAPACITY is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
   }
@@ -2187,30 +2187,39 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
   return c->name;
 }
 
+// set_tls12_cipher_list rebuilds |dst| from the TLS 1.2 and below suites that
+// |str| selects, plus |tls13_ciphers|. It returns one if |str| selected any and
+// |dst| was rebuilt, and zero otherwise. As in OpenSSL, a rule that matches
+// nothing fails but still empties the TLS 1.2 and below suites, keeping the TLS
+// 1.3 suites. Any other failure leaves |dst| unchanged. The error is reported
+// by |ssl_create_cipher_list| or the allocator, so this adds none of its own.
+static int set_tls12_cipher_list(
+    UniquePtr<SSLCipherPreferenceList> &dst,
+    UniquePtr<SSLCipherPreferenceList> &tls13_ciphers, bool has_aes_hw,
+    const char *str, bool strict) {
+  UniquePtr<SSLCipherPreferenceList> tls12_ciphers;
+  const bool matched =
+      ssl_create_cipher_list(&tls12_ciphers, has_aes_hw, str, strict,
+                             false /* don't configure TLSv1.3 ciphers */);
+  if (tls12_ciphers == nullptr) {
+    return 0;
+  }
+  // Rebuild |dst| even when nothing matched so the TLS 1.3 suites survive.
+  return update_cipher_list(dst, tls12_ciphers, tls13_ciphers) && matched;
+}
+
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  return set_tls12_cipher_list(ctx->cipher_list, ctx->tls13_cipher_list,
+                               has_aes_hw, str, false /* not strict */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
-                                true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  return set_tls12_cipher_list(ctx->cipher_list, ctx->tls13_cipher_list,
+                               has_aes_hw, str, true /* strict */);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
@@ -2220,30 +2229,33 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    return 0;
-  }
-
-  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
-                                        ssl->ctx->tls13_cipher_list;
-
-  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers =
+      ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list
+                                     : ssl->ctx->tls13_cipher_list;
+  return set_tls12_cipher_list(ssl->config->cipher_list, tls13_ciphers,
+                               has_aes_hw, str, false /* not strict */);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
 
-  if (!ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                true /* only configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  // ssl_create_cipher_list reports why it failed, including
+  // |SSL_R_NO_CIPHER_MATCH| when |str| selects nothing.
+  UniquePtr<SSLCipherPreferenceList> tls13_ciphers;
+  if (!ssl_create_cipher_list(&tls13_ciphers, has_aes_hw, str,
+                              false /* not strict */,
+                              true /* only configure TLSv1.3 ciphers */)) {
     return 0;
   }
 
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  // update_cipher_list leaves its destination unchanged on failure. Commit the
+  // TLS 1.3 policy only after both parsing and rebuilding the combined list.
+  if (!update_cipher_list(ctx->cipher_list, ctx->cipher_list, tls13_ciphers)) {
+    return 0;
+  }
+  ctx->tls13_cipher_list = std::move(tls13_ciphers);
+  return 1;
 }
 
 int SSL_set_ciphersuites(SSL *ssl, const char *str) {
@@ -2253,17 +2265,22 @@ int SSL_set_ciphersuites(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->tls13_cipher_list,
-                                has_aes_hw, str, false /* not strict */,
-                                true /* configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  UniquePtr<SSLCipherPreferenceList> tls13_ciphers;
+  if (!ssl_create_cipher_list(&tls13_ciphers, has_aes_hw, str,
+                              false /* not strict */,
+                              true /* configure TLSv1.3 ciphers */)) {
     return 0;
   }
 
   UniquePtr<SSLCipherPreferenceList> &ciphers = ssl->config->cipher_list ? ssl->config->cipher_list :
                                           ssl->ctx->cipher_list;
 
-  return update_cipher_list(ssl->config->cipher_list, ciphers, ssl->config->tls13_cipher_list);
+  // Keep both lists unchanged if rebuilding the combined list fails.
+  if (!update_cipher_list(ssl->config->cipher_list, ciphers, tls13_ciphers)) {
+    return 0;
+  }
+  ssl->config->tls13_cipher_list = std::move(tls13_ciphers);
+  return 1;
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
@@ -2273,16 +2290,11 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->cipher_list,
-                                has_aes_hw, str, true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    return 0;
-  }
-
-  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
-                                        ssl->ctx->tls13_cipher_list;
-
-  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers =
+      ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list
+                                     : ssl->ctx->tls13_cipher_list;
+  return set_tls12_cipher_list(ssl->config->cipher_list, tls13_ciphers,
+                               has_aes_hw, str, true /* strict */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {
@@ -3048,16 +3060,25 @@ int SSL_client_hello_isv2(SSL *s) {
   return 0;
 }
 
-int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
-                              size_t *outlen) {
+static bool ssl_client_hello_get_current(SSL *s,
+                                         SSL_CLIENT_HELLO *out_client_hello) {
   GUARD_PTR(s);
   GUARD_PTR(s->s3);
-  SSL_HANDSHAKE* hs = s->s3->hs.get();
+  SSL_HANDSHAKE *hs = s->s3->hs.get();
   GUARD_PTR(hs);
 
+  if (!s->server || hs->state != state12_read_client_hello_after_ech) {
+    return false;
+  }
+
   SSLMessage msg_unused;
+  return hs->GetClientHello(&msg_unused, out_client_hello);
+}
+
+int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen) {
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
 
@@ -3127,14 +3148,8 @@ int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
 }
 
 int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
 
@@ -3166,14 +3181,8 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
 }
 
 unsigned int SSL_client_hello_get0_legacy_version(SSL *s) {
-  GUARD_PTR(s);
-  GUARD_PTR(s->s3);
-  SSL_HANDSHAKE *hs = s->s3->hs.get();
-  GUARD_PTR(hs);
-
-  SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
-  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+  if (!ssl_client_hello_get_current(s, &client_hello)) {
     return 0;
   }
   return client_hello.version;

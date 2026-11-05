@@ -23,6 +23,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_clz)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_clz)
         .text
+        .balign 32
 
 #define k %rdi
 #define x %rsi

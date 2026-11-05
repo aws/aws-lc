@@ -171,6 +171,39 @@ TEST_F(DgstComparisonTest, Digest) {
   EXPECT_EQ(awslc_output_str, openssl_output_str);
 }
 
+// -r selects coreutils-style output ("<hash> *<file>"). Compare the full
+// formatted output against OpenSSL to confirm byte-for-byte parity.
+TEST_F(DgstComparisonTest, Reverse) {
+  std::string awslc_command = ShellEscape(awslc_executable_path) +
+                              " dgst -sha256 -r -out " +
+                              ShellEscape(out_path_awslc) + " " +
+                              ShellEscape(in_path);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " dgst -sha256 -r -out " +
+                                ShellEscape(out_path_openssl) + " " +
+                                ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+
+  // stdin input: the digest line labels the source "stdin".
+  awslc_command = ShellEscape(awslc_executable_path) +
+                  " dgst -sha256 -r -out " + ShellEscape(out_path_awslc) +
+                  " < " + ShellEscape(in_path);
+  openssl_command = ShellEscape(openssl_executable_path) +
+                    " dgst -sha256 -r -out " + ShellEscape(out_path_openssl) +
+                    " < " + ShellEscape(in_path);
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  EXPECT_EQ(awslc_output_str, openssl_output_str);
+}
+
 TEST_F(DgstComparisonTest, SignAndVerify) {
   // default binary output
   std::string awslc_command = ShellEscape(awslc_executable_path) +
@@ -483,6 +516,68 @@ TEST_F(DgstTest, FileInput) {
 
   RemoveFile(in_path2);
 }
+
+// Regression guard: -r emits coreutils format "<hash> *<file>". Pin the exact
+// bytes (including the trailing newline) so the output format cannot drift.
+TEST_F(DgstTest, ReverseOutput) {
+  args_list_t args = {"-sha256", "-r", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "cd8465678c8a28c26d117d6215f32de0c2652cbc78d25d86baeaee5a57a8999b *" +
+      std::string(in_path) + "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+// The -r format is independent of the digest algorithm: the hash still comes
+// first, followed by " *<file>".
+TEST_F(DgstTest, ReverseOutputCustomDigest) {
+  args_list_t args = {"-sha1", "-r", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "bc222991b8c14f11a3689721346090471a14adbf *" + std::string(in_path) +
+      "\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+// -binary takes precedence over -r: the output is the raw digest bytes, not
+// the coreutils text form. Locks in the documented binary-output precedence.
+TEST_F(DgstTest, ReverseBinaryPrecedence) {
+  args_list_t args = {"-sha256", "-r", "-binary", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const uint8_t expected_bytes[] = {
+      0xcd, 0x84, 0x65, 0x67, 0x8c, 0x8a, 0x28, 0xc2,
+      0x6d, 0x11, 0x7d, 0x62, 0x15, 0xf3, 0x2d, 0xe0,
+      0xc2, 0x65, 0x2c, 0xbc, 0x78, 0xd2, 0x5d, 0x86,
+      0xba, 0xea, 0xee, 0x5a, 0x57, 0xa8, 0x99, 0x9b};
+  const std::string expected(reinterpret_cast<const char *>(expected_bytes),
+                             sizeof(expected_bytes));
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
+#if !defined(OPENSSL_WINDOWS)
+// A newline in the filename is escaped as "\n" and the whole record is prefixed
+// with a backslash so it stays on one line, matching OpenSSL. (Newlines are not
+// valid in Windows filenames, so this case is POSIX-only.)
+TEST_F(DgstTest, ReverseOutputNewlineInFilename) {
+  char dir[PATH_MAX];
+  ASSERT_GT(createTempDirPath(dir), 0u);
+  const std::string newline_path = std::string(dir) + "/a\nb";
+  {
+    ScopedFILE f(fopen(newline_path.c_str(), "wb"));
+    ASSERT_TRUE(f);
+    const char *data = "Test data for signing and verification";
+    ASSERT_EQ(fwrite(data, 1, strlen(data), f.get()), strlen(data));
+  }
+  args_list_t args = {"-sha256", "-r", "-out", out_path, newline_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const std::string expected =
+      "\\cd8465678c8a28c26d117d6215f32de0c2652cbc78d25d86baeaee5a57a8999b *" +
+      std::string(dir) + "/a\\nb\n";
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+  RemoveFile(newline_path.c_str());
+  remove(dir);
+}
+#endif
 
 class DgstOptionUsageErrorsTest : public DgstTest {
  protected:

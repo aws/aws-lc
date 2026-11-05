@@ -2344,6 +2344,86 @@ TEST(X509Test, CRLDistributionPointScope) {
   }
 }
 
+// A critical CRL distribution points extension is only handled when CRL
+// checking will process it. Otherwise it is an unhandled critical extension,
+// per RFC 5280 Section 4.2. |X509_V_FLAG_CRL_CHECK| alone only checks the leaf.
+TEST(X509Test, CriticalCRLDistributionPoints) {
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kP256Key));
+  ASSERT_TRUE(key);
+
+  const char *kCRLURI = "http://example.com/crl.pem";
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  const unsigned long kCheckAll =
+      X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL;
+  // Place the critical extension on the leaf, intermediate, and trust anchor.
+  for (int depth = 0; depth < 3; depth++) {
+    SCOPED_TRACE(depth);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    bssl::UniquePtr<X509> intermediate =
+        MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+    bssl::UniquePtr<X509> leaf =
+        MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(intermediate);
+    ASSERT_TRUE(leaf);
+    X509 *chain[] = {leaf.get(), intermediate.get(), root.get()};
+    ASSERT_TRUE(X509_add1_ext_i2d(chain[depth], NID_crl_distribution_points,
+                                  crldp.get(), /*crit=*/1, /*flags=*/0));
+    for (X509 *cert : chain) {
+      ASSERT_TRUE(X509_sign(cert, key.get(), EVP_sha256()));
+    }
+
+    // CRLs without an issuing distribution point cover every certificate.
+    auto root_crl = MakeTestCRL(root.get(), key.get(), /*idp_uri=*/nullptr, {});
+    ASSERT_TRUE(root_crl);
+    auto intermediate_crl =
+        MakeTestCRL(intermediate.get(), key.get(), /*idp_uri=*/nullptr, {});
+    ASSERT_TRUE(intermediate_crl);
+    std::vector<X509_CRL *> crls = {root_crl.get(), intermediate_crl.get()};
+
+    // Without CRL checking, the extension is not processed.
+    EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     /*flags=*/0));
+    // |X509_V_FLAG_CRL_CHECK_ALL| has no effect without
+    // |X509_V_FLAG_CRL_CHECK|.
+    EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     X509_V_FLAG_CRL_CHECK_ALL));
+    // |X509_V_FLAG_IGNORE_CRITICAL| skips the check.
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                crls, X509_V_FLAG_IGNORE_CRITICAL));
+    // |X509_V_FLAG_CRL_CHECK| alone only processes the extension on the leaf.
+    EXPECT_EQ(depth == 0 ? X509_V_OK : X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     X509_V_FLAG_CRL_CHECK));
+    // With |X509_V_FLAG_CRL_CHECK_ALL|, it is processed on every certificate.
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                crls, kCheckAll));
+  }
+
+  // A non-critical extension is accepted without CRL checking.
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points,
+                                crldp.get(), /*crit=*/0, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {}, /*flags=*/0));
+}
+
 static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {
   DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
   if (!dpn) {
@@ -2956,6 +3036,68 @@ TEST(X509Test, NameConstraints) {
       {GEN_EMAIL, "foo@example.com", "a@b@example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Trailing dot on the domain is ignored, in both the name and the
+      // constraint.
+      {GEN_EMAIL, "foo@example.com.", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com.", "foo@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "foo@example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@evil.example.com.", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Only a single trailing dot is removed. Domains with empty labels, or
+      // that are empty after normalization, are rejected.
+      {GEN_EMAIL, "foo@example.com..", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar..example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar.example.com", "..example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels must begin and end with an alphanumeric.
+      {GEN_EMAIL, "foo@-bar.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar-.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@b-r.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@1.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example-.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels are at most 63 bytes.
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".example.com.",
+       ".example.com", X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@" + std::string(64, 'a') + ".example.com.",
+       ".example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".com",
+       std::string(63, 'a') + ".com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "." + std::string(64, 'a') + ".com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.", "example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", ".", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
       {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
@@ -3135,6 +3277,69 @@ TEST(X509Test, NameConstraints) {
           << "\"";
     }
   }
+}
+
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // An intermediate CA whose CN is an organization name with an internal dot
+  // and spaces, and no SAN. The CN fallback is a hostname heuristic and only
+  // applies to the end-entity certificate, so this must not be treated as a
+  // DNS name.
+  static const char kIntermediateCN[] = "ACME Corp. Issuing CA G2";
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", kIntermediateCN, key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf = MakeTestCert(kIntermediateCN, "www.example.com",
+                                            key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The end-entity CN is still checked through the same intermediate.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert(kIntermediateCN, "www.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  bssl::UniquePtr<X509> leaf_space = MakeTestCert(
+      kIntermediateCN, "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(
+      X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+      Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
 }
 
 // Test that wildcard CNs are checked against name constraints when no
@@ -3338,6 +3543,143 @@ TEST(X509Test, TestPSSMD5MGF1Digest) {
   ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
   ASSERT_EQ(ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED, ERR_GET_REASON(err));
   ERR_clear_error();
+}
+
+// MakeRsaPssSigAlg builds an RSASSA-PSS |X509_ALGOR| with SHA-256 as both the
+// message and MGF1 digest and the given |saltLength| (NULL omits the field).
+// Takes ownership of |saltLength|; returns NULL on failure.
+static bssl::UniquePtr<X509_ALGOR> MakeRsaPssSigAlg(
+    bssl::UniquePtr<ASN1_INTEGER> saltLength) {
+  bssl::UniquePtr<RSA_PSS_PARAMS> pss(RSA_PSS_PARAMS_new());
+  if (!pss) {
+    return nullptr;
+  }
+
+  // hashAlgorithm = SHA-256.
+  pss->hashAlgorithm = X509_ALGOR_new();
+  if (pss->hashAlgorithm == nullptr ||
+      !X509_ALGOR_set_md(pss->hashAlgorithm, EVP_sha256())) {
+    return nullptr;
+  }
+
+  // maskGenAlgorithm = MGF1 with SHA-256; the digest is packed into the MGF1
+  // parameter, as rsa_pss.c's encoder does.
+  bssl::UniquePtr<X509_ALGOR> mgf1_md(X509_ALGOR_new());
+  ASN1_STRING *packed = nullptr;
+  if (!mgf1_md || !X509_ALGOR_set_md(mgf1_md.get(), EVP_sha256()) ||
+      !ASN1_item_pack(mgf1_md.get(), ASN1_ITEM_rptr(X509_ALGOR), &packed)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_STRING> packed_cleanup(packed);
+  pss->maskGenAlgorithm = X509_ALGOR_new();
+  if (pss->maskGenAlgorithm == nullptr ||
+      !X509_ALGOR_set0(pss->maskGenAlgorithm, OBJ_nid2obj(NID_mgf1),
+                       V_ASN1_SEQUENCE, packed)) {
+    return nullptr;
+  }
+  packed_cleanup.release();  // Now owned by |maskGenAlgorithm|.
+
+  pss->saltLength = saltLength.release();  // Now owned by |pss|; may be NULL.
+
+  ASN1_STRING *os = nullptr;
+  if (!ASN1_item_pack(pss.get(), ASN1_ITEM_rptr(RSA_PSS_PARAMS), &os)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_STRING> os_cleanup(os);
+  bssl::UniquePtr<X509_ALGOR> sigalg(X509_ALGOR_new());
+  if (!sigalg || !X509_ALGOR_set0(sigalg.get(), OBJ_nid2obj(NID_rsassaPss),
+                                  V_ASN1_SEQUENCE, os)) {
+    return nullptr;
+  }
+  os_cleanup.release();  // Now owned by |sigalg|.
+  return sigalg;
+}
+
+// RsaPssSaltLenRejected installs a crafted RSASSA-PSS algorithm with
+// |saltLength| on |cert| and runs the public |X509_verify| path, which decodes
+// saltLength in x509_rsa_pss_to_ctx before any signature math. Returns true iff
+// verification failed with |X509_R_INVALID_PSS_PARAMETERS| (rejected at decode);
+// an accepted length returns false, even if verification then fails for another
+// reason. Takes ownership of |saltLength|.
+static bool RsaPssSaltLenRejected(X509 *cert, EVP_PKEY *pkey,
+                                  bssl::UniquePtr<ASN1_INTEGER> saltLength) {
+  bssl::UniquePtr<X509_ALGOR> sigalg(MakeRsaPssSigAlg(std::move(saltLength)));
+  if (!sigalg) {
+    return false;
+  }
+  // |X509_verify| requires the outer and TBS signature algorithms to compare
+  // equal. Install two |X509_ALGOR_dup| copies so both are normalized the same
+  // way: a manually packed parameter and a parsed one do not compare equal.
+  bssl::UniquePtr<X509_ALGOR> outer(X509_ALGOR_dup(sigalg.get()));
+  bssl::UniquePtr<X509_ALGOR> inner(X509_ALGOR_dup(sigalg.get()));
+  if (!outer || !inner) {
+    return false;
+  }
+  X509_ALGOR_free(cert->sig_alg);
+  cert->sig_alg = outer.release();  // Now owned by |cert|.
+  X509_ALGOR_free(cert->cert_info->signature);
+  cert->cert_info->signature = inner.release();  // Now owned by |cert|.
+
+  ERR_clear_error();
+  if (X509_verify(cert, pkey)) {
+    return false;  // Accepted and verified.
+  }
+  bool rejected = false;
+  uint32_t err;
+  while ((err = ERR_get_error()) != 0) {
+    if (ERR_GET_LIB(err) == ERR_LIB_X509 &&
+        ERR_GET_REASON(err) == X509_R_INVALID_PSS_PARAMETERS) {
+      rejected = true;
+    }
+  }
+  return rejected;
+}
+
+// SaltLenInteger returns an |ASN1_INTEGER| holding |v|, or NULL on failure.
+static bssl::UniquePtr<ASN1_INTEGER> SaltLenInteger(int64_t v) {
+  bssl::UniquePtr<ASN1_INTEGER> salt(ASN1_INTEGER_new());
+  if (!salt || !ASN1_INTEGER_set_int64(salt.get(), v)) {
+    return nullptr;
+  }
+  return salt;
+}
+
+TEST(X509Test, RsaPssSaltLengthDecoding) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExampleRsassaPssCert));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  // Valid salt lengths, including zero and an omitted field (the default), must
+  // get past PSS decoding. They may fail the later signature check, but must not
+  // be rejected as invalid PSS parameters.
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(32)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(0)));
+  EXPECT_FALSE(RsaPssSaltLenRejected(cert.get(), pkey.get(), nullptr));
+
+  // Negative salt lengths must be rejected; otherwise they select the low-level
+  // -1 (digest) or -2 (auto-recovery) special modes.
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(-2)));
+
+  // Salt lengths above INT_MAX must be rejected, not narrowed to |int|. In
+  // particular (1 << 32) | 20 shares its low 32 bits with a valid-looking 20,
+  // which the buggy narrowing would have accepted.
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger(static_cast<int64_t>(INT_MAX) + 1)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(
+      cert.get(), pkey.get(), SaltLenInteger((static_cast<int64_t>(1) << 32) | 20)));
+  EXPECT_TRUE(
+      RsaPssSaltLenRejected(cert.get(), pkey.get(), SaltLenInteger(INT64_MAX)));
+
+  // A salt length too large for |int64_t| (2^64) must also be rejected:
+  // |ASN1_INTEGER_get_int64| fails rather than reinterpreting the value.
+  bssl::UniquePtr<ASN1_INTEGER> huge(ASN1_INTEGER_new());
+  ASSERT_TRUE(huge);
+  static const uint8_t k2Pow64[] = {0x01, 0x00, 0x00, 0x00, 0x00,
+                                    0x00, 0x00, 0x00, 0x00};
+  ASSERT_TRUE(ASN1_STRING_set(huge.get(), k2Pow64, sizeof(k2Pow64)));
+  EXPECT_TRUE(RsaPssSaltLenRejected(cert.get(), pkey.get(), std::move(huge)));
 }
 
 TEST(X509Test, TestEd25519) {
@@ -7244,6 +7586,96 @@ TEST(X509Test, NamePrintMissingAttributeName) {
   }
 }
 
+TEST(X509Test, NamePrintLargeOutputOverflow) {
+  // Each value dumps as '#' plus two hex digits per byte. Exercise overflow
+  // when adding each part of the printed name, as well as exact-fit outputs.
+  const struct {
+    int value_lengths[2];
+    int second_set;
+    int indent;
+    unsigned long flags;
+    int expected_len;
+  } kTests[] = {
+      // Two values of |INT_MAX / 2| characters and a comma fit exactly.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE,
+       INT_MAX},
+      // A two-character separator overflows when adding the second value.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_NONE,
+       -1},
+      // The first value reaches |INT_MAX|, so the ',' or '+' overflows.
+      {{INT_MAX / 2, 0}, 0, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      {{INT_MAX / 2, 0}, -1, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      // Initial indentation, the first value, and '\n' reach |INT_MAX|.
+      // Indenting the second line overflows.
+      {{(INT_MAX - 3) / 2, 0},
+       0,
+       1,
+       XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_NONE,
+       -1},
+      // "CN=", the first value, and ',' reach |INT_MAX|. The second "CN"
+      // overflows.
+      {{(INT_MAX - 5) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN", but not its '='.
+      {{(INT_MAX - 7) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN=#", reaching |INT_MAX| exactly.
+      {{(INT_MAX - 9) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       INT_MAX},
+      // The padded first "CN=", value, and ',' reach |INT_MAX|. Alignment
+      // padding for the second field overflows.
+      {{(INT_MAX - 13) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN | XN_FLAG_FN_ALIGN,
+       -1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.value_lengths[0]);
+    SCOPED_TRACE(t.second_set);
+    SCOPED_TRACE(t.flags);
+    // Parsed names are bounded, but a caller-constructed name may print more
+    // than |INT_MAX| characters in total. As in
+    // |ASN1Test.PrintExLargeStringOverflow|, fake each value's length. With a
+    // NULL |BIO| and |ASN1_STRFLGS_DUMP_ALL|, the values are only measured and
+    // never read.
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    for (int i = 0; i < 2; i++) {
+      ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+          name.get(), NID_commonName, V_ASN1_UTF8STRING,
+          reinterpret_cast<const uint8_t *>("x"), 1, /*loc=*/-1,
+          /*set=*/i == 0 ? 0 : t.second_set));
+      ASN1_STRING *val =
+          X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name.get(), i));
+      ASSERT_TRUE(val);
+      val->length = t.value_lengths[i];
+    }
+
+    EXPECT_EQ(t.expected_len,
+              X509_NAME_print_ex(nullptr, name.get(), t.indent,
+                                 t.flags | ASN1_STRFLGS_DUMP_ALL));
+    if (t.expected_len < 0) {
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509, ERR_R_OVERFLOW));
+    }
+  }
+}
+
 // kRareRSAPEM is a certificate with the rare |nid_rsa|.
 static const char kRareRSAPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -9886,4 +10318,61 @@ TEST(X509Test, StoreLookupCRLs) {
 
   // Lookup_crls callback should now be set and match the stored pointer
   EXPECT_EQ(lookup_crls, X509_STORE_get_lookup_crls(store.get()));
+}
+
+// BlockedSPKICerts returns the contents of blocked_spki_certs.pem: a trust
+// anchor followed by one certificate for each entry in |blocked_spkis|.
+static bssl::UniquePtr<STACK_OF(X509)> BlockedSPKICerts() {
+  return CertChainFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_certs.pem").c_str());
+}
+
+// Every blocked key must be rejected, in an otherwise valid chain.
+TEST(X509Test, BlockedSPKI) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  X509 *root = sk_X509_value(certs.get(), 0);
+
+  // The trust anchor is not blocked, so it verifies on its own. Without this
+  // the rejections below could just as well be a problem with the test fixture.
+  EXPECT_EQ(X509_V_OK, Verify(root, {root}, /*intermediates=*/{}, /*crls=*/{}));
+
+  // Test callback is invoked on the blocked list path.
+  auto suppress_revoked = [](X509_STORE_CTX *ctx) {
+    X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REJECTED;
+    });
+  };
+
+  for (size_t i = 1; i < sk_X509_num(certs.get()); i++) {
+    SCOPED_TRACE(i);
+    X509 *cert = sk_X509_value(certs.get(), i);
+    int depth = -1;
+    EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+              Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                     /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+    EXPECT_EQ(0, depth);
+
+    EXPECT_EQ(X509_V_OK, Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
+                                /*flags=*/0, suppress_revoked));
+  }
+}
+
+// A blocked key must be rejected when it is an issuer rather than the
+// certificate being verified.
+TEST(X509Test, BlockedSPKIAtDepth) {
+  bssl::UniquePtr<STACK_OF(X509)> certs = BlockedSPKICerts();
+  ASSERT_TRUE(certs);
+  ASSERT_EQ(9u, sk_X509_num(certs.get()));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(
+      GetTestData("crypto/x509/test/blocked_spki_leaf.pem").c_str()));
+  ASSERT_TRUE(leaf);
+
+  int depth = -1;
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+            Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
+                   {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
+                   /*flags=*/0, /*configure_callback=*/nullptr, &depth));
+  EXPECT_EQ(1, depth);
 }

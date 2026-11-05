@@ -4,6 +4,7 @@
 #include <openssl/hpke.h>
 
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <string>
 #include <vector>
@@ -1227,7 +1228,7 @@ TEST_P(HPKEMLKEMTest, PrivateKeyBufferTooSmall) {
   ERR_clear_error();
 }
 
-// Re-initializing an already-initialized key must fully replace its key
+// Re-initializing a key, after cleaning it up, must fully replace its key
 // material, including across KEMs whose key lengths differ.
 TEST_P(HPKEMLKEMTest, ReinitializeKey) {
   const MLKEMTestParam &param = GetParam();
@@ -1248,7 +1249,9 @@ TEST_P(HPKEMLKEMTest, ReinitializeKey) {
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(other.get(), other_pub.data(),
                                       &other_pub_len, other_pub.size()));
 
-  // Re-initialize the already-initialized |key| in place.
+  // Re-initialize |key| in place. Initializing does not release the old
+  // material, so clean it up first; the same applies to every re-use below.
+  EVP_HPKE_KEY_cleanup(key.get());
   ASSERT_TRUE(
       EVP_HPKE_KEY_init(key.get(), kem, other_priv.data(), other_priv_len));
 
@@ -1258,20 +1261,24 @@ TEST_P(HPKEMLKEMTest, ReinitializeKey) {
       EVP_HPKE_KEY_public_key(key.get(), pub.data(), &pub_len, pub.size()));
   EXPECT_EQ(Bytes(other_pub.data(), other_pub_len), Bytes(pub.data(), pub_len));
 
-  // Re-generating over an initialized key must also release the old material.
+  // Re-generating over a cleaned-up key must replace its material.
+  EVP_HPKE_KEY_cleanup(key.get());
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
 
-  // Re-initializing with a different KEM must release the old material too,
-  // including when the key sizes differ.
+  // Re-initializing with a different KEM must work too, including when the key
+  // sizes differ.
+  EVP_HPKE_KEY_cleanup(key.get());
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
   EXPECT_EQ(EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key.get())),
             EVP_HPKE_DHKEM_X25519_HKDF_SHA256);
+  EVP_HPKE_KEY_cleanup(key.get());
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
   EXPECT_EQ(EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key.get())),
             EVP_HPKE_KEM_id(kem));
 
   // A failed re-initialization must leave |key| safe to clean up.
   static const uint8_t kBadPrivKey[4] = {0};
+  EVP_HPKE_KEY_cleanup(key.get());
   EXPECT_FALSE(
       EVP_HPKE_KEY_init(key.get(), kem, kBadPrivKey, sizeof(kBadPrivKey)));
   EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_DECODE_ERROR));
@@ -1351,6 +1358,41 @@ TEST(HPKETest, CleanupLeavesZeroState) {
             Bytes(reinterpret_cast<const uint8_t *>(&zeroed), sizeof(zeroed)));
 }
 
+// Every release has accepted a bare |EVP_HPKE_KEY| passed straight to
+// initialization, with no |EVP_HPKE_KEY_zero| first, so the functions that set
+// a key up must not read the struct they are overwriting. Filling it with a
+// non-zero pattern stands in for uninitialized stack bytes: treating those as
+// buffer pointers frees them, which ASan reports.
+TEST(HPKETest, SetUpIgnoresUninitializedDestination) {
+  const EVP_HPKE_KEM *kem = EVP_hpke_mlkem768();
+
+  ScopedEVP_HPKE_KEY source;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(source.get(), kem));
+  std::vector<uint8_t> priv(EVP_HPKE_KEM_private_key_len(kem));
+  size_t priv_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_private_key(source.get(), priv.data(), &priv_len,
+                                       priv.size()));
+
+  for (int op = 0; op < 3; op++) {
+    SCOPED_TRACE(op);
+    EVP_HPKE_KEY key;
+    memset(&key, 0xab, sizeof(key));
+    switch (op) {
+      case 0:
+        ASSERT_TRUE(EVP_HPKE_KEY_init(&key, kem, priv.data(), priv_len));
+        break;
+      case 1:
+        ASSERT_TRUE(EVP_HPKE_KEY_generate(&key, kem));
+        break;
+      default:
+        ASSERT_TRUE(EVP_HPKE_KEY_copy(&key, source.get()));
+        break;
+    }
+    EXPECT_EQ(EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(&key)), EVP_HPKE_KEM_id(kem));
+    EVP_HPKE_KEY_cleanup(&key);
+  }
+}
+
 // Copying or moving a key onto itself must leave it usable, and must not perform
 // an overlapping |memcpy|, which would be undefined. C++ wrappers implement
 // assignment in terms of these, so x = x and x = std::move(x) must work.
@@ -1377,6 +1419,73 @@ TEST(HPKETest, SelfCopyAndMoveAreSafe) {
     ASSERT_TRUE(
         EVP_HPKE_KEY_public_key(key.get(), after, &after_len, sizeof(after)));
     EXPECT_EQ(Bytes(before, before_len), Bytes(after, after_len));
+  }
+}
+
+// A key's buffers are sized for its KEM, so regenerating a cleaned-up key under
+// a KEM with larger keys must allocate a correspondingly larger buffer. The
+// smallest KEM goes first, so a buffer sized for it is too small for what
+// follows and ASan reports the write.
+TEST(HPKETest, ReinitAcrossKEMsResizesBuffers) {
+  const EVP_HPKE_KEM *kems[] = {EVP_hpke_x25519_hkdf_sha256(),
+                                EVP_hpke_mlkem1024(),
+                                EVP_hpke_x25519_hkdf_sha256()};
+  ScopedEVP_HPKE_KEY key;
+  for (const EVP_HPKE_KEM *kem : kems) {
+    SCOPED_TRACE(EVP_HPKE_KEM_id(kem));
+    // Generating no longer releases the old material, so release it here. A key
+    // in the zero state is unaffected.
+    EVP_HPKE_KEY_cleanup(key.get());
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
+    ASSERT_EQ(EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key.get())),
+              EVP_HPKE_KEM_id(kem));
+
+    uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+    size_t public_key_len = 0;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
+                                        sizeof(public_key)));
+    EXPECT_EQ(public_key_len, EVP_HPKE_KEM_public_key_len(kem));
+  }
+}
+
+// A key's material lives behind pointers, so one key must stay usable across
+// independent sender and recipient pairs.
+TEST(HPKETest, KeyReusableAcrossContexts) {
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_mlkem768()));
+
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
+                                      sizeof(public_key)));
+
+  ScopedEVP_HPKE_CTX sender_ctx;
+  for (int i = 0; i < 2; i++) {
+    SCOPED_TRACE(i);
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+        sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_HPKE_KEY_kem(key.get()),
+        EVP_hpke_hkdf_sha256(), EVP_hpke_aes_128_gcm(), public_key,
+        public_key_len, nullptr, 0));
+
+    static const uint8_t kPlaintext[] = "setup twice";
+    uint8_t ciphertext[sizeof(kPlaintext) + EVP_HPKE_MAX_OVERHEAD];
+    size_t ciphertext_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_seal(sender_ctx.get(), ciphertext, &ciphertext_len,
+                                  sizeof(ciphertext), kPlaintext,
+                                  sizeof(kPlaintext), nullptr, 0));
+
+    ScopedEVP_HPKE_CTX recipient_ctx;
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+        recipient_ctx.get(), key.get(), EVP_hpke_hkdf_sha256(),
+        EVP_hpke_aes_128_gcm(), enc, enc_len, nullptr, 0));
+    uint8_t plaintext[sizeof(kPlaintext)];
+    size_t plaintext_len = 0;
+    ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx.get(), plaintext, &plaintext_len,
+                                  sizeof(plaintext), ciphertext, ciphertext_len,
+                                  nullptr, 0));
+    EXPECT_EQ(Bytes(kPlaintext), Bytes(plaintext, plaintext_len));
   }
 }
 

@@ -542,6 +542,10 @@ EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   }
 
   ret->group = EC_GROUP_dup(group);
+  if (ret->group == NULL) {
+    OPENSSL_free(ret);
+    return NULL;
+  }
   ec_GFp_simple_point_init(&ret->raw);
   return ret;
 }

@@ -34,6 +34,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_decode_alt)
 
         .text
+        .balign 32
 
 // Size in bytes of a 64-bit word
 

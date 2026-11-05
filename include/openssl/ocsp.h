@@ -175,7 +175,8 @@ OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 OPENSSL_EXPORT void OCSP_set_max_response_length(OCSP_REQ_CTX *rctx,
                                                  unsigned long len);
 
-// OCSP_REQ_CTX_http adds the HTTP request line to the context.
+// OCSP_REQ_CTX_http adds the HTTP request line to the context. It returns one
+// on success and zero on error. It fails if |op| or |path| contains CR or LF.
 OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
                                      const char *path);
 
@@ -185,7 +186,8 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);
 
 // OCSP_REQ_CTX_add1_header adds header name with value |value| to the
 // context |rctx|. It can be called  more than once to add multiple header
-// lines.
+// lines. It returns one on success and zero on error. It fails if |name| or
+// |value| contains CR or LF.
 OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
                                             const char *name,
                                             const char *value);
@@ -632,5 +634,6 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
 #define OCSP_R_UNKNOWN_FIELD_VALUE 132
+#define OCSP_R_INVALID_HTTP_HEADER 133
 
 #endif  // AWSLC_OCSP_H

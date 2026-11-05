@@ -7,14 +7,15 @@ on:
   schedule:
     - cron: "0 0 * * *"
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name }}
+  # The event name keeps a push to main from cancelling the nightly scheduled run (and with it the
+  # failure metric published by report-failures) when the two coincide.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref_name }}
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
 permissions:
   contents: read
   actions: read
-  id-token: write
 
 jobs:
   integrations:
@@ -603,6 +604,10 @@ jobs:
     name: report-failures
     needs: [integrations, python, ruby]
     if: ${{ always() && github.event_name == 'schedule' }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
@@ -612,18 +617,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/configure-aws-credentials
-      - name: Emit failure metric
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -exo pipefail
-          # Count the number of failing tests, excluding tests which are allowed to fail.
-          failure_count=$(gh api --paginate \
-            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not)) | .name' \
-            | wc -l | tr -d ' ')
-
-          aws cloudwatch put-metric-data \
-            --namespace AWS-LC \
-            --metric-name IntegrationOmnibusFailure \
-            --value "$failure_count"
+      - uses: ./.github/actions/report-workflow-failures
+        with:
+          metric-name: IntegrationOmnibusFailure

@@ -9,6 +9,12 @@
 // integers modulo 8380417 with the result being centered around zero,
 // specifically -6283009 <= r <= 6283008, in-place.
 //
+// Each input coefficient must satisfy a <= 0x7fbfffff (2143289343); this
+// rules out the top 0x400000 positive values, for which the internal
+// "+ 4194304" rounding step would overflow a signed 32-bit word and give
+// an incorrect (non-congruent) result. Every input in the standard ML-DSA
+// coefficient range comfortably satisfies this.
+//
 // extern void mldsa_reduce(int32_t a[static 256]);
 //
 // Standard x86-64 ABI: RDI = a

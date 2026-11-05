@@ -23,6 +23,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_modinv)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modinv)
         .text
+        .balign 32
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
 

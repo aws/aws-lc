@@ -221,7 +221,7 @@ S2N_BN_SYMBOL(bignum_sqrt_p25519):
         stp     x10, x11, [x2]
         stp     x12, x13, [x2, #16]
 
-// Determine if it is is indeed a square root and also if a = 0
+// Determine if it is indeed a square root and also if a = 0
 // Hence return the Legendre-Jacobi symbol as required.
 
         add     x0, b

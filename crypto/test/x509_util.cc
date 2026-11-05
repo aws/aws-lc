@@ -7,7 +7,8 @@
 int Verify(X509 *leaf, const std::vector<X509 *> &roots,
            const std::vector<X509 *> &intermediates,
            const std::vector<X509_CRL *> &crls, unsigned long flags,
-           std::function<void(X509_STORE_CTX *)> configure_callback) {
+           std::function<void(X509_STORE_CTX *)> configure_callback,
+           int *out_depth) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -42,6 +43,9 @@ int Verify(X509 *leaf, const std::vector<X509 *> &roots,
 
   ERR_clear_error();
   if (X509_verify_cert(ctx.get()) != 1) {
+    if (out_depth != nullptr) {
+      *out_depth = X509_STORE_CTX_get_error_depth(ctx.get());
+    }
     return X509_STORE_CTX_get_error(ctx.get());
   }
 

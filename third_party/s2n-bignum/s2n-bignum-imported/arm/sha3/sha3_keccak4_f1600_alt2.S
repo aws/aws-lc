@@ -429,7 +429,6 @@ Lsha3_keccak4_f1600_alt2_initial:
         add     x25, x25, #0x1
         bcax    v23.16b, v23.16b, v0.16b, v24.16b
         str     x25, [sp, #0x18]
-        cmp     x25, #0x17
         bic     v31.16b, v1.16b, v0.16b
         eor     x25, x1, x27, ror #53
         bic     x27, x30, x26, ror #47
@@ -601,7 +600,6 @@ Lsha3_keccak4_f1600_alt2_loop:
         add     x25, x25, #0x1
         xar     v16.2d, v7.2d, v29.2d, #0x3a
         str     x25, [sp, #0x18]
-        cmp     x25, #0x17
         eor     v31.16b, v10.16b, v26.16b
         eor     x25, x1, x27, ror #53
         bic     x27, x30, x26, ror #47

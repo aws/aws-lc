@@ -30,6 +30,22 @@
 #define S2N_BIGNUM_STATIC static
 #endif
 
+struct s2n_bignum_aes_key_st {
+  uint64_t rd_key[30];
+  int rounds;
+};
+typedef struct s2n_bignum_aes_key_st s2n_bignum_AES_KEY;
+
+// AES_XTS_DECRYPT (256-bit)
+// Inputs in[length], length, key1[244], key2[244], iv[16]; output out[length]
+extern void aes_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
+        const s2n_bignum_AES_KEY *key1, const s2n_bignum_AES_KEY *key2, const uint8_t iv[S2N_BIGNUM_STATIC 16]);
+
+// AES_XTS_ENCRYPT (256-bit)
+// Inputs in[length], length, key1[244], key2[244], iv[16]; output out[length]
+extern void aes_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+        const s2n_bignum_AES_KEY *key1, const s2n_bignum_AES_KEY *key2, const uint8_t iv[S2N_BIGNUM_STATIC 16]);
+
 // Add, z := x + y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 extern uint64_t bignum_add (uint64_t p, uint64_t *z, uint64_t m, const uint64_t *x, uint64_t n, const uint64_t *y);
@@ -450,6 +466,10 @@ extern void bignum_mod_n256_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, co
 extern void bignum_mod_n256_4 (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
 
 // Reduce modulo group order, z := x mod n_256k1
+// Input x[k]; output z[4]
+extern void bignum_mod_n256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, const uint64_t *x);
+
+// Reduce modulo group order, z := x mod n_256k1
 // Input x[4]; output z[4]
 extern void bignum_mod_n256k1_4 (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
 
@@ -488,6 +508,10 @@ extern void bignum_mod_p256_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, co
 // Reduce modulo field characteristic, z := x mod p_256
 // Input x[4]; output z[4]
 extern void bignum_mod_p256_4 (uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
+
+// Reduce modulo field characteristic, z := x mod p_256k1
+// Input x[k]; output z[4]
+extern void bignum_mod_p256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, const uint64_t *x);
 
 // Reduce modulo field characteristic, z := x mod p_256k1
 // Input x[4]; output z[4]
@@ -982,6 +1006,14 @@ extern void edwards25519_scalarmulbase_alt(uint64_t res[S2N_BIGNUM_STATIC 8],con
 extern void edwards25519_scalarmuldouble(uint64_t res[S2N_BIGNUM_STATIC 8],const uint64_t scalar[S2N_BIGNUM_STATIC 4], const uint64_t point[S2N_BIGNUM_STATIC 8],const uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[S2N_BIGNUM_STATIC 8],const uint64_t scalar[S2N_BIGNUM_STATIC 4], const uint64_t point[S2N_BIGNUM_STATIC 8],const uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
 
+// Forward number-theoretic transform for ML-DSA
+// Input a[256], z_012345[144], z_67[384] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_ntt_arm(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t z_012345[144], const int32_t z_67[384]);
+
+// Inverse number-theoretic transform for ML-DSA
+// Input a[256], z_78[384], z_123456[160] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_intt_arm(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t z_78[S2N_BIGNUM_STATIC 384], const int32_t z_123456[S2N_BIGNUM_STATIC 160]);
+
 // Inverse number-theoretic transform for ML-DSA
 // Input a[256], zetas[624] (signed 32-bit words); output a[256] (signed 32-bit words)
 extern void mldsa_intt(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t zetas[S2N_BIGNUM_STATIC 624]);
@@ -990,9 +1022,126 @@ extern void mldsa_intt(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t zetas[S2N
 // Input a[256], zetas[624] (signed 32-bit words); output a[256] (signed 32-bit words)
 extern void mldsa_ntt(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t zetas[S2N_BIGNUM_STATIC 624]);
 
+// NTT unpack for ML-DSA (rearrange coefficients from bitreversed to standard order)
+// Input a[256] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_nttunpack(int32_t a[S2N_BIGNUM_STATIC 256]);
+
+// Uniform rejection sampling for ML-DSA: extract 23-bit coefficients from
+// 3-byte-packed input, keeping only those strictly less than q = 8380417.
+// Returns the number of accepted coefficients (at most 256).
+// Inputs buf[840] (uint8_t), table[256] (uint64_t lookup table);
+// output r[256] (int32_t).
+extern uint32_t mldsa_rej_uniform_VARIABLE_TIME_x86(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t buf[S2N_BIGNUM_STATIC 840], const uint64_t table[S2N_BIGNUM_STATIC 256]);
+
+// Pointwise multiplication of polynomials in NTT domain (Montgomery form) for ML-DSA
+// Inputs a[256], b[256] (signed 32-bit words); output r[256] (signed 32-bit words)
+extern void mldsa_pointwise(int32_t r[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 256], const int32_t b[S2N_BIGNUM_STATIC 256]);
+
+// Pointwise multiplication of polynomials in NTT domain (Montgomery form) for ML-DSA, x86 version
+// Inputs a[256], b[256], qdata[16] (signed 32-bit words); output c[256] (signed 32-bit words)
+extern void mldsa_pointwise_x86(int32_t c[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 256], const int32_t b[S2N_BIGNUM_STATIC 256], const int32_t qdata[S2N_BIGNUM_STATIC 16]);
+
+// Pointwise multiplication with accumulation for ML-DSA L4
+// Inputs a[1024], b[1024] (signed 32-bit words); output r[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l4(int32_t r[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1024], const int32_t b[S2N_BIGNUM_STATIC 1024]);
+
+// Pointwise multiplication with accumulation for ML-DSA L4, x86 version
+// Inputs a[1024], b[1024], qdata[16] (signed 32-bit words); output c[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l4_x86(int32_t c[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1024], const int32_t b[S2N_BIGNUM_STATIC 1024], const int32_t qdata[S2N_BIGNUM_STATIC 16]);
+
+// Pointwise multiplication with accumulation for ML-DSA L5
+// Inputs a[1280], b[1280] (signed 32-bit words); output r[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l5(int32_t r[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1280], const int32_t b[S2N_BIGNUM_STATIC 1280]);
+
+// Pointwise multiplication with accumulation for ML-DSA L5, x86 version
+// Inputs a[1280], b[1280], qdata[16] (signed 32-bit words); output c[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l5_x86(int32_t c[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1280], const int32_t b[S2N_BIGNUM_STATIC 1280], const int32_t qdata[S2N_BIGNUM_STATIC 16]);
+
+// Pointwise multiplication with accumulation for ML-DSA L7
+// Inputs a[1792], b[1792] (signed 32-bit words); output r[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l7(int32_t r[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1792], const int32_t b[S2N_BIGNUM_STATIC 1792]);
+
+// Pointwise multiplication with accumulation for ML-DSA L7, x86 version
+// Inputs a[1792], b[1792], qdata[16] (signed 32-bit words); output c[256] (signed 32-bit words)
+extern void mldsa_pointwise_acc_l7_x86(int32_t c[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 1792], const int32_t b[S2N_BIGNUM_STATIC 1792], const int32_t qdata[S2N_BIGNUM_STATIC 16]);
+// Conditional addition of Q to polynomial coefficients for ML-DSA
+// Input a[256] (signed 32-bit words); output a[256] (signed 32-bit words)
+extern void mldsa_caddq(int32_t a[S2N_BIGNUM_STATIC 256]);
+
+// Infinity-norm check of polynomial coefficients for ML-DSA
+// Returns 1 if any coefficient has absolute value >= bound, 0 otherwise
+// Input a[256] (signed 32-bit words), bound (unsigned 32-bit); output function return
+extern uint64_t mldsa_chknorm(const int32_t a[S2N_BIGNUM_STATIC 256], uint64_t bound);
+
+// Coefficient decomposition for ML-DSA (GAMMA2 = (Q-1)/32, parameter sets 65/87)
+// Input a0[256] (signed 32-bit words); outputs a1[256] (high parts) and a0[256] (low parts)
+extern void mldsa_decompose_32(int32_t a1[S2N_BIGNUM_STATIC 256], int32_t a0[S2N_BIGNUM_STATIC 256]);
+
+// Coefficient decomposition for ML-DSA (GAMMA2 = (Q-1)/88, parameter set 44)
+// Input a0[256] (signed 32-bit words); outputs a1[256] (high parts) and a0[256] (low parts)
+extern void mldsa_decompose_88(int32_t a1[S2N_BIGNUM_STATIC 256], int32_t a0[S2N_BIGNUM_STATIC 256]);
+
+// Unpack packed z polynomial for ML-DSA (GAMMA1 = 2^17, parameter set 44)
+// Inputs b[576], t[64] (bytes); output r[256] (signed 32-bit words)
+extern void mldsa_polyz_unpack_17_arm(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t b[S2N_BIGNUM_STATIC 576], const uint8_t t[S2N_BIGNUM_STATIC 64]);
+// x86 variant unpacks directly from the byte buffer (no shuffle table argument)
+// Input b[576] (bytes); output r[256] (signed 32-bit words)
+extern void mldsa_polyz_unpack_17_x86(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t b[S2N_BIGNUM_STATIC 576]);
+
+// Unpack packed z polynomial for ML-DSA (GAMMA1 = 2^19, parameter sets 65/87)
+// Inputs b[640], t[64] (bytes); output r[256] (signed 32-bit words)
+extern void mldsa_polyz_unpack_19_arm(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t b[S2N_BIGNUM_STATIC 640], const uint8_t t[S2N_BIGNUM_STATIC 64]);
+// x86 variant unpacks directly from the byte buffer (no shuffle table argument)
+// Input b[640] (bytes); output r[256] (signed 32-bit words)
+extern void mldsa_polyz_unpack_19_x86(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t b[S2N_BIGNUM_STATIC 640]);
+
 // Canonical reduction of polynomial coefficients for ML-DSA
+// Result is centered, -6283009 <= r <= 6283008, and congruent mod 8380417
+// Assumes each coefficient is <= 0x7fbfffff (else the reduction overflows)
 // Input a[256] (signed 32-bit words); output a[256] (signed 32-bit words)
 extern void mldsa_reduce(int32_t a[S2N_BIGNUM_STATIC 256]);
+
+// Use hint to correct high bits of decomposition for ML-DSA (parameter sets 65/87)
+// The x86 variant operates in place on a[256]; the ARM variant writes b[256]
+#ifdef __x86_64__
+// Inputs a[256], h[256] (signed 32-bit words); output a[256] (signed 32-bit words, in place)
+extern void mldsa_poly_use_hint_32(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t h[S2N_BIGNUM_STATIC 256]);
+#else
+// Inputs a[256], h[256] (signed 32-bit words); output b[256] (signed 32-bit words)
+extern void mldsa_poly_use_hint_32(int32_t b[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 256], const int32_t h[S2N_BIGNUM_STATIC 256]);
+#endif
+
+// Use hint to correct high bits of decomposition for ML-DSA (parameter set 44)
+// The x86 variant operates in place on a[256]; the ARM variant writes b[256]
+#ifdef __x86_64__
+// Inputs a[256], h[256] (signed 32-bit words); output a[256] (signed 32-bit words, in place)
+extern void mldsa_poly_use_hint_88(int32_t a[S2N_BIGNUM_STATIC 256], const int32_t h[S2N_BIGNUM_STATIC 256]);
+#else
+// Inputs a[256], h[256] (signed 32-bit words); output b[256] (signed 32-bit words)
+extern void mldsa_poly_use_hint_88(int32_t b[S2N_BIGNUM_STATIC 256], const int32_t a[S2N_BIGNUM_STATIC 256], const int32_t h[S2N_BIGNUM_STATIC 256]);
+#endif
+
+// Rejection sampling for ML-DSA secret key (eta = 2; parameter sets 44/87)
+// The x86 (AVX2) backend has a divergent interface from the Arm (NEON) one:
+// x86 reads a fixed-size input buffer and a 2048-byte table, so it uses an
+// _x86-suffixed symbol; Arm takes a variable buflen and a 4096-byte table.
+// Inputs buf[buflen], buflen, table[4096] (uint8_t); output r[256] (signed 32-bit words)
+extern uint64_t mldsa_rej_uniform_eta2_VARIABLE_TIME(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t *buf, unsigned buflen, const uint8_t table[S2N_BIGNUM_STATIC 4096]);
+// Inputs buf[136], table[2048] (uint8_t); output r[256] (signed 32-bit words)
+extern uint64_t mldsa_rej_uniform_eta2_VARIABLE_TIME_x86(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t buf[S2N_BIGNUM_STATIC 136], const uint8_t table[S2N_BIGNUM_STATIC 2048]);
+
+// Rejection sampling for ML-DSA secret key (eta = 4; parameter set 65)
+// The x86 (AVX2) backend has a divergent interface from the Arm (NEON) one:
+// x86 reads a fixed-size input buffer and a 2048-byte table, so it uses an
+// _x86-suffixed symbol; Arm takes a variable buflen and a 4096-byte table.
+// Inputs buf[buflen], buflen, table[4096] (uint8_t); output r[256] (signed 32-bit words)
+extern uint64_t mldsa_rej_uniform_eta4_VARIABLE_TIME(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t *buf, unsigned buflen, const uint8_t table[S2N_BIGNUM_STATIC 4096]);
+// Inputs buf[272], table[2048] (uint8_t); output r[256] (signed 32-bit words)
+extern uint64_t mldsa_rej_uniform_eta4_VARIABLE_TIME_x86(int32_t r[S2N_BIGNUM_STATIC 256], const uint8_t buf[S2N_BIGNUM_STATIC 272], const uint8_t table[S2N_BIGNUM_STATIC 2048]);
+
+// Uniform rejection sampling for ML-DSA
+// Inputs *buf (unsigned bytes), buflen, table (unsigned bytes); output r[256] (signed 32-bit words), return
+extern uint64_t mldsa_rej_uniform_VARIABLE_TIME(int32_t r[S2N_BIGNUM_STATIC 256],const uint8_t *buf,uint64_t buflen,const uint8_t *table);
 
 // Scalar product of 2-element polynomial vectors in NTT domain, with mulcache
 // Inputs a[512], b[512], bt[256] (signed 16-bit words); output r[256] (signed 16-bit words)

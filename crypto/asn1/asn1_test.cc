@@ -1179,6 +1179,49 @@ TEST(ASN1Test, TimeSetString) {
   EXPECT_FALSE(ASN1_TIME_set_string_X509(nullptr, "19700101000000-0400"));
 }
 
+TEST(ASN1Test, UTCTimeTimezoneOffsetSign) {
+  static const struct {
+    const char *str;
+    // The UTC instant |str| denotes, as a POSIX timestamp.
+    int64_t utc_posix;
+  } kTests[] = {
+      // 2000-01-02 04:04:05+01:00 is 2000-01-02 03:04:05Z.
+      {"000102040405+0100", 946782245},
+      // 2000-01-02 04:04:05-01:00 is 2000-01-02 05:04:05Z.
+      {"000102040405-0100", 946789445},
+      // No offset, for comparison: 2000-01-02 04:04:05Z.
+      {"000102040405Z", 946785845},
+      // An offset that moves the time into the previous year.
+      {"000101000000+0100", 946681200},  // 1999-12-31 23:00:00Z
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.str);
+
+    bssl::UniquePtr<ASN1_UTCTIME> utc_time(
+        ASN1_STRING_type_new(V_ASN1_UTCTIME));
+    ASSERT_TRUE(utc_time);
+    ASSERT_TRUE(ASN1_STRING_set(utc_time.get(), t.str, strlen(t.str)));
+    EXPECT_TRUE(ASN1_UTCTIME_check(utc_time.get()));
+
+    EXPECT_EQ(0, ASN1_UTCTIME_cmp_time_t(utc_time.get(),
+                                         static_cast<time_t>(t.utc_posix)));
+    EXPECT_EQ(1, ASN1_UTCTIME_cmp_time_t(
+                     utc_time.get(), static_cast<time_t>(t.utc_posix - 1)));
+    EXPECT_EQ(-1, ASN1_UTCTIME_cmp_time_t(
+                      utc_time.get(), static_cast<time_t>(t.utc_posix + 1)));
+
+    // |ASN1_TIME_diff| must resolve the offset to the same UTC instant.
+    bssl::UniquePtr<ASN1_UTCTIME> expected(
+        ASN1_UTCTIME_set(nullptr, t.utc_posix));
+    ASSERT_TRUE(expected);
+    int days = 1, secs = 1;
+    ASSERT_TRUE(
+        ASN1_TIME_diff(&days, &secs, utc_time.get(), expected.get()));
+    EXPECT_EQ(0, days);
+    EXPECT_EQ(0, secs);
+  }
+}
+
 TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;
@@ -2518,6 +2561,35 @@ TEST(ASN1Test, LargeString) {
   // overflow.
   EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, 1 + (ossl_ssize_t{1} << 48)));
 #endif
+}
+
+TEST(ASN1Test, PrintExLargeStringOverflow) {
+  // |ASN1_STRING_set0| does not enforce |ASN1_STRING_MAX|, so |length| may be
+  // large enough that the printed length does not fit in an |int|. With a NULL
+  // |BIO|, |ASN1_STRING_print_ex| only measures the output and the dump path
+  // never reads |data|, so a tiny allocation suffices.
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_OCTET_STRING));
+  ASSERT_TRUE(str);
+  unsigned char *data = static_cast<unsigned char *>(OPENSSL_malloc(1));
+  ASSERT_TRUE(data);
+  ASN1_STRING_set0(str.get(), data, INT_MAX / 2);
+
+  // A hex dump of |INT_MAX / 2| bytes, plus the leading '#', is exactly
+  // |INT_MAX| characters.
+  EXPECT_EQ(INT_MAX,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+
+  // Prefixing the type name would push the total past |INT_MAX|.
+  EXPECT_EQ(
+      -1, ASN1_STRING_print_ex(nullptr, str.get(),
+                               ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_SHOW_TYPE));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
+
+  // One more byte and the hex dump itself no longer fits.
+  str->length = INT_MAX / 2 + 1;
+  EXPECT_EQ(-1,
+            ASN1_STRING_print_ex(nullptr, str.get(), ASN1_STRFLGS_DUMP_ALL));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ERR_R_OVERFLOW));
 }
 
 
