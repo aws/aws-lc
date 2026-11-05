@@ -152,8 +152,21 @@ unsigned awslc_prov_rsa_security_bits(const void *rsa) {
   return 0;
 }
 
-int awslc_prov_rsa_check(const void *rsa) {
-  return rsa != NULL && RSA_check_key((const RSA *)rsa);
+int awslc_prov_rsa_check(const void *rsa, int check_private) {
+  const RSA *key = (const RSA *)rsa;
+
+  if (key == NULL) {
+    return 0;
+  }
+  // Validate that 1 <= d < n
+  if (check_private) {
+    const BIGNUM *d = RSA_get0_d(key);
+    if (d == NULL || BN_cmp(d, BN_value_one()) < 0 ||
+        BN_cmp(d, RSA_get0_n(key)) >= 0) {
+      return 0;
+    }
+  }
+  return RSA_check_key(key);
 }
 
 void *awslc_prov_rsa_generate(unsigned bits) {

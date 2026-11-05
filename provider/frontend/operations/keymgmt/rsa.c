@@ -215,15 +215,20 @@ static int awslc_prov_rsa_validate(const void *keydata, int selection,
   if ((selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0) {
     return 1;
   }
-  if ((selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) != 0 &&
-      awslc_prov_rsa_component(key, AWSLC_PROV_RSA_D) == NULL) {
+  // RSA_check_key requires d, p, and q to perform a PCT.
+  if ((selection & OSSL_KEYMGMT_SELECT_KEYPAIR) ==
+          OSSL_KEYMGMT_SELECT_KEYPAIR &&
+      (awslc_prov_rsa_component(key, AWSLC_PROV_RSA_P) == NULL ||
+       awslc_prov_rsa_component(key, AWSLC_PROV_RSA_Q) == NULL)) {
     AWSLC_PROV_ERROR_RAISE(key->provctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_PKEY_PARAM_RSA_D);
+                           AWSLC_PROV_RSA_NAME);
     return 0;
   }
 
   awslc_prov_call_begin(&call, key->provctx);
-  int ok = awslc_prov_rsa_check(key->rsa);
+  int ok = awslc_prov_rsa_check(key->rsa,
+                                (selection & OSSL_KEYMGMT_SELECT_KEYPAIR) ==
+                                    OSSL_KEYMGMT_SELECT_PRIVATE_KEY);
   return AWSLC_PROV_CALL_END(&call, ok, AWSLC_PROV_RSA_NAME);
 }
 
