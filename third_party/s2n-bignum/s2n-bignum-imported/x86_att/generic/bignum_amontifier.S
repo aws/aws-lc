@@ -22,6 +22,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_amontifier)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontifier)
         .text
+        .balign 32
 
 #define k %rdi
 #define z %rsi

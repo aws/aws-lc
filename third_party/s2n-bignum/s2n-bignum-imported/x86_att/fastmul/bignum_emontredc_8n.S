@@ -22,6 +22,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_emontredc_8n)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc_8n)
         .text
+        .balign 32
 
 // Original input parameters are here
 

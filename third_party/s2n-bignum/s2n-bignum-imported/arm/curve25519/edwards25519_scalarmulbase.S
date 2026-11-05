@@ -2037,7 +2037,7 @@ S2N_BN_SIZE_DIRECTIVE(edwards25519_scalarmulbase)
 .type S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant), %object
 .size S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant), 48576
 #elif defined(__APPLE__)
-.const_data
+.section __TEXT,__const
 #endif
 
 S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant):

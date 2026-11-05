@@ -238,11 +238,11 @@ S2N_BN_SYMBOL(bignum_montsqr_sm2):
 // so the top half is certainly < 2 * p. If c = 1 already, we know
 // subtracting p will give the reduced modulus. But now we do a
 // subtraction-comparison to catch cases where the residue is >= p.
-// The constants are such that [t3;0;t1;-1] = p_256.
+// The constants are such that [t3;0;t1;-1] = p_sm2.
 
 #define t0      x5
 
-// Set CF (because of inversion) iff (0,p_256) <= (c,r3,r2,r1,r0)
+// Set CF (because of inversion) iff (0,p_sm2) <= (c,r3,r2,r1,r0)
 
         mov     t1, #0xffffffff00000000
         subs    t0, r0, #-1

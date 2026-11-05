@@ -26,6 +26,7 @@
         S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_pxscalarmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_pxscalarmul)
         .text
+        .balign 32
 
 // Size of individual field elements
 

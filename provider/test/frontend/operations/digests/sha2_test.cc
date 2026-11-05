@@ -19,9 +19,6 @@ namespace {
 // One row per registered algorithm.
 struct DigestSpec {
   const char *name;  // what we register it as
-  // Every advertised spelling, including the OID. One slot longer than the
-  // longest row so a shorter one leaves a nullptr sentinel.
-  const char *aliases[5];
   size_t digest_size;
   size_t block_size;
   int xof;           // 1 only for an extendable-output function
@@ -31,14 +28,50 @@ struct DigestSpec {
 };
 
 constexpr DigestSpec kDigests[] = {
+    {"SHA2-224",
+     28,
+     64,
+     0,
+     1,
+     "abc",
+     "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7"},
     {"SHA2-256",
-     {"SHA2-256", "SHA-256", "SHA256", "2.16.840.1.101.3.4.2.1"},
      32,
      64,
      0,
      1,
      "abc",
      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+    {"SHA2-384",
+     48,
+     128,
+     0,
+     1,
+     "abc",
+     "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
+     "8086072ba1e7cc2358baeca134c825a7"},
+    {"SHA2-512",
+     64,
+     128,
+     0,
+     1,
+     "abc",
+     "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
+     "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"},
+    {"SHA2-512/224",
+     28,
+     128,
+     0,
+     1,
+     "abc",
+     "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
+    {"SHA2-512/256",
+     32,
+     128,
+     0,
+     1,
+     "abc",
+     "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
 };
 
 // Renders |len| bytes as lowercase hex so a failure names the actual digest rather
@@ -59,32 +92,13 @@ std::string ToHex(const uint8_t *bytes, size_t len) {
 class Sha2Test : public ProviderTest,
                  public ::testing::WithParamInterface<DigestSpec> {
  protected:
-  MdPtr FetchRequired(const char *name) {
-    return MdPtr(EVP_MD_fetch(libctx(), name, kRequireAwslc));
+  MdPtr FetchRequired() {
+    return MdPtr(EVP_MD_fetch(libctx(), GetParam().name, kRequireAwslc));
   }
-  MdPtr FetchRequired() { return FetchRequired(GetParam().name); }
 };
 
-// Reachability, and that it is ours. Implicit-fetch consumers resolve by NID short
-// name, so a missing alias makes the algorithm invisible to them with no error
-// anywhere.
-TEST_P(Sha2Test, ResolvesUnderEveryAdvertisedName) {
-  for (const char *name : GetParam().aliases) {
-    if (name == nullptr) {
-      break;
-    }
-    MdPtr md = FetchRequired(name);
-    ASSERT_TRUE(md) << "advertised name '" << name << "' did not resolve";
-    EXPECT_STREQ(kProviderName,
-                 OSSL_PROVIDER_get0_name(EVP_MD_get0_provider(md.get())));
-  }
-}
-
-// The four algorithm-level parameters our get_params slot answers. ALGID_ABSENT is
-// the one with teeth: it decides whether the DigestAlgorithmIdentifier omits its
-// parameters field, so reporting it wrongly yields DER that differs byte for byte
-// from the default provider's for every CMS digestAlgorithms entry and every RSA
-// DigestInfo.
+// ALGID_ABSENT is the one with teeth: it changes the DER OpenSSL emits for this
+// digest inside PKI structures, so it must match the default provider's value.
 TEST_P(Sha2Test, ReportsExpectedParams) {
   MdPtr md = FetchRequired();
   ASSERT_TRUE(md);

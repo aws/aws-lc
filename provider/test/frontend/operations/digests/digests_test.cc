@@ -13,6 +13,7 @@
 
 #include <openssl/core_names.h>
 #include <openssl/evp.h>
+#include <openssl/indicator.h>
 #include <openssl/params.h>
 
 namespace awslc_provider_test {
@@ -66,6 +67,49 @@ TEST_F(ProviderTest, DigestRejectsUnknownCtxParams) {
 
   EXPECT_FALSE(EVP_MD_CTX_set_params(ctx.get(), params))
       << "provider accepted a parameter it does not implement";
+}
+
+TEST_F(ProviderTest, ReportsRuntimeFipsIndicator) {
+#if defined(AWSLC_FIPS)
+  constexpr int kExpectedFipsIndicator = 1;
+#else
+  constexpr int kExpectedFipsIndicator = 0;
+#endif
+
+  MdPtr md(EVP_MD_fetch(libctx(), kRepresentative, kRequireAwslc));
+  MdCtxPtr ctx(EVP_MD_CTX_new());
+  ASSERT_TRUE(md);
+  ASSERT_TRUE(ctx);
+
+  // Zero on both axes: FIPS notifies only unapproved services, non-FIPS never.
+  static int calls = 0;
+  calls = 0;
+  OSSL_INDICATOR_set_callback(
+      libctx(), [](const char *, const char *, const OSSL_PARAM[]) {
+        calls++;
+        return 1;
+      });
+
+  static const unsigned char kMessage[] = "fips indicator";
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len = 0;
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md.get(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest, &digest_len));
+  EXPECT_EQ(0, calls) << "indicator callback fired for an approved digest";
+
+  const OSSL_PARAM *gettable = EVP_MD_CTX_gettable_params(ctx.get());
+  ASSERT_NE(nullptr, gettable);
+  EXPECT_NE(nullptr, OSSL_PARAM_locate_const(
+                         gettable, OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR));
+
+  int approved = -1;
+  OSSL_PARAM params[] = {
+      OSSL_PARAM_construct_int(OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR,
+                               &approved),
+      OSSL_PARAM_construct_end()};
+  ASSERT_TRUE(EVP_MD_CTX_get_params(ctx.get(), params));
+  EXPECT_EQ(kExpectedFipsIndicator, approved);
 }
 
 }  // namespace

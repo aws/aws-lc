@@ -326,7 +326,6 @@ Lsha3_keccak4_f1600_alt_initial:
         ldr     x9, [sp, #0xd0]
         add     x25, x25, #0x1
         str     x25, [sp, #0x18]
-        cmp     x25, #0x17
         eor     x25, x1, x27, ror #53
         bic     x27, x30, x26, ror #47
         eor     x1, x5, x28
@@ -665,7 +664,6 @@ Lsha3_keccak4_f1600_alt_loop:
         add     x25, x25, #0x1
         sri     v8.2d, v31.2d, #0x13
         str     x25, [sp, #0x18]
-        cmp     x25, #0x17
         eor     v31.16b, v7.16b, v29.16b
         eor     x25, x1, x27, ror #53
         shl     v16.2d, v31.2d, #0x6

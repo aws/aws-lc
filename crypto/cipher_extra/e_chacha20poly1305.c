@@ -49,12 +49,23 @@ typedef struct {
 typedef struct cipher_chacha_poly_ctx {
   CIPHER_CHACHA_KEY key;
   uint32_t iv[CHACHA_IV_LEN / 4];
+  // The number of valid bytes in |tag|. When decrypting, this is the expected
+  // tag length set by |EVP_CTRL_AEAD_SET_TAG|. When encrypting, it is zero
+  // until the tag is computed and |POLY1305_TAG_LEN| afterwards.
   uint8_t tag_len;
   uint8_t tag[POLY1305_TAG_LEN];
   // Use 64-bit integers so this struct can be passed directly into poly1305
   struct { uint64_t aad, text; } len;
   int32_t poly_initialized;
   int32_t pad_aad;
+  // Whether a key has been set, and whether an unused nonce has been set. Each
+  // message consumes the nonce when it starts, so a new message requires a
+  // fresh nonce, regardless of how the context is reinitialized.
+  uint8_t key_set;
+  uint8_t iv_set;
+  // Whether the last message was successfully finalized. Repeated finalization
+  // is then a no-op rather than a new message under the same nonce.
+  uint8_t finished;
   poly1305_state poly_ctx;
 } CIPHER_CHACHA_POLY_CTX;
 
@@ -416,6 +427,17 @@ static int cipher_chacha20_poly1305_init(EVP_CIPHER_CTX *ctx,
   cipher_ctx->len.text = 0;
   cipher_ctx->pad_aad = 0;
   cipher_ctx->poly_initialized = 0;
+  cipher_ctx->finished = 0;
+  if (enc) {
+    cipher_ctx->tag_len = 0;
+    OPENSSL_memset(cipher_ctx->tag, 0, sizeof(cipher_ctx->tag));
+  }
+  if (key != NULL) {
+    cipher_ctx->key_set = 1;
+  }
+  if (iv != NULL) {
+    cipher_ctx->iv_set = 1;
+  }
   if (!key && !iv) {
     return 1;
   }
@@ -542,7 +564,17 @@ static int cipher_chacha20_poly1305_do_cipher(
   poly1305_state *poly_ctx = POLY_CTX(cipher_ctx);
   size_t remainder;
 
+  if (in == NULL && cipher_ctx->finished) {
+    return 0;
+  }
+
   if (!cipher_ctx->poly_initialized) {
+    // Starting a message requires a key and consumes the nonce.
+    if (!cipher_ctx->key_set || !cipher_ctx->iv_set) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INPUT_NOT_INITIALIZED);
+      return -1;
+    }
+    cipher_ctx->iv_set = 0;
 #ifdef OPENSSL_BIG_ENDIAN
     // |CRYPTO_chacha_20| expects the input as a little-endian byte array.
     uint8_t chacha_key[CHACHA_KEY_LEN];
@@ -645,13 +677,19 @@ static int cipher_chacha20_poly1305_do_cipher(
     CRYPTO_poly1305_finish(poly_ctx, EVP_CIPHER_CTX_encrypting(ctx) ?
       cipher_ctx->tag : temp);
     cipher_ctx->poly_initialized = 0;
+    if (EVP_CIPHER_CTX_encrypting(ctx)) {
+      cipher_ctx->tag_len = POLY1305_TAG_LEN;
+    }
 
-    // Check the tags if we're decrypting
+    // Check the tags if we're decrypting. A tag must have been set.
     if (!EVP_CIPHER_CTX_encrypting(ctx)) {
-      if (CRYPTO_memcmp(temp, cipher_ctx->tag, cipher_ctx->tag_len)) {
+      if (cipher_ctx->tag_len == 0 ||
+          CRYPTO_memcmp(temp, cipher_ctx->tag, cipher_ctx->tag_len)) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return -1;
       }
     }
+    cipher_ctx->finished = 1;
   }
   return (int32_t) in_len;
 }
@@ -680,6 +718,10 @@ static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
         cipher_ctx->poly_initialized = 0;
         cipher_ctx->tag_len = 0;
       }
+      OPENSSL_memset(cipher_ctx->tag, 0, sizeof(cipher_ctx->tag));
+      cipher_ctx->key_set = 0;
+      cipher_ctx->iv_set = 0;
+      cipher_ctx->finished = 0;
 
       return 1;
     case EVP_CTRL_COPY:
@@ -702,20 +744,21 @@ static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
       }
       return 1;
     case EVP_CTRL_AEAD_GET_TAG:
-      if (arg <= 0 || arg > POLY1305_TAG_LEN ||
-              !EVP_CIPHER_CTX_encrypting(ctx)) {
+      if (cipher_ctx == NULL || arg <= 0 || arg > POLY1305_TAG_LEN ||
+          !EVP_CIPHER_CTX_encrypting(ctx) || cipher_ctx->tag_len == 0) {
         return 0;
       }
       OPENSSL_memcpy(ptr, cipher_ctx->tag, arg);
       return 1;
     case EVP_CTRL_AEAD_SET_TAG:
-      if (arg <= 0 || arg > POLY1305_TAG_LEN ||
-              EVP_CIPHER_CTX_encrypting(ctx)) {
+      if (cipher_ctx == NULL || arg <= 0 || arg > POLY1305_TAG_LEN ||
+          EVP_CIPHER_CTX_encrypting(ctx)) {
         return 0;
       }
       if (ptr != NULL) {
         OPENSSL_memcpy(cipher_ctx->tag, ptr, arg);
         cipher_ctx->tag_len = arg;
+        cipher_ctx->finished = 0;
       }
       return 1;
     default:

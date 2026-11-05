@@ -525,8 +525,8 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_SHA1 0x00000001u
 // SSL_AEAD is set for all AEADs.
 #define SSL_AEAD 0x00000002u
-#define SSL_SHA256 0x00000003u
-#define SSL_SHA384 0x00000004u
+#define SSL_SHA256 0x00000004u
+#define SSL_SHA384 0x00000008u
 
 // Bits for |algorithm_prf| (handshake digest).
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
@@ -608,9 +608,10 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // rejected. If false, nonsense will be silently ignored. If |config_tls13| is
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
-// An empty result is considered an error regardless of |strict| or
-// |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
-// having support for AES in hardware or not.
+// An empty result is still stored in |*out_cipher_list|. It returns false for
+// an empty result unless |strict| is false and |rule_str| is empty. Other
+// failures leave |*out_cipher_list| unchanged. |has_aes_hw| indicates if the
+// list should be ordered based on having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);
@@ -1284,7 +1285,9 @@ enum SSL_BUFFER_SERDE_VERSION {
 const unsigned kSSLBufferMaxSerDeVersion = SSL_BUFFER_SERDE_VERSION_TWO;
 
 #define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
-#define SSLBUFFER_MAX_CAPACITY INT_MAX
+// SSLBUFFER_MAX_CAPACITY leaves room for the |SSL3_ALIGN_PAYLOAD| alignment
+// offset, so |SSLBuffer|'s int-typed offset and capacity cannot overflow.
+#define SSLBUFFER_MAX_CAPACITY (INT_MAX - (SSL3_ALIGN_PAYLOAD - 1))
 class OPENSSL_EXPORT SSLBuffer {
  public:
   SSLBuffer() {}
