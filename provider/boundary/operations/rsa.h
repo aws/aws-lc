@@ -48,7 +48,7 @@ unsigned awslc_prov_rsa_bits(const void *rsa);
 unsigned awslc_prov_rsa_size(const void *rsa);
 unsigned awslc_prov_rsa_security_bits(const void *rsa);
 
-int awslc_prov_rsa_check(const void *rsa);
+int awslc_prov_rsa_check(const void *rsa, int check_private);
 
 // A new two-prime key with e = 65537 by FIPS 186-5 key generation, or NULL.
 // AWS-LC refuses a |bits| under 2048 or not a multiple of 128.

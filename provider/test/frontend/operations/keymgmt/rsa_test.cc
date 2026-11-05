@@ -785,6 +785,73 @@ TEST_F(RsaKeymgmtTest, ValidatesDuplicatesAndExposesLegacyRsa) {
 #endif
 }
 
+TEST_F(RsaKeymgmtTest, ChecksKeyWithoutFactorsLikeDefault) {
+  PkeyPtr decoded = Decode();
+  ASSERT_TRUE(decoded);
+  BnPtr n = GetBn(decoded.get(), OSSL_PKEY_PARAM_RSA_N);
+  BnPtr e = GetBn(decoded.get(), OSSL_PKEY_PARAM_RSA_E);
+  BnPtr d = GetBn(decoded.get(), OSSL_PKEY_PARAM_RSA_D);
+  ASSERT_TRUE(n);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(d);
+  BnPtr wrong_d(BN_dup(d.get()));
+  BnPtr zero(BN_new());
+  BnPtr one(BN_dup(BN_value_one()));
+  ASSERT_TRUE(wrong_d);
+  ASSERT_TRUE(zero);
+  ASSERT_TRUE(one);
+  ASSERT_TRUE(BN_add_word(wrong_d.get(), 2));
+
+  struct Check {
+    const char *label;
+    int (*fn)(EVP_PKEY_CTX *);
+  };
+  const Check checks[3] = {{"check", EVP_PKEY_check},
+                           {"private_check", EVP_PKEY_private_check},
+                           {"public_check", EVP_PKEY_public_check}};
+  struct Row {
+    const char *label;
+    const BIGNUM *d;
+    int want[3];
+  };
+  const Row rows[] = {{"correct d", d.get(), {0, 1, 1}},
+                      {"wrong d", wrong_d.get(), {0, 1, 1}},
+                      {"d = 0", zero.get(), {0, 0, 1}},
+                      {"d = 1", one.get(), {0, 1, 1}},
+                      {"d = n", n.get(), {0, 0, 1}}};
+
+  for (const Row &row : rows) {
+    SCOPED_TRACE(row.label);
+    ParamsPtr params = BuildParams({{OSSL_PKEY_PARAM_RSA_N, n.get()},
+                                    {OSSL_PKEY_PARAM_RSA_E, e.get()},
+                                    {OSSL_PKEY_PARAM_RSA_D, row.d}});
+    ASSERT_TRUE(params);
+    PkeyPtr ours = FromData(kRequireAwslc, EVP_PKEY_KEYPAIR, params.get());
+    PkeyPtr theirs = FromData(kRequireDefault, EVP_PKEY_KEYPAIR, params.get());
+    ASSERT_TRUE(ours);
+    ASSERT_TRUE(theirs);
+    ASSERT_EQ(kProviderName, ProviderOf(ours.get()));
+    ASSERT_EQ("default", ProviderOf(theirs.get()));
+
+    for (size_t i = 0; i < 3; i++) {
+      SCOPED_TRACE(checks[i].label);
+      PkeyCtxPtr ours_ctx(
+          EVP_PKEY_CTX_new_from_pkey(libctx(), ours.get(), nullptr));
+      PkeyCtxPtr theirs_ctx(
+          EVP_PKEY_CTX_new_from_pkey(libctx(), theirs.get(), nullptr));
+      ASSERT_TRUE(ours_ctx);
+      ASSERT_TRUE(theirs_ctx);
+
+      ERR_clear_error();
+      EXPECT_EQ(row.want[i], checks[i].fn(ours_ctx.get()));
+      EXPECT_EQ(row.want[i] == 1 ? 0u : 1u,
+                ProviderErrors(DrainErrors()).size());
+      EXPECT_EQ(row.want[i], checks[i].fn(theirs_ctx.get()));
+      ERR_clear_error();
+    }
+  }
+}
+
 int g_unapproved_calls = 0;
 
 int CountUnapproved(const char *, const char *, const OSSL_PARAM[]) {
