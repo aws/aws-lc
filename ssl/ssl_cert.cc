@@ -904,6 +904,10 @@ using namespace bssl;
 static int cert_array_to_stack(CRYPTO_BUFFER *const *from,
                               UniquePtr<STACK_OF(CRYPTO_BUFFER)> *to,
                               size_t num_certs) {
+  // |*to| is NULL when the caller failed to allocate it.
+  if (*to == nullptr) {
+    return 0;
+  }
   for (size_t i = 0; i < num_certs; i++) {
     if (!PushToStack(to->get(), UpRef(from[i]))) {
       return 0;
