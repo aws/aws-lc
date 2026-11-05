@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "internal.h"
+#include "fipsmodule/cipher/internal.h"
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
 #include "fipsmodule/bn/rsaz_exp.h"
@@ -217,6 +218,57 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
             sizeof(kPlaintext), nullptr, 0));
       });
 }
+
+#if defined(OPENSSL_AARCH64)
+TEST_F(ImplDispatchTest, AES_256_GCM_encrypt) {
+  // Assembly dispatch logic for AES-256-GCM bulk encryption on AArch64:
+  // - On CPUs that select the 8x path (`aes_gcm_8x_`: SHA3 and Neoverse V1,
+  //   V2, V3 or Apple M), we use the 8x-unrolled kernel from s2n-bignum
+  //   (`aes256_gcm_enc_alt()`) if it is built, i.e. with s2n-bignum
+  //   (`have_s2n_bignum_asm_`) and an assembler supporting SHA3
+  //   (`assembler_has_neon_sha3_extension_`).
+  // - Otherwise, with PMULL, we use the 4x-unrolled kernel from OpenSSL
+  //   (`aes_gcm_enc_kernel()`).
+  // - Otherwise, we use AES-CTR (`aes_hw_ctr32_encrypt_blocks()`) with a
+  //   separate GHASH.
+  // Without AES instructions, the VPAES and C fallbacks are used, which set no
+  // flags.
+  // Key setup and the IV are done outside |AssertFunctionsHit|, so that only
+  // the bulk encryption is checked.
+  static const uint8_t kKey[32] = {0};
+  static const uint8_t kNonce[12] = {0};
+  AES_KEY aes_key;
+  GCM128_CONTEXT gcm;
+  OPENSSL_memset(&gcm, 0, sizeof(gcm));
+  ctr128_f ctr =
+      aes_ctr_set_key(&aes_key, &gcm.gcm_key, nullptr, kKey, sizeof(kKey));
+  CRYPTO_gcm128_setiv(&gcm, &aes_key, kNonce, sizeof(kNonce));
+
+  AssertFunctionsHit(
+      {
+          {kFlag_aesv8_gcm_8x_enc_128,  // also set by |aes256_gcm_enc_alt|
+           aes_hw_ && aes_gcm_pmull_ && aes_gcm_8x_ && sha3_ext_ &&
+           (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_) },
+          {kFlag_aes_gcm_enc_kernel,
+           aes_hw_ && aes_gcm_pmull_ &&
+           !(aes_gcm_8x_ && sha3_ext_ &&
+             (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_)) },
+          {kFlag_aes_hw_ctr32_encrypt_blocks,
+           aes_hw_ && !aes_gcm_pmull_ },
+      },
+      [&] {
+        const uint8_t kPlaintext[256] = {1, 2, 3, 4, 0};
+        uint8_t ciphertext[sizeof(kPlaintext)];
+        if (ctr != nullptr) {
+          ASSERT_TRUE(CRYPTO_gcm128_encrypt_ctr32(
+              &gcm, &aes_key, kPlaintext, ciphertext, sizeof(kPlaintext), ctr));
+        } else {
+          ASSERT_TRUE(CRYPTO_gcm128_encrypt(&gcm, &aes_key, kPlaintext,
+                                            ciphertext, sizeof(kPlaintext)));
+        }
+      });
+}
+#endif  // OPENSSL_AARCH64
 
 TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(

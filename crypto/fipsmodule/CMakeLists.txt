@@ -341,6 +341,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
            ${S2N_BIGNUM_DIR}/sha3/sha3_keccak2_f1600.S
            ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt2.S)
 
+        # AES-GCM 8x-unrolled kernels (use EOR3 from the SHA3 extension)
+        list(APPEND BCM_ASM_SOURCES
+           ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_enc_alt.S
+           ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_dec_alt.S)
+
         set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
                                     PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
         set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak2_f1600.S

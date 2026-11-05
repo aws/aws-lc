@@ -103,6 +103,15 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 #if defined(HW_GCM) && defined(OPENSSL_AARCH64)
 
+#if defined(HW_GCM_S2N_BIGNUM)
+// The s2n-bignum AES-GCM kernels take the |AES_KEY| as an |s2n_bignum_AES_KEY|
+// and read only its round keys, the first member of both structs, so these
+// must have the same size.
+OPENSSL_STATIC_ASSERT(sizeof(((AES_KEY *)NULL)->rd_key) ==
+                          sizeof(((s2n_bignum_AES_KEY *)NULL)->rd_key),
+                      aes_key_round_key_sizes_differ);
+#endif
+
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              uint8_t Xi[16], const u128 Htable[16]) {
@@ -116,6 +125,9 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   // in the case of the EVP API.
   // In the case of the AEAD API, it can be used for all input lengths
   // but we are not identifying which API calls the code below.
+  // The 8x path is only taken on Linux and Apple, the only platforms whose CPU
+  // detection sets the CPU-model bits it needs; elsewhere, e.g. on Windows,
+  // the 4x-unrolled kernel is used.
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
@@ -125,7 +137,21 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     case 14:
-      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // Use the s2n-bignum 8x kernel if both the assembler and the CPU
+      // support SHA3; otherwise, fall back to the 4x kernel.
+#if defined(HW_GCM_S2N_BIGNUM) && \
+    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+      if (CRYPTO_is_ARMv8_SHA3_capable()) {
+#if defined(BORINGSSL_DISPATCH_TEST)
+        BORINGSSL_function_hit[7] = 1;  // 8x AES-GCM encryption
+#endif
+        aes256_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       // The subsequent logic after returning can process
@@ -153,6 +179,9 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   // in the case of the EVP API.
   // In the case of the AEAD API, it can be used for all input lengths
   // but we are not identifying which API calls the code below.
+  // The 8x path is only taken on Linux and Apple, the only platforms whose CPU
+  // detection sets the CPU-model bits it needs; elsewhere, e.g. on Windows,
+  // the 4x-unrolled kernel is used.
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
@@ -162,7 +191,18 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
       aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     case 14:
-      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // Use the s2n-bignum 8x kernel if both the assembler and the CPU
+      // support SHA3; otherwise, fall back to the 4x kernel.
+#if defined(HW_GCM_S2N_BIGNUM) && \
+    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+      if (CRYPTO_is_ARMv8_SHA3_capable()) {
+        aes256_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       // The subsequent logic after returning can process
