@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #include <signal.h>
 
+#include <vector>
+
 #include <openssl/base.h>
 
 #include "internal.h"
@@ -12,6 +14,7 @@
 #if !defined(OPENSSL_NO_TTY)
 
 #if defined(OPENSSL_WINDOWS)
+#include <windows.h>
 #include <io.h>
 #define dup _dup
 #define dup2 _dup2
@@ -270,5 +273,102 @@ TEST_F(PemPasswdTest, EchoModes) {
   ASSERT_STREQ(buf_with_echo, "test_password");
 }
 #endif
+
+#if defined(OPENSSL_WINDOWS) && GTEST_HAS_DEATH_TEST
+// The interactive Windows path (|ReadConsoleW| + |WideCharToMultiByte|) needs a
+// real console. Each case runs in a death-test child so it can swap the
+// process console without affecting the test runner.
+
+static bool WriteConsoleLine(HANDLE in, const wchar_t *line) {
+  std::vector<INPUT_RECORD> records;
+  for (const wchar_t *c = line;; c++) {
+    INPUT_RECORD rec = {};
+    rec.EventType = KEY_EVENT;
+    rec.Event.KeyEvent.bKeyDown = TRUE;
+    rec.Event.KeyEvent.wRepeatCount = 1;
+    if (*c == L'\0') {
+      rec.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
+      rec.Event.KeyEvent.uChar.UnicodeChar = L'\r';
+    } else {
+      rec.Event.KeyEvent.uChar.UnicodeChar = *c;
+    }
+    records.push_back(rec);
+    if (*c == L'\0') {
+      break;
+    }
+  }
+  DWORD written = 0;
+  return FlushConsoleInputBuffer(in) &&
+         WriteConsoleInputW(in, records.data(), (DWORD)records.size(),
+                            &written) &&
+         written == records.size();
+}
+
+// Types |line| into a fresh console and reads it back with a |kMaxSize|-byte
+// buffer followed by a canary. Exits 0 if the result and canary are as
+// expected, nonzero otherwise.
+static void ReadFromConsoleAndExit(const wchar_t *line, int expected_ret,
+                                   const char *expected_buf) {
+  static const int kMaxSize = 8;
+  static const char kCanary = 0x5a;
+
+  FreeConsole();
+  if (!AllocConsole()) {
+    fprintf(stderr, "AllocConsole failed: %lu\n", GetLastError());
+    exit(3);
+  }
+  HANDLE in = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                          OPEN_EXISTING, 0, NULL);
+  if (in == INVALID_HANDLE_VALUE || !SetStdHandle(STD_INPUT_HANDLE, in) ||
+      !WriteConsoleLine(in, line)) {
+    fprintf(stderr, "console setup failed: %lu\n", GetLastError());
+    exit(3);
+  }
+
+  char buf[kMaxSize + 1];
+  memset(buf, 0, sizeof(buf));
+  buf[kMaxSize] = kCanary;
+
+  openssl_console_acquire_mutex();
+  if (!openssl_console_open()) {
+    exit(4);
+  }
+  int ret = openssl_console_read(buf, 0, kMaxSize, 0);
+  openssl_console_close();
+  openssl_console_release_mutex();
+
+  if (buf[kMaxSize] != kCanary) {
+    fprintf(stderr, "canary overwritten\n");
+    exit(5);
+  }
+  if (ret != expected_ret) {
+    fprintf(stderr, "ret = %d, want %d\n", ret, expected_ret);
+    exit(6);
+  }
+  if (expected_buf != NULL && strcmp(buf, expected_buf) != 0) {
+    fprintf(stderr, "buf mismatch\n");
+    exit(7);
+  }
+  exit(0);
+}
+
+// U+00E9 is one UTF-16 unit and two UTF-8 bytes. With |kMaxSize| = 8, the
+// trailing newline the console appends is stripped, but it and the NUL still
+// count against the buffer during conversion.
+TEST(ConsoleWindowsTest, ReadConsoleUtf8FitsExactly) {
+  // 6 bytes + '\n' + NUL = 8 bytes.
+  EXPECT_EXIT(ReadFromConsoleAndExit(L"\u00e9\u00e9\u00e9", 0,
+                                     "\xc3\xa9\xc3\xa9\xc3\xa9"),
+              ::testing::ExitedWithCode(0), "");
+}
+
+TEST(ConsoleWindowsTest, ReadConsoleUtf8OneByteTooLong) {
+  // 7 bytes + '\n' + NUL = 9 bytes: must be rejected without writing past
+  // the buffer.
+  EXPECT_EXIT(ReadFromConsoleAndExit(L"\u00e9\u00e9\u00e9a", -1, NULL),
+              ::testing::ExitedWithCode(0), "");
+}
+#endif  // OPENSSL_WINDOWS && GTEST_HAS_DEATH_TEST
 
 #endif  // !OPENSSL_NO_TTY
