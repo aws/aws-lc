@@ -198,10 +198,10 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
            !aes_gcm_pmull_ && !aes_gcm_8x_},
           {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
            aes_gcm_pmull_ &&
-           !(aes_gcm_8x_ && sha3_ext_ &&
+           !(aes_gcm_8x_ &&
              (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_))},
           {kFlag_aes_gcm_enc_alt, aes_hw_ &&
-           aes_gcm_pmull_ && aes_gcm_8x_ && sha3_ext_ &&
+           aes_gcm_pmull_ && aes_gcm_8x_ &&
            (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_)}
 #endif
       },
