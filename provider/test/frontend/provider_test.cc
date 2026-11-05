@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "internal/backend.h"
+#include "boundary.h"
 
 namespace awslc_provider_test {
 namespace {
@@ -86,7 +86,8 @@ TEST_F(ProviderTest, RaisesErrorsUnderItsOwnErrorLibrary) {
   EXPECT_EQ((unsigned long)AWSLC_PROV_R_INVALID_PARAMETER, ours[0].reason());
   ASSERT_NE(nullptr, ours[0].reason_text());
   EXPECT_STREQ("invalid parameter", ours[0].reason_text());
-  EXPECT_NE(std::string::npos, ours[0].file.find("provider.c")) << ours[0].file;
+  EXPECT_NE(std::string::npos, ours[0].file.find("frontend/utils.c"))
+      << ours[0].file;
   EXPECT_GT(ours[0].line, 0);
   EXPECT_EQ(OSSL_PROV_PARAM_NAME, ours[0].data);
 }
