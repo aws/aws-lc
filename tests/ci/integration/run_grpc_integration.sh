@@ -6,6 +6,11 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Optional first argument: grpc git ref (release tag, branch, or commit SHA).
+# Defaults to a pinned stable release so per-PR CI has a stable signal; the
+# nightly build passes 'master' to track upstream (informational).
+GRPC_REF="${1:-v1.72.2}"
+
 # SYS_ROOT
 #  |
 #  - SRC_ROOT(aws-lc)
@@ -29,7 +34,7 @@ rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
-git clone --depth 1 https://github.com/grpc/grpc.git ${GRPC_SRC_FOLDER}
+git clone --depth 1 --branch "${GRPC_REF}" https://github.com/grpc/grpc.git ${GRPC_SRC_FOLDER}
 cd ${GRPC_SRC_FOLDER}
 git submodule update --recursive --init
 

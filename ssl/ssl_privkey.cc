@@ -1002,6 +1002,45 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
   return true;
 }
 
+#if defined(AWSLC_CRYPTO_POLICIES)
+
+// Defined out of line from the rest of |bssl| in this file because it needs
+// |parse_sigalgs_list|, which sits below |BSSL_NAMESPACE_END| with the public
+// setters it serves.
+BSSL_NAMESPACE_BEGIN
+
+bool ssl_sigalg_id_from_name(uint16_t *out, const char *name, size_t len) {
+  // Long enough for the longest name in |kSignatureAlgorithmNames| and for any
+  // "PKEY+HASH" pair. |parse_sigalgs_list| rejects anything else.
+  char buf[2 * kMaxSignatureAlgorithmNameLen];
+  if (len == 0 || len >= sizeof(buf)) {
+    return false;
+  }
+  OPENSSL_memcpy(buf, name, len);
+  buf[len] = '\0';
+
+  // The parser reports a token it does not know by queueing an error, so probing
+  // a name would otherwise be visible in the caller's error queue. Fail the probe
+  // when the queue cannot be protected: this reports whether a name resolves, and
+  // an unresolvable one is what the caller is told either way.
+  ScopedErrorSuppression suppress;
+  if (!suppress) {
+    return false;
+  }
+  Array<uint16_t> sigalgs;
+  const bool ok = parse_sigalgs_list(&sigalgs, buf);
+  // A ':' would parse as several algorithms, so require exactly one.
+  if (!ok || sigalgs.size() != 1) {
+    return false;
+  }
+  *out = sigalgs[0];
+  return true;
+}
+
+BSSL_NAMESPACE_END
+
+#endif  // AWSLC_CRYPTO_POLICIES
+
 int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str) {
   Array<uint16_t> sigalgs;
   if (!parse_sigalgs_list(&sigalgs, str)) {

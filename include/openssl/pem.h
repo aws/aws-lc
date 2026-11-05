@@ -347,6 +347,10 @@ OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
 // certificate (x509), it will be written after the private key (if any). Other
 // fields in X509_INFO (such as CRLs) are currently ignored.
 //
+// An unencrypted private key is written in the legacy, per-algorithm format, as
+// in |PEM_write_bio_PrivateKey_traditional|, so that |PEM_X509_INFO_read_bio|
+// can read it back.
+//
 // It returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi,
                                            EVP_CIPHER *enc, unsigned char *kstr,

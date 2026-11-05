@@ -6,6 +6,9 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Optional librelp git ref (tag or branch), defaults to librelp's "master" branch.
+LIBRELP_REF="${1:-}"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -47,7 +50,12 @@ mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
-git clone https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER} --depth 1
+# Clone the given ref (e.g. a release tag), or librelp's "master" branch when unset.
+if [[ -n "${LIBRELP_REF}" ]]; then
+  git clone --depth 1 --branch "${LIBRELP_REF}" https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER}
+else
+  git clone --depth 1 https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER}
+fi
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${LIBRELP_BUILD_FOLDER}
 ls
 

@@ -62,7 +62,7 @@ static const argument_t kArguments[] = {
     {"-genkey", kBooleanArgument, "Generate ec key"},
     {"", kOptionalArgument, ""}};
 
-bool ecparamTool(const args_list_t &args) {
+int ecparamTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -71,12 +71,12 @@ bool ecparamTool(const args_list_t &args) {
                                      kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   bool ret = false;
@@ -191,5 +191,5 @@ bool ecparamTool(const args_list_t &args) {
 
 err:
   ERR_print_errors_fp(stderr);
-  return ret;
+  return ret ? kToolExitSuccess : kToolExitFailure;
 }

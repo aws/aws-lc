@@ -43,7 +43,7 @@ static const argument_t kArguments[] = {
         { "", kOptionalArgument, "" },
 };
 
-bool SClientTool(const args_list_t &args) {
+int SClientTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
@@ -51,20 +51,20 @@ bool SClientTool(const args_list_t &args) {
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   if(HasArgument(parsed_args, "-help")) {
     fprintf(stderr, "Usage: s_client [options] [host:port]\n");
     PrintUsage(kArguments);
-    return true;
+    return kToolExitSuccess;
   }
 
   // Validate that -connect is provided
   if (!HasArgument(parsed_args, "-connect")) {
     fprintf(stderr, "Missing value for required argument: -connect\n");
     PrintUsage(kArguments);
-    return false;
+    return kToolExitFailure;
   }
 
   // Convert to std::map for DoClient compatibility
@@ -82,8 +82,8 @@ bool SClientTool(const args_list_t &args) {
   if (args_map.count("-noservername") && args_map.count("-server-name")) {
     fprintf(stderr,
             "s_client: Can't use -servername and -noservername together\n");
-    return false;
+    return kToolExitFailure;
   }
 
-  return DoClient(args_map, true);
+  return DoClient(args_map, true) ? kToolExitSuccess : kToolExitFailure;
 }

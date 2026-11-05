@@ -371,6 +371,7 @@ int X509V3_EXT_REQ_add_nconf(const CONF *conf, const X509V3_CTX *ctx,
   }
   i = X509V3_EXT_add_nconf_sk(conf, ctx, section, sk);
   if (!i || !sk) {
+    sk_X509_EXTENSION_pop_free(extlist, X509_EXTENSION_free);
     return i;
   }
   i = X509_REQ_add_extensions(req, extlist);

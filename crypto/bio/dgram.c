@@ -108,6 +108,7 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   GUARD_PTR(bp->ptr);
 
   BIO_ADDR peer;
+  OPENSSL_memset(&peer, 0, sizeof(peer));
   // Might be modified by call to `recvfrom`.
   socklen_t len = sizeof(peer);
 
@@ -131,7 +132,13 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   }
   const int ret = result;
 
-  if (!data->connected && ret >= 0) {
+  // Only record the peer if |recvfrom| actually filled in an address. Platforms
+  // do not agree on how that is signalled: POSIX leaves the contents of |peer|
+  // unspecified and Winsock ignores the address arguments entirely, leaving both
+  // |peer| and |len| untouched. Neither is required to zero |len|, so check the
+  // address family instead. |peer| was zeroed above, so it is |AF_UNSPEC| unless
+  // |recvfrom| wrote an address into it.
+  if (!data->connected && ret >= 0 && peer.sa.sa_family != AF_UNSPEC) {
     if (1 != BIO_dgram_set_peer(bp, &peer)) {
       // The operation does not fail if peer not set.
     }

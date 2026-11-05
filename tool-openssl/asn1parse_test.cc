@@ -102,6 +102,19 @@ static const TestCorpus kTestCorpora[] = {
     // Indefinite-length SEQUENCE with no end-of-contents marker.
     TestCorpus{"MalformedMissingEoc", "3080020101", DER_STRING, true, true},
 
+    // Malformed [UNIVERSAL 0] with content masquerading as EOC inside an
+    // indefinite-length SEQUENCE. A real EOC is exactly the two bytes 00 00.
+    // Here the fake EOC (tag [UNIVERSAL 0], length 5) is followed by a real
+    // sibling INTEGER and a proper terminating EOC. The parser must not treat
+    // the fake EOC as end-of-contents, otherwise the parent SEQUENCE would
+    // truncate and the sibling would be mis-attributed.
+    //   30 80              indefinite SEQUENCE
+    //     00 05 AABBCCDDEE malformed [UNIVERSAL 0], 5 content bytes
+    //     02 01 01         INTEGER 1
+    //     00 00            real EOC
+    TestCorpus{"BerMalformedUniversalZero",
+               "30800005AABBCCDDEE0201010000", DER_STRING, true, false},
+
     // Definite-length SEQUENCE whose length says 5, but only 3 bytes follow, 2
     // bytes missing
     TestCorpus{"MalformedTruncatedLength", "3005020101", DER_STRING, false,
@@ -266,12 +279,12 @@ TEST_P(CorpusTest, AwsLcParseAsExpected) {
   const auto &param = GetParam();
 
   args_list_t args = {"-in", in_path, "-inform", param.format};
-  bool ok = asn1parseTool(args);
+  int ok = asn1parseTool(args);
 
   if (param.awslc_success) {
-    EXPECT_TRUE(ok) << "Expected success for: " << param.name;
+    EXPECT_EQ(kToolExitSuccess, ok) << "Expected success for: " << param.name;
   } else {
-    EXPECT_FALSE(ok) << "Expected failure for: " << param.name;
+    EXPECT_EQ(kToolExitFailure, ok) << "Expected failure for: " << param.name;
   }
 }
 
@@ -322,12 +335,16 @@ TEST_P(CorpusComparisonTest, asn1parseCompare) {
     GTEST_SKIP() << "Skipping test: negative aws-lc test-case, or expected "
                     "mismatch on output";
   }
-  std::string tool_command = std::string(tool_executable_path) +
-                             " asn1parse -inform " + param.format + " -in " +
-                             in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) +
-                                " asn1parse -inform " + param.format + " -in " +
-                                in_path + " > " + out_path_openssl;
+  std::string tool_command = ShellEscape(tool_executable_path) +
+                             " asn1parse -inform " +
+                             ShellEscape(param.format) + " -in " +
+                             ShellEscape(in_path) + " > " +
+                             ShellEscape(out_path_tool);
+  std::string openssl_command = ShellEscape(openssl_executable_path) +
+                                " asn1parse -inform " +
+                                ShellEscape(param.format) + " -in " +
+                                ShellEscape(in_path) + " > " +
+                                ShellEscape(out_path_openssl);
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
