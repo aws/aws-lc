@@ -12,11 +12,13 @@
 # gathers these back between the markers and /DISCARD/s stray sections. The
 # PE/COFF MinGW path has no such net: it partial-links with a plain `ld -r` and
 # relies on GCC not emitting split sections (see -fno-reorder-functions /
-# -fno-reorder-blocks-and-partition in the top-level CMakeLists.txt). If a split
-# section ever reappears, the module would still pass its self-test (injection
-# and the runtime check measure the same window) but would silently leave that
-# code/data outside the integrity check. This guard turns that silent gap into a
-# hard build failure.
+# -fno-reorder-blocks-and-partition in the top-level CMakeLists.txt) and on the
+# module being built with -mcmodel=small -fno-ident, so that no .rdata$.refptr.*
+# or .rdata$zzz grouped sections are emitted (see crypto/fipsmodule/CMakeLists.txt).
+# If a split section ever reappears, the module would still pass its self-test
+# (injection and the runtime check measure the same window) but would silently
+# leave that code/data outside the integrity check. This guard turns that silent
+# gap into a hard build failure.
 #
 # Required arguments (passed via -D):
 #   OBJDUMP     - path to a binutils/llvm objdump for the target
@@ -41,9 +43,10 @@ if(NOT objdump_result EQUAL 0)
 endif()
 
 # Extract section names (the second whitespace-delimited column of `objdump -h`)
-# and flag any that indicate split-out module code or data. Dollar-suffixed
-# grouped .rdata sections contain MinGW refptr cells, so the build must merge
-# them into .rdata before this check runs.
+# and flag any that indicate split-out module code or data. Grouped (`$`-suffixed)
+# sections are sorted after every object's plain .text/.rdata in the final DLL
+# link, so they would land outside the markers. A COMDAT/LINK_ONCE .rdata could
+# likewise be discarded in favor of a copy outside the module.
 #
 # MinGW may also emit .ctors/.dtors records for module constructors and
 # destructors. Those are loader registration metadata analogous to ELF
@@ -81,7 +84,7 @@ if(forbidden_sections OR forbidden_section_metadata)
       string(APPEND failure_details " ")
     endif()
     string(APPEND failure_details
-      "merged .rdata still has grouped-section metadata: ${forbidden_metadata_pretty}.")
+      ".rdata has grouped-section metadata: ${forbidden_metadata_pretty}.")
   endif()
   message(FATAL_ERROR
     "FIPS integrity check would be incomplete: '${BCM_OBJECT}' contains "
@@ -89,9 +92,9 @@ if(forbidden_sections OR forbidden_section_metadata)
     "All module code must live in a single contiguous .text (and rodata in "
     ".rdata) bracketed by BORINGSSL_bcm_text_start/end. Ensure the module is "
     "built with -fno-reorder-functions -fno-reorder-blocks-and-partition "
-    "(and -fno-function-sections -fno-data-sections), and ensure grouped "
-    ".rdata$ sections are merged by merge_fips_mingw_rodata.cmake; see the "
-    "FIPS_SHARED MinGW blocks in the top-level CMakeLists.txt.")
+    "-fno-function-sections -fno-data-sections -mcmodel=small -fno-ident; see "
+    "the FIPS_SHARED MinGW blocks in the top-level and crypto/fipsmodule "
+    "CMakeLists.txt.")
 endif()
 
 message(STATUS "FIPS MinGW section check passed for ${BCM_OBJECT}")

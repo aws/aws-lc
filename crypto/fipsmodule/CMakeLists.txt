@@ -676,14 +676,17 @@ elseif(FIPS_SHARED)
   target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 
   # On GCC 14+ the Superword Level Parallelism (SLP) vectorizer causes the
-  # compiler to aggressively store static function pointer addresses in the
-  # .data.rel.ro.local section which is discarded by our linker script and
-  # results in undefined references when linking libcrypto.
+  # compiler to aggressively store static function pointer addresses in
+  # read-only data: on Linux in the .data.rel.ro.local section, which is
+  # discarded by our linker script and results in undefined references when
+  # linking libcrypto, and on MinGW in .rdata, where their base relocations
+  # would fall inside the hashed module.
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
      CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
-     CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+     (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MINGW) AND
      ARCH STREQUAL "x86_64")
-    target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
+    # C only: on MinGW, bcm_library also contains the NASM sources.
+    target_compile_options(bcm_library PRIVATE $<$<COMPILE_LANGUAGE:C>:-fno-tree-slp-vectorize>)
   endif()
 
   if (APPLE)
@@ -771,21 +774,34 @@ elseif(FIPS_SHARED)
     # (start and end), then partial-link the three pieces in order so
     # BORINGSSL_bcm_text_start/end bracket all BCM code.
     set(BCM_NAME bcm.o)
+
+    # MinGW GCC's default (medium) code model reaches external symbols through
+    # .refptr cells, which carry base relocations and would put load-address-
+    # dependent bytes inside the hashed module. The small code model uses
+    # RIP-relative references instead, keeping the module relocation-free like
+    # every other FIPS target (inject_hash.go enforces this). -fno-ident drops
+    # the compiler's .rdata$zzz ident string so the module's read-only data
+    # stays in the single .rdata section bracketed by the rodata markers.
+    set(FIPS_MINGW_MODULE_C_FLAGS -mcmodel=small -fno-ident)
+    foreach(flag IN LISTS FIPS_MINGW_MODULE_C_FLAGS)
+      # C only: bcm_library also contains the NASM sources.
+      target_compile_options(bcm_library PRIVATE $<$<COMPILE_LANGUAGE:C>:${flag}>)
+    endforeach()
+
     # These custom commands invoke the compiler directly (outside CMake's normal
     # target compilation), so we must forward CMAKE_C_FLAGS manually. This is
     # necessary for cross-compilation where the flags contain --target and
-    # system include paths (e.g. clang targeting MinGW).
+    # system include paths.
     separate_arguments(FIPS_MARKER_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
 
     # Resolve an objdump for the target toolchain. It is used below to verify
     # that the assembled module object keeps all code/rodata in the single
     # .text/.rdata sections bracketed by the integrity markers.
-    get_filename_component(FIPS_LD_DIR "${CMAKE_LINKER}" DIRECTORY)
-    get_filename_component(FIPS_LD_NAME "${CMAKE_LINKER}" NAME)
-
     set(FIPS_MINGW_OBJDUMP "${CMAKE_OBJDUMP}")
     if(NOT FIPS_MINGW_OBJDUMP)
       # Derive from the linker (e.g. <triple>-ld -> <triple>-objdump).
+      get_filename_component(FIPS_LD_DIR "${CMAKE_LINKER}" DIRECTORY)
+      get_filename_component(FIPS_LD_NAME "${CMAKE_LINKER}" NAME)
       string(REGEX REPLACE "ld(\\.exe)?$" "objdump" FIPS_OD_NAME "${FIPS_LD_NAME}")
       find_program(FIPS_MINGW_OBJDUMP NAMES "${FIPS_OD_NAME}" objdump llvm-objdump
                    HINTS "${FIPS_LD_DIR}")
@@ -796,39 +812,23 @@ elseif(FIPS_SHARED)
         "integrity section layout. Set CMAKE_OBJDUMP to the target objdump.")
     endif()
 
-    set(FIPS_MINGW_OBJCOPY "${CMAKE_OBJCOPY}")
-    if(NOT FIPS_MINGW_OBJCOPY)
-      # Derive from the linker (e.g. <triple>-ld -> <triple>-objcopy).
-      string(REGEX REPLACE "ld(\\.exe)?$" "objcopy" FIPS_OC_NAME "${FIPS_LD_NAME}")
-      find_program(FIPS_MINGW_OBJCOPY NAMES "${FIPS_OC_NAME}" objcopy llvm-objcopy
-                   HINTS "${FIPS_LD_DIR}")
-    endif()
-    if(NOT FIPS_MINGW_OBJCOPY)
-      message(FATAL_ERROR
-        "FIPS MinGW build: could not find objcopy to merge the module "
-        "read-only data sections. Set CMAKE_OBJCOPY to the target objcopy.")
-    endif()
-
     add_custom_command(
       OUTPUT fips_mingw_start.o
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} ${FIPS_MINGW_MODULE_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_mingw_start.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_mingw_end.o
-      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
+      COMMAND ${CMAKE_C_COMPILER} ${FIPS_MARKER_C_FLAGS} ${FIPS_MINGW_MODULE_C_FLAGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_mingw_end.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
-    set(BCM_UNMERGED_NAME bcm.unmerged.o)
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${CMAKE_LINKER} -r fips_mingw_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_mingw_end.o -o ${BCM_UNMERGED_NAME}
-      COMMAND ${CMAKE_COMMAND} -DOBJDUMP=${FIPS_MINGW_OBJDUMP} -DOBJCOPY=${FIPS_MINGW_OBJCOPY} -DLINKER=${CMAKE_LINKER} -DINPUT_OBJECT=${BCM_UNMERGED_NAME} -DOUTPUT_OBJECT=${BCM_NAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/merge_fips_mingw_rodata.cmake
-      # Fail the build if GCC split any module code/rodata into sections that
-      # would fall outside the integrity markers in the final DLL.
+      COMMAND ${CMAKE_LINKER} -r fips_mingw_start.o --whole-archive $<TARGET_FILE:bcm_library> --no-whole-archive fips_mingw_end.o -o ${BCM_NAME}
+      # Fail the build if any module code/rodata landed in sections that would
+      # fall outside the integrity markers in the final DLL.
       COMMAND ${CMAKE_COMMAND} -DOBJDUMP=${FIPS_MINGW_OBJDUMP} -DBCM_OBJECT=${BCM_NAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/check_fips_mingw_sections.cmake
-      DEPENDS fips_mingw_start.o fips_mingw_end.o bcm_library ${CMAKE_CURRENT_SOURCE_DIR}/check_fips_mingw_sections.cmake ${CMAKE_CURRENT_SOURCE_DIR}/merge_fips_mingw_rodata.cmake
-      BYPRODUCTS ${BCM_UNMERGED_NAME}
+      DEPENDS fips_mingw_start.o fips_mingw_end.o bcm_library ${CMAKE_CURRENT_SOURCE_DIR}/check_fips_mingw_sections.cmake
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()

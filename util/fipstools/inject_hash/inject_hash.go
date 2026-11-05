@@ -456,46 +456,136 @@ func doMingw(objectBytes []byte) ([]byte, []byte, error) {
 		moduleROData = rodata[*rodataStart:*rodataEnd]
 	}
 
-	// Record the link-time preferred PE image base in BORINGSSL_bcm_preferred_base
-	// so the runtime integrity check computes the ASLR load delta against the
-	// same preferred-base image bytes hashed here.
-	var imageBase uint64
-	switch oh := object.OptionalHeader.(type) {
-	case *pe.OptionalHeader64:
-		imageBase = oh.ImageBase
-	case *pe.OptionalHeader32:
-		imageBase = uint64(oh.ImageBase)
-	default:
-		return nil, nil, errors.New("unsupported or missing PE optional header")
+	// The runtime integrity check hashes the module as mapped in memory, so,
+	// as on every other FIPS target, the loader must not rewrite any hashed
+	// byte. Fail the build if a base relocation touches either region (e.g.
+	// .refptr cells emitted when the module is not built with -mcmodel=small).
+	regions := []peRegion{{
+		name:  ".text",
+		start: uint64(textSection.VirtualAddress) + *textStart,
+		end:   uint64(textSection.VirtualAddress) + *textEnd,
+	}}
+	if rodataStart != nil {
+		regions = append(regions, peRegion{
+			name:  ".rdata",
+			start: uint64(rodataSection.VirtualAddress) + *rodataStart,
+			end:   uint64(rodataSection.VirtualAddress) + *rodataEnd,
+		})
 	}
-
-	var baseSym *pe.Symbol
-	for _, symbol := range symbols {
-		if symbol.Name == "BORINGSSL_bcm_preferred_base" {
-			if baseSym != nil {
-				return nil, nil, errors.New("duplicate preferred base symbol found")
+	relocs, err := peBaseRelocations(object)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, reloc := range relocs {
+		for _, region := range regions {
+			if reloc.rva < region.end && reloc.rva+reloc.width > region.start {
+				return nil, nil, fmt.Errorf("base relocation at RVA 0x%x lies inside the FIPS module %s region [0x%x, 0x%x); the module must be relocation-free", reloc.rva, region.name, region.start, region.end)
 			}
-			baseSym = symbol
 		}
 	}
-	if baseSym == nil {
-		return nil, nil, errors.New("could not find BORINGSSL_bcm_preferred_base symbol")
-	}
-	sn := int(baseSym.SectionNumber)
-	if sn < 1 || sn > len(object.Sections) {
-		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base has invalid section number")
-	}
-	baseSection := object.Sections[sn-1]
-	if baseSection.Offset == 0 {
-		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base section has no file data")
-	}
-	baseFileOffset := int64(baseSection.Offset) + int64(baseSym.Value)
-	if baseFileOffset < 0 || baseFileOffset+8 > int64(len(objectBytes)) {
-		return nil, nil, errors.New("BORINGSSL_bcm_preferred_base lies outside the object file")
-	}
-	binary.LittleEndian.PutUint64(objectBytes[baseFileOffset:], imageBase)
 
 	return moduleText, moduleROData, nil
+}
+
+type peRegion struct {
+	name       string
+	start, end uint64
+}
+
+type peBaseReloc struct {
+	rva, width uint64
+}
+
+// peBaseRelocations returns the location and width of every base relocation
+// in the PE image's base relocation directory.
+func peBaseRelocations(object *pe.File) ([]peBaseReloc, error) {
+	var dir pe.DataDirectory
+	switch oh := object.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		if oh.NumberOfRvaAndSizes > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	case *pe.OptionalHeader32:
+		if oh.NumberOfRvaAndSizes > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	default:
+		return nil, errors.New("unsupported or missing PE optional header")
+	}
+	if dir.Size == 0 {
+		return nil, nil
+	}
+
+	var table []byte
+	for _, section := range object.Sections {
+		if dir.VirtualAddress < section.VirtualAddress {
+			continue
+		}
+		offset := uint64(dir.VirtualAddress - section.VirtualAddress)
+		if offset >= uint64(section.VirtualSize) {
+			continue
+		}
+		data, err := section.Data()
+		if err != nil {
+			return nil, errors.New("failed to read base relocation section: " + err.Error())
+		}
+		if offset+uint64(dir.Size) > uint64(len(data)) {
+			return nil, errors.New("base relocation directory extends past its section")
+		}
+		table = data[offset : offset+uint64(dir.Size)]
+		break
+	}
+	if table == nil {
+		return nil, errors.New("base relocation directory is not inside any section")
+	}
+
+	// IMAGE_REL_BASED_* types from the PE/COFF specification.
+	const (
+		relBasedAbsolute = 0
+		relBasedHigh     = 1
+		relBasedLow      = 2
+		relBasedHighLow  = 3
+		relBasedHighAdj  = 4
+		relBasedDir64    = 10
+	)
+
+	var relocs []peBaseReloc
+	for len(table) > 0 {
+		if len(table) < 8 {
+			return nil, errors.New("truncated base relocation block")
+		}
+		page := uint64(binary.LittleEndian.Uint32(table[0:4]))
+		blockSize := binary.LittleEndian.Uint32(table[4:8])
+		if blockSize < 8 || blockSize%2 != 0 || uint64(blockSize) > uint64(len(table)) {
+			return nil, fmt.Errorf("malformed base relocation block for page 0x%x", page)
+		}
+		entries := table[8:blockSize]
+		for i := 0; i < len(entries); i += 2 {
+			entry := binary.LittleEndian.Uint16(entries[i:])
+			var width uint64
+			switch entry >> 12 {
+			case relBasedAbsolute:
+				// Block padding, not a relocation.
+				continue
+			case relBasedHigh, relBasedLow:
+				width = 2
+			case relBasedHighAdj:
+				width = 2
+				// The following entry holds the low 16 bits of the target.
+				i += 2
+			case relBasedHighLow:
+				width = 4
+			case relBasedDir64:
+				width = 8
+			default:
+				// Be conservative about types this tool does not model.
+				width = 8
+			}
+			relocs = append(relocs, peBaseReloc{rva: page + uint64(entry&0xfff), width: width})
+		}
+		table = table[blockSize:]
+	}
+	return relocs, nil
 }
 
 func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string, mingw bool) error {

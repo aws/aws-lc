@@ -8,8 +8,8 @@ set -ex
 # mingw-w64 toolchain, then exercises the FIPS integrity self-test under Wine.
 # This is the cross-compilation analogue of the native clang-cl FIPS shared
 # coverage, and validates the PE/COFF hash-injection path in inject_hash.go as
-# well as the MinGW-specific CMake plumbing (bcm marker objects, statically
-# linked winpthread).
+# well as the MinGW-specific CMake plumbing (bcm marker objects and the
+# relocation-free module build).
 
 TARGET_CPU="${1}"
 TARGET_PLATFORM="${2}"
@@ -49,10 +49,8 @@ pushd "${SCRATCH_FOLDER}"
 # Note: unlike the static cross-mingw build, we do NOT set
 # CMAKE_EXE_LINKER_FLAGS=--static here. A FIPS shared build links the test
 # executables against the crypto DLL, so the executables (and the DLL) must be
-# able to locate their runtime dependencies at load time. winpthread is pulled
-# statically into the crypto DLL itself (see the MINGW AND FIPS branch in the
-# top-level CMakeLists.txt); the remaining mingw runtime DLLs are made
-# discoverable through WINEPATH below.
+# able to locate their runtime dependencies at load time. The mingw runtime DLLs
+# are made discoverable through WINEPATH below.
 cat <<EOF > ${TARGET_CPU}-${TARGET_PLATFORM}.cmake
 # Specify the target system
 set(CMAKE_SYSTEM_NAME Windows)

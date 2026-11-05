@@ -1184,7 +1184,14 @@ endif()
 # the MinGW path partial-links with a plain `ld -r` (PE has no linker script
 # support), so any split-out section would land outside the integrity-checked
 # region. Keep all module code in one contiguous .text bracketed by the markers.
-if(FIPS_SHARED AND MINGW AND GCC)
+#
+# The MinGW FIPS shared build depends on GNU ld's `ld -r` (lld does not support
+# it for COFF) and on these GCC flags, and it requires 64-bit RIP-relative
+# addressing so the hashed module is free of base relocations.
+if(FIPS_SHARED AND MINGW)
+  if(NOT GCC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "FIPS shared builds on MinGW require GCC and a 64-bit target.")
+  endif()
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
   set(CMAKE_CXX_FLAGS
@@ -1512,14 +1519,6 @@ endif()
 # via Web Workers and SharedArrayBuffer, configured through compiler flags.
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
-  if(MINGW AND FIPS)
-    # Statically link winpthread so the FIPS module has no DLL dependency on it.
-    # This overwrites (not appends) INTERFACE_LINK_LIBRARIES because
-    # find_package(Threads) already set it to -lpthread (dynamic); appending
-    # would leave the dynamic entry on the link line.
-    set_property(TARGET Threads::Threads PROPERTY
-      INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
-  endif()
   set(AWSLC_LINK_THREADS TRUE)
   # CMAKE_THREAD_LIBS_INIT contains the actual linker flags (e.g., -lpthread)
   # set by find_package(Threads). Use this for pkgconfig instead of the
