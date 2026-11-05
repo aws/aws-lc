@@ -1663,6 +1663,26 @@ func (c *Conn) handlePostHandshakeMessage() error {
 	return errors.New("tls: unexpected post-handshake message")
 }
 
+// ReadNewSessionTicket reads and processes a TLS 1.3 NewSessionTicket from the
+// peer. There may not be any application data records before the message.
+func (c *Conn) ReadNewSessionTicket() error {
+	c.in.Lock()
+	defer c.in.Unlock()
+
+	msg, err := c.readHandshake()
+	if err != nil {
+		return err
+	}
+
+	newSessionTicket, ok := msg.(*newSessionTicketMsg)
+	if !ok {
+		c.sendAlert(alertUnexpectedMessage)
+		return fmt.Errorf("tls: unexpected message (%T) when reading NewSessionTicket", msg)
+	}
+
+	return c.processTLS13NewSessionTicket(newSessionTicket, c.cipherSuite)
+}
+
 // Reads a KeyUpdate acknowledgment from the peer. There may not be any
 // application data records before the message.
 func (c *Conn) ReadKeyUpdateACK() error {
