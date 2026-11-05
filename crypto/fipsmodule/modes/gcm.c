@@ -131,7 +131,21 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
-      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // Use the s2n-bignum 8x kernel if both the assembler and the CPU
+      // support SHA3; otherwise, fall back to the 4x kernel.
+#if defined(HW_GCM_S2N_BIGNUM) && \
+    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+      if (CRYPTO_is_ARMv8_SHA3_capable()) {
+#if defined(BORINGSSL_DISPATCH_TEST)
+        BORINGSSL_function_hit[7] = 1;  // 8x AES-GCM encryption
+#endif
+        aes128_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     case 12:
       aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
@@ -142,9 +156,6 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 #if defined(HW_GCM_S2N_BIGNUM) && \
     defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
       if (CRYPTO_is_ARMv8_SHA3_capable()) {
-#if defined(BORINGSSL_DISPATCH_TEST)
-        BORINGSSL_function_hit[7] = 1;  // 8x AES-GCM encryption
-#endif
         aes256_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                            (const s2n_bignum_AES_KEY *)key,
                            (const uint64_t *)Htable);
@@ -185,7 +196,18 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
-      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // Use the s2n-bignum 8x kernel if both the assembler and the CPU
+      // support SHA3; otherwise, fall back to the 4x kernel.
+#if defined(HW_GCM_S2N_BIGNUM) && \
+    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+      if (CRYPTO_is_ARMv8_SHA3_capable()) {
+        aes128_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     case 12:
       aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
