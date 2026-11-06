@@ -48,7 +48,7 @@ static MLD_INLINE void mld_shake128x4_init(mld_shake128x4ctx *state) {
 }
 
 static MLD_INLINE void mld_shake128x4_release(mld_shake128x4ctx *state) {
-  (void) state;
+  OPENSSL_cleanse(state, sizeof(*state));
 }
 
 // AWS-LC doesn't have SHAKE256 x4 batched operations like it does for SHAKE128
@@ -89,7 +89,7 @@ static MLD_INLINE void mld_shake256x4_init(mld_shake256x4ctx *state) {
 }
 
 static MLD_INLINE void mld_shake256x4_release(mld_shake256x4ctx *state) {
-  (void) state;
+  OPENSSL_cleanse(state, sizeof(*state));
 }
 
 static MLD_INLINE void mld_shake256x4(uint8_t *out0, uint8_t *out1, uint8_t *out2,
