@@ -182,12 +182,16 @@ int rsaTool(const args_list_t &args) {
     return kToolExitFailure;
   }
 
+  // -noout leaves at most the public modulus, which is not secret.
+  const bool private_output = !pubout && !noout;
+
   bssl::UniquePtr<BIO> out_file;
   if (!out_path.empty()) {
-    if (!pubout) {
-      SetUmaskForPrivateKey();
+    if (private_output) {
+      out_file = NewPrivateFileBIO(out_path);
+    } else {
+      out_file.reset(BIO_new_file(out_path.c_str(), "wb"));
     }
-    out_file.reset(BIO_new_file(out_path.c_str(), "wb"));
   } else {
     out_file.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   }
