@@ -1,0 +1,95 @@
+name: autofix-resolve
+
+on:
+  workflow_call:
+    inputs:
+      targets:
+        required: true
+        type: string
+
+jobs:
+  resolve:
+    name: resolve (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    timeout-minutes: 15
+    env:
+      BRANCH: autofix/${{ matrix.name }}
+      MESSAGE: Fix the ${{ matrix.name }} integration patch
+      OUT: ${{ github.workspace }}/autofix-work/out
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.target.awslc.sha }}
+          path: aws-lc-fix
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: autofix-${{ matrix.name }}
+          path: ${{ env.OUT }}
+      - name: Commit the fix
+        working-directory: aws-lc-fix
+        run: |
+          test -f "$OUT/pr.md"
+          git apply --index "$OUT/changes.diff"
+          git -c core.hooksPath=/dev/null -c user.name=acl-ci-autofix -c user.email=acl-ci-autofix@users.noreply.github.com \
+            commit -qm "$MESSAGE"
+      - name: Load shared AWS settings
+        run: jq -r '"AWS_REGION=\(.aws_region)"' .github/workflows/ai-config.json >> "$GITHUB_ENV"
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsAutofixResolveOidcRole
+          roleName: AwsLcGitHubActionAutofixSecretsRole
+      - uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            PUSH_APP_PRIVATE_KEY,aws-lc/ci/autofix-push-app
+            APP_PRIVATE_KEY,acl-ci/credentials
+      - uses: actions/create-github-app-token@v2
+        id: push-token
+        with:
+          app-id: ${{ vars.AUTOFIX_PUSH_APP_ID }}
+          private-key: ${{ env.PUSH_APP_PRIVATE_KEY }}
+          owner: crypto-alg
+          repositories: aws-lc
+          permission-contents: write
+          permission-workflows: write
+      - uses: actions/create-github-app-token@v2
+        id: pr-token
+        with:
+          app-id: ${{ vars.ACL_CI_APP_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-pull-requests: write
+      - name: Push the fix to crypto-alg and open a draft PR
+        working-directory: aws-lc-fix
+        env:
+          GH_TOKEN: ${{ steps.pr-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.push-token.outputs.token }}
+        run: |
+          open_prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --json number --jq length)
+          if [ "$open_prs" != 0 ]; then
+            echo "::notice::$BRANCH already has an open PR."
+            exit 0
+          fi
+
+          GH_TOKEN="$PUSH_TOKEN" gh auth setup-git
+          GH_TOKEN="$PUSH_TOKEN" git -c core.hooksPath=/dev/null push -q \
+            https://github.com/crypto-alg/aws-lc.git "+HEAD:refs/heads/$BRANCH"
+
+          gh pr create --draft --no-maintainer-edit \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "crypto-alg:$BRANCH" \
+            --title "[autofix] $MESSAGE" \
+            --body-file "$OUT/pr.md"
