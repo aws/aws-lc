@@ -96,3 +96,39 @@ func TestDelocate(t *testing.T) {
 		})
 	}
 }
+
+// TestRelroSet covers relro .set directives that must be rejected, which the
+// golden files in TestDelocate cannot express. Targets must be plain symbols,
+// and aliases of relro entries must not be redefined.
+func TestRelroSet(t *testing.T) {
+	tests := []struct {
+		set string
+		ok  bool
+	}{
+		{".set .LC1,.L0", true},
+		{".set\t.LC1, foo", true},
+		{".set .LC1,.L0+8", false},
+		{".set .LC1,foo+8", false},
+		{".set .LC1,. + 0", false},
+		{".set .LC1,.", false},
+		{".set .LC1,1f", false},
+		{".set .LC1", false},
+		{".set .LC1,foo\n\t.set .LC1,.L0", false},
+		{".set .LC1,.L0\n\t.set .LC1,foo", false},
+	}
+	for _, test := range tests {
+		contents := "\t.text\nfoo:\n\tmovq .L0(%rip), %xmm0\n\tret\n" +
+			"\t.section .data.rel.ro.local,\"aw\"\n\t.align 8\n.L0:\n\t.quad foo\n" +
+			"\t" + test.set + "\n\t.text\n"
+		asm := Asm{Buffer: contents, Pretty: true}
+		asm.Init()
+		if err := asm.Parse(); err != nil {
+			t.Fatalf("failed to parse %q: %s", contents, err)
+		}
+		inputs := []inputFile{{path: "test.s", contents: contents, ast: asm.AST()}}
+		err := transform(&bytes.Buffer{}, nil, inputs, true)
+		if (err == nil) != test.ok {
+			t.Errorf("transform with %q: got error %v, want ok=%t", test.set, err, test.ok)
+		}
+	}
+}
