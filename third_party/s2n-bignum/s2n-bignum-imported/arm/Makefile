@@ -558,8 +558,14 @@ tutorial/safety.native: tutorial/safety.ml proofs/bignum_mux_4.ml \
   ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 
 # The AES-GCM proofs share the specification and lemmas in
-# arm/proofs/utils/aes_gcm_{spec,common}.ml.
-AES_GCM_PROOF_UTILS = proofs/utils/aes_gcm_spec.ml proofs/utils/aes_gcm_common.ml
+# arm/proofs/utils/aes_gcm_{spec,common}.ml, which load the GHASH, POLYVAL,
+# AES and GCM theories in common/.
+AES_GCM_SPEC = ../common/aes.ml ../common/fips197.ml ../common/gcm.ml \
+               ../common/ghash.ml ../common/ghash_nist_defs.ml \
+               ../common/ghash_nist_bridge.ml ../common/karatsuba_pmul.ml \
+               ../common/polyval.ml ../common/polyval_ghash.ml
+AES_GCM_PROOF_UTILS = proofs/utils/aes_gcm_spec.ml proofs/utils/aes_gcm_common.ml \
+                      proofs/consttime.ml ../common/consttime.ml $(AES_GCM_SPEC)
 aes_gcm/aes128_gcm_dec.native: $(AES_GCM_PROOF_UTILS)
 aes_gcm/aes128_gcm_dec_alt.native: $(AES_GCM_PROOF_UTILS)
 aes_gcm/aes128_gcm_enc.native: $(AES_GCM_PROOF_UTILS)
@@ -568,6 +574,29 @@ aes_gcm/aes256_gcm_dec.native: $(AES_GCM_PROOF_UTILS)
 aes_gcm/aes256_gcm_dec_alt.native: $(AES_GCM_PROOF_UTILS)
 aes_gcm/aes256_gcm_enc.native: $(AES_GCM_PROOF_UTILS)
 aes_gcm/aes256_gcm_enc_alt.native: $(AES_GCM_PROOF_UTILS)
+# The two 8-way decrypt proofs also share arm/proofs/utils/aes_gcm_dec_alt_common.ml,
+# which loads the AES-XTS byte-list utilities and the lane-order AES specification.
+AES_GCM_DEC_ALT_UTILS = proofs/utils/aes_gcm_dec_alt_common.ml \
+                        proofs/utils/aes_encrypt_spec.ml proofs/utils/aes_decrypt_spec.ml \
+                        proofs/utils/aes_xts_common.ml proofs/utils/aes_xts_common_spec.ml \
+                        proofs/utils/aes_xts_encrypt_spec.ml proofs/utils/aes_xts_decrypt_spec.ml
+aes_gcm/aes128_gcm_dec_alt.native: $(AES_GCM_DEC_ALT_UTILS)
+aes_gcm/aes256_gcm_dec_alt.native: $(AES_GCM_DEC_ALT_UTILS)
+# The two 8-way encrypt proofs are one proof for both key sizes,
+# arm/proofs/utils/aes_gcm_enc_alt_proof.ml, on the layer in
+# arm/proofs/utils/aes_gcm_enc_alt_common.ml.
+AES_GCM_ENC_ALT_UTILS = proofs/utils/aes_gcm_enc_alt_common.ml \
+                        proofs/utils/aes_gcm_enc_alt_proof.ml
+aes_gcm/aes128_gcm_enc_alt.native: $(AES_GCM_ENC_ALT_UTILS)
+aes_gcm/aes256_gcm_enc_alt.native: $(AES_GCM_ENC_ALT_UTILS)
+
+# Checks of the AES-GCM specification files that no proof
+# depends on, run once here rather than at every load by the AES-GCM proofs.
+SPEC_CHECK_PROOFS = proofs/aes_gcm_spec_checks.ml
+proofs/aes_gcm_spec_checks.native: proofs/aes_gcm_spec_checks.ml $(BASE_ML) \
+                                   $(AES_GCM_PROOF_UTILS) ../common/gf128_irreducible.ml \
+                                   ../common/fips197_kats.ml ../common/gcm_kats.ml ; \
+  ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 
 # aes_encrypt_decrypt tutorial concatenates proofs for both aes_encrypt.S and aes_decrypt.S
 tutorial/aes_encrypt_decrypt.native: tutorial/aes_encrypt_decrypt.ml \
@@ -588,12 +617,12 @@ tutorial/rel_reordertac.native: tutorial/rel_reordertac2.o
 
 unopt: $(UNOPT_OBJ)
 
-build_proofs: $(UNOPT_OBJ) $(PROOF_BINS)
+build_proofs: $(UNOPT_OBJ) $(PROOF_BINS) $(SPEC_CHECK_PROOFS:.ml=.native)
 # Conservatively check that there is no redefinition of "check_axioms"
 # '-I' excludes binary files (*.native).
 	! grep -RI "check_axioms" . ../common/ --exclude="Makefile"
 build_tutorial: $(TUTORIAL_OBJ) $(TUTORIAL_PROOF_BINS);
-run_proofs: build_proofs $(PROOF_LOGS);
+run_proofs: build_proofs $(PROOF_LOGS) $(SPEC_CHECK_PROOFS:.ml=.correct);
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
 tutorial: build_tutorial $(TUTORIAL_PROOF_LOGS);
