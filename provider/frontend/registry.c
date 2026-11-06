@@ -5,6 +5,7 @@
 #include <openssl/core_dispatch.h>
 
 #include "boundary/names.h"
+#include "frontend/operations/rsa.h"
 #include "frontend/operations/sha2.h"
 #include "frontend/provider.h"
 
@@ -45,6 +46,18 @@ static const OSSL_ALGORITHM awslc_prov_digests[] = {
     AWSLC_PROV_DIGESTS(AWSLC_PROV_PROPERTIES)
     {NULL, NULL, NULL, NULL}};
 
+// The key management rows, expanded the same way as the digest rows.
+#define AWSLC_PROV_KEYMGMT(fips_property_definition)                           \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_RSA, fips_property_definition,               \
+                 rsa_keymgmt, "AWS-LC RSA implementation")
+
+static const OSSL_ALGORITHM awslc_prov_keymgmt_fips[] = {
+    AWSLC_PROV_KEYMGMT(AWSLC_PROV_FIPS_PROPERTIES)
+    {NULL, NULL, NULL, NULL}};
+static const OSSL_ALGORITHM awslc_prov_keymgmt[] = {
+    AWSLC_PROV_KEYMGMT(AWSLC_PROV_PROPERTIES)
+    {NULL, NULL, NULL, NULL}};
+
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
                                                  int operation_id,
                                                  int *no_store) {
@@ -57,6 +70,9 @@ const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
     case OSSL_OP_DIGEST:
       return awslc_prov_ctx_is_fips(provctx) ? awslc_prov_digests_fips
                                              : awslc_prov_digests;
+    case OSSL_OP_KEYMGMT:
+      return awslc_prov_ctx_is_fips(provctx) ? awslc_prov_keymgmt_fips
+                                             : awslc_prov_keymgmt;
     default:
       // Returning NULL is what lets the fetch fall through to another provider
       // rather than fail, so every class we do not serve must land here.
