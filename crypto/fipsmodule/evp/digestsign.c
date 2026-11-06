@@ -71,19 +71,31 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
   }
   ctx->pctx_ops = EVP_MD_pctx_ops();
 
+  // An externally attached non-HMAC |pctx| may replace one previously used
+  // for HMAC. Clear HMAC-specific state so updates cannot interpret the new
+  // |pctx->data| as an |HMAC_PKEY_CTX|.
+  if (ctx->pctx->pmeth != EVP_PKEY_hmac_pkey_meth()) {
+    ctx->flags &= ~EVP_MD_CTX_HMAC;
+    if (ctx->update == hmac_update) {
+      ctx->update = NULL;
+    }
+  }
+  // An externally attached |pctx| is not necessarily derived from |pkey|.
+  // Require both to agree on HMAC mode before using the key with the method
+  // context.
+  if ((pkey->type == EVP_PKEY_HMAC) !=
+      (ctx->pctx->pmeth == EVP_PKEY_hmac_pkey_meth())) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
+    return 0;
+  }
+
   if (op == evp_verify) {
     if (!EVP_PKEY_verify_init(ctx->pctx)) {
       return 0;
     }
   } else {
     if (pkey->type == EVP_PKEY_HMAC) {
-      // |ctx->update| gets repurposed as a hook to call |HMAC_Update|.
-      // |ctx->update| is normally copied from |ctx->digest->update|, but
-      // |EVP_PKEY_HMAC| has its own definition. We suppress the automatic
-      // setting of |mctx->update| and the rest of its initialization here.
       ctx->pctx->operation = EVP_PKEY_OP_SIGN;
-      ctx->flags |= EVP_MD_CTX_HMAC;
-      ctx->update = hmac_update;
     } else {
       if (!EVP_PKEY_sign_init(ctx->pctx)) {
         return 0;
@@ -95,12 +107,33 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
     return 0;
   }
 
+  if (pkey->type == EVP_PKEY_HMAC) {
+    if (type == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_DEFAULT_DIGEST);
+      return 0;
+    }
+    // |EVP_DigestInit_ex| checks |EVP_MD_CTX_HMAC| to select HMAC
+    // initialization, where |ctx->update| is repurposed to call |HMAC_Update|.
+    // Set both only after validating the key context and digest parameters.
+    ctx->flags |= EVP_MD_CTX_HMAC;
+    ctx->update = hmac_update;
+  }
+
   if (uses_prehash(ctx, op) || used_for_hmac(ctx)) {
     if (type == NULL) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_DEFAULT_DIGEST);
       return 0;
     }
     if (!EVP_DigestInit_ex(ctx, type, e)) {
+      // HMAC mode was enabled so |EVP_DigestInit_ex| could select its HMAC
+      // path. Roll it back if initialization fails so |ctx| is not left
+      // appearing initialized for HMAC.
+      if (pkey->type == EVP_PKEY_HMAC) {
+        ctx->flags &= ~EVP_MD_CTX_HMAC;
+        if (ctx->update == hmac_update) {
+          ctx->update = NULL;
+        }
+      }
       return 0;
     }
   }
@@ -291,8 +324,19 @@ end:
 
 void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
   SET_DIT_AUTO_RESET;
-  // |pctx| could be null, so we have to deal with the cleanup job here.
-  if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
+  // HMAC state spans |ctx->pctx| and |ctx->update|. Reset it before replacing
+  // |pctx|, including with another HMAC context.
+  if ((ctx->flags & EVP_MD_CTX_HMAC) != 0 &&
+      (ctx->pctx != pctx || pctx == NULL ||
+       pctx->pmeth != EVP_PKEY_hmac_pkey_meth())) {
+    if (ctx->pctx == pctx && pctx != NULL) {
+      // Preserve an existing |pctx| whose ownership transfers to the caller.
+      ctx->flags |= EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
+    }
+    EVP_MD_CTX_cleanup(ctx);
+  } else if (ctx->pctx != pctx &&
+             !(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
+    // Free the old |pctx| only if |ctx| owns it.
     EVP_PKEY_CTX_free(ctx->pctx);
   }
 

@@ -121,7 +121,9 @@ OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
 OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 // EVP_DigestUpdate hashes |len| bytes from |data| into the hashing operation
-// in |ctx|. It returns one.
+// in |ctx|. It returns one on success and zero on error. Updates are rejected
+// after |EVP_DigestFinal_ex| succeeds until |EVP_DigestInit_ex| starts a new
+// hashing operation.
 OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
                                     size_t len);
 
@@ -145,9 +147,10 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 // EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
 // |md_out|. |EVP_MD_CTX_size| bytes are written, which is at most
 // |EVP_MAX_MD_SIZE|. If |out_size| is not NULL then |*out_size| is set to the
-// number of bytes written. It returns one. After this call, the hash cannot be
-// updated or finished again until |EVP_DigestInit_ex| is called to start
-// another hashing operation.
+// number of bytes written. It returns one on success and zero on error. After
+// this call, the hash cannot be updated or finished again until
+// |EVP_DigestInit_ex| is called to start another hashing operation; a second
+// call without re-initialising fails.
 OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
                                       unsigned int *out_size);
 
@@ -318,11 +321,14 @@ struct env_md_ctx_st {
   // manipulate |pctx|.
   const struct evp_md_pctx_ops *pctx_ops;
 
-  // flags is only used for two cases.
+  // flags is only used for three cases.
   // 1. Set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
   //    from being freed when |*pctx| was set externally with
   //    |EVP_MD_CTX_set_pkey_ctx|.
-  // 2. Set flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
+  // 2. Set flag |EVP_MD_CTX_HMAC| while initialised for |EVP_PKEY_HMAC|
+  //    signing.
+  // 3. Set flag |EVP_MD_CTX_FINALISED| to reject more than a single call
+  //    to |EVP_DigestFinal_ex|.
   unsigned long flags;
 } /* EVP_MD_CTX */;
 

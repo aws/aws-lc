@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include <string.h>
 
 uint8_t *SHA3_224(const uint8_t *data, size_t len,
@@ -107,11 +108,11 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
  * KeccakSponge APIs manage internal input/output buffer on top of Keccak1600
  * API layer
  */
-// KeccakSponge_Reset zero's |ctx| fields.
+// KeccakSponge_Reset zeroes the state |A| and |buf_load| fields in |ctx|.
 void KeccakSponge_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
-  ctx->state = KECCAK1600_STATE_ABSORB;
+  ctx->state = KECCAK1600_STATE_UNINIT;
 }
 
 // KeccakSponge_Init checks the correctness of the padding character and size of
@@ -129,6 +130,7 @@ static int KeccakSponge_Init(KECCAK1600_CTX *ctx, uint8_t pad,
       ctx->block_size = block_size;
       ctx->md_size = bit_len / 8;
       ctx->pad = pad;
+      ctx->state = KECCAK1600_STATE_ABSORB;
       return 1;
     }
     return 0;
@@ -137,15 +139,16 @@ static int KeccakSponge_Init(KECCAK1600_CTX *ctx, uint8_t pad,
 // KeccakSponge_Absorb checks the state of the |ctx| and processes intermediate
 // buffer from previous calls. It processes |data| in blocks through
 // |Keccak1600_Absorb| and places the rest in the intermediate buffer.
-// KeccakSponge_Absorb fails if called from inappropriate |ctx->state| or on
-// |Keccak1600_Absorb| error. Otherwise, it returns 1.
+// KeccakSponge_Absorb fails if |ctx| is in any phase other than absorb, or on
+// |Keccak1600_Absorb| error. Otherwise, it returns 1. It prevents passing
+// uninitialized |ctx| to |Keccak1600_Absorb|, where |block_size| of zero would
+// loop forever.
 int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
 
-  if (ctx->state == KECCAK1600_STATE_SQUEEZE ||
-      ctx->state == KECCAK1600_STATE_FINAL ) {
+  if (ctx->state != KECCAK1600_STATE_ABSORB) {
     return 0;
   }
 
@@ -187,16 +190,15 @@ int KeccakSponge_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   return 1;
 }
 
-// KeccakSponge_AbsorbFinal processes padding and absorb of last input block
+// KeccakSponge_AbsorbFinal processes padding and absorb of last input block.
 // This function should be called once to finalize absorb and initiate
-// squeeze phase. KeccakSponge_AbsorbFinal fails if called from inappropriate
-// |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
+// squeeze phase. KeccakSponge_AbsorbFinal fails if |ctx| is in any phase other
+// than absorb, or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
 int KeccakSponge_AbsorbFinal(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
-  if (ctx->state == KECCAK1600_STATE_SQUEEZE || 
-      ctx->state == KECCAK1600_STATE_FINAL ) {
+  if (ctx->state != KECCAK1600_STATE_ABSORB) {
     return 0;
   }
 
@@ -252,21 +254,24 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   return KeccakSponge_Absorb(ctx, data, len);
 }
 
-// SHA3_Final should be called once to process final digest value
+// SHA3_Final should be called once to process final digest value. The
+// |ctx->state| check rejects an uninitialised |ctx| and a repeated call on a
+// finalised one.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (md == NULL || ctx == NULL) {
     return 0;
   }
 
-  if (ctx->md_size == 0) {
-    return 1;
+  if (ctx->state != KECCAK1600_STATE_ABSORB) {
+    return 0;
   }
 
   if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
@@ -370,6 +375,10 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
+  if (ctx->state != KECCAK1600_STATE_ABSORB) {
+    return 0;
+  }
+
   ctx->md_size = len;
   if (ctx->md_size == 0) {
     return 1;
@@ -379,14 +388,17 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
   return 1;
 }
 
-// SHAKE_Squeeze can be called multiple time for incremental XOF output
+// SHAKE_Squeeze can be called multiple time for incremental XOF output. An
+// uninitialised or finalised |ctx| is rejected so that the callees below are
+// never reached with a |block_size| of zero.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   size_t block_bytes;
 
@@ -400,12 +412,13 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 1;
   }
 
-  if (ctx->state == KECCAK1600_STATE_FINAL) {
+  if (ctx->state != KECCAK1600_STATE_ABSORB &&
+      ctx->state != KECCAK1600_STATE_SQUEEZE) {
     return 0;
   }
 
-  // Skip KeccakSponge_AbsorbFinal if the input has been padded and
-  // the last block has been processed
+  // In the absorb phase, the final input block still needs padding. In the
+  // squeeze phase, a previous call already padded it.
   if (ctx->state == KECCAK1600_STATE_ABSORB) {
     if (KeccakSponge_AbsorbFinal(md, ctx) == 0) {
       return 0;
@@ -428,7 +441,12 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   // Process all full size output requested blocks
   if (len > ctx->block_size) {
     block_bytes = ctx->block_size * (len / ctx->block_size);
-    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size, ctx->state);
+
+    // If |ctx->state| is in the absorb phase, finish processing the final padded
+    // block without permuting. In the squeeze phase, process subsequent output
+    // normally.
+    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size,
+                       ctx->state == KECCAK1600_STATE_SQUEEZE);
     md += block_bytes;
     len -= block_bytes;
     ctx->state = KECCAK1600_STATE_SQUEEZE;
@@ -439,7 +457,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     // Generated output is store in |ctx->buf|. Only requested bytes are transfered
     // to the output. The 'unused' output data is kept for processing in a sequenctual
     // call to SHAKE_Squeeze (incremental byte-wise SHAKE_Squeeze)
-    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
+    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size,
+                       ctx->state == KECCAK1600_STATE_SQUEEZE);
     OPENSSL_memcpy(md, ctx->buf, len);
     ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed
     ctx->state = KECCAK1600_STATE_SQUEEZE;

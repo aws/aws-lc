@@ -39,22 +39,21 @@ TEST(Keccak256Test, DiffersFromSHA3_256) {
 }
 
 // Misuse of the streaming API must fail cleanly rather than hang or corrupt
-// memory. A zeroed context arises whenever |Keccak256_Init| is skipped, and also
-// on a second |Keccak256_Final| through EVP, because |EVP_DigestFinal_ex|
-// cleanses |md_data|. Such a context must not reach the KeccakSponge
-// primitives, which assume it is initialised: |KeccakSponge_AbsorbFinal| would
-// index |ctx->buf[block_size - 1]| out of bounds and |Keccak1600_Absorb| would
-// loop forever on |r == 0|.
+// memory. A zeroed context arises whenever |Keccak256_Init| is skipped. Such a
+// context must not reach the KeccakSponge primitives with |block_size == 0|:
+// |KeccakSponge_AbsorbFinal| would index |ctx->buf[block_size - 1]| out of
+// bounds and |Keccak1600_Absorb| would loop forever on |r == 0|. Both the
+// |Keccak256_*| entry points and the KeccakSponge layer reject it.
 //
 // Only |Keccak256| is |OPENSSL_EXPORT|ed, so the streaming primitives are
-// unreachable when this test links against the shared library. The EVP-level
-// regression test below covers the same guards in every configuration.
+// unreachable when this test links against the shared library. The generic EVP
+// finalised-context test separately covers the |EVP_DigestFinal_ex| guard.
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(Keccak256Test, MisuseFailsCleanly) {
   uint8_t out[KECCAK256_DIGEST_LENGTH];
 
   // A second |Keccak256_Final| on a finalised context fails: |ctx->state| is
-  // |KECCAK1600_STATE_FINAL|, which |KeccakSponge_AbsorbFinal| rejects.
+  // |KECCAK1600_STATE_FINAL|, which |Keccak256_Final| rejects.
   {
     KECCAK1600_CTX ctx;
     ASSERT_TRUE(Keccak256_Init(&ctx));
@@ -66,13 +65,12 @@ TEST(Keccak256Test, MisuseFailsCleanly) {
   }
 
   // A zeroed context (|Keccak256_Init| skipped) must not reach the KeccakSponge
-  // layer. |Keccak256_Final| reports success without writing, matching
-  // |SHA3_Final|'s |md_size == 0| guard; |Keccak256_Update| reports failure.
+  // layer. Both |Keccak256_Update| and |Keccak256_Final| report failure.
   {
     KECCAK1600_CTX ctx;
     OPENSSL_memset(&ctx, 0, sizeof(ctx));
     EXPECT_FALSE(Keccak256_Update(&ctx, "abc", 3));
-    EXPECT_TRUE(Keccak256_Final(out, &ctx));
+    EXPECT_FALSE(Keccak256_Final(out, &ctx));
   }
 
   // NULL arguments are rejected.
@@ -89,21 +87,6 @@ TEST(Keccak256Test, MisuseFailsCleanly) {
   }
 }
 #endif  // !BORINGSSL_SHARED_LIBRARY
-
-// The same misuse through the EVP interface must not hang either. This is the
-// path that regressed: |EVP_DigestFinal_ex| cleanses the context, so a second
-// call re-enters |Keccak256_Final| with a zeroed context.
-TEST(Keccak256Test, EVPDoubleFinal) {
-  uint8_t out[KECCAK256_DIGEST_LENGTH];
-  unsigned out_len = 0;
-  bssl::ScopedEVP_MD_CTX ctx;
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), EVP_keccak256(), nullptr));
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), "abc", 3));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
-  ASSERT_EQ(static_cast<unsigned>(KECCAK256_DIGEST_LENGTH), out_len);
-  // Matches SHA3-256 and BLAKE2b-256: succeeds without hanging or aborting.
-  EXPECT_TRUE(EVP_DigestFinal_ex(ctx.get(), out, &out_len));
-}
 
 // File-driven Keccak-256 KAT vectors. Format mirrors NIST SHA-3 KATs
 // (Len in bits, Msg/MD in lowercase hex). See sha3_test.cc for the same
