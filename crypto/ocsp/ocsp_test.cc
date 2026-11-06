@@ -1093,6 +1093,7 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
       ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ecdsa.get()));
     }
 
+    int was_signed = OCSP_request_is_signed(ocspRequest.get());
     int ret =
         OCSP_request_sign(ocspRequest.get(), signer_cert.get(), pkey.get(),
                           t.dgst, CertsToStack({ca_cert.get()}).get(), 0);
@@ -1106,9 +1107,66 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
                                       trust_store.get(), 0));
     } else {
       ASSERT_FALSE(ret);
-      EXPECT_FALSE(OCSP_request_is_signed(ocspRequest.get()));
+      // A failed call leaves an existing signature in place.
+      EXPECT_EQ(was_signed, OCSP_request_is_signed(ocspRequest.get()));
     }
   }
+}
+
+// Certificates added with |OCSP_request_add1_cert| before signing are kept,
+// and refusing to sign a signed request leaves it unchanged.
+TEST(OCSPRequestTest, SignKeepsExistingState) {
+  std::string data =
+      GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  ASSERT_TRUE(ocspRequest);
+  bssl::UniquePtr<X509> signer_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
+          .c_str()));
+  ASSERT_TRUE(signer_cert);
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+  ASSERT_TRUE(ca_cert);
+  bssl::UniquePtr<RSA> rsa(RSAFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_key.pem").c_str())
+          .c_str()));
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+
+  ASSERT_TRUE(OCSP_request_add1_cert(ocspRequest.get(), ca_cert.get()));
+  ASSERT_TRUE(OCSP_request_sign(ocspRequest.get(), signer_cert.get(),
+                                pkey.get(), EVP_sha256(), nullptr, 0));
+  STACK_OF(X509) *certs = ocspRequest->optionalSignature->certs;
+  ASSERT_EQ(sk_X509_num(certs), 2u);
+  EXPECT_EQ(X509_cmp(sk_X509_value(certs, 0), ca_cert.get()), 0);
+  EXPECT_EQ(X509_cmp(sk_X509_value(certs, 1), signer_cert.get()), 0);
+  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+  ASSERT_TRUE(trust_store);
+  ASSERT_TRUE(X509_STORE_add_cert(trust_store.get(), ca_cert.get()));
+  EXPECT_TRUE(
+      OCSP_request_verify(ocspRequest.get(), nullptr, trust_store.get(), 0));
+
+  uint8_t *der = nullptr;
+  int der_len = i2d_OCSP_REQUEST(ocspRequest.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  ERR_clear_error();
+  EXPECT_FALSE(OCSP_request_sign(ocspRequest.get(), signer_cert.get(),
+                                 pkey.get(), EVP_sha256(), nullptr, 0));
+  EXPECT_EQ(OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE,
+            ERR_GET_REASON(ERR_get_error()));
+  EXPECT_TRUE(OCSP_request_is_signed(ocspRequest.get()));
+  uint8_t *der2 = nullptr;
+  int der2_len = i2d_OCSP_REQUEST(ocspRequest.get(), &der2);
+  ASSERT_GT(der2_len, 0);
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
 }
 
 struct OCSPResponseSignTestVector {

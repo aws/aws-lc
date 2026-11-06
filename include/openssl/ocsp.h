@@ -278,6 +278,10 @@ OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);
 //       2. All certificates in |certs| are added to |req| by default. Setting
 //          |OCSP_NOCERTS| excludes certificates from being added in |req| and
 //          ignores the |certs| parameter.
+//       3. Certificates already added with |OCSP_request_add1_cert| are kept
+//          and precede the ones added by this function.
+//       4. If this function fails, any existing signature in |req| is left
+//          in place.
 OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer,
                                      EVP_PKEY *key, const EVP_MD *dgst,
                                      STACK_OF(X509) *certs,
