@@ -44,8 +44,9 @@ static const argument_t kArguments[] = {
      "The corresponding CA key. If not specified, the private key is assumed "
      "to be in the CA file"},
     {"-CAcreateserial", kBooleanArgument,
-     "Accepted for OpenSSL compatibility; the CA serial file (<CAfile>.srl) is "
-     "created and updated automatically when signing with -CA"},
+     "Accepted for OpenSSL compatibility; the CA file extension is replaced "
+     "with .srl (or .srl is appended) and the serial is persisted "
+     "automatically when signing with -CA"},
     // Certificate printing
     {"-noout", kBooleanArgument,
      "Prevents output of the encoded version of the certificate"},
@@ -167,11 +168,21 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
     return false;
   }
 
-  // If CA cert is provided, the serial file associated with the CA is
-  // <ca_file_name>.srl
+  // If a CA certificate is provided, replace its filename extension with .srl
+  // to obtain the associated serial-file path.
   if (!ca_file_path.empty()) {
-    size_t pos = ca_file_path.find_last_of('.');
-    serial_file_path = ca_file_path.substr(0, pos) + ".srl";
+#if defined(OPENSSL_WINDOWS)
+    const size_t separator_pos = ca_file_path.find_last_of("/\\");
+#else
+    const size_t separator_pos = ca_file_path.find_last_of('/');
+#endif
+    const size_t extension_pos = ca_file_path.find_last_of('.');
+    if (extension_pos == std::string::npos ||
+        (separator_pos != std::string::npos && extension_pos < separator_pos)) {
+      serial_file_path = ca_file_path + ".srl";
+    } else {
+      serial_file_path = ca_file_path.substr(0, extension_pos) + ".srl";
+    }
     file.reset(fopen(serial_file_path.c_str(), "r"));  // Check if file exists
   }
 
