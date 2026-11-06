@@ -23,6 +23,8 @@ void EVP_CIPHER_do_all_sorted(void (*callback)(const EVP_CIPHER *cipher,
   callback(EVP_aes_128_gcm(), "AES-128-GCM", NULL, arg);
   callback(EVP_aes_192_gcm(), "AES-192-GCM", NULL, arg);
   callback(EVP_aes_256_gcm(), "AES-256-GCM", NULL, arg);
+  callback(EVP_chacha20(), "ChaCha20", NULL, arg);
+  callback(EVP_chacha20_poly1305(), "CHACHA20-POLY1305", NULL, arg);
   callback(EVP_des_cbc(), "DES-CBC", NULL, arg);
   callback(EVP_des_ecb(), "DES-ECB", NULL, arg);
   callback(EVP_des_ede(), "DES-EDE", NULL, arg);
@@ -30,7 +32,6 @@ void EVP_CIPHER_do_all_sorted(void (*callback)(const EVP_CIPHER *cipher,
   callback(EVP_des_ede3_cbc(), "DES-EDE3-CBC", NULL, arg);
   callback(EVP_rc2_cbc(), "RC2-CBC", NULL, arg);
   callback(EVP_rc4(), "RC4", NULL, arg);
-  callback(EVP_chacha20_poly1305(), "CHACHA20-POLY1305", NULL, arg);
 
   // OpenSSL returns everything twice, the second time in lower case.
   callback(EVP_aes_128_cbc(), "aes-128-cbc", NULL, arg);
@@ -48,6 +49,8 @@ void EVP_CIPHER_do_all_sorted(void (*callback)(const EVP_CIPHER *cipher,
   callback(EVP_aes_128_gcm(), "aes-128-gcm", NULL, arg);
   callback(EVP_aes_192_gcm(), "aes-192-gcm", NULL, arg);
   callback(EVP_aes_256_gcm(), "aes-256-gcm", NULL, arg);
+  callback(EVP_chacha20(), "chacha20", NULL, arg);
+  callback(EVP_chacha20_poly1305(), "chacha20-poly1305", NULL, arg);
   callback(EVP_des_cbc(), "des-cbc", NULL, arg);
   callback(EVP_des_ecb(), "des-ecb", NULL, arg);
   callback(EVP_des_ede(), "des-ede", NULL, arg);
@@ -55,7 +58,6 @@ void EVP_CIPHER_do_all_sorted(void (*callback)(const EVP_CIPHER *cipher,
   callback(EVP_des_ede3_cbc(), "des-ede3-cbc", NULL, arg);
   callback(EVP_rc2_cbc(), "rc2-cbc", NULL, arg);
   callback(EVP_rc4(), "rc4", NULL, arg);
-  callback(EVP_chacha20_poly1305(), "chacha20-poly1305", NULL, arg);
 
   // Other possible historical aliases from OpenSSL.
   callback(EVP_aes_128_cbc(), "aes128", NULL, arg);
