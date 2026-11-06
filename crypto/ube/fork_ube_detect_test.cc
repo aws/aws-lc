@@ -160,10 +160,10 @@ TEST(ForkDetect, Test) {
 }
 
 #if defined(OPENSSL_THREADS)
-// Wait for a child without letting a stuck fork regression block the suite.
-// On timeout or waitpid failure, ensure the child is killed and reaped.
+// Allow time for instrumented runs (such as Valgrind), without letting a
+// stuck fork regression block the suite. Always kill and reap on failure.
 static bool WaitForForkTestChild(pid_t child, int *status) {
-  for (int tick = 0; tick < 500; ++tick) {
+  for (int tick = 0; tick < 3000; ++tick) {
     const pid_t result = WaitpidEINTR(child, status, WNOHANG);
     if (result == child) {
       return true;
