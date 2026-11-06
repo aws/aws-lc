@@ -69,6 +69,12 @@ jobs:
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang
       - uses: actions/checkout@v7
+      # Kafka 3.9 predates Java 25 support, while ubuntu-26.04 defaults to
+      # Java 25. Pin the broker cluster to a supported LTS release.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Run librdkafka build
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh

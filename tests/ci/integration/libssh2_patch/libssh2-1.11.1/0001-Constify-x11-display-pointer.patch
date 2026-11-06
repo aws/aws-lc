@@ -1,0 +1,12 @@
+diff --git a/example/x11.c b/example/x11.c
+--- a/example/x11.c
++++ b/example/x11.c
+@@ -120,7 +120,7 @@ static void x11_callback(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel,
+                          char *shost, int sport, void **abstract)
+ {
+     const char *display;
+-    char *ptr;
++    const char *ptr;
+     char *temp_buff;
+     int display_port;
+     int rc;
