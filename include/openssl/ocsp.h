@@ -448,7 +448,7 @@ OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
 //
 // 1. If |status| has the value |V_OCSP_CERTSTATUS_REVOKED|, |revoked_reason|
 // should be a valid |OCSP_REVOKED_STATUS_*| value and |revoked_time| cannot be
-// empty.
+// empty. |OCSP_REVOKED_STATUS_NOSTATUS| omits the optional |revocationReason|.
 // 2. If |status| has the value of either |V_OCSP_CERTSTATUS_GOOD| or
 // |V_OCSP_CERTSTATUS_UNKNOWN|, |revoked_reason| and |revoked_time| are ignored.
 OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_basic_add1_status(
