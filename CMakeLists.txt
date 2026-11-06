@@ -1167,12 +1167,35 @@ endif()
 
 # FIPS_SHARED's linker script does not collect per-symbol sections, which causes
 # `ld -r` to fail. Disable GNU-style section flags even when inherited from a
-# toolchain or CFLAGS.
+# toolchain or CFLAGS (e.g. Android CMake files, or a future MinGW default).
+# On ELF, gcc_fips_shared.lds gathers known split sections into .text and
+# /DISCARD/s anything unexpected, but Android and MinGW lack that safety net
+# (Android's NDK toolchain injects these flags externally; MinGW/PE has no
+# linker script support).
 if(FIPS_SHARED AND (GCC OR CLANG) AND NOT MSVC)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
+endif()
+
+# GCC (-O2+) splits cold code into separate .text.unlikely/.text.* sections.
+# On ELF, gcc_fips_shared.lds gathers these between the bcm text markers, but
+# the MinGW path partial-links with a plain `ld -r` (PE has no linker script
+# support), so any split-out section would land outside the integrity-checked
+# region. Keep all module code in one contiguous .text bracketed by the markers.
+#
+# The MinGW FIPS shared build depends on GNU ld's `ld -r` (lld does not support
+# it for COFF) and on these GCC flags, and it requires 64-bit RIP-relative
+# addressing so the hashed module is free of base relocations.
+if(FIPS_SHARED AND MINGW)
+  if(NOT GCC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "FIPS shared builds on MinGW require GCC and a 64-bit target.")
+  endif()
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-reorder-functions -fno-reorder-blocks-and-partition")
 endif()
 
 if(OPENSSL_SMALL)
