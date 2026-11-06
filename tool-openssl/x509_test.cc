@@ -550,7 +550,7 @@ TEST_F(X509Test, ReqCACreateSerial) {
 }
 
 #if !defined(OPENSSL_WINDOWS)
-TEST_F(X509Test, SerialPathIgnoresDotsInParentDirectory) {
+TEST_F(X509Test, SerialPathHandlesPOSIXPaths) {
   char temp_dir[PATH_MAX];
   ASSERT_GT(createTempDirPath(temp_dir), 0u);
   const std::string dotted_dir = std::string(temp_dir) + ".dir";
@@ -567,6 +567,18 @@ TEST_F(X509Test, SerialPathIgnoresDotsInParentDirectory) {
 
   RemoveFile(ca_path.c_str());
   RemoveFile(serial_path.c_str());
+
+  const std::string backslash_ca_path = dotted_dir + "/ca.pem\\name";
+  const std::string backslash_serial_path = dotted_dir + "/ca.srl";
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, backslash_ca_path));
+
+  args = {"-in",    csr_path,    "-req", "-CA",   backslash_ca_path,
+          "-CAkey", ca_key_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+  EXPECT_FALSE(ReadFileToString(backslash_serial_path.c_str()).empty());
+
+  RemoveFile(backslash_ca_path.c_str());
+  RemoveFile(backslash_serial_path.c_str());
   EXPECT_EQ(0, rmdir(dotted_dir.c_str()));
 }
 #endif
