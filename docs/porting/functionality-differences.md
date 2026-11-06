@@ -351,6 +351,10 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
 
 **If you have a valid use case for any missing functionality or if anything is not clarified in our documentation, feel free to [cut an issue](https://github.com/aws/aws-lc/issues/new?assignees=&labels=&projects=&template=general-issue.md&title=) or create a PR to let us know.**
 
+### DNS name constraints and common names
+
+Under DNS name constraints, AWS-LC checks DNS-shaped leaf CNs that OpenSSL skips, including ones with boundary hyphens or a trailing dot (e.g. `a-.example.com`, `www.example.com.`), and rejects them with `X509_V_ERR_UNSUPPORTED_NAME_SYNTAX` if they contain whitespace, control characters, or non-ASCII bytes (e.g. `Example Co. Ltd.`).
+
 ### libcrypto No-ops
 
 <table border=0 cellspacing=0 cellpadding=0
