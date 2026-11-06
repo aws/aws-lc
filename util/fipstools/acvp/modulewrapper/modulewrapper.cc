@@ -3886,6 +3886,9 @@ static bool ED25519KeyGen(const Span<const uint8_t> args[],
 static bool ED25519KeyVer(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> public_key = args[0];
+  if (public_key.size() != ED25519_PUBLIC_KEY_LEN) {
+    return false;
+  }
 
   uint8_t reply[1] = {0};
   if (::ED25519_check_public_key(public_key.data())) {
@@ -3901,6 +3904,9 @@ static bool ED25519SigGen(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> seed = args[0];
   const Span<const uint8_t> message = args[1];
+  if (seed.size() != ED25519_PRIVATE_KEY_SEED_LEN) {
+    return false;
+  }
 
   std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
   std::vector<uint8_t> public_key(ED25519_PUBLIC_KEY_LEN);
@@ -3922,6 +3928,10 @@ static bool ED25519SigVer(const Span<const uint8_t> args[],
   const Span<const uint8_t> message = args[0];
   const Span<const uint8_t> public_key = args[1];
   const Span<const uint8_t> signature = args[2];
+  if (public_key.size() != ED25519_PUBLIC_KEY_LEN ||
+      signature.size() != ED25519_SIGNATURE_LEN) {
+    return false;
+  }
 
   uint8_t reply[1] = {0};
   if (::ED25519_verify(message.data(), message.size(), signature.data(),
@@ -3939,6 +3949,9 @@ static bool ED25519phSigGen(const Span<const uint8_t> args[],
   const Span<const uint8_t> seed = args[0];
   const Span<const uint8_t> message = args[1];
   const Span<const uint8_t> context = args[2];
+  if (seed.size() != ED25519_PRIVATE_KEY_SEED_LEN) {
+    return false;
+  }
 
   std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
   std::vector<uint8_t> public_key(ED25519_PUBLIC_KEY_LEN);
@@ -3961,6 +3974,10 @@ static bool ED25519phSigVer(const Span<const uint8_t> args[],
   const Span<const uint8_t> public_key = args[1];
   const Span<const uint8_t> signature = args[2];
   const Span<const uint8_t> context = args[3];
+  if (public_key.size() != ED25519_PUBLIC_KEY_LEN ||
+      signature.size() != ED25519_SIGNATURE_LEN) {
+    return false;
+  }
 
   uint8_t reply[1] = {0};
   if (::ED25519ph_verify(message.data(), message.size(), signature.data(),
