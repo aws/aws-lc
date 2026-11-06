@@ -310,7 +310,7 @@ void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 // - the length is provided in bits (not bytes)
 // - the order of arguments is different from that of |aesni_gcm_encrypt|.
 
-// These functions are defined in aesv8-gcm-armv8.pl.
+// These functions are defined in aesv8-gcm-armv8.pl. They handle AES-192 only.
 void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
                         void *Xi, uint8_t *ivec, const AES_KEY *key,
                         const u128 Htable[16]);
@@ -320,24 +320,20 @@ void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
 
 // These functions are defined in aesv8-gcm-armv8-unroll8.pl.
 // They take input length in BITS and return number of BYTES processed.
-size_t aesv8_gcm_8x_enc_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
-size_t aesv8_gcm_8x_dec_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_enc_192(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
                             const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_192(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
                             const u128 Htable[16]);
-size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
-size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint8_t *Xi, uint8_t ivec[16], const AES_KEY *key,
-                            const u128 Htable[16]);
+
+// The s2n-bignum 4x AES-128/256-GCM kernels are used on every AArch64
+// platform, like s2n-bignum's AES-XTS. The 8x "_alt" kernels are used on Linux
+// and Apple only, and also need MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION.
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+#define HW_GCM_S2N_BIGNUM
+#endif
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 #endif
 
 #elif defined(OPENSSL_PPC64LE)

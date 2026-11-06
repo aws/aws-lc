@@ -41,6 +41,82 @@ extern void aes_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
 extern void aes_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
         const s2n_bignum_AES_KEY *key1, const s2n_bignum_AES_KEY *key2, const uint8_t iv[16]);
 
+/* AES128_GCM_DEC (AES-128-GCM bulk decryption of whole blocks with GHASH tag update) */
+/* It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[176], htable[12]; outputs out[len_bits/8], tag[2], ivec[16], returns len_bits/8 */
+extern uint64_t aes128_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES128_GCM_DEC_ALT (AES-128-GCM bulk decryption of whole blocks with GHASH tag update, 8 blocks at a time) */
+/* Alternative to aes128_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8, */
+/* returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[176], htable[24]; outputs out[len_bits/8], tag[2], ivec[16], returns bytes processed */
+extern uint64_t aes128_gcm_dec_alt(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES128_GCM_ENC (AES-128-GCM bulk encryption of whole blocks with GHASH tag update) */
+/* It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[176], htable[12]; outputs out[len_bits/8], tag[2], ivec[16], returns len_bits/8 */
+extern uint64_t aes128_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES128_GCM_ENC_ALT (AES-128-GCM bulk encryption of whole blocks with GHASH tag update, 8 blocks at a time) */
+/* Alternative to aes128_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8, */
+/* returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[176], htable[24]; outputs out[len_bits/8], tag[2], ivec[16], returns bytes processed */
+extern uint64_t aes128_gcm_enc_alt(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES256_GCM_DEC (AES-256-GCM bulk decryption of whole blocks with GHASH tag update) */
+/* It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[240], htable[12]; outputs out[len_bits/8], tag[2], ivec[16], returns len_bits/8 */
+extern uint64_t aes256_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES256_GCM_DEC_ALT (AES-256-GCM bulk decryption of whole blocks with GHASH tag update, 8 blocks at a time) */
+/* Alternative to aes256_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8, */
+/* returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[240], htable[24]; outputs out[len_bits/8], tag[2], ivec[16], returns bytes processed */
+extern uint64_t aes256_gcm_dec_alt(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES256_GCM_ENC (AES-256-GCM bulk encryption of whole blocks with GHASH tag update) */
+/* It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[240], htable[12]; outputs out[len_bits/8], tag[2], ivec[16], returns len_bits/8 */
+extern uint64_t aes256_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
+/* AES256_GCM_ENC_ALT (AES-256-GCM bulk encryption of whole blocks with GHASH tag update, 8 blocks at a time) */
+/* Alternative to aes256_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8, */
+/* returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63. */
+/* The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it. */
+/* This routine does not enforce the NIST GCM message limit. */
+/* Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits). */
+/* Inputs in[len_bits/8], len_bits, tag[2], ivec[16], key[240], htable[24]; outputs out[len_bits/8], tag[2], ivec[16], returns bytes processed */
+extern uint64_t aes256_gcm_enc_alt(const uint8_t *in, uint64_t len_bits, uint8_t *out,
+        uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
+
 /* Add, z := x + y */
 /* Inputs x[m], y[n]; outputs function return (carry-out) and z[p] */
 extern uint64_t bignum_add (uint64_t p, uint64_t *z, uint64_t m, const uint64_t *x, uint64_t n, const uint64_t *y);
@@ -1065,7 +1141,7 @@ extern void mldsa_caddq(int32_t a[256]);
 
 /* Infinity-norm check of polynomial coefficients for ML-DSA */
 /* Returns 1 if any coefficient has absolute value >= bound, 0 otherwise */
-/* Input a[256] (signed 32-bit words), bound (unsigned 32-bit) */
+/* Input a[256] (signed 32-bit words), bound (unsigned 32-bit); output function return */
 extern uint64_t mldsa_chknorm(const int32_t a[256], uint64_t bound);
 
 /* Coefficient decomposition for ML-DSA (GAMMA2 = (Q-1)/32, parameter sets 65/87) */

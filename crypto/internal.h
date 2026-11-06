@@ -1311,7 +1311,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_armv8
-//   7: aesv8_gcm_8x_enc_128
+//   7: aes128_gcm_enc_alt (8x AES-GCM encryption)
 //   8: sha512_block_armv8
 //   9: KeccakF1600_hw
 //  10: sha3_keccak_f1600

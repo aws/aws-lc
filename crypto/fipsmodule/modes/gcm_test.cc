@@ -197,14 +197,45 @@ TEST(GCMTest, ABI) {
     static const uint8_t kKey[256/8] = {0};
     uint8_t iv[16] = {0};
 
-    for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {
+    {
       AES_KEY aes_key;
-      aes_hw_set_encrypt_key(kKey, key_bits, &aes_key);
+      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+      CHECK_ABI(aes128_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      CHECK_ABI(aes128_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      // |aes_gcm_enc_kernel| and |aes_gcm_dec_kernel| handle AES-192 only.
+      aes_hw_set_encrypt_key(kKey, 192, &aes_key);
       CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
                 Htable);
       CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
                 Htable);
+      aes_hw_set_encrypt_key(kKey, 256, &aes_key);
+      CHECK_ABI(aes256_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      CHECK_ABI(aes256_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
+                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
     }
+#if defined(HW_GCM_S2N_BIGNUM) && \
+    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+    if (CRYPTO_is_ARMv8_SHA3_capable()) {
+      AES_KEY aes_key;
+      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+      CHECK_ABI(aes128_gcm_enc_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
+                iv, (const s2n_bignum_AES_KEY *)&aes_key,
+                (const uint64_t *)Htable);
+      CHECK_ABI(aes128_gcm_dec_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
+                iv, (const s2n_bignum_AES_KEY *)&aes_key,
+                (const uint64_t *)Htable);
+      aes_hw_set_encrypt_key(kKey, 256, &aes_key);
+      CHECK_ABI(aes256_gcm_enc_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
+                iv, (const s2n_bignum_AES_KEY *)&aes_key,
+                (const uint64_t *)Htable);
+      CHECK_ABI(aes256_gcm_dec_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
+                iv, (const s2n_bignum_AES_KEY *)&aes_key,
+                (const uint64_t *)Htable);
+    }
+#endif  // HW_GCM_S2N_BIGNUM && MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION
   }
 #endif
 
