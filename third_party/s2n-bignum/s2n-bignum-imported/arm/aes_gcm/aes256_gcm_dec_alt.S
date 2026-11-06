@@ -1,5 +1,10 @@
+// Copyright (c) 2020-2022 The OpenSSL Project Authors
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
+// SPDX-License-Identifier: Apache-2.0
+
+// Written by Xiaokang Qian <xiaokang.qian@arm.com> for the OpenSSL project,
+// derived from https://github.com/ARM-software/AArch64cryptolib, original
+// author Samuel Lee <Samuel.Lee@arm.com>.
 
 // ----------------------------------------------------------------------------
 // AES-256-GCM bulk decryption, 8 blocks at a time: counter-mode decryption of
@@ -43,8 +48,9 @@
 // The input must satisfy in + len_bits/8 < 2^63, because the loop control
 // compares the input pointer with the main-loop end pointer as signed
 // integers (cmp x0, x5 followed by b.ge or b.lt). The buffers written ("out",
-// "tag" and "ivec") must not overlap each other, "in", "key" or "htable"; in
-// particular, in-place operation (out == in) is not covered by the proof.
+// "tag" and "ivec") must not overlap each other, "key" or "htable", and "tag"
+// and "ivec" must not overlap "in". The output may be the input itself
+// (in-place operation, out == in); otherwise "out" must not overlap "in".
 //
 // This is an alternative to aes256_gcm_dec with the same arguments, for
 // processors with FEAT_SHA3, whose eor3 it uses. Unlike aes256_gcm_dec it
@@ -53,8 +59,9 @@
 // returns 0 without touching memory, where aes256_gcm_dec processes the
 // whole blocks.
 //
-// This routine does not enforce the NIST GCM message limit.
-// Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits).
+// This routine does not enforce the NIST GCM message limit. Callers must
+// ensure the cumulative message length does not exceed 2^36 - 32 bytes
+// (2^39 - 256 bits).
 //
 // Standard ARM ABI: X0 = in, X1 = len_bits, X2 = out, X3 = tag, X4 = ivec,
 //                   X5 = key, X6 = htable, returns X0
@@ -74,15 +81,17 @@
 //    occupy, the len_bits % 128 mask, the masking of the GHASH input and the
 //    bif blend of the output. The last block is stored and hashed whole, and
 //    the output buffer is never read.
-//  - Inputs of 1 to 4 blocks take a separate path (L256_dec_w5r_small), and
+//  - Inputs of 1 to 4 blocks take a separate path (L256_dec_small), and
 //    exactly 8 remaining blocks a dedicated GHASH drain
-//    (L256_dec_exact8_drain).
+//    (L256_dec_exact8_drain); the generator's L256_dec_blocks_more_than_7,
+//    which the drain replaces, is removed.
 //  - Rescheduling: a flatter counter setup, ext instead of ins for the
 //    Karatsuba middle terms in the GHASH tail, shorter odd-block middle-term
 //    chains in the tail, and a main loop at offset 0x4c0, which is 16-byte
-//    aligned in the default build. There is no alignment directive, so that
-//    a -DNO_IBT build is exactly this code without the bti c landing pad,
-//    as the proofs require; it enters the main loop at 12 mod 16.
+//    aligned in the default build. There is no alignment directive in the
+//    function, so that a -DNO_IBT build is exactly this code without the
+//    bti c landing pad, as the proofs require; it enters the main loop at
+//    12 mod 16.
 // Proofs: arm/proofs/aes256_gcm_dec_alt.ml.
 #include "_internal_s2n_bignum_arm.h"
 
@@ -111,7 +120,7 @@ S2N_BN_SYMBOL(aes256_gcm_dec_alt):
 	add	x10, sp, #64
 
 	cmp	x9, #64				//nblk <= 4 ?
-	b.le	L256_dec_w5r_small
+	b.le	L256_dec_small
 
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
@@ -1285,7 +1294,7 @@ L256_dec_tail:	//TAIL
 
 	eor3	v12.16b, v9.16b, v0.16b, v29.16b	//AES block 8k+8 - result
 	ldp	q22, q23, [x6, #128]			//load h6l | h6h
-	b.gt	L256_dec_exact8_drain	//exact-8 -> dedicated stripped drain
+	b.gt	L256_dec_exact8_drain	//rem = 8 (x5 > 112): exact-8 drain
 
 	mov	v7.16b, v6.16b
 	sub	v30.4s, v30.4s, v31.4s
@@ -1349,32 +1358,13 @@ L256_dec_tail:	//TAIL
 	sub	v30.4s, v30.4s, v31.4s
 	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L256_dec_blocks_less_than_1
-L256_dec_blocks_more_than_7:	//blocks	left >  7
-	rev64	v8.16b, v9.16b						//GHASH final-7 block
-	ldr	q9, [x0], #16				//AES final-6 block - load ciphertext
-	st1	{ v12.16b}, [x2], #16				//AES final-7 block  - store result
-
-	ext	v18.16b, v24.16b, v24.16b, #8			//GHASH final-7 block - mid
-
-	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
-
-	ext	v27.16b, v8.16b, v8.16b, #8					//GHASH final-7 block - mid
-	eor3	v12.16b, v9.16b, v1.16b, v29.16b	//AES final-6 block - result
-
-	pmull2	v17.1q, v8.2d, v25.2d				//GHASH final-7 block - high
-
-	eor	v27.8b, v27.8b, v8.8b				//GHASH final-7 block - mid
-	movi	v16.8b, #0						//supress further partial tag feed in
-
-	pmull	v19.1q, v8.1d, v25.1d				//GHASH final-7 block - low
-	pmull	v18.1q, v27.1d, v18.1d			 	//GHASH final-7 block - mid
 L256_dec_blocks_more_than_6:	//blocks	left >  6
 
 	rev64	v8.16b, v9.16b						//GHASH final-6 block
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
 	ldr	q9, [x0], #16				//AES final-5 block - load ciphertext
-	movi	v16.8b, #0						//supress further partial tag feed in
+	movi	v16.8b, #0						//suppress further partial tag feed in
 
 	ext	v27.16b, v8.16b, v8.16b, #8					//GHASH final-6 block - mid
 	st1	{ v12.16b}, [x2], #16				//AES final-6 block - store result
@@ -1405,16 +1395,16 @@ L256_dec_blocks_more_than_5:	//blocks	left >  5
 	st1	{ v12.16b}, [x2], #16			  	//AES final-5 block - store result
 
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-5 block - low
-	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-5 block - mid (h2k to the low lane by ext, off the v27 critical path)
+	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-5 block - mid (h6k hi->lo)
 
-	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-5 block - mid (pmull low, h2k in v10)
+	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-5 block - mid (h6k in v10)
 
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-5 block - high
 	eor3	v12.16b, v9.16b, v3.16b, v29.16b	//AES final-4 block - result
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-5 block - low
 
 	eor	v18.16b, v18.16b, v27.16b				//GHASH final-5 block - mid
-	movi	v16.8b, #0						//supress further partial tag feed in
+	movi	v16.8b, #0						//suppress further partial tag feed in
 L256_dec_blocks_more_than_4:	//blocks	left >  4
 
 	rev64	v8.16b, v9.16b						//GHASH final-4 block
@@ -1424,7 +1414,7 @@ L256_dec_blocks_more_than_4:	//blocks	left >  4
 	ext	v27.16b, v8.16b, v8.16b, #8					//GHASH final-4 block - mid
 	ldr	q9, [x0], #16				//AES final-3 block - load ciphertext
 
-	movi	v16.8b, #0						//supress further partial tag feed in
+	movi	v16.8b, #0						//suppress further partial tag feed in
 
 	pmull	v26.1q, v8.1d, v20.1d				//GHASH final-4 block - low
 	pmull2	v28.1q, v8.2d, v20.2d				//GHASH final-4 block - high
@@ -1456,12 +1446,12 @@ L256_dec_blocks_more_than_3:	//blocks	left >  3
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-3 block - mid
 
-	ext	v11.16b, v24.16b, v24.16b, #8			//GHASH final-3 block - mid (h4k to the low lane by ext, off the v27 critical path)
+	ext	v11.16b, v24.16b, v24.16b, #8			//GHASH final-3 block - mid (h4k hi->lo)
 	pmull	v26.1q, v8.1d, v25.1d				//GHASH final-3 block - low
 	pmull2	v28.1q, v8.2d, v25.2d				//GHASH final-3 block - high
 
-	movi	v16.8b, #0						//supress further partial tag feed in
-	pmull	v27.1q, v27.1d, v11.1d				//GHASH final-3 block - mid (pmull low, h4k in v11)
+	movi	v16.8b, #0						//suppress further partial tag feed in
+	pmull	v27.1q, v27.1d, v11.1d				//GHASH final-3 block - mid (h4k in v11)
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-3 block - low
 
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-3 block - high
@@ -1484,7 +1474,7 @@ L256_dec_blocks_more_than_2:	//blocks	left >  2
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-2 block - mid
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-2 block - low
-	movi	v16.8b, #0						//supress further partial tag feed in
+	movi	v16.8b, #0						//suppress further partial tag feed in
 
 	pmull	v27.1q, v27.1d, v24.1d				//GHASH final-2 block - mid
 	pmull2	v28.1q, v8.2d, v23.2d				//GHASH final-2 block - high
@@ -1507,20 +1497,20 @@ L256_dec_blocks_more_than_1:	//blocks	left >  1
 	ldr	q21, [x6, #16]				//load h2k | h1k
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-1 block - low
 
-	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-1 block - mid (h2k to the low lane by ext, off the v27 critical path)
+	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-1 block - mid (h2k hi->lo)
 
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-1 block - low
 
 	eor3	v12.16b, v9.16b, v7.16b, v29.16b	//AES final block - result
 	pmull2	v28.1q, v8.2d, v22.2d				//GHASH final-1 block - high
 
-	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-1 block - mid (pmull low, h2k in v10)
+	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-1 block - mid (h2k in v10)
 
-	movi	v16.8b, #0						//supress further partial tag feed in
+	movi	v16.8b, #0						//suppress further partial tag feed in
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-1 block - high
 
 	eor	v18.16b, v18.16b, v27.16b				//GHASH final-1 block - mid
-L256_dec_blocks_less_than_1:	//final	whole block (whole-blocks contract: never partial)
+L256_dec_blocks_less_than_1:	//final block (always whole)
 
 	rev32	v30.16b, v30.16b
 	str	q30, [x16]					//store the updated counter
@@ -1567,7 +1557,7 @@ L256_dec_epilogue:  //cascade and exact-8 drain converge here
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
-L256_dec_frame_restore:	//the one frame restore; the 1-4 block path rejoins here
+L256_dec_frame_restore:	//single frame restore; the 1-4 block path rejoins here
 	mov	x0, x9
 	.cfi_remember_state
 	CFI_STACKLOAD2(d10,d11,16)
@@ -1578,16 +1568,14 @@ L256_dec_frame_restore:	//the one frame restore; the 1-4 block path rejoins here
 	.cfi_restore_state			//the code below still runs with the frame live
 
 
-L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eors)
-	// Straight-line concatenation of the 8 tail blocks for the
-	// exact-8 case (x5 > 112 => all 8 blocks remain); the cascade at
-	// L256_dec_blocks_more_than_7.. serves every other remainder.
-	// Here the partial-tag feed is live only in the first block; the
-	// other 7 `eor v8,v8,v16` are XOR-with-zero and their
-	// `movi v16,#0` re-zeroing is dead, so both are dropped
-	// (14 instructions off the GHASH critical path).
+L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain
+	// Straight-line version of the 8-block tail for the exact-8 case
+	// (x5 > 112: all 8 blocks remain); the cascade, entered at
+	// L256_dec_blocks_more_than_6 or later, serves remainders 1 to 7.
+	// Only the first block feeds in the partial tag (v16), so the later
+	// blocks have no eor with v16 and no movi re-zeroing it.
 
-	// ---- exact-8 drain: block 7 (from L256_dec_blocks_more_than_7) ----
+	// ---- exact-8 drain: block 7 (final-7, feeds in the partial tag) ----
 	rev64	v8.16b, v9.16b						//GHASH final-7 block
 	ldr	q9, [x0], #16				//AES final-6 block - load ciphertext
 	st1	{ v12.16b}, [x2], #16				//AES final-7 block  - store result
@@ -1607,8 +1595,8 @@ L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eo
 	pmull	v18.1q, v27.1d, v18.1d			 	//GHASH final-7 block - mid
 
 	// ---- exact-8 drain: block 6 (from L256_dec_blocks_more_than_6) ----
-	// 1st of pair (final-6,final-5): products deferred to v13/v14/v15,
-	// their 3 accumulate eors dropped and folded into block 5's eor3s.
+	// 1st of pair (final-6,final-5): products deferred to v13/v14/v15
+	// and accumulated by block 5's eor3s.
 
 	rev64	v8.16b, v9.16b						//GHASH final-6 block
 
@@ -1640,19 +1628,19 @@ L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eo
 	st1	{ v12.16b}, [x2], #16			  	//AES final-5 block - store result
 
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-5 block - low
-	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-5 block - mid (h2k to the low lane by ext, off the v27 critical path)
+	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-5 block - mid (h6k hi->lo)
 
-	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-5 block - mid (pmull low, h2k in v10)
+	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-5 block - mid (h6k in v10)
 
-	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-6 and final-5 blocks - high
+	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-6,5 blocks - high
 	eor3	v12.16b, v9.16b, v3.16b, v29.16b	//AES final-4 block - result
-	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-6 and final-5 blocks - low
+	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-6,5 blocks - low
 
-	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-6 and final-5 blocks - mid
+	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-6,5 blocks - mid
 
 	// ---- exact-8 drain: block 4 (from L256_dec_blocks_more_than_4) ----
-	// 1st of pair (final-4,final-3): products deferred to v13/v14/v15,
-	// their 3 accumulate eors dropped and folded into block 3's eor3s.
+	// 1st of pair (final-4,final-3): products deferred to v13/v14/v15
+	// and accumulated by block 3's eor3s.
 
 	rev64	v8.16b, v9.16b						//GHASH final-4 block
 
@@ -1688,20 +1676,20 @@ L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eo
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-3 block - mid
 
-	ext	v11.16b, v24.16b, v24.16b, #8			//GHASH final-3 block - mid (h4k to the low lane by ext, off the v27 critical path)
+	ext	v11.16b, v24.16b, v24.16b, #8			//GHASH final-3 block - mid (h4k hi->lo)
 	pmull	v26.1q, v8.1d, v25.1d				//GHASH final-3 block - low
 	pmull2	v28.1q, v8.2d, v25.2d				//GHASH final-3 block - high
 
-	pmull	v27.1q, v27.1d, v11.1d				//GHASH final-3 block - mid (pmull low, h4k in v11)
-	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-4 and final-3 blocks - low
+	pmull	v27.1q, v27.1d, v11.1d				//GHASH final-3 block - mid (h4k in v11)
+	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-4,3 blocks - low
 
-	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-4 and final-3 blocks - high
+	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-4,3 blocks - high
 
-	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-4 and final-3 blocks - mid
+	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-4,3 blocks - mid
 
 	// ---- exact-8 drain: block 2 (from L256_dec_blocks_more_than_2) ----
-	// 1st of pair (final-2,final-1): products deferred to v13/v14/v15,
-	// their 3 accumulate eors dropped and folded into block 1's eor3s.
+	// 1st of pair (final-2,final-1): products deferred to v13/v14/v15
+	// and accumulated by block 1's eor3s.
 
 	rev64	v8.16b, v9.16b						//GHASH final-2 block
 
@@ -1736,18 +1724,18 @@ L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eo
 	ldr	q21, [x6, #16]				//load h2k | h1k
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-1 block - low
 
-	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-1 block - mid (h2k to the low lane by ext, off the v27 critical path)
+	ext	v10.16b, v21.16b, v21.16b, #8			//GHASH final-1 block - mid (h2k hi->lo)
 
-	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-2 and final-1 blocks - low
+	eor3	v19.16b, v19.16b, v26.16b, v14.16b	//GHASH final-2,1 blocks - low
 
 	eor3	v12.16b, v9.16b, v7.16b, v29.16b	//AES final block - result
 	pmull2	v28.1q, v8.2d, v22.2d				//GHASH final-1 block - high
 
-	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-1 block - mid (pmull low, h2k in v10)
+	pmull	v27.1q, v27.1d, v10.1d				//GHASH final-1 block - mid (h2k in v10)
 
-	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-2 and final-1 blocks - high
+	eor3	v17.16b, v17.16b, v28.16b, v13.16b	//GHASH final-2,1 blocks - high
 
-	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-2 and final-1 blocks - mid
+	eor3	v18.16b, v18.16b, v27.16b, v15.16b	//GHASH final-2,1 blocks - mid
 
 	// ---- exact-8 drain: block 0 (from L256_dec_blocks_less_than_1) ----
 
@@ -1776,7 +1764,7 @@ L256_dec_exact8_drain:  //dedicated exact-8 GHASH drain (no no-op partial-tag eo
 	b	L256_dec_epilogue
 
 
-L256_dec_w5r_small:	//nblk <= 4: seed Xi' * H^nblk, then fall through one block per step
+L256_dec_small:	//nblk <= 4: seed Xi' * H^nblk, then one block per step
 	ld1	{ v30.16b}, [x16]				//CTR block 0 (raw)
 	ld1	{ v19.16b}, [x3]				//load Xi
 	mov	x15, #0x100000000			//counter increment
@@ -1795,16 +1783,16 @@ L256_dec_w5r_small:	//nblk <= 4: seed Xi' * H^nblk, then fall through one block 
 	ldp	q13, q14, [x11, #192]			//rk12, rk13
 	ldr	q15, [x11, #224]			//rk14
 	cmp	x9, #32
-	b.gt	L256_dec_w5r_h1
+	b.gt	L256_dec_small_ge3
 	cmp	x9, #16
-	b.eq	L256_dec_w5r_stub_1
-	b	L256_dec_w5r_stub_2
-L256_dec_w5r_h1:
+	b.eq	L256_dec_small_seed_1
+	b	L256_dec_small_seed_2
+L256_dec_small_ge3:
 	cmp	x9, #48
-	b.eq	L256_dec_w5r_stub_3
-	b	L256_dec_w5r_stub_4
+	b.eq	L256_dec_small_seed_3
+	b	L256_dec_small_seed_4
 
-L256_dec_w5r_stub_4:	//entry for nblk=4: seed acc = Xi' * H^4
+L256_dec_small_seed_4:	//entry for nblk=4: seed acc = Xi' * H^4
 	ldr	q24, [x6, #80]				//h4l | h4h
 	ldr	d25, [x6, #72]				//h4k (64-bit)
 	ext	v21.16b, v16.16b, v16.16b, #8		//Xi' mid
@@ -1812,9 +1800,9 @@ L256_dec_w5r_stub_4:	//entry for nblk=4: seed acc = Xi' * H^4
 	pmull2	v17.1q, v16.2d, v24.2d			//Xi' high
 	pmull	v19.1q, v16.1d, v24.1d			//Xi' low
 	pmull	v18.1q, v21.1d, v25.1d			//Xi' mid
-	b	L256_dec_w5r_g4
+	b	L256_dec_small_blk_4
 
-L256_dec_w5r_stub_3:	//entry for nblk=3: seed acc = Xi' * H^3
+L256_dec_small_seed_3:	//entry for nblk=3: seed acc = Xi' * H^3
 	ldr	q24, [x6, #48]				//h3l | h3h
 	ldr	d25, [x6, #64]				//h3k (64-bit)
 	ext	v21.16b, v16.16b, v16.16b, #8		//Xi' mid
@@ -1822,9 +1810,9 @@ L256_dec_w5r_stub_3:	//entry for nblk=3: seed acc = Xi' * H^3
 	pmull2	v17.1q, v16.2d, v24.2d			//Xi' high
 	pmull	v19.1q, v16.1d, v24.1d			//Xi' low
 	pmull	v18.1q, v21.1d, v25.1d			//Xi' mid
-	b	L256_dec_w5r_g3
+	b	L256_dec_small_blk_3
 
-L256_dec_w5r_stub_2:	//entry for nblk=2: seed acc = Xi' * H^2
+L256_dec_small_seed_2:	//entry for nblk=2: seed acc = Xi' * H^2
 	ldr	q24, [x6, #32]				//h2l | h2h
 	ldr	d25, [x6, #24]				//h2k (64-bit)
 	ext	v21.16b, v16.16b, v16.16b, #8		//Xi' mid
@@ -1832,9 +1820,9 @@ L256_dec_w5r_stub_2:	//entry for nblk=2: seed acc = Xi' * H^2
 	pmull2	v17.1q, v16.2d, v24.2d			//Xi' high
 	pmull	v19.1q, v16.1d, v24.1d			//Xi' low
 	pmull	v18.1q, v21.1d, v25.1d			//Xi' mid
-	b	L256_dec_w5r_g2
+	b	L256_dec_small_blk_2
 
-L256_dec_w5r_stub_1:	//entry for nblk=1: seed acc = Xi' * H^1
+L256_dec_small_seed_1:	//entry for nblk=1: seed acc = Xi' * H^1
 	ldr	q24, [x6, #0]				//h1l | h1h
 	ldr	d25, [x6, #16]				//h1k (64-bit)
 	ext	v21.16b, v16.16b, v16.16b, #8		//Xi' mid
@@ -1842,9 +1830,9 @@ L256_dec_w5r_stub_1:	//entry for nblk=1: seed acc = Xi' * H^1
 	pmull2	v17.1q, v16.2d, v24.2d			//Xi' high
 	pmull	v19.1q, v16.1d, v24.1d			//Xi' low
 	pmull	v18.1q, v21.1d, v25.1d			//Xi' mid
-	b	L256_dec_w5r_g1
+	b	L256_dec_small_blk_1
 
-L256_dec_w5r_g4:	//one block, GHASH with H^4
+L256_dec_small_blk_4:	//one block, GHASH with H^4
 	ldr	q26, [x0], #16				//ciphertext 0
 	rev32	v0.16b, v29.16b			//CTR block 0
 	add	v29.4s, v29.4s, v31.4s
@@ -1889,7 +1877,7 @@ L256_dec_w5r_g4:	//one block, GHASH with H^4
 eor3	v0.16b, v26.16b, v0.16b, v15.16b	//H^4 block - result
 	str	q0, [x2], #16
 
-L256_dec_w5r_g3:	//one block, GHASH with H^3
+L256_dec_small_blk_3:	//one block, GHASH with H^3
 	ldr	q26, [x0], #16				//ciphertext 0
 	rev32	v0.16b, v29.16b			//CTR block 0
 	add	v29.4s, v29.4s, v31.4s
@@ -1934,7 +1922,7 @@ L256_dec_w5r_g3:	//one block, GHASH with H^3
 eor3	v0.16b, v26.16b, v0.16b, v15.16b	//H^3 block - result
 	str	q0, [x2], #16
 
-L256_dec_w5r_g2:	//one block, GHASH with H^2
+L256_dec_small_blk_2:	//one block, GHASH with H^2
 	ldr	q26, [x0], #16				//ciphertext 0
 	rev32	v0.16b, v29.16b			//CTR block 0
 	add	v29.4s, v29.4s, v31.4s
@@ -1979,7 +1967,7 @@ L256_dec_w5r_g2:	//one block, GHASH with H^2
 eor3	v0.16b, v26.16b, v0.16b, v15.16b	//H^2 block - result
 	str	q0, [x2], #16
 
-L256_dec_w5r_g1:	//one block, GHASH with H^1
+L256_dec_small_blk_1:	//one block, GHASH with H^1
 	ldr	q26, [x0], #16				//ciphertext 0
 	rev32	v0.16b, v29.16b			//CTR block 0
 	add	v29.4s, v29.4s, v31.4s
@@ -2040,7 +2028,7 @@ L256_dec_w5r_g1:	//one block, GHASH with H^1
 eor3	v0.16b, v26.16b, v0.16b, v15.16b	//H^1 block - result
 	str	q0, [x2], #16
 
-L256_dec_w5r_done:	//rejoin the one epilogue: single `ret` for nblk >= 1
+L256_dec_small_done:	//rejoin the one epilogue: single `ret` for nblk >= 1
 	b	L256_dec_frame_restore
 
 L256_dec_ret:	//reached only from the entry guard, before any save
