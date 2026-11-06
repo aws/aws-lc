@@ -81,11 +81,7 @@ def code_build_batch_policy_in_json(project_ids, env, exact_match=False):
     """
     Define an IAM policy statement for CodeBuild batch operation.
     :param project_ids: a list of CodeBuild project id.
-    :param exact_match: when True, scope each resource ARN to exactly the named
-        project (no trailing wildcard). Use this when sibling projects share a
-        name prefix (e.g. "foo" and "foo-pr") and a role must not reach the
-        sibling. Defaults to False to preserve the historical prefix-matching
-        behavior relied on by the other CI stacks.
+    :param exact_match: omit the trailing wildcard when project names share a prefix.
     :return: an IAM policy statement in json.
     """
     resources = []

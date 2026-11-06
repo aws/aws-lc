@@ -19,8 +19,6 @@ from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import (
     code_build_batch_policy_in_json,
     code_build_publish_metrics_in_json,
-    s3_read_write_policy_in_json,
-    s3_read_only_policy_in_json,
 )
 from util.metadata import GITHUB_PUSH_CI_BRANCH_TARGETS
 from util.build_spec_loader import BuildSpecLoader
@@ -29,21 +27,10 @@ from util.build_spec_loader import BuildSpecLoader
 class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
     """Batch-execute AWS-LC fuzz tests in GitHub.
 
-    A trusted project (push to main/fips-*) mounts the canonical EFS
-    read-write and uploads the merged corpus to an S3 bucket. An untrusted PR
-    project has no EFS mount at all; it downloads the corpus from S3 with an
-    IAM-enforced read-only (s3:GetObject) role.
-
-    S3 is used for the PR path rather than a second EFS "replica" on purpose.
-    CodeBuild has no IAM authorization for EFS mounts and the containers run
-    privileged, so a PR-writable replica cannot be made read-only to the PR
-    build. Any shared filesystem the PR build can write and the trusted build
-    later reads is exploitable: a PR can plant a symlink and the trusted
-    build's own write (running as the trusted principal) follows it back into
-    the canonical store. In-band symlink checks are racy because the PR build
-    can mutate the replica concurrently. With S3 the read-only grant is
-    enforced by IAM outside the container, and the trusted build only ever
-    uploads, so it never reads storage that PR code controls.
+    Trusted builds mount the canonical EFS and publish sanitized corpus
+    snapshots to S3. PR builds have no VPC or EFS access and can only download
+    those snapshots. S3 provides IAM-enforced read-only access that CodeBuild
+    EFS mounts cannot provide.
     """
 
     def __init__(
@@ -84,12 +71,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             description="Allow all traffic inside security group",
         )
 
-        # The PR project has no path to the canonical EFS: it is in its own
-        # security group and mounts no filesystem.
-        pr_security_group = ec2.SecurityGroup(
-            scope=self, id="{}-PRFuzzingSecurityGroup".format(id), vpc=fuzz_vpc
-        )
-
         efs_subnet_selection = ec2.SubnetSelection(
             subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
         )
@@ -116,24 +97,19 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             provisioned_throughput_per_second=Size.mebibytes(100),
         )
 
-        # Corpus distribution bucket for PR builds. The trusted build uploads
-        # the merged corpus here; PR builds get s3:GetObject only (enforced by
-        # IAM, outside the privileged container), so they can never write it.
+        # Trusted builds publish corpus snapshots here for PR builds.
         corpus_bucket = s3.Bucket(
             scope=self,
             id="{}-CorpusBucket".format(id),
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             enforce_ssl=True,
             encryption=s3.BucketEncryption.S3_MANAGED,
-            versioned=True,
         )
-        # Keep storage bounded: the corpus tarball is overwritten on every
-        # trusted run, so old versions have no long-term value.
         corpus_bucket.add_lifecycle_rule(
-            enabled=True,
-            noncurrent_version_expiration=Duration.days(30),
             abort_incomplete_multipart_upload_after=Duration.days(7),
         )
+
+        corpus_object_arn = corpus_bucket.arn_for_objects("corpus/*")
 
         # Trusted project: push to main/fips-*, canonical EFS read-write.
         trusted_source = codebuild.Source.git_hub(
@@ -154,9 +130,7 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies={
                 "code_build_batch_policy": iam.PolicyDocument.from_json(
-                    # Exact-match: trusted_project_name is a prefix of
-                    # pr_project_name ("{id}" vs "{id}-pr"), so a wildcard here
-                    # would also grant control over the PR project.
+                    # Avoid matching the sibling "-pr" project.
                     code_build_batch_policy_in_json(
                         [trusted_project_name], env, exact_match=True
                     )
@@ -164,11 +138,27 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
                 ),
-                # Upload the merged corpus for PR builds to consume.
-                "corpus_s3_policy": iam.PolicyDocument.from_json(
-                    s3_read_write_policy_in_json(corpus_bucket.bucket_name)
+                "corpus_s3_policy": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=["s3:PutObject"], resources=[corpus_object_arn]
+                        )
+                    ]
                 ),
             },
+        )
+
+        corpus_bucket.add_to_resource_policy(
+            iam.PolicyStatement(
+                sid="DenyCorpusWritesExceptTrustedRole",
+                effect=iam.Effect.DENY,
+                principals=[iam.AnyPrincipal()],
+                actions=["s3:PutObject", "s3:DeleteObject"],
+                resources=[corpus_object_arn],
+                conditions={
+                    "StringNotEquals": {"aws:PrincipalArn": trusted_role.role_arn}
+                },
+            )
         )
 
         trusted_codebuild = codebuild.Project(
@@ -183,9 +173,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 privileged=True,
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0,
                 environment_variables={
-                    "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
-                        value="true"
-                    ),
                     "FUZZ_CORPUS_BUCKET": codebuild.BuildEnvironmentVariable(
                         value=corpus_bucket.bucket_name
                     ),
@@ -223,6 +210,9 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             owner=self.github_repo_owner,
             repo=self.github_repo_name,
             webhook=True,
+            build_status_context="AWS CodeBuild BuildBatch {} ({})".format(
+                env.region, trusted_project_name
+            ),
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PULL_REQUEST_CREATED,
@@ -246,9 +236,12 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
                 ),
-                # Download-only: IAM enforces s3:GetObject with no write action.
-                "corpus_s3_policy": iam.PolicyDocument.from_json(
-                    s3_read_only_policy_in_json(corpus_bucket.bucket_name)
+                "corpus_s3_policy": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=["s3:GetObject"], resources=[corpus_object_arn]
+                        )
+                    ]
                 ),
             },
         )
@@ -265,17 +258,12 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
                 privileged=True,
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0,
                 environment_variables={
-                    "FUZZ_CORPUS_WRITABLE": codebuild.BuildEnvironmentVariable(
-                        value="false"
-                    ),
                     "FUZZ_CORPUS_BUCKET": codebuild.BuildEnvironmentVariable(
                         value=corpus_bucket.bucket_name
                     ),
                 },
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env),
-            vpc=fuzz_vpc,
-            security_groups=[pr_security_group],
         )
         pr_codebuild.enable_batch_builds()
 
