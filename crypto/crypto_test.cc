@@ -70,12 +70,14 @@ TEST(CryptoTest, aws_lc_assert_entropy_cpu_jitter) {
 }
 
 // FIPS_version returns the FIPS version number in FIPS builds and 0 otherwise.
+// This keys on the build flags rather than |FIPS_mode|, which in an
+// ENABLE_DIST_PKG build also depends on the host's FIPS switch.
 TEST(CryptoTest, FIPSVersion) {
-  if (FIPS_mode() == 1) {
-    EXPECT_EQ(FIPS_version(), (uint32_t)AWSLC_FIPS_VERSION_NUMBER);
-  } else {
-    EXPECT_EQ(FIPS_version(), 0u);
-  }
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
+  EXPECT_EQ(FIPS_version(), (uint32_t)AWSLC_FIPS_VERSION_NUMBER);
+#else
+  EXPECT_EQ(FIPS_version(), 0u);
+#endif
 }
 
 TEST(CryptoTest, OPENSSL_hexstr2buf) {
