@@ -320,7 +320,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=util/x86_64-windows-clang-cl-toolchain.cmake
           cmake --build build --target all
   msys2:
-    name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
+    name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}${{ matrix.fips == 1 && ' - FIPS shared' || '' }}${{ matrix.noasm == 1 && ' - noasm' || '' }}
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     strategy:
@@ -334,6 +334,12 @@ jobs:
           - 'Ninja'
           - 'MinGW Makefiles'
           - 'MSYS Makefiles'
+        fips: [0]
+        noasm: [0]
+        # Current MSYS2 GCC covers the GCC 14+ FIPS shared SLP workaround.
+        include:
+          - { sys: mingw64, generator: Ninja, fips: 1, noasm: 0 }
+          - { sys: mingw64, generator: Ninja, fips: 1, noasm: 1 }
     steps:
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
@@ -343,8 +349,10 @@ jobs:
           update: true
           # The MSYS Makefiles generator needs a Unix `make` (/usr/bin/make);
           # the `toolchain` group only provides mingw32-make.
+          # FIPS builds require Perl even with OPENSSL_NO_ASM.
           install: >-
             make
+            perl
           pacboy: >-
             cmake
             toolchain
@@ -376,6 +384,13 @@ jobs:
         # CMake's compiler ABI detection.
         shell: 'msys2 {0}'
         run: |
+          set -ex
+          if [ "${{ matrix.fips }}" = "1" ]; then
+            export CC=gcc CXX=g++
+            gcc --version
+            gcc_version="$(gcc -dumpversion)"
+            test "${gcc_version%%.*}" -ge 14
+          fi
           cmake -B build \
             -DCMAKE_SYSTEM_NAME=Windows \
             -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
@@ -383,8 +398,26 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFIPS=${{ matrix.fips }} \
+            -DBUILD_SHARED_LIBS=${{ matrix.fips }} \
+            -DOPENSSL_NO_ASM=${{ matrix.noasm }}
           cmake --build build
+      - name: Co-locate FIPS DLLs with the test executables
+        if: matrix.fips == 1
+        # Keep our libcrypto.dll ahead of the runner's System32 LibreSSL DLL.
+        run: |
+          $build = (Resolve-Path ./build).Path
+          $dlls = Get-ChildItem $build -Recurse -Filter *.dll | Where-Object { $_.FullName -notmatch '\\CMakeFiles\\' } | Group-Object Name | ForEach-Object { $_.Group[0] }
+          $exeDirs = Get-ChildItem $build -Recurse -Filter *.exe | Where-Object { $_.FullName -notmatch '\\CMakeFiles\\' } | Select-Object -ExpandProperty DirectoryName -Unique
+          foreach ($dir in $exeDirs) { foreach ($dll in $dlls) { if ($dll.DirectoryName -ne $dir) { Copy-Item $dll.FullName $dir -Force } } }
+      - name: Check FIPS mode and integrity self-test
+        if: matrix.fips == 1
+        shell: 'msys2 {0}'
+        run: |
+          set -ex
+          test "$(./build/tool/bssl.exe isfips)" = 1
+          ./build/util/fipstools/test_fips.exe
       - name: Run tests
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests

@@ -680,11 +680,12 @@ elseif(FIPS_SHARED)
   # read-only data: on Linux in the .data.rel.ro.local section, which is
   # discarded by our linker script and results in undefined references when
   # linking libcrypto, and on MinGW in .rdata, where their base relocations
-  # would fall inside the hashed module.
+  # would fall inside the hashed module. On MinGW, use the target pointer size
+  # because OPENSSL_NO_ASM sets ARCH to "generic".
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
      CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
-     (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MINGW) AND
-     ARCH STREQUAL "x86_64")
+     ((CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ARCH STREQUAL "x86_64") OR
+      (MINGW AND CMAKE_SIZEOF_VOID_P EQUAL 8)))
     # C only: on MinGW, bcm_library also contains the NASM sources.
     target_compile_options(bcm_library PRIVATE $<$<COMPILE_LANGUAGE:C>:-fno-tree-slp-vectorize>)
   endif()
