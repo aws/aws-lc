@@ -52,19 +52,32 @@ void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static uint32_t override_vm_ube_generation_number = 0;
-void set_vm_ube_generation_number_FOR_TESTING(uint32_t vm_ube_gn) {
+static uint64_t override_vm_ube_generation_number = 0;
+void set_vm_ube_generation_number_FOR_TESTING(uint64_t vm_ube_gn) {
   CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_vm_ube_generation_number = vm_ube_gn;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static int get_vm_ube_generation_number(uint32_t *gn) {
+static uint64_t mocked_vm_ube_read_failures = 0;
+void set_vm_ube_read_failures_FOR_TESTING(uint64_t num_failures) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
+  mocked_vm_ube_read_failures = num_failures;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
+}
+
+static int get_vm_ube_generation_number(uint64_t *gn) {
   if (allow_mocked_detection == 1) {
-    CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
-    *gn = override_vm_ube_generation_number;
-    CRYPTO_STATIC_MUTEX_unlock_read(&ube_testing_lock);
-    return 1;
+    int ret = 1;
+    CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
+    if (mocked_vm_ube_read_failures > 0) {
+      mocked_vm_ube_read_failures--;
+      ret = 0;
+    } else {
+      *gn = override_vm_ube_generation_number;
+    }
+    CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
+    return ret;
   }
 
   return CRYPTO_get_vm_ube_generation(gn);
@@ -97,7 +110,7 @@ static int get_fork_generation_number(uint64_t *gn) {
 struct ube_state {
   uint64_t generation_number;
   uint64_t cached_fork_gn;
-  uint32_t cached_vm_ube_gn;
+  uint64_t cached_vm_ube_gn;
 };
 static struct ube_state ube_global_state = { 0, 0, 0 };
 
@@ -106,7 +119,7 @@ static struct ube_state ube_global_state = { 0, 0, 0 };
 struct detection_gn {
 #define NUMBER_OF_DETECTION_GENERATION_NUMBERS 2
   uint64_t current_fork_gn;
-  uint32_t current_vm_ube_gn;
+  uint64_t current_vm_ube_gn;
 };
 
 // set_ube_detection_unavailable_once is the single mutation point of
@@ -129,12 +142,20 @@ static void ube_state_initialize(void) {
   ube_global_state.generation_number = 0;
   int ret_fork_gn = get_fork_generation_number(
                       &(ube_global_state.cached_fork_gn));
-  int ret_vm_ube_gn = get_vm_ube_generation_number(
-                          &(ube_global_state.cached_vm_ube_gn));
-
-  if (ret_fork_gn == 0 || ret_vm_ube_gn == 0) {
+  if (ret_fork_gn == 0) {
+    // Fork detection is required: if it is unexpectedly gone, detection is
+    // permanently disabled (see |ube_failed|).
     ube_failed();
+    return;
   }
+
+  // A vm_ube read failure here is transient (e.g. the vmclock seqlock did not
+  // settle within its time budget; see vm_ube_detect.c). It is not a reason
+  // to permanently disable detection -- see |ube_get_detection_generation_numbers|.
+  // |cached_vm_ube_gn| is left at its zero-initialized value; the first
+  // successful read afterward will look like a generation change and force
+  // one conservative reseed, which is safe.
+  get_vm_ube_generation_number(&(ube_global_state.cached_vm_ube_gn));
 }
 
 // ube_update_state updates the global state |ube_global_state| with the
@@ -154,8 +175,12 @@ static void ube_update_state(struct detection_gn *current_detection_gn) {
 // ube_get_detection_generation_numbers loads the current detection generation
 // numbers into |current_detection_gn|.
 //
-// Returns 1 on success and 0 otherwise. The 0 return value means that a
-// detection method we expected to be available, is in fact not.
+// Returns 1 on success. Returns 0 if fork detection -- which we expect to
+// always be available -- is not, which is permanent and must disable detection
+// (see |ube_failed|). Returns -1 if only the vm_ube read failed, which is
+// transient (e.g. a vmclock seqlock that did not settle within its time
+// budget): the caller must fail this one call, but must not disable detection,
+// because the next call can succeed.
 static int ube_get_detection_generation_numbers(
   struct detection_gn *current_detection_gn) {
 
@@ -164,13 +189,14 @@ static int ube_get_detection_generation_numbers(
   OPENSSL_STATIC_ASSERT(NUMBER_OF_DETECTION_GENERATION_NUMBERS == 2,
     not_handling_the_exact_number_of_detection_generation_numbers);
 
-  int ret_detect_gn = get_fork_generation_number(
-                        &(current_detection_gn->current_fork_gn));
-  int ret_vm_ube_gn = get_vm_ube_generation_number(
-                          &(current_detection_gn->current_vm_ube_gn));
-
-  if (ret_detect_gn == 0 || ret_vm_ube_gn == 0) {
+  if (get_fork_generation_number(
+        &(current_detection_gn->current_fork_gn)) == 0) {
     return 0;
+  }
+
+  if (get_vm_ube_generation_number(
+        &(current_detection_gn->current_vm_ube_gn)) == 0) {
+    return -1;
   }
 
   return 1;
@@ -223,8 +249,13 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // Each individual detection method will have their own concurrency controls
   // if needed.
 
-  if (ube_get_detection_generation_numbers(&current_detection_gn) != 1) {
+  int ret_detection_gn = ube_get_detection_generation_numbers(&current_detection_gn);
+  if (ret_detection_gn == 0) {
     ube_failed();
+    return 0;
+  }
+  if (ret_detection_gn == -1) {
+    // Transient vm_ube read failure -- fail this call only.
     return 0;
   }
   CRYPTO_STATIC_MUTEX_lock_read(&ube_lock);
@@ -246,8 +277,14 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // that had the first entry.
 
   CRYPTO_STATIC_MUTEX_lock_write(&ube_lock);
-  if (ube_get_detection_generation_numbers(&current_detection_gn) != 1) {
+  ret_detection_gn = ube_get_detection_generation_numbers(&current_detection_gn);
+  if (ret_detection_gn == 0) {
     ube_failed();
+    CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
+    return 0;
+  }
+  if (ret_detection_gn == -1) {
+    // Transient vm_ube read failure -- fail this call only.
     CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
     return 0;
   }
@@ -265,6 +302,11 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
 
   return 1;
+}
+
+int CRYPTO_ube_detection_unavailable(void) {
+  CRYPTO_once(&ube_state_initialize_once, ube_state_initialize);
+  return ube_detection_unavailable == 1 && allow_mocked_detection != 1;
 }
 
 // Synchronize writing to |allow_mocked_detection|. But only to more easily
@@ -285,4 +327,5 @@ void disable_mocked_ube_detection_FOR_TESTING(void) {
 
   set_fork_ube_generation_number_FOR_TESTING(0);
   set_vm_ube_generation_number_FOR_TESTING(0);
+  set_vm_ube_read_failures_FOR_TESTING(0);
 }
