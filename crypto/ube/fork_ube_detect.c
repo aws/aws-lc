@@ -48,11 +48,21 @@ static int ignore_inheritzero = 0;
 static CRYPTO_once_t fork_detect_ube_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX fork_detect_ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 
-// This value (pointed to) is |volatile| because the value pointed to may be
-// changed by external forces (i.e. the kernel wiping the page) thus the
-// compiler must not assume that it has exclusive access to it.
+// WIPEONFORK clears this mapped flag in the forked child when it is
+// single-threaded. Readers may race to rearm it after child threads start.
+// The generation is published before a release-store to the flag and then
+// remains fixed in that address-space copy; the flag requires lock-free
+// atomic access, while the generation is protected by this publication
+// protocol and the slow-path write lock. BSD retains the existing fallback.
+#if defined(OPENSSL_LINUX) && defined(OPENSSL_C11_ATOMIC) && \
+    ATOMIC_INT_LOCK_FREE == 2
+#define AWSLC_FORK_UBE_ATOMIC_FAST_PATH
+static _Atomic uint32_t *fork_detect_addr = NULL;
+static uint64_t fgn = 0;
+#else
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fgn = 0;
+#endif
 
 static int ignore_all_fork_ube_detection(void) {
 
@@ -215,9 +225,16 @@ static void init_fork_detect(void) {
   // might be available. Fail-open.
   init_fork_detect_methods_best_effort(addr, page_size);
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  _Atomic uint32_t *atomic_addr = (_Atomic uint32_t *)addr;
+  atomic_init(atomic_addr, 1);
+  fork_detect_addr = atomic_addr;
+  fgn = 1;
+#else
   *((volatile char *) addr) = 1;
   fork_detect_addr = addr;
   fgn = 1;
+#endif
 }
 
 uint64_t CRYPTO_get_fork_ube_generation(void) {
@@ -228,16 +245,19 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
   // is initialised atomically, even if multiple threads enter this function
   // concurrently.
   //
-  // In the limit, the kernel may clear e.g. WIPEONFORK pages while a
-  // multi-threaded process is running. (For example, because a VM was cloned.)
-  // Therefore a lock is used below to synchronize the potentially multiple
-  // threads that may concurrently observe the cleared flag.
+  // The kernel clears WIPEONFORK in the forked child while it is
+  // single-threaded. Multiple threads created later may observe the cleared
+  // flag together, so the slow-path update is serialized by a write lock.
   //
   // One cannot convert this to thread-local values to avoid locking. See e.g.
   // https://github.com/aws/s2n-tls/issues/3107.
   CRYPTO_once(&fork_detect_ube_once, init_fork_detect);
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  _Atomic uint32_t *const flag_ptr = fork_detect_addr;
+#else
   volatile char *const flag_ptr = fork_detect_addr;
+#endif
   if (flag_ptr == NULL) {
     // Our kernel does not support fork detection.
     return 0;
@@ -245,6 +265,26 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
 
   struct CRYPTO_STATIC_MUTEX *const lock = &fork_detect_ube_lock;
 
+#if defined(AWSLC_FORK_UBE_ATOMIC_FAST_PATH)
+  if (atomic_load_explicit(flag_ptr, memory_order_acquire) != 0) {
+    return fgn;
+  }
+
+  CRYPTO_STATIC_MUTEX_lock_write(lock);
+  uint64_t current_fgn = fgn;
+  if (atomic_load_explicit(flag_ptr, memory_order_relaxed) == 0) {
+    current_fgn++;
+    if (current_fgn == 0) {
+      current_fgn = 1;
+    }
+    // Publish the new generation before rearming the flag. An acquire
+    // load observing the rearmed flag must also see the new generation.
+    fgn = current_fgn;
+    atomic_store_explicit(flag_ptr, 1, memory_order_release);
+  }
+  CRYPTO_STATIC_MUTEX_unlock_write(lock);
+  return current_fgn;
+#else
   CRYPTO_STATIC_MUTEX_lock_read(lock);
   uint64_t current_fgn = fgn;
   if (*flag_ptr) {
@@ -268,6 +308,7 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
   CRYPTO_STATIC_MUTEX_unlock_write(lock);
 
   return current_fgn;
+#endif
 }
 
 #elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
