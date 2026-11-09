@@ -78,18 +78,16 @@ uint64_t armv8_get_dit(void) {
 uint64_t armv8_set_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t original_dit = armv8_get_dit();
-#if defined(OPENSSL_APPLE)
-    // Avoid repeating the barrier for nested DIT scopes.
+    // Avoid setting DIT again for nested scopes.
     if (original_dit == 1) {
       return original_dit;
     }
-#endif
     // Encoding of "msr dit, #1"
-    __asm__ volatile(".inst 0xd503415f");
+    __asm__ volatile(".inst 0xd503415f" ::: "memory");
 #if defined(OPENSSL_APPLE)
     // Apple recommends a speculation barrier after enabling DIT. Follow the
     // Darwin approach in https://go.dev/issue/77776, using SB when available.
-    if (OPENSSL_armcap_P & ARMV8_SB) {
+    if (CRYPTO_is_ARMv8_SB_capable()) {
       // Encoding of "sb", for compatibility with older assemblers.
       __asm__ volatile(".inst 0xd50330ff" ::: "memory");
     } else {
@@ -105,7 +103,7 @@ uint64_t armv8_set_dit(void) {
 void armv8_restore_dit(volatile uint64_t *original_dit) {
   if (*original_dit != 1 && CRYPTO_is_ARMv8_DIT_capable()) {
     // Encoding of "msr dit, #0"
-    __asm__ volatile(".inst 0xd503405f");
+    __asm__ volatile(".inst 0xd503405f" ::: "memory");
   }
 }
 
