@@ -24,6 +24,13 @@ permissions:
 # - OpenBSD: schedule only (daily)
 # - NetBSD: schedule only (daily)
 # Full test suite (including slow tests) runs on the daily schedule.
+#
+# Each lane boots its VM in a "Start VM" step and then runs the remaining steps inside the VM through
+# the cpa.sh shell that cross-platform-actions/action puts on the PATH. Keeping VM provisioning and
+# dependency installation in their own steps lets report-failures tell a lane that never reached
+# the tests (a VM image download or package mirror outage) apart from a genuine test failure. The
+# values of the variables named in environment_variables are read from the environment of each
+# step that runs in the VM, so they are set at the job level rather than on the Start VM step.
 
 jobs:
   freebsd:
@@ -39,18 +46,21 @@ jobs:
           - "14.2"
           - "15.0"
         include: ${{ github.event_name == 'schedule' && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.0"}]') || fromJSON('[]') }}
+    defaults:
+      run:
+        shell: cpa.sh {0}
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 90m
+      AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
+      AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
+      AWS_LC_NO_SLOW_TESTS: ${{ github.event_name != 'schedule' && '1' || '0' }}
+      GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: "recursive"
-      - name: Prepare VM
+      - name: Start VM
         uses: cross-platform-actions/action@v1.6.0
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 90m
-          AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
-          AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
-          AWS_LC_NO_SLOW_TESTS: ${{ github.event_name != 'schedule' && '1' || '0' }}
-          GOFLAGS: "-buildvcs=false"
         with:
           environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT AWS_LC_NO_SLOW_TESTS GOFLAGS"
           operating_system: freebsd
@@ -59,10 +69,12 @@ jobs:
           shell: bash
           memory: 12G
           cpu_count: 3
-          run: |
-            source tests/ci/retry_util.sh
-            retry_with_backoff sudo pkg install -y git gmake cmake go ninja
-            tests/ci/run_bsd_tests.sh
+      - name: Install dependencies
+        run: |
+          source tests/ci/retry_util.sh
+          retry_with_backoff sudo pkg install -y git gmake cmake go ninja
+      - name: Run tests
+        run: tests/ci/run_bsd_tests.sh
 
   OpenBSD:
     if: github.event_name == 'schedule'
@@ -73,12 +85,15 @@ jobs:
       matrix:
         arch: ["x86-64", "arm64"]
         version: ["7.5", "7.6"]
+    defaults:
+      run:
+        shell: cpa.sh {0}
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 120m
     steps:
       - uses: actions/checkout@v7
-      - name: OpenBSD
+      - name: Start VM
         uses: cross-platform-actions/action@e0b9770014ba65d5e0815f15b74031c3a635f641
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
           environment_variables: AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
@@ -87,39 +102,46 @@ jobs:
           architecture: ${{ matrix.arch }}
           version: "${{ matrix.version }}"
           shell: bash
-          run: |
-            set -x
-            source tests/ci/retry_util.sh
-            retry_with_backoff sudo pkg_add cmake ninja go gmake
-            sudo pfctl -d
-            mkdir "${HOME}/bin"
-            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
-            cat << EOF | sudo tee /etc/login.conf.d/unlimited
-            unlimited:\
-                :datasize-cur=infinity:\
-                :datasize-max=infinity:\
-                :stacksize-cur=infinity:\
-                :stacksize-max=infinity:\
-                :memoryuse-cur=infinity:\
-                :memoryuse-max=infinity:\
-                :maxproc-cur=infinity:\
-                :maxproc-max=infinity:\
-                :openfiles-cur=infinity:\
-                :openfiles-max=infinity:\
-                :cpuuse-cur=infinity:\
-                :cpuuse-max=infinity:\
-                :priority=0:\
-                :ignoretime:
-            EOF
-            sudo usermod -L unlimited runner
-            sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
-            set -x
-            export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
-            cd $(pwd)
-            export PATH="${HOME}/bin:${PATH}"
-            env
-            tests/ci/run_bsd_tests.sh
-            EOF
+      - name: Install dependencies
+        run: |
+          set -x
+          source tests/ci/retry_util.sh
+          retry_with_backoff sudo pkg_add cmake ninja go gmake
+          mkdir "${HOME}/bin"
+          ln -s /usr/local/bin/gmake "${HOME}/bin/make"
+      - name: Configure VM
+        run: |
+          set -x
+          sudo pfctl -d
+          cat << EOF | sudo tee /etc/login.conf.d/unlimited
+          unlimited:\
+              :datasize-cur=infinity:\
+              :datasize-max=infinity:\
+              :stacksize-cur=infinity:\
+              :stacksize-max=infinity:\
+              :memoryuse-cur=infinity:\
+              :memoryuse-max=infinity:\
+              :maxproc-cur=infinity:\
+              :maxproc-max=infinity:\
+              :openfiles-cur=infinity:\
+              :openfiles-max=infinity:\
+              :cpuuse-cur=infinity:\
+              :cpuuse-max=infinity:\
+              :priority=0:\
+              :ignoretime:
+          EOF
+          sudo usermod -L unlimited runner
+      - name: Run tests
+        run: |
+          set -x
+          sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
+          set -x
+          export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
+          cd $(pwd)
+          export PATH="${HOME}/bin:${PATH}"
+          env
+          tests/ci/run_bsd_tests.sh
+          EOF
 
   netbsd:
     if: github.repository_owner == 'aws' && github.event_name == 'schedule'
@@ -133,15 +155,18 @@ jobs:
           - "arm64"
         version:
           - "10.1"
+    defaults:
+      run:
+        shell: cpa.sh {0}
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 90m
+      GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: "recursive"
-      - name: Prepare VM
+      - name: Start VM
         uses: cross-platform-actions/action@e0b9770014ba65d5e0815f15b74031c3a635f641
-        env:
-          AWS_LC_GO_TEST_TIMEOUT: 90m
-          GOFLAGS: "-buildvcs=false"
         with:
           environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
           operating_system: netbsd
@@ -150,19 +175,24 @@ jobs:
           shell: bash
           memory: 12G
           cpu_count: 3
-          run: |
-            set -x
-            source tests/ci/retry_util.sh
-            export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
-            retry_with_backoff sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
-            ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
-            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
-            retry_with_backoff curl -fL -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
-            sudo mkdir -p /usr/local
-            sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
-            export GOROOT=/usr/local/go
-            export PATH="$PATH:$GOROOT/bin"
-            tests/ci/run_bsd_tests.sh
+      - name: Install dependencies
+        run: |
+          set -x
+          source tests/ci/retry_util.sh
+          export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
+          retry_with_backoff sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+          ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
+          export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+          retry_with_backoff curl -fL -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
+          sudo mkdir -p /usr/local
+          sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
+      - name: Run tests
+        run: |
+          set -x
+          export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+          export GOROOT=/usr/local/go
+          export PATH="$PATH:$GOROOT/bin"
+          tests/ci/run_bsd_tests.sh
 
   report-failures:
     name: report-failures
@@ -184,3 +214,7 @@ jobs:
       - uses: ./.github/actions/report-workflow-failures
         with:
           metric-name: BsdCiFailure
+          infrastructure-metric-name: BsdCiInfrastructureFailure
+          infrastructure-steps: |
+            Start VM
+            Install dependencies

@@ -10,6 +10,20 @@ inputs:
   metric-name:
     description: 'CloudWatch metric name (in the AWS-LC namespace) to publish the failed job count under'
     required: true
+  infrastructure-steps:
+    description: >-
+      Names of steps whose failure means the job never got as far as testing anything, for example
+      a step that boots a VM or installs packages from a mirror, one per line. A failed job all of
+      whose failed steps are listed here is not counted under metric-name; it is counted under
+      infrastructure-metric-name instead, when that is set.
+    required: false
+    default: ''
+  infrastructure-metric-name:
+    description: >-
+      CloudWatch metric name (in the AWS-LC namespace) to publish the number of jobs that failed
+      only in infrastructure-steps under. Nothing is published when this is empty.
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -18,15 +32,37 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
         INPUT_METRIC_NAME: ${{ inputs.metric-name }}
+        INPUT_INFRASTRUCTURE_STEPS: ${{ inputs.infrastructure-steps }}
+        INPUT_INFRASTRUCTURE_METRIC_NAME: ${{ inputs.infrastructure-metric-name }}
       run: |
         set -exo pipefail
-        # Count the number of failing tests, excluding tests which are allowed to fail.
-        failure_count=$(gh api --paginate \
+        # Each failed job (excluding those which are allowed to fail) is listed as "<kind> <job name>",
+        # where kind is "infrastructure" when every one of its failed steps is an infrastructure step
+        # and "test" otherwise. A job with no failed step at all (for example one whose runner was
+        # lost) is conservatively counted as a test failure.
+        failed_jobs=$(gh api --paginate \
           "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
-          --jq '.jobs[] | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not)) | .name' \
-          | wc -l | tr -d ' ')
+          --jq '
+            (env.INPUT_INFRASTRUCTURE_STEPS | split("\n") | map(select(. != ""))) as $infra
+            | .jobs[]
+            | select(.conclusion == "failure" and (.name | endswith("-allow-failure") | not))
+            | ([.steps[] | select(.conclusion == "failure") | .name]) as $failed_steps
+            | (if ($failed_steps | length) > 0 and (($failed_steps - $infra) | length) == 0
+               then "infrastructure" else "test" end) as $kind
+            | "\($kind) \(.name)"')
+        echo "Failed jobs:"
+        echo "${failed_jobs}"
+        failure_count=$(printf '%s\n' "${failed_jobs}" | grep -c '^test ' || true)
+        infrastructure_failure_count=$(printf '%s\n' "${failed_jobs}" | grep -c '^infrastructure ' || true)
 
         aws cloudwatch put-metric-data \
           --namespace AWS-LC \
           --metric-name "${INPUT_METRIC_NAME}" \
           --value "$failure_count"
+
+        if [ -n "${INPUT_INFRASTRUCTURE_METRIC_NAME}" ]; then
+          aws cloudwatch put-metric-data \
+            --namespace AWS-LC \
+            --metric-name "${INPUT_INFRASTRUCTURE_METRIC_NAME}" \
+            --value "$infrastructure_failure_count"
+        fi
