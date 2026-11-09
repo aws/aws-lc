@@ -5,6 +5,7 @@ import shlex
 import threading
 import unicodedata
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
@@ -63,12 +64,25 @@ def _runs_or_writes(arg: str) -> bool:
     return name.startswith("-") and "O" in name
 
 
+class Outcome(StrEnum):
+    SAFE = "safe"
+    REPLAY_FAILED = "replay_failed"
+    BREAKS_RULES = "breaks_rules"
+    UNRELATED = "unrelated"
+    UNSAFE = "unsafe"
+    INCONCLUSIVE = "inconclusive"
+
+
 class ReviewVerdict(BaseModel):
     """The reviewer agent's verdict, which Strands makes it return as structured output.
 
-    safe decides if a PR opens.
+    Only a safe outcome opens a PR.
     """
-    safe: bool
+    outcome: Outcome
+
+    @property
+    def safe(self) -> bool:
+        return self.outcome is Outcome.SAFE
 
 
 class _BedrockRetry(ModelRetryStrategy):
@@ -137,7 +151,7 @@ class Harness:
         """
         self.sandbox = Sandbox(self.work_dir, self.target, registry)
 
-        instructions = (_PROMPTS / "agent.md").read_text().format(
+        instructions = (_PROMPTS / "repair-agent.md").read_text().format(
             name=self.target.name,
             version=self.target.version,
             root=self.sandbox.root,
@@ -223,8 +237,10 @@ class Harness:
         replay = ReplayResult.model_validate_json((self.out / "replay.json").read_text())
         diff, description = (self.out / "changes.diff").read_text(), (self.out / "description.md").read_text()
 
-        if not (replay.passed and self._follows_rules(diff, description)):
-            verdict = ReviewVerdict(safe=False)
+        if not replay.passed:
+            verdict = ReviewVerdict(outcome=Outcome.REPLAY_FAILED)
+        elif not self._follows_rules(diff, description):
+            verdict = ReviewVerdict(outcome=Outcome.BREAKS_RULES)
         else:
             logs = "\n".join(f"- `{log.name}`: {len(log.read_text().splitlines())} lines"
                              for log in self.logs.values())
@@ -233,7 +249,7 @@ class Harness:
 
             verdict = self._run_agent(
                 "review",
-                (_PROMPTS / "review.md").read_text(),
+                (_PROMPTS / "review-agent.md").read_text(),
                 message,
                 _TIMEOUT,
                 structured_output_model=ReviewVerdict,

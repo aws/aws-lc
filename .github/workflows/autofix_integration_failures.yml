@@ -112,10 +112,15 @@ jobs:
         with:
           oidcRole: AwsLcGitHubActionsAutofixOidcRole
           roleName: AwsLcGitHubActionsBedrockRole
-      - name: Block containers from the instance and CodeBuild credential endpoints
+      - name: Block containers from the credential endpoints and private networks, except DNS
         run: |
           sudo iptables -I DOCKER-USER -d 169.254.169.254 -j DROP
           sudo iptables -I DOCKER-USER -d 169.254.170.2 -j DROP
+          for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do
+            sudo iptables -I DOCKER-USER -i docker0 -d "$net" -j DROP
+          done
+          sudo iptables -I DOCKER-USER -i docker0 -p udp --dport 53 -j ACCEPT
+          sudo iptables -I DOCKER-USER -i docker0 -p tcp --dport 53 -j ACCEPT
       - name: Fix the integration and replay the fix
         working-directory: tests/ci/integration
         env:
