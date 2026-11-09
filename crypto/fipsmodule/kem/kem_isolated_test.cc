@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
+
 #include <openssl/bytestring.h>
 #include <openssl/ctrdrbg.h>
 #include <openssl/evp.h>
@@ -58,26 +60,31 @@ static const char *kMLKEM512ExpandedPEM =
     "JCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\n"
     "-----END PRIVATE KEY-----\n";
 
-
 // |rand_bytes_core| queries the prediction resistance source on every
 // |RAND_bytes| call, so counting those queries counts the calls themselves.
 // The count is per thread, and the test runs in a fresh thread whose DRBG state
-// is created from the overridden entropy source.
+// is created from the overridden entropy source. The sources fill their output
+// with fixed bytes: the DRBG output reaches ML-KEM, so leaving it uninitialized
+// would trip MemorySanitizer.
 static thread_local size_t rand_bytes_calls = 0;
 
 static int overrideInitialize(struct entropy_source_t *) { return 1; }
 static void overrideZeroizeThread(struct entropy_source_t *) {}
 static void overrideFreeThread(struct entropy_source_t *) {}
 static int overrideGetSeed(const struct entropy_source_t *,
-                           uint8_t[CTR_DRBG_ENTROPY_LEN]) {
+                           uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  memset(seed, 0x01, CTR_DRBG_ENTROPY_LEN);
   return 1;
 }
 static int overrideGetExtraEntropy(const struct entropy_source_t *,
-                                   uint8_t[CTR_DRBG_ENTROPY_LEN]) {
+                                   uint8_t extra[CTR_DRBG_ENTROPY_LEN]) {
+  memset(extra, 0x02, CTR_DRBG_ENTROPY_LEN);
   return 1;
 }
 static int overrideGetPredictionResistance(
-    const struct entropy_source_t *, uint8_t[RAND_PRED_RESISTANCE_LEN]) {
+    const struct entropy_source_t *,
+    uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
+  memset(pred_resistance, 0x03, RAND_PRED_RESISTANCE_LEN);
   rand_bytes_calls++;
   return 1;
 }
