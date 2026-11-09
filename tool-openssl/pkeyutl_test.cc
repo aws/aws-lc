@@ -189,26 +189,31 @@ TEST_F(PKeyUtlTest, DecryptWithEncryptedPrivateKey) {
   RemoveFile(decrypted_path);
 }
 
-TEST_F(PKeyUtlTest, DecryptWithWrongKeyFails) {
+TEST_F(PKeyUtlTest, DecryptInvalidCiphertextFails) {
   args_list_t encrypt_args = {"-encrypt", "-pubin", "-inkey", pubkey_path,
                               "-in",      in_path,  "-out",   out_path};
   ASSERT_EQ(kToolExitSuccess, pkeyutlTool(encrypt_args));
 
-  char wrong_key_path[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(wrong_key_path), 0u);
-  bssl::UniquePtr<EVP_PKEY> wrong_key(CreateTestKey(2048));
-  ASSERT_TRUE(wrong_key);
+  // Wrong-key PKCS#1 v1.5 decryption may accidentally produce valid padding.
+  // A zero ciphertext is deterministically rejected by RSA decryption.
+  const size_t ciphertext_len = ReadFileToString(out_path).size();
+  ASSERT_GT(ciphertext_len, 0u);
+  const std::vector<uint8_t> invalid_ciphertext(ciphertext_len, 0);
   {
-    ScopedFILE wrong_key_file(fopen(wrong_key_path, "wb"));
-    ASSERT_TRUE(wrong_key_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(wrong_key_file.get(), wrong_key.get(),
-                                     nullptr, nullptr, 0, nullptr, nullptr));
+    ScopedFILE ciphertext_file(fopen(out_path, "wb"));
+    ASSERT_TRUE(ciphertext_file);
+    ASSERT_EQ(fwrite(invalid_ciphertext.data(), 1, invalid_ciphertext.size(),
+                     ciphertext_file.get()),
+              invalid_ciphertext.size());
   }
 
-  args_list_t decrypt_args = {"-decrypt", "-inkey", wrong_key_path, "-in",
+  args_list_t decrypt_args = {"-decrypt", "-inkey", key_path, "-in",
                               out_path,   "-out",   sig_path};
+  testing::internal::CaptureStderr();
   EXPECT_EQ(kToolExitFailure, pkeyutlTool(decrypt_args));
-  RemoveFile(wrong_key_path);
+  EXPECT_NE(
+      testing::internal::GetCapturedStderr().find("failed to decrypt data"),
+      std::string::npos);
 }
 
 // A signature that does not match the input exits nonzero.
