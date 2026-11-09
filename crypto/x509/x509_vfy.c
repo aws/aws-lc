@@ -11,6 +11,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
+#include <openssl/sha.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
@@ -77,6 +78,7 @@ static int check_id(X509_STORE_CTX *ctx);
 static int check_trust(X509_STORE_CTX *ctx);
 static int check_revocation(X509_STORE_CTX *ctx);
 static int check_cert(X509_STORE_CTX *ctx);
+static int check_blocked_spki(X509_STORE_CTX *ctx);
 static int check_policy(X509_STORE_CTX *ctx);
 
 static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x);
@@ -450,6 +452,11 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
     goto end;
   }
 
+  ok = check_blocked_spki(ctx);
+  if (!ok) {
+    goto end;
+  }
+
   // At this point, we have a chain and need to verify it
   ok = internal_verify(ctx);
   if (!ok) {
@@ -620,6 +627,26 @@ static int check_curve_decoded_by_name(X509 *x) {
   return !is_explicit;
 }
 
+// has_unprocessed_critical_crldp returns one if |x|, at |depth| in the chain,
+// has a critical CRL distribution points extension that will not be processed
+// because CRL checking is not enabled for |x|, and zero otherwise.
+//
+// |X509_supported_extension| treats CRL distribution points as supported for
+// compatibility with OpenSSL 1.1.1, but AWS-LC only processes the extension
+// during CRL checking. RFC 5280 Section 4.2 requires rejecting a critical
+// extension containing information that cannot be processed.
+static int has_unprocessed_critical_crldp(const X509_STORE_CTX *ctx, X509 *x,
+                                          int depth) {
+  unsigned long flags = ctx->param->flags;
+  // This matches the certificates checked by |check_revocation|.
+  if ((flags & X509_V_FLAG_CRL_CHECK) &&
+      ((flags & X509_V_FLAG_CRL_CHECK_ALL) || depth == 0)) {
+    return 0;
+  }
+  int idx = X509_get_ext_by_NID(x, NID_crl_distribution_points, -1);
+  return idx >= 0 && X509_EXTENSION_get_critical(X509_get_ext(x, idx));
+}
+
 // Check a certificate chains extensions for consistency with the supplied
 // purpose
 
@@ -639,6 +666,15 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
         // AWS-LC specific logic for enabling custom unknown critical
         // extensions.
         !check_custom_critical_extensions(ctx, x)) {
+      ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
+      ctx->error_depth = i;
+      ctx->current_cert = x;
+      ok = call_verify_cb(0, ctx);
+      if (!ok) {
+        goto end;
+      }
+    } else if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
+               has_unprocessed_critical_crldp(ctx, x, i)) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -753,7 +789,10 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
       NAME_CONSTRAINTS *nc = sk_X509_value(ctx->chain, j)->nc;
       if (nc) {
         rv = NAME_CONSTRAINTS_check(x, nc);
-        if (rv == X509_V_OK &&
+        // Only the CN of the target certificate may be used as a DNS identity
+        // by hostname verification; intermediate CNs are not hostname
+        // identities.
+        if (rv == X509_V_OK && i == 0 &&
             (ctx->param->hostflags & X509_CHECK_FLAG_NEVER_CHECK_SUBJECT) ==
                 0 &&
             ((ctx->param->hostflags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) !=
@@ -925,6 +964,105 @@ err:
   X509_CRL_free(crl);
   ctx->current_crl = NULL;
   return ok;
+}
+
+// blocked_spkis contains the SHA-256 digests of the DER-encoded
+// SubjectPublicKeyInfos that are rejected regardless of revocation or trust
+// configuration. For more information, see:
+//  - https://github.com/aws/aws-lc/issues/3679
+//  - P542986882
+//
+// Every entry below is a P-384 key, whose SubjectPublicKeyInfo encodes to
+// |blocked_spki_len| bytes, which lets keys of any other size skip the digest.
+// If entries encoding to a different length are needed at some point, this
+// needs another implementation.
+static const int blocked_spki_len = 120;
+
+static const uint8_t blocked_spkis[][SHA256_DIGEST_LENGTH] = {
+    {0x43, 0xbf, 0xfa, 0x19, 0xd6, 0xef, 0x65, 0x14, 0x51, 0xf6, 0x84,
+     0x1e, 0x01, 0x99, 0x31, 0xe9, 0x6f, 0x6f, 0x2e, 0xae, 0xff, 0x28,
+     0xab, 0x4b, 0x6f, 0x1c, 0xe4, 0x57, 0x6d, 0xe2, 0x71, 0x7b},
+    {0x49, 0xdd, 0x35, 0x3d, 0xc2, 0xb9, 0x19, 0xa3, 0x77, 0x06, 0x45,
+     0x11, 0x7d, 0x0e, 0x60, 0xc1, 0x61, 0x15, 0xe7, 0xd1, 0xbc, 0x25,
+     0x9e, 0xef, 0xe7, 0x34, 0xb0, 0x0e, 0xa4, 0x34, 0xfe, 0x5f},
+    {0x5c, 0x06, 0x60, 0xa2, 0xb1, 0x64, 0x91, 0x0d, 0x8f, 0xf5, 0x89,
+     0xc1, 0x8e, 0x14, 0x55, 0x2e, 0x9e, 0x0e, 0xc2, 0x37, 0xdc, 0xef,
+     0xe2, 0xcb, 0x73, 0x6d, 0x41, 0xa4, 0x81, 0x1f, 0x81, 0xa0},
+    {0x63, 0xec, 0xef, 0xee, 0x43, 0x1d, 0x49, 0x52, 0x3b, 0xc1, 0x13,
+     0x6c, 0x4e, 0x72, 0xd0, 0x20, 0x6a, 0x47, 0x70, 0x86, 0xca, 0xf6,
+     0x06, 0xcd, 0x5c, 0xf0, 0x25, 0x68, 0x6c, 0x10, 0x9c, 0xf8},
+    {0x92, 0xc0, 0x63, 0xd6, 0x7e, 0x8f, 0x14, 0xdb, 0x71, 0xd2, 0x88,
+     0xe1, 0x12, 0x66, 0xff, 0xda, 0xf6, 0x9c, 0xbf, 0x11, 0x5f, 0x7b,
+     0xab, 0x14, 0xf3, 0xbc, 0x2f, 0x68, 0xd2, 0x5e, 0x0e, 0x30},
+    {0xe0, 0x25, 0x4c, 0x7f, 0xcd, 0xc2, 0x65, 0xe2, 0xf0, 0xf8, 0xa4,
+     0x28, 0xda, 0xbb, 0x75, 0xab, 0x4a, 0xe0, 0x39, 0xb4, 0x87, 0x2d,
+     0x62, 0xf5, 0xee, 0x57, 0xf0, 0x87, 0x7d, 0x5a, 0x8a, 0x41},
+    {0xeb, 0xed, 0x64, 0x75, 0xc2, 0xc2, 0xd8, 0x0f, 0xcb, 0x19, 0x9f,
+     0x3f, 0xe8, 0xdd, 0x6e, 0x6b, 0x3c, 0xe6, 0x0b, 0x77, 0xeb, 0x15,
+     0xd4, 0xe4, 0x2c, 0x3d, 0xec, 0x0c, 0x6f, 0x5b, 0x51, 0x05},
+    {0xec, 0x4f, 0xfa, 0x1a, 0xd0, 0xac, 0x88, 0x08, 0x13, 0x14, 0xb7,
+     0xaa, 0xff, 0xef, 0x6a, 0x91, 0xf9, 0x7c, 0xd5, 0x72, 0x91, 0xbb,
+     0x5b, 0xa6, 0x86, 0xc5, 0x41, 0x5f, 0x5e, 0xb4, 0xf6, 0xb6},
+};
+
+// spki_is_blocked sets |*out_blocked| to one if the public key of |x| is in
+// |blocked_spkis| and to zero otherwise. It returns one on success and zero if
+// the public key could not be marshalled.
+static int spki_is_blocked(const X509 *x, int *out_blocked) {
+  *out_blocked = 0;
+  X509_PUBKEY *pubkey = X509_get_X509_PUBKEY(x);
+  if (pubkey == NULL) {
+    return 0;
+  }
+  // Ask for the length first. Nothing of a different size can match, so most
+  // keys never need to be marshalled or hashed.
+  int spki_len = i2d_X509_PUBKEY(pubkey, NULL);
+  if (spki_len <= 0) {
+    return 0;
+  }
+  if (spki_len != blocked_spki_len) {
+    return 1;
+  }
+
+  uint8_t *spki = NULL;
+  if (i2d_X509_PUBKEY(pubkey, &spki) != spki_len) {
+    OPENSSL_free(spki);
+    return 0;
+  }
+  uint8_t spki_hash[SHA256_DIGEST_LENGTH];
+  SHA256(spki, (size_t)spki_len, spki_hash);
+  OPENSSL_free(spki);
+
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(blocked_spkis); i++) {
+    if (OPENSSL_memcmp(spki_hash, blocked_spkis[i], SHA256_DIGEST_LENGTH) ==
+        0) {
+      *out_blocked = 1;
+      break;
+    }
+  }
+  return 1;
+}
+
+// check_blocked_spki rejects chains containing a certificate whose public key
+// is in |blocked_spkis|.
+static int check_blocked_spki(X509_STORE_CTX *ctx) {
+  for (size_t i = 0; i < sk_X509_num(ctx->chain); i++) {
+    X509 *x = sk_X509_value(ctx->chain, i);
+    int blocked;
+    if (!spki_is_blocked(x, &blocked)) {
+      ctx->error = X509_V_ERR_OUT_OF_MEM;
+      return 0;
+    }
+    if (blocked) {
+      ctx->current_cert = x;
+      ctx->error_depth = (int)i;
+      ctx->error = X509_V_ERR_CERT_REJECTED;
+      if (!call_verify_cb(0, ctx)) {
+        return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 // Check CRL times against values in X509_STORE_CTX

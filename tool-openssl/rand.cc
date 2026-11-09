@@ -92,9 +92,16 @@ int randTool(const args_list_t &args) {
   unsigned long long remaining = num;
 
   if (base64) {
-    BIO *bio_out = BIO_new_fp(out_file, BIO_NOCLOSE);
+    int bio_close = out_scoped ? BIO_CLOSE : BIO_NOCLOSE;
+    BIO *bio_out = BIO_new_fp(out_file, bio_close);
+    if (bio_out && out_scoped) {
+      out_scoped.release();
+    }
     BIO *b64 = BIO_new(BIO_f_base64());
     if (!bio_out || !b64) {
+      if (bio_out != nullptr && bio_close == BIO_CLOSE) {
+        out_file = nullptr;
+      }
       BIO_free(bio_out);
       BIO_free(b64);
       fprintf(stderr, "error: failed to create BIO\n");
@@ -122,6 +129,9 @@ int randTool(const args_list_t &args) {
         ret = kToolExitFailure;
       }
       BIO_free_all(b64);
+      if (bio_close == BIO_CLOSE) {
+        out_file = nullptr;
+      }
     }
   } else if (hex) {
     while (remaining > 0 && ret == kToolExitSuccess) {
@@ -164,7 +174,7 @@ int randTool(const args_list_t &args) {
     }
   }
 
-  if (ret == kToolExitSuccess && fflush(out_file) != 0) {
+  if (out_file && ret == kToolExitSuccess && fflush(out_file) != 0) {
     fprintf(stderr, "error: failed to flush output: %s\n", strerror(errno));
     ret = kToolExitFailure;
   }

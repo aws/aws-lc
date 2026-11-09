@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-#include "internal/backend.h"
+#include "boundary.h"
 
 void awslc_prov_error_clear(void) {
   ERR_clear_error();

@@ -75,26 +75,6 @@ static bssl::UniquePtr<EC_KEY> ECDSAFromPEM(const char *pem) {
       PEM_read_bio_ECPrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-static bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
-  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  for (;;) {
-    bssl::UniquePtr<X509> cert = bssl::UniquePtr<X509>(
-        PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-    if (cert == nullptr) {
-      break;
-    }
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
-      return nullptr;
-    }
-  }
-  return stack;
-}
-
 static bssl::UniquePtr<OCSP_RESPONSE> LoadOCSP_RESPONSE(
     bssl::Span<const uint8_t> der) {
   const uint8_t *ptr = der.data();
