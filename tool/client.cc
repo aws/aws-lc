@@ -747,10 +747,17 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
     SSL_CTX_set_keylog_callback(ctx.get(), KeyLogCallback);
   }
 
-  if (args_map.count("-cipher") != 0 &&
-      !SSL_CTX_set_strict_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
-    fprintf(stderr, "Failed setting cipher list\n");
-    return false;
+  if (args_map.count("-cipher") != 0) {
+    // Match OpenSSL s_client by skipping unknown cipher names; bssl is strict.
+    const int cipher_list_ok =
+        is_openssl_s_client
+            ? SSL_CTX_set_cipher_list(ctx.get(), args_map["-cipher"].c_str())
+            : SSL_CTX_set_strict_cipher_list(
+                  ctx.get(), args_map["-cipher"].c_str());
+    if (!cipher_list_ok) {
+      fprintf(stderr, "Failed setting cipher list\n");
+      return false;
+    }
   }
 
   if (args_map.count("-curves") != 0 &&
