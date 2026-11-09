@@ -3506,6 +3506,14 @@ TEST(X509Test, NameConstraintsWildcardCN) {
     EXPECT_EQ(t.expected,
               Verify(leaf_boundary.get(),
                      {t.excluded ? root_excl.get() : root.get()}, {}, {}, 0));
+    EXPECT_EQ(
+        t.expected,
+        Verify(leaf_boundary.get(),
+               {t.excluded ? root_excl.get() : root.get()}, {}, {}, 0,
+               [&](X509_STORE_CTX *ctx) {
+                 ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                     X509_STORE_CTX_get0_param(ctx), t.cn, strlen(t.cn)));
+               }));
   }
 }
 

@@ -355,6 +355,8 @@ Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
 
 Under DNS name constraints, AWS-LC checks DNS-shaped leaf CNs that OpenSSL skips, including ones with boundary hyphens or a trailing dot (e.g. `a-.example.com`, `www.example.com.`), and rejects them with `X509_V_ERR_UNSUPPORTED_NAME_SYNTAX` if they contain whitespace, control characters, or non-ASCII bytes (e.g. `Example Co. Ltd.`).
 
+For compatibility, single-label CNs (`intranet`, `intranet.`), CNs containing a colon (`www.example.com:443`, `www.example.com:443.`) or other punctuation such as `!` (`www.example.com!`), and CNs with empty labels (`www..example.com`, `www.example.com..`) remain exempt from DNS name constraints. When CN fallback is used, these names can still match the requested hostname and pass certificate verification even when the CA permits only `example.net` or excludes all DNS names. The boundary-hyphen and trailing-dot fix does not remove these legacy exemptions.
+
 ### libcrypto No-ops
 
 <table border=0 cellspacing=0 cellpadding=0
