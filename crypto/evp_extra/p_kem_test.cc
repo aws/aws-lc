@@ -2104,13 +2104,73 @@ TEST(KEMTest, ParsePrivateKeyBothInvalidLength) {
   CBS good_cbs;
   CBS_init(&good_cbs, good.data(), good.size());
   EXPECT_TRUE(bssl::UniquePtr<EVP_PKEY>(EVP_parse_private_key(&good_cbs)));
+}
 
-  // Truncated DER stays covered as separate malformed-input coverage: the |both|
-  // SEQUENCE contents no longer parse as two complete OCTET STRINGs.
+// Re-encodes |der| with the last byte of its |both| SEQUENCE dropped, but
+// re-wrapped in a privateKey OCTET STRING sized to what remains. The PKCS#8
+// envelope therefore stays well-formed, and only the CHOICE element inside it
+// is truncated.
+static bool TruncateBothInsidePrivateKey(const uint8_t *der, size_t der_len,
+                                         std::vector<uint8_t> *out) {
+  CBS pkcs8, algorithm, private_key;
+  uint64_t version = 0;
+  CBS_init(&pkcs8, der, der_len);
+  if (!CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&pkcs8, &version) ||
+      !CBS_get_asn1_element(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
+      !CBS_peek_asn1_tag(&private_key, CBS_ASN1_SEQUENCE) ||
+      CBS_len(&private_key) == 0) {
+    return false;
+  }
+
+  bssl::ScopedCBB cbb;
+  CBB seq, pk;
+  if (!CBB_init(cbb.get(), der_len) ||
+      !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, version) ||
+      !CBB_add_bytes(&seq, CBS_data(&algorithm), CBS_len(&algorithm)) ||
+      !CBB_add_asn1(&seq, &pk, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&pk, CBS_data(&private_key), CBS_len(&private_key) - 1) ||
+      !CBB_flush(cbb.get())) {
+    return false;
+  }
+
+  uint8_t *buf = nullptr;
+  size_t buf_len = 0;
+  if (!CBB_finish(cbb.get(), &buf, &buf_len)) {
+    return false;
+  }
+  out->assign(buf, buf + buf_len);
+  OPENSSL_free(buf);
+  return true;
+}
+
+// A |both| SEQUENCE that declares more bytes than the privateKey OCTET STRING
+// holds. Truncating the whole DER instead would fail on the outer PKCS#8
+// SEQUENCE in |EVP_parse_private_key| and never reach |kem_priv_decode|, so the
+// error's origin is checked to confirm the rejection happens there.
+TEST(KEMTest, ParsePrivateKeyBothTruncatedInsidePrivateKey) {
+  uint8_t *der = nullptr;
+  long der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(mlkem_512_priv_both_pem_str, &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  std::vector<uint8_t> bad;
+  ASSERT_TRUE(TruncateBothInsidePrivateKey(der, der_len, &bad));
+
   ERR_clear_error();
   CBS cbs;
-  CBS_init(&cbs, der, der_len - 1);
+  CBS_init(&cbs, bad.data(), bad.size());
   EXPECT_FALSE(bssl::UniquePtr<EVP_PKEY>(EVP_parse_private_key(&cbs)));
+  const char *file = nullptr;
+  int line = 0;
+  uint32_t err = ERR_get_error_line(&file, &line);
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_DECODE_ERROR);
+  ASSERT_TRUE(file);
+  EXPECT_TRUE(std::string(file).find("p_kem_asn1.c") != std::string::npos)
+      << "error raised from " << file << ":" << line;
   ERR_clear_error();
 }
 

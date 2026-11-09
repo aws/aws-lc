@@ -148,8 +148,10 @@ int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
 // catches corruption of dk_PKE the hash check cannot see.
 //
 // Those checks are invoked directly rather than through |KEM_check_key| so the
-// PCT can use deterministic coins, taken from the H(ek) embedded in |in|.
-// Parsing a private key therefore draws no randomness.
+// PCT can use deterministic coins, taken from the H(ek) embedded in |in|, so
+// the import itself draws no randomness. In FIPS builds the first call in a
+// process still runs the lazy ML-KEM self-test, whose key-generation KAT draws
+// from the RNG; once it has run, later imports draw none.
 //
 // NOTE: |in| must hold |key->kem->secret_key_len| bytes. |key->kem| must be
 //       initialized and |key->public_key| and |key->secret_key| must both be

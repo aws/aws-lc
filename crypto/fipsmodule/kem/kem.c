@@ -299,6 +299,11 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 }
 
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
+  // Key generation from |seed| reaches the low-level keygen method directly
+  // rather than through |EVP_PKEY_keygen|, and |EVP_parse_private_key| does not
+  // establish DIT either, so set it here.
+  SET_DIT_AUTO_RESET;
+
   if (key == NULL || seed == NULL || key->kem == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -405,8 +410,10 @@ static int kem_check_secret_key(const KEM_KEY *key) {
 }
 
 // |coins| selects the encapsulation randomness: NULL draws it from the RNG, and
-// a non-NULL buffer of |kem->encaps_seed_len| bytes makes the test deterministic
-// so a caller on a pure-parsing path need not depend on the RNG.
+// a non-NULL buffer of |kem->encaps_seed_len| bytes makes the test itself
+// deterministic. That removes only the test's own RNG draw: in FIPS builds the
+// first encaps/decaps call in a process also runs the lazy ML-KEM self-test,
+// whose key-generation KAT runs a randomized pairwise consistency test.
 static int kem_check_pct(const KEM_KEY *key, const uint8_t *coins) {
   int ret = 0;
   const KEM *kem = key->kem;
@@ -516,6 +523,11 @@ end:
 
 int KEM_KEY_set_raw_keypair_from_both(KEM_KEY *key, const CBS *seed,
                                       const CBS *expanded_key) {
+  // The low-level keygen and the |CRYPTO_memcmp| over the full secret key below
+  // are not reached through any EVP entry point that establishes DIT, so set it
+  // here as |KEM_KEY_set_raw_keypair_from_seed| does.
+  SET_DIT_AUTO_RESET;
+
   if (key == NULL || seed == NULL || expanded_key == NULL ||
       key->kem == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
@@ -626,11 +638,13 @@ int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in) {
   }
 
   // Deliberately not |KEM_check_key|: its pairwise consistency test draws the
-  // encapsulation randomness from the RNG, and parsing a private key should not
-  // depend on it. The same checks run here, with the PCT made deterministic by
-  // using the H(ek) already embedded in the decapsulation key as the coins.
-  // H(ek) is public, key-dependent, and validated by |kem_check_secret_key|
-  // immediately above, so this neither leaks nor fixes a single global target.
+  // encapsulation randomness from the RNG on every call, and parsing a private
+  // key should not depend on it. The same checks run here, with the PCT made
+  // deterministic by using the H(ek) already embedded in the decapsulation key
+  // as the coins. H(ek) is public, key-dependent, and validated by
+  // |kem_check_secret_key| immediately above, so this neither leaks nor fixes a
+  // single global target. In FIPS builds the first import in a process still
+  // draws from the RNG through the lazy ML-KEM self-test; see |kem_check_pct|.
   //
   // The helpers queue their own errors, so none are added here.
   FIPS_service_indicator_lock_state();
