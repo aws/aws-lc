@@ -37,11 +37,22 @@ jobs:
         with:
           name: autofix-${{ matrix.name }}
           path: ${{ env.OUT }}
-      - name: Commit the fix
+      - name: Apply the fix
         working-directory: aws-lc-fix
         run: |
           test -f "$OUT/pr.md"
           git apply --index "$OUT/changes.diff"
+      - name: Check the fix edits only the runner and its patch files
+        working-directory: aws-lc-fix
+        env:
+          RUNNER: tests/ci/integration/run_${{ matrix.target.name }}_integration.sh
+        run: |
+          git diff --cached --name-only --no-renames --exit-code -- \
+            ":(exclude)$RUNNER" ":(exclude,glob)tests/ci/integration/**/*.patch" ||
+            { echo "::error::The fix edits the files above, outside the runner and its patch files."; exit 1; }
+      - name: Commit the fix
+        working-directory: aws-lc-fix
+        run: |
           git -c core.hooksPath=/dev/null -c user.name=acl-ci-autofix -c user.email=acl-ci-autofix@users.noreply.github.com \
             commit -qm "$MESSAGE"
       - name: Load shared AWS settings
