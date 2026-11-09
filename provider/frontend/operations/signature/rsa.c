@@ -270,7 +270,7 @@ static int awslc_prov_rsa_sig_parse_params(const AWSLC_PROV_CTX *provctx,
                                            int digest_fixed,
                                            const char *fixed_digest,
                                            AWSLC_PROV_RSA_SIG_PARAMS *out) {
-  memset(out, 0, sizeof(*out));
+  awslc_prov_cleanse(out, sizeof(*out));
   if (params == NULL) {
     return 1;
   }
