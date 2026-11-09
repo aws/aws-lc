@@ -215,6 +215,10 @@ jobs:
         with:
           metric-name: BsdCiFailure
           infrastructure-metric-name: BsdCiInfrastructureFailure
+          # Only steps that can fail transiently for reasons outside this repository (fetching and
+          # booting the VM image, installing packages from a mirror) are listed. OpenBSD's "Configure
+          # VM" step only changes local settings in the VM, so a failure there means the workflow
+          # needs fixing and is left to count under BsdCiFailure.
           infrastructure-steps: |
             Start VM
             Install dependencies

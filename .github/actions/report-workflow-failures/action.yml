@@ -12,10 +12,12 @@ inputs:
     required: true
   infrastructure-steps:
     description: >-
-      Names of steps whose failure means the job never got as far as testing anything, for example
-      a step that boots a VM or installs packages from a mirror, one per line. A failed job all of
-      whose failed steps are listed here is not counted under metric-name; it is counted under
-      infrastructure-metric-name instead, when that is set.
+      Names of steps that run before anything is tested and can fail transiently for reasons
+      outside this repository, for example a step that fetches and boots a VM image or installs
+      packages from a mirror, one per line. A failed job all of whose failed steps are listed here
+      is not counted under metric-name; it is counted under infrastructure-metric-name instead,
+      when that is set. A setup step that only fails when the workflow itself is broken should
+      not be listed, so that it keeps counting under metric-name.
     required: false
     default: ''
   infrastructure-metric-name:
@@ -38,8 +40,8 @@ runs:
         set -exo pipefail
         # Each failed job (excluding those which are allowed to fail) is listed as "<kind> <job name>",
         # where kind is "infrastructure" when every one of its failed steps is an infrastructure step
-        # and "test" otherwise. A job with no failed step at all (for example one whose runner was
-        # lost) is conservatively counted as a test failure.
+        # and "test" otherwise. A failed job with no failed step is conservatively counted as a test
+        # failure, so that a failure which cannot be attributed to a step still alarms.
         failed_jobs=$(gh api --paginate \
           "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
           --jq '
