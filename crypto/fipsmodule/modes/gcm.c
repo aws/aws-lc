@@ -139,7 +139,7 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          (const s2n_bignum_AES_KEY *)key,
                          (const uint64_t *)Htable);
       break;
-#elif defined(HW_GCM_S2N_BIGNUM)
+#else
     // AES-128 and AES-256: the s2n-bignum 4x kernels, when the 8x kernels are
     // not built (see |HW_GCM_S2N_BIGNUM_8X|).
     case 10:
@@ -173,7 +173,6 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     // The 4x kernels: s2n-bignum's for AES-128 and AES-256, OpenSSL's for
     // AES-192.
     switch(key->rounds) {
-#if defined(HW_GCM_S2N_BIGNUM)
     case 10:
 #if defined(BORINGSSL_DISPATCH_TEST)
       BORINGSSL_function_hit[2] = 1;  // 4x AES-GCM encryption
@@ -181,13 +180,12 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       aes128_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
+    case 12:
+      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      break;
     case 14:
       aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-      break;
-#endif
-    case 12:
-      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       return 0;
@@ -223,7 +221,7 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                          (const s2n_bignum_AES_KEY *)key,
                          (const uint64_t *)Htable);
       break;
-#elif defined(HW_GCM_S2N_BIGNUM)
+#else
     // AES-128 and AES-256: the s2n-bignum 4x kernels, when the 8x kernels are
     // not built (see |HW_GCM_S2N_BIGNUM_8X|).
     case 10:
@@ -254,18 +252,16 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     // The 4x kernels: s2n-bignum's for AES-128 and AES-256, OpenSSL's for
     // AES-192.
     switch(key->rounds) {
-#if defined(HW_GCM_S2N_BIGNUM)
     case 10:
       aes128_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
+    case 12:
+      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      break;
     case 14:
       aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-      break;
-#endif
-    case 12:
-      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       return 0;

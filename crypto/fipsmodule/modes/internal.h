@@ -330,7 +330,6 @@ size_t aesv8_gcm_8x_dec_192(const uint8_t *in, size_t bit_len, uint8_t *out,
 // The s2n-bignum AES-128/256-GCM kernels. The 4x kernels are built on every
 // AArch64 platform, like s2n-bignum's AES-XTS. The 8x "_alt" kernels are built
 // on Linux and Apple only, and need an assembler supporting SHA3.
-#define HW_GCM_S2N_BIGNUM
 #if (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
 #define HW_GCM_S2N_BIGNUM_8X
