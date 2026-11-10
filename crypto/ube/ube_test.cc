@@ -249,7 +249,11 @@ static void FailedInitialVmUbeReadAndExit(void) {
 }
 
 TEST(ubeGenerationNumberIsolatedTest, FailedInitialVmUbeReadIsNotABaseline) {
+#if !defined(OPENSSL_WINDOWS)
+  // Windows death tests always re-execute the binary, and the flag does not
+  // link from there in every configuration.
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+#endif
   EXPECT_EXIT(FailedInitialVmUbeReadAndExit(), ::testing::ExitedWithCode(0),
               "");
 }
