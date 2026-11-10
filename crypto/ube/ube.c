@@ -111,8 +111,11 @@ struct ube_state {
   uint64_t generation_number;
   uint64_t cached_fork_gn;
   uint64_t cached_vm_ube_gn;
+  // cached_vm_ube_gn_valid is 1 once |cached_vm_ube_gn| holds a value that was
+  // actually read. Until then no current value can be trusted to match it.
+  uint8_t cached_vm_ube_gn_valid;
 };
-static struct ube_state ube_global_state = { 0, 0, 0 };
+static struct ube_state ube_global_state = { 0, 0, 0, 0 };
 
 // Convenience object that makes it easier to extend the number of detection
 // methods without having to modify function signatures.
@@ -152,10 +155,11 @@ static void ube_state_initialize(void) {
   // A vm_ube read failure here is transient (e.g. the vmclock seqlock did not
   // settle within its time budget; see vm_ube_detect.c). It is not a reason
   // to permanently disable detection -- see |ube_get_detection_generation_numbers|.
-  // |cached_vm_ube_gn| is left at its zero-initialized value; the first
-  // successful read afterward will look like a generation change and force
-  // one conservative reseed, which is safe.
-  get_vm_ube_generation_number(&(ube_global_state.cached_vm_ube_gn));
+  // Without a baseline, |ube_is_detected| reports a UBE until the next
+  // successful read is cached. Comparing against the zero-initialized value
+  // instead would miss a UBE whose new counter is 0, which vmclock permits.
+  ube_global_state.cached_vm_ube_gn_valid = (uint8_t)get_vm_ube_generation_number(
+      &(ube_global_state.cached_vm_ube_gn));
 }
 
 // ube_update_state updates the global state |ube_global_state| with the
@@ -170,6 +174,7 @@ static void ube_update_state(struct detection_gn *current_detection_gn) {
   // time we enter, a redundant reseed will be emitted.
   ube_global_state.cached_fork_gn = current_detection_gn->current_fork_gn;
   ube_global_state.cached_vm_ube_gn = current_detection_gn->current_vm_ube_gn;
+  ube_global_state.cached_vm_ube_gn_valid = 1;
 }
 
 // ube_get_detection_generation_numbers loads the current detection generation
@@ -213,7 +218,8 @@ static int ube_get_detection_generation_numbers(
 // review P269907867 carefully.
 static int ube_is_detected(struct detection_gn *current_detection_gn) {
 
-  if (ube_global_state.cached_fork_gn != current_detection_gn->current_fork_gn ||
+  if (!ube_global_state.cached_vm_ube_gn_valid ||
+      ube_global_state.cached_fork_gn != current_detection_gn->current_fork_gn ||
       ube_global_state.cached_vm_ube_gn != current_detection_gn->current_vm_ube_gn) {
     return 1;
   }

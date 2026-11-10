@@ -228,15 +228,14 @@ static int vm_ube_deadline_exceeded(const struct timespec *start) {
 // vm_ube_read_vmclock_gn reads the vmclock generation counter using the
 // seqlock protocol described in the vmclock specification. On success it writes
 // the value to |*out| and returns 1. It returns 0 if it cannot obtain a
-// consistent read within |VMCLOCK_SEQLOCK_TIMEOUT_MS|.
+// consistent read within |VMCLOCK_SEQLOCK_TIMEOUT_MS|. The deadline clock starts
+// only after the first inconsistent attempt, so an uncontended read never calls
+// |clock_gettime|.
 static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
                                   uint64_t *out) {
   struct timespec start;
-  if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
-    return 0;
-  }
-
-  do {
+  int started = 0;
+  for (;;) {
     uint32_t seq = st->vmclock_addr->seq_count & ~1u;
     // Keep the first |seq_count| read ordered before the counter and flags
     // reads.
@@ -258,9 +257,16 @@ static int vm_ube_read_vmclock_gn(const struct vm_ube_state_st *st,
       *out = value;
       return 1;
     }
-  } while (!vm_ube_deadline_exceeded(&start));
 
-  return 0;
+    if (!started) {
+      if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
+        return 0;
+      }
+      started = 1;
+    } else if (vm_ube_deadline_exceeded(&start)) {
+      return 0;
+    }
+  }
 }
 
 static int vm_ube_read_sysgenid_gn(const struct vm_ube_state_st *st,

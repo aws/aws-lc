@@ -226,3 +226,31 @@ TEST_F(ubeGenerationNumberTest, ExpectedSupportTests) {
     ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
   }
 }
+
+#if GTEST_HAS_DEATH_TEST
+// If the vm_ube read fails while the UBE state initializes, there is no
+// baseline to compare against. A later successful read must report a UBE even
+// when the new counter is 0, which vmclock permits and which would otherwise
+// match the zero-initialized cached value. The state initializes once per
+// process, so this runs in a freshly executed child.
+static void FailedInitialVmUbeReadAndExit(void) {
+  allow_mocked_ube_detection_FOR_TESTING();
+  set_fork_ube_generation_number_FOR_TESTING(1);
+  set_vm_ube_generation_number_FOR_TESTING(0);
+  set_vm_ube_read_failures_FOR_TESTING(1);
+
+  uint64_t first = 0, second = 0;
+  if (!CRYPTO_get_ube_generation_number(&first) ||
+      !CRYPTO_get_ube_generation_number(&second)) {
+    exit(2);
+  }
+  // The first successful read is reported as a UBE, then the state settles.
+  exit(first == 1 && second == 1 ? 0 : 1);
+}
+
+TEST(ubeGenerationNumberIsolatedTest, FailedInitialVmUbeReadIsNotABaseline) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  EXPECT_EXIT(FailedInitialVmUbeReadAndExit(), ::testing::ExitedWithCode(0),
+              "");
+}
+#endif
