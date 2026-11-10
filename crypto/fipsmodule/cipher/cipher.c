@@ -235,6 +235,16 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     return 0;
   }
 
+  if (in_len < 0 ||
+      (in_len == 0 && EVP_CIPHER_mode(ctx->cipher) != EVP_CIPH_CCM_MODE)) {
+    *out_len = 0;
+    if (in_len == 0) {
+      ctx->poisoned = 0;
+      return 1;
+    }
+    return 0;
+  }
+
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     int ret = ctx->cipher->cipher(ctx, out, in, in_len);
     if (ret < 0) {
@@ -244,15 +254,6 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     }
     ctx->poisoned = 0;
     return 1;
-  }
-
-  if (in_len <= 0) {
-    *out_len = 0;
-    if (in_len == 0) {
-      ctx->poisoned = 0;
-      return 1;
-    }
-    return 0;
   }
 
   if (ctx->buf_len == 0 && block_remainder(ctx, in_len) == 0) {
@@ -380,6 +381,12 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     return 0;
   }
 
+  if (in_len < 0 ||
+      (in_len == 0 && EVP_CIPHER_mode(ctx->cipher) != EVP_CIPH_CCM_MODE)) {
+    *out_len = 0;
+    return in_len == 0;
+  }
+
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     int r = ctx->cipher->cipher(ctx, out, in, in_len);
     if (r < 0) {
@@ -389,11 +396,6 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
       *out_len = r;
     }
     return 1;
-  }
-
-  if (in_len <= 0) {
-    *out_len = 0;
-    return in_len == 0;
   }
 
   if (ctx->flags & EVP_CIPH_NO_PADDING) {
