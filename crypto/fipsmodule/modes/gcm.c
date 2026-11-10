@@ -118,15 +118,11 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  // The 8x-unrolled assembly implementation starts outperforming
-  // the 4x-unrolled one starting around input length of 128 bytes
-  // in the case of the EVP API.
-  // In the case of the AEAD API, it can be used for all input lengths
-  // but we are not identifying which API calls the code below.
-  // The 8x path is only taken on Linux and Apple, the only platforms whose CPU
-  // detection sets the CPU-model bits it needs; elsewhere, e.g. on Windows,
-  // the 4x-unrolled kernel is used.
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 128) {
+  // The 8x-unrolled kernels are used for all input lengths on CPUs that
+  // support them. The 8x path is only taken on Linux and Apple, the only
+  // platforms whose CPU detection sets the CPU-model bits it needs; elsewhere,
+  // e.g. on Windows, the 4x-unrolled kernel is used.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
     switch(key->rounds) {
     case 10:
       // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
@@ -205,15 +201,11 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  // The 8x-unrolled assembly implementation starts outperforming
-  // the 4x-unrolled one starting around input length of 128 bytes
-  // in the case of the EVP API.
-  // In the case of the AEAD API, it can be used for all input lengths
-  // but we are not identifying which API calls the code below.
-  // The 8x path is only taken on Linux and Apple, the only platforms whose CPU
-  // detection sets the CPU-model bits it needs; elsewhere, e.g. on Windows,
-  // the 4x-unrolled kernel is used.
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 128) {
+  // The 8x-unrolled kernels are used for all input lengths on CPUs that
+  // support them. The 8x path is only taken on Linux and Apple, the only
+  // platforms whose CPU detection sets the CPU-model bits it needs; elsewhere,
+  // e.g. on Windows, the 4x-unrolled kernel is used.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
     switch(key->rounds) {
     case 10:
       // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
