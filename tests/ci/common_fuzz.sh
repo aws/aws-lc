@@ -47,16 +47,20 @@ function put_metric {
   set -e
 }
 
-function sanitize_shared_corpus {
+function create_trusted_efs_directory {
   local path="$CODEBUILD_FUZZING_ROOT"
   local component
-  for component in fuzzing shared_corpus "$FUZZ_NAME" shared_corpus; do
+  for component in "$@"; do
     path="${path}/${component}"
     if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
       rm -f -- "$path"
     fi
     mkdir -p -- "$path"
   done
+}
+
+function sanitize_shared_corpus {
+  create_trusted_efs_directory fuzzing shared_corpus "$FUZZ_NAME" shared_corpus
   find "$SHARED_FUZZ_TEST_CORPUS" -mindepth 1 ! -type f ! -type d -delete
   find "$SHARED_FUZZ_TEST_CORPUS" -type f -links +1 -delete
 }
@@ -68,7 +72,8 @@ function publish_corpus_to_s3 {
   local rc=0
   (
     cd "$(dirname "$SHARED_FUZZ_TEST_CORPUS")" || exit 2
-    find "$(basename "$SHARED_FUZZ_TEST_CORPUS")" -type f -print0 |
+    find "$(basename "$SHARED_FUZZ_TEST_CORPUS")" -maxdepth 1 \
+      -type f -print0 |
       tar --null --no-recursion --hard-dereference -czf "$tarball" \
         --files-from=-
   ) || rc=$?
@@ -169,7 +174,12 @@ function run_fuzz_test {
 
     if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
       FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
-      mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
+      if [ -v CODEBUILD_FUZZING_ROOT ]; then
+        create_trusted_efs_directory \
+          fuzzing runs "$DATE_NOW" "$BUILD_ID" "$FUZZ_NAME"
+      else
+        mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
+      fi
       cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
       cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
       echo "${FUZZ_NAME} failed, see the above output for details. Logs are stored under ${SHARED_FAILURE_ROOT}"

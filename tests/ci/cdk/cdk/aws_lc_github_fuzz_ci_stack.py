@@ -119,7 +119,9 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PUSH
-                ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
+                ).and_head_ref_is(
+                    "^refs/heads/{}$".format(GITHUB_PUSH_CI_BRANCH_TARGETS)
+                ),
             ],
             webhook_triggers_batch_build=True,
         )
@@ -228,11 +230,6 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             id="{}-role".format(pr_project_name),
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies={
-                "code_build_batch_policy": iam.PolicyDocument.from_json(
-                    code_build_batch_policy_in_json(
-                        [pr_project_name], env, exact_match=True
-                    )
-                ),
                 "fuzz_policy": iam.PolicyDocument.from_json(
                     code_build_publish_metrics_in_json(env)
                 ),
