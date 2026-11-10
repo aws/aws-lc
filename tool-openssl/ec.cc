@@ -79,11 +79,13 @@ int ecTool(const args_list_t &args) {
     goto err;
   }
 
-  if (!pubout && !out_path.empty()) {
-    SetUmaskForPrivateKey();
+  if (out_path.empty()) {
+    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else if (pubout) {
+    output_bio.reset(BIO_new_file(out_path.c_str(), "wb"));
+  } else {
+    output_bio = NewPrivateFileBIO(out_path);
   }
-  output_bio.reset(out_path.empty() ? BIO_new_fp(stdout, BIO_NOCLOSE)
-                                    : BIO_new_file(out_path.c_str(), "wb"));
   if (!output_bio) {
     fprintf(stderr, "Error: Could not open output\n");
     goto err;
