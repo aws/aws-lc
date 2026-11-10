@@ -227,7 +227,8 @@ TEST_F(ubeGenerationNumberTest, ExpectedSupportTests) {
   }
 }
 
-#if GTEST_HAS_DEATH_TEST
+// Death tests are excluded on Android, as in bn_assert_test.cc.
+#if GTEST_HAS_DEATH_TEST && !defined(OPENSSL_ANDROID)
 // If the vm_ube read fails while the UBE state initializes, there is no
 // baseline to compare against. A later successful read must report a UBE even
 // when the new counter is 0, which vmclock permits and which would otherwise
@@ -257,4 +258,4 @@ TEST(ubeGenerationNumberIsolatedTest, FailedInitialVmUbeReadIsNotABaseline) {
   EXPECT_EXIT(FailedInitialVmUbeReadAndExit(), ::testing::ExitedWithCode(0),
               "");
 }
-#endif
+#endif  // GTEST_HAS_DEATH_TEST && !OPENSSL_ANDROID
