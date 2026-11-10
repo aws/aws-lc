@@ -216,8 +216,7 @@ TEST(GCMTest, ABI) {
       CHECK_ABI(aes256_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
                 (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
     }
-#if defined(HW_GCM_S2N_BIGNUM) && \
-    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+#if defined(HW_GCM_S2N_BIGNUM_8X)
     if (CRYPTO_is_ARMv8_SHA3_capable()) {
       AES_KEY aes_key;
       aes_hw_set_encrypt_key(kKey, 128, &aes_key);
@@ -235,7 +234,7 @@ TEST(GCMTest, ABI) {
                 iv, (const s2n_bignum_AES_KEY *)&aes_key,
                 (const uint64_t *)Htable);
     }
-#endif  // HW_GCM_S2N_BIGNUM && MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION
+#endif  // HW_GCM_S2N_BIGNUM_8X
   }
 #endif
 

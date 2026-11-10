@@ -124,26 +124,36 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   // e.g. on Windows, the 4x-unrolled kernel is used.
   if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
     switch(key->rounds) {
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+    // AES-128 and AES-256: the s2n-bignum 8x kernels.
     case 10:
-      // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
-      // supports it, see |CRYPTO_is_ARMv8_GCM_8x_capable|); otherwise, fall
-      // back to the s2n-bignum 4x kernel.
-#if defined(HW_GCM_S2N_BIGNUM) && \
-    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
 #if defined(BORINGSSL_DISPATCH_TEST)
       BORINGSSL_function_hit[7] = 1;  // 8x AES-GCM encryption
 #endif
       aes128_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                          (const s2n_bignum_AES_KEY *)key,
                          (const uint64_t *)Htable);
-#else
+      break;
+    case 14:
+      aes256_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                         (const s2n_bignum_AES_KEY *)key,
+                         (const uint64_t *)Htable);
+      break;
+#elif defined(HW_GCM_S2N_BIGNUM)
+    // AES-128 and AES-256: the s2n-bignum 4x kernels, when the 8x kernels are
+    // not built (see |HW_GCM_S2N_BIGNUM_8X|).
+    case 10:
 #if defined(BORINGSSL_DISPATCH_TEST)
       BORINGSSL_function_hit[2] = 1;  // 4x AES-GCM encryption
 #endif
       aes128_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-#endif
       break;
+    case 14:
+      aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+      break;
+#endif
     case 12:
       // OpenSSL's 8x AES-192 kernel is only faster than its 4x kernel from
       // around 256 bytes.
@@ -152,20 +162,6 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       } else {
         aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       }
-      break;
-    case 14:
-      // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
-      // supports it, see |CRYPTO_is_ARMv8_GCM_8x_capable|); otherwise, fall
-      // back to the s2n-bignum 4x kernel.
-#if defined(HW_GCM_S2N_BIGNUM) && \
-    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-      aes256_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
-                         (const s2n_bignum_AES_KEY *)key,
-                         (const uint64_t *)Htable);
-#else
-      aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
-                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-#endif
       break;
     default:
       // The subsequent logic after returning can process
@@ -177,6 +173,7 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     // The 4x kernels: s2n-bignum's for AES-128 and AES-256, OpenSSL's for
     // AES-192.
     switch(key->rounds) {
+#if defined(HW_GCM_S2N_BIGNUM)
     case 10:
 #if defined(BORINGSSL_DISPATCH_TEST)
       BORINGSSL_function_hit[2] = 1;  // 4x AES-GCM encryption
@@ -184,12 +181,13 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       aes128_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
-    case 12:
-      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
     case 14:
       aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+      break;
+#endif
+    case 12:
+      aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       return 0;
@@ -213,20 +211,30 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   // e.g. on Windows, the 4x-unrolled kernel is used.
   if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
     switch(key->rounds) {
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+    // AES-128 and AES-256: the s2n-bignum 8x kernels.
     case 10:
-      // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
-      // supports it, see |CRYPTO_is_ARMv8_GCM_8x_capable|); otherwise, fall
-      // back to the s2n-bignum 4x kernel.
-#if defined(HW_GCM_S2N_BIGNUM) && \
-    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
       aes128_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                          (const s2n_bignum_AES_KEY *)key,
                          (const uint64_t *)Htable);
-#else
+      break;
+    case 14:
+      aes256_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                         (const s2n_bignum_AES_KEY *)key,
+                         (const uint64_t *)Htable);
+      break;
+#elif defined(HW_GCM_S2N_BIGNUM)
+    // AES-128 and AES-256: the s2n-bignum 4x kernels, when the 8x kernels are
+    // not built (see |HW_GCM_S2N_BIGNUM_8X|).
+    case 10:
       aes128_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-#endif
       break;
+    case 14:
+      aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+      break;
+#endif
     case 12:
       // OpenSSL's 8x AES-192 kernel is only faster than its 4x kernel from
       // around 256 bytes.
@@ -235,20 +243,6 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
       } else {
         aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       }
-      break;
-    case 14:
-      // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
-      // supports it, see |CRYPTO_is_ARMv8_GCM_8x_capable|); otherwise, fall
-      // back to the s2n-bignum 4x kernel.
-#if defined(HW_GCM_S2N_BIGNUM) && \
-    defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-      aes256_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
-                         (const s2n_bignum_AES_KEY *)key,
-                         (const uint64_t *)Htable);
-#else
-      aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
-                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
-#endif
       break;
     default:
       // The subsequent logic after returning can process
@@ -260,16 +254,18 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     // The 4x kernels: s2n-bignum's for AES-128 and AES-256, OpenSSL's for
     // AES-192.
     switch(key->rounds) {
+#if defined(HW_GCM_S2N_BIGNUM)
     case 10:
       aes128_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
-    case 12:
-      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
     case 14:
       aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
                      (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
+      break;
+#endif
+    case 12:
+      aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
       break;
     default:
       return 0;
