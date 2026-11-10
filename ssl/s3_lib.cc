@@ -49,6 +49,10 @@ SSL3_STATE::SSL3_STATE()
 
 SSL3_STATE::~SSL3_STATE() {
   sk_X509_NAME_pop_free(cached_x509_peer_ca_names, X509_NAME_free);
+  // Zeroize key material so it does not linger in freed memory.
+  OPENSSL_cleanse(write_traffic_secret, sizeof(write_traffic_secret));
+  OPENSSL_cleanse(read_traffic_secret, sizeof(read_traffic_secret));
+  OPENSSL_cleanse(exporter_secret, sizeof(exporter_secret));
 }
 
 bool tls_new(SSL *ssl) {

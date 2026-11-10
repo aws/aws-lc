@@ -57,7 +57,25 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
   RAND_bytes(grease_seed, sizeof(grease_seed));
 }
 
-SSL_HANDSHAKE::~SSL_HANDSHAKE() {}
+SSL_HANDSHAKE::~SSL_HANDSHAKE() {
+  // Zeroize key material so it does not linger in freed memory. The member
+  // destructors, which release the underlying allocations, run after this body.
+  OPENSSL_cleanse(secret_, sizeof(secret_));
+  OPENSSL_cleanse(early_traffic_secret_, sizeof(early_traffic_secret_));
+  OPENSSL_cleanse(client_handshake_secret_, sizeof(client_handshake_secret_));
+  OPENSSL_cleanse(server_handshake_secret_, sizeof(server_handshake_secret_));
+  OPENSSL_cleanse(client_traffic_secret_0_, sizeof(client_traffic_secret_0_));
+  OPENSSL_cleanse(server_traffic_secret_0_, sizeof(server_traffic_secret_0_));
+  OPENSSL_cleanse(expected_client_finished_, sizeof(expected_client_finished_));
+  CleanseArray(&key_block);
+}
+
+SSL_HANDSHAKE_HINTS::~SSL_HANDSHAKE_HINTS() {
+  CleanseArray(&key_share_secret);
+  CleanseArray(&ecdhe_private_key);
+  CleanseArray(&decrypted_psk);
+  CleanseArray(&decrypted_ticket);
+}
 
 void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
   if (hash_len > SSL_MAX_MD_SIZE) {
