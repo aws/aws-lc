@@ -568,8 +568,17 @@ static void rand_bytes_core(
     // A UBE may have occurred while generating. Discard the output and
     // regenerate it from a freshly reseeded state.
     OPENSSL_cleanse(out_start, out_len_start);
-    if (attempt >= kRandMaxGenerateAttempts) {
+    if (attempt > kRandMaxGenerateAttempts) {
+      // Detection was disabled after the previous attempt, so the check above
+      // cannot fail again.
       abort();
+    }
+    if (attempt == kRandMaxGenerateAttempts) {
+      // Detection keeps failing, e.g. a VMM wedged the vmclock seqlock or
+      // cleared its generation-counter flag. An absent or unusable vmclock is
+      // tolerated at startup, so rather than abort, stop relying on UBE
+      // detection: every request reseeds from now on.
+      CRYPTO_ube_detection_disable();
     }
     rand_check_ctr_drbg_uniqueness(state, 0);
     must_reseed_before_generate = 1;

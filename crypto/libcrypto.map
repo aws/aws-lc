@@ -699,6 +699,7 @@ AWS_LC_1.0 {
     CRYPTO_sysrand;
     CRYPTO_tls13_hkdf_expand_label;
     CRYPTO_tls1_prf;
+    CRYPTO_ube_detection_disable;
     CRYPTO_ube_detection_unavailable;
     CTR_DRBG_clear;
     CTR_DRBG_free;

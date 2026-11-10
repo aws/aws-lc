@@ -37,6 +37,12 @@ OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation
 // Otherwise, it returns 0.
 OPENSSL_EXPORT int CRYPTO_ube_detection_unavailable(void);
 
+// CRYPTO_ube_detection_disable permanently disables UBE detection for the
+// process, for when a detection method keeps failing at runtime. Afterwards
+// |CRYPTO_ube_detection_unavailable| returns 1 and any unique state must
+// randomize before every use.
+OPENSSL_EXPORT void CRYPTO_ube_detection_disable(void);
+
 // set_fork_ube_generation_number_FOR_TESTING sets the fork generation number to
 // the value |fork_gn|. This value will be the fork generation value used by the
 // UBE logic, overriding the generation number from the real fork detection.

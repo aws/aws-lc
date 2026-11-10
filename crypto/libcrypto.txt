@@ -692,6 +692,7 @@ CRYPTO_set_thread_local AWS_LC_1.0 PRIVATE
 CRYPTO_sysrand AWS_LC_1.0 PRIVATE
 CRYPTO_tls13_hkdf_expand_label AWS_LC_1.0 PUBLIC
 CRYPTO_tls1_prf AWS_LC_1.0 PUBLIC
+CRYPTO_ube_detection_disable AWS_LC_1.0 PRIVATE
 CRYPTO_ube_detection_unavailable AWS_LC_1.0 PRIVATE
 CTR_DRBG_clear AWS_LC_1.0 PUBLIC
 CTR_DRBG_free AWS_LC_1.0 PUBLIC

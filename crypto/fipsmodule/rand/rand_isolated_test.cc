@@ -535,16 +535,28 @@ TEST_F(randIsolatedTest, ExitCheckRegeneratesOnUbeDuringGenerate) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
-TEST_F(randIsolatedTest, ExitCheckAbortsWhenReadsKeepFailing) {
+TEST_F(randIsolatedTest, ExitCheckDisablesDetectionWhenReadsKeepFailing) {
 
   auto testFunc = []() {
     setupMockedUbeWithOverriddenEntropy(false);
     set_vm_ube_read_failures_FOR_TESTING(UINT64_MAX);
-    generateRandomness(request_len);
-    exit(0);
+
+    // The entry reseed plus one per regenerate attempt, then detection is
+    // disabled and the request is generated one final time.
+    bool test1 = assertSeedOrReseed(kRandMaxGenerateAttempts + 1, []() {
+      return generateRandomness(request_len);
+    });
+    bool test2 = CRYPTO_ube_detection_unavailable() == 1;
+
+    // With detection disabled, every request reseeds.
+    bool test3 = assertSeedOrReseed(1, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit((test1 && test2 && test3) ? 0 : 1);
   };
 
-  EXPECT_DEATH_IF_SUPPORTED(testFunc(), "");
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
 // Test vectors for randomness generation KATs.

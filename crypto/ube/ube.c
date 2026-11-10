@@ -43,6 +43,10 @@ static struct CRYPTO_STATIC_MUTEX ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 // potential for deadlocks.
 static struct CRYPTO_STATIC_MUTEX ube_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static uint8_t ube_detection_unavailable = 0;
+// ube_detection_disabled is set by |CRYPTO_ube_detection_disable|. Unlike
+// |ube_detection_unavailable| it also applies while detection is mocked, so the
+// escalation it represents can be tested.
+static uint8_t ube_detection_disabled = 0;
 static uint8_t allow_mocked_detection = 0;
 
 static uint64_t override_fork_generation_number = 0;
@@ -243,8 +247,8 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // The assumption avoids us having to acquire (up to) two read locks that
   // would probably never be contended anyway. That would not block other
   // threads, but cost cycles regardless.
-  if (ube_detection_unavailable == 1 &&
-      allow_mocked_detection != 1) {
+  if ((ube_detection_unavailable == 1 && allow_mocked_detection != 1) ||
+      ube_detection_disabled == 1) {
     return 0;
   }
 
@@ -312,7 +316,13 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
 
 int CRYPTO_ube_detection_unavailable(void) {
   CRYPTO_once(&ube_state_initialize_once, ube_state_initialize);
-  return ube_detection_unavailable == 1 && allow_mocked_detection != 1;
+  return (ube_detection_unavailable == 1 && allow_mocked_detection != 1) ||
+         ube_detection_disabled == 1;
+}
+
+void CRYPTO_ube_detection_disable(void) {
+  ube_failed();
+  ube_detection_disabled = 1;
 }
 
 // Synchronize writing to |allow_mocked_detection|. But only to more easily
