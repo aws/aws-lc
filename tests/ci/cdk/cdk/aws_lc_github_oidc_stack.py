@@ -40,10 +40,21 @@ class AwsLcGitHubOidcStack(Stack):
 
         oidc_role_name = "AwsLcGitHubActionsOidcRole"
         # This role should only be granted necessary permissions to assume other roles
+        #
+        # No job assumes this role from a pull_request event, so the event name
+        # is restricted to exclude it. pull_request_target remains because the
+        # security-review, android-omnibus device-farm and image-build-android
+        # jobs run on it behind their maintainer approval gates.
         self.minimal_oidc_role = iam.Role(self, id=oidc_role_name, role_name=oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                                  "token.actions.githubusercontent.com:event_name": [
+                                                      "push",
+                                                      "workflow_dispatch",
+                                                      "schedule",
+                                                      "pull_request_target",
+                                                  ],
                                               },
                                               "StringLike": {
                                                   # Check the subject claim is from our repository VERY IMPORTANT!
@@ -69,10 +80,12 @@ class AwsLcGitHubOidcStack(Stack):
                                           }))
 
         autofix_oidc_role_name = "AwsLcGitHubActionsAutofixOidcRole"
+        # autofix_integration_failures.yml is triggered only by workflow_run.
         self.autofix_oidc_role = iam.Role(self, id=autofix_oidc_role_name, role_name=autofix_oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                                  "token.actions.githubusercontent.com:event_name": "workflow_run",
                                               },
                                               "StringLike": {
                                                   "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
