@@ -145,7 +145,13 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif
       break;
     case 12:
-      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // OpenSSL's 8x AES-192 kernel is only faster than its 4x kernel from
+      // around 256 bytes.
+      if (len >= 256) {
+        aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      } else {
+        aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      }
       break;
     case 14:
       // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
@@ -222,7 +228,13 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif
       break;
     case 12:
-      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      // OpenSSL's 8x AES-192 kernel is only faster than its 4x kernel from
+      // around 256 bytes.
+      if (len >= 256) {
+        aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      } else {
+        aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      }
       break;
     case 14:
       // Use the s2n-bignum 8x kernel if the assembler supports SHA3 (the CPU
