@@ -638,13 +638,16 @@ int KEM_KEY_set_raw_expanded_secret_key(KEM_KEY *key, const uint8_t *in) {
   }
 
   // Deliberately not |KEM_check_key|: its pairwise consistency test draws the
-  // encapsulation randomness from the RNG on every call, and parsing a private
-  // key should not depend on it. The same checks run here, with the PCT made
-  // deterministic by using the H(ek) already embedded in the decapsulation key
-  // as the coins. H(ek) is public, key-dependent, and validated by
-  // |kem_check_secret_key| immediately above, so this neither leaks nor fixes a
-  // single global target. In FIPS builds the first import in a process still
-  // draws from the RNG through the lazy ML-KEM self-test; see |kem_check_pct|.
+  // encapsulation randomness from the RNG on every call, and an |expandedKey|
+  // import should not depend on it. (The |seed| and |both| importers differ:
+  // they run key generation, and in FIPS builds its pairwise consistency test
+  // draws from the RNG on every parse.) The same checks run here, with the PCT
+  // made deterministic by using the H(ek) already embedded in the
+  // decapsulation key as the coins. H(ek) is public, key-dependent, and
+  // validated by |kem_check_secret_key| immediately above, so this neither
+  // leaks nor fixes a single global target. In FIPS builds the first import in
+  // a process still draws from the RNG through the lazy ML-KEM self-test; see
+  // |kem_check_pct|.
   //
   // The helpers queue their own errors, so none are added here.
   FIPS_service_indicator_lock_state();
