@@ -495,6 +495,10 @@ static void setupMockedUbeWithOverriddenEntropy(bool simulate_ube_in_seed) {
 
 TEST_F(randIsolatedTest, ExitCheckRegeneratesOnFailedRead) {
 
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
   auto testFunc = []() {
     setupMockedUbeWithOverriddenEntropy(false);
 
@@ -517,6 +521,10 @@ TEST_F(randIsolatedTest, ExitCheckRegeneratesOnFailedRead) {
 
 TEST_F(randIsolatedTest, ExitCheckRegeneratesOnUbeDuringGenerate) {
 
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
   auto testFunc = []() {
     setupMockedUbeWithOverriddenEntropy(true);
 
@@ -536,6 +544,10 @@ TEST_F(randIsolatedTest, ExitCheckRegeneratesOnUbeDuringGenerate) {
 }
 
 TEST_F(randIsolatedTest, ExitCheckDisablesDetectionWhenReadsKeepFailing) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
 
   auto testFunc = []() {
     setupMockedUbeWithOverriddenEntropy(false);

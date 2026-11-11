@@ -250,6 +250,9 @@ static void FailedInitialVmUbeReadAndExit(void) {
 }
 
 TEST(ubeGenerationNumberIsolatedTest, FailedInitialVmUbeReadIsNotABaseline) {
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
 #if !defined(OPENSSL_WINDOWS)
   // Windows death tests always re-execute the binary, and the flag does not
   // link from there in every configuration.
