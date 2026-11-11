@@ -26,6 +26,20 @@ static bool CopyFileContents(const char *input_path,
                        contents.size();
 }
 
+static std::string SerialFilePath(const std::string &ca_path) {
+#if defined(OPENSSL_WINDOWS)
+  const size_t separator_pos = ca_path.find_last_of("/\\");
+#else
+  const size_t separator_pos = ca_path.find_last_of('/');
+#endif
+  const size_t extension_pos = ca_path.find_last_of('.');
+  if (extension_pos == std::string::npos ||
+      (separator_pos != std::string::npos && extension_pos < separator_pos)) {
+    return ca_path + ".srl";
+  }
+  return ca_path.substr(0, extension_pos) + ".srl";
+}
+
 class X509Test : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -541,10 +555,7 @@ TEST_F(X509Test, ReqCACreateSerial) {
   ASSERT_TRUE(issued);
   ASSERT_TRUE(X509_get_serialNumber(issued.get()));
 
-  const std::string serial_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  const std::string serial_path = SerialFilePath(ca_cert_path);
   EXPECT_FALSE(ReadFileToString(serial_path.c_str()).empty());
   RemoveFile(serial_path.c_str());
 }
@@ -741,10 +752,7 @@ TEST_F(X509Test, SetSerial) {
   ASSERT_EQ(kToolExitSuccess, result);
 
   // Check that .srl file was created
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "r"));
   ASSERT_TRUE(srl_file);
 
@@ -835,10 +843,7 @@ TEST_F(X509Test, BasicSerialGeneration) {
 // Test serial generation with existing .srl file
 TEST_F(X509Test, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
   ASSERT_TRUE(srl_file);
   fprintf(srl_file.get(), "1234ABCD\n");
@@ -1040,10 +1045,6 @@ TEST_F(X509OptionUsageErrorsTest, InvalidPassin) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-
-static std::string SerialFilePath(const std::string &ca_path) {
-  return ca_path.substr(0, ca_path.find_last_of('.')) + ".srl";
-}
 
 static void ExpectSerialFileMatchesCertificate(const std::string &serial_path,
                                                X509 *cert) {
@@ -2212,20 +2213,14 @@ TEST_F(X509ComparisonTest, BasicSerialGeneration) {
   ASSERT_TRUE(serial_openssl);
 
   // Clean up .srl files
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   RemoveFile(srl_path.c_str());
 }
 
 // Test serial generation against OpenSSL with existing .srl file
 TEST_F(X509ComparisonTest, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
   ASSERT_TRUE(srl_file);
   fprintf(srl_file.get(), "1234ABCD\n");
