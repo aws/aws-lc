@@ -1724,6 +1724,40 @@ TEST(RSATest, PSSWithVariousDigests) {
   }
 }
 
+// PSSZeroModulus proves that the low-level PSS padding functions reject a key
+// whose modulus is zero rather than reading from a zero-length encoded message.
+TEST(RSATest, PSSZeroModulus) {
+  bssl::UniquePtr<RSA> key(RSA_new());
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<BIGNUM> n(BN_new()), e(BN_new());
+  ASSERT_TRUE(n);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  ASSERT_TRUE(RSA_set0_key(key.get(), n.release(), e.release(), nullptr));
+  ASSERT_EQ(0u, RSA_size(key.get()));
+
+  // The API only requires |em| to be |RSA_size| (i.e. zero) bytes. Allocate
+  // one byte anyway so that the test itself is well-defined on code that reads
+  // |em[0]|, and so we can check the signing path does not write to it.
+  uint8_t digest[SHA256_DIGEST_LENGTH] = {0};
+  uint8_t em[1] = {0xff};
+
+  EXPECT_FALSE(RSA_verify_PKCS1_PSS_mgf1(key.get(), digest, EVP_sha256(),
+                                         nullptr, em, RSA_PSS_SALTLEN_DIGEST));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_EMPTY_PUBLIC_KEY, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  EXPECT_FALSE(RSA_padding_add_PKCS1_PSS_mgf1(
+      key.get(), em, digest, EVP_sha256(), nullptr, RSA_PSS_SALTLEN_DIGEST));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_EMPTY_PUBLIC_KEY, ERR_GET_REASON(err));
+  ERR_clear_error();
+  EXPECT_EQ(0xff, em[0]);
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());

@@ -22,4 +22,6 @@ jobs:
             -DBUILD_AWSLC_PROVIDER=ON
             -DBUILD_SHARED_LIBS=ON
           config_file: '/github/workspace/.clang-tidy'
+          # Generated table fragment included only by obj.c; not self-contained.
+          exclude: 'crypto/obj/obj_dat.h'
       - uses: ZedThree/clang-tidy-review/upload@v0.23.1
