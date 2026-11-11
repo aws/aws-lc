@@ -2018,8 +2018,9 @@ TEST(CipherTest, EncryptUpdateWritesOnlyReportedBytes) {
   // Zero indicates a single-shot call.
   static const size_t kChunkSizes[] = {0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 64};
 
-  // A fixed array keeps |plaintext + offset| valid even for empty inputs; for
-  // AEAD ciphers a NULL |in| would mean finalization, not an empty update.
+  // A fixed array keeps |plaintext + offset| valid even for empty inputs. Direct
+  // |EVP_Cipher| calls interpret a NULL AEAD input as finalization, while the
+  // |EVP_*Update| APIs treat zero-length inputs as no-ops.
   uint8_t plaintext[64];
   for (size_t i = 0; i < sizeof(plaintext); i++) {
     plaintext[i] = static_cast<uint8_t>(i);
