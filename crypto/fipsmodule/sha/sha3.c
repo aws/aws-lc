@@ -406,9 +406,7 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  ctx->md_size = len;
-
-  if (ctx->md_size == 0) {
+  if (len == 0) {
     return 1;
   }
 
@@ -416,6 +414,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
       ctx->state != KECCAK1600_STATE_SQUEEZE) {
     return 0;
   }
+
+  ctx->md_size = len;
 
   // In the absorb phase, the final input block still needs padding. In the
   // squeeze phase, a previous call already padded it.
