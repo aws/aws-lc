@@ -4317,6 +4317,10 @@ extern "C" {
 #define NID_ct_precert_scts 999
 #define OBJ_ct_precert_scts 1L, 3L, 6L, 1L, 4L, 1L, 11129L, 2L, 4L, 2L
 
+#define SN_chacha20 "ChaCha20"
+#define LN_chacha20 "chacha20"
+#define NID_chacha20 1000
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

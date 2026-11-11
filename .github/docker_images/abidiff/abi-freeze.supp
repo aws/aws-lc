@@ -1,0 +1,20 @@
+# Suppressions for the TEMPORARY ABI FREEZE jobs.
+#
+# These cover structures the public headers declare private, where the size is
+# the whole of the ABI contract: callers may stack-allocate the type but may not
+# read its fields. Suppressing a reshuffle that leaves the size alone keeps the
+# freeze pointed at what a caller can observe.
+#
+# Every entry is scoped by has_data_member_inserted_between, which abidiff
+# declines to match when the type's size changes. A structure that grows or
+# shrinks is still reported, which is the breakage the freeze exists to catch.
+# Adding has_size_change = yes to an entry, or dropping the insertion property
+# so only the name matches, would suppress that too.
+
+# aws/aws-lc#3637 moved the HPKE key material out of line and padded the
+# structure back to the 72 bytes it held before the ML-KEM KEMs, so its members
+# moved while what a caller must reserve did not.
+[suppress_type]
+  type_kind = struct
+  name = evp_hpke_key_st
+  has_data_member_inserted_between = {0, end}

@@ -61,6 +61,15 @@ OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
   OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT int tree_jitter_get_seed(
     const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
+
+  // tree_jitter_zeroize_reseed_material_FOR_TESTING exposes the material that
+  // the tree-DRBG zeroization reseeds with. It fills |out| and returns 1 if
+  // the operating system entropy source was called, 0 if |out| was zeroed
+  // instead. On Windows it must be the latter: the zeroization can run from a
+  // |DLL_PROCESS_DETACH| where reaching |CRYPTO_sysrand| is unsafe. See
+  // https://github.com/aws/aws-lc/issues/3540.
+  OPENSSL_EXPORT int tree_jitter_zeroize_reseed_material_FOR_TESTING(
+    uint8_t out[CTR_DRBG_ENTROPY_LEN]);
 #else // !defined(DISABLE_CPU_JITTER_ENTROPY)
   // Define stubs for tree-DRBG functions that implements the entropy source
   // interface.

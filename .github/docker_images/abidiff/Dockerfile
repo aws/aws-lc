@@ -9,6 +9,7 @@ RUN yum install -y libabigail ninja-build cmake golang gcc gcc-c++
 
 COPY build.sh /
 COPY diff.sh /
+COPY abi-freeze.supp /
 
 ENTRYPOINT ["/diff.sh"]
 

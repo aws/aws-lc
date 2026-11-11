@@ -1,19 +1,16 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_PROVIDER_INTERNAL_FRONTEND_DIGESTS_H
-#define AWSLC_PROVIDER_INTERNAL_FRONTEND_DIGESTS_H
+#ifndef AWSLC_PROVIDER_FRONTEND_OPERATIONS_DIGESTS_DIGESTS_H
+#define AWSLC_PROVIDER_FRONTEND_OPERATIONS_DIGESTS_DIGESTS_H
 
-// The frontend contract for the digest operation class: class-wide parameter
-// helpers, fixed-length dispatch shapes, and the per-algorithm tables registry.c
-// hands to the core.
+// The frontend contract for the digest operation: operation-wide parameter
+// helpers and fixed-length dispatch shapes.
 
 #include <stddef.h>
 #include <stdint.h>
 
 #include <openssl/core_dispatch.h>
-
-#include "internal/provider.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -31,8 +28,6 @@ OSSL_FUNC_digest_gettable_ctx_params_fn
 
 int awslc_prov_digest_get_params(OSSL_PARAM params[], size_t block_size,
                                  size_t digest_size, uint32_t flags);
-int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
-                                         OSSL_PARAM params[], int approved);
 
 // Declare one fixed-length digest's slots at the exact types OpenSSL calls.
 #define AWSLC_PROV_DECLARE_FIXED_DIGEST_SLOTS(algorithm)                       \
@@ -75,16 +70,8 @@ int awslc_prov_digest_get_fips_indicator(const AWSLC_PROV_CTX *provctx,
 #define AWSLC_PROV_DECLARE_DIGEST_TABLE(algorithm) \
   extern const OSSL_DISPATCH awslc_prov_##algorithm##_functions[]
 
-// frontend/operations/digests/sha2.c
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha224);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha256);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha384);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_224);
-AWSLC_PROV_DECLARE_DIGEST_TABLE(sha512_256);
-
 #if defined(__cplusplus)
 }  // extern "C"
 #endif
 
-#endif  // AWSLC_PROVIDER_INTERNAL_FRONTEND_DIGESTS_H
+#endif  // AWSLC_PROVIDER_FRONTEND_OPERATIONS_DIGESTS_DIGESTS_H
