@@ -3671,10 +3671,15 @@ int SSL_set_tlsext_status_ocsp_resp(SSL *ssl, uint8_t *resp, size_t resp_len) {
   return 0;
 }
 
-size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl, const uint8_t **out) {
-  size_t ret;
-  SSL_get0_ocsp_response(ssl, out, &ret);
-  return ret;
+size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl, void *out) {
+  const uint8_t *response;
+  size_t response_len;
+  SSL_get0_ocsp_response(ssl, &response, &response_len);
+  // |out| may point to either a mutable or a const byte pointer. Copy its
+  // representation to avoid accessing the pointer object through the wrong
+  // type.
+  OPENSSL_memcpy(out, &response, sizeof(response));
+  return response_len;
 }
 
 int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,

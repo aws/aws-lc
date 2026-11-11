@@ -1179,6 +1179,140 @@ TEST(ASN1Test, TimeSetString) {
   EXPECT_FALSE(ASN1_TIME_set_string_X509(nullptr, "19700101000000-0400"));
 }
 
+TEST(ASN1Test, TimeCompare) {
+  const struct {
+    const char *a;
+    const char *b;
+    int expected;
+  } kTests[] = {
+      {"000101000000Z", "000101000000Z", 0},
+      {"20000101000000Z", "20000101000000Z", 0},
+      {"000101000000Z", "20000101000000Z", 0},
+      {"000101000000Z", "20000101000001Z", -1},
+      {"000101000000Z", "20000102000000Z", -1},
+      {"000101000000Z", "20000102000001Z", -1},
+      {"000101235959Z", "20000102000000Z", -1},
+      {"000101000000Z", "19991231235959Z", 1},
+      // UTCTime's two-digit years are not ordered lexicographically.
+      {"500101000000Z", "490101000000Z", -1},
+      {"19491231235959Z", "500101000000Z", -1},
+      {"491231235959Z", "20500101000000Z", -1},
+      {"000228235959Z", "20000229000000Z", -1},
+      {"000229235959Z", "20000301000000Z", -1},
+      {"19000228235959Z", "19000301000000Z", -1},
+      {"24000229235959Z", "24000301000000Z", -1},
+      {"380119031407Z", "20380119031408Z", -1},
+      // The difference must not be narrowed to a 32-bit count of seconds.
+      {"00000101000000Z", "99991231235959Z", -1},
+      {"99991231235958Z", "99991231235959Z", -1},
+  };
+
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.a);
+    SCOPED_TRACE(t.b);
+    bssl::UniquePtr<ASN1_TIME> a(ASN1_TIME_new());
+    bssl::UniquePtr<ASN1_TIME> b(ASN1_TIME_new());
+    ASSERT_TRUE(a);
+    ASSERT_TRUE(b);
+    ASSERT_TRUE(ASN1_TIME_set_string(a.get(), t.a));
+    ASSERT_TRUE(ASN1_TIME_set_string(b.get(), t.b));
+    EXPECT_EQ(t.expected, ASN1_TIME_compare(a.get(), b.get()));
+    EXPECT_EQ(-t.expected, ASN1_TIME_compare(b.get(), a.get()));
+    EXPECT_EQ(0, ASN1_TIME_compare(a.get(), a.get()));
+    EXPECT_EQ(0, ASN1_TIME_compare(b.get(), b.get()));
+  }
+}
+
+TEST(ASN1Test, TimeCompareInvalid) {
+  const struct {
+    int type;
+    const char *str;
+  } kTests[] = {
+      {V_ASN1_UTCTIME, ""},
+      {V_ASN1_UTCTIME, "not a time"},
+      {V_ASN1_UTCTIME, "0001010000Z"},
+      {V_ASN1_UTCTIME, "001301000000Z"},
+      {V_ASN1_UTCTIME, "000001000000Z"},
+      {V_ASN1_UTCTIME, "000100000000Z"},
+      {V_ASN1_UTCTIME, "000231000000Z"},
+      {V_ASN1_UTCTIME, "010229000000Z"},
+      {V_ASN1_UTCTIME, "000101240000Z"},
+      {V_ASN1_UTCTIME, "000101006000Z"},
+      {V_ASN1_UTCTIME, "000101000060Z"},
+      {V_ASN1_UTCTIME, "000101000000"},
+      {V_ASN1_UTCTIME, "000101000000+2400"},
+      {V_ASN1_UTCTIME, "000101000000+0060"},
+      {V_ASN1_UTCTIME, "000101000000Zjunk"},
+      {V_ASN1_UTCTIME, "20000101000000Z"},
+      {V_ASN1_GENERALIZEDTIME, ""},
+      {V_ASN1_GENERALIZEDTIME, "19000229000000Z"},
+      {V_ASN1_GENERALIZEDTIME, "20010229000000Z"},
+      {V_ASN1_GENERALIZEDTIME, "20000101000000"},
+      {V_ASN1_GENERALIZEDTIME, "20000101000000+0000"},
+      {V_ASN1_GENERALIZEDTIME, "100000101000000Z"},
+      {V_ASN1_GENERALIZEDTIME, "999999999999999999999999999999Z"},
+      {V_ASN1_GENERALIZEDTIME, "000101000000Z"},
+      // Retain the parsing rules of |ASN1_TIME_diff|, which reject fractions.
+      {V_ASN1_GENERALIZEDTIME, "20000101000000.5Z"},
+      {V_ASN1_OCTET_STRING, "20000101000000Z"},
+      {-1, "20000101000000Z"},
+  };
+
+  bssl::UniquePtr<ASN1_TIME> valid(ASN1_TIME_new());
+  ASSERT_TRUE(valid);
+  ASSERT_TRUE(ASN1_TIME_set_string(valid.get(), "000101000000Z"));
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.type);
+    SCOPED_TRACE(t.str);
+    bssl::UniquePtr<ASN1_TIME> invalid(ASN1_STRING_type_new(t.type));
+    ASSERT_TRUE(invalid);
+    ASSERT_TRUE(ASN1_STRING_set(invalid.get(), t.str, strlen(t.str)));
+    EXPECT_EQ(-2, ASN1_TIME_compare(invalid.get(), valid.get()));
+    EXPECT_EQ(-2, ASN1_TIME_compare(valid.get(), invalid.get()));
+    EXPECT_EQ(-2, ASN1_TIME_compare(invalid.get(), invalid.get()));
+  }
+}
+
+TEST(ASN1Test, TimeCompareUTCTimeOffsets) {
+  const struct {
+    const char *utc;
+    const char *generalized;
+    int expected;
+  } kTests[] = {
+      {"000102040405+0100", "20000102030405Z", 0},
+      {"000102040405-0100", "20000102050405Z", 0},
+      {"000101000000+0100", "19991231230000Z", 0},
+      {"000101233000-0100", "20000102003000Z", 0},
+      {"000102000000+0100", "20000101230001Z", -1},
+      {"000102000000-0100", "20000102005959Z", 1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.utc);
+    SCOPED_TRACE(t.generalized);
+    bssl::UniquePtr<ASN1_TIME> a(ASN1_STRING_type_new(V_ASN1_UTCTIME));
+    bssl::UniquePtr<ASN1_TIME> b(ASN1_TIME_new());
+    ASSERT_TRUE(a);
+    ASSERT_TRUE(b);
+    ASSERT_TRUE(ASN1_STRING_set(a.get(), t.utc, strlen(t.utc)));
+    ASSERT_TRUE(ASN1_TIME_set_string(b.get(), t.generalized));
+    EXPECT_EQ(t.expected, ASN1_TIME_compare(a.get(), b.get()));
+    EXPECT_EQ(-t.expected, ASN1_TIME_compare(b.get(), a.get()));
+  }
+}
+
+TEST(ASN1Test, TimeCompareCurrentTime) {
+  bssl::UniquePtr<ASN1_TIME> earliest(ASN1_TIME_new());
+  bssl::UniquePtr<ASN1_TIME> latest(ASN1_TIME_new());
+  ASSERT_TRUE(earliest);
+  ASSERT_TRUE(latest);
+  ASSERT_TRUE(ASN1_TIME_set_string(earliest.get(), "00000101000000Z"));
+  ASSERT_TRUE(ASN1_TIME_set_string(latest.get(), "99991231235959Z"));
+  EXPECT_EQ(-1, ASN1_TIME_compare(earliest.get(), nullptr));
+  EXPECT_EQ(1, ASN1_TIME_compare(nullptr, earliest.get()));
+  EXPECT_EQ(1, ASN1_TIME_compare(latest.get(), nullptr));
+  EXPECT_EQ(-1, ASN1_TIME_compare(nullptr, latest.get()));
+}
+
 TEST(ASN1Test, UTCTimeTimezoneOffsetSign) {
   static const struct {
     const char *str;
