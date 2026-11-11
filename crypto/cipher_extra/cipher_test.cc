@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
+#include <openssl/chacha.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
@@ -590,6 +591,277 @@ TEST_P(AeadCipherTest, TestVector) {
   });
 }
 
+TEST(CipherTest, ChaCha20Poly1305GetTag) {
+  // From crypto/cipher_extra/test/chacha20_poly1305_tests.txt.
+  const uint8_t kKey[32] = {0xbc, 0xb2, 0x63, 0x9b, 0xf9, 0x89, 0xc6, 0x25,
+                            0x1b, 0x29, 0xbf, 0x38, 0xd3, 0x9a, 0x9b, 0xdc,
+                            0xe7, 0xc5, 0x5f, 0x4b, 0x2a, 0xc1, 0x2a, 0x39,
+                            0xc8, 0xa3, 0x7b, 0x5d, 0x0a, 0x5c, 0xc2, 0xb5};
+  const uint8_t kIV[12] = {0x00, 0x00, 0x00, 0x00, 0x1e, 0x8b,
+                           0x4c, 0x51, 0x0f, 0x5c, 0xa0, 0x83};
+  const uint8_t kPlaintext[] = {0x8c, 0x84, 0x19, 0xbc, 0x27};
+  const uint8_t kAAD[] = {0x34, 0xab, 0x88, 0xc2, 0x65};
+  const uint8_t kCiphertext[] = {0x1a, 0x7c, 0x2f, 0x33, 0xf5};
+  const uint8_t kTag[16] = {0x2a, 0x63, 0x87, 0x6a, 0x88, 0x7f, 0x4f, 0x08,
+                            0x0c, 0x9d, 0xf4, 0x18, 0x81, 0x3f, 0xc1, 0xfd};
+
+  const auto expect_no_tag = [](EVP_CIPHER_CTX *ctx) {
+    const std::vector<uint8_t> canary(16, 0xaa);
+    std::vector<uint8_t> tag = canary;
+    EXPECT_EQ(0, EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag.size(),
+                                     tag.data()));
+    EXPECT_EQ(Bytes(canary), Bytes(tag));
+  };
+
+  enum class Reinit { kKeepCipher, kSetCipher, kCtrlInit, kNullInit };
+  for (bool copy : {false, true}) {
+    SCOPED_TRACE(copy);
+    for (Reinit reinit : {Reinit::kKeepCipher, Reinit::kSetCipher,
+                          Reinit::kCtrlInit, Reinit::kNullInit}) {
+      SCOPED_TRACE(static_cast<int>(reinit));
+      bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+      ASSERT_TRUE(ctx);
+      for (int message = 0; message < 2; message++) {
+        SCOPED_TRACE(message);
+        if (message != 0 && reinit == Reinit::kCtrlInit) {
+          ASSERT_TRUE(
+              EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_INIT, 0, nullptr));
+          expect_no_tag(ctx.get());
+        } else if (message != 0 && reinit == Reinit::kNullInit) {
+          ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
+                                         nullptr));
+          expect_no_tag(ctx.get());
+        }
+        const EVP_CIPHER *cipher = message == 0 || reinit == Reinit::kSetCipher
+                                       ? EVP_chacha20_poly1305()
+                                       : nullptr;
+        ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, kKey, kIV));
+        expect_no_tag(ctx.get());
+        ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+        expect_no_tag(ctx.get());
+
+        int len;
+        ASSERT_TRUE(
+            EVP_EncryptUpdate(ctx.get(), nullptr, &len, kAAD, sizeof(kAAD)));
+        expect_no_tag(ctx.get());
+        uint8_t ciphertext[sizeof(kPlaintext)];
+        ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ciphertext, &len, kPlaintext,
+                                      sizeof(kPlaintext)));
+        ASSERT_EQ(len, static_cast<int>(sizeof(kPlaintext)));
+        EXPECT_EQ(Bytes(kCiphertext), Bytes(ciphertext));
+        ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+        expect_no_tag(ctx.get());
+
+        ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), nullptr, &len));
+        ASSERT_EQ(len, 0);
+        ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+        for (size_t tag_len = 1; tag_len <= sizeof(kTag); tag_len++) {
+          uint8_t tag[sizeof(kTag)];
+          ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                          tag_len, tag));
+          EXPECT_EQ(Bytes(kTag, tag_len), Bytes(tag, tag_len));
+        }
+      }
+    }
+  }
+}
+
+TEST(CipherTest, ChaCha20Poly1305RequiresKeyNonceAndTag) {
+  // From crypto/cipher_extra/test/chacha20_poly1305_tests.txt.
+  const uint8_t kKey[32] = {0xbc, 0xb2, 0x63, 0x9b, 0xf9, 0x89, 0xc6, 0x25,
+                            0x1b, 0x29, 0xbf, 0x38, 0xd3, 0x9a, 0x9b, 0xdc,
+                            0xe7, 0xc5, 0x5f, 0x4b, 0x2a, 0xc1, 0x2a, 0x39,
+                            0xc8, 0xa3, 0x7b, 0x5d, 0x0a, 0x5c, 0xc2, 0xb5};
+  const uint8_t kIV[12] = {0x00, 0x00, 0x00, 0x00, 0x1e, 0x8b,
+                           0x4c, 0x51, 0x0f, 0x5c, 0xa0, 0x83};
+  const uint8_t kPlaintext[] = {0x8c, 0x84, 0x19, 0xbc, 0x27};
+  const uint8_t kAAD[] = {0x34, 0xab, 0x88, 0xc2, 0x65};
+  const uint8_t kCiphertext[] = {0x1a, 0x7c, 0x2f, 0x33, 0xf5};
+  const uint8_t kTag[16] = {0x2a, 0x63, 0x87, 0x6a, 0x88, 0x7f, 0x4f, 0x08,
+                            0x0c, 0x9d, 0xf4, 0x18, 0x81, 0x3f, 0xc1, 0xfd};
+
+  // Encrypts one message on an already-initialized |ctx| and checks the result
+  // against the test vector.
+  const auto encrypt = [&](EVP_CIPHER_CTX *ctx) {
+    int len;
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx, nullptr, &len, kAAD, sizeof(kAAD)));
+    uint8_t ciphertext[sizeof(kPlaintext)];
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx, ciphertext, &len, kPlaintext,
+                                  sizeof(kPlaintext)));
+    EXPECT_EQ(Bytes(kCiphertext), Bytes(ciphertext));
+    ASSERT_TRUE(EVP_EncryptFinal_ex(ctx, nullptr, &len));
+    uint8_t tag[sizeof(kTag)];
+    ASSERT_TRUE(
+        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, sizeof(tag), tag));
+    EXPECT_EQ(Bytes(kTag), Bytes(tag));
+  };
+
+  const auto expect_update_fails = [&](EVP_CIPHER_CTX *ctx) {
+    ERR_clear_error();
+    int len;
+    uint8_t out[sizeof(kPlaintext)];
+    EXPECT_FALSE(EVP_CipherUpdate(ctx, out, &len, kPlaintext,
+                                  sizeof(kPlaintext)));
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_CIPHER,
+                            CIPHER_R_INPUT_NOT_INITIALIZED));
+  };
+  const auto expect_final_fails = [](EVP_CIPHER_CTX *ctx) {
+    ERR_clear_error();
+    int len;
+    EXPECT_FALSE(EVP_CipherFinal_ex(ctx, nullptr, &len));
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_CIPHER,
+                            CIPHER_R_INPUT_NOT_INITIALIZED));
+  };
+
+  // The cipher must not run without both a key and a nonce.
+  for (int enc : {0, 1}) {
+    SCOPED_TRACE(enc);
+    for (bool set_key : {false, true}) {
+      SCOPED_TRACE(set_key);
+      for (bool set_iv : {false, true}) {
+        SCOPED_TRACE(set_iv);
+        if (set_key && set_iv) {
+          continue;
+        }
+        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_chacha20_poly1305(),
+                                      nullptr, set_key ? kKey : nullptr,
+                                      set_iv ? kIV : nullptr, enc));
+        expect_update_fails(ctx.get());
+        ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr,
+                                      set_key ? kKey : nullptr,
+                                      set_iv ? kIV : nullptr, enc));
+        expect_final_fails(ctx.get());
+      }
+    }
+  }
+
+  // Each message consumes the nonce, however the context is reinitialized.
+  enum class Reinit { kNone, kNull, kKeyOnly, kCtrlInit };
+  for (Reinit reinit :
+       {Reinit::kNone, Reinit::kNull, Reinit::kKeyOnly, Reinit::kCtrlInit}) {
+    SCOPED_TRACE(static_cast<int>(reinit));
+    for (bool mid_message : {false, true}) {
+      SCOPED_TRACE(mid_message);
+      bssl::ScopedEVP_CIPHER_CTX ctx;
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_chacha20_poly1305(),
+                                     nullptr, kKey, kIV));
+      if (mid_message) {
+        int len;
+        uint8_t ciphertext[sizeof(kPlaintext)];
+        ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ciphertext, &len, kPlaintext,
+                                      sizeof(kPlaintext)));
+      } else {
+        encrypt(ctx.get());
+      }
+      switch (reinit) {
+        case Reinit::kNone:
+          break;
+        case Reinit::kNull:
+          ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
+                                         nullptr));
+          break;
+        case Reinit::kKeyOnly:
+          ASSERT_TRUE(
+              EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, kKey, nullptr));
+          break;
+        case Reinit::kCtrlInit:
+          ASSERT_TRUE(
+              EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_INIT, 0, nullptr));
+          ASSERT_TRUE(
+              EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, kKey, nullptr));
+          break;
+      }
+      if (reinit == Reinit::kNone) {
+        int len;
+        if (mid_message) {
+          // The message is still in progress, so it may be finished.
+          ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), nullptr, &len));
+        }
+        // Finalizing again is a no-op rather than a new message, so the tag
+        // is unchanged.
+        uint8_t tag[sizeof(kTag)];
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                        sizeof(tag), tag));
+        ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), nullptr, &len));
+        EXPECT_EQ(0, len);
+        uint8_t tag2[sizeof(kTag)];
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                        sizeof(tag2), tag2));
+        EXPECT_EQ(Bytes(tag), Bytes(tag2));
+      } else {
+        // |Final| is checked before |Update| because a failed
+        // |EVP_CipherUpdate| poisons |ctx| until the next initialization.
+        expect_final_fails(ctx.get());
+      }
+      // No further message may use the nonce.
+      expect_update_fails(ctx.get());
+
+      // Setting a nonce again allows another message. (The cipher cannot
+      // detect a repeated nonce value; this reuses |kIV| only to check the
+      // output against the test vector.)
+      ASSERT_TRUE(
+          EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, kKey, kIV));
+      encrypt(ctx.get());
+    }
+  }
+
+  // Decryption must fail if no tag was set, even for an authentic message.
+  for (bool tamper : {false, true}) {
+    SCOPED_TRACE(tamper);
+    uint8_t ciphertext[sizeof(kCiphertext)];
+    OPENSSL_memcpy(ciphertext, kCiphertext, sizeof(ciphertext));
+    if (tamper) {
+      ciphertext[0] ^= 1;
+    }
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), EVP_chacha20_poly1305(), nullptr,
+                                   kKey, kIV));
+    int len;
+    ASSERT_TRUE(
+        EVP_DecryptUpdate(ctx.get(), nullptr, &len, kAAD, sizeof(kAAD)));
+    uint8_t plaintext[sizeof(kPlaintext)];
+    ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), plaintext, &len, ciphertext,
+                                  sizeof(ciphertext)));
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+    EXPECT_TRUE(
+        ErrorEquals(ERR_get_error(), ERR_LIB_CIPHER, CIPHER_R_BAD_DECRYPT));
+
+    // Setting the tag afterwards must not verify the message after the fact,
+    // and a failed verification must not succeed on retry.
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    sizeof(kTag), const_cast<uint8_t *>(kTag)));
+    EXPECT_FALSE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+    EXPECT_FALSE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+  }
+
+  // The tag may still be set before the key and nonce.
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), EVP_chacha20_poly1305(), nullptr,
+                                 nullptr, nullptr));
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(kTag), const_cast<uint8_t *>(kTag)));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, kKey, kIV));
+  int len;
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), nullptr, &len, kAAD, sizeof(kAAD)));
+  uint8_t plaintext[sizeof(kPlaintext)];
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), plaintext, &len, kCiphertext,
+                                sizeof(kCiphertext)));
+  EXPECT_EQ(Bytes(kPlaintext), Bytes(plaintext));
+  EXPECT_TRUE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+
+  // Finalizing again remains successful, but setting a different tag must not
+  // report it as verified.
+  EXPECT_TRUE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+  uint8_t bad_tag[sizeof(kTag)];
+  OPENSSL_memcpy(bad_tag, kTag, sizeof(bad_tag));
+  bad_tag[0] ^= 1;
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(bad_tag), bad_tag));
+  EXPECT_FALSE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &len));
+}
+
 // Given a size_t, return true if it's valid. These hardcoded validators are
 // necessary because the Wychefproof test vectors are not consistent about
 // setting the right validity flags.
@@ -1055,6 +1327,7 @@ TEST(CipherTest, GetCipher) {
   test_get_cipher(NID_aes_256_gcm, "aes-256-gcm");
   test_get_cipher(NID_aes_256_ofb128, "aes-256-ofb");
   test_get_cipher(NID_aes_256_xts, "aes-256-xts");
+  test_get_cipher(NID_chacha20, "chacha20");
   test_get_cipher(NID_chacha20_poly1305, "chacha20-poly1305");
   test_get_cipher(NID_des_cbc, "des-cbc");
   test_get_cipher(NID_des_ecb, "des-ecb");
@@ -1083,6 +1356,167 @@ TEST(CipherTest, GetCipher) {
   EXPECT_FALSE(EVP_CIPHER_block_size(nullptr));
   EXPECT_FALSE(EVP_CIPHER_key_length(nullptr));
   EXPECT_FALSE(EVP_CIPHER_iv_length(nullptr));
+}
+
+// EVP_chacha20 is a raw ChaCha20 stream cipher wrapping |CRYPTO_chacha_20|.
+// aioquic uses it by name for QUIC header protection. These tests validate the
+// EVP wrapper against the already-tested primitive.
+TEST(CipherTest, ChaCha20) {
+  const EVP_CIPHER *cipher = EVP_get_cipherbyname("chacha20");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_chacha20, EVP_CIPHER_nid(cipher));
+  EXPECT_EQ(1u, EVP_CIPHER_block_size(cipher));
+  EXPECT_EQ(32u, EVP_CIPHER_key_length(cipher));
+  EXPECT_EQ(16u, EVP_CIPHER_iv_length(cipher));
+
+  uint8_t key[32], iv[16];
+  RAND_bytes(key, sizeof(key));
+  RAND_bytes(iv, sizeof(iv));
+  // The EVP IV is a 64-bit little-endian counter followed by a 64-bit nonce.
+  const uint32_t counter = CRYPTO_load_u32_le(iv);
+  const uint8_t *nonce = iv + 4;
+
+  // Compare the EVP path (whole and chunked) against the one-shot primitive for
+  // a range of lengths, including sub-block and cross-block split points.
+  for (size_t len : {size_t{0}, size_t{1}, size_t{5}, size_t{63}, size_t{64},
+                     size_t{65}, size_t{127}, size_t{200}}) {
+    std::vector<uint8_t> in(len), expected(len);
+    RAND_bytes(in.data(), len);
+    CRYPTO_chacha_20(expected.data(), in.data(), len, key, nonce, counter);
+
+    // Whole input in one EVP_EncryptUpdate.
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(
+        EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key, iv));
+    std::vector<uint8_t> out(len);
+    int out_len = 0;
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &out_len, in.data(),
+                                  (int)len));
+    EXPECT_EQ((int)len, out_len);
+    EXPECT_EQ(Bytes(expected), Bytes(out.data(), (size_t)out_len));
+
+    // Same input fed one byte at a time to exercise keystream buffering.
+    bssl::ScopedEVP_CIPHER_CTX ctx2;
+    ASSERT_TRUE(
+        EVP_EncryptInit_ex(ctx2.get(), cipher, nullptr, key, iv));
+    std::vector<uint8_t> out2(len);
+    for (size_t i = 0; i < len; i++) {
+      int n = 0;
+      ASSERT_TRUE(
+          EVP_EncryptUpdate(ctx2.get(), out2.data() + i, &n, in.data() + i, 1));
+      EXPECT_EQ(1, n);
+    }
+    EXPECT_EQ(Bytes(expected), Bytes(out2));
+  }
+
+  // aioquic's header-protection pattern: init with the key, then re-init the IV
+  // per sample and encrypt five zero bytes. The counter/nonce must reset on the
+  // IV-only re-init.
+  bssl::ScopedEVP_CIPHER_CTX hp;
+  ASSERT_TRUE(EVP_CipherInit_ex(hp.get(), cipher, nullptr, key, nullptr, 1));
+  for (int trial = 0; trial < 3; trial++) {
+    uint8_t sample[16];
+    RAND_bytes(sample, sizeof(sample));
+    ASSERT_TRUE(
+        EVP_CipherInit_ex(hp.get(), nullptr, nullptr, nullptr, sample, 1));
+    uint8_t zero[5] = {0}, mask[5];
+    int n = 0;
+    ASSERT_TRUE(EVP_CipherUpdate(hp.get(), mask, &n, zero, sizeof(zero)));
+    EXPECT_EQ((int)sizeof(zero), n);
+
+    uint8_t expected[5] = {0};
+    CRYPTO_chacha_20(expected, expected, sizeof(expected), key, sample + 4,
+                     CRYPTO_load_u32_le(sample));
+    EXPECT_EQ(Bytes(expected), Bytes(mask));
+  }
+}
+
+TEST(CipherTest, ChaCha20CounterRollover) {
+  const std::vector<uint8_t> key = HexToBytes(
+      "000102030405060708090a0b0c0d0e0f"
+      "101112131415161718191a1b1c1d1e1f");
+  const std::vector<uint8_t> iv =
+      HexToBytes("feffffff0403020108090a0b0c0d0e0f");
+  const std::vector<uint8_t> openssl_expected = HexToBytes(
+      "7feaa58a0d06292287d24ea10e9318c0ab1a897fe5169a5676b0cd6b3cfcb159"
+      "b059ea1be698ce889905f654393212cb1b01a1046e4d5caa1419c234df9814d7"
+      "ecd140157cf30b04b26e855abe1bf204c59ecfc959ec6db589f69f0bea9647bd"
+      "1928f3835340478e7f7c18d694505d77ee8c9bcee4c1e0e69b771c472ef71c5"
+      "f3ea4fa8a0d1fe8df9ba96084fc53bae4633537a7f1e67edf9297ed1a096cf83"
+      "ba2a9731ec2e83b4bce9c2d91d28810492fa14123b3e88a7a472079fb0bc9da"
+      "9240661c9485c9f4bba5d3ee17b2fad026dcfe625085a86028188e8d59395dfd"
+      "db2b43eafc7648666c77f077a61f98318aba9ea00c02e83b55a5a6bc34f0ce3"
+      "df9");
+  ASSERT_EQ(256u, openssl_expected.size());
+  std::vector<uint8_t> input(openssl_expected.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    input[i] = (uint8_t)i;
+  }
+
+  for (size_t chunk_size : {input.size(), size_t{1}, size_t{65}}) {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_chacha20(), nullptr,
+                                   key.data(), iv.data()));
+    std::vector<uint8_t> out(input.size());
+    size_t offset = 0;
+    while (offset < input.size()) {
+      const size_t todo = std::min(chunk_size, input.size() - offset);
+      int out_len = 0;
+      ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data() + offset, &out_len,
+                                    input.data() + offset, (int)todo));
+      ASSERT_EQ(todo, (size_t)out_len);
+      offset += todo;
+    }
+    EXPECT_EQ(Bytes(openssl_expected), Bytes(out));
+  }
+}
+
+// Re-initialization must discard buffered keystream, matching OpenSSL.
+TEST(CipherTest, ChaCha20Reinit) {
+  const EVP_CIPHER *cipher = EVP_chacha20();
+  uint8_t key1[32], key2[32], iv[16];
+  RAND_bytes(key1, sizeof(key1));
+  RAND_bytes(key2, sizeof(key2));
+  RAND_bytes(iv, sizeof(iv));
+  iv[3] = 0;  // Keep the counter away from 32-bit wraparound.
+  const uint32_t counter = CRYPTO_load_u32_le(iv);
+  const uint8_t *nonce = iv + 4;
+
+  auto keystream = [](const uint8_t *k, const uint8_t *n, uint32_t ctr) {
+    std::vector<uint8_t> ks(5, 0);
+    CRYPTO_chacha_20(ks.data(), ks.data(), ks.size(), k, n, ctr);
+    return ks;
+  };
+  const uint8_t zero[64] = {0};
+  uint8_t out[64];
+  int n = 0;
+
+  // Re-key mid-block without an IV: the current block is regenerated under
+  // the new key.
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key2, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key2, nonce, counter)), Bytes(out, 5));
+
+  // Exhaust the buffered block exactly, then re-init: the next output starts
+  // at the following block rather than reusing the consumed one.
+  bssl::ScopedEVP_CIPHER_CTX ctx2;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx2.get(), cipher, nullptr, key1, iv));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 59));
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(ctx2.get(), nullptr, nullptr, nullptr, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx2.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, nonce, counter + 1)), Bytes(out, 5));
+
+  // A key-only init on a fresh context starts from an all-zero IV.
+  const uint8_t zero_nonce[12] = {0};
+  bssl::ScopedEVP_CIPHER_CTX ctx3;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx3.get(), cipher, nullptr, key1, nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx3.get(), out, &n, zero, 5));
+  EXPECT_EQ(Bytes(keystream(key1, zero_nonce, 0)), Bytes(out, 5));
 }
 
 OPENSSL_BEGIN_ALLOW_DEPRECATED
@@ -1557,6 +1991,125 @@ static_assert(EVP_CTRL_CCM_GET_TAG == EVP_CTRL_AEAD_GET_TAG,
               "EVP_CTRL_CCM_GET_TAG must alias EVP_CTRL_AEAD_GET_TAG");
 static_assert(EVP_CTRL_CCM_SET_TAG == EVP_CTRL_AEAD_SET_TAG,
               "EVP_CTRL_CCM_SET_TAG must alias EVP_CTRL_AEAD_SET_TAG");
+
+TEST(CipherTest, CCMRejectsRepeatedPayloadUpdate) {
+  static const uint8_t kPlaintext[16] = {0};
+
+  for (const EVP_CIPHER *cipher :
+       {EVP_aes_128_ccm(), EVP_aes_192_ccm(), EVP_aes_256_ccm()}) {
+    SCOPED_TRACE(EVP_CIPHER_key_length(cipher));
+    std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher));
+    std::vector<uint8_t> iv(EVP_CIPHER_iv_length(cipher));
+
+    bssl::ScopedEVP_CIPHER_CTX repeated_ctx;
+    // Select and initialize the AES-CCM cipher.
+    ASSERT_TRUE(EVP_EncryptInit_ex(repeated_ctx.get(), cipher,
+                                   /*impl=*/nullptr, /*key=*/nullptr,
+                                   /*iv=*/nullptr));
+    // Configure a 16-byte authentication tag.
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(
+        repeated_ctx.get(), EVP_CTRL_AEAD_SET_TAG, 16, nullptr));
+    // Reuse the selected cipher and set its key and IV.
+    ASSERT_TRUE(EVP_EncryptInit_ex(repeated_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int repeated_out_len = 0;
+    // Declare the total plaintext length without processing data.
+    ASSERT_TRUE(EVP_EncryptUpdate(
+        repeated_ctx.get(), /*out=*/nullptr, &repeated_out_len,
+        /*in=*/nullptr, sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), repeated_out_len);
+
+    uint8_t repeated_ciphertext[sizeof(kPlaintext)];
+    // Encrypt the single permitted plaintext buffer.
+    ASSERT_TRUE(EVP_EncryptUpdate(repeated_ctx.get(), repeated_ciphertext,
+                                  &repeated_out_len, kPlaintext,
+                                  sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), repeated_out_len);
+
+    // Reject a second plaintext encryption with the same CCM state.
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_EncryptUpdate(repeated_ctx.get(), repeated_ciphertext,
+                                   &repeated_out_len, kPlaintext,
+                                   sizeof(kPlaintext)));
+    EXPECT_EQ(ERR_GET_REASON(ERR_peek_last_error()),
+              CIPHER_R_INVALID_OPERATION);
+    ERR_clear_error();
+
+    bssl::ScopedEVP_CIPHER_CTX valid_ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(valid_ctx.get(), cipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_SET_TAG, 16,
+                                    nullptr));
+    ASSERT_TRUE(EVP_EncryptInit_ex(valid_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int valid_out_len = 0;
+    ASSERT_TRUE(EVP_EncryptUpdate(valid_ctx.get(), /*out=*/nullptr,
+                                  &valid_out_len, /*in=*/nullptr,
+                                  sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), valid_out_len);
+
+    uint8_t ciphertext[sizeof(kPlaintext)];
+    ASSERT_TRUE(EVP_EncryptUpdate(valid_ctx.get(), ciphertext, &valid_out_len,
+                                  kPlaintext, sizeof(kPlaintext)));
+    ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), valid_out_len);
+
+    uint8_t final_output = 0;
+    int final_len = 0;
+    ASSERT_TRUE(
+        EVP_EncryptFinal_ex(valid_ctx.get(), &final_output, &final_len));
+    ASSERT_EQ(0, final_len);
+
+    uint8_t tag[16] = {0};
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(valid_ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                    sizeof(tag), tag));
+
+    uint8_t invalid_tag[sizeof(tag)] = {0};
+    OPENSSL_memcpy(invalid_tag, tag, sizeof(tag));
+    invalid_tag[0] ^= 1;
+
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, /*impl=*/nullptr,
+                                   /*key=*/nullptr, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(decrypt_ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    sizeof(invalid_tag), invalid_tag));
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, key.data(), iv.data()));
+
+    int decrypted_len = 0;
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), /*out=*/nullptr,
+                                  &decrypted_len, /*in=*/nullptr,
+                                  sizeof(ciphertext)));
+    ASSERT_EQ(static_cast<int>(sizeof(ciphertext)), decrypted_len);
+
+    uint8_t decrypted[sizeof(ciphertext)] = {0};
+    ASSERT_FALSE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                   ciphertext, sizeof(ciphertext)));
+
+    // Reject a retry after decryption consumed the message state, even when
+    // authentication failed.
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                   ciphertext, sizeof(ciphertext)));
+    EXPECT_EQ(ERR_GET_REASON(ERR_peek_last_error()),
+              CIPHER_R_INVALID_OPERATION);
+    ERR_clear_error();
+
+    // A new IV starts a new message and clears the consumed state.
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), /*cipher=*/nullptr,
+                                   /*impl=*/nullptr, /*key=*/nullptr,
+                                   iv.data()));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(decrypt_ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    sizeof(tag), tag));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), /*out=*/nullptr,
+                                  &decrypted_len, /*in=*/nullptr,
+                                  sizeof(ciphertext)));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), decrypted, &decrypted_len,
+                                  ciphertext, sizeof(ciphertext)));
+    EXPECT_EQ(Bytes(decrypted), Bytes(kPlaintext));
+  }
+}
 
 #define CHECK_ERROR(function, err) \
     ERR_clear_error();                 \

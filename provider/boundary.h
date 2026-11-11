@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_PROVIDER_BACKEND_H
-#define AWSLC_PROVIDER_BACKEND_H
+#ifndef AWSLC_PROVIDER_BOUNDARY_H
+#define AWSLC_PROVIDER_BOUNDARY_H
 
 // ===========================================================================
 // How this provider is put together.
@@ -29,10 +29,16 @@
 // which makes the separation a compile error rather than a convention someone
 // has to remember.
 //
-// THIS HEADER IS THE INTERFACE BETWEEN THEM, and the one header any file on
-// either side may include. That is why it may name nothing from either library:
-// plain C types only, no typedef, macro, or struct borrowed from either side.
-// The same rule binds every header under internal/backend/.
+// THIS HEADER IS THE INTERFACE BETWEEN THEM. A header's directory says who may
+// include it:
+//
+//   boundary.h, boundary/**   either side. Plain C types only: no typedef,
+//                             macro, or struct borrowed from either library.
+//   frontend/**               the OpenSSL side only.
+//   backend/**                the AWS-LC side only.
+//
+// Within frontend/ and backend/, a header sits next to the sources it pairs
+// with.
 //
 // Three consequences shape every algorithm added later:
 //
@@ -44,26 +50,28 @@
 //   - Each side needs its own test binary. A test can link one library or the
 //     other, never both, for the same reason a translation unit cannot.
 //
-// Layout follows from keeping what scales with the algorithm count separate from
-// what does not:
+// What scales with the algorithm count stays apart from what does not, the same
+// way across the boundary and on each side:
 //
-//   internal/backend.h                       this file: the contract
-//   internal/backend/<class>.h               per-class backend entry points
-//   internal/frontend/<class>.h              per-class frontend contract
-//   frontend/<service>.c                     provider-wide frontend services
-//   backend/<service>.c                      provider-wide AWS-LC bindings
-//   frontend/operations/<class>/<class>.c    class-wide frontend behavior
-//   frontend/operations/<class>/<family>.c   family helpers and dispatch slots
-//   backend/operations/<class>/<family>.c    explicit AWS-LC bindings
+//   provider-wide           this file across the boundary; on a side, next to
+//                           that side's provider-wide sources.
+//   operation-wide          shapes, declaring macros, and helpers shared by
+//                           every family in an operation. Across the boundary,
+//                           boundary/<operation>.h; on a side, next to
+//                           operations/<operation>/<operation>.c.
+//   operations/<family>.h   one family's declarations across every operation it
+//                           serves, including the operation headers it uses.
+//                           It sits directly under operations/, not inside an
+//                           operation directory, because a family can span
+//                           several operations.
 //
-// The two operations/ trees correspond one to one where the shape allows it.
+// No umbrella includes. An operation header never includes its family headers;
+// each consumer includes the family header it uses. frontend/operations/ and
+// backend/operations/ correspond one to one where the shape allows it.
 //
-// Anything the whole provider needs regardless of algorithm is declared in this
-// file. Anything that arrives per algorithm belongs in internal/backend/<class>.h.
-//
-// Every function declared here or under internal/backend/ returns 1 on success
-// and 0 on failure, matching AWS-LC's convention. The front side translates that
-// into whatever the dispatch slot it is serving expects.
+// Every function declared here or under boundary/ returns 1 on success and 0 on
+// failure, matching AWS-LC's convention. The front side translates that into
+// whatever the dispatch slot it is serving expects.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -166,4 +174,4 @@ int awslc_prov_error_shift(AWSLC_PROV_ERROR *out);
 }  // extern "C"
 #endif
 
-#endif  // AWSLC_PROVIDER_BACKEND_H
+#endif  // AWSLC_PROVIDER_BOUNDARY_H

@@ -139,15 +139,15 @@ int pkeyTool(const args_list_t &args) {
     }
   }
 
-  // Set up output BIO
-  // Set restrictive permissions when writing private keys to file
-  if (!pubout && !pubin && !out_path.empty()) {
-    SetUmaskForPrivateKey();
-  }
+  // The output gets private material from an encoded private key, or from
+  // -text printing private components.
+  const bool private_output = !pubin && ((!noout && !pubout) || text);
 
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else if (private_output) {
+    output_bio = NewPrivateFileBIO(out_path);
   } else {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {

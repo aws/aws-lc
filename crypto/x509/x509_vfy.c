@@ -627,6 +627,26 @@ static int check_curve_decoded_by_name(X509 *x) {
   return !is_explicit;
 }
 
+// has_unprocessed_critical_crldp returns one if |x|, at |depth| in the chain,
+// has a critical CRL distribution points extension that will not be processed
+// because CRL checking is not enabled for |x|, and zero otherwise.
+//
+// |X509_supported_extension| treats CRL distribution points as supported for
+// compatibility with OpenSSL 1.1.1, but AWS-LC only processes the extension
+// during CRL checking. RFC 5280 Section 4.2 requires rejecting a critical
+// extension containing information that cannot be processed.
+static int has_unprocessed_critical_crldp(const X509_STORE_CTX *ctx, X509 *x,
+                                          int depth) {
+  unsigned long flags = ctx->param->flags;
+  // This matches the certificates checked by |check_revocation|.
+  if ((flags & X509_V_FLAG_CRL_CHECK) &&
+      ((flags & X509_V_FLAG_CRL_CHECK_ALL) || depth == 0)) {
+    return 0;
+  }
+  int idx = X509_get_ext_by_NID(x, NID_crl_distribution_points, -1);
+  return idx >= 0 && X509_EXTENSION_get_critical(X509_get_ext(x, idx));
+}
+
 // Check a certificate chains extensions for consistency with the supplied
 // purpose
 
@@ -646,6 +666,15 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
         // AWS-LC specific logic for enabling custom unknown critical
         // extensions.
         !check_custom_critical_extensions(ctx, x)) {
+      ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
+      ctx->error_depth = i;
+      ctx->current_cert = x;
+      ok = call_verify_cb(0, ctx);
+      if (!ok) {
+        goto end;
+      }
+    } else if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
+               has_unprocessed_critical_crldp(ctx, x, i)) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -760,7 +789,10 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
       NAME_CONSTRAINTS *nc = sk_X509_value(ctx->chain, j)->nc;
       if (nc) {
         rv = NAME_CONSTRAINTS_check(x, nc);
-        if (rv == X509_V_OK &&
+        // Only the CN of the target certificate may be used as a DNS identity
+        // by hostname verification; intermediate CNs are not hostname
+        // identities.
+        if (rv == X509_V_OK && i == 0 &&
             (ctx->param->hostflags & X509_CHECK_FLAG_NEVER_CHECK_SUBJECT) ==
                 0 &&
             ((ctx->param->hostflags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) !=
@@ -1024,7 +1056,7 @@ static int check_blocked_spki(X509_STORE_CTX *ctx) {
     if (blocked) {
       ctx->current_cert = x;
       ctx->error_depth = (int)i;
-      ctx->error = X509_V_ERR_CERT_REVOKED;
+      ctx->error = X509_V_ERR_CERT_REJECTED;
       if (!call_verify_cb(0, ctx)) {
         return 0;
       }

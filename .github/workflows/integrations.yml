@@ -69,6 +69,12 @@ jobs:
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang
       - uses: actions/checkout@v7
+      # Kafka 3.9 predates Java 25 support, while ubuntu-26.04 defaults to
+      # Java 25. Pin the broker cluster to a supported LTS release.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Run librdkafka build
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
@@ -140,6 +146,11 @@ jobs:
           sudo apt update
           sudo apt install -y libpcre2-dev libnghttp2-dev nghttp2-client zlib1g-dev libtool-bin libxml2-dev pebble python3-venv
       - uses: actions/checkout@v7
+      # httpd 2.4.65 requires pytest<7.0, which is incompatible with Python
+      # 3.14 on ubuntu-26.04. Keep the test harness on its known-good runtime.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - name: Build AWS-LC, build httpd, run tests
         run: |
           ./tests/ci/integration/run_httpd_integration.sh '2.4.65'

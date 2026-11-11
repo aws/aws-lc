@@ -12,6 +12,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/posix_time.h>
 #include <openssl/span.h>
 
 #include "../internal.h"
@@ -1738,6 +1739,49 @@ TEST(CBSTest, BogusTime) {
     EXPECT_FALSE(CBS_parse_generalized_time(&cbs, NULL,
                                             /*allow_timezone_offset=*/0));
     EXPECT_FALSE(CBS_parse_utc_time(&cbs, NULL, /*allow_timezone_offset=*/1));
+  }
+}
+
+TEST(CBSTest, TimezoneOffsetSign) {
+  static const struct {
+    const char *timestring;
+    bool is_gentime;
+    // The UTC instant |timestring| denotes, as a POSIX timestamp.
+    int64_t posix_time;
+  } kTests[] = {
+      // 2000-01-02 04:04:05+01:00 is 2000-01-02 03:04:05Z.
+      {"000102040405+0100", false, 946782245},
+      // 2000-01-02 04:04:05-01:00 is 2000-01-02 05:04:05Z.
+      {"000102040405-0100", false, 946789445},
+      // No offset, for comparison: 2000-01-02 04:04:05Z.
+      {"000102040405Z", false, 946785845},
+      // Offsets with a minutes component.
+      {"20000102040405+0130", true, 946780445},   // 2000-01-02 02:34:05Z
+      {"20000102040405-0130", true, 946791245},   // 2000-01-02 05:34:05Z
+      // An offset may carry the result into a different day, month, and year.
+      {"991231235959-0100", false, 946688399},  // 2000-01-01 00:59:59Z
+      {"000101000000+0100", false, 946681200},  // 1999-12-31 23:00:00Z
+      // The largest permitted offset, and a zero offset.
+      {"480726113216-2359", false, 2479462276},  // 2048-07-27 11:31:16Z
+      {"480726113216-0000", false, 2479375936},  // 2048-07-26 11:32:16Z
+      {"20140704000000-0700", true, 1404457200},  // 2014-07-04 07:00:00Z
+      {"20140704000000+0700", true, 1404406800},  // 2014-07-03 17:00:00Z
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.timestring);
+    CBS cbs;
+    CBS_init(&cbs, (const uint8_t *)t.timestring, strlen(t.timestring));
+    struct tm tm;
+    OPENSSL_memset(&tm, 0, sizeof(tm));
+    if (t.is_gentime) {
+      ASSERT_TRUE(
+          CBS_parse_generalized_time(&cbs, &tm, /*allow_timezone_offset=*/1));
+    } else {
+      ASSERT_TRUE(CBS_parse_utc_time(&cbs, &tm, /*allow_timezone_offset=*/1));
+    }
+    int64_t posix_time;
+    ASSERT_TRUE(OPENSSL_tm_to_posix(&tm, &posix_time));
+    EXPECT_EQ(t.posix_time, posix_time);
   }
 }
 
