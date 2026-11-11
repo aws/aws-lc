@@ -139,9 +139,20 @@ OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);
 OPENSSL_EXPORT int BIO_reset(BIO *bio) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_eof returns non-zero when |bio| has reached end-of-file. The precise
-// meaning of which depends on the concrete type of |bio|. Note that in the
-// case of BIO_pair this always returns non-zero.
+// meaning depends on the concrete type of |bio|. Socket, file descriptor, and
+// connect BIOs report EOF after a read returns zero without a retry condition.
+// A BIO pair reports EOF after its peer shuts down writes and buffered data
+// has been consumed.
+//
+// TLS uses this control to distinguish unexpected transport EOF from a
+// temporary zero read. Custom transport BIOs should return one from
+// |BIO_CTRL_EOF| only for actual EOF, not when an operation would block.
 OPENSSL_EXPORT int BIO_eof(BIO *bio);
+
+// BIO_FLAGS_IN_EOF records input EOF in socket, file descriptor, and connect
+// BIOs. Custom BIOs must implement |BIO_CTRL_EOF| to report EOF; setting this
+// flag alone does not implement |BIO_eof|.
+#define BIO_FLAGS_IN_EOF 0x800
 
 // BIO_set_flags ORs |flags| with |bio->flags|.
 OPENSSL_EXPORT void BIO_set_flags(BIO *bio, int flags);
@@ -1038,9 +1049,6 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 // BIO_FLAGS_MEM_RDONLY is used with memory BIOs. It means we shouldn't free up
 // or change the data in any way.
 #define BIO_FLAGS_MEM_RDONLY 0x200
-
-// BIO_FLAGS_IN_EOF indicates that a BIO has reached end-of-input.
-#define BIO_FLAGS_IN_EOF 0x800
 
 // BIO_TYPE_DESCRIPTOR denotes that the |BIO| responds to the |BIO_C_SET_FD|
 // (|BIO_set_fd|) and |BIO_C_GET_FD| (|BIO_get_fd|) control hooks.
