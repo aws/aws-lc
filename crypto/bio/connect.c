@@ -341,6 +341,8 @@ static int conn_read(BIO *bio, char *out, int out_len) {
   if (ret <= 0) {
     if (bio_socket_should_retry(ret)) {
       BIO_set_retry_read(bio);
+    } else if (ret == 0) {
+      BIO_set_flags(bio, BIO_FLAGS_IN_EOF);
     }
   }
 
@@ -426,6 +428,9 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       } else {
         ret = -1;
       }
+      break;
+    case BIO_CTRL_EOF:
+      ret = (bio->flags & BIO_FLAGS_IN_EOF) != 0;
       break;
     case BIO_CTRL_GET_CLOSE:
       ret = bio->shutdown;

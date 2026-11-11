@@ -1039,6 +1039,9 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 // or change the data in any way.
 #define BIO_FLAGS_MEM_RDONLY 0x200
 
+// BIO_FLAGS_IN_EOF indicates that a BIO has reached end-of-input.
+#define BIO_FLAGS_IN_EOF 0x800
+
 // BIO_TYPE_DESCRIPTOR denotes that the |BIO| responds to the |BIO_C_SET_FD|
 // (|BIO_set_fd|) and |BIO_C_GET_FD| (|BIO_get_fd|) control hooks.
 #define BIO_TYPE_DESCRIPTOR 0x0100  // socket, fd, connect or accept
