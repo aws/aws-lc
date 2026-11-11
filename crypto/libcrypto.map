@@ -229,6 +229,7 @@ AWS_LC_1.0 {
     BIO_dgram_send_timedout;
     BIO_dgram_set_peer;
     BIO_do_connect;
+    BIO_do_handshake;
     BIO_dump;
     BIO_eof;
     BIO_f_base64;
