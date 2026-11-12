@@ -1,6 +1,6 @@
 {
   "_comment": "Which FIPS release branches are still in support, derived from VERSIONING.md (the end-of-support table plus the LTS note). analyze drops a branch that is past end_of_support or not actively_maintained, and keeps any branch missing from this list, since unknown must not mean silently skipped. end_of_support is month-precision (YYYY-MM) as published. Confirm against VERSIONING.md before relying on it.",
-  "updated": "2026-09-28",
+  "updated": "2026-11-11",
   "source": "aws-lc VERSIONING.md (Deprecation of legacy FIPS branches)",
   "mainline": {
     "branch": "main"
@@ -11,14 +11,14 @@
       "fips_version": 1,
       "release_type": "lts",
       "end_of_support": "2026-10",
-      "actively_maintained": true
+      "actively_maintained": false
     },
     {
       "branch": "fips-2021-10-20-1MU",
       "fips_version": 1,
       "release_type": "lts",
       "end_of_support": "2026-10",
-      "actively_maintained": true
+      "actively_maintained": false
     },
     {
       "branch": "fips-2022-11-02",
