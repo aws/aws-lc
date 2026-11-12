@@ -73,6 +73,7 @@
 #include "cpucap/cpu_aarch64_linux.c"
 #include "cpucap/cpu_aarch64_netbsd.c"
 #include "cpucap/cpu_aarch64_openbsd.c"
+#include "cpucap/cpu_aarch64_qnx.c"
 #include "cpucap/cpu_aarch64_win.c"
 #include "cpucap/cpu_arm_freebsd.c"
 #include "cpucap/cpu_arm_linux.c"
