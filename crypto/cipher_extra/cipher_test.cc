@@ -1535,6 +1535,94 @@ TEST(CipherTest, AddCipher) {
 }
 OPENSSL_END_ALLOW_DEPRECATED
 
+TEST(CipherTest, GCMZeroLengthUpdateIsNoOp) {
+  static const uint8_t kKey[16] = {0};
+  static const uint8_t kIV[12] = {0};
+  static const uint8_t kAAD[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  static const uint8_t kPlaintext[16] = {0, 1, 2, 3, 4, 5, 6, 7,
+                                         8, 9, 10, 11, 12, 13, 14, 15};
+  static constexpr size_t kFirstAADLen = 5;
+
+  uint8_t ciphertext[sizeof(kPlaintext)];
+  uint8_t tag[16];
+  {
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_aes_128_gcm(), nullptr, kKey,
+                                   kIV));
+    int out_len;
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), nullptr, &out_len, kAAD,
+                                  sizeof(kAAD)));
+    ASSERT_EQ(out_len, static_cast<int>(sizeof(kAAD)));
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), ciphertext, &out_len, kPlaintext,
+                                  sizeof(kPlaintext)));
+    ASSERT_EQ(out_len, static_cast<int>(sizeof(kPlaintext)));
+    int final_len;
+    ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), ciphertext + out_len,
+                                    &final_len));
+    ASSERT_EQ(final_len, 0);
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
+                                    sizeof(tag), tag));
+  }
+
+  auto update = [](EVP_CIPHER_CTX *ctx, bool encrypt, bool use_evp_cipher,
+                   uint8_t *out, int *out_len, const uint8_t *in, int in_len) {
+    if (use_evp_cipher) {
+      return EVP_CipherUpdate(ctx, out, out_len, in, in_len);
+    }
+    return encrypt ? EVP_EncryptUpdate(ctx, out, out_len, in, in_len)
+                   : EVP_DecryptUpdate(ctx, out, out_len, in, in_len);
+  };
+
+  for (bool use_evp_cipher : {false, true}) {
+    SCOPED_TRACE(use_evp_cipher);
+    for (bool encrypt : {false, true}) {
+      SCOPED_TRACE(encrypt);
+      bssl::ScopedEVP_CIPHER_CTX ctx;
+      ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_128_gcm(), nullptr,
+                                    kKey, kIV, encrypt));
+
+      int out_len;
+      ASSERT_TRUE(update(ctx.get(), encrypt, use_evp_cipher, nullptr, &out_len,
+                         kAAD, kFirstAADLen));
+      ASSERT_EQ(out_len, static_cast<int>(kFirstAADLen));
+      out_len = -1;
+      ASSERT_TRUE(update(ctx.get(), encrypt, use_evp_cipher, nullptr, &out_len,
+                         nullptr, 0));
+      ASSERT_EQ(out_len, 0);
+      ASSERT_TRUE(update(ctx.get(), encrypt, use_evp_cipher, nullptr, &out_len,
+                         kAAD + kFirstAADLen,
+                         sizeof(kAAD) - kFirstAADLen));
+      ASSERT_EQ(out_len,
+                static_cast<int>(sizeof(kAAD) - kFirstAADLen));
+
+      const uint8_t *input = encrypt ? kPlaintext : ciphertext;
+      uint8_t output[sizeof(kPlaintext)];
+      ASSERT_TRUE(update(ctx.get(), encrypt, use_evp_cipher, output, &out_len,
+                         input, sizeof(kPlaintext)));
+      ASSERT_EQ(out_len, static_cast<int>(sizeof(kPlaintext)));
+
+      if (!encrypt) {
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG,
+                                        sizeof(tag), tag));
+      }
+      int final_len;
+      ASSERT_TRUE(
+          EVP_CipherFinal_ex(ctx.get(), output + out_len, &final_len));
+      ASSERT_EQ(final_len, 0);
+
+      if (encrypt) {
+        uint8_t output_tag[sizeof(tag)];
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
+                                        sizeof(output_tag), output_tag));
+        EXPECT_EQ(Bytes(output), Bytes(ciphertext));
+        EXPECT_EQ(Bytes(output_tag), Bytes(tag));
+      } else {
+        EXPECT_EQ(Bytes(output), Bytes(kPlaintext));
+      }
+    }
+  }
+}
+
 // Test the AES-GCM EVP_CIPHER's internal IV management APIs. OpenSSH uses these
 // APIs.
 TEST(CipherTest, GCMIncrementingIV) {
@@ -2232,8 +2320,9 @@ TEST(CipherTest, EncryptUpdateWritesOnlyReportedBytes) {
   // Zero indicates a single-shot call.
   static const size_t kChunkSizes[] = {0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 64};
 
-  // A fixed array keeps |plaintext + offset| valid even for empty inputs; for
-  // AEAD ciphers a NULL |in| would mean finalization, not an empty update.
+  // A fixed array keeps |plaintext + offset| valid even for empty inputs. Direct
+  // |EVP_Cipher| calls interpret a NULL AEAD input as finalization, while the
+  // |EVP_*Update| APIs treat zero-length inputs as no-ops.
   uint8_t plaintext[64];
   for (size_t i = 0; i < sizeof(plaintext); i++) {
     plaintext[i] = static_cast<uint8_t>(i);
