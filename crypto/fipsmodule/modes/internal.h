@@ -114,8 +114,9 @@ typedef struct gcm128_key_st {
   unsigned use_hw_gcm_crypt:1;
 } GCM128_KEY;
 
-// GCM128_CONTEXT contains state for a single GCM operation. The structure
-// should be zero-initialized before use.
+// GCM128_CONTEXT contains state for a single GCM operation.
+// |CRYPTO_gcm128_setiv| initializes all per-message state, so |gcm|
+// does not need to be zeroed first.
 typedef struct {
   // The following 5 names follow names in GCM specification
   uint8_t Yi[16];
