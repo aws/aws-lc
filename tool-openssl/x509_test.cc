@@ -11,13 +11,33 @@
 #include <functional>
 #include <limits>
 #include <sstream>
+#if !defined(OPENSSL_WINDOWS)
+#include <unistd.h>
+#endif
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
 
-static std::string SerialFilePath(const char *ca_file_path) {
-  const std::string path(ca_file_path);
-  return path.substr(0, path.find_last_of('.')) + ".srl";
+static bool CopyFileContents(const char *input_path,
+                             const std::string &output_path) {
+  const std::string contents = ReadFileToString(input_path);
+  ScopedFILE output(fopen(output_path.c_str(), "wb"));
+  return output && fwrite(contents.data(), 1, contents.size(), output.get()) ==
+                       contents.size();
+}
+
+static std::string SerialFilePath(const std::string &ca_path) {
+#if defined(OPENSSL_WINDOWS)
+  const size_t separator_pos = ca_path.find_last_of("/\\");
+#else
+  const size_t separator_pos = ca_path.find_last_of('/');
+#endif
+  const size_t extension_pos = ca_path.find_last_of('.');
+  if (extension_pos == std::string::npos ||
+      (separator_pos != std::string::npos && extension_pos < separator_pos)) {
+    return ca_path + ".srl";
+  }
+  return ca_path.substr(0, extension_pos) + ".srl";
 }
 
 class X509Test : public ::testing::Test {
@@ -551,10 +571,9 @@ TEST_F(X509Test, ReqCADigestSelection) {
 // the flag must succeed and issue a certificate with a serial number. Before
 // this change the flag was rejected as unknown.
 TEST_F(X509Test, ReqCACreateSerial) {
-  args_list_t args = {"-in",           csr_path,     "-req",
-                      "-CA",           ca_cert_path, "-CAkey",
-                      ca_key_path,     "-CAcreateserial",
-                      "-out",          out_path};
+  args_list_t args = {"-in",        csr_path, "-req",      "-CA",
+                      ca_cert_path, "-CAkey", ca_key_path, "-CAcreateserial",
+                      "-out",       out_path};
   ASSERT_EQ(kToolExitSuccess, X509Tool(args));
 
   ScopedFILE out_file(fopen(out_path, "rb"));
@@ -563,7 +582,45 @@ TEST_F(X509Test, ReqCACreateSerial) {
       PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(issued);
   ASSERT_TRUE(X509_get_serialNumber(issued.get()));
+
+  const std::string serial_path = SerialFilePath(ca_cert_path);
+  EXPECT_FALSE(ReadFileToString(serial_path.c_str()).empty());
+  RemoveFile(serial_path.c_str());
 }
+
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(X509Test, SerialPathHandlesPOSIXPaths) {
+  char temp_dir[PATH_MAX];
+  ASSERT_GT(createTempDirPath(temp_dir), 0u);
+  const std::string dotted_dir = std::string(temp_dir) + ".dir";
+  ASSERT_EQ(0, rename(temp_dir, dotted_dir.c_str()));
+
+  const std::string ca_path = dotted_dir + "/ca";
+  const std::string serial_path = ca_path + ".srl";
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, ca_path));
+
+  args_list_t args = {"-in",    csr_path,    "-req", "-CA",   ca_path,
+                      "-CAkey", ca_key_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+  EXPECT_FALSE(ReadFileToString(serial_path.c_str()).empty());
+
+  RemoveFile(ca_path.c_str());
+  RemoveFile(serial_path.c_str());
+
+  const std::string backslash_ca_path = dotted_dir + "/ca.pem\\name";
+  const std::string backslash_serial_path = dotted_dir + "/ca.srl";
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, backslash_ca_path));
+
+  args = {"-in",    csr_path,    "-req", "-CA",   backslash_ca_path,
+          "-CAkey", ca_key_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, X509Tool(args));
+  EXPECT_FALSE(ReadFileToString(backslash_serial_path.c_str()).empty());
+
+  RemoveFile(backslash_ca_path.c_str());
+  RemoveFile(backslash_serial_path.c_str());
+  EXPECT_EQ(0, rmdir(dotted_dir.c_str()));
+}
+#endif
 
 // Same rejection as ReqCARejectsBadSignature, but the bad CSR is DER-encoded
 // and read via -inform DER. This exercises the proof-of-possession check on the
@@ -723,10 +780,7 @@ TEST_F(X509Test, SetSerial) {
   ASSERT_EQ(kToolExitSuccess, result);
 
   // Check that .srl file was created
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "r"));
   ASSERT_TRUE(srl_file);
 
@@ -817,10 +871,7 @@ TEST_F(X509Test, BasicSerialGeneration) {
 // Test serial generation with existing .srl file
 TEST_F(X509Test, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
   ASSERT_TRUE(srl_file);
   fprintf(srl_file.get(), "1234ABCD\n");
@@ -1022,6 +1073,25 @@ TEST_F(X509OptionUsageErrorsTest, InvalidPassin) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
+
+static void ExpectSerialFileMatchesCertificate(const std::string &serial_path,
+                                               X509 *cert) {
+  std::string persisted = ReadFileToString(serial_path.c_str());
+  ASSERT_FALSE(persisted.empty()) << serial_path;
+  const size_t newline = persisted.find_first_of("\r\n");
+  if (newline != std::string::npos) {
+    persisted.resize(newline);
+  }
+
+  BIGNUM *raw_persisted = nullptr;
+  ASSERT_GT(BN_hex2bn(&raw_persisted, persisted.c_str()), 0);
+  bssl::UniquePtr<BIGNUM> persisted_bn(raw_persisted);
+  bssl::UniquePtr<BIGNUM> cert_bn(
+      ASN1_INTEGER_to_BN(X509_get_serialNumber(cert), nullptr));
+  ASSERT_TRUE(persisted_bn);
+  ASSERT_TRUE(cert_bn);
+  EXPECT_EQ(0, BN_cmp(persisted_bn.get(), cert_bn.get()));
+}
 
 class X509ComparisonTest : public ::testing::Test {
  protected:
@@ -2021,33 +2091,51 @@ TEST_F(X509ComparisonTest, ReqCADigest) {
       << "Certificates generated by tool and OpenSSL have different attributes";
 }
 
-// Parity: -CAcreateserial is accepted and the issued certificate matches
-// OpenSSL's in subject/issuer/signature algorithm/validity.
+// Run each implementation with an independent CA serial file and verify that
+// -CAcreateserial persists the serial placed on the issued certificate.
 TEST_F(X509ComparisonTest, ReqCACreateSerial) {
+  const std::string tool_ca_path = std::string(ca_cert_path) + "-tool.pem";
+  const std::string openssl_ca_path =
+      std::string(ca_cert_path) + "-openssl.pem";
+  const std::string tool_serial_path = SerialFilePath(tool_ca_path);
+  const std::string openssl_serial_path = SerialFilePath(openssl_ca_path);
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, tool_ca_path));
+  ASSERT_TRUE(CopyFileContents(ca_cert_path, openssl_ca_path));
+  RemoveFile(tool_serial_path.c_str());
+  RemoveFile(openssl_serial_path.c_str());
+
   std::string tool_command =
       ShellEscape(tool_executable_path) + " x509 -in " + ShellEscape(csr_path) +
-      " -req -CA " + ShellEscape(ca_cert_path) + " -CAkey " +
+      " -req -CA " + ShellEscape(tool_ca_path) + " -CAkey " +
       ShellEscape(ca_key_path) + " -CAcreateserial -out " +
       ShellEscape(out_path_tool);
   std::string openssl_command =
       ShellEscape(openssl_executable_path) + " x509 -in " +
-      ShellEscape(csr_path) + " -req -CA " + ShellEscape(ca_cert_path) +
+      ShellEscape(csr_path) + " -req -CA " + ShellEscape(openssl_ca_path) +
       " -CAkey " + ShellEscape(ca_key_path) + " -CAcreateserial -out " +
       ShellEscape(out_path_openssl);
 
   ExecuteCommand(tool_command);
-  ExecuteCommand(openssl_command);
-
   auto cert_tool = LoadPEMCertificate(out_path_tool);
-  auto cert_openssl = LoadPEMCertificate(out_path_openssl);
-  auto ca_cert = LoadPEMCertificate(ca_cert_path);
-
   ASSERT_TRUE(cert_tool) << "Failed to load certificate generated by tool";
+  ExpectSerialFileMatchesCertificate(tool_serial_path, cert_tool.get());
+
+  ExecuteCommand(openssl_command);
+  auto cert_openssl = LoadPEMCertificate(out_path_openssl);
   ASSERT_TRUE(cert_openssl)
       << "Failed to load certificate generated by OpenSSL";
+  ExpectSerialFileMatchesCertificate(openssl_serial_path, cert_openssl.get());
+
+  auto ca_cert = LoadPEMCertificate(ca_cert_path);
+  ASSERT_TRUE(ca_cert) << "Failed to load CA certificate";
   ASSERT_TRUE(CompareCertificates(cert_tool.get(), cert_openssl.get(),
                                   ca_cert.get(), 30))
       << "Certificates generated by tool and OpenSSL have different attributes";
+
+  RemoveFile(tool_ca_path.c_str());
+  RemoveFile(openssl_ca_path.c_str());
+  RemoveFile(tool_serial_path.c_str());
+  RemoveFile(openssl_serial_path.c_str());
 }
 
 // Test against OpenSSL output with -passin option
@@ -2203,20 +2291,14 @@ TEST_F(X509ComparisonTest, BasicSerialGeneration) {
   ASSERT_TRUE(serial_openssl);
 
   // Clean up .srl files
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   RemoveFile(srl_path.c_str());
 }
 
 // Test serial generation against OpenSSL with existing .srl file
 TEST_F(X509ComparisonTest, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
-  std::string srl_path =
-      std::string(ca_cert_path)
-          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
-      ".srl";
+  std::string srl_path = SerialFilePath(ca_cert_path);
   ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
   ASSERT_TRUE(srl_file);
   fprintf(srl_file.get(), "1234ABCD\n");
