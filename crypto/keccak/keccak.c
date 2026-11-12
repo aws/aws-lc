@@ -28,6 +28,7 @@ int Keccak256_Init(KECCAK1600_CTX *ctx) {
   ctx->block_size = KECCAK256_CBLOCK;
   ctx->md_size = KECCAK256_DIGEST_LENGTH;
   ctx->pad = KECCAK256_PAD_CHAR;
+  ctx->state = KECCAK1600_STATE_ABSORB;
   return 1;
 }
 
@@ -41,14 +42,6 @@ int Keccak256_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (len == 0) {
     return 1;
   }
-  // As in |Keccak256_Final|, refuse a zeroed context rather than letting it
-  // reach |KeccakSponge_Absorb|, where |Keccak1600_Absorb| would spin forever
-  // on |while (len >= r)| with |r == 0|. Absorbing into a context that was
-  // never initialised, or that EVP has already finalised and cleansed, is a
-  // caller error, so this reports failure rather than silently doing nothing.
-  if (ctx->block_size == 0) {
-    return 0;
-  }
   return KeccakSponge_Absorb(ctx, data, len);
 }
 
@@ -56,21 +49,25 @@ int Keccak256_Final(uint8_t out[KECCAK256_DIGEST_LENGTH], KECCAK1600_CTX *ctx) {
   if (out == NULL || ctx == NULL) {
     return 0;
   }
-  // A zeroed context reaches here whenever |Keccak256_Init| was skipped, and
-  // also on a second |Keccak256_Final| through EVP: |EVP_DigestFinal_ex|
-  // cleanses |md_data| on the way out. Bail out first, because the callees below
-  // assume an initialised context: |KeccakSponge_AbsorbFinal| assumes
-  // |block_size| is non-zero and would index |ctx->buf[block_size - 1]| out of
-  // bounds, and |Keccak1600_Absorb| assumes the same and would loop forever on
-  // |r == 0|. |SHA3_Final| guards the same way.
-  if (ctx->md_size == 0) {
-    return 1;
+  // Reject uninitialised (zeroed) or already finalised state:
+  // |KeccakSponge_AbsorbFinal| assumes |block_size| is non-zero and would
+  // index |ctx->buf[block_size - 1]| out of bounds, and |Keccak1600_Absorb|
+  // assumes the same and would loop forever on |r == 0|. |SHA3_Final| guards
+  // the same way.
+  if (ctx->state != KECCAK1600_STATE_ABSORB) {
+    return 0;
   }
   if (KeccakSponge_AbsorbFinal(out, ctx) == 0) {
     return 0;
   }
-  Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size, ctx->state);
+
+  // If |ctx->state| is in the absorb phase, finish processing the final padded
+  // block without permuting. In the squeeze phase, process subsequent output
+  // normally.
+  Keccak1600_Squeeze(ctx->A, out, ctx->md_size, ctx->block_size,
+                     ctx->state == KECCAK1600_STATE_SQUEEZE);
   ctx->state = KECCAK1600_STATE_FINAL;
+
   // Intentionally no FIPS_service_indicator_update_state(): Keccak-256 with
   // 0x01 padding is not an approved service.
   return 1;

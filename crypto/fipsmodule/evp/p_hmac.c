@@ -143,7 +143,10 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
 }
 
 int used_for_hmac(EVP_MD_CTX *ctx) {
-  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
+  // HMAC paths cast |ctx->pctx->data| to |HMAC_PKEY_CTX|. Check the method too,
+  // so a stale flag cannot authorize that cast for another key type.
+  return (ctx->flags & EVP_MD_CTX_HMAC) != 0 && ctx->pctx != NULL &&
+         ctx->pctx->pmeth == EVP_PKEY_hmac_pkey_meth();
 }
 
 HMAC_KEY *HMAC_KEY_new(void) {

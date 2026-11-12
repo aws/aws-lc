@@ -252,6 +252,75 @@ TEST(HMACTest, TestVectors) {
   });
 }
 
+TEST(HMACTest, DigestSignInitClearsFinalisedFlag) {
+  static const uint8_t kKey[20] = {
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+  };
+  static const uint8_t kMessage[] = "HMACTest.DigestSignInitClearsFinalisedFlag";
+  const std::vector<uint8_t> expected = HexToBytes(
+      "a4de8c683e477ac59b68da894b7690f2"
+      "0f9d505678df6d86ff62122935455f5c");
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len = 0;
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr));
+  ASSERT_TRUE(
+      EVP_DigestUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest, &digest_len));
+
+  // A finalized plain-digest context rejects further updates.
+  EXPECT_FALSE(EVP_DigestUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+  EXPECT_EQ(ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED,
+            ERR_GET_REASON(ERR_get_error()));
+
+  // Reusing that context for HMAC must clear the finalized flag.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_mac_key(
+      EVP_PKEY_HMAC, nullptr, kKey, sizeof(kKey)));
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_DigestSignInit(ctx.get(), nullptr, EVP_sha256(), nullptr,
+                                 pkey.get()));
+  ASSERT_TRUE(
+      EVP_DigestSignUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+
+  uint8_t hmac[EVP_MAX_MD_SIZE];
+  size_t hmac_len = sizeof(hmac);
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), hmac, &hmac_len));
+  EXPECT_EQ(Bytes(expected), Bytes(hmac, hmac_len));
+}
+
+TEST(HMACTest, DigestSignWithExternalPkeyCtx) {
+  static const uint8_t kKey[] = "key";
+  static const uint8_t kMessage[] =
+      "HMACTest.DigestSignWithExternalPkeyCtx";
+  const std::vector<uint8_t> expected = HexToBytes(
+      "4d996478110718956bd3659a38e9a022"
+      "a8eee1ab2dc6766cac28417f0a099a5e");
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_mac_key(
+      EVP_PKEY_HMAC, nullptr, kKey, sizeof(kKey) - 1));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(
+      EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(pctx);
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  EVP_PKEY_CTX *returned_pctx = nullptr;
+  ASSERT_TRUE(EVP_DigestSignInit(ctx.get(), &returned_pctx, EVP_sha256(),
+                                 nullptr, pkey.get()));
+  EXPECT_EQ(pctx.get(), returned_pctx);
+  ASSERT_TRUE(
+      EVP_DigestSignUpdate(ctx.get(), kMessage, sizeof(kMessage) - 1));
+
+  uint8_t hmac[EVP_MAX_MD_SIZE];
+  size_t hmac_len = sizeof(hmac);
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), hmac, &hmac_len));
+  EXPECT_EQ(Bytes(expected), Bytes(hmac, hmac_len));
+}
+
 TEST(HMACTest, TestVectorsPrecomputedKey) {
   FileTestGTest("crypto/hmac_extra/hmac_tests.txt", [](FileTest *t) {
     std::string digest_str;

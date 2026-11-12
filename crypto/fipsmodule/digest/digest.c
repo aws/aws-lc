@@ -242,10 +242,15 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
                       ctx->pctx->engine)) {
       return 0;
     }
+    ctx->flags &= ~EVP_MD_CTX_FINALISED;
     return 1;
   }
 
+  // HMAC replaces |ctx->update|. Restore the digest callback when reusing the
+  // context for a non-HMAC operation.
+  ctx->update = ctx->digest->update;
   ctx->digest->init(ctx);
+  ctx->flags &= ~(EVP_MD_CTX_HMAC | EVP_MD_CTX_FINALISED);
   return 1;
 }
 
@@ -256,6 +261,10 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
   if (ctx->update == NULL) {
+    return 0;
+  }
+  if (ctx->flags & EVP_MD_CTX_FINALISED) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
   return ctx->update(ctx, data, len);
@@ -269,12 +278,17 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
     OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
+  if (ctx->flags & EVP_MD_CTX_FINALISED) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
 
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
   if (size != NULL) {
     *size = ctx->digest->md_size;
   }
+  ctx->flags |= EVP_MD_CTX_FINALISED;
   OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
   return 1;
 }
