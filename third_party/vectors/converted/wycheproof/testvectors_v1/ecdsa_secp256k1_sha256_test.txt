@@ -4294,3 +4294,26 @@ result = invalid
 sig = 30360211014551231950b75fc4402da1732fc9bec0022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
 flags = ArithmeticError
 
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 04315971a60089e7749a8fa1d8374ecbaab259d773b3737e932bbaa960cdbf27f1bfe600bd60a91e650508eab795146b13c766195a447b24709df9d1c561e53dae]
+[publicKey.wx = 315971a60089e7749a8fa1d8374ecbaab259d773b3737e932bbaa960cdbf27f1]
+[publicKey.wy = bfe600bd60a91e650508eab795146b13c766195a447b24709df9d1c561e53dae]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a03420004315971a60089e7749a8fa1d8374ecbaab259d773b3737e932bbaa960cdbf27f1bfe600bd60a91e650508eab795146b13c766195a447b24709df9d1c561e53dae]
+[sha = SHA-256]
+
+# tcId = 475
+# s = 2^128
+msg = 68656c6c6f2c20776f726c64
+result = valid
+sig = 303502202b698a0f0a4041b77e63488ad48c23e8e8838dd1fb7520408b121697b782ef2202110100000000000000000000000000000000
+flags = ValidSignature
+
+# tcId = 476
+# s = n - 2^128
+msg = 68656c6c6f2c20776f726c64
+result = valid
+sig = 304502202b698a0f0a4041b77e63488ad48c23e8e8838dd1fb7520408b121697b782ef22022100fffffffffffffffffffffffffffffffdbaaedce6af48a03bbfd25e8cd0364141
+flags = ValidSignature
+
