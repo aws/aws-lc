@@ -46,7 +46,7 @@ Differences from OpenSSL: there is no HTTP responder (`-port`) and no outgoing r
 
 `-serial` prints the certificate serial number as `serial=<HEX>`.
 
-`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
+`-addtrust <use>` adds a trusted purpose (such as `clientAuth` or `serverAuth`) and `-trustout` writes the certificate as a `TRUSTED CERTIFICATE` PEM block. As in OpenSSL, `-addtrust` implies `-trustout`, so it emits the trusted form on its own. The trusted form is produced only for PEM output; with `-outform DER`, `-trustout` is ignored and a plain certificate is written, matching OpenSSL. `-CA` accepts both ordinary and trusted PEM certificates, so trusted output can be reused as a CA for signing. The complementary `-addreject`, `-setalias`, `-clrtrust`, and `-clrreject` options are not implemented.
 
 The digest used for `-signkey`/`-CA` signing and `-fingerprint` is selectable with `-md5`, `-ripemd160`, `-sha1`, `-sha224`, `-sha256`, `-sha384`, or `-sha512`, matching the set exposed by `req`. An explicit digest flag governs both signing and `-fingerprint`. With no digest flag, signing defaults to SHA-256 and `-fingerprint` defaults to SHA-1, matching OpenSSL. Signing succeeds only for digest and key combinations supported by AWS-LC.
 

@@ -327,9 +327,12 @@ TEST_F(ImplDispatchTest, SHAKE256_Batched) {
   // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
   //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
   //   lazy rotations.
-  // - For Neoverse V1, V2, V3, we use SIMD batched hybrid Keccak assembly from s2n-bignum
-  //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
-  //   and scalar assembly with lazy rotations.
+  // - For Neoverse V1, V2, V3, when the SHA3 extension is supported by the
+  //   assembler and available at runtime, we use SIMD batched hybrid Keccak
+  //   assembly from s2n-bignum (`sha3_keccak4_f1600_alt2()`) leveraging Neon,
+  //   Neon SHA3 extension, and scalar assembly with lazy rotations. If either
+  //   SHA3 prerequisite is unavailable, these processors fall back to four
+  //   `sha3_keccak_f1600()` calls through the 1-fold dispatch path.
   // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
   //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600()`) twice,
   //   which is a straightforward implementation using the SHA3 extension.
@@ -342,7 +345,7 @@ TEST_F(ImplDispatchTest, SHAKE256_Batched) {
           {kFlag_sha3_keccak4_f1600_alt2,
            have_s2n_bignum_asm_ &&
            (neoverse_v1_ || neoverse_v2_ || neoverse_v3_) &&
-           assembler_has_neon_sha3_extension_},
+           assembler_has_neon_sha3_extension_ && sha3_ext_},
           {kFlag_sha3_keccak2_f1600,
            have_s2n_bignum_asm_ &&
            !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_ || neoverse_v3_) &&
@@ -351,10 +354,10 @@ TEST_F(ImplDispatchTest, SHAKE256_Batched) {
           // we fall back to the dispatch logic in KeccakF1600().
           // Under the assumption that no batched Keccak assembly
           // was chosen, this simplifies as follows:
-          // 1. If we run on Neoverse-V1, Neoverse-V2, or Neoverse-V3 and there is
-          //    no compiler support for SHA3 (otherwise, we would have
-          //    have chosen the batched hybrid with SHA3 extension),
-          //    we use the scalar assembly with lazy rotation.
+          // 1. If we run on Neoverse-V1, Neoverse-V2, or Neoverse-V3 and the
+          //    assembler or runtime CPU does not support the SHA3 extension
+          //    (otherwise, we would have chosen the batched hybrid with SHA3
+          //    extension), we use the scalar assembly with lazy rotation.
           // 2. Otherwise, we fall back to the OpenSSL assembly.
           {kFlag_sha3_keccak_f1600,
            have_s2n_bignum_asm_ && (neoverse_v1_ || neoverse_v2_ || neoverse_v3_) &&
