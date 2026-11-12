@@ -151,7 +151,7 @@ jobs:
   aws-lc-rs-ios-aarch64:
     if: github.repository_owner == 'aws'
     name: aws-lc-rs iOS aarch64 cross-compilation
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
