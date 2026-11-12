@@ -385,7 +385,7 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
     return false;
   }
 
-  ca.reset(PEM_read_X509(ca_file.get(), nullptr, nullptr, nullptr));
+  ca.reset(PEM_read_X509_AUX(ca_file.get(), nullptr, nullptr, nullptr));
 
   if (!ca) {
     fprintf(stderr, "Error: Failed to read CA cert from file");
