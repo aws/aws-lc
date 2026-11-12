@@ -2344,6 +2344,86 @@ TEST(X509Test, CRLDistributionPointScope) {
   }
 }
 
+// A critical CRL distribution points extension is only handled when CRL
+// checking will process it. Otherwise it is an unhandled critical extension,
+// per RFC 5280 Section 4.2. |X509_V_FLAG_CRL_CHECK| alone only checks the leaf.
+TEST(X509Test, CriticalCRLDistributionPoints) {
+  bssl::UniquePtr<EVP_PKEY> key(PrivateKeyFromPEM(kP256Key));
+  ASSERT_TRUE(key);
+
+  const char *kCRLURI = "http://example.com/crl.pem";
+  bssl::UniquePtr<CRL_DIST_POINTS> crldp(sk_DIST_POINT_new_null());
+  ASSERT_TRUE(crldp);
+  bssl::UniquePtr<DIST_POINT> dp(DIST_POINT_new());
+  ASSERT_TRUE(dp);
+  dp->distpoint = MakeDistPointName(kCRLURI);
+  ASSERT_TRUE(dp->distpoint);
+  ASSERT_TRUE(bssl::PushToStack(crldp.get(), std::move(dp)));
+
+  const unsigned long kCheckAll =
+      X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL;
+  // Place the critical extension on the leaf, intermediate, and trust anchor.
+  for (int depth = 0; depth < 3; depth++) {
+    SCOPED_TRACE(depth);
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    bssl::UniquePtr<X509> intermediate =
+        MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+    bssl::UniquePtr<X509> leaf =
+        MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(intermediate);
+    ASSERT_TRUE(leaf);
+    X509 *chain[] = {leaf.get(), intermediate.get(), root.get()};
+    ASSERT_TRUE(X509_add1_ext_i2d(chain[depth], NID_crl_distribution_points,
+                                  crldp.get(), /*crit=*/1, /*flags=*/0));
+    for (X509 *cert : chain) {
+      ASSERT_TRUE(X509_sign(cert, key.get(), EVP_sha256()));
+    }
+
+    // CRLs without an issuing distribution point cover every certificate.
+    auto root_crl = MakeTestCRL(root.get(), key.get(), /*idp_uri=*/nullptr, {});
+    ASSERT_TRUE(root_crl);
+    auto intermediate_crl =
+        MakeTestCRL(intermediate.get(), key.get(), /*idp_uri=*/nullptr, {});
+    ASSERT_TRUE(intermediate_crl);
+    std::vector<X509_CRL *> crls = {root_crl.get(), intermediate_crl.get()};
+
+    // Without CRL checking, the extension is not processed.
+    EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     /*flags=*/0));
+    // |X509_V_FLAG_CRL_CHECK_ALL| has no effect without
+    // |X509_V_FLAG_CRL_CHECK|.
+    EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     X509_V_FLAG_CRL_CHECK_ALL));
+    // |X509_V_FLAG_IGNORE_CRITICAL| skips the check.
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                crls, X509_V_FLAG_IGNORE_CRITICAL));
+    // |X509_V_FLAG_CRL_CHECK| alone only processes the extension on the leaf.
+    EXPECT_EQ(depth == 0 ? X509_V_OK : X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, crls,
+                     X509_V_FLAG_CRL_CHECK));
+    // With |X509_V_FLAG_CRL_CHECK_ALL|, it is processed on every certificate.
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                crls, kCheckAll));
+  }
+
+  // A non-critical extension is accepted without CRL checking.
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_crl_distribution_points,
+                                crldp.get(), /*crit=*/0, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, {}, /*flags=*/0));
+}
+
 static DIST_POINT_NAME *MakeRelativeDistPointName(const char *cn) {
   DIST_POINT_NAME *dpn = DIST_POINT_NAME_new();
   if (!dpn) {
@@ -2955,6 +3035,68 @@ TEST(X509Test, NameConstraints) {
       // Reject constraints with multiple '@' signs.
       {GEN_EMAIL, "foo@example.com", "a@b@example.com",
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Trailing dot on the domain is ignored, in both the name and the
+      // constraint.
+      {GEN_EMAIL, "foo@example.com.", "example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com.", "foo@example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "foo@example.com.", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@evil.example.com.", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION, X509_V_OK},
+      // Only a single trailing dot is removed. Domains with empty labels, or
+      // that are empty after normalization, are rejected.
+      {GEN_EMAIL, "foo@example.com..", "example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.example.com", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar..example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar.example.com", "..example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@example..com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels must begin and end with an alphanumeric.
+      {GEN_EMAIL, "foo@-bar.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@bar-.example.com.", ".example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@b-r.example.com.", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@1.example.com", ".example.com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@bar.example.com", ".-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "example-.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", "foo@-example.com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Labels are at most 63 bytes.
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".example.com.",
+       ".example.com", X509_V_OK, X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@" + std::string(64, 'a') + ".example.com.",
+       ".example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@" + std::string(63, 'a') + ".com",
+       std::string(63, 'a') + ".com", X509_V_OK,
+       X509_V_ERR_EXCLUDED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "." + std::string(64, 'a') + ".com",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX, X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@.", "example.com", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_EMAIL, "foo@example.com", ".", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
        X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
 
       // Basic syntax check.
@@ -6943,6 +7085,20 @@ TEST(X509Test, Names) {
           /*invalid_emails=*/{},
           /*flags=*/0,
       },
+
+      // RFC 6125 Section 6.4.4: a duplicate/non-matching SAN must not cause
+      // fallback to an attacker-controlled CN.
+      {
+          /*cert_subject=*/{{NID_commonName, "attacker-chosen.example"}},
+          /*cert_dns_names=*/
+          {"other.example", "other.example", "another.example"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{"other.example", "another.example"},
+          /*invalid_dns_names=*/{"attacker-chosen.example"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
   };
 
   size_t i = 0;
@@ -10199,7 +10355,7 @@ TEST(X509Test, BlockedSPKI) {
   // Test callback is invoked on the blocked list path.
   auto suppress_revoked = [](X509_STORE_CTX *ctx) {
     X509_STORE_CTX_set_verify_cb(ctx, [](int ok, X509_STORE_CTX *c) -> int {
-      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REVOKED;
+      return ok || X509_STORE_CTX_get_error(c) == X509_V_ERR_CERT_REJECTED;
     });
   };
 
@@ -10207,7 +10363,7 @@ TEST(X509Test, BlockedSPKI) {
     SCOPED_TRACE(i);
     X509 *cert = sk_X509_value(certs.get(), i);
     int depth = -1;
-    EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+    EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
               Verify(cert, {root}, /*intermediates=*/{}, /*crls=*/{},
                      /*flags=*/0, /*configure_callback=*/nullptr, &depth));
     EXPECT_EQ(0, depth);
@@ -10228,7 +10384,7 @@ TEST(X509Test, BlockedSPKIAtDepth) {
   ASSERT_TRUE(leaf);
 
   int depth = -1;
-  EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
             Verify(leaf.get(), {sk_X509_value(certs.get(), 0)},
                    {sk_X509_value(certs.get(), 1)}, /*crls=*/{},
                    /*flags=*/0, /*configure_callback=*/nullptr, &depth));

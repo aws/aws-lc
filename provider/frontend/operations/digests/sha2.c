@@ -8,10 +8,14 @@
 
 #include <assert.h>
 
-#include "internal/backend.h"
-#include "internal/backend/digests.h"
-#include "internal/frontend/digests.h"
-#include "internal/provider.h"
+#include <openssl/core_names.h>
+
+#include "boundary.h"
+#include "boundary/operations/sha2.h"
+#include "frontend/operations/digests/digests.h"
+#include "frontend/operations/sha2.h"
+#include "frontend/provider.h"
+#include "frontend/utils.h"
 
 // Changes the DER OpenSSL emits for this digest inside PKI structures. The value
 // must match the OpenSSL default provider's, or our encodings differ from it.
@@ -186,8 +190,9 @@ static int awslc_prov_sha2_get_ctx_params(void *dctx, OSSL_PARAM params[]) {
   if (ctx == NULL) {
     return 0;
   }
-  return awslc_prov_digest_get_fips_indicator(ctx->provctx, params,
-                                              ctx->fips_approved);
+  return awslc_prov_param_set_int(ctx->provctx, params,
+                                  OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR,
+                                  ctx->fips_approved);
 }
 
 static int awslc_prov_sha2_get_params(OSSL_PARAM params[],

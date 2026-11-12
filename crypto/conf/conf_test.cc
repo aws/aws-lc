@@ -36,6 +36,11 @@ static void ExpectConfEquals(const CONF *conf, const ConfModel &model) {
     ASSERT_TRUE(values);
     total_values += pair.second.size();
 
+    if (section == "default") {
+      // nullptr is interpreted as the default section.
+      EXPECT_EQ(NCONF_get_section(conf, nullptr), values);
+    }
+
     EXPECT_EQ(sk_CONF_VALUE_num(values), pair.second.size());
 
     // If the lengths do not match, still compare up to the smaller of the two,

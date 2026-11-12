@@ -8,7 +8,7 @@
 
 #include <openssl/mem.h>
 
-#include "internal/backend.h"
+#include "boundary.h"
 
 void *awslc_prov_zalloc(size_t size) {
   return OPENSSL_zalloc(size);

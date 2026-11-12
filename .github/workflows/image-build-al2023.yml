@@ -35,8 +35,18 @@ jobs:
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
       x509: ${{ steps.images.outputs.x509 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -60,7 +70,8 @@ jobs:
             dependencies=./tests/ci/docker_images/dependencies
           tags: ${{ steps.images.outputs.al2023 }}
           target: al2023
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container (al2023)
         with:
@@ -102,7 +113,8 @@ jobs:
             dependencies=./tests/ci/docker_images/dependencies
           tags: ${{ steps.images.outputs.x509 }}
           target: x509
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container (x509)
         with:
@@ -119,8 +131,18 @@ jobs:
       instance-size:medium
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v7
+      # Only a trusted ref may write to the staging repository. A pull request
+      # build loads its image into the local daemon instead.
+      - name: Retrieve Credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -142,7 +164,8 @@ jobs:
             scripts=./.github/docker_images/scripts
             dependencies=./tests/ci/docker_images/dependencies
           tags: ${{ steps.images.outputs.al2023 }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
       - uses: ./.github/actions/codebuild-docker-run
         name: Validate Container
         with:
@@ -186,7 +209,16 @@ jobs:
       - x86_64_build
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -222,7 +254,16 @@ jobs:
       - aarch64_build
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -253,7 +294,16 @@ jobs:
     needs:
       - x86_64_push
       - aarch64_push
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsImagePromotionOidcRole
+          roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

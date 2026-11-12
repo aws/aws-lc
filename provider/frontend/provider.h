@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_PROVIDER_PROVIDER_H
-#define AWSLC_PROVIDER_PROVIDER_H
+#ifndef AWSLC_PROVIDER_FRONTEND_PROVIDER_H
+#define AWSLC_PROVIDER_FRONTEND_PROVIDER_H
 
 // Shared between the provider's OpenSSL-facing files.
 
@@ -11,7 +11,7 @@
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 
-#include "internal/backend.h"
+#include "boundary.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -72,12 +72,13 @@ int awslc_prov_ctx_run_fips_callback(const AWSLC_PROV_CTX *ctx,
 
 // The fan-out, implemented in registry.c and published by provider.c in the
 // top-level dispatch table. The dispatch tables it hands out are declared in
-// per-class headers, which only registry.c and the class implementations include.
+// per-family headers, which only registry.c and the family implementations
+// include.
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx, int operation_id,
                                                  int *no_store);
 
 // Error reporting, implemented in errors.c. The reason namespace is in
-// internal/backend.h.
+// boundary.h.
 
 // The reason-string table for the provider's private error library, published by
 // provider.c in the top-level dispatch table.
@@ -166,4 +167,4 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
 }  // extern "C"
 #endif
 
-#endif  // AWSLC_PROVIDER_PROVIDER_H
+#endif  // AWSLC_PROVIDER_FRONTEND_PROVIDER_H

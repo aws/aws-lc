@@ -35,6 +35,25 @@ TEST_F(GenPKeyTest, RSA_out_option) {
   ASSERT_TRUE(parsed_pkey);
 }
 
+// Private key output must be owner-only, including when it lands in a file that
+// already exists with looser permissions.
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(GenPKeyTest, PrivateKeyFilePermissions) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
+  args_list_t args = {"-algorithm", "EC",
+                      "-pkeyopt",   "ec_paramgen_curve:P-256",
+                      "-out",       out_path};
+  ASSERT_EQ(kToolExitSuccess, genpkeyTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  EXPECT_EQ(static_cast<mode_t>(st.st_mode & 0777), static_cast<mode_t>(0600))
+      << "Private key file should be owner-only, got: 0" << std::oct
+      << (st.st_mode & 0777);
+}
+#endif
+
 // Test -stdout
 TEST_F(GenPKeyTest, RSA_stdout) {
   args_list_t args = {"-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:3072"};

@@ -539,6 +539,21 @@ TEST_F(DgstTest, ReverseOutputCustomDigest) {
   EXPECT_EQ(expected, ReadFileToString(out_path));
 }
 
+// -binary takes precedence over -r: the output is the raw digest bytes, not
+// the coreutils text form. Locks in the documented binary-output precedence.
+TEST_F(DgstTest, ReverseBinaryPrecedence) {
+  args_list_t args = {"-sha256", "-r", "-binary", "-out", out_path, in_path};
+  ASSERT_EQ(kToolExitSuccess, dgstTool(args));
+  const uint8_t expected_bytes[] = {
+      0xcd, 0x84, 0x65, 0x67, 0x8c, 0x8a, 0x28, 0xc2,
+      0x6d, 0x11, 0x7d, 0x62, 0x15, 0xf3, 0x2d, 0xe0,
+      0xc2, 0x65, 0x2c, 0xbc, 0x78, 0xd2, 0x5d, 0x86,
+      0xba, 0xea, 0xee, 0x5a, 0x57, 0xa8, 0x99, 0x9b};
+  const std::string expected(reinterpret_cast<const char *>(expected_bytes),
+                             sizeof(expected_bytes));
+  EXPECT_EQ(expected, ReadFileToString(out_path));
+}
+
 #if !defined(OPENSSL_WINDOWS)
 // A newline in the filename is escaped as "\n" and the whole record is prefixed
 // with a backslash so it stays on one line, matching OpenSSL. (Newlines are not
@@ -560,6 +575,7 @@ TEST_F(DgstTest, ReverseOutputNewlineInFilename) {
       std::string(dir) + "/a\\nb\n";
   EXPECT_EQ(expected, ReadFileToString(out_path));
   RemoveFile(newline_path.c_str());
+  remove(dir);
 }
 #endif
 

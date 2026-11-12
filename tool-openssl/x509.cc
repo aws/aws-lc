@@ -43,6 +43,9 @@ static const argument_t kArguments[] = {
     {"-CAkey", kOptionalArgument,
      "The corresponding CA key. If not specified, the private key is assumed "
      "to be in the CA file"},
+    {"-CAcreateserial", kBooleanArgument,
+     "Accepted for OpenSSL compatibility; the CA serial file (<CAfile>.srl) is "
+     "created and updated automatically when signing with -CA"},
     // Certificate printing
     {"-noout", kBooleanArgument,
      "Prevents output of the encoded version of the certificate"},
@@ -80,6 +83,14 @@ static const argument_t kArguments[] = {
      "Add a trusted use (e.g. clientAuth, serverAuth) to the certificate"},
     {"-trustout", kBooleanArgument,
      "Output the certificate as a trusted certificate"},
+    // Digest selection for certificate signing and fingerprints.
+    {"-md5", kExclusiveBooleanArgument, "Use MD5 as the digest"},
+    {"-ripemd160", kExclusiveBooleanArgument, "Use RIPEMD-160 as the digest"},
+    {"-sha1", kExclusiveBooleanArgument, "Use SHA-1 as the digest"},
+    {"-sha224", kExclusiveBooleanArgument, "Use SHA-224 as the digest"},
+    {"-sha256", kExclusiveBooleanArgument, "Use SHA-256 as the digest"},
+    {"-sha384", kExclusiveBooleanArgument, "Use SHA-384 as the digest"},
+    {"-sha512", kExclusiveBooleanArgument, "Use SHA-512 as the digest"},
     {"", kOptionalArgument, ""}};
 
 static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
@@ -239,7 +250,8 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
                                              EVP_PKEY *pkey,
                                              const std::string &pkey_path,
                                              const std::string &ext_file_path,
-                                             std::string &ext_section) {
+                                             std::string &ext_section,
+                                             const EVP_MD *digest) {
   X509V3_CTX ext_ctx;
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
@@ -331,8 +343,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
     return false;
   }
 
-  // TODO: make customizable with -digest option
-  if (!X509_sign(subject, pkey, EVP_sha256())) {
+  if (!X509_sign(subject, pkey, digest)) {
     fprintf(stderr, "Error: error signing certificate with key from '%s'\n",
             pkey_path.c_str());
     ERR_print_errors_fp(stderr);
@@ -545,17 +556,19 @@ static bool handleSubject(X509 *x509, BIO *output_bio,
   return PrintNameLine(output_bio, "subject=", subject_name, name_flags);
 }
 
-static bool handleFingerprint(X509 *x509, BIO *output_bio) {
+static bool handleFingerprint(X509 *x509, BIO *output_bio,
+                              const EVP_MD *digest) {
   unsigned int out_len = 0;
   unsigned char md[EVP_MAX_MD_SIZE];
-  const EVP_MD *digest = EVP_sha1();
+  const EVP_MD *fingerprint_digest = digest != nullptr ? digest : EVP_sha1();
 
-  if (!X509_digest(x509, digest, md, &out_len)) {
+  if (!X509_digest(x509, fingerprint_digest, md, &out_len)) {
     fprintf(stderr, "Error: unable to obtain digest\n");
     return false;
   }
 
-  BIO_printf(output_bio, "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(digest)));
+  BIO_printf(output_bio,
+             "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(fingerprint_digest)));
   for (int j = 0; j < (int)out_len; j++) {
     BIO_printf(output_bio, "%02X%c", md[j],
                (j + 1 == (int)out_len) ? '\n' : ':');
@@ -626,7 +639,8 @@ static bool ProcessArgument(const std::string &arg_name,
                             const std::string &arg_value, X509 *x509,
                             bssl::UniquePtr<BIO> &output_bio,
                             bool *dates_processed, bool *will_expire,
-                            unsigned long name_flags, bool nameopt_explicit) {
+                            unsigned long name_flags, bool nameopt_explicit,
+                            const EVP_MD *digest) {
   if (arg_name == "-modulus") {
     return handleModulus(x509, output_bio.get());
   }
@@ -667,7 +681,7 @@ static bool ProcessArgument(const std::string &arg_name,
     return true;
   }
   if (arg_name == "-fingerprint") {
-    return handleFingerprint(x509, output_bio.get());
+    return handleFingerprint(x509, output_bio.get(), digest);
   }
   if (arg_name == "-dates") {
     *dates_processed = true;
@@ -729,7 +743,8 @@ int X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, days_str, inform, outform,
-      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str;
+      ca_file_path, ca_key_path, ext_file_path, ext_section, nameopt_str,
+      digest_name;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
   Password passin;
@@ -749,6 +764,13 @@ int X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
   ordered_args::GetString(&nameopt_str, "-nameopt", "", parsed_args);
   ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
+  ordered_args::GetExclusiveBoolArgument(&digest_name, kArguments, "",
+                                         parsed_args);
+  // digest_name retains its leading '-' (e.g. "-sha256"); skip it for lookup.
+  const EVP_MD *digest = digest_name.empty()
+                             ? nullptr
+                             : EVP_get_digestbyname(digest_name.c_str() + 1);
+  const EVP_MD *signing_digest = digest != nullptr ? digest : EVP_sha256();
 
   // Display x509 tool option summary
   if (help) {
@@ -996,13 +1018,13 @@ int X509Tool(const args_list_t &args) {
     if (!ca_file_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, signing_digest)) {
         return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, signing_digest)) {
         return kToolExitFailure;
       }
     }
@@ -1063,13 +1085,13 @@ int X509Tool(const args_list_t &args) {
     if (!ca_file_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(ca.get(), x509.get(), pkey.get(),
                                             ca_file_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, signing_digest)) {
         return kToolExitFailure;
       }
     } else if (!signkey_path.empty()) {
       if (!LoadExtensionsAndSignCertificate(x509.get(), x509.get(), pkey.get(),
                                             signkey_path, ext_file_path,
-                                            ext_section)) {
+                                            ext_section, signing_digest)) {
         return kToolExitFailure;
       }
     }
@@ -1097,13 +1119,14 @@ int X509Tool(const args_list_t &args) {
           arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
           arg_name == "-noout" || arg_name == "-help" || arg_name == "-CA" ||
           arg_name == "-CAkey" || arg_name == "-nameopt" ||
-          arg_name == "-addtrust" || arg_name == "-trustout") {
+          arg_name == "-addtrust" || arg_name == "-trustout" ||
+          arg_name == "-CAcreateserial" || arg_name == digest_name) {
         continue;
       }
 
       if (!ProcessArgument(arg_name, arg_value, x509.get(), print_bio,
                            &dates_processed, &will_expire, name_flags,
-                           nameopt_explicit)) {
+                           nameopt_explicit, digest)) {
         return kToolExitFailure;
       }
     }

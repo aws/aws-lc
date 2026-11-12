@@ -968,6 +968,20 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
     if(rv != 0) {
       return rv;
     }
+    // RFC 6125 Section 6.4.4: once a SAN of the relevant type is present,
+    // the CN is never used as a fallback, even if none matched.
+    //   - Matches OpenSSL 1.1.1's san_present logic, still present as of
+    //     OpenSSL's latest stable release at time of writing (4.0.3,
+    //     and every other maintained branch: 3.0.22, 3.4.8, 3.5.9, 3.6.5).
+    //   - As of commit 00565bb35c, OpenSSL's unreleased master branch stops
+    //     checking the CN by default, instead requiring
+    //     X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT to be set; this had not
+    //     shipped in any stable release as of the above.
+    //   - BoringSSL, as of commit 52565fe58, never checks the CN once any
+    //     subjectAltName extension is present.
+    //   - RFC 9525 (which obsoletes RFC 6125) goes further still: it drops
+    //     CN-ID as an identifier type entirely, so the CN should not be
+    //     used to identify a service at all, not even as a last resort.
     if(san_present && !(flags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT)) {
       return 0;
     }

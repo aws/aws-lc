@@ -31,6 +31,7 @@ LIBSSH2_BUILD_FOLDER="${SCRATCH_FOLDER}/libssh2-build"
 LIBSSH2_INSTALL_FOLDER="${SCRATCH_FOLDER}/libssh2-install"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+LIBSSH2_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/libssh2_patch"
 
 mkdir -p "${SCRATCH_FOLDER}"
 rm -rf "${SCRATCH_FOLDER:?}"/*
@@ -55,6 +56,12 @@ if [[ -n "${LIBSSH2_REF}" ]]; then
   git clone --depth 1 --branch "${LIBSSH2_REF}" https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
 else
   git clone https://github.com/libssh2/libssh2.git "${LIBSSH2_SRC_FOLDER}"
+fi
+
+if [[ -n "${LIBSSH2_REF}" && -d "${LIBSSH2_PATCH_FOLDER}/${LIBSSH2_REF}" ]]; then
+  for patch_file in "${LIBSSH2_PATCH_FOLDER}/${LIBSSH2_REF}"/*.patch; do
+    patch -d "${LIBSSH2_SRC_FOLDER}" -p1 --quiet -i "${patch_file}"
+  done
 fi
 
 # Older libssh2 releases use a floating debian:testing-slim base image in the
