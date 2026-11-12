@@ -262,7 +262,7 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   // Don't leave outputs uninitialized
   *dnsid = NULL;
   *idlen = 0;
-  
+
   // Per RFC 6125, DNS-IDs representing internationalized domain names appear
   // in certificates in A-label encoded form:
   //
@@ -283,7 +283,7 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   if (utf8_length < 0) {
     return X509_V_ERR_OUT_OF_MEM;
   }
-  
+
   // Some certificates have had names that include a *trailing* NUL byte.
   // Remove these harmless NUL characters. They would otherwise yield false
   // alarms with the following embedded NUL check.
@@ -307,27 +307,22 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   if (utf8_length > 2 && utf8_value[0] == '*' && utf8_value[1] == '.') {
     check_start = 2;
   }
-  
-  // Check DNS name syntax. Any '-' or '.' must be internal, and on either side
-  // of each '.' we can't have a '-' or '.'. Names with '_' are also accepted
-  // as a deviation from strict DNS syntax.
+
+  // Classify multi-label CNs for DNS constraints, allowing '_' and boundary
+  // hyphens. A trailing dot does not change classification. These forms can
+  // match literally in |X509_check_host|, so they must not bypass constraints.
   //
-  // If the name has just one label, we don't consider it a DNS name. This
-  // means that "CN=sometld" cannot be precluded by DNS name constraints, but
-  // that is not a problem. Single-label CNs may contain non-ASCII characters
-  // (e.g. "CN=Ünternehmen") and are silently skipped.
+  // Single-label CNs, empty labels, and punctuation such as ':' retain their
+  // legacy exemption, even when hostname matching accepts them.
   //
-  // Multi-label CNs that resemble DNS names must be ASCII-only. Per RFC 6125
-  // Section 6.4.2, internationalized domain names should appear in A-label
-  // (punycode) form. A multi-label CN containing non-ASCII bytes or control
-  // characters is rejected with |X509_V_ERR_UNSUPPORTED_NAME_SYNTAX| to
-  // prevent it from bypassing name constraints while still being accepted by
-  // hostname verification.
+  // DNS-shaped names containing non-ASCII bytes, whitespace, or control
+  // characters are rejected below. RFC 6125 Section 6.4.2 requires IDNs in
+  // A-label (punycode) form.
   for (int i = check_start; i < utf8_length; ++i) {
     const unsigned char c = utf8_value[i];
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-        (c >= '0' && c <= '9') || c == '_') {
+        (c >= '0' && c <= '9') || c == '_' || c == '-') {
       continue;
     }
 
@@ -336,20 +331,16 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
       continue;
     }
 
-    // Dot and hyphen cannot be first or last.
-    if (i > check_start && i < utf8_length - 1) {
-      if (c == '-') {
-        continue;
-      }
-      
-      // Next to a dot the preceding and following characters must not be
-      // another dot or a hyphen.  Otherwise, record that the name is
-      // plausible, since it has two or more labels.
-      if (c == '.' && utf8_value[i + 1] != '.' && utf8_value[i - 1] != '-' &&
-          utf8_value[i + 1] != '-') {
-        isdnsname = 1;
-        continue;
-      }
+    // An interior dot must not introduce an empty label.
+    if (c == '.' && i > check_start && i < utf8_length - 1 &&
+        utf8_value[i + 1] != '.') {
+      isdnsname = 1;
+      continue;
+    }
+    // |nc_dns| removes a trailing dot. Preserve |isdnsname| so it cannot
+    // bypass either constraint checking or the syntax rejection below.
+    if (c == '.' && i == utf8_length - 1 && isdnsname) {
+      continue;
     }
     isdnsname = 0;
     break;
@@ -371,8 +362,23 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   return X509_V_OK;
 }
 
+static int has_dns_constraint(const STACK_OF(GENERAL_SUBTREE) *subtrees) {
+  for (size_t i = 0; i < sk_GENERAL_SUBTREE_num(subtrees); i++) {
+    if (sk_GENERAL_SUBTREE_value(subtrees, i)->base->type == GEN_DNS) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 // Check CN against DNS-ID name constraints.
 int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc) {
+  // CN syntax errors must not reject certificates under unrelated constraints.
+  if (!has_dns_constraint(nc->permittedSubtrees) &&
+      !has_dns_constraint(nc->excludedSubtrees)) {
+    return X509_V_OK;
+  }
+
   int ret = 0;
   const X509_NAME *nm = X509_get_subject_name(x);
   ASN1_STRING stmp = {.length = 0, .type = V_ASN1_IA5STRING, .data = NULL, .flags = 0};

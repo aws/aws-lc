@@ -2480,30 +2480,54 @@ TEST(X509CompatTest, CommonNameToDNS) {
       {"exa_mple.com", true, "exa_mple.com"},
       {"foo-bar.example.com", true, "foo-bar.example.com"},
       {"1.example.com", true, "1.example.com"},
+      // Boundary hyphens must not exempt matchable CNs from name constraints.
+      {"-example.com", true, "-example.com"},
+      {"example.com-", true, "example.com-"},
+      {"-example.com-", true, "-example.com-"},
+      {"example.-com", true, "example.-com"},
+      {"example-.com", true, "example-.com"},
+      {"a-.example.com", true, "a-.example.com"},
+      {"www.a-.example.com", true, "www.a-.example.com"},
+      {"www.-a.example.com", true, "www.-a.example.com"},
+      {"-.example.com", true, "-.example.com"},
+      // Absolute DNS names retain their trailing dot for |nc_dns| to normalize.
+      {"example.com.", true, "example.com."},
+      {"a-.example.com.", true, "a-.example.com."},
+      {"-a.example.com.", true, "-a.example.com."},
+      {"www.a-.example.com.", true, "www.a-.example.com."},
+      {"exa_mple.com.", true, "exa_mple.com."},
+      {"xn--rger-koa.example.com.", true, "xn--rger-koa.example.com."},
       {"", false, ""},
       {".", false, ""},
       {"-", false, ""},
-      {"example.com.", false, ""},
       {".example.com", false, ""},
       {".example.com.", false, ""},
-      {"-example.com", false, ""},
-      {"example.com-", false, ""},
-      {"-example.com-", false, ""},
-      {"example.-com", false, ""},
       {"example..com", false, ""},
-      {"example-.com", false, ""},
+      {"example..com.", false, ""},
+      {"example.com..", false, ""},
+      {"-example..com", false, ""},
+      {"example..com-", false, ""},
       {"example", false, ""},
+      {"example.", false, ""},
       {"eXaMpLe", false, ""},
       {"cn with spaces", false, ""},
       {"1 and 2 and 3", false, ""},
+      // These decorative names retain legacy exemptions.
+      {"Acme Inc.", false, ""},
+      {"Acme, Inc. Engineering", false, ""},
+      // ':' stops the scan before a trailing dot is reached.
+      {"www.example.com:443.", false, ""},
       // Wildcard CN test cases: wildcard CNs must be recognized as DNS-IDs
       // so that name constraints are enforced on them.
       {"*.example.com", true, "*.example.com"},
       {"*.sub.example.com", true, "*.sub.example.com"},
       {"*.exa_mple.com", true, "*.exa_mple.com"},
       {"*.foo-bar.example.com", true, "*.foo-bar.example.com"},
+      {"*.example.com.", true, "*.example.com."},
+      {"*.a-.example.com.", true, "*.a-.example.com."},
       // Wildcard with single remaining label is not a DNS name.
       {"*.com", false, ""},
+      {"*.com.", false, ""},
       // Bare wildcard or incomplete wildcard prefix.
       {"*", false, ""},
       {"*.", false, ""},
@@ -2512,11 +2536,13 @@ TEST(X509CompatTest, CommonNameToDNS) {
       {"*example.com", false, ""},
       // Double star is not valid.
       {"**.example.com", false, ""},
-      // Invalid DNS syntax after wildcard prefix.
-      {"*.-example.com", false, ""},
-      {"*.example-.com", false, ""},
+      // Boundary hyphens after a wildcard prefix are constrained too.
+      {"*.-example.com", true, "*.-example.com"},
+      {"*.example-.com", true, "*.example-.com"},
+      // Other invalid DNS syntax after the wildcard prefix is still skipped.
       {"*.example..com", false, ""},
-      {"*.example.com.", false, ""},
+      {"*.example..com.", false, ""},
+      {"*.example.com..", false, ""},
       {".*.example.com", false, ""},
       // Single-label CNs with non-ASCII are accepted (not DNS names).
       {"r\xc3\xa4ger", false, ""},
@@ -2532,6 +2558,7 @@ TEST(X509CompatTest, CommonNameToDNS) {
   };
 
   for (CommonNameToDNSTestParam &param : params) {
+    SCOPED_TRACE(param.common_name);
     ASN1_STRING *asn1_str_ptr = NULL;
     std::vector<uint8_t> cn(param.common_name.begin(), param.common_name.end());
     ASSERT_GE(ASN1_mbstring_copy(&asn1_str_ptr, cn.data(), cn.size(),
@@ -2567,6 +2594,21 @@ TEST(X509CompatTest, CommonNameToDNS) {
       "baz\x1f.example.com",
       // Space in multi-label CN.
       "foo .evil.com",
+      // Boundary hyphens must not disable the existing syntax rejection.
+      "r\xc3\xa4ger-.evil.com",
+      "-r\xc3\xa4ger.evil.com",
+      "*.r\xc3\xa4ger-.evil.com",
+      "foo\x01-.evil.com",
+      "-foo .evil.com",
+      // Trailing dots must not bypass syntax rejection.
+      "r\xc3\xa4ger.example.com.",
+      "*.r\xc3\xa4ger.evil.com.",
+      "foo\x01.example.com.",
+      "-foo .example.com.",
+      // Decorative names must not escape syntax checks via a trailing dot.
+      "Example Co. Ltd.",
+      "Acme Inc. Research.",
+      "M\xc3\xbcnchen Co. Ltd.",
   };
   for (const std::string &name : non_ascii_dns) {
     SCOPED_TRACE(name);
