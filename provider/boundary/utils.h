@@ -30,6 +30,11 @@ int awslc_prov_bn_to_bytes(const void *bn, int is_signed, unsigned char *out,
 
 int awslc_prov_bn_equal(const void *a, const void *b);
 
+// OpenSSL's canonical name for the digest |name| spells, such as "SHA2-256"
+// for "sha256", or NULL when AWS-LC has no such digest. The returned string is
+// static.
+const char *awslc_prov_digest_canonical_name(const char *name);
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif
