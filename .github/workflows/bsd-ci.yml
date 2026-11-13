@@ -60,7 +60,7 @@ jobs:
         with:
           submodules: "recursive"
       - name: Start VM
-        uses: cross-platform-actions/action@v1.6.0
+        uses: cross-platform-actions/action@v1.7.0
         with:
           environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT AWS_LC_NO_SLOW_TESTS GOFLAGS"
           operating_system: freebsd
@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Start VM
-        uses: cross-platform-actions/action@e0b9770014ba65d5e0815f15b74031c3a635f641
+        uses: cross-platform-actions/action@82668f1fbd89d9c99487604f822cbf6716f124d3
         with:
           environment_variables: AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
@@ -166,7 +166,7 @@ jobs:
         with:
           submodules: "recursive"
       - name: Start VM
-        uses: cross-platform-actions/action@e0b9770014ba65d5e0815f15b74031c3a635f641
+        uses: cross-platform-actions/action@82668f1fbd89d9c99487604f822cbf6716f124d3
         with:
           environment_variables: "AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
           operating_system: netbsd
