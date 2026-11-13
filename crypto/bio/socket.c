@@ -51,6 +51,8 @@ static int sock_read(BIO *b, char *out, int outl) {
   if (ret <= 0) {
     if (bio_socket_should_retry(ret)) {
       BIO_set_retry_read(b);
+    } else if (ret == 0) {
+      BIO_set_flags(b, BIO_FLAGS_IN_EOF);
     }
   }
   return ret;
@@ -79,6 +81,7 @@ static long sock_ctrl(BIO *b, int cmd, long num, void *ptr) {
   switch (cmd) {
     case BIO_C_SET_FD:
       sock_free(b);
+      BIO_clear_flags(b, BIO_FLAGS_IN_EOF);
       b->num = *((int *)ptr);
       b->shutdown = (int)num;
       b->init = 1;
@@ -93,6 +96,9 @@ static long sock_ctrl(BIO *b, int cmd, long num, void *ptr) {
       } else {
         ret = -1;
       }
+      break;
+    case BIO_CTRL_EOF:
+      ret = (b->flags & BIO_FLAGS_IN_EOF) != 0;
       break;
     case BIO_CTRL_GET_CLOSE:
       ret = b->shutdown;
