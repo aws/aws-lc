@@ -4,6 +4,7 @@
 #include "internal.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <vector>
 #include <thread>
 
@@ -141,7 +142,57 @@ TEST(ThreadTest, RandState) {
   thread.join();
 }
 
-#if defined(OPENSSL_PTHREADS)
+#if defined(OPENSSL_PTHREADS) || defined(OPENSSL_WINDOWS_THREADS)
+
+TEST(ThreadTest, ClearThreadLocal) {
+  unsigned destructor_calls = 0;
+  std::thread thread([&] {
+    ASSERT_EQ(1, AWSLC_thread_local_clear());
+    for (unsigned i = 1; i <= 2; i++) {
+      ASSERT_TRUE(CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_TEST,
+                                          &destructor_calls,
+                                          thread_local_destructor));
+      ASSERT_EQ(1, AWSLC_thread_local_clear());
+      EXPECT_EQ(i, destructor_calls);
+      EXPECT_EQ(nullptr, CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST));
+      ASSERT_EQ(1, AWSLC_thread_local_clear());
+      EXPECT_EQ(i, destructor_calls);
+    }
+  });
+  thread.join();
+  EXPECT_EQ(2u, destructor_calls);
+}
+
+#if defined(OPENSSL_WINDOWS_THREADS) && GTEST_HAS_DEATH_TEST
+TEST(ThreadDeathTest, Shutdown) {
+  // Shutdown is irreversible, so it must not affect the other tests.
+  auto test_shutdown = [] {
+    unsigned destructor_calls = 0;
+    ASSERT_TRUE(CRYPTO_set_thread_local(
+        OPENSSL_THREAD_LOCAL_TEST, &destructor_calls, thread_local_destructor));
+    ASSERT_EQ(1, AWSLC_thread_local_clear());
+    EXPECT_EQ(1u, destructor_calls);
+    ASSERT_EQ(1, AWSLC_thread_local_shutdown());
+    EXPECT_EQ(1, AWSLC_thread_local_shutdown());
+    EXPECT_EQ(1, AWSLC_thread_local_clear());
+    EXPECT_EQ(nullptr, CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST));
+    EXPECT_FALSE(CRYPTO_set_thread_local(
+        OPENSSL_THREAD_LOCAL_TEST, &destructor_calls, thread_local_destructor));
+    EXPECT_EQ(2u, destructor_calls);
+
+    // A later thread exit must not access the released TLS index.
+    std::thread thread([] {});
+    thread.join();
+    EXPECT_EQ(2u, destructor_calls);
+  };
+  EXPECT_EXIT(
+      {
+        test_shutdown();
+        exit(::testing::Test::HasFailure() ? 1 : 0);
+      },
+      ::testing::ExitedWithCode(0), "");
+}
+#endif
 
 static void thread_task(bool *myFlag) {
   EXPECT_EQ(1, AWSLC_thread_local_clear());
@@ -171,7 +222,7 @@ TEST(ThreadTest, ClearState) {
   }
 }
 
-#endif // OPENSSL_PTHREADS
+#endif  // OPENSSL_PTHREADS || OPENSSL_WINDOWS_THREADS
 
 TEST(ThreadTest, InitThreads) {
   constexpr size_t kNumThreads = 10;

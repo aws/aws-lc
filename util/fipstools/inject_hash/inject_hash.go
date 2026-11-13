@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
+	"debug/pe"
 	"encoding/binary"
 	"errors"
 	"flag"
@@ -349,17 +350,268 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string) error {
+func doMingw(objectBytes []byte) ([]byte, []byte, error) {
+	object, err := pe.NewFile(bytes.NewReader(objectBytes))
+	if err != nil {
+		return nil, nil, errors.New("failed to parse object: " + err.Error())
+	}
+
+	// Find .text and .rdata sections. Windows uses .rdata for read-only data.
+	var textSection, rodataSection *pe.Section
+	var textSectionIndex, rodataSectionIndex int
+
+	for i, section := range object.Sections {
+		switch section.Name {
+		case ".text":
+			textSection = section
+			textSectionIndex = i + 1
+		case ".rdata":
+			rodataSection = section
+			rodataSectionIndex = i + 1
+		}
+	}
+
+	if textSection == nil {
+		return nil, nil, errors.New("failed to find .text section in object")
+	}
+
+	var textStart, textEnd, rodataStart, rodataEnd *uint64
+
+	symbols := object.Symbols
+	if symbols == nil {
+		return nil, nil, errors.New("no symbol table found in object")
+	}
+
+	for _, symbol := range symbols {
+		// Only consider symbols defined in .text or, if present, .rdata. COFF
+		// section numbers are 1-based; undefined symbols carry section number 0,
+		// which must not be mistaken for a real section when .rdata is absent.
+		sn := int(symbol.SectionNumber)
+		if sn != textSectionIndex && (rodataSection == nil || sn != rodataSectionIndex) {
+			continue
+		}
+
+		// In COFF, symbol.Value is the offset from the start of the section,
+		// not an RVA.
+		offset := uint64(symbol.Value)
+
+		switch symbol.Name {
+		case "BORINGSSL_bcm_text_start":
+			if textStart != nil {
+				return nil, nil, errors.New("duplicate start symbol found")
+			}
+			textStart = &offset
+		case "BORINGSSL_bcm_text_end":
+			if textEnd != nil {
+				return nil, nil, errors.New("duplicate end symbol found")
+			}
+			textEnd = &offset
+		case "BORINGSSL_bcm_rodata_start":
+			if rodataStart != nil {
+				return nil, nil, errors.New("duplicate rodata start symbol found")
+			}
+			rodataStart = &offset
+		case "BORINGSSL_bcm_rodata_end":
+			if rodataEnd != nil {
+				return nil, nil, errors.New("duplicate rodata end symbol found")
+			}
+			rodataEnd = &offset
+		}
+	}
+
+	if textStart == nil || textEnd == nil {
+		return nil, nil, errors.New("could not find .text module boundaries in object")
+	}
+
+	if (rodataStart == nil) != (rodataSection == nil) {
+		return nil, nil, errors.New("rodata start marker inconsistent with .rdata section presence")
+	}
+
+	if (rodataStart != nil) != (rodataEnd != nil) {
+		return nil, nil, errors.New("rodata marker presence inconsistent")
+	}
+
+	if max := uint64(textSection.Size); *textStart > max || *textStart > *textEnd || *textEnd > max {
+		return nil, nil, fmt.Errorf("invalid module .text boundaries: start: %x, end: %x, max: %x", *textStart, *textEnd, max)
+	}
+
+	if rodataStart != nil {
+		if max := uint64(rodataSection.Size); *rodataStart > max || *rodataStart > *rodataEnd || *rodataEnd > max {
+			return nil, nil, fmt.Errorf("invalid module .rdata boundaries: start: %x, end: %x, max: %x", *rodataStart, *rodataEnd, max)
+		}
+	}
+
+	text, err := textSection.Data()
+	if err != nil {
+		return nil, nil, errors.New("failed to read .text data: " + err.Error())
+	}
+	moduleText := text[*textStart:*textEnd]
+
+	var moduleROData []byte
+	if rodataStart != nil {
+		rodata, err := rodataSection.Data()
+		if err != nil {
+			return nil, nil, errors.New("failed to read .rdata data: " + err.Error())
+		}
+		moduleROData = rodata[*rodataStart:*rodataEnd]
+	}
+
+	// The runtime integrity check hashes the module as mapped in memory, so,
+	// as on every other FIPS target, the loader must not rewrite any hashed
+	// byte. Fail the build if a base relocation touches either region (e.g.
+	// .refptr cells emitted when the module is not built with -mcmodel=small).
+	regions := []peRegion{{
+		name:  ".text",
+		start: uint64(textSection.VirtualAddress) + *textStart,
+		end:   uint64(textSection.VirtualAddress) + *textEnd,
+	}}
+	if rodataStart != nil {
+		regions = append(regions, peRegion{
+			name:  ".rdata",
+			start: uint64(rodataSection.VirtualAddress) + *rodataStart,
+			end:   uint64(rodataSection.VirtualAddress) + *rodataEnd,
+		})
+	}
+	relocs, err := peBaseRelocations(object)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, reloc := range relocs {
+		for _, region := range regions {
+			if reloc.rva < region.end && reloc.rva+reloc.width > region.start {
+				return nil, nil, fmt.Errorf("base relocation at RVA 0x%x lies inside the FIPS module %s region [0x%x, 0x%x); the module must be relocation-free", reloc.rva, region.name, region.start, region.end)
+			}
+		}
+	}
+
+	return moduleText, moduleROData, nil
+}
+
+type peRegion struct {
+	name       string
+	start, end uint64
+}
+
+type peBaseReloc struct {
+	rva, width uint64
+}
+
+// peBaseRelocations returns the location and width of every base relocation
+// in the PE image's base relocation directory.
+func peBaseRelocations(object *pe.File) ([]peBaseReloc, error) {
+	var dir pe.DataDirectory
+	switch oh := object.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		if oh.NumberOfRvaAndSizes > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	case *pe.OptionalHeader32:
+		if oh.NumberOfRvaAndSizes > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	default:
+		return nil, errors.New("unsupported or missing PE optional header")
+	}
+	if dir.Size == 0 {
+		return nil, nil
+	}
+
+	var table []byte
+	for _, section := range object.Sections {
+		if dir.VirtualAddress < section.VirtualAddress {
+			continue
+		}
+		offset := uint64(dir.VirtualAddress - section.VirtualAddress)
+		if offset >= uint64(section.VirtualSize) {
+			continue
+		}
+		data, err := section.Data()
+		if err != nil {
+			return nil, errors.New("failed to read base relocation section: " + err.Error())
+		}
+		if offset+uint64(dir.Size) > uint64(len(data)) {
+			return nil, errors.New("base relocation directory extends past its section")
+		}
+		table = data[offset : offset+uint64(dir.Size)]
+		break
+	}
+	if table == nil {
+		return nil, errors.New("base relocation directory is not inside any section")
+	}
+
+	// IMAGE_REL_BASED_* types from the PE/COFF specification.
+	const (
+		relBasedAbsolute = 0
+		relBasedHigh     = 1
+		relBasedLow      = 2
+		relBasedHighLow  = 3
+		relBasedHighAdj  = 4
+		relBasedDir64    = 10
+	)
+
+	var relocs []peBaseReloc
+	for len(table) > 0 {
+		if len(table) < 8 {
+			return nil, errors.New("truncated base relocation block")
+		}
+		page := uint64(binary.LittleEndian.Uint32(table[0:4]))
+		blockSize := binary.LittleEndian.Uint32(table[4:8])
+		if blockSize < 8 || blockSize%2 != 0 || uint64(blockSize) > uint64(len(table)) {
+			return nil, fmt.Errorf("malformed base relocation block for page 0x%x", page)
+		}
+		entries := table[8:blockSize]
+		for i := 0; i < len(entries); i += 2 {
+			entry := binary.LittleEndian.Uint16(entries[i:])
+			var width uint64
+			switch entry >> 12 {
+			case relBasedAbsolute:
+				// Block padding, not a relocation.
+				continue
+			case relBasedHigh, relBasedLow:
+				width = 2
+			case relBasedHighAdj:
+				width = 2
+				// The following entry holds the low 16 bits of the target.
+				i += 2
+			case relBasedHighLow:
+				width = 4
+			case relBasedDir64:
+				width = 8
+			default:
+				// Be conservative about types this tool does not model.
+				width = 8
+			}
+			relocs = append(relocs, peBaseReloc{rva: page + uint64(entry&0xfff), width: width})
+		}
+		table = table[blockSize:]
+	}
+	return relocs, nil
+}
+
+func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string, mingw bool) error {
 	var objectBytes []byte
 	var isStatic bool
 	var perm os.FileMode
 
-	if appleOS && windowsOS {
-		return fmt.Errorf("-apple and -windows are mutually exclusive")
+	modeCount := 0
+	if appleOS {
+		modeCount++
+	}
+	if windowsOS {
+		modeCount++
+	}
+	if mingw {
+		modeCount++
+	}
+	if modeCount > 1 {
+		return fmt.Errorf("-apple, -windows, and -mingw are mutually exclusive")
 	}
 
 	if windowsOS && len(mapFile) == 0 {
 		return fmt.Errorf("-map is required when -windows is set")
+	}
+	if !windowsOS && len(mapFile) != 0 {
+		return fmt.Errorf("-map is only valid when -windows is set")
 	}
 
 	if len(arInput) > 0 {
@@ -375,6 +627,9 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 
 		if windowsOS {
 			return fmt.Errorf("only shared libraries can be handled on Windows")
+		}
+		if mingw {
+			return fmt.Errorf("only shared libraries can be handled on MinGW")
 		}
 
 		fi, err := os.Stat(arInput)
@@ -422,6 +677,8 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 		moduleText, moduleROData, err = doWindows(objectBytes, mapFile)
 	} else if appleOS {
 		moduleText, moduleROData, err = doAppleOS(objectBytes)
+	} else if mingw {
+		moduleText, moduleROData, err = doMingw(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
 	}
@@ -471,10 +728,11 @@ func main() {
 	appleOS := flag.Bool("apple", false, "Whether the FIPS module is built for macOS/iOS or not.")
 	windowsOS := flag.Bool("windows", false, "Whether the FIPS module is built for Windows or not.")
 	mapFile := flag.String("map", "", "Path to linker .map file (required for Windows)")
+	mingw := flag.Bool("mingw", false, "Whether the FIPS module is built for a Windows MinGW toolchain or not.")
 
 	flag.Parse()
 
-	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile); err != nil {
+	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile, *mingw); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
