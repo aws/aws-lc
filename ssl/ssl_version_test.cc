@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 
+#include <errno.h>
+
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
@@ -1645,6 +1647,356 @@ TEST_P(SSLVersionTest, SmallBuffer) {
   }
 }
 
+
+TEST_P(SSLVersionTest, FlushTLS13Tickets) {
+  enum Mode { kDefault, kContext, kConnection, kClientOnly };
+  for (Mode mode : {kDefault, kContext, kConnection, kClientOnly}) {
+    SCOPED_TRACE(mode);
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
+    g_last_session = nullptr;
+    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+    SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+    if (mode == kContext) {
+      SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+    }
+    ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                      server_ctx_.get()));
+    if (mode == kConnection) {
+      SSL_set_mode(server_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+      EXPECT_EQ(0u, SSL_CTX_get_mode(server_ctx_.get()) &
+                        SSL_MODE_FLUSH_TLS13_TICKETS);
+    } else if (mode == kClientOnly) {
+      SSL_set_mode(client_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+    }
+    ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+    ASSERT_NO_FATAL_FAILURE(TransferServerSSL());
+    const bool flush = mode == kContext || mode == kConnection;
+    EXPECT_EQ(flush, (SSL_get_mode(server_.get()) &
+                      SSL_MODE_FLUSH_TLS13_TICKETS) != 0);
+
+    // Before TLS 1.3, tickets are processed within the handshake regardless of
+    // the mode. In TLS 1.3, only the server's mode affects ticket timing.
+    const bool tls13 = !is_dtls() && version() == TLS1_3_VERSION;
+    EXPECT_EQ(!tls13, g_last_session != nullptr);
+    EXPECT_EQ(tls13 && flush, BIO_pending(SSL_get_rbio(client_.get())) != 0);
+    char buf = 0;
+    int ret = SSL_read(client_.get(), &buf, 1);
+    ASSERT_EQ(-1, ret);
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), ret));
+    EXPECT_EQ(!tls13 || flush, g_last_session != nullptr);
+  }
+}
+
+TEST_P(SSLVersionTest, FlushTLS13TicketsNoTickets) {
+  if (is_dtls() || version() != TLS1_3_VERSION) {
+    return;
+  }
+
+  for (bool no_ticket_option : {false, true}) {
+    SCOPED_TRACE(no_ticket_option);
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
+    g_last_session = nullptr;
+    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+    SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+    SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+    if (no_ticket_option) {
+      SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+    } else {
+      ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx_.get(), 0));
+    }
+    ASSERT_TRUE(Connect());
+    EXPECT_FALSE(SSL_in_init(server_.get()));
+    EXPECT_EQ(0u, BIO_pending(SSL_get_rbio(client_.get())));
+    char buf = 0;
+    int ret = SSL_read(client_.get(), &buf, 1);
+    ASSERT_EQ(-1, ret);
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), ret));
+    EXPECT_FALSE(g_last_session);
+  }
+}
+
+TEST_P(SSLVersionTest, FlushTLS13TicketsSmallBuffer) {
+  if (is_dtls() || version() != TLS1_3_VERSION) {
+    return;
+  }
+
+  for (bool fail_write : {false, true}) {
+    SCOPED_TRACE(fail_write);
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
+    g_last_session = nullptr;
+    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+    SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+    SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+    ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                      server_ctx_.get()));
+    BIO *bio1 = nullptr, *bio2 = nullptr;
+    ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
+    SSL_set_bio(client_.get(), bio1, bio1);
+    SSL_set_bio(server_.get(), bio2, bio2);
+
+    // Stop driving the client's handshake once it completes. Calling
+    // |CompleteHandshakes| would spin forever without draining the tickets.
+    int client_ret = -1, server_ret = -1;
+    for (size_t i = 0; client_ret != 1; i++) {
+      ASSERT_LT(i, 100000u);
+      client_ret = SSL_do_handshake(client_.get());
+      if (client_ret != 1) {
+        ASSERT_EQ(-1, client_ret);
+        int err = SSL_get_error(client_.get(), client_ret);
+        ASSERT_TRUE(err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE);
+      }
+      server_ret = SSL_do_handshake(server_.get());
+      ASSERT_EQ(-1, server_ret);
+      int err = SSL_get_error(server_.get(), server_ret);
+      ASSERT_TRUE(err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE);
+    }
+    ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+    ASSERT_TRUE(SSL_in_init(server_.get()));
+    EXPECT_FALSE(g_last_session);
+
+    // Without a client read, the server must still be blocked on its tickets.
+    server_ret = SSL_do_handshake(server_.get());
+    ASSERT_EQ(-1, server_ret);
+    ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+    ASSERT_TRUE(SSL_in_init(server_.get()));
+
+    if (fail_write) {
+      // A fatal transport error after a partial ticket write must not turn into
+      // a successful handshake with an incompletely flushed flight. The BIO
+      // pair reports a broken pipe through the error queue rather than as a
+      // system error, so it is not ignored as a closed connection.
+      ASSERT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server_.get())));
+      server_ret = SSL_do_handshake(server_.get());
+      EXPECT_EQ(-1, server_ret);
+      EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), server_ret));
+      EXPECT_TRUE(SSL_in_init(server_.get()));
+      ERR_clear_error();
+      continue;
+    }
+
+    char buf = 0;
+    for (size_t i = 0; server_ret != 1; i++) {
+      ASSERT_LT(i, 100000u);
+      ASSERT_TRUE(SSL_in_init(server_.get()));
+      client_ret = SSL_read(client_.get(), &buf, 1);
+      ASSERT_EQ(-1, client_ret);
+      ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), client_ret));
+      server_ret = SSL_do_handshake(server_.get());
+      if (server_ret != 1) {
+        ASSERT_EQ(-1, server_ret);
+        ASSERT_EQ(SSL_ERROR_WANT_WRITE,
+                  SSL_get_error(server_.get(), server_ret));
+        EXPECT_TRUE(SSL_in_init(server_.get()));
+      }
+    }
+    EXPECT_FALSE(SSL_in_init(server_.get()));
+    // Consume the final byte written by the successful handshake call.
+    client_ret = SSL_read(client_.get(), &buf, 1);
+    ASSERT_EQ(-1, client_ret);
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), client_ret));
+    ASSERT_TRUE(g_last_session);
+    ASSERT_NO_FATAL_FAILURE(TransferServerSSL());
+    EXPECT_NE(0u, SSL_get_mode(server_.get()) & SSL_MODE_FLUSH_TLS13_TICKETS);
+
+    // Application data must still flow in both directions after flushing.
+    for (bool from_server : {false, true}) {
+      SCOPED_TRACE(from_server);
+      SSL *writer = from_server ? server_.get() : client_.get();
+      SSL *reader = from_server ? client_.get() : server_.get();
+      static const char kMessage[] = "hello world";
+      char received[sizeof(kMessage)];
+      for (size_t i = 0;; i++) {
+        ASSERT_LT(i, 100000u);
+        int write_ret = SSL_write(writer, kMessage, sizeof(kMessage));
+        int write_err = SSL_get_error(writer, write_ret);
+        int read_ret = SSL_read(reader, received, sizeof(received));
+        if (write_ret > 0) {
+          EXPECT_EQ(static_cast<int>(sizeof(kMessage)), write_ret);
+          ASSERT_EQ(static_cast<int>(sizeof(kMessage)), read_ret);
+          EXPECT_EQ(Bytes(kMessage), Bytes(received));
+          break;
+        }
+        ASSERT_EQ(-1, write_ret);
+        ASSERT_EQ(SSL_ERROR_WANT_WRITE, write_err);
+        ASSERT_EQ(-1, read_ret);
+        ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(reader, read_ret));
+      }
+    }
+  }
+}
+
+static void SetSystemError(int error) {
+#if defined(OPENSSL_WINDOWS)
+  WSASetLastError(error);
+#else
+  errno = error;
+#endif
+}
+
+// Test that, like OpenSSL, |SSL_MODE_FLUSH_TLS13_TICKETS| ignores the peer
+// closing the connection while the tickets are written, and only that.
+TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
+  if (is_dtls() || version() != TLS1_3_VERSION) {
+    return;
+  }
+
+  struct WriteFailure {
+    int system_error;
+    bool queue_error;
+    bool ignored;
+  };
+  static const WriteFailure kFailures[] = {
+#if defined(OPENSSL_WINDOWS)
+      // The peer reset the connection.
+      {WSAECONNRESET, false, true},
+      // The failure is also reported on the error queue.
+      {WSAECONNRESET, true, false},
+      // Some other system error.
+      {WSAETIMEDOUT, false, false},
+#else
+      // The peer closed or reset the connection.
+      {EPIPE, false, true},
+      {ECONNRESET, false, true},
+      // The failure is also reported on the error queue.
+      {EPIPE, true, false},
+      // Some other system error.
+      {ETIMEDOUT, false, false},
+#endif
+      // No system error.
+      {0, false, false},
+  };
+
+  // Make a filter |BIO| whose writes, once |write_failure| is set, fail like a
+  // socket's: with a system error and no retry flags.
+  static const WriteFailure *write_failure = nullptr;
+  UniquePtr<BIO_METHOD> method(BIO_meth_new(BIO_TYPE_FILTER, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *bio) -> int {
+    BIO_set_init(bio, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(
+      BIO_meth_set_read(method.get(), [](BIO *bio, char *out, int len) -> int {
+        int ret = BIO_read(BIO_next(bio), out, len);
+        BIO_copy_next_retry(bio);
+        return ret;
+      }));
+  ASSERT_TRUE(BIO_meth_set_write(
+      method.get(), [](BIO *bio, const char *in, int len) -> int {
+        if (write_failure != nullptr) {
+          BIO_clear_retry_flags(bio);
+          if (write_failure->queue_error) {
+            OPENSSL_PUT_ERROR(BIO, BIO_R_BROKEN_PIPE);
+          }
+          SetSystemError(write_failure->system_error);
+          return -1;
+        }
+        int ret = BIO_write(BIO_next(bio), in, len);
+        BIO_copy_next_retry(bio);
+        return ret;
+      }));
+  ASSERT_TRUE(BIO_meth_set_ctrl(
+      method.get(), [](BIO *bio, int cmd, long larg, void *parg) -> long {
+        return BIO_ctrl(BIO_next(bio), cmd, larg, parg);
+      }));
+
+  for (bool partial_write : {false, true}) {
+    for (const WriteFailure &failure : kFailures) {
+      SCOPED_TRACE(partial_write);
+      SCOPED_TRACE(failure.system_error);
+      SCOPED_TRACE(failure.queue_error);
+      write_failure = nullptr;
+      ASSERT_NO_FATAL_FAILURE(ResetContexts());
+      g_last_session = nullptr;
+      SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+      SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+      SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+
+      // These must not outlive |method|, so do not use |client_| and |server_|.
+      UniquePtr<SSL> client, server;
+      ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx_.get(),
+                                        server_ctx_.get()));
+      // With a one-byte buffer, the server cannot write more than the first
+      // byte of its tickets until the client reads.
+      const size_t buffer_size = partial_write ? 1 : 0;
+      BIO *bio1 = nullptr, *bio2 = nullptr;
+      ASSERT_TRUE(BIO_new_bio_pair(&bio1, buffer_size, &bio2, buffer_size));
+      SSL_set_bio(client.get(), bio1, bio1);
+      UniquePtr<BIO> server_bio(bio2);
+      UniquePtr<BIO> filter(BIO_new(method.get()));
+      ASSERT_TRUE(filter);
+      BIO_push(filter.get(), server_bio.release());
+      SSL_set_bio(server.get(), filter.get(), filter.get());
+      filter.release();  // |SSL_set_bio| takes ownership.
+
+      // Run the handshake until the client completes it. The server has not
+      // yet processed the client's Finished, so it has not sent its tickets.
+      for (size_t i = 0;; i++) {
+        ASSERT_LT(i, 100000u);
+        int client_ret = SSL_do_handshake(client.get());
+        if (client_ret == 1) {
+          break;
+        }
+        ASSERT_EQ(-1, client_ret);
+        int client_err = SSL_get_error(client.get(), client_ret);
+        ASSERT_TRUE(client_err == SSL_ERROR_WANT_READ ||
+                    client_err == SSL_ERROR_WANT_WRITE);
+        int server_ret = SSL_do_handshake(server.get());
+        ASSERT_EQ(-1, server_ret);
+        int server_err = SSL_get_error(server.get(), server_ret);
+        ASSERT_TRUE(server_err == SSL_ERROR_WANT_READ ||
+                    server_err == SSL_ERROR_WANT_WRITE);
+      }
+
+      static const char kData[] = "hello";
+      if (partial_write) {
+        // The server starts writing its tickets, but cannot finish.
+        int server_ret = SSL_do_handshake(server.get());
+        ASSERT_EQ(-1, server_ret);
+        ASSERT_EQ(SSL_ERROR_WANT_WRITE,
+                  SSL_get_error(server.get(), server_ret));
+        ASSERT_GT(server->s3->pending_flight_offset, 0u);
+      } else {
+        // The client sends data before it closes the connection.
+        ASSERT_EQ(static_cast<int>(sizeof(kData)),
+                  SSL_write(client.get(), kData, sizeof(kData)));
+      }
+      ASSERT_TRUE(SSL_in_init(server.get()));
+
+      write_failure = &failure;
+      int server_ret = SSL_do_handshake(server.get());
+      if (!failure.ignored) {
+        EXPECT_EQ(-1, server_ret);
+        EXPECT_EQ(failure.queue_error ? SSL_ERROR_SSL : SSL_ERROR_SYSCALL,
+                  SSL_get_error(server.get(), server_ret));
+        EXPECT_TRUE(SSL_in_init(server.get()));
+        ERR_clear_error();
+        continue;
+      }
+
+      // The handshake completes, with the unsent tickets dropped rather than
+      // left partially written.
+      ASSERT_EQ(1, server_ret);
+      EXPECT_FALSE(SSL_in_init(server.get()));
+      EXPECT_EQ(SSL_NOTHING, SSL_want(server.get()));
+      EXPECT_EQ(0u, ERR_peek_error());
+      EXPECT_FALSE(server->s3->pending_flight);
+      EXPECT_EQ(0u, server->s3->pending_flight_offset);
+      if (getVersionParam().transfer_ssl) {
+        ASSERT_NO_FATAL_FAILURE(
+            TransferSSL(&server, server_ctx_.get(), nullptr));
+      }
+
+      if (!partial_write) {
+        // The server can still read what the client sent.
+        char buf[sizeof(kData)];
+        ASSERT_EQ(static_cast<int>(sizeof(kData)),
+                  SSL_read(server.get(), buf, sizeof(buf)));
+        EXPECT_EQ(Bytes(kData), Bytes(buf));
+      }
+    }
+  }
+}
 
 TEST_P(SSLVersionTest, SessionVersion) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
