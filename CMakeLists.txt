@@ -449,6 +449,14 @@ if(ENABLE_CRYPTO_POLICIES)
   endif()
 endif()
 
+if(ENABLE_DIST_PKG)
+  # Lets the library adopt behaviors expected of a system crypto library in a
+  # general-purpose Linux distribution, such as FIPS_mode() honoring the
+  # kernel's /proc/sys/crypto/fips_enabled switch.
+  message(STATUS "Setting AWSLC_DIST_PKG")
+  add_definitions(-DAWSLC_DIST_PKG)
+endif()
+
 if(NOT DISABLE_PERL)
   find_package(Perl REQUIRED)
 endif()
