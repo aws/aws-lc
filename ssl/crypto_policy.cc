@@ -6,7 +6,7 @@
 #include "internal.h"
 
 // This file implements opt-in seeding of new |SSL_CTX| objects from the system
-// crypto-policies OpenSSL back-end (Amazon Linux 2023 and Fedora). It is only
+// crypto-policies AWS-LC back-end (Amazon Linux and Fedora). It is only
 // compiled with -DENABLE_CRYPTO_POLICIES; otherwise it is an (almost) empty
 // translation unit. |internal.h| is included unconditionally so the unit always
 // carries declarations and never trips empty-translation-unit diagnostics.

@@ -129,20 +129,26 @@ integration.
 ### System Crypto Policies (opt-in)
 
 On Linux distributions that ship the `crypto-policies` framework (for example
-Amazon Linux 2023 and Fedora), AWS-LC can be built to seed newly created
-`SSL_CTX` objects from the system-wide OpenSSL back-end policy file. This is
-disabled by default; enable it with `-DENABLE_CRYPTO_POLICIES=ON`. It is aimed at
-distribution packagers who want AWS-LC to honor the operator-selected system TLS
-policy without per-application code changes.
+Amazon Linux and Fedora), AWS-LC can be built to seed newly created `SSL_CTX`
+objects from the system-wide policy file the framework renders for AWS-LC. This
+is disabled by default; enable it with `-DENABLE_CRYPTO_POLICIES=ON`. It is aimed
+at distribution packagers who want AWS-LC to honor the operator-selected system
+TLS policy without per-application code changes.
 
 When enabled, `SSL_CTX_new` reads
-`/etc/crypto-policies/back-ends/opensslcnf.config` after applying AWS-LC's
+`/etc/crypto-policies/back-ends/aws-lc.config` after applying AWS-LC's
 built-in defaults and applies the `CipherString`, `Ciphersuites`,
 `TLS`/`DTLS` `MinProtocol`/`MaxProtocol`, `Groups`, and `SignatureAlgorithms`
 directives. This is best-effort: a missing or malformed file, or a directive
 AWS-LC does not support, is ignored, and consumers may still override any setting
 afterward. The `@SECLEVEL=N` prefix in `CipherString` is parsed and dropped
 because AWS-LC does not implement OpenSSL security levels.
+
+A `crypto-policies` installation without an AWS-LC generator renders no such
+file, and seeding on that host does nothing. Point
+`AWSLC_CRYPTO_POLICY_FILE` at another back-end there, such as
+`/etc/crypto-policies/back-ends/opensslcnf.config`, which carries the same
+directives in OpenSSL's spellings.
 
 `Groups` and `SignatureAlgorithms` are narrowed to the algorithms AWS-LC
 implements before being applied, keeping the operator's preference order. A stock
@@ -174,7 +180,7 @@ algorithm is taken at its word and nothing is added back.
 To turn post-quantum off, put AWS-LC's own directive in a drop-in file:
 
 ```
-# /etc/crypto-policies/local.d/opensslcnf-awslc.config
+# /etc/crypto-policies/local.d/aws-lc-no-pq.config
 AWSLC.PostQuantum = off
 ```
 
@@ -182,6 +188,10 @@ Then run `update-crypto-policies`, which appends the drop-in to the generated
 back-end file. Do not write the directive into that generated file yourself. The
 framework rewrites it on every policy change and package update, which would
 discard the directive.
+
+The drop-in is only for going against the selected policy. A policy that
+excludes post-quantum algorithms gets the directive from the AWS-LC generator
+itself.
 
 A hybrid group needs its classical half, so removing `secp384r1` also removes
 `SecP384r1MLKEM1024`, whether the policy names the hybrid or not. An algorithm the

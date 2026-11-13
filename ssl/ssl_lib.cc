@@ -508,7 +508,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
 #if defined(AWSLC_CRYPTO_POLICIES)
   // Opt-in (-DENABLE_CRYPTO_POLICIES): seed this SSL_CTX from the system
-  // crypto-policies OpenSSL back-end after the built-in defaults above. This is
+  // crypto-policies AWS-LC back-end after the built-in defaults above. This is
   // best-effort and non-fatal; consumers may still override afterward.
   //
   // |method->version| is non-zero for the legacy version-locked methods, whose
