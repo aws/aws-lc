@@ -751,6 +751,9 @@ if(BUILD_TESTING)
   add_test_executable(${RANDOM_ISOLATED_EXEC} fipsmodule/rand/rand_isolated_test.cc)
   add_test_executable(${TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC} fipsmodule/rand/entropy/tree_drbg_jitter_entropy_isolated_test.cc)
 
+  # Test ML-KEM private key parsing from a process with no prior ML-KEM use
+  add_test_executable(${KEM_ISOLATED_EXEC} fipsmodule/kem/kem_isolated_test.cc)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
