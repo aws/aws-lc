@@ -135,13 +135,16 @@ OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
 // Adding objects at runtime.
 
 // OBJ_create adds a known object and returns the NID of the new object, or
-// NID_undef on error.
+// NID_undef on error. It fails with |OBJ_R_OID_EXISTS| if |oid|, |short_name|
+// or |long_name| is already known, either built in or added by an earlier
+// call; callers that may run more than once should look the OID up with
+// |OBJ_txt2nid| first.
 //
 // WARNING: This function modifies global state. The table cannot contain
 // duplicate OIDs, short names, or long names. If two callers in the same
-// address space add conflicting values, only one registration will take effect.
-// Avoid this function if possible. Instead, callers can process OIDs unknown to
-// BoringSSL by acting on the byte representation directly. See
+// address space add conflicting values, only the first registration will take
+// effect. Avoid this function if possible. Instead, callers can process OIDs
+// unknown to BoringSSL by acting on the byte representation directly. See
 // |ASN1_OBJECT_create|, |OBJ_get0_data|, and |OBJ_length|.
 OPENSSL_EXPORT int OBJ_create(const char *oid, const char *short_name,
                               const char *long_name);
@@ -206,5 +209,6 @@ OPENSSL_EXPORT void OBJ_cleanup(void);
 
 #define OBJ_R_UNKNOWN_NID 100
 #define OBJ_R_INVALID_OID_STRING 101
+#define OBJ_R_OID_EXISTS 102
 
 #endif  // OPENSSL_HEADER_OBJ_H
