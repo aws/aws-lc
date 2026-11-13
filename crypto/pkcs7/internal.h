@@ -55,7 +55,6 @@ struct pkcs7_digest_st {
   X509_ALGOR *digest_alg;
   PKCS7 *contents;
   ASN1_OCTET_STRING *digest;
-  const EVP_MD *md;  // NOTE: |md| is not serialized
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-13
