@@ -1542,6 +1542,97 @@ TEST(RSATest, MissingParameters) {
   EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
 }
 
+// RSA_X931_PADDING is only defined so that code written against OpenSSL
+// compiles. X9.31 padding is not implemented, so every API that takes a padding
+// mode must reject it.
+TEST(RSATest, X931PaddingUnsupported) {
+  static_assert(RSA_X931_PADDING == 5, "RSA_X931_PADDING must match OpenSSL");
+
+  // Each rejection must leave exactly the expected error on the queue.
+  auto expect_only_error = [](int lib, int reason) {
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), lib, reason));
+    EXPECT_EQ(0u, ERR_get_error());
+    ERR_clear_error();
+  };
+
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(kFIPSKey, sizeof(kFIPSKey) - 1));
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+
+  // Start from a non-default mode so a failed set can't be mistaken for a
+  // reset to the default.
+  const struct {
+    const char *name;
+    int (*init)(EVP_PKEY_CTX *ctx);
+    int padding;
+  } kOperations[] = {
+      {"sign", EVP_PKEY_sign_init, RSA_PKCS1_PSS_PADDING},
+      {"verify", EVP_PKEY_verify_init, RSA_PKCS1_PSS_PADDING},
+      {"verify_recover", EVP_PKEY_verify_recover_init, RSA_NO_PADDING},
+      {"encrypt", EVP_PKEY_encrypt_init, RSA_PKCS1_OAEP_PADDING},
+      {"decrypt", EVP_PKEY_decrypt_init, RSA_PKCS1_OAEP_PADDING},
+  };
+  for (const auto &op : kOperations) {
+    SCOPED_TRACE(op.name);
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(op.init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), op.padding));
+
+    ERR_clear_error();
+    EXPECT_FALSE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_X931_PADDING));
+    expect_only_error(ERR_LIB_EVP, EVP_R_ILLEGAL_OR_UNSUPPORTED_PADDING_MODE);
+
+    int padding = -1;
+    ASSERT_TRUE(EVP_PKEY_CTX_get_rsa_padding(ctx.get(), &padding));
+    EXPECT_EQ(op.padding, padding);
+  }
+
+  // Use a valid signature and ciphertext so the public and private operations
+  // get past their length and range checks and fail on the padding mode.
+  const size_t rsa_size = RSA_size(rsa.get());
+  std::vector<uint8_t> sig(rsa_size), ciphertext(rsa_size), out(rsa_size);
+  size_t sig_len, ciphertext_len, out_len;
+  ASSERT_TRUE(RSA_sign_raw(rsa.get(), &sig_len, sig.data(), sig.size(),
+                           kPlaintext, kPlaintextLen, RSA_PKCS1_PADDING));
+  ASSERT_TRUE(RSA_encrypt(rsa.get(), &ciphertext_len, ciphertext.data(),
+                          ciphertext.size(), kPlaintext, kPlaintextLen,
+                          RSA_PKCS1_PADDING));
+
+  ERR_clear_error();
+  EXPECT_FALSE(RSA_sign_raw(rsa.get(), &out_len, out.data(), out.size(),
+                            kPlaintext, kPlaintextLen, RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_FALSE(RSA_verify_raw(rsa.get(), &out_len, out.data(), out.size(),
+                              sig.data(), sig_len, RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_FALSE(RSA_encrypt(rsa.get(), &out_len, out.data(), out.size(),
+                           kPlaintext, kPlaintextLen, RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_FALSE(RSA_decrypt(rsa.get(), &out_len, out.data(), out.size(),
+                           ciphertext.data(), ciphertext_len,
+                           RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+
+  // The OpenSSL-style wrappers, historically the X9.31 entry points, report
+  // the same error.
+  EXPECT_EQ(-1, RSA_private_encrypt(kPlaintextLen, kPlaintext, out.data(),
+                                    rsa.get(), RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_EQ(-1, RSA_public_decrypt(sig_len, sig.data(), out.data(), rsa.get(),
+                                   RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_EQ(-1, RSA_public_encrypt(kPlaintextLen, kPlaintext, out.data(),
+                                   rsa.get(), RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+  EXPECT_EQ(-1, RSA_private_decrypt(ciphertext_len, ciphertext.data(),
+                                    out.data(), rsa.get(), RSA_X931_PADDING));
+  expect_only_error(ERR_LIB_RSA, RSA_R_UNKNOWN_PADDING_TYPE);
+}
+
 TEST(RSATest, Negative) {
   auto dup_neg = [](const BIGNUM *bn) -> bssl::UniquePtr<BIGNUM> {
     bssl::UniquePtr<BIGNUM> ret(BN_dup(bn));
