@@ -464,6 +464,113 @@ TEST_F(randIsolatedTest, BasicInitialization) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
+// Bumps the mocked vm_ube generation number on the first seed request after
+// being armed, simulating a UBE that lands while |RAND_bytes| is generating.
+static thread_local bool ube_during_next_seed = false;
+static thread_local uint64_t mocked_vm_ube_gn = 0;
+
+static int overrideGetSeedWithUbe(const struct entropy_source_t *entropy_source,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  get_seed_count++;
+  if (ube_during_next_seed) {
+    ube_during_next_seed = false;
+    set_vm_ube_generation_number_FOR_TESTING(++mocked_vm_ube_gn);
+  }
+  return 1;
+}
+
+static void setupMockedUbeWithOverriddenEntropy(bool simulate_ube_in_seed) {
+  overrideEntropySourceMethodsCount();
+  if (simulate_ube_in_seed) {
+    entropy_methods.get_seed = &overrideGetSeedWithUbe;
+  }
+  allow_mocked_ube_detection_FOR_TESTING();
+  set_fork_ube_generation_number_FOR_TESTING(1);
+  mocked_vm_ube_gn = 1;
+  set_vm_ube_generation_number_FOR_TESTING(mocked_vm_ube_gn);
+  // Settle the thread-local state against the mocked generation numbers.
+  generateRandomness(request_len);
+  generateRandomness(request_len);
+}
+
+TEST_F(randIsolatedTest, ExitCheckRegeneratesOnFailedRead) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testFunc = []() {
+    setupMockedUbeWithOverriddenEntropy(false);
+
+    // Entry read fails: reseed. Exit read fails: discard, reseed, regenerate.
+    set_vm_ube_read_failures_FOR_TESTING(2);
+    bool test1 = assertSeedOrReseed(2, []() {
+      return generateRandomness(request_len);
+    });
+
+    // Detection keeps working afterwards.
+    bool test2 = assertSeedOrReseed(0, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit((test1 && test2) ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+TEST_F(randIsolatedTest, ExitCheckRegeneratesOnUbeDuringGenerate) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testFunc = []() {
+    setupMockedUbeWithOverriddenEntropy(true);
+
+    // Entry detects a UBE and reseeds; a second UBE lands during that seed.
+    // The exit check sees it, so the output is discarded and regenerated from
+    // another reseed.
+    set_vm_ube_generation_number_FOR_TESTING(++mocked_vm_ube_gn);
+    ube_during_next_seed = true;
+    bool test1 = assertSeedOrReseed(2, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit(test1 ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+TEST_F(randIsolatedTest, ExitCheckDisablesDetectionWhenReadsKeepFailing) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testFunc = []() {
+    setupMockedUbeWithOverriddenEntropy(false);
+    set_vm_ube_read_failures_FOR_TESTING(UINT64_MAX);
+
+    // The entry reseed plus one per regenerate attempt, then detection is
+    // disabled and the request is generated one final time.
+    bool test1 = assertSeedOrReseed(kRandMaxGenerateAttempts + 1, []() {
+      return generateRandomness(request_len);
+    });
+    bool test2 = CRYPTO_ube_detection_unavailable() == 1;
+
+    // With detection disabled, every request reseeds.
+    bool test3 = assertSeedOrReseed(1, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit((test1 && test2 && test3) ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
 // Test vectors for randomness generation KATs.
 // The tests below proves that we can predict the input to the underlying
 // CTR-DRBG implementation and that the result is what we expect. Test vectors

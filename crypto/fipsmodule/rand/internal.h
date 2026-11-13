@@ -19,6 +19,13 @@ extern "C" {
 // for a specific state, before reseeding.
 static const uint64_t kCtrDrbgReseedInterval = 4096;
 
+// kRandMaxGenerateAttempts bounds how many times a single |RAND_bytes| request
+// is discarded and regenerated because the UBE generation number changed, or
+// could not be read, while generating. Once it is reached, UBE detection is
+// disabled for the process, so every later request reseeds, and the request is
+// generated one final time.
+static const size_t kRandMaxGenerateAttempts = 3;
+
 #define RAND_NO_USER_PRED_RESISTANCE 0
 #define RAND_USE_USER_PRED_RESISTANCE 1
 

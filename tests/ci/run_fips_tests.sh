@@ -61,10 +61,26 @@ if static_linux_supported || static_openbsd_supported; then
   echo "Testing AWS-LC static library in FIPS Release mode with FIPS entropy source method CPU Jitter."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 
-  echo "Testing AWS-LC static library in FIPS Debug with SysGenId."
+  # VM UBE detection has two backends (vmclock preferred, SysGenID fallback).
+  # They are tested in separate builds because enabling both would never
+  # exercise the SysGenID path at runtime. The DISABLED_ value round-trip and
+  # seqlock tests mutate the shared stand-in device file, so they are run in a
+  # dedicated single-process invocation rather than interleaved with the suite.
+  echo "Testing AWS-LC static library in FIPS Debug with VM UBE detection (vmclock backend)."
+  TEST_VMCLOCK_PATH=$(mktemp)
+  dd if=/dev/zero of="${TEST_VMCLOCK_PATH}" bs=1 count=4096
+  fips_build_and_test -DTEST_VMCLOCK_PATH="${TEST_VMCLOCK_PATH}"
+  "${BUILD_ROOT}/crypto/crypto_test" \
+    --gtest_also_run_disabled_tests \
+    --gtest_filter='VmUbeGenerationTest.DISABLED_Vmclock*'
+
+  echo "Testing AWS-LC static library in FIPS Debug with VM UBE detection (SysGenId backend)."
   TEST_SYSGENID_PATH=$(mktemp)
   dd if=/dev/zero of="${TEST_SYSGENID_PATH}" bs=1 count=4096
   fips_build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
+  "${BUILD_ROOT}/crypto/crypto_test" \
+    --gtest_also_run_disabled_tests \
+    --gtest_filter='VmUbeGenerationTest.DISABLED_SysGenID*'
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
