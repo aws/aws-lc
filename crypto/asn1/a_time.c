@@ -180,6 +180,20 @@ int ASN1_TIME_diff(int *out_days, int *out_seconds, const ASN1_TIME *from,
   return OPENSSL_gmtime_diff(out_days, out_seconds, &tm_from, &tm_to);
 }
 
+int ASN1_TIME_compare(const ASN1_TIME *a, const ASN1_TIME *b) {
+  int days, seconds;
+  if (!ASN1_TIME_diff(&days, &seconds, b, a)) {
+    return -2;
+  }
+  if (days > 0 || seconds > 0) {
+    return 1;
+  }
+  if (days < 0 || seconds < 0) {
+    return -1;
+  }
+  return 0;
+}
+
 // The functions below do *not* permissively allow the use of four digit
 // timezone offsets in UTC times, as is done elsewhere in the code. They are
 // both new API, and used internally to X509_cmp_time. This is to discourage the

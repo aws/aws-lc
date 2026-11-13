@@ -111,6 +111,8 @@ if(BUILD_TESTING)
     ssl_test.cc
     ssl_client_hello_test.cc
     ssl_c_test.c
+    ssl_compat_test.c
+    ssl_compat_test.cc
     ssl_key_share_test.cc
     ssl_alps_test.cc
     ssl_common_test.cc
@@ -124,6 +126,13 @@ if(BUILD_TESTING)
     ssl_crypto_policy_test.cc
     ssl_handshake_test.cc
   )
+
+  check_c_compiler_flag("-Werror=incompatible-pointer-types"
+    SSL_COMPAT_HAS_INCOMPATIBLE_POINTER_TYPES_ERROR)
+  if(SSL_COMPAT_HAS_INCOMPATIBLE_POINTER_TYPES_ERROR)
+    set_source_files_properties(ssl_compat_test.c PROPERTIES
+      COMPILE_FLAGS "-Werror=incompatible-pointer-types")
+  endif()
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
   target_add_awslc_include_paths(TARGET ${SSL_TEST_EXEC} SCOPE PRIVATE)
