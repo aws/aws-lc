@@ -4321,6 +4321,36 @@ extern "C" {
 #define LN_chacha20 "chacha20"
 #define NID_chacha20 1000
 
+#define SN_sha512_224WithRSAEncryption "RSA-SHA512/224"
+#define LN_sha512_224WithRSAEncryption "sha512-224WithRSAEncryption"
+#define NID_sha512_224WithRSAEncryption 1001
+#define OBJ_sha512_224WithRSAEncryption 1L, 2L, 840L, 113549L, 1L, 1L, 15L
+
+#define SN_sha512_256WithRSAEncryption "RSA-SHA512/256"
+#define LN_sha512_256WithRSAEncryption "sha512-256WithRSAEncryption"
+#define NID_sha512_256WithRSAEncryption 1002
+#define OBJ_sha512_256WithRSAEncryption 1L, 2L, 840L, 113549L, 1L, 1L, 16L
+
+#define SN_RSA_SHA3_224 "id-rsassa-pkcs1-v1_5-with-sha3-224"
+#define LN_RSA_SHA3_224 "RSA-SHA3-224"
+#define NID_RSA_SHA3_224 1003
+#define OBJ_RSA_SHA3_224 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 13L
+
+#define SN_RSA_SHA3_256 "id-rsassa-pkcs1-v1_5-with-sha3-256"
+#define LN_RSA_SHA3_256 "RSA-SHA3-256"
+#define NID_RSA_SHA3_256 1004
+#define OBJ_RSA_SHA3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 14L
+
+#define SN_RSA_SHA3_384 "id-rsassa-pkcs1-v1_5-with-sha3-384"
+#define LN_RSA_SHA3_384 "RSA-SHA3-384"
+#define NID_RSA_SHA3_384 1005
+#define OBJ_RSA_SHA3_384 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 15L
+
+#define SN_RSA_SHA3_512 "id-rsassa-pkcs1-v1_5-with-sha3-512"
+#define LN_RSA_SHA3_512 "RSA-SHA3-512"
+#define NID_RSA_SHA3_512 1006
+#define OBJ_RSA_SHA3_512 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 16L
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

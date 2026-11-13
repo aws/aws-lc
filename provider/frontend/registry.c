@@ -60,6 +60,18 @@ static const OSSL_ALGORITHM awslc_prov_keymgmt[] = {
     AWSLC_PROV_KEYMGMT(AWSLC_PROV_PROPERTIES)
     {NULL, NULL, NULL, NULL}};
 
+// The signature rows, expanded the same way.
+#define AWSLC_PROV_SIGNATURES(fips_property_definition)                        \
+  AWSLC_PROV_ALG(AWSLC_PROV_NAMES_RSA, fips_property_definition,               \
+                 rsa_signature, "AWS-LC RSA implementation")
+
+static const OSSL_ALGORITHM awslc_prov_signatures_fips[] = {
+    AWSLC_PROV_SIGNATURES(AWSLC_PROV_FIPS_PROPERTIES)
+    {NULL, NULL, NULL, NULL}};
+static const OSSL_ALGORITHM awslc_prov_signatures[] = {
+    AWSLC_PROV_SIGNATURES(AWSLC_PROV_PROPERTIES)
+    {NULL, NULL, NULL, NULL}};
+
 const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
                                                  int operation_id,
                                                  int *no_store) {
@@ -75,6 +87,9 @@ const OSSL_ALGORITHM *awslc_prov_query_operation(void *provctx,
     case OSSL_OP_KEYMGMT:
       return awslc_prov_ctx_is_fips(provctx) ? awslc_prov_keymgmt_fips
                                              : awslc_prov_keymgmt;
+    case OSSL_OP_SIGNATURE:
+      return awslc_prov_ctx_is_fips(provctx) ? awslc_prov_signatures_fips
+                                             : awslc_prov_signatures;
     default:
       // Returning NULL is what lets the fetch fall through to another provider
       // rather than fail, so every class we do not serve must land here.

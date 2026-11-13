@@ -34,18 +34,6 @@
 #define AWSLC_PROV_RSA_PRIMES 2
 #define AWSLC_PROV_RSA_PUBLIC_EXPONENT 65537
 
-// The keydata of both RSA key managers.
-typedef struct {
-  AWSLC_PROV_CTX *provctx;
-  // NULL until an import or generation fills it.
-  void *rsa;
-  // An RSA-PSS key, which signs with PSS padding only.
-  int pss;
-  // Whether AWS-LC enforces |restrictions| on |rsa|.
-  int restricted;
-  AWSLC_PROV_RSA_PSS_PARAMS restrictions;
-} AWSLC_PROV_RSA_KEY;
-
 typedef struct {
   AWSLC_PROV_CTX *provctx;
   unsigned bits;
@@ -115,10 +103,8 @@ static const OSSL_PARAM awslc_prov_rsa_pss_restrictions[] = {
     AWSLC_PROV_RSA_PSS_RESTRICTION_TYPES, OSSL_PARAM_END};
 
 // The restriction fields an RSA-PSS key exports, less the table's end.
-#define AWSLC_PROV_RSA_PSS_RESTRICTION_COUNT        \
-  (sizeof(awslc_prov_rsa_pss_restrictions) /        \
-       sizeof(awslc_prov_rsa_pss_restrictions[0]) - \
-   1)
+#define AWSLC_PROV_RSA_PSS_RESTRICTION_COUNT \
+  (AWSLC_PROV_COUNT(awslc_prov_rsa_pss_restrictions) - 1)
 
 #define AWSLC_PROV_RSA_GETTABLE                                        \
   OSSL_PARAM_int(OSSL_PKEY_PARAM_BITS, NULL),                          \

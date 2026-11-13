@@ -187,6 +187,8 @@ pkcs1 11		: RSA-SHA256		: sha256WithRSAEncryption
 pkcs1 12		: RSA-SHA384		: sha384WithRSAEncryption
 pkcs1 13		: RSA-SHA512		: sha512WithRSAEncryption
 pkcs1 14		: RSA-SHA224		: sha224WithRSAEncryption
+pkcs1 15		: RSA-SHA512/224	: sha512-224WithRSAEncryption
+pkcs1 16		: RSA-SHA512/256	: sha512-256WithRSAEncryption
 
 pkcs 3			: pkcs3
 pkcs3 1			:			: dhKeyAgreement
@@ -1388,6 +1390,13 @@ nist_sha3hashalgs 9		: SHA3-384		: sha3-384
 nist_sha3hashalgs 10		: SHA3-512		: sha3-512
 nist_sha3hashalgs 11		: SHAKE128		: shake128
 nist_sha3hashalgs 12		: SHAKE256		: shake256
+
+# RSASSA-PKCS1-v1_5 with SHA-3, according to
+# https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+nist_dsa 13	: id-rsassa-pkcs1-v1_5-with-sha3-224	: RSA-SHA3-224
+nist_dsa 14	: id-rsassa-pkcs1-v1_5-with-sha3-256	: RSA-SHA3-256
+nist_dsa 15	: id-rsassa-pkcs1-v1_5-with-sha3-384	: RSA-SHA3-384
+nist_dsa 16	: id-rsassa-pkcs1-v1_5-with-sha3-512	: RSA-SHA3-512
 
  : HKDF : hkdf
 

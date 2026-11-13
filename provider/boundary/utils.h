@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+// The number of elements in the array |array|.
+#define AWSLC_PROV_COUNT(array) (sizeof(array) / sizeof((array)[0]))
+
 // A big number in OSSL_PARAM integer encoding: |len| bytes at |data| in host
 // byte order, two's complement when |is_signed|.
 typedef struct {
