@@ -199,6 +199,76 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
     return 0;
   }
 
+  // Allocate the new content before freeing the old, so that a failed call
+  // leaves |p7| unchanged.
+  PKCS7 new_p7;
+  OPENSSL_memset(&new_p7, 0, sizeof(new_p7));
+  switch (type) {
+    case NID_pkcs7_signed:
+      new_p7.d.sign = PKCS7_SIGNED_new();
+      if (new_p7.d.sign == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(new_p7.d.sign->version, 1)) {
+        PKCS7_SIGNED_free(new_p7.d.sign);
+        return 0;
+      }
+      break;
+    case NID_pkcs7_digest:
+      new_p7.d.digest = PKCS7_DIGEST_new();
+      if (new_p7.d.digest == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(new_p7.d.digest->version, 0)) {
+        PKCS7_DIGEST_free(new_p7.d.digest);
+        return 0;
+      }
+      break;
+    case NID_pkcs7_data:
+      new_p7.d.data = ASN1_OCTET_STRING_new();
+      if (new_p7.d.data == NULL) {
+        return 0;
+      }
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      new_p7.d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
+      if (new_p7.d.signed_and_enveloped == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(new_p7.d.signed_and_enveloped->version, 1)) {
+        PKCS7_SIGN_ENVELOPE_free(new_p7.d.signed_and_enveloped);
+        return 0;
+      }
+      new_p7.d.signed_and_enveloped->enc_data->content_type =
+          OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    case NID_pkcs7_enveloped:
+      new_p7.d.enveloped = PKCS7_ENVELOPE_new();
+      if (new_p7.d.enveloped == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(new_p7.d.enveloped->version, 0)) {
+        PKCS7_ENVELOPE_free(new_p7.d.enveloped);
+        return 0;
+      }
+      new_p7.d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    case NID_pkcs7_encrypted:
+      new_p7.d.encrypted = PKCS7_ENCRYPT_new();
+      if (new_p7.d.encrypted == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(new_p7.d.encrypted->version, 0)) {
+        PKCS7_ENCRYPT_free(new_p7.d.encrypted);
+        return 0;
+      }
+      new_p7.d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+      return 0;
+  }
+
   // Free any previously-installed content using the current |p7->type| so the
   // correct destructor runs on the existing union member, instead of the new
   // type's destructor running on type-confused memory.
@@ -229,82 +299,8 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
     p7->d.ptr = NULL;
   }
 
-  switch (type) {
-    case NID_pkcs7_signed:
-      p7->type = obj;
-      p7->d.sign = PKCS7_SIGNED_new();
-      if (p7->d.sign == NULL) {
-        return 0;
-      }
-      if (!ASN1_INTEGER_set(p7->d.sign->version, 1)) {
-        PKCS7_SIGNED_free(p7->d.sign);
-        p7->d.sign = NULL;
-        return 0;
-      }
-      break;
-    case NID_pkcs7_digest:
-      p7->type = obj;
-      p7->d.digest = PKCS7_DIGEST_new();
-      if (p7->d.digest == NULL) {
-        return 0;
-      }
-      if (!ASN1_INTEGER_set(p7->d.digest->version, 0)) {
-        PKCS7_DIGEST_free(p7->d.digest);
-        p7->d.digest = NULL;
-        return 0;
-      }
-      break;
-    case NID_pkcs7_data:
-      p7->type = obj;
-      p7->d.data = ASN1_OCTET_STRING_new();
-      if (p7->d.data == NULL) {
-        return 0;
-      }
-      break;
-    case NID_pkcs7_signedAndEnveloped:
-      p7->type = obj;
-      p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
-      if (p7->d.signed_and_enveloped == NULL) {
-        return 0;
-      }
-      if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1)) {
-        PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
-        p7->d.signed_and_enveloped = NULL;
-        return 0;
-      }
-      p7->d.signed_and_enveloped->enc_data->content_type =
-          OBJ_nid2obj(NID_pkcs7_data);
-      break;
-    case NID_pkcs7_enveloped:
-      p7->type = obj;
-      p7->d.enveloped = PKCS7_ENVELOPE_new();
-      if (p7->d.enveloped == NULL) {
-        return 0;
-      }
-      if (!ASN1_INTEGER_set(p7->d.enveloped->version, 0)) {
-        PKCS7_ENVELOPE_free(p7->d.enveloped);
-        p7->d.enveloped = NULL;
-        return 0;
-      }
-      p7->d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
-      break;
-    case NID_pkcs7_encrypted:
-      p7->type = obj;
-      p7->d.encrypted = PKCS7_ENCRYPT_new();
-      if (p7->d.encrypted == NULL) {
-        return 0;
-      }
-      if (!ASN1_INTEGER_set(p7->d.encrypted->version, 0)) {
-        PKCS7_ENCRYPT_free(p7->d.encrypted);
-        p7->d.encrypted = NULL;
-        return 0;
-      }
-      p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
-      break;
-    default:
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-      return 0;
-  }
+  p7->type = obj;
+  p7->d = new_p7.d;
   return 1;
 }
 
@@ -336,7 +332,10 @@ int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher) {
 }
 
 int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data) {
-  if (p7 == NULL) {
+  // The inner ContentInfo of signedData and digestedData is required. A
+  // detached signature is expressed by omitting the inner ContentInfo's
+  // content, not the ContentInfo itself.
+  if (p7 == NULL || p7_data == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }

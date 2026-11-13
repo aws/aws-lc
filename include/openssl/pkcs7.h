@@ -334,14 +334,14 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_add_signer(PKCS7 *p7,
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_content_new(PKCS7 *p7, int nid);
 
 // PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
-// |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
-// failure.
+// |p7|: signedData and digestData. |p7_data| must not be NULL. It frees any
+// existing content on |p7|, returning 1 on success and 0 on failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_content(PKCS7 *p7,
                                                         PKCS7 *p7_data);
 
-// PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
-// |p7|: signedData and digestData. |p7_data| may be NULL. It frees any
-// existing content on |p7|, returning 1 on success and 0 on failure.
+// PKCS7_set_cipher sets |cipher| as the content encryption cipher of |p7| for
+// applicable types of |p7|: envelopedData and signedAndEnvelopedData. It
+// returns 1 on success and 0 on failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_cipher(
     PKCS7 *p7, const EVP_CIPHER *cipher);
 
