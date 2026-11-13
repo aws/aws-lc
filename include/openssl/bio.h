@@ -181,6 +181,10 @@ OPENSSL_EXPORT int BIO_should_retry(const BIO *bio);
 // |BIO_get_retry_reason|.
 OPENSSL_EXPORT int BIO_should_io_special(const BIO *bio);
 
+// BIO_RR_SSL_X509_LOOKUP indicates that an SSL certificate lookup must be
+// retried.
+#define BIO_RR_SSL_X509_LOOKUP 0x01
+
 // BIO_RR_CONNECT indicates that a connect would have blocked
 #define BIO_RR_CONNECT 0x02
 
@@ -324,18 +328,34 @@ OPENSSL_EXPORT char *BIO_get_callback_arg(const BIO *bio);
 // It returns |bio|. Note that |appended_bio| may be the head of a chain itself
 // and thus this function can be used to join two chains.
 //
-// BIO_push takes ownership of the caller's reference to |appended_bio|.
+// BIO_push takes ownership of the caller's reference to |appended_bio|. After
+// linking, it sends |BIO_CTRL_PUSH| to |bio|, with the previous tail as the
+// pointer argument. The notification's return value is ignored.
 OPENSSL_EXPORT BIO *BIO_push(BIO *bio, BIO *appended_bio);
 
-// BIO_pop removes |bio| from the head of a chain and returns the next BIO in
-// the chain, or NULL if there is no next BIO.
+// BIO_pop detaches |bio| from the chain that follows it and returns the next
+// BIO, or NULL if there is no next BIO. Before unlinking, it sends
+// |BIO_CTRL_POP| to |bio|, with |bio| as the pointer argument. The
+// notification's return value is ignored.
 //
-// The caller takes ownership of the chain's reference to |bio|.
+// The caller retains its reference to |bio| and takes ownership of the
+// reference to the returned chain.
 OPENSSL_EXPORT BIO *BIO_pop(BIO *bio);
 
 // BIO_next returns the next BIO in the chain after |bio|, or NULL if there is
 // no such BIO.
 OPENSSL_EXPORT BIO *BIO_next(BIO *bio);
+
+// BIO_do_handshake runs the state machine of |bio| by sending
+// |BIO_C_DO_STATE_MACHINE|. For an SSL BIO this advances the TLS handshake; for
+// a connect BIO it attempts to establish the connection.
+//
+// It returns the control result, which is one on success and non-positive
+// otherwise. Use |BIO_should_retry| and the |BIO_should_*| functions to
+// determine whether and how to retry a non-positive result.
+//
+// This function is available even when |OPENSSL_NO_SOCK| is defined.
+OPENSSL_EXPORT long BIO_do_handshake(BIO *bio);
 
 // BIO_free_all calls |BIO_free|.
 //
@@ -973,11 +993,19 @@ OPENSSL_EXPORT int BIO_get_init(BIO *bio);
 // BIO_CTRL_GET_CALLBACK returns the callback set by |BIO_CTRL_SET_CALLBACK|.
 #define BIO_CTRL_GET_CALLBACK 15
 
+// BIO_CTRL_PUSH notifies the chain head after |BIO_push| links BIOs. The
+// numeric argument is zero and the pointer argument identifies the BIO whose
+// next pointer changed. The return value is ignored.
+#define BIO_CTRL_PUSH 6
+
+// BIO_CTRL_POP notifies a BIO before |BIO_pop| unlinks its following chain. The
+// numeric argument is zero and the pointer argument identifies the BIO being
+// popped. Filters may forward this notification; the return value is ignored.
+#define BIO_CTRL_POP 7
+
 // The following are never used, but are defined to aid porting existing code.
 #define BIO_CTRL_SET 4
 #define BIO_CTRL_GET 5
-#define BIO_CTRL_PUSH 6
-#define BIO_CTRL_POP 7
 #define BIO_CTRL_DUP 12
 #define BIO_CTRL_SET_FILENAME 30
 
@@ -1008,6 +1036,8 @@ OPENSSL_EXPORT void *BIO_get_ex_data(const BIO *bio, int idx);
 // Use |EVP_EncodeBlock| and |EVP_DecodeBase64| instead.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
 
+// BIO_set_retry_special sets the |BIO_FLAGS_IO_SPECIAL| and
+// |BIO_FLAGS_SHOULD_RETRY| flags on |bio|.
 OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
 
 // BIO_set_shutdown sets a method-specific "shutdown" bit on |bio|.

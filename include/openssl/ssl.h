@@ -5274,11 +5274,19 @@ OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 // SSL BIO methods
 
-// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
-// that this has quite different behaviour from the version in OpenSSL (notably
-// that it doesn't try to auto renegotiate). There is also no current support
-// for the |BIO_set_ssl*| related functions in OpenSSL or |BIO_puts| with this
-// BIO type within AWS-LC.
+// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*| using
+// |BIO_set_ssl|. |BIO_puts| is supported by forwarding to the SSL BIO's write
+// method.
+//
+// Pushing a transport BIO onto this BIO attaches |BIO_next| as the underlying
+// |SSL|'s read and write BIOs. The |SSL| holds an additional reference to the
+// transport, independent of the BIO chain's reference. Popping this SSL BIO
+// detaches the |SSL|'s read and write BIOs. |BIO_do_handshake| on this BIO
+// calls |SSL_do_handshake|.
+//
+// Unlike OpenSSL, this BIO does not automatically renegotiate or insert the
+// |SSL|'s existing read BIO into the chain when |BIO_set_ssl| is called.
+// Replacing the |SSL| with another call to |BIO_set_ssl| is not supported.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
 
 // BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must

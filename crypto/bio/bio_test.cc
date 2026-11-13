@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
+#include <openssl/cipher.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -16,6 +19,7 @@
 #include <climits>
 
 #include "../internal.h"
+#include "../pkcs7/internal.h"
 #include "../test/file_util.h"
 #include "../test/test_util.h"
 
@@ -55,6 +59,256 @@ TEST(BIOTest, Printf) {
 
     ASSERT_TRUE(BIO_reset(bio.get()));
   }
+}
+
+TEST(BIOTest, HandshakeControl) {
+  bssl::UniquePtr<BIO_METHOD> method(
+      BIO_meth_new(BIO_TYPE_FILTER, "handshake control"));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_ctrl(
+      method.get(), [](BIO *, int cmd, long num, void *ptr) -> long {
+        EXPECT_EQ(BIO_C_DO_STATE_MACHINE, cmd);
+        EXPECT_EQ(0, num);
+        EXPECT_EQ(nullptr, ptr);
+        return LONG_MAX;
+      }));
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+
+  // Check both the exported signature and that the control result is not
+  // narrowed to int on platforms where long is wider.
+  long (*handshake)(BIO *) = BIO_do_handshake;
+  EXPECT_EQ(LONG_MAX, handshake(bio.get()));
+  EXPECT_EQ(0, handshake(nullptr));
+}
+
+static void CheckBase64ChainIO() {
+  for (bool no_newline : {false, true}) {
+    SCOPED_TRACE(no_newline);
+    bssl::UniquePtr<BIO> encoder(BIO_new(BIO_f_base64()));
+    bssl::UniquePtr<BIO> memory(BIO_new(BIO_s_mem()));
+    bssl::UniquePtr<BIO> decoder(BIO_new(BIO_f_base64()));
+    ASSERT_TRUE(encoder);
+    ASSERT_TRUE(memory);
+    ASSERT_TRUE(decoder);
+    if (no_newline) {
+      BIO_set_flags(encoder.get(), BIO_FLAGS_BASE64_NO_NL);
+      BIO_set_flags(decoder.get(), BIO_FLAGS_BASE64_NO_NL);
+    }
+    ASSERT_EQ(encoder.get(), BIO_push(encoder.get(), memory.release()));
+    ASSERT_EQ(2, BIO_write(encoder.get(), "he", 2));
+    // POP/PUSH must preserve the encoder's buffered partial block.
+    memory.reset(BIO_pop(encoder.get()));
+    ASSERT_TRUE(memory);
+    ASSERT_EQ(encoder.get(), BIO_push(encoder.get(), memory.release()));
+    ASSERT_EQ(3, BIO_write(encoder.get(), "llo", 3));
+    ASSERT_EQ(1, BIO_flush(encoder.get()));
+    memory.reset(BIO_pop(encoder.get()));
+    ASSERT_TRUE(memory);
+    const uint8_t *contents;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(memory.get(), &contents, &len));
+    EXPECT_EQ(Bytes(no_newline ? "aGVsbG8=" : "aGVsbG8=\n"),
+              Bytes(contents, len));
+    // This input is finite, not a temporarily empty writable memory BIO.
+    ASSERT_TRUE(BIO_set_mem_eof_return(memory.get(), 0));
+    ASSERT_EQ(decoder.get(), BIO_push(decoder.get(), memory.release()));
+    uint8_t out[5];
+    ASSERT_EQ(5, BIO_read(decoder.get(), out, sizeof(out)));
+    EXPECT_EQ(Bytes("hello"), Bytes(out));
+    EXPECT_EQ(0, BIO_read(decoder.get(), out, sizeof(out)));
+    EXPECT_EQ(0u, ERR_peek_error());
+  }
+}
+
+TEST(BIOTest, ChainNotifications) {
+  ASSERT_NO_FATAL_FAILURE(CheckBase64ChainIO());
+  struct Notification {
+    BIO *bio;
+    int cmd;
+    const BIO *ptr;
+    BIO *next;
+    bool returned;
+  };
+  struct State {
+    std::vector<Notification> controls;
+    std::vector<Notification> callbacks;
+  };
+
+  for (bool extended : {false, true}) {
+    SCOPED_TRACE(extended);
+    State head_state, middle_state, tail_state;
+    bssl::UniquePtr<BIO_METHOD> method(
+        BIO_meth_new(BIO_TYPE_FILTER, "chain notifications"));
+    ASSERT_TRUE(method);
+    ASSERT_TRUE(BIO_meth_set_ctrl(
+        method.get(), [](BIO *bio, int cmd, long num, void *ptr) -> long {
+          EXPECT_TRUE(cmd == BIO_CTRL_PUSH || cmd == BIO_CTRL_POP);
+          EXPECT_EQ(0, num);
+          auto *state = static_cast<State *>(BIO_get_data(bio));
+          state->controls.push_back(
+              {bio, cmd, static_cast<BIO *>(ptr), BIO_next(bio), false});
+          return -1;  // Notification results must not prevent
+                      // linking/unlinking.
+        }));
+    bssl::UniquePtr<BIO> head(BIO_new(method.get()));
+    bssl::UniquePtr<BIO> middle(BIO_new(method.get()));
+    bssl::UniquePtr<BIO> tail(BIO_new(method.get()));
+    ASSERT_TRUE(head);
+    ASSERT_TRUE(middle);
+    ASSERT_TRUE(tail);
+    BIO_set_data(head.get(), &head_state);
+    BIO_set_data(middle.get(), &middle_state);
+    BIO_set_data(tail.get(), &tail_state);
+    BIO_set_callback_arg(head.get(), reinterpret_cast<char *>(&head_state));
+    if (extended) {
+      BIO_set_callback_ex(head.get(),
+                          [](BIO *bio, int oper, const char *ptr, size_t,
+                             int cmd, long num, int ret, size_t *) -> long {
+                            if ((oper & ~BIO_CB_RETURN) == BIO_CB_CTRL) {
+                              EXPECT_EQ(0, num);
+                              auto *state = reinterpret_cast<State *>(
+                                  BIO_get_callback_arg(bio));
+                              state->callbacks.push_back(
+                                  {bio, cmd, reinterpret_cast<const BIO *>(ptr),
+                                   BIO_next(bio), (oper & BIO_CB_RETURN) != 0});
+                            }
+                            return ret;
+                          });
+    } else {
+      BIO_set_callback(head.get(),
+                       [](BIO *bio, int oper, const char *ptr, int cmd,
+                          long num, long ret) -> long {
+                         if ((oper & ~BIO_CB_RETURN) == BIO_CB_CTRL) {
+                           EXPECT_EQ(0, num);
+                           auto *state = reinterpret_cast<State *>(
+                               BIO_get_callback_arg(bio));
+                           state->callbacks.push_back(
+                               {bio, cmd, reinterpret_cast<const BIO *>(ptr),
+                                BIO_next(bio), (oper & BIO_CB_RETURN) != 0});
+                         }
+                         return ret;
+                       });
+    }
+
+    BIO *middle_ptr = middle.get();
+    BIO *tail_ptr = tail.get();
+    ASSERT_EQ(head.get(), BIO_push(head.get(), middle.release()));
+    ASSERT_EQ(head.get(), BIO_push(head.get(), tail.release()));
+    bssl::UniquePtr<BIO> rest(BIO_pop(head.get()));
+    EXPECT_EQ(middle_ptr, rest.get());
+    EXPECT_EQ(nullptr, BIO_next(head.get()));
+
+    const Notification expected[] = {
+        {head.get(), BIO_CTRL_PUSH, head.get(), middle_ptr, false},
+        {head.get(), BIO_CTRL_PUSH, middle_ptr, middle_ptr, false},
+        {head.get(), BIO_CTRL_POP, head.get(), middle_ptr, false},
+    };
+    ASSERT_EQ(3u, head_state.controls.size());
+    ASSERT_EQ(6u, head_state.callbacks.size());
+    for (size_t i = 0; i < 3; i++) {
+      EXPECT_EQ(expected[i].bio, head_state.controls[i].bio);
+      EXPECT_EQ(expected[i].cmd, head_state.controls[i].cmd);
+      EXPECT_EQ(expected[i].ptr, head_state.controls[i].ptr);
+      EXPECT_EQ(expected[i].next, head_state.controls[i].next);
+      for (size_t j = 0; j < 2; j++) {
+        const auto &callback = head_state.callbacks[2 * i + j];
+        EXPECT_EQ(expected[i].bio, callback.bio);
+        EXPECT_EQ(expected[i].cmd, callback.cmd);
+        EXPECT_EQ(expected[i].ptr, callback.ptr);
+        EXPECT_EQ(expected[i].next, callback.next);
+        EXPECT_EQ(j != 0, callback.returned);
+      }
+    }
+    EXPECT_TRUE(middle_state.controls.empty());
+    EXPECT_TRUE(tail_state.controls.empty());
+
+    bssl::UniquePtr<BIO> popped_tail(BIO_pop(rest.get()));
+    EXPECT_EQ(tail_ptr, popped_tail.get());
+    ASSERT_EQ(1u, middle_state.controls.size());
+    EXPECT_EQ(middle_ptr, middle_state.controls[0].bio);
+    EXPECT_EQ(BIO_CTRL_POP, middle_state.controls[0].cmd);
+    EXPECT_EQ(middle_ptr, middle_state.controls[0].ptr);
+    EXPECT_EQ(tail_ptr, middle_state.controls[0].next);
+
+    // Destroying a BIO is not a POP notification, even when it has a ctrl hook.
+    head.reset();
+    rest.reset();
+    popped_tail.reset();
+    EXPECT_EQ(3u, head_state.controls.size());
+    EXPECT_EQ(6u, head_state.callbacks.size());
+    EXPECT_EQ(1u, middle_state.controls.size());
+    EXPECT_TRUE(tail_state.controls.empty());
+  }
+}
+
+TEST(BIOTest, ChainNotificationsWithoutCtrl) {
+  bssl::UniquePtr<BIO_METHOD> method(
+      BIO_meth_new(BIO_TYPE_SOURCE_SINK, "no control"));
+  ASSERT_TRUE(method);
+  const BIO_METHOD *filters[] = {nullptr, BIO_f_base64(), BIO_f_md(),
+                                 BIO_f_cipher()};
+  for (const BIO_METHOD *filter : filters) {
+    bssl::UniquePtr<BIO> head(
+        BIO_new(filter == nullptr ? method.get() : filter));
+    bssl::UniquePtr<BIO> next(BIO_new(method.get()));
+    bssl::UniquePtr<BIO> tail(BIO_new(method.get()));
+    ASSERT_TRUE(head);
+    ASSERT_TRUE(next);
+    ASSERT_TRUE(tail);
+    SCOPED_TRACE(BIO_method_name(head.get()));
+    void *data = BIO_get_data(head.get());
+    int init = BIO_get_init(head.get());
+    BIO_set_retry_read(head.get());
+    BIO_set_retry_reason(head.get(), BIO_RR_ACCEPT);
+
+    ERR_clear_error();
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    uint32_t error = ERR_peek_error();
+    BIO *next_ptr = next.get();
+    BIO *tail_ptr = tail.get();
+    ASSERT_EQ(head.get(), BIO_push(head.get(), next.release()));
+    ASSERT_EQ(head.get(), BIO_push(head.get(), tail.release()));
+    EXPECT_EQ(next_ptr, BIO_next(head.get()));
+    EXPECT_EQ(tail_ptr, BIO_next(next_ptr));
+    EXPECT_EQ(0, BIO_ctrl(head.get(), BIO_CTRL_PUSH, 0, next_ptr));
+    EXPECT_EQ(0, BIO_ctrl(head.get(), BIO_CTRL_POP, 0, head.get()));
+    bssl::UniquePtr<BIO> popped(BIO_pop(head.get()));
+    EXPECT_EQ(next_ptr, popped.get());
+    EXPECT_EQ(nullptr, BIO_next(head.get()));
+    EXPECT_EQ(data, BIO_get_data(head.get()));
+    EXPECT_EQ(init, BIO_get_init(head.get()));
+    EXPECT_EQ(BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY,
+              BIO_get_retry_flags(head.get()));
+    EXPECT_EQ(BIO_RR_ACCEPT, BIO_get_retry_reason(head.get()));
+    EXPECT_EQ(error, ERR_get_error());
+    EXPECT_EQ(0u, ERR_get_error());
+
+    // Only advisory PUSH/POP controls suppress unsupported-method errors.
+    EXPECT_EQ(-2, BIO_ctrl(popped.get(), BIO_CTRL_FLUSH, 0, nullptr));
+    error = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(error));
+    EXPECT_EQ(BIO_R_UNSUPPORTED_METHOD, ERR_GET_REASON(error));
+    EXPECT_EQ(0u, ERR_get_error());
+  }
+}
+
+
+TEST(BIOTest, RetrySpecial) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  BIO_set_retry_reason(bio.get(), BIO_RR_SSL_X509_LOOKUP);
+  BIO_set_retry_special(bio.get());
+  EXPECT_EQ(BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY,
+            BIO_get_retry_flags(bio.get()));
+  EXPECT_TRUE(BIO_should_io_special(bio.get()));
+  EXPECT_TRUE(BIO_should_retry(bio.get()));
+  EXPECT_FALSE(BIO_should_read(bio.get()));
+  EXPECT_FALSE(BIO_should_write(bio.get()));
+  EXPECT_EQ(BIO_RR_SSL_X509_LOOKUP, BIO_get_retry_reason(bio.get()));
+  BIO_clear_retry_flags(bio.get());
+  EXPECT_EQ(0, BIO_get_retry_flags(bio.get()));
+  EXPECT_EQ(0, BIO_get_retry_reason(bio.get()));
 }
 
 TEST(BIOTest, CloseFlags) {

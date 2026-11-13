@@ -137,7 +137,7 @@ static long md_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_SET_MD_CTX:
     // |BIO_C_DO_STATE_MACHINE| is used by |BIO_do_handshake| for most |BIO|s in
     // OpenSSL. This functionality is only properly supported by |BIO_s_connect|
-    // within AWS-LC.
+    // and |BIO_f_ssl| within AWS-LC.
     case BIO_C_DO_STATE_MACHINE:
     // |BIO_CTRL_DUP| is used by |BIO_dup_state| for most |BIO|s in OpenSSL,
     // which AWS-LC doesn't have support for. We can implement support here (or
