@@ -313,6 +313,69 @@ TEST(ObjTest, CreateRejectsExisting) {
   EXPECT_EQ(NID_undef, OBJ_sn2nid("objtest sn 1023"));
 }
 
+// ExpectCreateReturns checks that |OBJ_create| returns |expected| without
+// adding anything to the error queue.
+static void ExpectCreateReturns(int expected, const char *oid, const char *sn,
+                                const char *ln) {
+  SCOPED_TRACE(oid);
+  ERR_clear_error();
+  EXPECT_EQ(expected, OBJ_create(oid, sn, ln));
+  EXPECT_EQ(0u, ERR_peek_error());
+}
+
+// Registering exactly what is already registered returns the existing NID
+// rather than failing. This adds nothing to the tables, so nothing can shadow.
+TEST(ObjTest, CreateRepeatReturnsExisting) {
+  // A built-in object under its own names. 1.2.840.113549.1.9.2 is
+  // unstructuredName, whose short and long names are both "unstructuredName".
+  ExpectCreateReturns(NID_pkcs9_unstructuredName, "1.2.840.113549.1.9.2",
+                      "unstructuredName", "unstructuredName");
+  // NULL names do not need to match.
+  ExpectCreateReturns(NID_key_usage, "2.5.29.15", nullptr, nullptr);
+  ExpectCreateReturns(NID_commonName, "2.5.4.3", "CN", nullptr);
+  ExpectCreateReturns(NID_commonName, "2.5.4.3", nullptr, "commonName");
+  // A built-in OID under a different built-in object's name is a conflict.
+  ExpectCreateFails("2.5.4.3", "keyUsage", nullptr);
+
+  // A run-time added object, registered again as a caller would on every use.
+  const char *kOID = "1.2.840.113554.4.1.72585.1030";
+  int nid = OBJ_create(kOID, "objtest sn 1030", "objtest ln 1030");
+  ASSERT_NE(NID_undef, nid);
+  for (int i = 0; i < 3; i++) {
+    ExpectCreateReturns(nid, kOID, "objtest sn 1030", "objtest ln 1030");
+  }
+  ExpectCreateReturns(nid, kOID, nullptr, nullptr);
+  ExpectCreateReturns(nid, kOID, "objtest sn 1030", nullptr);
+  EXPECT_EQ(nid, OBJ_txt2nid(kOID));
+  EXPECT_STREQ("objtest sn 1030", OBJ_nid2sn(nid));
+  EXPECT_STREQ("objtest ln 1030", OBJ_nid2ln(nid));
+
+  // An object added without names cannot later be given one.
+  const char *kNoNamesOID = "1.2.840.113554.4.1.72585.1031";
+  int no_names_nid = OBJ_create(kNoNamesOID, nullptr, nullptr);
+  ASSERT_NE(NID_undef, no_names_nid);
+  ExpectCreateReturns(no_names_nid, kNoNamesOID, nullptr, nullptr);
+  ExpectCreateFails(kNoNamesOID, "objtest sn 1031", nullptr);
+  EXPECT_EQ(nullptr, OBJ_nid2sn(no_names_nid));
+}
+
+// Repeated and refused calls must not consume NIDs.
+TEST(ObjTest, CreateDoesNotConsumeNIDsOnRepeat) {
+  int first = OBJ_create("1.2.840.113554.4.1.72585.1040", "objtest sn 1040",
+                         "objtest ln 1040");
+  ASSERT_NE(NID_undef, first);
+  for (int i = 0; i < 10; i++) {
+    EXPECT_EQ(first, OBJ_create("1.2.840.113554.4.1.72585.1040",
+                                "objtest sn 1040", "objtest ln 1040"));
+    EXPECT_EQ(NID_undef, OBJ_create("1.2.840.113554.4.1.72585.1041",
+                                    "objtest sn 1040", "objtest ln 1041"));
+    EXPECT_EQ(NID_undef, OBJ_create("2.5.29.15", "objtest sn 1041b", nullptr));
+  }
+  ERR_clear_error();
+  EXPECT_EQ(first + 1, OBJ_create("1.2.840.113554.4.1.72585.1042",
+                                  "objtest sn 1042", "objtest ln 1042"));
+}
+
 #if defined(OPENSSL_THREADS)
 // Lookups that skip |global_added_lock| for built-in objects must still be
 // safe against concurrent |OBJ_create|. Run under TSan to be meaningful.
@@ -354,5 +417,26 @@ TEST(ObjTest, ConcurrentCreateAndLookup) {
   for (size_t i = kWriters; i < threads.size(); i++) {
     threads[i].join();
   }
+}
+
+// Racing registrations of the same object must all get the same NID.
+TEST(ObjTest, ConcurrentRepeatCreate) {
+  constexpr int kThreads = 8;
+  int nids[kThreads];
+  std::vector<std::thread> threads;
+  for (int t = 0; t < kThreads; t++) {
+    threads.emplace_back([t, &nids] {
+      nids[t] = OBJ_create("1.2.840.113554.4.1.72585.3000", "objtest sn 3000",
+                           "objtest ln 3000");
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  ASSERT_NE(NID_undef, nids[0]);
+  for (int t = 1; t < kThreads; t++) {
+    EXPECT_EQ(nids[0], nids[t]);
+  }
+  EXPECT_EQ(nids[0], OBJ_txt2nid("1.2.840.113554.4.1.72585.3000"));
 }
 #endif
