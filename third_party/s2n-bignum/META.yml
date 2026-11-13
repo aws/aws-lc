@@ -1,5 +1,5 @@
 name: s2n-bignum-imported
 source: awslabs/s2n-bignum.git
-commit: 4d1356a7470663c752660a59375dc3a9ef548428
-target: main
-imported-at: 2026-10-15T19:21:12+0000
+commit: 93f326585bdc081cee343e9eb5c4d6e6217edefe
+target: pull/490/head
+imported-at: 2026-11-06T16:31:01+0000

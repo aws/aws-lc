@@ -164,7 +164,7 @@ constexpr size_t kFlag_sha3_keccak_f1600 = 9;
 constexpr size_t kFlag_sha3_keccak4_f1600_alt = 10;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
-constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
+constexpr size_t kFlag_aes_gcm_enc_alt = 7;
 constexpr size_t kFlag_sha512_hw = 8;
 constexpr size_t kFlag_KeccakF1600_hw = 9;
 constexpr size_t kFlag_sha3_keccak_f1600 = 10;
@@ -197,9 +197,12 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            !aes_gcm_pmull_ && !aes_gcm_8x_},
           {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
-           aes_gcm_pmull_ && !aes_gcm_8x_},
-          {kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&
-           aes_gcm_pmull_ && aes_gcm_8x_}
+           aes_gcm_pmull_ &&
+           !(aes_gcm_8x_ &&
+             (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_))},
+          {kFlag_aes_gcm_enc_alt, aes_hw_ &&
+           aes_gcm_pmull_ && aes_gcm_8x_ &&
+           (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_)}
 #endif
       },
       [] {
