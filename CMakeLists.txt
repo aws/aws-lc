@@ -1505,10 +1505,6 @@ endif()
 # via Web Workers and SharedArrayBuffer, configured through compiler flags.
 if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
   find_package(Threads REQUIRED)
-  if(MINGW)
-    set_property(TARGET Threads::Threads PROPERTY
-      INTERFACE_LINK_LIBRARIES "-Wl,-Bstatic,-lwinpthread;-Wl,-Bdynamic")
-  endif()
   set(AWSLC_LINK_THREADS TRUE)
   # CMAKE_THREAD_LIBS_INIT contains the actual linker flags (e.g., -lpthread)
   # set by find_package(Threads). Use this for pkgconfig instead of the
