@@ -288,13 +288,25 @@ OPENSSL_INLINE int sha256_ssse3_capable(void) {
 void sha256_block_data_order_ssse3(uint32_t state[8], const uint8_t *data,
                                    size_t num);
 
+#define SHA512_ASM_AVX2
+OPENSSL_INLINE int sha512_avx2_capable(void) {
+  // sha512_block_data_order_avx2 rotates with RORX (BMI2) and uses ANDN (BMI1).
+  // It does not use SHLD/SHRD, so unlike the AVX implementation it is also
+  // fast on AMD CPUs, which have no SHA-512 instructions.
+  return CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI1_capable() &&
+         CRYPTO_is_BMI2_capable();
+}
+void sha512_block_data_order_avx2(uint64_t state[8], const uint8_t *data,
+                                  size_t num);
+
 #define SHA512_ASM_AVX
 OPENSSL_INLINE int sha512_avx_capable(void) {
   // TODO: Simplify this logic, which was extracted from the assembly:
   //  * Does AVX imply SSSE3?
   //  * sha512_block_data_order_avx does not seem to use SSSE3 instructions.
-  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
-  // discussion in sha1-586.pl.
+  // AMD CPUs have slow SHLD/SHRD; see the discussion in sha1-586.pl. Zen added
+  // the SHA extension for SHA-1 and SHA-256, but not for SHA-512, and this
+  // implementation remains slower than the nohw one there (measured on Zen 5).
   return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
          CRYPTO_is_intel_cpu();
 }
