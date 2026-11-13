@@ -174,7 +174,7 @@ jobs:
     name: >-
       x86-64 - ${{ matrix.compiler }} -
       ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} -
-      ${{ (matrix.shared == 1 && 'shared') || 'static' }}
+      ${{ (matrix.shared == 1 && 'shared') || 'static' }}${{ matrix.release_flags && format(' ({0})', matrix.release_flags) || '' }}
     needs: [sanity-test-run]
     env:
       GOFLAGS: "-buildvcs=false"
@@ -190,6 +190,7 @@ jobs:
         # likely to surface.
         fips: [1]
         shared: [0]
+        release_flags: [""]
         compiler:
           - "gcc9"
           - "gcc10"
@@ -215,6 +216,8 @@ jobs:
           - { compiler: "gcc16", fips: 0, shared: 0 }
           - { compiler: "gcc16", fips: 0, shared: 1 }
           - { compiler: "gcc16", fips: 1, shared: 1 }
+          # GCC 16 emits relro .set aliases at -O2 that -O3 can hide.
+          - { compiler: "gcc16", fips: 1, shared: 0, release_flags: "-O2 -DNDEBUG" }
           - { compiler: "clang14", fips: 0, shared: 0 }
           - { compiler: "clang14", fips: 0, shared: 1 }
           - { compiler: "clang14", fips: 1, shared: 1 }
@@ -243,7 +246,15 @@ jobs:
         env:
           MATRIX_FIPS: ${{ matrix.fips }}
           MATRIX_SHARED: ${{ matrix.shared }}
-        run: cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS="${MATRIX_FIPS}" -DBUILD_SHARED_LIBS="${MATRIX_SHARED}"
+          MATRIX_RELEASE_FLAGS: ${{ matrix.release_flags }}
+        run: |
+          set --
+          if [ -n "${MATRIX_RELEASE_FLAGS}" ]; then
+            set -- "-DCMAKE_C_FLAGS_RELEASE=${MATRIX_RELEASE_FLAGS}" \
+              "-DCMAKE_CXX_FLAGS_RELEASE=${MATRIX_RELEASE_FLAGS}"
+          fi
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release \
+            -DFIPS="${MATRIX_FIPS}" -DBUILD_SHARED_LIBS="${MATRIX_SHARED}" "$@"
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
