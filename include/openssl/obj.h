@@ -135,10 +135,13 @@ OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
 // Adding objects at runtime.
 
 // OBJ_create adds a known object and returns the NID of the new object, or
-// NID_undef on error. It fails with |OBJ_R_OID_EXISTS| if |oid|, |short_name|
-// or |long_name| is already known, either built in or added by an earlier
-// call; callers that may run more than once should look the OID up with
-// |OBJ_txt2nid| first.
+// NID_undef on error.
+//
+// If |oid| is already known, either built in or added by an earlier call, and
+// each non-NULL name is that same object's name, nothing is added and the
+// existing NID is returned. Otherwise, if |oid|, |short_name| or |long_name|
+// is already known, it fails with |OBJ_R_OID_EXISTS|. (OpenSSL fails in both
+// cases.)
 //
 // WARNING: This function modifies global state. The table cannot contain
 // duplicate OIDs, short names, or long names. If two callers in the same
