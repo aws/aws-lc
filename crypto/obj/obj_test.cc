@@ -3,9 +3,15 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include <openssl/asn1.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 #include <openssl/obj.h>
 
 #include "../internal.h"
@@ -251,3 +257,102 @@ TEST(ObjTest, TestObj2Txt) {
   ASSERT_TRUE(obj);
   ASSERT_EQ(-1, OBJ_obj2txt(NULL, 0, obj.get(), 0));
 }
+
+// ExpectCreateFails checks that |OBJ_create| refuses the arguments because
+// they are already registered.
+static void ExpectCreateFails(const char *oid, const char *sn, const char *ln) {
+  SCOPED_TRACE(oid);
+  ERR_clear_error();
+  EXPECT_EQ(NID_undef, OBJ_create(oid, sn, ln));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_OBJ, ERR_GET_LIB(err));
+  EXPECT_EQ(OBJ_R_OID_EXISTS, ERR_GET_REASON(err));
+}
+
+// Lookups search the built-in table before run-time added objects, which is
+// only correct if |OBJ_create| can never shadow a built-in OID or name.
+TEST(ObjTest, CreateRejectsExisting) {
+  // 2.5.29.15, id-ce-keyUsage.
+  static const uint8_t kKeyUsage[] = {0x55, 0x1d, 0x0f};
+
+  // A built-in OID, short name or long name cannot be registered again.
+  ExpectCreateFails("2.5.29.15", "objtest shadow KU", "objtest shadow KU long");
+  ExpectCreateFails("1.2.840.113554.4.1.72585.1020", "CN", "objtest ln 1020");
+  ExpectCreateFails("1.2.840.113554.4.1.72585.1021", "objtest sn 1021",
+                    "commonName");
+
+  CBS cbs;
+  CBS_init(&cbs, kKeyUsage, sizeof(kKeyUsage));
+  EXPECT_EQ(NID_key_usage, OBJ_cbs2nid(&cbs));
+  EXPECT_EQ(NID_commonName, OBJ_sn2nid("CN"));
+  EXPECT_EQ(NID_commonName, OBJ_ln2nid("commonName"));
+  EXPECT_EQ(NID_undef, OBJ_sn2nid("objtest shadow KU"));
+
+  // An added object is found by every lookup...
+  int nid = OBJ_create("1.2.840.113554.4.1.72585.1022", "objtest sn 1022",
+                       "objtest ln 1022");
+  ASSERT_NE(NID_undef, nid);
+  // 1.2.840.113554.4.1.72585.1022
+  static const uint8_t kAdded[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+                                   0x01, 0x84, 0xb7, 0x09, 0x87, 0x7e};
+  CBS_init(&cbs, kAdded, sizeof(kAdded));
+  EXPECT_EQ(nid, OBJ_cbs2nid(&cbs));
+  EXPECT_EQ(nid, OBJ_txt2nid("1.2.840.113554.4.1.72585.1022"));
+  EXPECT_EQ(nid, OBJ_sn2nid("objtest sn 1022"));
+  EXPECT_EQ(nid, OBJ_ln2nid("objtest ln 1022"));
+  EXPECT_STREQ("objtest sn 1022", OBJ_nid2sn(nid));
+
+  // ...and cannot be registered a second time under any of its values.
+  ExpectCreateFails("1.2.840.113554.4.1.72585.1022", "objtest sn 1022b",
+                    "objtest ln 1022b");
+  ExpectCreateFails("1.2.840.113554.4.1.72585.1023", "objtest sn 1022",
+                    "objtest ln 1023");
+  ExpectCreateFails("1.2.840.113554.4.1.72585.1024", "objtest sn 1024",
+                    "objtest ln 1022");
+  EXPECT_EQ(nid, OBJ_cbs2nid(&cbs));
+  EXPECT_EQ(NID_undef, OBJ_sn2nid("objtest sn 1023"));
+}
+
+#if defined(OPENSSL_THREADS)
+// Lookups that skip |global_added_lock| for built-in objects must still be
+// safe against concurrent |OBJ_create|. Run under TSan to be meaningful.
+TEST(ObjTest, ConcurrentCreateAndLookup) {
+  constexpr int kWriters = 4, kPerWriter = 50, kReaders = 4;
+  static const uint8_t kKeyUsage[] = {0x55, 0x1d, 0x0f};
+  std::atomic<bool> done{false};
+  std::vector<std::thread> threads;
+  for (int w = 0; w < kWriters; w++) {
+    threads.emplace_back([w] {
+      for (int i = 0; i < kPerWriter; i++) {
+        int n = 2000 + w * kPerWriter + i;
+        std::string oid = "1.2.840.113554.4.1.72585." + std::to_string(n);
+        std::string sn = "objtest mt sn " + std::to_string(n);
+        std::string ln = "objtest mt ln " + std::to_string(n);
+        int nid = OBJ_create(oid.c_str(), sn.c_str(), ln.c_str());
+        EXPECT_NE(NID_undef, nid);
+        EXPECT_EQ(nid, OBJ_txt2nid(oid.c_str()));
+      }
+    });
+  }
+  for (int r = 0; r < kReaders; r++) {
+    threads.emplace_back([&] {
+      while (!done.load()) {
+        CBS cbs;
+        CBS_init(&cbs, kKeyUsage, sizeof(kKeyUsage));
+        EXPECT_EQ(NID_key_usage, OBJ_cbs2nid(&cbs));
+        EXPECT_EQ(NID_commonName, OBJ_sn2nid("CN"));
+        // Misses fall through to the locked added-object tables.
+        EXPECT_EQ(NID_undef, OBJ_sn2nid("objtest mt missing"));
+        OBJ_txt2nid("1.2.840.113554.4.1.72585.2000");
+      }
+    });
+  }
+  for (int w = 0; w < kWriters; w++) {
+    threads[w].join();
+  }
+  done = true;
+  for (size_t i = kWriters; i < threads.size(); i++) {
+    threads[i].join();
+  }
+}
+#endif

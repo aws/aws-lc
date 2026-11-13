@@ -149,6 +149,19 @@ static int obj_cmp(const void *key, const void *element) {
   return OBJ_cmp(key, get_builtin_object(nid));
 }
 
+// obj_builtin_data2nid returns the NID of the built-in object whose encoding
+// matches |obj|, or |NID_undef| if there is none. The built-in table is
+// constant, so this takes no lock.
+static int obj_builtin_data2nid(const ASN1_OBJECT *obj) {
+  const uint16_t *nid_ptr =
+      bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
+              sizeof(kNIDsInOIDOrder[0]), obj_cmp);
+  if (nid_ptr == NULL) {
+    return NID_undef;
+  }
+  return get_builtin_object(*nid_ptr)->nid;
+}
+
 int OBJ_obj2nid(const ASN1_OBJECT *obj) {
   if (obj == NULL) {
     return NID_undef;
@@ -158,26 +171,25 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
     return obj->nid;
   }
 
+  // |OBJ_create| refuses OIDs that are already known, so an OID is in at most
+  // one of the two tables. Search the constant built-in table first so that
+  // the common case, such as OIDs parsed from certificates, never touches
+  // |global_added_lock|.
+  int nid = obj_builtin_data2nid(obj);
+  if (nid != NID_undef) {
+    return nid;
+  }
+
   CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
   if (global_added_by_data != NULL) {
-    ASN1_OBJECT *match;
-
-    match = lh_ASN1_OBJECT_retrieve(global_added_by_data, obj);
+    const ASN1_OBJECT *match =
+        lh_ASN1_OBJECT_retrieve(global_added_by_data, obj);
     if (match != NULL) {
-      CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-      return match->nid;
+      nid = match->nid;
     }
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-
-  const uint16_t *nid_ptr =
-      bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
-              sizeof(kNIDsInOIDOrder[0]), obj_cmp);
-  if (nid_ptr == NULL) {
-    return NID_undef;
-  }
-
-  return get_builtin_object(*nid_ptr)->nid;
+  return nid;
 }
 
 int OBJ_cbs2nid(const CBS *cbs) {
@@ -203,20 +215,9 @@ static int short_name_cmp(const void *key, const void *element) {
   return strcmp(name, get_builtin_object(nid)->sn);
 }
 
-int OBJ_sn2nid(const char *short_name) {
-  CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
-  if (global_added_by_short_name != NULL) {
-    ASN1_OBJECT *match, template;
-
-    template.sn = short_name;
-    match = lh_ASN1_OBJECT_retrieve(global_added_by_short_name, &template);
-    if (match != NULL) {
-      CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-      return match->nid;
-    }
-  }
-  CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-
+// obj_builtin_sn2nid returns the NID of the built-in object with short name
+// |short_name|, or |NID_undef| if there is none. It takes no lock.
+static int obj_builtin_sn2nid(const char *short_name) {
   const uint16_t *nid_ptr =
       bsearch(short_name, kNIDsInShortNameOrder,
               OPENSSL_ARRAY_SIZE(kNIDsInShortNameOrder),
@@ -224,8 +225,28 @@ int OBJ_sn2nid(const char *short_name) {
   if (nid_ptr == NULL) {
     return NID_undef;
   }
-
   return get_builtin_object(*nid_ptr)->nid;
+}
+
+int OBJ_sn2nid(const char *short_name) {
+  // See |OBJ_obj2nid| for why the built-in table is searched first.
+  int nid = obj_builtin_sn2nid(short_name);
+  if (nid != NID_undef) {
+    return nid;
+  }
+
+  CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
+  if (global_added_by_short_name != NULL) {
+    ASN1_OBJECT template;
+    template.sn = short_name;
+    const ASN1_OBJECT *match =
+        lh_ASN1_OBJECT_retrieve(global_added_by_short_name, &template);
+    if (match != NULL) {
+      nid = match->nid;
+    }
+  }
+  CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
+  return nid;
 }
 
 // long_name_cmp is called to search the kNIDsInLongNameOrder array. The
@@ -238,28 +259,37 @@ static int long_name_cmp(const void *key, const void *element) {
   return strcmp(name, get_builtin_object(nid)->ln);
 }
 
-int OBJ_ln2nid(const char *long_name) {
-  CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
-  if (global_added_by_long_name != NULL) {
-    ASN1_OBJECT *match, template;
-
-    template.ln = long_name;
-    match = lh_ASN1_OBJECT_retrieve(global_added_by_long_name, &template);
-    if (match != NULL) {
-      CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-      return match->nid;
-    }
-  }
-  CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
-
+// obj_builtin_ln2nid returns the NID of the built-in object with long name
+// |long_name|, or |NID_undef| if there is none. It takes no lock.
+static int obj_builtin_ln2nid(const char *long_name) {
   const uint16_t *nid_ptr = bsearch(
       long_name, kNIDsInLongNameOrder, OPENSSL_ARRAY_SIZE(kNIDsInLongNameOrder),
       sizeof(kNIDsInLongNameOrder[0]), long_name_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
-
   return get_builtin_object(*nid_ptr)->nid;
+}
+
+int OBJ_ln2nid(const char *long_name) {
+  // See |OBJ_obj2nid| for why the built-in table is searched first.
+  int nid = obj_builtin_ln2nid(long_name);
+  if (nid != NID_undef) {
+    return nid;
+  }
+
+  CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
+  if (global_added_by_long_name != NULL) {
+    ASN1_OBJECT template;
+    template.ln = long_name;
+    const ASN1_OBJECT *match =
+        lh_ASN1_OBJECT_retrieve(global_added_by_long_name, &template);
+    if (match != NULL) {
+      nid = match->nid;
+    }
+  }
+  CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
+  return nid;
 }
 
 int OBJ_txt2nid(const char *s) {
@@ -456,13 +486,52 @@ static int cmp_long_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return strcmp(a->ln, b->ln);
 }
 
+// obj_is_registered returns one if |obj|'s OID, short name or long name is
+// already in the built-in table or in the run-time added tables. The caller
+// must hold |global_added_lock|.
+static int obj_is_registered(const ASN1_OBJECT *obj) {
+  if (obj->length != 0 && obj->data != NULL &&
+      (obj_builtin_data2nid(obj) != NID_undef ||
+       (global_added_by_data != NULL &&
+        lh_ASN1_OBJECT_retrieve(global_added_by_data, obj) != NULL))) {
+    return 1;
+  }
+  if (obj->sn != NULL &&
+      (obj_builtin_sn2nid(obj->sn) != NID_undef ||
+       (global_added_by_short_name != NULL &&
+        lh_ASN1_OBJECT_retrieve(global_added_by_short_name, obj) != NULL))) {
+    return 1;
+  }
+  if (obj->ln != NULL &&
+      (obj_builtin_ln2nid(obj->ln) != NID_undef ||
+       (global_added_by_long_name != NULL &&
+        lh_ASN1_OBJECT_retrieve(global_added_by_long_name, obj) != NULL))) {
+    return 1;
+  }
+  return 0;
+}
+
 // obj_add_object inserts |obj| into the various global hashes for run-time
-// added objects. It returns one on success or zero otherwise.
-static int obj_add_object(ASN1_OBJECT *obj) {
+// added objects. It returns one on success or zero otherwise. If |obj|'s OID
+// or either of its names is already registered, it returns zero, sets
+// |*out_exists| to one and leaves |obj| untouched, so the caller still owns it.
+static int obj_add_object(ASN1_OBJECT *obj, int *out_exists) {
+  *out_exists = 0;
+  CRYPTO_STATIC_MUTEX_lock_write(&global_added_lock);
+  // The lookup functions search the built-in table before the added tables,
+  // so the added tables must never shadow a built-in OID or name. Checking
+  // under the write lock also stops two racing callers from both registering
+  // the same value.
+  if (obj_is_registered(obj)) {
+    CRYPTO_STATIC_MUTEX_unlock_write(&global_added_lock);
+    *out_exists = 1;
+    OPENSSL_PUT_ERROR(OBJ, OBJ_R_OID_EXISTS);
+    return 0;
+  }
+
   obj->flags &= ~(ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
                   ASN1_OBJECT_FLAG_DYNAMIC_DATA);
 
-  CRYPTO_STATIC_MUTEX_lock_write(&global_added_lock);
   if (global_added_by_nid == NULL) {
     global_added_by_nid = lh_ASN1_OBJECT_new(hash_nid, cmp_nid);
   }
@@ -509,8 +578,16 @@ err:
 int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
   ASN1_OBJECT *op =
       create_object_with_text_oid(obj_next_nid, oid, short_name, long_name);
-  if (op == NULL ||
-      !obj_add_object(op)) {
+  if (op == NULL) {
+    return NID_undef;
+  }
+  int exists;
+  if (!obj_add_object(op, &exists)) {
+    if (exists) {
+      // |op| was never published, so it is still ours to free. (Other failures
+      // may leave |op| partially inserted, so it is deliberately leaked.)
+      ASN1_OBJECT_free(op);
+    }
     return NID_undef;
   }
   return op->nid;
