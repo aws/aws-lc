@@ -208,13 +208,14 @@ if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCH
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
 endif()
 
-# s2n-bignum files can be compiled on Unix platforms for x86_64 and arm64 only.
+# s2n-bignum files can be compiled on Unix platforms for x86_64 and arm64, and
+# on Windows x86_64 with clang-cl (S2N_BIGNUM_WINDOWS_X86_64).
 # x86_64 s2n-bignum needs BMI2/ADX, not AVX-512, so it is gated on
 # MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather than
 # MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. OPENSSL_SMALL implies only the latter,
 # so s2n-bignum stays available under OPENSSL_SMALL on x86_64 (#3355).
 if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
-      ARCH STREQUAL "aarch64") AND UNIX)
+      ARCH STREQUAL "aarch64") AND (UNIX OR S2N_BIGNUM_WINDOWS_X86_64))
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
@@ -788,7 +789,7 @@ elseif(FIPS_SHARED)
 
 else()
   set(BCM_ASM_OBJECTS "")
-  if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+  if ((ARCH STREQUAL "aarch64" OR S2N_BIGNUM_WINDOWS_X86_64) AND CMAKE_GENERATOR MATCHES "Visual Studio")
     msbuild_aarch64_asm(TARGET fipsmodule ASM_FILES ${BCM_ASM_SOURCES} OUTPUT_OBJECTS BCM_ASM_OBJECTS)
   endif()
 
