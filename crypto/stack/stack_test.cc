@@ -324,6 +324,36 @@ TEST(StackTest, Sorted) {
   } while (std::next_permutation(vec.begin(), vec.end()));
 }
 
+TEST(StackTest, SetInvalidatesSortedness) {
+  TEST_INT values[] = {1, 2, 3, 4};
+  ShallowStack sk(sk_TEST_INT_new(compare));
+  ASSERT_TRUE(sk);
+  for (size_t i = 0; i < 3; i++) {
+    ASSERT_TRUE(sk_TEST_INT_push(sk.get(), &values[i]));
+  }
+  sk_TEST_INT_sort(sk.get());
+  ASSERT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // An unsuccessful replacement leaves the sorted stack unchanged.
+  EXPECT_EQ(nullptr, sk_TEST_INT_set(sk.get(), 3, &values[3]));
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Replacing the first element breaks the order. Find must still locate it
+  // before sorting, then report its new index after sorting.
+  EXPECT_EQ(&values[3], sk_TEST_INT_set(sk.get(), 0, &values[3]));
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+  size_t index;
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, &values[3]));
+  EXPECT_EQ(0u, index);
+  EXPECT_EQ(0, sk_TEST_INT_find(sk.get(), &values[3]));
+  sk_TEST_INT_sort(sk.get());
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+  ExpectStackEquals(sk.get(), {2, 3, 4});
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, &values[3]));
+  EXPECT_EQ(2u, index);
+  EXPECT_EQ(2, sk_TEST_INT_find(sk.get(), &values[3]));
+}
+
 // sk_*_find_awslc should return the first matching element in all cases.
 TEST(StackTest, FindFirst) {
   bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
