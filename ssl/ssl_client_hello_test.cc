@@ -7,9 +7,11 @@
 #include <openssl/tls1.h>
 #include <openssl/mem.h>
 
+#include "../crypto/test/test_util.h"
 #include "ssl_common_test.h"
 
 #include <memory>
+#include <vector>
 
 BSSL_NAMESPACE_BEGIN
 
@@ -50,6 +52,53 @@ TEST(SSLClientHelloTest, ClientHelloCallback) {
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
   EXPECT_TRUE(callback_called);
+}
+
+// SSL_client_hello_get0_ciphers in the callback returns the client's cipher
+// suites, as in OpenSSL: TLS fingerprinting and cipher-based certificate
+// selection read them there.
+TEST(SSLClientHelloTest, ClientHelloCallbackGetCiphers) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(version);
+    UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+
+    std::vector<uint8_t> seen;
+    bool callback_called = false;
+    struct Seen {
+      std::vector<uint8_t> *ciphers;
+      bool *called;
+    } arg = {&seen, &callback_called};
+    SSL_CTX_set_client_hello_cb(
+        server_ctx.get(),
+        [](SSL *ssl, int *al, void *data) -> int {
+          auto *s = static_cast<Seen *>(data);
+          *s->called = true;
+          const unsigned char *ciphers = nullptr;
+          size_t len = SSL_client_hello_get0_ciphers(ssl, &ciphers);
+          if (len > 0 && ciphers != nullptr) {
+            s->ciphers->assign(ciphers, ciphers + len);
+          }
+          return SSL_CLIENT_HELLO_SUCCESS;
+        },
+        &arg);
+
+    UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+    EXPECT_TRUE(callback_called);
+
+    // The callback saw the same list as the server after the handshake.
+    const unsigned char *after = nullptr;
+    size_t after_len = SSL_client_hello_get0_ciphers(server.get(), &after);
+    ASSERT_GT(after_len, 0u);
+    EXPECT_EQ(0u, seen.size() % 2);
+    EXPECT_EQ(Bytes(after, after_len), Bytes(seen));
+  }
 }
 
 // Test client hello callback return values
