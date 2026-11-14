@@ -1894,7 +1894,7 @@ $code.=<<___;
 	mov	%r15,240($context)	# restore context->R15
 
 	lea	.Lepilogue(%rip),%r10
-	cmp	%r10,%rbx
+	cmp	%r10,248($context)	# compare context->Rip, not restored caller Rbx
 	jb	.Lin_prologue		# non-AVX code
 
 	lea	16*$SZ+4*8(%rsi),%rsi	# Xmm6- save area
