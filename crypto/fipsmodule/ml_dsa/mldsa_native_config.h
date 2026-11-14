@@ -45,7 +45,8 @@ static MLD_INLINE int mld_sys_check_capability(mld_sys_cap cap)
 #if defined(MLD_SYS_X86_64)
   if (cap == MLD_SYS_CAP_X86_64_AVX2)
   {
-    return CRYPTO_is_AVX2_capable();
+    // The backend also uses POPCNT in its rejection samplers.
+    return CRYPTO_is_AVX2_capable() && CRYPTO_is_POPCNT_capable();
   }
 #elif defined(MLD_SYS_AARCH64)
   if (cap == MLD_SYS_CAP_AARCH64_NEON)
