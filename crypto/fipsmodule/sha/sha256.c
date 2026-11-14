@@ -365,6 +365,9 @@ static void sha256_block_data_order(uint32_t state[8], const uint8_t *data,
 
 void SHA256_TransformBlocks(uint32_t state[8], const uint8_t *data,
                             size_t num_blocks) {
+  if (num_blocks == 0) {
+    return;
+  }
   sha256_block_data_order(state, data, num_blocks);
 }
 
