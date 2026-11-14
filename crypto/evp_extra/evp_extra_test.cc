@@ -2437,6 +2437,41 @@ TEST(EVPExtraTest, Parameters) {
   EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
 }
 
+TEST(EVPExtraTest, CopyDSAParametersToEmptyKey) {
+  for (bool set_type : {false, true}) {
+    SCOPED_TRACE(set_type);
+    bssl::UniquePtr<EVP_PKEY> source = ParsePrivateKey(
+        EVP_PKEY_DSA, kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER));
+    ASSERT_TRUE(source);
+    const DSA *source_dsa = EVP_PKEY_get0_DSA(source.get());
+    ASSERT_TRUE(source_dsa);
+    const std::string expected_p = BIGNUMToHex(DSA_get0_p(source_dsa));
+    const std::string expected_q = BIGNUMToHex(DSA_get0_q(source_dsa));
+    const std::string expected_g = BIGNUMToHex(DSA_get0_g(source_dsa));
+
+    bssl::UniquePtr<EVP_PKEY> destination(EVP_PKEY_new());
+    ASSERT_TRUE(destination);
+    if (set_type) {
+      ASSERT_TRUE(EVP_PKEY_set_type(destination.get(), EVP_PKEY_DSA));
+      EXPECT_TRUE(EVP_PKEY_missing_parameters(destination.get()));
+    }
+    ASSERT_TRUE(EVP_PKEY_copy_parameters(destination.get(), source.get()));
+    EXPECT_EQ(EVP_PKEY_DSA, EVP_PKEY_id(destination.get()));
+    EXPECT_FALSE(EVP_PKEY_missing_parameters(destination.get()));
+    EXPECT_EQ(1, EVP_PKEY_cmp_parameters(destination.get(), source.get()));
+
+    // The destination owns its parameters independently of the source key.
+    source.reset();
+    const DSA *copied_dsa = EVP_PKEY_get0_DSA(destination.get());
+    ASSERT_TRUE(copied_dsa);
+    EXPECT_EQ(expected_p, BIGNUMToHex(DSA_get0_p(copied_dsa)));
+    EXPECT_EQ(expected_q, BIGNUMToHex(DSA_get0_q(copied_dsa)));
+    EXPECT_EQ(expected_g, BIGNUMToHex(DSA_get0_g(copied_dsa)));
+    EXPECT_FALSE(DSA_get0_pub_key(copied_dsa));
+    EXPECT_FALSE(DSA_get0_priv_key(copied_dsa));
+  }
+}
+
 struct RsassaPssParamsMatchTestInput {
   const uint8_t *der;
   size_t der_len;

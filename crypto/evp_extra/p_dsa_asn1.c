@@ -154,12 +154,8 @@ static int dsa_bits(const EVP_PKEY *pkey) {
 }
 
 static int dsa_missing_parameters(const EVP_PKEY *pkey) {
-  DSA *dsa;
-  dsa = pkey->pkey.dsa;
-  if (dsa->p == NULL || dsa->q == NULL || dsa->g == NULL) {
-    return 1;
-  }
-  return 0;
+  const DSA *dsa = pkey->pkey.dsa;
+  return dsa == NULL || dsa->p == NULL || dsa->q == NULL || dsa->g == NULL;
 }
 
 static int dup_bn_into(BIGNUM **out, BIGNUM *src) {
@@ -176,6 +172,13 @@ static int dup_bn_into(BIGNUM **out, BIGNUM *src) {
 }
 
 static int dsa_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
+  if (to->pkey.dsa == NULL) {
+    to->pkey.dsa = DSA_new();
+    if (to->pkey.dsa == NULL) {
+      return 0;
+    }
+  }
+
   if (!dup_bn_into(&to->pkey.dsa->p, from->pkey.dsa->p) ||
       !dup_bn_into(&to->pkey.dsa->q, from->pkey.dsa->q) ||
       !dup_bn_into(&to->pkey.dsa->g, from->pkey.dsa->g)) {
