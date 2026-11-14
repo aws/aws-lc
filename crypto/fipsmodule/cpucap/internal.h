@@ -82,6 +82,10 @@ OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
   return (OPENSSL_ia32cap_get()[1] & (1 << 22)) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_POPCNT_capable(void) {
+  return (OPENSSL_ia32cap_get()[1] & (1u << 23)) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
   return (OPENSSL_ia32cap_get()[1] & (1 << 25)) != 0;
 }
