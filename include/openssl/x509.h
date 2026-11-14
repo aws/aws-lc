@@ -1858,7 +1858,7 @@ OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
 // - |NID_crl_reason| with type |ASN1_ENUMERATED|
 // - |NID_delta_crl| with type |ASN1_INTEGER|
 // - |NID_ext_key_usage| with type |EXTENDED_KEY_USAGE|
-// - |NID_freshest_crl| with type |ISSUING_DIST_POINT|
+// - |NID_freshest_crl| with type |CRL_DIST_POINTS|
 // - |NID_id_pkix_OCSP_noCheck| with type |ASN1_NULL|
 // - |NID_info_access| with type |AUTHORITY_INFO_ACCESS|
 // - |NID_inhibit_any_policy| with type |ASN1_INTEGER|
@@ -5069,26 +5069,25 @@ DEFINE_STACK_OF(X509_PURPOSE)
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(
     X509_STORE *store);
 
-// X509_PURPOSE_get_by_sname returns the |X509_PURPOSE_*| constant corresponding
-// a short name |sname|, or -1 if |sname| was not recognized.
+// X509_PURPOSE_get_by_sname returns the zero-based index of the purpose with
+// short name |sname|, or -1 if |sname| was not recognized.
 //
 // Use |X509_PURPOSE_*| constants directly instead. The short names used by this
 // function look like "sslserver" or "smimeencrypt", so they do not make
 // especially good APIs.
 //
-// This function differs from OpenSSL, which returns an "index" to be passed to
-// |X509_PURPOSE_get0|, followed by |X509_PURPOSE_get_id|, to finally obtain an
+// The returned index is not a |X509_PURPOSE_*| ID. Pass a non-negative result to
+// |X509_PURPOSE_get0|, followed by |X509_PURPOSE_get_id|, to obtain the
 // |X509_PURPOSE_*| value suitable for use with |X509_VERIFY_PARAM_set_purpose|.
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 
-// X509_PURPOSE_get0 returns the |X509_PURPOSE| object corresponding to |id|,
-// which should be one of the |X509_PURPOSE_*| constants, or NULL if none
-// exists.
+// X509_PURPOSE_get0 returns the |X509_PURPOSE| object at zero-based index |idx|,
+// or NULL if |idx| is negative or at least |X509_PURPOSE_get_count|.
 //
-// This function differs from OpenSSL, which takes an "index", returned from
-// |X509_PURPOSE_get_by_sname|. In BoringSSL, indices and |X509_PURPOSE_*| IDs
-// are the same.
-OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int id);
+// |idx| is an index, such as the result of |X509_PURPOSE_get_by_sname|, rather
+// than a |X509_PURPOSE_*| ID. Use |X509_PURPOSE_get_id| to obtain the returned
+// object's ID.
+OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
 
 // X509_PURPOSE_get_id returns |purpose|'s ID. This will be one of the
 // |X509_PURPOSE_*| constants.
