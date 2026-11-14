@@ -943,6 +943,81 @@ TEST_P(HPKEMLKEMTest, AuthModeNotSupported) {
   ERR_clear_error();
 }
 
+TEST(HPKETest, SetupFailureInitializesDestination) {
+  const EVP_HPKE_KDF *kdf = EVP_hpke_hkdf_sha256();
+  const EVP_HPKE_AEAD *aead = EVP_hpke_aes_128_gcm();
+  ScopedEVP_HPKE_KEY recipient_key, unsupported_key, empty_key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(recipient_key.get(),
+                                    EVP_hpke_x25519_hkdf_sha256()));
+  ASSERT_TRUE(
+      EVP_HPKE_KEY_generate(unsupported_key.get(), EVP_hpke_mlkem768()));
+
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(recipient_key.get(), public_key,
+                                      &public_key_len, sizeof(public_key)));
+  uint8_t unsupported_public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t unsupported_public_key_len = 0;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(
+      unsupported_key.get(), unsupported_public_key,
+      &unsupported_public_key_len, sizeof(unsupported_public_key)));
+
+  for (int operation = 0; operation < 7; operation++) {
+    SCOPED_TRACE(operation);
+    // Use an ordinary setup and cleanup to leave a valid, initialized
+    // destination with nonzero algorithm metadata. Failed setup must reset it
+    // without relying on callers to zero the destination first.
+    EVP_HPKE_CTX ctx;
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len = 0;
+    const uint8_t seed[32] = {0};
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
+        &ctx, enc, &enc_len, sizeof(enc), EVP_hpke_x25519_hkdf_sha256(), kdf,
+        aead, public_key, public_key_len, nullptr, 0, seed, sizeof(seed)));
+    EVP_HPKE_CTX_cleanup(&ctx);
+    ASSERT_NE(EVP_HPKE_CTX_kem(&ctx), nullptr);
+
+    const EVP_HPKE_KEY *key =
+        operation < 4 ? empty_key.get() : unsupported_key.get();
+    int ret;
+    switch (operation) {
+      case 0:
+        ret = EVP_HPKE_CTX_setup_recipient(&ctx, key, kdf, aead, enc, enc_len,
+                                           nullptr, 0);
+        break;
+      case 1:
+      case 4:
+        ret = EVP_HPKE_CTX_setup_auth_sender(
+            &ctx, enc, &enc_len, sizeof(enc), key, kdf, aead,
+            unsupported_public_key, unsupported_public_key_len, nullptr, 0);
+        break;
+      case 2:
+      case 5:
+        ret = EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing(
+            &ctx, enc, &enc_len, sizeof(enc), key, kdf, aead,
+            unsupported_public_key, unsupported_public_key_len, nullptr, 0,
+            seed, sizeof(seed));
+        break;
+      default:
+        ret = EVP_HPKE_CTX_setup_auth_recipient(
+            &ctx, key, kdf, aead, enc, enc_len, nullptr, 0,
+            unsupported_public_key, unsupported_public_key_len);
+        break;
+    }
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(ErrorEquals(
+        ERR_get_error(), ERR_LIB_EVP,
+        operation < 4 ? EVP_R_NO_KEY_SET
+                      : EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE));
+    ERR_clear_error();
+    EXPECT_EQ(EVP_HPKE_CTX_kem(&ctx), nullptr);
+    EXPECT_EQ(EVP_HPKE_CTX_kdf(&ctx), nullptr);
+    EXPECT_EQ(EVP_HPKE_CTX_aead(&ctx), nullptr);
+    // Cleanup after setup failure is explicitly supported by hpke.h.
+    EVP_HPKE_CTX_cleanup(&ctx);
+  }
+}
+
 TEST_P(HPKEMLKEMTest, WrongCiphertextSize) {
   const MLKEMTestParam &param = GetParam();
   const EVP_HPKE_KEM *kem = param.kem_func();

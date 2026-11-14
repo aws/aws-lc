@@ -1111,11 +1111,11 @@ static int hpke_ctx_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
                                     const EVP_HPKE_AEAD *aead,
                                     const uint8_t *enc, size_t enc_len,
                                     const uint8_t *info, size_t info_len) {
+  EVP_HPKE_CTX_zero(ctx);
   if (key->kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
-  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
@@ -1140,6 +1140,8 @@ static int hpke_ctx_setup_auth_sender(
     const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len) {
+  // Even early failures must leave the destination safe to clean up.
+  EVP_HPKE_CTX_zero(ctx);
   if (key->kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -1166,6 +1168,7 @@ static int hpke_ctx_setup_auth_sender_with_seed_for_testing(
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed,
     size_t seed_len) {
+  EVP_HPKE_CTX_zero(ctx);
   if (key->kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -1176,7 +1179,6 @@ static int hpke_ctx_setup_auth_sender_with_seed_for_testing(
     return 0;
   }
 
-  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 1;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
@@ -1202,6 +1204,7 @@ static int hpke_ctx_setup_auth_recipient(
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
     const uint8_t *info, size_t info_len, const uint8_t *peer_public_key,
     size_t peer_public_key_len) {
+  EVP_HPKE_CTX_zero(ctx);
   if (key->kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -1212,7 +1215,6 @@ static int hpke_ctx_setup_auth_recipient(
     return 0;
   }
 
-  EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kem = key->kem;
   ctx->kdf = kdf;
