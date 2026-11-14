@@ -304,11 +304,14 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
 static int hmac_ctx_set_md_methods(HMAC_CTX *ctx, const EVP_MD *md) {
   if (md && (HMAC_STATE_UNINITIALIZED == ctx->state || ctx->md != md)) {
     // The MD has changed
-    ctx->methods = GetInPlaceMethods(md);
-    if (ctx->methods == NULL) {
+    const HmacMethods *methods = GetInPlaceMethods(md);
+    if (methods == NULL) {
       // Unsupported md
       return 0;
     }
+    // A failed lookup must leave the previous digest and methods consistent so
+    // that the caller can retry initialization with the previous digest.
+    ctx->methods = methods;
     ctx->md = md;
   } else if (!hmac_ctx_is_initialized(ctx)) {
     // We are not initialized but have not been provided with an md to

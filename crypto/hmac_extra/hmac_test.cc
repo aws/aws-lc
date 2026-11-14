@@ -627,3 +627,49 @@ TEST(HMACTest, InitExResetsContext) {
   // |mac1| and |mac3| should be the same (same key reused, context reset).
   EXPECT_EQ(Bytes(mac1, mac_len), Bytes(mac3, mac_len));
 }
+
+TEST(HMACTest, InitExRetryAfterUnsupportedDigest) {
+  // The SHA-256 key, message and expected HMAC are also in hmac_tests.txt.
+  uint8_t key[32];
+  for (size_t i = 0; i < sizeof(key); i++) {
+    key[i] = static_cast<uint8_t>(i);
+  }
+  static const uint8_t kMessage[] = "Sample message for keylen<blocklen";
+  static const uint8_t kExpected[] = {
+      0xa2, 0x8c, 0xf4, 0x31, 0x30, 0xee, 0x69, 0x6a,
+      0x98, 0xf1, 0x4a, 0x37, 0x67, 0x8b, 0x56, 0xbc,
+      0xfc, 0xbd, 0xd9, 0xe5, 0xcf, 0x69, 0x71, 0x7f,
+      0xec, 0xf5, 0x48, 0x0f, 0x0e, 0xbd, 0xf7, 0x90,
+  };
+  static const uint8_t kOldKey[] = "old key";
+  static const uint8_t kOldMessage[] = "discard this message";
+  const EVP_MD *const retry_digests[] = {EVP_sha256(), nullptr};
+
+  for (bool finalize_first : {false, true}) {
+    SCOPED_TRACE(finalize_first);
+    for (const EVP_MD *retry_md : retry_digests) {
+      SCOPED_TRACE(retry_md == nullptr);
+      bssl::ScopedHMAC_CTX ctx;
+      uint8_t mac[EVP_MAX_MD_SIZE];
+      unsigned mac_len;
+      ASSERT_TRUE(HMAC_Init_ex(ctx.get(), kOldKey, sizeof(kOldKey) - 1,
+                               EVP_sha256(), nullptr));
+      ASSERT_TRUE(HMAC_Update(ctx.get(), kOldMessage, sizeof(kOldMessage) - 1));
+      if (finalize_first) {
+        ASSERT_TRUE(HMAC_Final(ctx.get(), mac, &mac_len));
+      }
+
+      // MD5-SHA1 is a valid digest, but is unsupported by HMAC. Its failure
+      // must not prevent a valid rekey using the previous digest, including
+      // the documented nullptr form for reusing that digest.
+      ASSERT_FALSE(HMAC_Init_ex(ctx.get(), key, sizeof(key), EVP_md5_sha1(),
+                                nullptr));
+      EXPECT_EQ(EVP_sha256(), HMAC_CTX_get_md(ctx.get()));
+      ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key, sizeof(key), retry_md, nullptr));
+      ASSERT_TRUE(HMAC_Update(ctx.get(), kMessage, sizeof(kMessage) - 1));
+      ASSERT_TRUE(HMAC_Final(ctx.get(), mac, &mac_len));
+      ASSERT_EQ(sizeof(kExpected), mac_len);
+      EXPECT_EQ(Bytes(kExpected), Bytes(mac, mac_len));
+    }
+  }
+}
