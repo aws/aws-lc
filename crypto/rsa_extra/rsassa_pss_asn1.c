@@ -3,6 +3,8 @@
 
 #include <openssl/evp.h>
 
+#include <limits.h>
+
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -488,11 +490,11 @@ int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
     return 0;
   }
   if (pss->salt_len) {
-    if (pss->salt_len->value < 0) {
+    if (pss->salt_len->value < 0 || pss->salt_len->value > INT_MAX) {
       OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_SALT_LEN);
       return 0;
     }
-    *saltlen = pss->salt_len->value;
+    *saltlen = (int)pss->salt_len->value;
   } else {
     *saltlen = PSS_DEFAULT_SALT_LEN;
   }
