@@ -282,7 +282,10 @@ jobs:
           sudo ln -sf /usr/bin/llvm-rc-19  /usr/local/bin/llvm-rc
           sudo ln -sf /usr/bin/llvm-mt-19  /usr/local/bin/llvm-mt
           # xwin provides the MSVC SDK headers/libs for cross-compiling.
-          XWIN_VERSION=0.6.5
+          # >=0.10.0 is required to understand the current Win11 SDK
+          # (10.0.26100) package layout; older pins fail at `splat` with
+          # "unable to find x86_64 headers for Win11SDK_10.0.26100".
+          XWIN_VERSION=0.10.0
           wget -qO- https://github.com/Jake-Shadle/xwin/releases/download/${XWIN_VERSION}/xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv xwin-${XWIN_VERSION}-x86_64-unknown-linux-musl/xwin /usr/local/bin/
           xwin --accept-license --arch x86_64 splat --output /tmp/xwin
