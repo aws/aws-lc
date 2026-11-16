@@ -625,7 +625,7 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
   if (op == NULL) {
     return NID_undef;
   }
-  int nid;
+  int nid = NID_undef;
   switch (obj_add_object(op, &nid)) {
     case obj_add_inserted:
       return nid;
