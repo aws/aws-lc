@@ -70,6 +70,8 @@ TEST(GCMTest, TestVectors) {
   });
 }
 
+// |aes_ctr_set_key| is not exported from a shared libcrypto.
+#if !defined(BORINGSSL_SHARED_LIBRARY)
 // AES-GCM seal and open do not zero |GCM128_CONTEXT| before
 // |CRYPTO_gcm128_setiv|. Check that this is safe: a context filled with 0x56
 // must behave exactly like a zeroed one.
@@ -197,6 +199,7 @@ TEST(GCMTest, ContextNeedsNoZeroing) {
     }
   }
 }
+#endif  // !BORINGSSL_SHARED_LIBRARY
 
 TEST(GCMTest, ByteSwap) {
   EXPECT_EQ(0x04030201u, CRYPTO_bswap4(0x01020304u));
