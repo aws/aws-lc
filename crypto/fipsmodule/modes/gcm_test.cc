@@ -15,6 +15,7 @@
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../aes/internal.h"
+#include "../cipher/internal.h"
 #include "../cpucap/internal.h"
 #include "internal.h"
 
@@ -67,6 +68,134 @@ TEST(GCMTest, TestVectors) {
     ASSERT_TRUE(CRYPTO_gcm128_finish(&ctx, tag.data(), tag.size()));
     EXPECT_EQ(Bytes(plaintext), Bytes(out));
   });
+}
+
+// AES-GCM seal and open do not zero |GCM128_CONTEXT| before
+// |CRYPTO_gcm128_setiv|. Check that this is safe: a context filled with 0x56
+// must behave exactly like a zeroed one.
+TEST(GCMTest, ContextNeedsNoZeroing) {
+  static const uint8_t kKey[32] = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+      0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+      0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
+  static const uint8_t kIV[16] = {0xca, 0xfe, 0xba, 0xbe, 0xfa, 0xce,
+                                  0xdb, 0xad, 0xde, 0xca, 0xf8, 0x88,
+                                  0x01, 0x02, 0x03, 0x04};
+  uint8_t aad[16] = {0}, in[100] = {0}, zeroed_ct[sizeof(in)] = {0},
+          poisoned_ct[sizeof(in)] = {0}, zeroed_pt[sizeof(in)] = {0},
+          poisoned_pt[sizeof(in)] = {0}, zeroed_tag[16] = {0},
+          poisoned_tag[16] = {0}, zeroed_dec_tag[16] = {0},
+          poisoned_dec_tag[16] = {0};
+  AES_KEY aes_key;
+  GCM128_KEY gcm_key;
+  GCM128_CONTEXT zeroed, poisoned;
+  OPENSSL_memset(&aes_key, 0, sizeof(aes_key));
+  OPENSSL_memset(&gcm_key, 0, sizeof(gcm_key));
+
+  for (size_t i = 0; i < sizeof(aad); i++) {
+    aad[i] = (uint8_t)(0x80 + i);
+  }
+  for (size_t i = 0; i < sizeof(in); i++) {
+    in[i] = (uint8_t)i;
+  }
+
+  for (size_t key_len : {16, 24, 32}) {
+    // A 12-byte IV is used directly; other lengths are hashed with GHASH.
+    for (size_t iv_len : {12, 16}) {
+      SCOPED_TRACE(key_len);
+      SCOPED_TRACE(iv_len);
+
+      // Set up the key as AES-GCM seal and open do.
+      ctr128_f ctr = aes_ctr_set_key(&aes_key, &gcm_key, NULL, kKey, key_len);
+      if (ctr == NULL) {
+        // Only 32-bit x86 using vpaes (no AES-NI) has no CTR-mode function.
+        GTEST_SKIP() << "No CTR-mode AES function on this CPU";
+      }
+
+      // Encryption. Set up both contexts as AES-GCM seal does.
+      OPENSSL_memset(&zeroed, 0, sizeof(zeroed));
+      OPENSSL_memset(&poisoned, 0x56, sizeof(poisoned));
+      OPENSSL_memcpy(&zeroed.gcm_key, &gcm_key, sizeof(gcm_key));
+      OPENSSL_memcpy(&poisoned.gcm_key, &gcm_key, sizeof(gcm_key));
+
+      CRYPTO_gcm128_setiv(&zeroed, &aes_key, kIV, iv_len);
+      CRYPTO_gcm128_setiv(&poisoned, &aes_key, kIV, iv_len);
+
+      EXPECT_EQ(Bytes(zeroed.Yi, sizeof(zeroed.Yi)),
+                Bytes(poisoned.Yi, sizeof(poisoned.Yi)));
+      EXPECT_EQ(Bytes(zeroed.EK0, sizeof(zeroed.EK0)),
+                Bytes(poisoned.EK0, sizeof(poisoned.EK0)));
+      EXPECT_EQ(Bytes(zeroed.Xi, sizeof(zeroed.Xi)),
+                Bytes(poisoned.Xi, sizeof(poisoned.Xi)));
+      ASSERT_EQ(0u, poisoned.len.aad);
+      ASSERT_EQ(0u, poisoned.len.msg);
+      ASSERT_EQ(0u, poisoned.mres);
+      ASSERT_EQ(0u, poisoned.ares);
+
+      // Pass the AAD in two calls, split mid-block, so that the second call
+      // continues the partial block recorded in |ares|.
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&zeroed, aad, 5));
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&zeroed, aad + 5, sizeof(aad) - 5));
+
+      // Encrypt the first 7 bytes. This leaves a partial block, with the
+      // unused keystream in |EKi|.
+      ASSERT_TRUE(CRYPTO_gcm128_encrypt_ctr32(&zeroed, &aes_key, in, zeroed_ct,
+                                              7, ctr));
+      // Encrypt the remaining bytes, starting with the rest of that block,
+      // which reads |EKi|.
+      ASSERT_TRUE(CRYPTO_gcm128_encrypt_ctr32(
+          &zeroed, &aes_key, in + 7, zeroed_ct + 7, sizeof(in) - 7, ctr));
+      CRYPTO_gcm128_tag(&zeroed, zeroed_tag, sizeof(zeroed_tag));
+
+      // The same steps with the 0x56 context must give the same result.
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&poisoned, aad, 5));
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&poisoned, aad + 5, sizeof(aad) - 5));
+      ASSERT_TRUE(CRYPTO_gcm128_encrypt_ctr32(&poisoned, &aes_key, in,
+                                              poisoned_ct, 7, ctr));
+      ASSERT_TRUE(CRYPTO_gcm128_encrypt_ctr32(
+          &poisoned, &aes_key, in + 7, poisoned_ct + 7, sizeof(in) - 7, ctr));
+      CRYPTO_gcm128_tag(&poisoned, poisoned_tag, sizeof(poisoned_tag));
+
+      EXPECT_EQ(Bytes(zeroed_ct, sizeof(zeroed_ct)),
+                Bytes(poisoned_ct, sizeof(poisoned_ct)));
+      EXPECT_EQ(Bytes(zeroed_tag, sizeof(zeroed_tag)),
+                Bytes(poisoned_tag, sizeof(poisoned_tag)));
+
+      // Decryption of that ciphertext. Set up both contexts again.
+      OPENSSL_memset(&zeroed, 0, sizeof(zeroed));
+      OPENSSL_memset(&poisoned, 0x56, sizeof(poisoned));
+      OPENSSL_memcpy(&zeroed.gcm_key, &gcm_key, sizeof(gcm_key));
+      OPENSSL_memcpy(&poisoned.gcm_key, &gcm_key, sizeof(gcm_key));
+      CRYPTO_gcm128_setiv(&zeroed, &aes_key, kIV, iv_len);
+      CRYPTO_gcm128_setiv(&poisoned, &aes_key, kIV, iv_len);
+
+      // Decrypt in the same pieces as above.
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&zeroed, aad, 5));
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&zeroed, aad + 5, sizeof(aad) - 5));
+      ASSERT_TRUE(CRYPTO_gcm128_decrypt_ctr32(&zeroed, &aes_key, zeroed_ct,
+                                              zeroed_pt, 7, ctr));
+      ASSERT_TRUE(CRYPTO_gcm128_decrypt_ctr32(&zeroed, &aes_key, zeroed_ct + 7,
+                                              zeroed_pt + 7, sizeof(in) - 7,
+                                              ctr));
+      CRYPTO_gcm128_tag(&zeroed, zeroed_dec_tag, sizeof(zeroed_dec_tag));
+      EXPECT_EQ(Bytes(in, sizeof(in)), Bytes(zeroed_pt, sizeof(zeroed_pt)));
+      EXPECT_EQ(Bytes(zeroed_tag, sizeof(zeroed_tag)),
+                Bytes(zeroed_dec_tag, sizeof(zeroed_dec_tag)));
+
+      // The same with the 0x56 context.
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&poisoned, aad, 5));
+      ASSERT_TRUE(CRYPTO_gcm128_aad(&poisoned, aad + 5, sizeof(aad) - 5));
+      ASSERT_TRUE(CRYPTO_gcm128_decrypt_ctr32(&poisoned, &aes_key, zeroed_ct,
+                                              poisoned_pt, 7, ctr));
+      ASSERT_TRUE(CRYPTO_gcm128_decrypt_ctr32(&poisoned, &aes_key,
+                                              zeroed_ct + 7, poisoned_pt + 7,
+                                              sizeof(in) - 7, ctr));
+      CRYPTO_gcm128_tag(&poisoned, poisoned_dec_tag, sizeof(poisoned_dec_tag));
+      EXPECT_EQ(Bytes(in, sizeof(in)), Bytes(poisoned_pt, sizeof(poisoned_pt)));
+      EXPECT_EQ(Bytes(zeroed_tag, sizeof(zeroed_tag)),
+                Bytes(poisoned_dec_tag, sizeof(poisoned_dec_tag)));
+    }
+  }
 }
 
 TEST(GCMTest, ByteSwap) {
