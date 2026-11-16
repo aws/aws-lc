@@ -380,7 +380,10 @@ TEST(ObjTest, CreateDoesNotConsumeNIDsOnRepeat) {
 // Lookups that skip |global_added_lock| for built-in objects must still be
 // safe against concurrent |OBJ_create|. Run under TSan to be meaningful.
 TEST(ObjTest, ConcurrentCreateAndLookup) {
-  constexpr int kWriters = 4, kPerWriter = 50, kReaders = 4;
+  // |static| so the lambdas below can use these without capturing them. MSVC
+  // rejects an uncaptured non-static constexpr local (C3493), and Clang warns
+  // that capturing one is unnecessary.
+  static constexpr int kWriters = 4, kPerWriter = 50, kReaders = 4;
   static const uint8_t kKeyUsage[] = {0x55, 0x1d, 0x0f};
   std::atomic<bool> done{false};
   std::vector<std::thread> threads;
