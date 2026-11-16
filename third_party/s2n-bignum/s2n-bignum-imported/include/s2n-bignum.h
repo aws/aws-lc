@@ -47,7 +47,7 @@ extern void aes_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
         const s2n_bignum_AES_KEY *key1, const s2n_bignum_AES_KEY *key2, const uint8_t iv[S2N_BIGNUM_STATIC 16]);
 
 // AES128_GCM_DEC (AES-128-GCM bulk decryption of whole blocks with GHASH tag update)
-// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8.
+// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by AWS-LC's gcm_init_v8, and returns len_bits/8.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
 // Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits).
@@ -56,7 +56,7 @@ extern uint64_t aes128_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *ou
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES128_GCM_DEC_ALT (AES-128-GCM bulk decryption of whole blocks with GHASH tag update, 8 blocks at a time)
-// Alternative to aes128_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8,
+// Alternative to aes128_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by AWS-LC's gcm_init_v8,
 // returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
@@ -66,7 +66,7 @@ extern uint64_t aes128_gcm_dec_alt(const uint8_t *in, uint64_t len_bits, uint8_t
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES128_GCM_ENC (AES-128-GCM bulk encryption of whole blocks with GHASH tag update)
-// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8.
+// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by AWS-LC's gcm_init_v8, and returns len_bits/8.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
 // Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits).
@@ -75,7 +75,7 @@ extern uint64_t aes128_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *ou
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES128_GCM_ENC_ALT (AES-128-GCM bulk encryption of whole blocks with GHASH tag update, 8 blocks at a time)
-// Alternative to aes128_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8,
+// Alternative to aes128_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by AWS-LC's gcm_init_v8,
 // returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
@@ -85,7 +85,7 @@ extern uint64_t aes128_gcm_enc_alt(const uint8_t *in, uint64_t len_bits, uint8_t
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES256_GCM_DEC (AES-256-GCM bulk decryption of whole blocks with GHASH tag update)
-// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8.
+// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by AWS-LC's gcm_init_v8, and returns len_bits/8.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
 // Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits).
@@ -94,7 +94,7 @@ extern uint64_t aes256_gcm_dec(const uint8_t *in, uint64_t len_bits, uint8_t *ou
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES256_GCM_DEC_ALT (AES-256-GCM bulk decryption of whole blocks with GHASH tag update, 8 blocks at a time)
-// Alternative to aes256_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8,
+// Alternative to aes256_gcm_dec for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by AWS-LC's gcm_init_v8,
 // returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
@@ -104,7 +104,7 @@ extern uint64_t aes256_gcm_dec_alt(const uint8_t *in, uint64_t len_bits, uint8_t
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES256_GCM_ENC (AES-256-GCM bulk encryption of whole blocks with GHASH tag update)
-// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by gcm_init_v8, and returns len_bits/8.
+// It processes floor(len_bits/128) blocks, reading the first 96 bytes of the H table produced by AWS-LC's gcm_init_v8, and returns len_bits/8.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
 // Callers must ensure the cumulative message length does not exceed 2^36 - 32 bytes (2^39 - 256 bits).
@@ -113,7 +113,7 @@ extern uint64_t aes256_gcm_enc(const uint8_t *in, uint64_t len_bits, uint8_t *ou
         uint64_t *tag, uint8_t *ivec, const s2n_bignum_AES_KEY *key, const uint64_t *htable);
 
 // AES256_GCM_ENC_ALT (AES-256-GCM bulk encryption of whole blocks with GHASH tag update, 8 blocks at a time)
-// Alternative to aes256_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by gcm_init_v8,
+// Alternative to aes256_gcm_enc for processors with FEAT_SHA3: it reads the complete 192-byte H table produced by AWS-LC's gcm_init_v8,
 // returns 0 without touching memory unless len_bits is a nonzero multiple of 128, and otherwise requires in + len_bits/8 < 2^63.
 // The buffers out, tag and ivec must not overlap each other, key or htable, and tag and ivec must not overlap in; out must either be in (in-place operation) or not overlap it.
 // This routine does not enforce the NIST GCM message limit.
@@ -1365,17 +1365,20 @@ extern void secp256k1_jmixadd(uint64_t p3[S2N_BIGNUM_STATIC 12],const uint64_t p
 extern void secp256k1_jmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 12],const uint64_t p1[S2N_BIGNUM_STATIC 12],const uint64_t p2[S2N_BIGNUM_STATIC 8]);
 
 // Keccak-f1600 permutation for SHA3
+// On AArch64, sha3_keccak_f1600_alt needs FEAT_SHA3
 // Inputs a[25], rc[24]; output a[25]
 extern void sha3_keccak_f1600(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 extern void sha3_keccak_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 extern void sha3_keccak_f1600_alt2(uint64_t a[S2N_BIGNUM_STATIC 25],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 
 // Batched 2-way Keccak-f1600 permutation for SHA3
+// On AArch64, both sha3_keccak2_f1600 and sha3_keccak2_f1600_alt need FEAT_SHA3
 // Inputs a[50], rc[24]; output a[50]
 extern void sha3_keccak2_f1600(uint64_t a[S2N_BIGNUM_STATIC 50],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 extern void sha3_keccak2_f1600_alt(uint64_t a[S2N_BIGNUM_STATIC 50],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 
 // Batched 4-way Keccak-f1600 permutation for SHA3
+// On AArch64, sha3_keccak4_f1600 and sha3_keccak4_f1600_alt2 need FEAT_SHA3
 // Inputs a[100], rc[24]; output a[100]
 extern void sha3_keccak4_f1600(uint64_t a[S2N_BIGNUM_STATIC 100],const uint64_t rc[S2N_BIGNUM_STATIC 24]);
 #ifdef __x86_64__

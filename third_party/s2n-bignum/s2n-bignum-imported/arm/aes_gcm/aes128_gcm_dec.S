@@ -27,16 +27,21 @@
 // AWS-LC's GCM layer. For any other length only the floor(len_bits/128)
 // complete blocks are processed, while the return value is still len_bits/8.
 //
-// The table "htable" is the GHASH key schedule used by the PMULL-based GCM
-// code in OpenSSL, BoringSSL and AWS-LC: the first 96 bytes of the Htable
-// that gcm_init_v8 derives from the subkey H = AES_K(0^128). Its six 16-byte
-// entries hold, in order, H, m(H,H^2), H^2, H^3, m(H^3,H^4), H^4, where the
-// powers are in the bit-reflected ("twisted") representation that gcm_init_v8
-// uses and m(A,B) packs the Karatsuba middle terms A.lo ^ A.hi (low 64 bits)
-// and B.lo ^ B.hi (high 64 bits) of the two neighbouring powers into one
-// entry; four powers suffice because GHASH is folded four blocks at a time.
-// The reference implementation in tests/ref_aes_gcm.c (ref_gcm_init_htable)
-// constructs the full table independently.
+// The table "htable" is the first 96 bytes of the Htable that AWS-LC's
+// gcm_init_v8 (crypto/fipsmodule/modes/asm/ghashv8-armx.pl) derives from the
+// subkey H = AES_K(0^128). Its six 16-byte entries hold, in order, H,
+// m(H,H^2), H^2, H^3, m(H^3,H^4), H^4, where the powers are in the
+// bit-reflected ("twisted") representation that gcm_init_v8 uses and m(A,B)
+// packs the Karatsuba middle terms A.lo ^ A.hi (low 64 bits) and B.lo ^ B.hi
+// (high 64 bits) of the two neighbouring powers into one entry; four powers
+// suffice because GHASH is folded four blocks at a time. Since AWS-LC commit
+// 90315e2a ("AES-GCM AArch64: Store swapped Htable values") gcm_init_v8 stores
+// each power with its two 64-bit halves swapped, so tables built by OpenSSL's
+// or BoringSSL's gcm_init_v8, or by earlier versions of AWS-LC, give wrong
+// tags. The exact contents required are htable_mem_4 in
+// arm/proofs/utils/aes_gcm_spec.ml. The reference implementation in
+// tests/ref_aes_gcm.c (ref_gcm_init_htable) constructs the full table
+// independently.
 // Of "key" only the 11 round keys (176 bytes) are read, not key->rounds, and
 // of "htable" only these 96 bytes.
 //

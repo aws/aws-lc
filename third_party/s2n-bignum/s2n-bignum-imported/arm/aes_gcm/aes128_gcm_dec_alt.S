@@ -33,13 +33,18 @@
 // the caller's responsibility, as in AWS-LC's GCM layer, whose
 // crypto/fipsmodule/modes/gcm.c passes whole blocks only.
 //
-// The table "htable" is the twelve 16-byte entries (192 bytes) that
-// gcm_init_v8 writes at the start of its Htable, derived from the subkey
-// H = AES_K(0^128). They hold, in order, H, m(H,H^2), H^2, H^3, m(H^3,H^4),
-// H^4, H^5, m(H^5,H^6), H^6, H^7, m(H^7,H^8), H^8, where the powers are in
-// the bit-reflected ("twisted") representation that gcm_init_v8 uses and
-// m(A,B) packs the Karatsuba middle terms A.lo ^ A.hi (low 64 bits) and
-// B.lo ^ B.hi (high 64 bits) of two neighbouring powers into one entry. The
+// The table "htable" is the twelve 16-byte entries (192 bytes) that AWS-LC's
+// gcm_init_v8 (crypto/fipsmodule/modes/asm/ghashv8-armx.pl) writes at the
+// start of its Htable, derived from the subkey H = AES_K(0^128). They hold, in
+// order, H, m(H,H^2), H^2, H^3, m(H^3,H^4), H^4, H^5, m(H^5,H^6), H^6, H^7,
+// m(H^7,H^8), H^8, where the powers are in the bit-reflected ("twisted")
+// representation that gcm_init_v8 uses and m(A,B) packs the Karatsuba middle
+// terms A.lo ^ A.hi (low 64 bits) and B.lo ^ B.hi (high 64 bits) of two
+// neighbouring powers into one entry. Since AWS-LC commit 90315e2a ("AES-GCM
+// AArch64: Store swapped Htable values") gcm_init_v8 stores each power with
+// its two 64-bit halves swapped, so tables built by OpenSSL's or BoringSSL's
+// gcm_init_v8, or by earlier versions of AWS-LC, give wrong tags. The exact
+// contents required are htable_mem_8 in arm/proofs/utils/aes_gcm_spec.ml. The
 // reference implementation in tests/ref_aes_gcm.c (ref_gcm_init_htable)
 // constructs the same table independently.
 // Of "key" only the 11 round keys (176 bytes) are read, not key->rounds, and
