@@ -146,11 +146,19 @@ static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
 }
 
 static int int_dsa_size(const EVP_PKEY *pkey) {
+  // A key from |EVP_PKEY_set_type| has no |DSA| yet.
+  if (pkey->pkey.dsa == NULL) {
+    return 0;
+  }
   return DSA_size(pkey->pkey.dsa);
 }
 
 static int dsa_bits(const EVP_PKEY *pkey) {
-  return BN_num_bits(pkey->pkey.dsa->p);
+  const DSA *dsa = pkey->pkey.dsa;
+  if (dsa == NULL || dsa->p == NULL) {
+    return 0;
+  }
+  return BN_num_bits(dsa->p);
 }
 
 static int dsa_missing_parameters(const EVP_PKEY *pkey) {
@@ -189,12 +197,18 @@ static int dsa_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 }
 
 static int dsa_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  if (a->pkey.dsa == NULL || b->pkey.dsa == NULL) {
+    return -2;
+  }
   return BN_cmp(a->pkey.dsa->p, b->pkey.dsa->p) == 0 &&
          BN_cmp(a->pkey.dsa->q, b->pkey.dsa->q) == 0 &&
          BN_cmp(a->pkey.dsa->g, b->pkey.dsa->g) == 0;
 }
 
 static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
+  if (a->pkey.dsa == NULL || b->pkey.dsa == NULL) {
+    return -2;
+  }
   return BN_cmp(b->pkey.dsa->pub_key, a->pkey.dsa->pub_key) == 0;
 }
 

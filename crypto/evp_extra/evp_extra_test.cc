@@ -2454,11 +2454,20 @@ TEST(EVPExtraTest, CopyDSAParametersToEmptyKey) {
     if (set_type) {
       ASSERT_TRUE(EVP_PKEY_set_type(destination.get(), EVP_PKEY_DSA));
       EXPECT_TRUE(EVP_PKEY_missing_parameters(destination.get()));
+      // The other |EVP_PKEY_ASN1_METHOD| callbacks must also tolerate a key
+      // with no |DSA| yet, rather than dereference NULL.
+      EXPECT_EQ(-2, EVP_PKEY_cmp_parameters(destination.get(), source.get()));
+      EXPECT_EQ(-2, EVP_PKEY_cmp_parameters(source.get(), destination.get()));
+      EXPECT_EQ(-2, EVP_PKEY_cmp(destination.get(), source.get()));
+      EXPECT_EQ(-2, EVP_PKEY_cmp(source.get(), destination.get()));
+      EXPECT_EQ(0, EVP_PKEY_bits(destination.get()));
+      EXPECT_EQ(0, EVP_PKEY_size(destination.get()));
     }
     ASSERT_TRUE(EVP_PKEY_copy_parameters(destination.get(), source.get()));
     EXPECT_EQ(EVP_PKEY_DSA, EVP_PKEY_id(destination.get()));
     EXPECT_FALSE(EVP_PKEY_missing_parameters(destination.get()));
     EXPECT_EQ(1, EVP_PKEY_cmp_parameters(destination.get(), source.get()));
+    EXPECT_EQ(EVP_PKEY_bits(source.get()), EVP_PKEY_bits(destination.get()));
 
     // The destination owns its parameters independently of the source key.
     source.reset();
