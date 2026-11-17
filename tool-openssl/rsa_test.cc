@@ -78,6 +78,38 @@ TEST_F(RSATest, Noout) {
   ASSERT_EQ(kToolExitSuccess, result);
 }
 
+#if !defined(OPENSSL_WINDOWS)
+// Private key output must be owner-only, including when it lands in a file that
+// already exists with looser permissions.
+TEST_F(RSATest, PrivateKeyFilePermissions) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
+  args_list_t args = {"-in", in_path, "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0600))
+      << "Private key file should be owner-only, got: 0" << std::oct << perms;
+}
+
+// -noout -modulus writes only the public modulus, so the output keeps the
+// permissions the caller gave it.
+TEST_F(RSATest, ModulusFilePermissionsUnchanged) {
+  ASSERT_EQ(0, chmod(out_path, 0666));
+
+  args_list_t args = {"-in", in_path, "-noout", "-modulus", "-out", out_path};
+  ASSERT_EQ(kToolExitSuccess, rsaTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(out_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0666))
+      << "Public-only output should keep its mode, got: 0" << std::oct << perms;
+}
+#endif
+
 
 // -------------------- RSA Option Usage Error Tests --------------------------
 

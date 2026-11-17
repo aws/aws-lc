@@ -5,6 +5,7 @@
 
 #include <openssl/buffer.h>
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,9 @@ bssl::UniquePtr<TXT_DB> TXT_DB_read(bssl::UniquePtr<BIO> &in, int num) {
   offset = 0;
   for (;;) {
     if (offset != 0) {
+      if (BUFSIZE > INT_MAX - size) {
+        goto err;
+      }
       size += BUFSIZE;
       if (!BUF_MEM_grow_clean(buf.get(), size)) {
         goto err;
@@ -69,6 +73,9 @@ bssl::UniquePtr<TXT_DB> TXT_DB_read(bssl::UniquePtr<BIO> &in, int num) {
       continue;
     }
     i = strlen(&(buf->data[offset]));
+    if (i > INT_MAX - offset) {
+      goto err;
+    }
     offset += i;
     if (buf->data[offset - 1] != '\n') {
       continue;
@@ -206,10 +213,17 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
     l = 0;
     for (j = 0; j < nn; j++) {
       if (pp[j] != NULL) {
-        l += strlen(pp[j]);
+        size_t field_len = strlen(pp[j]);
+        if (field_len > (size_t)(LONG_MAX - l)) {
+          return 0;
+        }
+        l += (long)field_len;
       }
     }
-    if (!BUF_MEM_grow_clean(buf.get(), (int)(l * 2 + nn))) {
+    if (l > (LONG_MAX - nn) / 2) {
+      return 0;
+    }
+    if (!BUF_MEM_grow_clean(buf.get(), (size_t)(l * 2 + nn))) {
       return 0;
     }
 
@@ -231,7 +245,10 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
     }
     p[-1] = '\n';
     j = p - buf->data;
-    if (BIO_write(out.get(), buf->data, (int)j) != j) {
+    if (j > INT_MAX || BIO_write(out.get(), buf->data, (int)j) != j) {
+      return 0;
+    }
+    if (j > LONG_MAX - tot) {
       return 0;
     }
     tot += j;

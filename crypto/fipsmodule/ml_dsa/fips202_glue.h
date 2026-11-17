@@ -23,7 +23,7 @@ static MLD_INLINE void mld_shake128_init(mld_shake128ctx *state) {
 }
 
 static MLD_INLINE void mld_shake128_release(mld_shake128ctx *state) {
-  (void) state;
+  OPENSSL_cleanse(state, sizeof(*state));
 }
 
 static MLD_INLINE void mld_shake128_absorb_once(mld_shake128ctx *state,
@@ -63,7 +63,7 @@ static MLD_INLINE void mld_shake256_init(mld_shake256ctx *state) {
 }
 
 static MLD_INLINE void mld_shake256_release(mld_shake256ctx *state) {
-  (void) state;
+  OPENSSL_cleanse(state, sizeof(*state));
 }
 
 static MLD_INLINE void mld_shake256_absorb_once(mld_shake256ctx *state,

@@ -573,52 +573,66 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 // When call-discipline is maintained, this function never fails.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
+// SHAKE_Init_x4 initializes the four independent Keccak states in |ctx|. The
+// same initialization is used by both SHAKE128 and SHAKE256 x4 operations.
+// |ctx| must be non-NULL. When call-discipline is maintained, this function
+// never fails and returns 1.
+OPENSSL_EXPORT int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx);
+
 /*
- * SHAKE128_x4_ batched APIs implement x4 SHAKE functionalities on top of
- * KeccakSponge API layer
+ * Incremental SHAKE x4 batched APIs perform four SHAKE operations on top of
+ * the Keccak x4 primitives.
  *
- * SHAKE128_x4_ context must go through the flow: (a) Init_x4, (b) Absorb_once_x4 [one time;
- * maximum input length of |SHAKE128_BLOCKSIZE - 1|] (c) Squeezeblocks_x4 [multiple times]
+ * A context must go through the following flow: (a) SHAKE_Init_x4, (b) either
+ * SHAKE128_Absorb_once_x4 or SHAKE256_Absorb_once_x4 exactly once, and (c) the
+ * matching SHAKE128_Squeezeblocks_x4 or SHAKE256_Squeezeblocks_x4 one or more
+ * times.
  *
- * SHAKE128_x4_ functions never fail when the later call-discipline is adhered to:
- * (a) the context execution flow is followed (b) the pointers passed to the
- * functions are valid (c) any additional per-function parameter value conditions,
- * detailed above each SHAKE128_x4_ function signature, is satisfied.
+ * The absorb and squeeze functions must use the same SHAKE variant. These
+ * functions return one when the context flow is followed, all pointers are
+ * valid, and all input and output buffers are sufficiently large.
  */
 
-// SHAKE128_Init_x4 is a batched API that operates on four independent
-// Keccak bitstates. It initialises all four |ctx| fields and returns
-// 1 on success and 0 on failure. When call-discipline is maintained,
-// this function never fails.
-OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
-
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
-// Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
-// of equal length of |len| bytes returns 1 on success and 0 on failure. When
-// is maintained and |len| value corresponds to the input messages length
-// call-discipline (including zero), this function never fails.
+// Keccak bitstates. It absorbs |len| bytes from each of |data0|, |data1|,
+// |data2|, and |data3|. The caller must provide valid pointers and input
+// buffers containing at least |len| bytes. When call-discipline is maintained,
+// this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
 // SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
-// bitstates. It squeezes |blks| number of blocks for all four XOF digests and returns
-// 1 on success and 0 on failure. When call-discipline is maintained, this function
-// never fails.
+// bitstates. It writes |blks| blocks of |SHAKE128_BLOCKSIZE| bytes to each output.
+// The caller must provide valid pointers and sufficiently large output buffers.
+// When call-discipline is maintained, this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks);
+
+// SHAKE256_Absorb_once_x4 is a batched API that operates on four independent
+// Keccak bitstates. It absorbs |len| bytes from each of |data0|, |data1|,
+// |data2|, and |data3|. The caller must provide valid pointers and input
+// buffers containing at least |len| bytes. When call-discipline is maintained,
+// this function never fails and returns 1.
+OPENSSL_EXPORT int SHAKE256_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
+                                  const void *data2, const void *data3, size_t len);
+
+// SHAKE256_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
+// bitstates. It writes |blks| blocks of |SHAKE256_BLOCKSIZE| bytes to each output.
+// The caller must provide valid pointers and sufficiently large output buffers.
+// When call-discipline is maintained, this function never fails and returns 1.
+OPENSSL_EXPORT int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
+                                  KECCAK1600_CTX_x4 *ctx, size_t blks);
+
 /*
- * SHAKE256_x4_ signle-shot batched API implements x4 SHAKE256 functionalities on top
- * of KeccakSponge API layer
- *
- * SHAKE256_x4_ function never fails when the later call-discipline is adhered to:
- * (a) the pointers passed to the functions are valid.
+ * SHAKE256_x4 is a single-shot batched API that performs four SHAKE256
+ * operations on top of the Keccak x4 primitives.
  */
 
 // SHAKE256_x4 is a batched API that operates on four independent
-// Keccak bitstates. It writes all four |out_len|-byte outputs from
-// |in_len|-byte inputs to |out0|, |out1|, |out2|, |out3| and returns
-// 1 on success and 0 on failure.
-// When call-discipline is maintained, this function never fails.
+// Keccak bitstates. It writes four |out_len|-byte outputs from four
+// |in_len|-byte inputs. The caller must provide valid pointers and input and
+// output buffers of the corresponding lengths. When call-discipline is
+// maintained, this function never fails and returns 1.
 OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
                                   const uint8_t *data2, const uint8_t *data3,
                                   const size_t in_len, uint8_t *out0, uint8_t *out1,
@@ -633,9 +647,10 @@ OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
-// Keccak1600_Absorb_once_x4 absorbs exactly |len| bytes from four inputs into four
-// Keccak states, applying padding character |p|. Unlike Keccak1600_Absorb, this
-// processes a single block and takes the padding character as an additional argument.
+// Keccak1600_Absorb_once_x4 absorbs exactly |len| bytes from four inputs into
+// four Keccak states, applying padding character |p|. It processes all complete
+// input blocks, then XORs a padded final block into each state. The first squeeze
+// performs the final permutation.
 void Keccak1600_Absorb_once_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
                                const uint8_t *inp0, const uint8_t *inp1,
                                const uint8_t *inp2, const uint8_t *inp3,

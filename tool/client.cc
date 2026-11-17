@@ -739,18 +739,25 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
 
   const char *keylog_file = getenv("SSLKEYLOGFILE");
   if (keylog_file) {
-    g_keylog_file = fopen(keylog_file, "a");
+    // The log holds TLS traffic secrets.
+    g_keylog_file = OpenPrivateFile(keylog_file, /*append=*/true).release();
     if (g_keylog_file == nullptr) {
-      perror("fopen");
       return false;
     }
     SSL_CTX_set_keylog_callback(ctx.get(), KeyLogCallback);
   }
 
-  if (args_map.count("-cipher") != 0 &&
-      !SSL_CTX_set_strict_cipher_list(ctx.get(), args_map["-cipher"].c_str())) {
-    fprintf(stderr, "Failed setting cipher list\n");
-    return false;
+  if (args_map.count("-cipher") != 0) {
+    // Match OpenSSL s_client by skipping unknown cipher names; bssl is strict.
+    const int cipher_list_ok =
+        is_openssl_s_client
+            ? SSL_CTX_set_cipher_list(ctx.get(), args_map["-cipher"].c_str())
+            : SSL_CTX_set_strict_cipher_list(
+                  ctx.get(), args_map["-cipher"].c_str());
+    if (!cipher_list_ok) {
+      fprintf(stderr, "Failed setting cipher list\n");
+      return false;
+    }
   }
 
   if (args_map.count("-curves") != 0 &&
@@ -888,13 +895,19 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
   SSL_CTX_sess_set_new_cb(ctx.get(), NewSessionCallback);
 
   if (args_map.count("-session-out") != 0) {
-    session_out.reset(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
+    // A serialized session carries resumption secrets.
+    ScopedFILE session_file = OpenPrivateFile(args_map["-session-out"]);
+    if (!session_file) {
+      return false;
+    }
+    session_out.reset(BIO_new_fp(session_file.get(), BIO_CLOSE));
     if (!session_out) {
       fprintf(stderr, "Error while opening %s:\n",
               args_map["-session-out"].c_str());
       ERR_print_errors_fp(stderr);
       return false;
     }
+    session_file.release();
   }
 
   if (args_map.count("-grease") != 0) {

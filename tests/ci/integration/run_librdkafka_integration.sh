@@ -22,6 +22,9 @@ KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
 KAFKA_TEST_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/librdkafka_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+KAFKA_VERSION="3.9.1"
+KAFKA_ARCHIVE="${SCRATCH_FOLDER}/kafka_2.13-${KAFKA_VERSION}.tgz"
+KAFKA_DOWNLOAD_URL="https://archive.apache.org/dist/kafka/${KAFKA_VERSION}/kafka_2.13-${KAFKA_VERSION}.tgz"
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
@@ -48,7 +51,13 @@ function kafka_run_tests() {
 
   pushd ${KAFKA_SRC_FOLDER}/tests
   python3 -m pip install -U -r requirements.txt
-  python3 -m trivup.clusters.KafkaCluster --version 3.9.0 << EOF
+  # Trivup streams each download directly into tar without retrying the same
+  # URL. Download and validate once so truncated responses do not fail CI.
+  curl --fail --location --retry 5 --retry-all-errors --silent --show-error \
+    --output "${KAFKA_ARCHIVE}" "${KAFKA_DOWNLOAD_URL}"
+  tar -tzf "${KAFKA_ARCHIVE}" > /dev/null
+  export KAFKA_URL="file://${KAFKA_ARCHIVE}"
+  python3 -m trivup.clusters.KafkaCluster --version "${KAFKA_VERSION}" << EOF
   make -j quick
   exit
 EOF

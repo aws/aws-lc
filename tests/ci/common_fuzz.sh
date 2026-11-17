@@ -18,6 +18,16 @@ else
 fi
 echo "$BUILD_ID"
 
+# A CodeBuild run without the EFS mount is an untrusted PR build. Local runs
+# retain the existing mock_efs merge behavior.
+CORPUS_WRITE_ALLOWED=true
+if [ -v CODEBUILD_BUILD_ID ] && [ ! -v CODEBUILD_FUZZING_ROOT ]; then
+  CORPUS_WRITE_ALLOWED=false
+fi
+echo "CORPUS_WRITE_ALLOWED=${CORPUS_WRITE_ALLOWED}"
+
+CORPUS_BUCKET="${FUZZ_CORPUS_BUCKET:-}"
+
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"
@@ -37,6 +47,47 @@ function put_metric {
   set -e
 }
 
+function create_trusted_efs_directory {
+  local path="$CODEBUILD_FUZZING_ROOT"
+  local component
+  for component in "$@"; do
+    path="${path}/${component}"
+    if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+      rm -f -- "$path"
+    fi
+    mkdir -p -- "$path"
+  done
+}
+
+function sanitize_shared_corpus {
+  create_trusted_efs_directory fuzzing shared_corpus "$FUZZ_NAME" shared_corpus
+  find "$SHARED_FUZZ_TEST_CORPUS" -mindepth 1 ! -type f ! -type d -delete
+  find "$SHARED_FUZZ_TEST_CORPUS" -type f -links +1 -delete
+}
+
+# Publish a regular-file-only corpus snapshot. Tar status 1 is usable and can
+# occur when concurrent builds update the EFS corpus.
+function publish_corpus_to_s3 {
+  local tarball="${LOCAL_FUZZ_TEST_ROOT}/corpus_upload.tar.gz"
+  local rc=0
+  (
+    cd "$(dirname "$SHARED_FUZZ_TEST_CORPUS")" || exit 2
+    find "$(basename "$SHARED_FUZZ_TEST_CORPUS")" -maxdepth 1 \
+      -type f -print0 |
+      tar --null --no-recursion --hard-dereference -czf "$tarball" \
+        --files-from=-
+  ) || rc=$?
+  if [ "$rc" -gt 1 ]; then
+    echo "tar failed with status ${rc} while archiving the corpus"
+    rm -f "$tarball"
+    return 1
+  fi
+  rc=0
+  aws s3 cp "$tarball" "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz" || rc=$?
+  rm -f "$tarball"
+  return "$rc"
+}
+
 function run_fuzz_test {
   SHARED_FUZZ_TEST_CORPUS="${CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
   LOCAL_FUZZ_TEST_ROOT="${LOCAL_RUN_ROOT}/${FUZZ_NAME}"
@@ -45,7 +96,26 @@ function run_fuzz_test {
   LOCAL_ARTIFACTS_FOLDER="${LOCAL_FUZZ_TEST_ROOT}/artifacts"
   LOCAL_FUZZ_RUN_LOGS="${LOCAL_FUZZ_TEST_ROOT}/logs"
   SUMMARY_LOG="${LOCAL_FUZZ_RUN_LOGS}/summary.log"
+  if [ -v CODEBUILD_FUZZING_ROOT ]; then
+    sanitize_shared_corpus
+  fi
+
   mkdir -p "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_FUZZ_TEST_ROOT" "$LOCAL_RUN_CORPUS" "$LOCAL_ARTIFACTS_FOLDER" "$LOCAL_FUZZ_RUN_LOGS"
+
+  # Seed PR builds from the read-only S3 corpus snapshot. Download failures are
+  # non-fatal because the fuzzer can still use SRC_CORPUS.
+  if [ "$CORPUS_WRITE_ALLOWED" == false ] && [ -n "$CORPUS_BUCKET" ]; then
+    CORPUS_TARBALL="${LOCAL_FUZZ_TEST_ROOT}/corpus_download.tar.gz"
+    if aws s3 cp "s3://${CORPUS_BUCKET}/corpus/${FUZZ_NAME}/shared_corpus.tar.gz" "$CORPUS_TARBALL"; then
+      # The trusted producer archives only regular files. Extract them with
+      # build-user ownership and default modes.
+      tar -xzf "$CORPUS_TARBALL" -C "$SHARED_FUZZ_TEST_CORPUS" --strip-components=1 \
+        --no-same-owner --no-same-permissions || echo "Corpus extract failed, continuing with SRC_CORPUS only"
+      rm -f "$CORPUS_TARBALL"
+    else
+      echo "No published corpus for ${FUZZ_NAME} (or download failed), continuing with SRC_CORPUS only"
+    fi
+  fi
 
   # To avoid having each libfuzzer thread read from the shared corpus copy it to the local CodeBuild directory one time
   cp -r "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_SHARED_CORPUS"
@@ -91,23 +161,34 @@ function run_fuzz_test {
   mv ./*.log  "${LOCAL_FUZZ_RUN_LOGS}/."
 
   if [ "$FUZZ_RUN_FAILURE" == 1 ]; then
-    FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
-    mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
-
-    if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
-      for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
-        base64 $ARTIFACT
-        ARTIFACT_NAME=$(basename "$ARTIFACT")
+    for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
+      [ -f "$ARTIFACT" ] || continue
+      ARTIFACT_NAME=$(basename "$ARTIFACT")
+      echo "----- BEGIN ${ARTIFACT_NAME} (base64) -----"
+      base64 "$ARTIFACT"
+      echo "----- END ${ARTIFACT_NAME} (base64) -----"
+      if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
         "${FUZZ_TEST_PATH}" --debug "$ARTIFACT" | tee "${LOCAL_FUZZ_RUN_LOGS}/${ARTIFACT_NAME}.log"
-      done
-    fi
+      fi
+    done
 
-    cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
-    cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+    if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+      FUZZ_TEST_FAILURE_ROOT="${SHARED_FAILURE_ROOT}/${FUZZ_NAME}"
+      if [ -v CODEBUILD_FUZZING_ROOT ]; then
+        create_trusted_efs_directory \
+          fuzzing runs "$DATE_NOW" "$BUILD_ID" "$FUZZ_NAME"
+      else
+        mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
+      fi
+      cp -r "$LOCAL_FUZZ_TEST_ROOT" "$SHARED_FAILURE_ROOT"
+      cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
+      echo "${FUZZ_NAME} failed, see the above output for details. Logs are stored under ${SHARED_FAILURE_ROOT}"
+    else
+      echo "${FUZZ_NAME} failed; crash artifacts were printed above in base64"
+    fi
 
     # If this fuzz run has failed the below metrics won't make a lot of sense, it could fail on the first input and
     # publish a TestCount of 1 which makes all the metrics look weird
-    echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${SHARED_FAILURE_ROOT} in EFS"
     exit 1
   else
     echo "Fuzz test ${FUZZ_NAME} finished successfully, not copying run logs and run corpus"
@@ -118,7 +199,15 @@ function run_fuzz_test {
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus, the first folder is
   # where to merge the new corpus (SHARED_FUZZ_TEST_CORPUS), the second two are where to read new inputs from
   # (LOCAL_RUN_CORPUS and SRC_CORPUS).
-  time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+  if [ "$CORPUS_WRITE_ALLOWED" == true ]; then
+    time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
+
+    if [ -v CODEBUILD_FUZZING_ROOT ] && [ -n "$CORPUS_BUCKET" ]; then
+      publish_corpus_to_s3 || echo "Publishing the ${FUZZ_NAME} corpus to S3 failed, continuing with the rest of the build"
+    fi
+  else
+    echo "Skipping shared corpus merge-back for untrusted run"
+  fi
 
   # Calculate interesting metrics and post results to CloudWatch, this checks the shared (EFS) corpus after the new test
   # run corpus has been merged in

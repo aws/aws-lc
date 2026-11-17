@@ -4,8 +4,10 @@ Date: Fri, 1 Aug 2025 14:31:04 +0000
 Subject: [PATCH] Support AWS-LC
 
 ---
- modules/ssl/ssl_engine_init.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ modules/ssl/ssl_engine_init.c   | 4 ++--
+ modules/ssl/ssl_engine_kernel.c | 2 +-
+ modules/ssl/ssl_private.h       | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/modules/ssl/ssl_engine_init.c b/modules/ssl/ssl_engine_init.c
 index 94cc2772e0..df2dc44ce0 100644
@@ -29,5 +31,29 @@ index 94cc2772e0..df2dc44ce0 100644
      /* For OpenSSL >=1.1.1, turn on client cert support which is
       * otherwise turned off by default (by design).
       * https://github.com/openssl/openssl/issues/6933 */
+diff --git a/modules/ssl/ssl_engine_kernel.c b/modules/ssl/ssl_engine_kernel.c
+--- a/modules/ssl/ssl_engine_kernel.c
++++ b/modules/ssl/ssl_engine_kernel.c
+@@ -2347,7 +2347,7 @@ int ssl_find_vhost(void *servername, conn_rec *c, server_rec *s)
+  * This callback function is executed when OpenSSL encounters an extended
+  * client hello with a server name indication extension ("SNI", cf. RFC 6066).
+  */
+-int ssl_callback_ServerNameIndication(SSL *ssl, int *al, modssl_ctx_t *mctx)
++int ssl_callback_ServerNameIndication(SSL *ssl, int *al, void *arg)
+ {
+     conn_rec *c = (conn_rec *)SSL_get_app_data(ssl);
+     apr_status_t status = init_vhost(c, ssl, NULL);
+diff --git a/modules/ssl/ssl_private.h b/modules/ssl/ssl_private.h
+--- a/modules/ssl/ssl_private.h
++++ b/modules/ssl/ssl_private.h
+@@ -1002,7 +1002,7 @@
+ void         ssl_callback_DelSessionCacheEntry(SSL_CTX *, SSL_SESSION *);
+ void         ssl_callback_Info(const SSL *, int, int);
+ #ifdef HAVE_TLSEXT
+-int          ssl_callback_ServerNameIndication(SSL *, int *, modssl_ctx_t *);
++int          ssl_callback_ServerNameIndication(SSL *, int *, void *);
+ #endif
+ #if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+ int          ssl_callback_ClientHello(SSL *, int *, void *);
 --
 2.43.0
