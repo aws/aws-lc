@@ -326,9 +326,9 @@ TEST(SHATest, SEHHandlerRestoresCallerState) {
       OPENSSL_memcpy(&actual.xmm15, &ctx.Xmm15, sizeof(actual.xmm15));
 #define CALLER_STATE_REGISTER(type, name)                                   \
   EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t *>(&expected.name),       \
-                  sizeof(type)),                                            \
+                  sizeof(expected.name)),                                  \
             Bytes(reinterpret_cast<const uint8_t *>(&actual.name),         \
-                  sizeof(type)))                                            \
+                  sizeof(expected.name)))                                 \
       << #name;
       LOOP_CALLER_STATE_REGISTERS()
 #undef CALLER_STATE_REGISTER
