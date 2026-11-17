@@ -147,27 +147,38 @@ struct SEHHandlerResult {
   CONTEXT *unwound;
 };
 
-// InvokeLanguageHandler is an exception filter. If |info| is an access
-// violation on |guard|, it invokes the language handler of the faulting
+struct FaultExpectation {
+  uintptr_t guard;
+  size_t guard_len;
+  SEHHandlerResult *out;
+};
+
+// g_fault_expectation is read by |FaultHandler|, a vectored exception handler.
+FaultExpectation *g_fault_expectation = nullptr;
+
+// FaultHandler is a vectored exception handler. If the exception is an access
+// violation on the guard page, it invokes the language handler of the faulting
 // function, as the exception dispatcher would, and records the unwound context
-// in |out|. It must run as a filter, while the faulting frame is still on the
-// stack.
-LONG InvokeLanguageHandler(EXCEPTION_POINTERS *info, uintptr_t guard,
-                           size_t guard_len, SEHHandlerResult *out) {
+// in the result. It then resumes execution at the unwound context, i.e. in
+// |abi_test_trampoline| as if the function had returned. This avoids a real
+// unwind through the trampoline.
+LONG CALLBACK FaultHandler(EXCEPTION_POINTERS *info) {
+  const FaultExpectation *expect = g_fault_expectation;
   EXCEPTION_RECORD *record = info->ExceptionRecord;
-  if (record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
+  if (expect == nullptr || record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
       record->NumberParameters < 2 ||
-      record->ExceptionInformation[1] < guard ||
-      record->ExceptionInformation[1] - guard >= guard_len) {
+      record->ExceptionInformation[1] < expect->guard ||
+      record->ExceptionInformation[1] - expect->guard >= expect->guard_len) {
     return EXCEPTION_CONTINUE_SEARCH;
   }
+  SEHHandlerResult *out = expect->out;
   out->faulted = true;
 
   const DWORD64 pc = info->ContextRecord->Rip;
   DWORD64 image_base = 0;
   PRUNTIME_FUNCTION entry = RtlLookupFunctionEntry(pc, &image_base, nullptr);
   if (entry == nullptr) {
-    return EXCEPTION_EXECUTE_HANDLER;
+    return EXCEPTION_CONTINUE_SEARCH;
   }
 
   // Look up the language handler and its HandlerData. This also unwinds
@@ -179,7 +190,7 @@ LONG InvokeLanguageHandler(EXCEPTION_POINTERS *info, uintptr_t guard,
       RtlVirtualUnwind(UNW_FLAG_EHANDLER, image_base, pc, entry, &scratch,
                        &handler_data, &establisher_frame, nullptr);
   if (handler == nullptr) {
-    return EXCEPTION_EXECUTE_HANDLER;
+    return EXCEPTION_CONTINUE_SEARCH;
   }
 
   // The handler fixes up |context|, copies it to |disp.ContextRecord|, and
@@ -196,21 +207,24 @@ LONG InvokeLanguageHandler(EXCEPTION_POINTERS *info, uintptr_t guard,
   disp.HandlerData = handler_data;
   handler(record, reinterpret_cast<void *>(establisher_frame), &context, &disp);
   out->invoked_handler = true;
-  return EXCEPTION_EXECUTE_HANDLER;
+
+  // Resume in the caller of the faulting function.
+  *info->ContextRecord = *out->unwound;
+  return EXCEPTION_CONTINUE_EXECUTION;
 }
 
 // CallUntilFault calls |func| on |argv| through |abi_test_trampoline|, with
 // the callee-saved registers loaded from |state|. |func| is expected to fault
-// on |guard|. This function must not have objects with destructors, so that it
-// may use |__try|.
+// on |guard|.
 void CallUntilFault(crypto_word_t func, abi_test::internal::CallerState *state,
                     const crypto_word_t *argv, size_t argc, uintptr_t guard,
                     size_t guard_len, SEHHandlerResult *out) {
-  __try {
-    abi_test_trampoline(func, state, argv, argc, /*unwind=*/0);
-  } __except (InvokeLanguageHandler(GetExceptionInformation(), guard,
-                                    guard_len, out)) {
-  }
+  FaultExpectation expect = {guard, guard_len, out};
+  g_fault_expectation = &expect;
+  void *handle = AddVectoredExceptionHandler(/*first=*/1, FaultHandler);
+  abi_test_trampoline(func, state, argv, argc, /*unwind=*/0);
+  RemoveVectoredExceptionHandler(handle);
+  g_fault_expectation = nullptr;
 }
 
 struct VirtualFreeDeleter {
