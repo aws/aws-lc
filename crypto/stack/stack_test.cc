@@ -342,7 +342,7 @@ TEST(StackTest, SetInvalidatesSortedness) {
   // before sorting, then report its new index after sorting.
   EXPECT_EQ(&values[3], sk_TEST_INT_set(sk.get(), 0, &values[3]));
   EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
-  size_t index;
+  size_t index = SIZE_MAX;
   ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, &values[3]));
   EXPECT_EQ(0u, index);
   EXPECT_EQ(0, sk_TEST_INT_find(sk.get(), &values[3]));
