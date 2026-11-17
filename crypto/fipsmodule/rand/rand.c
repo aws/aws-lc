@@ -261,21 +261,24 @@ static void rand_thread_local_state_free(void *state_in) {
 }
 
 // rand_ensure_valid_state determines whether |state| is in a valid state. The
-// reasons are documented with inline comments in the function.
+// reasons are documented with inline comments in the function. |randomized|
+// is 1 if |state| was seeded or reseeded before generating this request's
+// output.
 //
 // Returns 1 if |state| is in a valid state and 0 otherwise.
-static int rand_ensure_valid_state(const struct rand_thread_local_state *state) {
+static int rand_ensure_valid_state(const struct rand_thread_local_state *state,
+                                   int randomized) {
 
   // We do not allow the UBE generation number to change while executing AWS-LC
   // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
   // this is if snapshotting the address space while executing |RAND_bytes| and
   // while VM UBE is active. A failed read is treated the same way: we cannot
-  // rule out a UBE, and an unsettled vmclock is likely mid-update. If detection
-  // is permanently unavailable, every call has already reseeded on entry and
-  // there is nothing more to check.
+  // rule out a UBE, and an unsettled vmclock is likely mid-update. Unavailable
+  // detection is only acceptable if this request reseeded: another thread may
+  // have disabled detection after this request's entry check passed.
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
-    return CRYPTO_ube_detection_unavailable();
+    return randomized == 1 && CRYPTO_ube_detection_unavailable();
   }
   if (current_generation_number != state->generation_number) {
     return 0;
@@ -505,6 +508,9 @@ static void rand_bytes_core(
   // process exit.
   CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
 
+  int randomized = must_reseed_before_generate == 1 ||
+                   ctr_drbg_state_is_fresh == 1;
+
   for (size_t attempt = 1;; attempt++) {
 
     // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
@@ -561,7 +567,7 @@ static void rand_bytes_core(
       first_pred_resistance_len = 0;
     }
 
-    if (rand_ensure_valid_state(state) == 1) {
+    if (rand_ensure_valid_state(state, randomized) == 1) {
       break;
     }
 
@@ -582,6 +588,7 @@ static void rand_bytes_core(
     }
     rand_check_ctr_drbg_uniqueness(state, 0);
     must_reseed_before_generate = 1;
+    randomized = 1;
     out = out_start;
     out_len = out_len_start;
     first_pred_resistance_len = pred_resistance_len_start;

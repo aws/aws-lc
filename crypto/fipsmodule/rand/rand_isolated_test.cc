@@ -571,6 +571,38 @@ TEST_F(randIsolatedTest, ExitCheckDisablesDetectionWhenReadsKeepFailing) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
+// Runs after the entry check, standing in for another thread disabling
+// detection while this request generates.
+static int overrideGetPredictionResistanceDisableUbe(
+  const struct entropy_source_t *entropy_source,
+  uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
+  CRYPTO_ube_detection_disable();
+  return 1;
+}
+
+TEST_F(randIsolatedTest, ExitCheckRegeneratesWhenDetectionDisabledMidRequest) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testFunc = []() {
+    setupMockedUbeWithOverriddenEntropy(false);
+    entropy_methods.get_prediction_resistance =
+        &overrideGetPredictionResistanceDisableUbe;
+
+    // The entry check passes without reseeding, so output generated before
+    // detection was disabled must be discarded and regenerated from a reseed.
+    bool test1 = assertSeedOrReseed(1, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit(test1 ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
 // Test vectors for randomness generation KATs.
 // The tests below proves that we can predict the input to the underlying
 // CTR-DRBG implementation and that the result is what we expect. Test vectors
