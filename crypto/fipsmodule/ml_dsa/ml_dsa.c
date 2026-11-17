@@ -29,6 +29,12 @@
 #include "../evp/internal.h"
 #include "../service_indicator/internal.h"
 
+#if defined(OPENSSL_X86_64)
+int mldsa_avx2_capability_for_testing(void) {
+  return mld_sys_check_capability(MLD_SYS_CAP_X86_64_AVX2);
+}
+#endif
+
 // Note: These methods provide AWS-LC-specific wrappers around mldsa-native.
 
 // Converts an mldsa-native return code (0 on success, negative MLD_ERR_* on

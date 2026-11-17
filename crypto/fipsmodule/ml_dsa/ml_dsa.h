@@ -211,6 +211,14 @@ OPENSSL_EXPORT int ml_dsa_extmu_87_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *sig, size_t sig_len,
                                                    const uint8_t *mu, size_t mu_len,
                                                    const uint8_t *pre, size_t pre_len);
+
+#if defined(OPENSSL_X86_64)
+// mldsa_avx2_capability_for_testing returns the result of the CPU capability
+// callback that mldsa-native uses to select its x86_64 AVX2 backend. It is
+// exposed only for tests.
+int mldsa_avx2_capability_for_testing(void);
+#endif
+
 #if defined(__cplusplus)
 }
 #endif
