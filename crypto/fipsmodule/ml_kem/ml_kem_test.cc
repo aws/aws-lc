@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include "ml_kem.h"
+#include "../cpucap/internal.h"
 #include "../../test/test_util.h"
 #include "../../test/file_test.h"
 
@@ -1626,3 +1627,30 @@ TEST_P(MLKEMDecapsulateLengthTest, LongLength) {
   ASSERT_EQ(0, params.decapsulate(shared_secret, &shared_secret_len, params.ciphertext, params.secret_key));
   ASSERT_EQ(params.shared_secret_len, shared_secret_len);
 }
+
+// Writing |OPENSSL_ia32cap_P| from outside the module is not supported in
+// shared library or FIPS builds.
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
+    !defined(BORINGSSL_SHARED_LIBRARY) && !defined(BORINGSSL_FIPS)
+// The AVX2 backend's rejection sampler uses POPCNT, which CPUID reports
+// separately from AVX2 and BMI2. KATs pass on any CPU with POPCNT even if the
+// capability callback does not check it, so check the callback directly with
+// only the POPCNT bit (CPUID.1:ECX bit 23) cleared.
+TEST(MLKEMTest, AVX2BackendRequiresPOPCNT) {
+  if (!CRYPTO_is_AVX2_capable() || !CRYPTO_is_BMI2_capable() ||
+      !CRYPTO_is_POPCNT_capable()) {
+    GTEST_SKIP() << "Test requires AVX2, BMI2 and POPCNT";
+  }
+  EXPECT_TRUE(mlkem_avx2_capability_for_testing());
+
+  const uint32_t saved = OPENSSL_ia32cap_P[1];
+  OPENSSL_ia32cap_P[1] &= ~(UINT32_C(1) << 23);
+  EXPECT_FALSE(CRYPTO_is_POPCNT_capable());
+  EXPECT_TRUE(CRYPTO_is_AVX2_capable());
+  EXPECT_TRUE(CRYPTO_is_BMI2_capable());
+  EXPECT_FALSE(mlkem_avx2_capability_for_testing());
+  OPENSSL_ia32cap_P[1] = saved;
+
+  EXPECT_TRUE(mlkem_avx2_capability_for_testing());
+}
+#endif
