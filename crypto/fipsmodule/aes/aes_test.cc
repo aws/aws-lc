@@ -570,6 +570,13 @@ TEST(AESTest, ABI) {
         CHECK_ABI(aes_hw_ecb_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   AES_ENCRYPT);
 #endif
+#if defined(HWAES_XTS)
+        // XTS requires at least one block. See |aes_hw_xts_cipher|.
+        if (blocks > 0 && hwaes_xts_available()) {
+          CHECK_ABI(aes_hw_xts_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                    &key, block);
+        }
+#endif
       }
 
       ASSERT_EQ(CHECK_ABI(aes_hw_set_decrypt_key, kKey, bits, &key), 0);
@@ -581,6 +588,12 @@ TEST(AESTest, ABI) {
 #if defined(HWAES_ECB)
         CHECK_ABI(aes_hw_ecb_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   AES_DECRYPT);
+#endif
+#if defined(HWAES_XTS)
+        if (blocks > 0 && hwaes_xts_available()) {
+          CHECK_ABI(aes_hw_xts_decrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                    &key, block);
+        }
 #endif
       }
     }
