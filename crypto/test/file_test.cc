@@ -86,7 +86,9 @@ FileTest::ReadResult FileTest::ReadNext() {
 
   ClearTest();
 
-  static const size_t kBufLen = 8192 * 4;
+  // Large enough for hex-encoded SLH-DSA signatures (59,584 characters for
+  // SLH-DSA-SHAKE-256s). Matches upstream BoringSSL.
+  static const size_t kBufLen = 8192 * 14;
   std::unique_ptr<char[]> buf(new char[kBufLen]);
 
   bool in_instruction_block = false;

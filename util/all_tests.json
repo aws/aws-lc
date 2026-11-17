@@ -9,6 +9,26 @@
     "skip_valgrind": true
   },
   {
+    "comment": "SLH-DSA tests that generate keys or sign many times. They would take hours under valgrind and SDE.",
+    "cmd": ["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=All/DISABLED_SLHDSASlowTest.*"],
+    "shard": true,
+    "skip_sde": true,
+    "skip_valgrind": true
+  },
+  {
+    "comment": "All SLH-DSA ACVP signature generation vectors. crypto_test signs with only some of them by default.",
+    "cmd": ["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=All/SLHDSATest.DISABLED_ACVPSigGenAll/*"],
+    "shard": true,
+    "skip_sde": true,
+    "skip_valgrind": true
+  },
+  {
+    "comment": "Checks that SLH-DSA operations overwrite the stack they used. It reads stale stack memory, so it cannot run under valgrind.",
+    "cmd": ["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=All/SLHDSATest.DISABLED_StackScrub/*"],
+    "skip_sde": true,
+    "skip_valgrind": true
+  },
+  {
     "cmd": ["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=RSATest.DISABLED_BlindingCacheConcurrency"],
     "skip_sde": true,
     "skip_valgrind": true

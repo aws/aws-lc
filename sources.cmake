@@ -116,6 +116,15 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_128S_ACVP_keyGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_128S_ACVP_sigGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_128S_ACVP_sigVer.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_192S_ACVP_keyGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_192S_ACVP_sigGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_192S_ACVP_sigVer.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_256S_ACVP_keyGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_256S_ACVP_sigGen.txt
+  crypto/fipsmodule/slh_dsa/kat/SLHDSA_SHAKE_256S_ACVP_sigVer.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/hpke/hpke_test_vectors_pq.txt
