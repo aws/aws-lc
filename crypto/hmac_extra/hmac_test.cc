@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/digest.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -651,7 +652,7 @@ TEST(HMACTest, InitExRetryAfterUnsupportedDigest) {
       SCOPED_TRACE(retry_md == nullptr);
       bssl::ScopedHMAC_CTX ctx;
       uint8_t mac[EVP_MAX_MD_SIZE];
-      unsigned mac_len;
+      unsigned mac_len = 0;
       ASSERT_TRUE(HMAC_Init_ex(ctx.get(), kOldKey, sizeof(kOldKey) - 1,
                                EVP_sha256(), nullptr));
       ASSERT_TRUE(HMAC_Update(ctx.get(), kOldMessage, sizeof(kOldMessage) - 1));
@@ -662,14 +663,121 @@ TEST(HMACTest, InitExRetryAfterUnsupportedDigest) {
       // MD5-SHA1 is a valid digest, but is unsupported by HMAC. Its failure
       // must not prevent a valid rekey using the previous digest, including
       // the documented nullptr form for reusing that digest.
+      ERR_clear_error();
       ASSERT_FALSE(HMAC_Init_ex(ctx.get(), key, sizeof(key), EVP_md5_sha1(),
                                 nullptr));
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_HMAC,
+                              HMAC_R_UNSUPPORTED_DIGEST));
       EXPECT_EQ(EVP_sha256(), HMAC_CTX_get_md(ctx.get()));
+      if (finalize_first) {
+        // The rejected call must not count as the initialization that a
+        // finalized context requires before further use.
+        EXPECT_FALSE(
+            HMAC_Update(ctx.get(), kOldMessage, sizeof(kOldMessage) - 1));
+      }
       ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key, sizeof(key), retry_md, nullptr));
       ASSERT_TRUE(HMAC_Update(ctx.get(), kMessage, sizeof(kMessage) - 1));
       ASSERT_TRUE(HMAC_Final(ctx.get(), mac, &mac_len));
       ASSERT_EQ(sizeof(kExpected), mac_len);
       EXPECT_EQ(Bytes(kExpected), Bytes(mac, mac_len));
+    }
+  }
+}
+
+TEST(HMACTest, InitFromPrecomputedKeyRetryAfterRejection) {
+  // The SHA-256 key, message and expected HMAC are also in hmac_tests.txt.
+  uint8_t key[32];
+  for (size_t i = 0; i < sizeof(key); i++) {
+    key[i] = static_cast<uint8_t>(i);
+  }
+  static const uint8_t kMessage[] = "Sample message for keylen<blocklen";
+  static const uint8_t kExpected[] = {
+      0xa2, 0x8c, 0xf4, 0x31, 0x30, 0xee, 0x69, 0x6a,
+      0x98, 0xf1, 0x4a, 0x37, 0x67, 0x8b, 0x56, 0xbc,
+      0xfc, 0xbd, 0xd9, 0xe5, 0xcf, 0x69, 0x71, 0x7f,
+      0xec, 0xf5, 0x48, 0x0f, 0x0e, 0xbd, 0xf7, 0x90,
+  };
+  static const uint8_t kOldKey[] = "old key";
+  static const uint8_t kOldMessage[] = "discard this message";
+
+  uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+  size_t precomputed_key_len = sizeof(precomputed_key);
+  {
+    bssl::ScopedHMAC_CTX export_ctx;
+    ASSERT_TRUE(HMAC_Init_ex(export_ctx.get(), key, sizeof(key), EVP_sha256(),
+                             nullptr));
+    ASSERT_TRUE(HMAC_set_precomputed_key_export(export_ctx.get()));
+    ASSERT_TRUE(HMAC_get_precomputed_key(export_ctx.get(), precomputed_key,
+                                         &precomputed_key_len));
+    ASSERT_EQ(size_t{HMAC_SHA256_PRECOMPUTED_KEY_SIZE}, precomputed_key_len);
+  }
+
+  // Each of these calls must fail without changing the context. The last
+  // three use digests that HMAC supports, so they fail only after the digest
+  // has been looked up.
+  struct Rejection {
+    const char *name;
+    const EVP_MD *md;
+    const uint8_t *precomputed_key;
+    size_t precomputed_key_len;
+    int expected_reason;  // Zero to skip checking the error.
+  };
+  const Rejection kRejections[] = {
+      // MD5-SHA1 is a valid digest, but is unsupported by HMAC.
+      {"unsupported digest", EVP_md5_sha1(), precomputed_key,
+       precomputed_key_len, HMAC_R_UNSUPPORTED_DIGEST},
+      // HMAC supports SHA3-256, but not with precomputed keys.
+      {"no precomputed keys", EVP_sha3_256(), precomputed_key,
+       precomputed_key_len, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST},
+      // A SHA-256 precomputed key is too short for SHA-384.
+      {"wrong length", EVP_sha384(), precomputed_key, precomputed_key_len, 0},
+      {"missing key", EVP_sha384(), nullptr, HMAC_SHA384_PRECOMPUTED_KEY_SIZE,
+       HMAC_R_MISSING_PARAMETERS},
+  };
+  const EVP_MD *const retry_digests[] = {EVP_sha256(), nullptr};
+
+  for (const Rejection &rejection : kRejections) {
+    SCOPED_TRACE(rejection.name);
+    for (bool finalize_first : {false, true}) {
+      SCOPED_TRACE(finalize_first);
+      for (const EVP_MD *retry_md : retry_digests) {
+        SCOPED_TRACE(retry_md == nullptr);
+        bssl::ScopedHMAC_CTX ctx;
+        uint8_t mac[EVP_MAX_MD_SIZE];
+        unsigned mac_len = 0;
+        ASSERT_TRUE(HMAC_Init_ex(ctx.get(), kOldKey, sizeof(kOldKey) - 1,
+                                 EVP_sha256(), nullptr));
+        ASSERT_TRUE(
+            HMAC_Update(ctx.get(), kOldMessage, sizeof(kOldMessage) - 1));
+        if (finalize_first) {
+          ASSERT_TRUE(HMAC_Final(ctx.get(), mac, &mac_len));
+        }
+
+        ERR_clear_error();
+        ASSERT_FALSE(HMAC_Init_from_precomputed_key(
+            ctx.get(), rejection.precomputed_key, rejection.precomputed_key_len,
+            rejection.md));
+        if (rejection.expected_reason != 0) {
+          EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_HMAC,
+                                  rejection.expected_reason));
+        }
+        // The context must keep the previous digest, rather than pair the
+        // rejected digest's methods with the previous digest's key state.
+        EXPECT_EQ(EVP_sha256(), HMAC_CTX_get_md(ctx.get()));
+        if (finalize_first) {
+          // The rejected call must not count as the initialization that a
+          // finalized context requires before further use.
+          EXPECT_FALSE(
+              HMAC_Update(ctx.get(), kOldMessage, sizeof(kOldMessage) - 1));
+        }
+
+        ASSERT_TRUE(HMAC_Init_from_precomputed_key(
+            ctx.get(), precomputed_key, precomputed_key_len, retry_md));
+        ASSERT_TRUE(HMAC_Update(ctx.get(), kMessage, sizeof(kMessage) - 1));
+        ASSERT_TRUE(HMAC_Final(ctx.get(), mac, &mac_len));
+        ASSERT_EQ(sizeof(kExpected), mac_len);
+        EXPECT_EQ(Bytes(kExpected), Bytes(mac, mac_len));
+      }
     }
   }
 }

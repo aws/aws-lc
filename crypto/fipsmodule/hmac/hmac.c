@@ -309,8 +309,9 @@ static int hmac_ctx_set_md_methods(HMAC_CTX *ctx, const EVP_MD *md) {
       // Unsupported md
       return 0;
     }
-    // A failed lookup must leave the previous digest and methods consistent so
-    // that the caller can retry initialization with the previous digest.
+    // |HMAC_Init_ex| rejects unsupported digests before calling this, but a
+    // failed lookup must still leave the previous digest and methods
+    // consistent so that the caller can retry with the previous digest.
     ctx->methods = methods;
     ctx->md = md;
   } else if (!hmac_ctx_is_initialized(ctx)) {
@@ -330,6 +331,14 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
   // HMAC does not support SHAKE (XOF) algorithms
   if (md && (EVP_MD_flags(md) & EVP_MD_FLAG_XOF)) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_UNSUPPORTED_DIGEST);
+    return 0;
+  }
+
+  // Reject an unsupported digest before changing any state, so that the failed
+  // call leaves |ctx| exactly as it was. In particular, a finalized context
+  // must still require a successful initialization before it can be used.
+  if (md != NULL && GetInPlaceMethods(md) == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_UNSUPPORTED_DIGEST);
     return 0;
   }
@@ -578,28 +587,43 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
     return 0;
   }
 
-  if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
-      HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
-    ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
+  // Every check below runs before |ctx| is modified, so that a failed call
+  // leaves |ctx| exactly as it was. In particular, a finalized context must
+  // still require a successful initialization before it can be used, and a
+  // context must never pair one digest's methods with another's key state.
+  if (md != NULL && GetInPlaceMethods(md) == NULL) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_UNSUPPORTED_DIGEST);
+    return 0;
   }
 
-  if (HMAC_STATE_INIT_NO_DATA == ctx->state) {
-    if (precomputed_key == NULL && (md == NULL || md == ctx->md)) {
-      // If nothing is changing then we can return without doing any further
-      // work.
-      return 1;
-    }
+  // A context in either of these states holds a usable key and only needs the
+  // init call that the API contract requires.
+  const int needs_init = HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
+                         HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state;
+  if ((needs_init || HMAC_STATE_INIT_NO_DATA == ctx->state) &&
+      precomputed_key == NULL && (md == NULL || md == ctx->md)) {
+    // If nothing is changing then we can return without doing any further
+    // work.
+    ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
+    return 1;
   }
 
   // Now we assume that we need to re-initialize everything.
   // See HMAC_Init_ex
 
-  if (!hmac_ctx_set_md_methods(ctx, md)) {
+  const HmacMethods *methods = NULL;
+  if (md != NULL) {
+    methods = GetInPlaceMethods(md);
+  } else if (needs_init || hmac_ctx_is_initialized(ctx)) {
+    methods = ctx->methods;
+  } else {
+    // We are not initialized but have not been provided with an md to
+    // initialize ourselves with.
     return 0;
   }
+  assert(methods != NULL);
 
-  const HmacMethods *methods = ctx->methods;
-  if (ctx->methods->init_from_state == NULL) {
+  if (methods->init_from_state == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
@@ -618,6 +642,11 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_MISSING_PARAMETERS);
     return 0;
   }
+
+  // All checks have passed, so commit the digest. Any failure from here on
+  // returns |ctx| to the zero state.
+  ctx->md = methods->evp_md;
+  ctx->methods = methods;
 
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here. Technically this is not really needed,
