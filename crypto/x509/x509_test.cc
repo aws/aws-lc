@@ -10556,3 +10556,18 @@ TEST(X509Test, BlockedSPKIAtDepth) {
                    /*flags=*/0, /*configure_callback=*/nullptr, &depth));
   EXPECT_EQ(1, depth);
 }
+
+// In AWS-LC, |X509_PURPOSE_get0| and |X509_PURPOSE_get_by_sname| use zero-based
+// indices, which differ from |X509_PURPOSE_*| IDs. BoringSSL has since merged
+// the two, so pin the index semantics against a silent change in a future
+// sync.
+TEST(X509Test, PurposeIndices) {
+  for (int i = 0; i < X509_PURPOSE_get_count(); i++) {
+    const X509_PURPOSE *purpose = X509_PURPOSE_get0(i);
+    ASSERT_TRUE(purpose);
+    EXPECT_EQ(i, X509_PURPOSE_get_by_id(X509_PURPOSE_get_id(purpose)));
+    EXPECT_EQ(i, X509_PURPOSE_get_by_sname(X509_PURPOSE_get0_sname(purpose)));
+  }
+  EXPECT_FALSE(X509_PURPOSE_get0(-1));
+  EXPECT_FALSE(X509_PURPOSE_get0(X509_PURPOSE_get_count()));
+}

@@ -5076,17 +5076,18 @@ OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(
 // function look like "sslserver" or "smimeencrypt", so they do not make
 // especially good APIs.
 //
-// The returned index is not a |X509_PURPOSE_*| ID. Pass a non-negative result to
-// |X509_PURPOSE_get0|, followed by |X509_PURPOSE_get_id|, to obtain the
+// The returned index is not an |X509_PURPOSE_*| ID. Pass a non-negative result
+// to |X509_PURPOSE_get0|, followed by |X509_PURPOSE_get_id|, to obtain the
 // |X509_PURPOSE_*| value suitable for use with |X509_VERIFY_PARAM_set_purpose|.
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 
-// X509_PURPOSE_get0 returns the |X509_PURPOSE| object at zero-based index |idx|,
-// or NULL if |idx| is negative or at least |X509_PURPOSE_get_count|.
+// X509_PURPOSE_get0 returns the |X509_PURPOSE| object at zero-based index
+// |idx|, or NULL if |idx| is negative or at least |X509_PURPOSE_get_count|.
 //
 // |idx| is an index, such as the result of |X509_PURPOSE_get_by_sname|, rather
-// than a |X509_PURPOSE_*| ID. Use |X509_PURPOSE_get_id| to obtain the returned
-// object's ID.
+// than an |X509_PURPOSE_*| ID. Use |X509_PURPOSE_get_by_id| to convert an
+// |X509_PURPOSE_*| constant to an index, and |X509_PURPOSE_get_id| to obtain
+// the returned object's ID.
 OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
 
 // X509_PURPOSE_get_id returns |purpose|'s ID. This will be one of the
