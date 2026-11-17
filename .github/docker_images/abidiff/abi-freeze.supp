@@ -18,3 +18,12 @@
   type_kind = struct
   name = evp_hpke_key_st
   has_data_member_inserted_between = {0, end}
+
+# aws/aws-lc#3418 widened the VM UBE generation number to 64 bits for vmclock.
+# Both are internal hooks that AWS-LC-FIPS 5 exports only so its own tests can
+# reach them; no public header declares them.
+[suppress_function]
+  name = CRYPTO_get_vm_ube_generation
+
+[suppress_function]
+  name = set_vm_ube_generation_number_FOR_TESTING

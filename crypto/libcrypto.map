@@ -663,6 +663,7 @@ AWS_LC_1.0 {
     CRYPTO_get_vm_ube_active;
     CRYPTO_get_vm_ube_generation;
     CRYPTO_get_vm_ube_supported;
+    CRYPTO_get_vmclock_path;
     CRYPTO_has_asm;
     CRYPTO_has_broken_NEON;
     CRYPTO_is_ARMv8_DIT_capable_for_testing;
@@ -698,6 +699,8 @@ AWS_LC_1.0 {
     CRYPTO_sysrand;
     CRYPTO_tls13_hkdf_expand_label;
     CRYPTO_tls1_prf;
+    CRYPTO_ube_detection_disable;
+    CRYPTO_ube_detection_unavailable;
     CTR_DRBG_clear;
     CTR_DRBG_free;
     CTR_DRBG_generate;
@@ -3057,6 +3060,7 @@ AWS_LC_1.0 {
     set_fork_ube_generation_number_FOR_TESTING;
     set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING;
     set_vm_ube_generation_number_FOR_TESTING;
+    set_vm_ube_read_failures_FOR_TESTING;
     sk_pop_free;
     tree_jitter_free_thread_drbg;
     tree_jitter_get_seed;

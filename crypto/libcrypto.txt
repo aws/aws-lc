@@ -656,6 +656,7 @@ CRYPTO_get_ube_generation_number AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_active AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_generation AWS_LC_1.0 PRIVATE
 CRYPTO_get_vm_ube_supported AWS_LC_1.0 PRIVATE
+CRYPTO_get_vmclock_path AWS_LC_1.0 PRIVATE
 CRYPTO_has_asm AWS_LC_1.0 PUBLIC
 CRYPTO_has_broken_NEON AWS_LC_1.0 PUBLIC
 CRYPTO_is_ARMv8_DIT_capable_for_testing AWS_LC_1.0 PRIVATE
@@ -691,6 +692,8 @@ CRYPTO_set_thread_local AWS_LC_1.0 PRIVATE
 CRYPTO_sysrand AWS_LC_1.0 PRIVATE
 CRYPTO_tls13_hkdf_expand_label AWS_LC_1.0 PUBLIC
 CRYPTO_tls1_prf AWS_LC_1.0 PUBLIC
+CRYPTO_ube_detection_disable AWS_LC_1.0 PRIVATE
+CRYPTO_ube_detection_unavailable AWS_LC_1.0 PRIVATE
 CTR_DRBG_clear AWS_LC_1.0 PUBLIC
 CTR_DRBG_free AWS_LC_1.0 PUBLIC
 CTR_DRBG_generate AWS_LC_1.0 PUBLIC
@@ -3050,6 +3053,7 @@ s2i_ASN1_OCTET_STRING AWS_LC_1.0 PUBLIC
 set_fork_ube_generation_number_FOR_TESTING AWS_LC_1.0 PRIVATE
 set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING AWS_LC_1.0 PRIVATE
 set_vm_ube_generation_number_FOR_TESTING AWS_LC_1.0 PRIVATE
+set_vm_ube_read_failures_FOR_TESTING AWS_LC_1.0 PRIVATE
 sk_pop_free AWS_LC_1.0 PUBLIC
 tree_jitter_free_thread_drbg AWS_LC_1.0 PRIVATE
 tree_jitter_get_seed AWS_LC_1.0 PRIVATE
