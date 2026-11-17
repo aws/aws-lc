@@ -1,0 +1,37 @@
+From a02f93fc4a941971e82af84f3d303275fdc58d9e Mon Sep 17 00:00:00 2001
+From: Jean-Frederic Clere <jfclere@apache.org>
+Date: 25 Aug 2026 09:00:10 +0000
+Subject: [PATCH] Handle GOAWAY frames by closing open streams
+
+---
+ test/clients/h2ws.c | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/test/clients/h2ws.c b/test/clients/h2ws.c
+--- a/test/clients/h2ws.c
++++ b/test/clients/h2ws.c
+@@ -492 +492 @@ static int h2_session_on_frame_recv(nghttp2_session *ngh2,
+-    (void)user_data;
++    (void)ngh2;
+@@ -510,6 +510,19 @@ static int h2_session_on_frame_recv(nghttp2_session *ngh2,
+         break;
+     case NGHTTP2_GOAWAY:
+         log_infof("frame recv", "FRAME[GOAWAY]");
++        {
++            struct h2_session *session = user_data;
++            struct h2_stream *s;
++            while ((s = session->streams) != NULL) {
++                s->error_code = frame->goaway.error_code;
++                s->closed = 1;
++                s->reset = 1;
++                fprintf(stdout, "[%d] RST\n", s->id);
++                h2_session_stream_remove(session, s);
++                if (s->on_close)
++                    s->on_close(s);
++            }
++        }
+         break;
+     }
+     return 0;
+--
+2.43.0

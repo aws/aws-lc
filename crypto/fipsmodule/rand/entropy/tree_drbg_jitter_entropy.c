@@ -417,13 +417,43 @@ void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) {
 // output were to escape from the randomness generation, it will still be sound
 // practically.
 //
-// Windows shared builds take the zeros option: there this runs from a libcrypto
-// global destructor on |DLL_PROCESS_DETACH|, after |ExitProcess|, where
-// |CRYPTO_sysrand| faults on bcryptprimitives.dll (loaded on demand, so not
-// kept alive by libcrypto's dependency graph). Static builds run it from the
-// executable's |atexit| and are unaffected. Zeros still override every state in
-// the tree, losing only the defence in depth above, which the write-locked
-// frontend DRBGs already cover.
+// All Windows builds take the zeros option. Whenever libcrypto's objects live
+// in a DLL, the shutdown handler driving this zeroization
+// (|rand_thread_local_state_clear_all| in rand.c) runs from that DLL's
+// |DLL_PROCESS_DETACH|, where |CRYPTO_sysrand| can fault: |ProcessPrng| is
+// resolved through an on-demand |LoadLibraryW|, so the loader has no
+// dependency edge and is free to detach bcryptprimitives.dll first. Pinning
+// the module doesn't help; the ordering is the problem, not the mapping. Not
+// specific to shared builds, see https://github.com/aws/aws-lc/issues/3540.
+//
+// Zeros still override every state in the tree, losing only the defence in
+// depth above, which the write-locked frontend DRBGs already cover. On Windows
+// that costs nothing anyway: |rand_thread_local_state_clear_all| is the only
+// non-test caller of |zeroize_thread|.
+
+// tree_jitter_zeroize_reseed_material fills |out| with the material used to
+// reseed a DRBG in the tree during zeroization: zeros on Windows, operating
+// system randomness everywhere else, per the discussion above. Returns 1 if
+// the operating system entropy source was called to fill |out|, 0 if |out| was
+// zeroed instead.
+static int tree_jitter_zeroize_reseed_material(
+  uint8_t out[CTR_DRBG_ENTROPY_LEN]) {
+#if defined(OPENSSL_WINDOWS)
+  OPENSSL_memset(out, 0, CTR_DRBG_ENTROPY_LEN);
+  return 0;
+#else
+  // Note that |CRYPTO_sysrand_if_available| itself zeros |out| if the
+  // operating system entropy pool is not yet initialized. Either outcome
+  // zeroizes.
+  CRYPTO_sysrand_if_available(out, CTR_DRBG_ENTROPY_LEN);
+  return 1;
+#endif
+}
+
+int tree_jitter_zeroize_reseed_material_FOR_TESTING(
+  uint8_t out[CTR_DRBG_ENTROPY_LEN]) {
+  return tree_jitter_zeroize_reseed_material(out);
+}
 
 // tree_jitter_zeroize_drbg zeroizes the DRBG state configured in
 // |tree_jitter_drbg|.
@@ -431,11 +461,7 @@ static void tree_jitter_zeroize_drbg(
   struct tree_jitter_drbg_t *tree_jitter_drbg) {
 
   uint8_t random_data[CTR_DRBG_ENTROPY_LEN];
-#if defined(OPENSSL_WINDOWS) && defined(BORINGSSL_SHARED_LIBRARY)
-  OPENSSL_memset(random_data, 0, CTR_DRBG_ENTROPY_LEN);
-#else
-  CRYPTO_sysrand_if_available(random_data, CTR_DRBG_ENTROPY_LEN);
-#endif
+  tree_jitter_zeroize_reseed_material(random_data);
 
   if (CTR_DRBG_reseed(&(tree_jitter_drbg->drbg), random_data, NULL, 0) != 1) {
     abort();

@@ -204,7 +204,16 @@ int rsa_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
     goto err;
   }
 
-  unsigned MSBits = (BN_num_bits(rsa->n) - 1) & 0x7;
+  // A zero modulus has no encoded message to inspect, so reject it before
+  // computing |MSBits| and reading |EM[0]|. This mirrors the check in
+  // |RSA_padding_add_PKCS1_PSS_mgf1|.
+  const unsigned n_bits = BN_num_bits(rsa->n);
+  if (n_bits == 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_EMPTY_PUBLIC_KEY);
+    goto err;
+  }
+
+  unsigned MSBits = (n_bits - 1) & 0x7;
   size_t emLen = RSA_size(rsa);
   if (EM[0] & (0xFF << MSBits)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_FIRST_OCTET_INVALID);

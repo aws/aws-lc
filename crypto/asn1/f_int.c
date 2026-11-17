@@ -3,6 +3,8 @@
 
 #include <openssl/asn1.h>
 
+#include <limits.h>
+
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
@@ -61,6 +63,11 @@ int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size) {
       return 0;
     }
     i /= 2;
+    if (i > INT_MAX - num) {
+      OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+      OPENSSL_free(s);
+      return 0;
+    }
     if (num + i > slen) {
       sp = OPENSSL_realloc(s, num + i);
       if (sp == NULL) {

@@ -7,7 +7,7 @@
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 
-#include "internal/backend.h"
+#include "boundary.h"
 
 const char *awslc_prov_backend_version(void) {
   return awslc_version_string();

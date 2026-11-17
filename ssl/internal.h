@@ -608,9 +608,10 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // rejected. If false, nonsense will be silently ignored. If |config_tls13| is
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
-// An empty result is considered an error regardless of |strict| or
-// |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
-// having support for AES in hardware or not.
+// An empty result is still stored in |*out_cipher_list|. It returns false for
+// an empty result unless |strict| is false and |rule_str| is empty. Other
+// failures leave |*out_cipher_list| unchanged. |has_aes_hw| indicates if the
+// list should be ordered based on having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);

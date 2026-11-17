@@ -604,20 +604,9 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
-  if (ctx->cipher_list) {
-    ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    if (!ssl->config->cipher_list ||
-        !ssl->config->cipher_list->Init(*ctx->cipher_list.get())) {
-      return nullptr;
-    }
-  }
-  if (ctx->tls13_cipher_list) {
-    ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
-    if (!ssl->config->tls13_cipher_list ||
-        !ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get())) {
-      return nullptr;
-    }
-  }
+  // The cipher lists are deliberately not copied. As in OpenSSL, until they are
+  // set on |ssl|, they are read from the current |ssl->ctx|, so they follow
+  // |SSL_set_SSL_CTX|.
 
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
@@ -1289,6 +1278,7 @@ void SSL_reset_early_data_reject(SSL *ssl) {
   // retry. The handshake will transparently flush out the pending record
   // (discarded by the server) to keep the framing correct.
   ssl->s3->pending_write = {};
+  ssl->s3->unreported_bytes_written = 0;
 }
 
 enum ssl_early_data_reason_t SSL_get_early_data_reason(const SSL *ssl) {
@@ -2187,63 +2177,106 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
   return c->name;
 }
 
+// set_tls12_cipher_list rebuilds |dst| from the TLS 1.2 and below suites that
+// |str| selects, plus |tls13_ciphers|. It returns one if |str| selected any and
+// |dst| was rebuilt, and zero otherwise. As in OpenSSL, a rule that matches
+// nothing fails but still empties the TLS 1.2 and below suites, keeping the TLS
+// 1.3 suites. Any other failure leaves |dst| unchanged. The error is reported
+// by |ssl_create_cipher_list| or the allocator, so this adds none of its own.
+static int set_tls12_cipher_list(
+    UniquePtr<SSLCipherPreferenceList> &dst,
+    UniquePtr<SSLCipherPreferenceList> &tls13_ciphers, bool has_aes_hw,
+    const char *str, bool strict) {
+  UniquePtr<SSLCipherPreferenceList> tls12_ciphers;
+  const bool matched =
+      ssl_create_cipher_list(&tls12_ciphers, has_aes_hw, str, strict,
+                             false /* don't configure TLSv1.3 ciphers */);
+  if (tls12_ciphers == nullptr) {
+    return 0;
+  }
+  // Rebuild |dst| even when nothing matched so the TLS 1.3 suites survive.
+  return update_cipher_list(dst, tls12_ciphers, tls13_ciphers) && matched;
+}
+
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  return set_tls12_cipher_list(ctx->cipher_list, ctx->tls13_cipher_list,
+                               has_aes_hw, str, false /* not strict */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
-                                true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return 0;
-  }
-
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  return set_tls12_cipher_list(ctx->cipher_list, ctx->tls13_cipher_list,
+                               has_aes_hw, str, true /* strict */);
 }
 
-int SSL_set_cipher_list(SSL *ssl, const char *str) {
+// set_ssl_tls12_cipher_list is |set_tls12_cipher_list| for |ssl|. If |ssl| has
+// no TLS 1.3 suites of its own, it has been using its |SSL_CTX|'s, so this also
+// gives it a copy of those. The TLS 1.3 suites in the rebuilt combined list
+// then stay the ones the handshake uses, even if |ssl| later switches
+// |SSL_CTX|s with |SSL_set_SSL_CTX|. The copy is kept only when the combined
+// list is rebuilt, which includes a |str| that matches nothing; any other
+// failure leaves |ssl| unchanged.
+static int set_ssl_tls12_cipher_list(SSL *ssl, const char *str, bool strict) {
   if (!ssl->config) {
     return 0;
   }
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    return 0;
+  if (ssl->config->tls13_cipher_list) {
+    return set_tls12_cipher_list(ssl->config->cipher_list,
+                                 ssl->config->tls13_cipher_list, has_aes_hw,
+                                 str, strict);
   }
 
-  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
-                                        ssl->ctx->tls13_cipher_list;
+  UniquePtr<SSLCipherPreferenceList> tls12_ciphers;
+  const bool matched =
+      ssl_create_cipher_list(&tls12_ciphers, has_aes_hw, str, strict,
+                             false /* don't configure TLSv1.3 ciphers */);
+  if (tls12_ciphers == nullptr) {
+    return 0;
+  }
+  // Rebuild the combined list even when nothing matched, as
+  // |set_tls12_cipher_list| does, so the TLS 1.3 suites survive.
+  UniquePtr<SSLCipherPreferenceList> tls13_ciphers =
+      MakeUnique<SSLCipherPreferenceList>();
+  if (tls13_ciphers == nullptr ||
+      !tls13_ciphers->Init(*ssl->ctx->tls13_cipher_list) ||
+      !update_cipher_list(ssl->config->cipher_list, tls12_ciphers,
+                          tls13_ciphers)) {
+    return 0;
+  }
+  ssl->config->tls13_cipher_list = std::move(tls13_ciphers);
+  return matched;
+}
 
-  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
+int SSL_set_cipher_list(SSL *ssl, const char *str) {
+  return set_ssl_tls12_cipher_list(ssl, str, false /* not strict */);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
 
-  if (!ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                true /* only configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  // ssl_create_cipher_list reports why it failed, including
+  // |SSL_R_NO_CIPHER_MATCH| when |str| selects nothing.
+  UniquePtr<SSLCipherPreferenceList> tls13_ciphers;
+  if (!ssl_create_cipher_list(&tls13_ciphers, has_aes_hw, str,
+                              false /* not strict */,
+                              true /* only configure TLSv1.3 ciphers */)) {
     return 0;
   }
 
-  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+  // update_cipher_list leaves its destination unchanged on failure. Commit the
+  // TLS 1.3 policy only after both parsing and rebuilding the combined list.
+  if (!update_cipher_list(ctx->cipher_list, ctx->cipher_list, tls13_ciphers)) {
+    return 0;
+  }
+  ctx->tls13_cipher_list = std::move(tls13_ciphers);
+  return 1;
 }
 
 int SSL_set_ciphersuites(SSL *ssl, const char *str) {
@@ -2253,36 +2286,26 @@ int SSL_set_ciphersuites(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->tls13_cipher_list,
-                                has_aes_hw, str, false /* not strict */,
-                                true /* configure TLSv1.3 ciphers */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+  UniquePtr<SSLCipherPreferenceList> tls13_ciphers;
+  if (!ssl_create_cipher_list(&tls13_ciphers, has_aes_hw, str,
+                              false /* not strict */,
+                              true /* configure TLSv1.3 ciphers */)) {
     return 0;
   }
 
   UniquePtr<SSLCipherPreferenceList> &ciphers = ssl->config->cipher_list ? ssl->config->cipher_list :
                                           ssl->ctx->cipher_list;
 
-  return update_cipher_list(ssl->config->cipher_list, ciphers, ssl->config->tls13_cipher_list);
+  // Keep both lists unchanged if rebuilding the combined list fails.
+  if (!update_cipher_list(ssl->config->cipher_list, ciphers, tls13_ciphers)) {
+    return 0;
+  }
+  ssl->config->tls13_cipher_list = std::move(tls13_ciphers);
+  return 1;
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
-  if (!ssl->config) {
-    return 0;
-  }
-  const bool has_aes_hw = ssl->config->aes_hw_override
-                              ? ssl->config->aes_hw_override_value
-                              : EVP_has_aes_hardware();
-  if (!ssl_create_cipher_list(&ssl->config->cipher_list,
-                                has_aes_hw, str, true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */)) {
-    return 0;
-  }
-
-  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
-                                        ssl->ctx->tls13_cipher_list;
-
-  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
+  return set_ssl_tls12_cipher_list(ssl, str, true /* strict */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {
@@ -2817,11 +2840,15 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   }
 
   UniquePtr<CERT> new_cert = ssl_cert_dup(ctx->cert.get());
-  if (!new_cert) {
+  Array<uint16_t> verify_sigalgs;
+  if (!new_cert || !verify_sigalgs.CopyFrom(ctx->verify_sigalgs)) {
     return nullptr;
   }
 
   ssl->config->cert = std::move(new_cert);
+  // OpenSSL keeps the peer-verification preferences with the certificate
+  // configuration, so switching contexts replaces them too.
+  ssl->config->verify_sigalgs = std::move(verify_sigalgs);
   ssl->ctx = UpRef(ctx);
   ssl->enable_early_data = ssl->ctx->enable_early_data;
 

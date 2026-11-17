@@ -1314,12 +1314,16 @@ class TheShippedManifest(unittest.TestCase):
 
     def test_nothing_shipped_is_already_out_of_support(self):
         # If this fails, a branch really has aged out and the README table plus the
-        # answer key need a look, so failing is the point
+        # answer key need a look, so failing is the point.  Branches already marked
+        # actively_maintained=false have been acknowledged; the sentinel only fires
+        # for branches that still claim to be active.
         today = datetime.date.today()
+        versions = config.load_supported_versions()
         aged = {
             name: config.out_of_support(name, today)
-            for name in config.load_supported_versions()
-            if config.out_of_support(name, today)
+            for name, entry in versions.items()
+            if entry.get("actively_maintained", True)
+            and config.out_of_support(name, today)
         }
         self.assertEqual(aged, {}, "these branches are past end of support")
 

@@ -393,6 +393,92 @@ TEST(AESTest, WrapBadLengths) {
   }
 }
 
+// |EVP_AES_WRAP_CTX| used to store a pointer into the source |EVP_CIPHER_CTX|
+// IV buffer. |EVP_CIPHER_CTX_copy| did not retarget it, so using the copy after
+// freeing the source was a use-after-free.
+TEST(AESTest, EVPKeyWrapCopyDoesNotAliasSourceIV) {
+  static const uint8_t kKey[32] = {0};
+  static const uint8_t kIV[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  static const uint8_t kPlaintext[16] = {0};
+
+  AES_KEY aes;
+  ASSERT_EQ(0, AES_set_encrypt_key(kKey, 256, &aes));
+  uint8_t expected[24];
+  ASSERT_EQ(static_cast<int>(sizeof(expected)),
+            AES_wrap_key(&aes, kIV, expected, kPlaintext, sizeof(kPlaintext)));
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> src(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey, kIV));
+
+  bssl::ScopedEVP_CIPHER_CTX dst;
+  ASSERT_TRUE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  // Free the entire source context to expose any IV alias retained by |dst|.
+  src.reset();
+
+  uint8_t out[24];
+  int len = 0;
+  ASSERT_TRUE(
+      EVP_EncryptUpdate(dst.get(), out, &len, kPlaintext, sizeof(kPlaintext)));
+  ASSERT_EQ(static_cast<int>(sizeof(out)), len);
+  EXPECT_EQ(Bytes(expected), Bytes(out, static_cast<size_t>(len)));
+
+  src.reset(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(src);
+  ASSERT_TRUE(
+      EVP_DecryptInit_ex(src.get(), EVP_aes_256_wrap(), nullptr, kKey, kIV));
+
+  // Clean up and reinitialize |dst| in place for the unwrap case.
+  dst.Reset();
+  ASSERT_TRUE(EVP_CIPHER_CTX_copy(dst.get(), src.get()));
+  src.reset();
+
+  len = 0;
+  ASSERT_TRUE(
+      EVP_DecryptUpdate(dst.get(), out, &len, expected, sizeof(expected)));
+  ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), len);
+  EXPECT_EQ(Bytes(kPlaintext), Bytes(out, static_cast<size_t>(len)));
+}
+
+TEST(AESTest, EVPKeyWrapReinitClearsExplicitIV) {
+  static const uint8_t kKey[32] = {0};
+  static const uint8_t kIV[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  static const uint8_t kPlaintext[16] = {0};
+
+  AES_KEY aes;
+  ASSERT_EQ(0, AES_set_encrypt_key(kKey, 256, &aes));
+  uint8_t wrapped[sizeof(kPlaintext) + 8];
+  ASSERT_EQ(
+      static_cast<int>(sizeof(wrapped)),
+      AES_wrap_key(&aes, nullptr, wrapped, kPlaintext, sizeof(kPlaintext)));
+
+  for (int encrypt : {0, 1}) {
+    SCOPED_TRACE(encrypt);
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_wrap(), nullptr, kKey,
+                                  kIV, encrypt));
+    // Reuse the cipher state: setting a key without an IV must clear the
+    // previous explicit IV and restore the default wrap IV.
+    ASSERT_TRUE(
+        EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, kKey, nullptr, encrypt));
+
+    uint8_t out[sizeof(wrapped)];
+    int len = 0;
+    if (encrypt) {
+      ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), out, &len, kPlaintext,
+                                   sizeof(kPlaintext)));
+      ASSERT_EQ(static_cast<int>(sizeof(wrapped)), len);
+      EXPECT_EQ(Bytes(wrapped), Bytes(out, static_cast<size_t>(len)));
+    } else {
+      ASSERT_TRUE(
+          EVP_CipherUpdate(ctx.get(), out, &len, wrapped, sizeof(wrapped)));
+      ASSERT_EQ(static_cast<int>(sizeof(kPlaintext)), len);
+      EXPECT_EQ(Bytes(kPlaintext), Bytes(out, static_cast<size_t>(len)));
+    }
+  }
+}
+
 TEST(AESTest, InvalidKeySize) {
   static const uint8_t kZero[8] = {0};
   AES_KEY key;

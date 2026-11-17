@@ -10,8 +10,8 @@
 #include <assert.h>
 #include <stdarg.h>
 
-#include "internal/backend.h"
-#include "internal/provider.h"
+#include "boundary.h"
+#include "frontend/provider.h"
 
 // Statically define reason strings for the provider's private reason codes.
 static const OSSL_ITEM awslc_prov_reason_strings[] = {

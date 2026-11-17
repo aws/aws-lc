@@ -411,6 +411,69 @@ TEST_F(ReqTest, ExistingKeyNoWrite) {
   EXPECT_FALSE(f) << "privkey.pem should not be created";
 }
 
+#if !defined(OPENSSL_WINDOWS)
+// A challengePassword lands in the CSR in cleartext, so that output is
+// owner-only even when the file already exists with looser permissions.
+TEST_F(ReqTest, ChallengePasswordCSRFilePermissions) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "prompt = no\n"
+                          "distinguished_name = req_dn\n"
+                          "attributes = req_attrs\n"
+                          "[req_dn]\n"
+                          "CN = test.com\n"
+                          "[req_attrs]\n"
+                          "challengePassword = s3cret\n"));
+  ASSERT_EQ(0, chmod(csr_path, 0666));
+
+  // The DN comes from the config: -subj takes a path that adds no attributes.
+  args_list_t args = {"-new", "-config", config_path, "-key", input_key_path,
+                      "-out", csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+
+  // Guard against the attribute silently going missing, which would leave the
+  // test asserting the mode of an ordinary CSR.
+  ScopedFILE csr_file(fopen(csr_path, "rb"));
+  ASSERT_TRUE(csr_file);
+  bssl::UniquePtr<X509_REQ> req(
+      PEM_read_X509_REQ(csr_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(req);
+  ASSERT_GE(X509_REQ_get_attr_by_NID(req.get(), NID_pkcs9_challengePassword,
+                                     -1),
+            0)
+      << "CSR does not carry the challengePassword attribute";
+
+  struct stat st;
+  ASSERT_EQ(0, stat(csr_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0600))
+      << "CSR with a challengePassword should be owner-only, got: 0" << std::oct
+      << perms;
+}
+
+// Without a sensitive attribute a CSR is public, so it keeps the permissions
+// the caller gave it.
+TEST_F(ReqTest, PlainCSRFilePermissionsUnchanged) {
+  ASSERT_TRUE(WriteConfig(config_path,
+                          "[req]\n"
+                          "prompt = no\n"
+                          "distinguished_name = req_dn\n"
+                          "[req_dn]\n"
+                          "CN = test.com\n"));
+  ASSERT_EQ(0, chmod(csr_path, 0666));
+
+  args_list_t args = {"-new", "-config", config_path, "-key", input_key_path,
+                      "-out", csr_path};
+  ASSERT_EQ(kToolExitSuccess, reqTool(args));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(csr_path, &st));
+  mode_t perms = st.st_mode & 0777;
+  EXPECT_EQ(static_cast<mode_t>(perms), static_cast<mode_t>(0666))
+      << "Public CSR should keep its mode, got: 0" << std::oct << perms;
+}
+#endif
+
 TEST_F(ReqTest, X509SelfSignedCert) {
   args_list_t args = {"-new",          "-x509",    "-days",   "365",
                       "-newkey",       "rsa:2048", "-nodes",  "-keyout",

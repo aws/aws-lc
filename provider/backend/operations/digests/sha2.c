@@ -6,7 +6,7 @@
 
 #include <openssl/sha.h>
 
-#include "internal/backend/digests.h"
+#include "boundary/operations/sha2.h"
 
 // SHA-224
 

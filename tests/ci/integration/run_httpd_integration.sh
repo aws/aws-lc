@@ -79,9 +79,10 @@ function run_httpd_test() {
 }
 
 function httpd_patch() {
-  # if the directory exists
   if [ -d "${HTTPD_PATCH_FOLDER}/${HTTPD_TAG}" ]; then
-    patch -p1 --quiet -i "${HTTPD_PATCH_FOLDER}/${HTTPD_TAG}"/*
+    for patch_file in "${HTTPD_PATCH_FOLDER}/${HTTPD_TAG}"/*.patch; do
+      patch -p1 --quiet -i "${patch_file}"
+    done
   else
     echo "No patches found for httpd tag: '${HTTPD_TAG}'"
   fi

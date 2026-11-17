@@ -144,6 +144,12 @@ bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
 bool WritePrivateKeyToFile(const std::string &path, const uint8_t *in,
                            size_t in_len);
 
+// OpenPrivateFile opens |path| for writing with owner-only permissions (0600 on
+// POSIX), truncating it unless |append| is true. Use this for private keys and
+// other secrets. It returns nullptr on failure, after printing the reason to
+// stderr.
+ScopedFILE OpenPrivateFile(const std::string &path, bool append = false);
+
 // DoClient is a common function used to support the s_client option in both
 // bssl and openssl tools. It takes an additional parameter |tool| to indicate
 // which tool's s_client is being invoked. A value of true indicates openssl

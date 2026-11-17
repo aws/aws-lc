@@ -740,19 +740,10 @@ static bool GenerateSerial(X509 *cert) {
 static bool WritePrivateKey(std::string &out_path, Password &passout,
                             bssl::UniquePtr<EVP_PKEY> &pkey,
                             const EVP_CIPHER *cipher) {
-  bssl::UniquePtr<BIO> out_bio;
-  SetUmaskForPrivateKey();
-
   fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
 
-  out_bio.reset(BIO_new(BIO_s_file()));
+  bssl::UniquePtr<BIO> out_bio = NewPrivateFileBIO(out_path);
   if (!out_bio) {
-    fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
-    return false;
-  }
-
-  if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
-    fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
     return false;
   }
 
@@ -1073,16 +1064,29 @@ int reqTool(const args_list_t &args) {
     }
   }
 
+  // A CSR is public, apart from challengePassword, which carries the cleartext
+  // secret the requester shares with the CA. A certificate holds no attributes.
+  const bool private_output =
+      !x509_flag &&
+      X509_REQ_get_attr_by_NID(req.get(), NID_pkcs9_challengePassword, -1) >= 0;
+
   bssl::UniquePtr<BIO> out_bio;
   if (!out_path.empty()) {
-    out_bio.reset(BIO_new(BIO_s_file()));
-    if (!out_bio) {
-      fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
-      return kToolExitFailure;
-    }
-    if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
-      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
-      return kToolExitFailure;
+    if (private_output) {
+      out_bio = NewPrivateFileBIO(out_path);
+      if (!out_bio) {
+        return kToolExitFailure;
+      }
+    } else {
+      out_bio.reset(BIO_new(BIO_s_file()));
+      if (!out_bio) {
+        fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
+        return kToolExitFailure;
+      }
+      if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
+        fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+        return kToolExitFailure;
+      }
     }
   } else {
     // Default to stdout

@@ -10,8 +10,9 @@
 #include <openssl/core_names.h>
 #include <openssl/params.h>
 
-#include "internal/backend.h"
-#include "internal/provider.h"
+#include "boundary.h"
+#include "frontend/provider.h"
+#include "frontend/utils.h"
 
 // The provider carries its own Semantic Versioning line, independent of the
 // AWS-LC release it links.
@@ -72,44 +73,21 @@ static const OSSL_PARAM *awslc_prov_gettable_params(void *provctx) {
 }
 
 static int awslc_prov_get_params(void *provctx, OSSL_PARAM params[]) {
-  AWSLC_PROV_CTX *ctx = (AWSLC_PROV_CTX *)provctx;
-  OSSL_PARAM *p = NULL;
+  const AWSLC_PROV_CTX *ctx = (const AWSLC_PROV_CTX *)provctx;
 
   if (ctx == NULL) {
     return 0;
   }
-
-  // A failed set means the caller asked for a parameter at a type that cannot
-  // hold it. Raise, so the caller learns which key was wrong.
-  p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_NAME);
-  if (p != NULL && !OSSL_PARAM_set_utf8_ptr(p, AWSLC_PROV_NAME)) {
-    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_PROV_PARAM_NAME);
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_VERSION);
-  if (p != NULL && !OSSL_PARAM_set_utf8_ptr(p, AWSLC_PROV_VERSION)) {
-    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_PROV_PARAM_VERSION);
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_BUILDINFO);
-  if (p != NULL &&
-      !OSSL_PARAM_set_utf8_ptr(p, awslc_prov_backend_version())) {
-    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_PROV_PARAM_BUILDINFO);
-    return 0;
-  }
-  p = OSSL_PARAM_locate(params, OSSL_PROV_PARAM_STATUS);
-  // Constant-true once loaded. AWS-LC aborts the process if a FIPS self-test
-  // fails, so unlike OpenSSL's FIPS module there is no refusing-but-alive state
-  // for this to report.
-  if (p != NULL && !OSSL_PARAM_set_int(p, 1)) {
-    AWSLC_PROV_ERROR_RAISE(ctx, AWSLC_PROV_R_INVALID_PARAMETER,
-                           OSSL_PROV_PARAM_STATUS);
-    return 0;
-  }
-  return 1;
+  // STATUS is constant-true once loaded. AWS-LC aborts the process if a FIPS
+  // self-test fails, so unlike OpenSSL's FIPS module there is no
+  // refusing-but-alive state for it to report.
+  return awslc_prov_param_set_utf8_ptr(ctx, params, OSSL_PROV_PARAM_NAME,
+                                       AWSLC_PROV_NAME) &&
+         awslc_prov_param_set_utf8_ptr(ctx, params, OSSL_PROV_PARAM_VERSION,
+                                       AWSLC_PROV_VERSION) &&
+         awslc_prov_param_set_utf8_ptr(ctx, params, OSSL_PROV_PARAM_BUILDINFO,
+                                       awslc_prov_backend_version()) &&
+         awslc_prov_param_set_int(ctx, params, OSSL_PROV_PARAM_STATUS, 1);
 }
 
 static void awslc_prov_teardown(void *provctx) {

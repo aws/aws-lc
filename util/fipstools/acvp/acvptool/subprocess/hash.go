@@ -38,6 +38,29 @@ type hashLargeMsg struct {
 	ExpansionTech string `json:"expansionTechnique"`
 }
 
+// Keep in sync with kMaxLDTMessageLength in modulewrapper.cc.
+const maxLDTMessageLength = uint64(8) << 30
+
+func validateLDTParameters(groupID, testID uint64, largeMsg hashLargeMsg, content []byte) (uint64, error) {
+	if largeMsg.ContentLength == 0 {
+		return 0, fmt.Errorf("LDT test case %d/%d has zero content length", groupID, testID)
+	}
+	if largeMsg.ContentLength%8 != 0 ||
+		largeMsg.ContentLength/8 != uint64(len(content)) {
+		return 0, fmt.Errorf("LDT test case %d/%d contains %d bytes but specifies a content length of %d bits", groupID, testID, len(content), largeMsg.ContentLength)
+	}
+	if largeMsg.FullLength == 0 ||
+		largeMsg.FullLength%largeMsg.ContentLength != 0 {
+		return 0, fmt.Errorf("LDT test case %d/%d has a full length that is not a positive multiple of its content length", groupID, testID)
+	}
+
+	times := largeMsg.FullLength / largeMsg.ContentLength
+	if times > maxLDTMessageLength/uint64(len(content)) {
+		return 0, fmt.Errorf("LDT test case %d/%d exceeds the maximum message length of %d bytes", groupID, testID, maxLDTMessageLength)
+	}
+	return times, nil
+}
+
 type hashTestGroupResponse struct {
 	ID    uint64             `json:"tgId"`
 	Tests []hashTestResponse `json:"tests"`
@@ -164,12 +187,13 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 					return nil, fmt.Errorf("test case %d has invalid expantion technique", test.ID)
 				}
 
-				// We will send this information over to the modulewrapper for handling b/c of the limit on argument lengths in the buffer.
-				times := test.LargeMsg.FullLength / test.LargeMsg.ContentLength
-
 				content, err := hex.DecodeString(test.LargeMsg.ContentHex)
 				if err != nil {
 					return nil, fmt.Errorf("failed to decode hex in test case %d/%d: %s", group.ID, test.ID, err)
+				}
+				times, err := validateLDTParameters(group.ID, test.ID, test.LargeMsg, content)
+				if err != nil {
+					return nil, err
 				}
 
 				timesByteArr := make([]byte, 8)

@@ -422,11 +422,15 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
     //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
     //   lazy rotations.
-    // - For Neoverse V1, V2, V3, we use SIMD batched hybrid Keccak assembly from s2n-bignum
-    //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
-    //   and scalar assembly with lazy rotations. On V3 the SHA3-extension-only
-    //   path (`sha3_keccak2_f1600()`, below) is much faster than on V1/V2, but
-    //   this SIMD path is still measurably faster, so V3 is grouped here.
+    // - For Neoverse V1, V2, V3, when the SHA3 extension is supported by the
+    //   assembler and available at runtime, we use SIMD batched hybrid Keccak
+    //   assembly from s2n-bignum (`sha3_keccak4_f1600_alt2()`) leveraging Neon,
+    //   Neon SHA3 extension, and scalar assembly with lazy rotations. On V3 the
+    //   SHA3-extension-only path (`sha3_keccak2_f1600()`, below) is much faster
+    //   than on V1/V2, but this SIMD path is still measurably faster, so V3 is
+    //   grouped here. If either SHA3 prerequisite is unavailable, these
+    //   processors fall back to four `sha3_keccak_f1600()` calls through the
+    //   1-fold dispatch path.
     // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
     //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600()`) twice,
     //   which is a straightforward implementation using the SHA3 extension.
@@ -440,7 +444,8 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() || CRYPTO_is_Neoverse_V3()) {
+    if (CRYPTO_is_ARMv8_SHA3_capable() &&
+        (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2() || CRYPTO_is_Neoverse_V3())) {
         keccak_log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
         sha3_keccak4_f1600_alt2((uint64_t *)A, iotas);
         return;
