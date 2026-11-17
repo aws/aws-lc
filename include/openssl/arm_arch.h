@@ -63,6 +63,9 @@
 // ARMV8_RNG indicates supports for hardware RNG instruction RNDR.
 #define ARMV8_RNG (1 << 17)
 
+// ARMV8_SB indicates support for the speculation barrier instruction.
+#define ARMV8_SB (1 << 19)
+
 //
 // MIDR_EL1 system register
 //
