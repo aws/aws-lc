@@ -1,4 +1,6 @@
 # Suppressions for the TEMPORARY ABI FREEZE jobs.
+
+# Type suppressions
 #
 # These cover structures the public headers declare private, where the size is
 # the whole of the ABI contract: callers may stack-allocate the type but may not
@@ -18,3 +20,23 @@
   type_kind = struct
   name = evp_hpke_key_st
   has_data_member_inserted_between = {0, end}
+
+# Function suppressions
+#
+# These cover functions that libcrypto exports for in-tree callers such as
+# crypto_test, but that no header under include/ declares. abidiff compares
+# exported symbols and cannot tell them from public API, yet a consumer built
+# against the public headers cannot reference one. Before adding an entry,
+# confirm that crypto/libcrypto.txt registered the symbol as PRIVATE, which
+# docs/SymbolVersioning.md allows to be removed.
+#
+# Every entry names a single symbol and sets change_kind = deleted-function, so
+# nothing but that symbol's removal is suppressed. Without change_kind an entry
+# matches every kind of change to the function, which would also hide a symbol
+# of that name coming back with a different signature.
+
+# aws/aws-lc#2917 renamed SHAKE128_Init_x4, declared in
+# crypto/fipsmodule/sha/internal.h, to SHAKE_Init_x4.
+[suppress_function]
+  symbol_name = SHAKE128_Init_x4
+  change_kind = deleted-function

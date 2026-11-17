@@ -1,5 +1,5 @@
 diff --git a/src/ssl.c b/src/ssl.c
-index ff76f05..76ce90d 100644
+index 38c8931..067c1bc 100644
 --- a/src/ssl.c
 +++ b/src/ssl.c
 @@ -53,6 +53,10 @@
@@ -10,10 +10,10 @@ index ff76f05..76ce90d 100644
 +#include <openssl/bio.h>
 +#include <openssl/pem.h>
 +#endif
- //#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
- //#include <openssl/core_names.h> // OSSL_PKEY_PARAM_RSA_E
- //#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
-@@ -1295,6 +1299,26 @@ ssl_x509chain_use(SSL_CTX *sslctx, X509 *crt, STACK_OF(X509) *chain)
+ 
+ /*
+  * Collection of helper functions on top of the OpenSSL API.
+@@ -1300,6 +1304,26 @@ ssl_x509chain_use(SSL_CTX *sslctx, X509 *crt, STACK_OF(X509) *chain)
  X509 *
  ssl_x509_load(const char *filename)
  {
@@ -40,7 +40,7 @@ index ff76f05..76ce90d 100644
  	X509 *crt = NULL;
  	SSL_CTX *tmpctx;
  	SSL *tmpssl;
-@@ -1320,6 +1344,7 @@ leave2:
+@@ -1325,6 +1349,7 @@ leave2:
  	SSL_CTX_free(tmpctx);
  leave1:
  	return crt;
@@ -49,7 +49,7 @@ index ff76f05..76ce90d 100644
  
  /*
 diff --git a/tests/check/cachedsess.t.c b/tests/check/cachedsess.t.c
-index 3184219..052d76c 100644
+index beacb9e..41948d2 100644
 --- a/tests/check/cachedsess.t.c
 +++ b/tests/check/cachedsess.t.c
 @@ -40,6 +40,8 @@
@@ -62,7 +62,7 @@ index 3184219..052d76c 100644
  #define TMP_SESS_FILE "pki/session.pem"
  #endif
 diff --git a/tests/check/cachessess.t.c b/tests/check/cachessess.t.c
-index 92aab27..4943e60 100644
+index ee0a2f6..3a24a12 100644
 --- a/tests/check/cachessess.t.c
 +++ b/tests/check/cachessess.t.c
 @@ -39,6 +39,8 @@
@@ -75,7 +75,7 @@ index 92aab27..4943e60 100644
  #define TMP_SESS_FILE "pki/session.pem"
  #endif
 diff --git a/tests/check/filterstruct.t.c b/tests/check/filterstruct.t.c
-index 39e81d2..0c1184b 100644
+index 77b914d..0f995ae 100644
 --- a/tests/check/filterstruct.t.c
 +++ b/tests/check/filterstruct.t.c
 @@ -59,7 +59,7 @@
@@ -87,7 +87,7 @@ index 39e81d2..0c1184b 100644
  #else
  #define	ECDHCURVE ""
  #define	ECDH_PRIME2 ""
-@@ -4255,7 +4255,7 @@ START_TEST(set_filter_struct_16)
+@@ -4263,7 +4263,7 @@ START_TEST(set_filter_struct_16)
  		"LeafCRLURL http://example1.com/example1.crl\n"
  		//"DHGroupParams /etc/sslproxy/dh.pem\n"
  #ifndef OPENSSL_NO_ECDH
@@ -96,7 +96,7 @@ index 39e81d2..0c1184b 100644
  #endif /* !OPENSSL_NO_ECDH */
  #ifdef SSL_OP_NO_COMPRESSION
  		"SSLCompression yes\n"
-@@ -4378,7 +4378,7 @@ START_TEST(set_filter_struct_17)
+@@ -4386,7 +4386,7 @@ START_TEST(set_filter_struct_17)
  		"LeafCRLURL http://example1.com/example1.crl\n"
  		//"DHGroupParams /etc/sslproxy/dh.pem\n"
  #ifndef OPENSSL_NO_ECDH
@@ -106,7 +106,7 @@ index 39e81d2..0c1184b 100644
  #ifdef SSL_OP_NO_COMPRESSION
  		"SSLCompression yes\n"
 diff --git a/tests/check/opts.t.c b/tests/check/opts.t.c
-index 55cd149..4650f2b 100644
+index c455d92..e4c1c78 100644
 --- a/tests/check/opts.t.c
 +++ b/tests/check/opts.t.c
 @@ -128,7 +128,7 @@ static char *argv14[] = {
