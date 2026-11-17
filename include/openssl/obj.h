@@ -138,10 +138,10 @@ OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
 // NID_undef on error.
 //
 // If |oid| is already known, either built in or added by an earlier call, and
-// each non-NULL name is that same object's name, nothing is added and the
-// existing NID is returned. Otherwise, if |oid|, |short_name| or |long_name|
-// is already known, it fails with |OBJ_R_OID_EXISTS|. (OpenSSL fails in both
-// cases.)
+// |short_name| and |long_name| are each either NULL or that same object's
+// short name and long name respectively, nothing is added and the existing NID
+// is returned. Otherwise, if |oid|, |short_name| or |long_name| is already
+// known, it fails with |OBJ_R_OID_EXISTS|. (OpenSSL fails in both cases.)
 //
 // WARNING: This function modifies global state. The table cannot contain
 // duplicate OIDs, short names, or long names. If two callers in the same

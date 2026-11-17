@@ -336,6 +336,9 @@ TEST(ObjTest, CreateRepeatReturnsExisting) {
   ExpectCreateReturns(NID_commonName, "2.5.4.3", nullptr, "commonName");
   // A built-in OID under a different built-in object's name is a conflict.
   ExpectCreateFails("2.5.4.3", "keyUsage", nullptr);
+  // So is the object's own long name passed as its short name, or vice versa.
+  ExpectCreateFails("2.5.4.3", "commonName", nullptr);
+  ExpectCreateFails("2.5.4.3", nullptr, "CN");
 
   // A run-time added object, registered again as a caller would on every use.
   const char *kOID = "1.2.840.113554.4.1.72585.1030";

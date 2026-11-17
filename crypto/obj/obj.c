@@ -532,7 +532,7 @@ enum obj_add_result {
   // |obj|'s OID or a name is registered to a different object. |obj| is
   // untouched.
   obj_add_conflict,
-  // An allocation failed. |obj| may be partially inserted.
+  // An allocation failed. |obj| was not inserted.
   obj_add_error,
 };
 
@@ -570,8 +570,6 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
   // Only allocate a NID once |obj| is going to be inserted, so that repeated
   // or refused calls do not consume NIDs.
   obj->nid = obj_next_nid();
-  obj->flags &= ~(ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
-                  ASN1_OBJECT_FLAG_DYNAMIC_DATA);
 
   if (global_added_by_nid == NULL) {
     global_added_by_nid = lh_ASN1_OBJECT_new(hash_nid, cmp_nid);
@@ -595,10 +593,8 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
     goto err;
   }
 
-  // We don't pay attention to |old_object| (which contains any previous object
-  // that was evicted from the hashes) because we don't have a reference count
-  // on ASN1_OBJECT values. Also, we should never have duplicates nids and so
-  // should always have objects in |global_added_by_nid|.
+  // The checks above, and the fresh NID, mean no table holds an entry equal to
+  // |obj|, so these inserts never evict anything and |old_object| is unused.
   ASN1_OBJECT *old_object;
   ok = lh_ASN1_OBJECT_insert(global_added_by_nid, &old_object, obj);
   if (obj->length != 0 && obj->data != NULL) {
@@ -609,6 +605,27 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
   }
   if (obj->ln != NULL) {
     ok &= lh_ASN1_OBJECT_insert(global_added_by_long_name, &old_object, obj);
+  }
+
+  if (ok) {
+    // |obj| is now owned by the tables and must never be freed.
+    obj->flags &=
+        ~(ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
+          ASN1_OBJECT_FLAG_DYNAMIC_DATA);
+  } else {
+    // Remove whichever inserts succeeded, so |obj| is not published and the
+    // caller can free it. Each table had no entry equal to |obj|, so these
+    // remove |obj| itself or nothing. Deletion does not allocate.
+    lh_ASN1_OBJECT_delete(global_added_by_nid, obj);
+    if (obj->length != 0 && obj->data != NULL) {
+      lh_ASN1_OBJECT_delete(global_added_by_data, obj);
+    }
+    if (obj->sn != NULL) {
+      lh_ASN1_OBJECT_delete(global_added_by_short_name, obj);
+    }
+    if (obj->ln != NULL) {
+      lh_ASN1_OBJECT_delete(global_added_by_long_name, obj);
+    }
   }
 
 err:
@@ -638,7 +655,7 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
       OPENSSL_PUT_ERROR(OBJ, OBJ_R_OID_EXISTS);
       return NID_undef;
     case obj_add_error:
-      // |op| may be partially inserted, so it is deliberately leaked.
+      ASN1_OBJECT_free(op);
       return NID_undef;
   }
   return NID_undef;
