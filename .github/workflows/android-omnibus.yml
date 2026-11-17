@@ -93,7 +93,7 @@ jobs:
             --action build
       # The Device Farm role is assumed by role chaining, which caps its credentials at one hour, while
       # a run can take longer than that when devices are busy. So credentials are refreshed before each
-      # step that talks to Device Farm, and each wait is limited to 50 minutes. A Device Farm run that
+      # step that talks to Device Farm, and each such step is limited to 50 minutes. A Device Farm run that
       # may still be in progress is recorded in tests/ci/devicefarm-run.json.
       - name: Refresh Credentials
         uses: ./.github/actions/configure-aws-credentials

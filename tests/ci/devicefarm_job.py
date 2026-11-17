@@ -28,7 +28,9 @@ from botocore.exceptions import ClientError
 
 DEFAULT_STATE_FILE = 'devicefarm-run.json'
 POLL_INTERVAL_SECONDS = 30
-UPLOAD_TIME_LIMIT = datetime.timedelta(minutes=30)
+# Uploading and processing an APK normally takes a few seconds.
+UPLOAD_TIME_LIMIT = datetime.timedelta(minutes=5)
+UPLOAD_REQUEST_TIMEOUT_SECONDS = 300
 FINISHED_STATUSES = ('COMPLETED', 'ERRORED')
 EXPIRED_CREDENTIALS_ERRORS = ('ExpiredToken', 'ExpiredTokenException')
 
@@ -60,24 +62,26 @@ def upload_df_file(client, project_arn, filename, type_, mime='application/octet
         contentType=mime
         )
     upload_start_time = datetime.datetime.now()
-    upload_time_elapsed = datetime.timedelta(seconds=0)
     # Get the upload ARN, which we'll return later.
     upload_arn = response['upload']['arn']
     # We're going to extract the URL of the upload and use Requests to upload it
     upload_url = response['upload']['url']
     with open(filename, 'rb') as file_stream:
         print(f"Uploading {filename} to Device Farm as {response['upload']['name']}... ",end='')
-        put_req = requests.put(upload_url, data=file_stream, headers={"content-type":mime})
+        put_req = requests.put(upload_url, data=file_stream, headers={"content-type":mime},
+                               timeout=UPLOAD_REQUEST_TIMEOUT_SECONDS)
         print(' done')
         if not put_req.ok:
             raise Exception("Couldn't upload, requests said we're not ok. Requests says: "+put_req.reason)
-    while upload_time_elapsed < UPLOAD_TIME_LIMIT:
+    while True:
         upload_time_elapsed = datetime.datetime.now() - upload_start_time
         print(f"Upload of {filename} in state {response['upload']['status']} after " + str(upload_time_elapsed))
         if response['upload']['status'] == 'FAILED':
             raise Exception("The upload failed processing. DeviceFarm says reason is: \n"+response['upload']['message'])
         if response['upload']['status'] == 'SUCCEEDED':
             break
+        if upload_time_elapsed >= UPLOAD_TIME_LIMIT:
+            raise Exception(f"Device Farm did not finish processing {filename} within {UPLOAD_TIME_LIMIT}.")
         time.sleep(5)
         response = client.get_upload(arn=upload_arn)
     print("")
@@ -169,6 +173,8 @@ def start(args):
     from cdk.util.devicefarm_util import AWS_REGION, ANDROID_TEST_NAME, ANDROID_APK, ANDROID_TEST_APK, \
         DEVICEFARM_PROJECT_NAME, DEVICEFARM_DEVICE_POOL_NAME
 
+    # The deadline includes the uploads because it bounds how long this command uses the credentials it
+    # was started with, which may expire an hour after they were issued.
     deadline = time.monotonic() + args.max_wait_minutes * 60
     client = boto3.client('devicefarm', region_name=AWS_REGION)
     project_arn = get_project_arn_by_name(client, DEVICEFARM_PROJECT_NAME)
@@ -235,7 +241,8 @@ def main():
                         help=f"File that records the scheduled run (default: {DEFAULT_STATE_FILE}).")
     waiting = argparse.ArgumentParser(add_help=False)
     waiting.add_argument('--max-wait-minutes', type=int, default=60,
-                         help="How long to wait for the run to finish (default: 60).")
+                         help="How long to wait for the run to finish, including any time spent uploading the "
+                              "APKs (default: 60).")
     waiting.add_argument('--resumable', action='store_true',
                          help="If the run is still in progress after --max-wait-minutes, leave it running and "
                               "exit successfully instead of stopping it and failing.")

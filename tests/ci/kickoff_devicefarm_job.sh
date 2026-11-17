@@ -33,7 +33,7 @@ Options:
     --fips                          If we're compiling for FIPS or not. Will always compile for the FIPS, shared, release build.
     --release                       If we're compiling for Release or Debug.
     --shared                        If we're compiling for Shared or Static.
-    --max-wait-minutes              How long to wait for the device farm run to finish. Default to 60.
+    --max-wait-minutes              How long to upload the APKs and wait for the device farm run to finish. Default to 60.
     --resumable                     If the run has not finished after --max-wait-minutes, leave it running and
                                     exit successfully so that 'devicefarm_job.py wait' can resume it later.
     --action                        Required. The value can be:
