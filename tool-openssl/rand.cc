@@ -12,7 +12,7 @@
 
 #include "internal.h"
 
-static const size_t kChunkSize = 65536;
+static const size_t kChunkSize = 8192;
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
