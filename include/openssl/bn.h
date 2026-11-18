@@ -272,13 +272,19 @@ OPENSSL_EXPORT void BN_CTX_free(BN_CTX *ctx);
 // calls to |BN_CTX_get|.
 OPENSSL_EXPORT void BN_CTX_start(BN_CTX *ctx);
 
-// BN_CTX_get returns a new |BIGNUM|, or NULL on allocation failure. Once
-// |BN_CTX_get| has returned NULL, all future calls will also return NULL until
-// |BN_CTX_end| is called.
+// BN_CTX_get returns a new |BIGNUM|, or NULL on allocation failure.
+//
+// An allocation failure in |BN_CTX_start| or |BN_CTX_get| puts |ctx| in a
+// permanent error state. Once |BN_CTX_get| has returned NULL, all future calls
+// on |ctx| will also return NULL, including after |BN_CTX_end|, and later
+// operations that need temporary |BIGNUM|s from |ctx| fail. There is no way to
+// reset |ctx|. The caller must free it with |BN_CTX_free| and use a new
+// |BN_CTX|.
 OPENSSL_EXPORT BIGNUM *BN_CTX_get(BN_CTX *ctx);
 
 // BN_CTX_end invalidates all |BIGNUM|s returned from |BN_CTX_get| since the
-// matching |BN_CTX_start| call.
+// matching |BN_CTX_start| call. It does not clear the error state described in
+// |BN_CTX_get|.
 OPENSSL_EXPORT void BN_CTX_end(BN_CTX *ctx);
 
 
