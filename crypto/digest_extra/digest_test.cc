@@ -496,6 +496,18 @@ TEST(DigestTest, TransformBlocks) {
   EXPECT_TRUE(0 == OPENSSL_memcmp(ctx1.h, ctx2.h, sizeof(ctx1.h)));
 }
 
+TEST(DigestTest, TransformBlocksZero) {
+  SHA256_CTX ctx;
+  ASSERT_TRUE(SHA256_Init(&ctx));
+  uint32_t initial_state[8];
+  OPENSSL_memcpy(initial_state, ctx.h, sizeof(initial_state));
+
+  const uint8_t block[SHA256_CBLOCK] = {0};
+  SHA256_TransformBlocks(ctx.h, block, 0);
+
+  EXPECT_EQ(0, OPENSSL_memcmp(initial_state, ctx.h, sizeof(initial_state)));
+}
+
 // DIGEST_TEST_InitAndGetStateBasic_Body expands to the body of the various
 // InitAndGetStateBasic* tests below.
 // Because EXPECT_* outputs the line where the macro is called/expanded,
