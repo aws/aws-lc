@@ -3,6 +3,8 @@
 
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP)
 
+#include <openssl/arm_arch.h>
+
 #include "cpu_aarch64.h"
 
 void handle_cpu_env(uint32_t *out, const char *in) {
@@ -46,6 +48,27 @@ void handle_cpu_env(uint32_t *out, const char *in) {
     out[0] |= v;
   } else {
     out[0] = v;
+  }
+}
+
+void armv8_set_neoverse_caps(uint32_t *out, uint64_t midr) {
+  if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_N1)) {
+    out[0] |= ARMV8_NEOVERSE_N1;
+  }
+  if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
+    out[0] |= ARMV8_NEOVERSE_V1;
+    // CPU capabilities of N1 are a subset of CPU capabilities of V1
+    out[0] |= ARMV8_NEOVERSE_N1;
+  }
+  if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
+    out[0] |= ARMV8_NEOVERSE_V2;
+    // CPU capabilities of N1 are a subset of CPU capabilities of V2
+    out[0] |= ARMV8_NEOVERSE_N1;
+  }
+  if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V3)) {
+    out[0] |= ARMV8_NEOVERSE_V3;
+    // CPU capabilities of N1 are a subset of CPU capabilities of V3
+    out[0] |= ARMV8_NEOVERSE_N1;
   }
 }
 

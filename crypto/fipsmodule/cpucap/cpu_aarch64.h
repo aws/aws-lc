@@ -22,6 +22,10 @@ extern "C" {
 // See the comment in |OPENSSL_cpuid_setup| about this.
 void handle_cpu_env(uint32_t *out, const char *in);
 
+// armv8_set_neoverse_caps sets the ARMV8_NEOVERSE_* bits in |out[0]| that
+// match the CPU model in |midr|, a MIDR_EL1 value.
+void armv8_set_neoverse_caps(uint32_t *out, uint64_t midr);
+
 #endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
 
 #if defined(__cplusplus)
