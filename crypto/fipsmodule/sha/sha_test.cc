@@ -3,12 +3,21 @@
 
 #include <openssl/sha.h>
 
+#include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "../../test/abi_test.h"
+#include "../../test/test_util.h"
 #include "internal.h"
+
+#if defined(SUPPORTS_ABI_TEST) && defined(OPENSSL_X86_64) && \
+    defined(OPENSSL_WINDOWS) && defined(_MSC_VER)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <windows.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#endif
 
 #if defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)
 TEST(SHATest, SHA1ABI) {
@@ -117,3 +126,227 @@ TEST(SHATest, SHA512ABI) {
 }
 
 #endif // defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)
+
+#if defined(SUPPORTS_ABI_TEST) && defined(OPENSSL_X86_64) && \
+    defined(OPENSSL_WINDOWS) && defined(_MSC_VER)
+// The SHA-256 and SHA-512 x86_64 assembly installs |se_handler| as its Win64
+// SEH language handler, to restore the caller's non-volatile registers when an
+// exception unwinds through it. |CHECK_ABI_SEH| does not cover this, because
+// the unwind tester calls |RtlVirtualUnwind| with |UNW_FLAG_NHANDLER| and never
+// invokes language handlers. Instead, fault inside each variant on a
+// |PAGE_NOACCESS| page and invoke its language handler as the exception
+// dispatcher would.
+
+namespace {
+
+struct SEHHandlerResult {
+  bool faulted;
+  bool invoked_handler;
+  // unwound receives the context of |abi_test_trampoline| after the language
+  // handler unwinds the faulting function.
+  CONTEXT *unwound;
+};
+
+struct FaultExpectation {
+  uintptr_t guard;
+  size_t guard_len;
+  SEHHandlerResult *out;
+};
+
+// g_fault_expectation is read by |FaultHandler|, a vectored exception handler.
+FaultExpectation *g_fault_expectation = nullptr;
+
+// FaultHandler is a vectored exception handler. If the exception is an access
+// violation on the guard page, it invokes the language handler of the faulting
+// function, as the exception dispatcher would, and records the unwound context
+// in the result. It then resumes execution at the unwound context, i.e. in
+// |abi_test_trampoline| as if the function had returned. This avoids a real
+// unwind through the trampoline.
+LONG CALLBACK FaultHandler(EXCEPTION_POINTERS *info) {
+  const FaultExpectation *expect = g_fault_expectation;
+  EXCEPTION_RECORD *record = info->ExceptionRecord;
+  if (expect == nullptr || record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
+      record->NumberParameters < 2 ||
+      record->ExceptionInformation[1] < expect->guard ||
+      record->ExceptionInformation[1] - expect->guard >= expect->guard_len) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  SEHHandlerResult *out = expect->out;
+  out->faulted = true;
+
+  const DWORD64 pc = info->ContextRecord->Rip;
+  DWORD64 image_base = 0;
+  PRUNTIME_FUNCTION entry = RtlLookupFunctionEntry(pc, &image_base, nullptr);
+  if (entry == nullptr) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  // Look up the language handler and its HandlerData. This also unwinds
+  // |scratch|, which is discarded.
+  CONTEXT scratch = *info->ContextRecord;
+  void *handler_data = nullptr;
+  DWORD64 establisher_frame = 0;
+  PEXCEPTION_ROUTINE handler =
+      RtlVirtualUnwind(UNW_FLAG_EHANDLER, image_base, pc, entry, &scratch,
+                       &handler_data, &establisher_frame, nullptr);
+  if (handler == nullptr) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  // The handler fixes up |context|, copies it to |disp.ContextRecord|, and
+  // unwinds that copy to the caller.
+  CONTEXT context = *info->ContextRecord;
+  DISPATCHER_CONTEXT disp;
+  OPENSSL_memset(&disp, 0, sizeof(disp));
+  disp.ControlPc = pc;
+  disp.ImageBase = image_base;
+  disp.FunctionEntry = entry;
+  disp.EstablisherFrame = establisher_frame;
+  disp.ContextRecord = out->unwound;
+  disp.LanguageHandler = handler;
+  disp.HandlerData = handler_data;
+  handler(record, reinterpret_cast<void *>(establisher_frame), &context, &disp);
+  out->invoked_handler = true;
+
+  // Resume in the caller of the faulting function.
+  *info->ContextRecord = *out->unwound;
+  return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+// CallUntilFault calls |func| on |argv| through |abi_test_trampoline|, with
+// the callee-saved registers loaded from |state|. |func| is expected to fault
+// on |guard|.
+void CallUntilFault(crypto_word_t func, abi_test::internal::CallerState *state,
+                    const crypto_word_t *argv, size_t argc, uintptr_t guard,
+                    size_t guard_len, SEHHandlerResult *out) {
+  FaultExpectation expect = {guard, guard_len, out};
+  g_fault_expectation = &expect;
+  void *handle = AddVectoredExceptionHandler(/*first=*/1, FaultHandler);
+  abi_test_trampoline(func, state, argv, argc, /*unwind=*/0);
+  RemoveVectoredExceptionHandler(handle);
+  g_fault_expectation = nullptr;
+}
+
+struct VirtualFreeDeleter {
+  void operator()(uint8_t *ptr) { VirtualFree(ptr, 0, MEM_RELEASE); }
+};
+
+}  // namespace
+
+TEST(SHATest, SEHHandlerRestoresCallerState) {
+  struct Variant {
+    const char *name;
+    crypto_word_t func;
+    size_t block_size;
+    bool capable;
+  };
+  const Variant kVariants[] = {
+#if defined(SHA256_ASM_NOHW)
+      {"sha256_block_data_order_nohw",
+       reinterpret_cast<crypto_word_t>(sha256_block_data_order_nohw),
+       SHA256_CBLOCK, true},
+#endif
+#if defined(SHA256_ASM_SSSE3)
+      {"sha256_block_data_order_ssse3",
+       reinterpret_cast<crypto_word_t>(sha256_block_data_order_ssse3),
+       SHA256_CBLOCK, sha256_ssse3_capable() != 0},
+#endif
+#if defined(SHA256_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      {"sha256_block_data_order_avx",
+       reinterpret_cast<crypto_word_t>(sha256_block_data_order_avx),
+       SHA256_CBLOCK, sha256_avx_capable() != 0},
+#endif
+#if defined(SHA512_ASM_NOHW)
+      {"sha512_block_data_order_nohw",
+       reinterpret_cast<crypto_word_t>(sha512_block_data_order_nohw),
+       SHA512_CBLOCK, true},
+#endif
+#if defined(SHA512_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      {"sha512_block_data_order_avx",
+       reinterpret_cast<crypto_word_t>(sha512_block_data_order_avx),
+       SHA512_CBLOCK, sha512_avx_capable() != 0},
+#endif
+  };
+
+  // Map two pages and make the second inaccessible. The first block of input
+  // ends at the page boundary, so each variant faults when it reads the
+  // second block, inside its body.
+  SYSTEM_INFO system_info;
+  GetSystemInfo(&system_info);
+  const size_t page_size = system_info.dwPageSize;
+  std::unique_ptr<uint8_t, VirtualFreeDeleter> pages(
+      static_cast<uint8_t *>(VirtualAlloc(nullptr, 2 * page_size,
+                                          MEM_COMMIT | MEM_RESERVE,
+                                          PAGE_READWRITE)));
+  ASSERT_TRUE(pages);
+  uint8_t *guard = pages.get() + page_size;
+  DWORD old_protect;
+  ASSERT_TRUE(VirtualProtect(guard, page_size, PAGE_NOACCESS, &old_protect));
+
+  for (const Variant &variant : kVariants) {
+    SCOPED_TRACE(variant.name);
+    if (!variant.capable) {
+      continue;
+    }
+    // |se_handler| decides whether to restore xmm6+ by where the fault is.
+    // The caller's %rbx must not influence that, so test a value below and a
+    // value above every code address.
+    for (uint64_t rbx : {uint64_t{0}, ~uint64_t{0}}) {
+      SCOPED_TRACE(rbx);
+      abi_test::internal::CallerState state;
+      uint8_t *state_bytes = reinterpret_cast<uint8_t *>(&state);
+      for (size_t i = 0; i < sizeof(state); i++) {
+        state_bytes[i] = static_cast<uint8_t>(0x80 + i);
+      }
+      state.rbx = rbx;
+      const abi_test::internal::CallerState expected = state;
+
+      alignas(16) uint64_t hash_state[8] = {0};
+      uint8_t *data = guard - variant.block_size;
+      OPENSSL_memset(data, 'a', variant.block_size);
+      const crypto_word_t argv[] = {
+          reinterpret_cast<crypto_word_t>(hash_state),
+          reinterpret_cast<crypto_word_t>(data),
+          2,  // The second block is on the guard page.
+      };
+      CONTEXT unwound;
+      OPENSSL_memset(&unwound, 0, sizeof(unwound));
+      SEHHandlerResult result = {false, false, &unwound};
+      CallUntilFault(variant.func, &state, argv, OPENSSL_ARRAY_SIZE(argv),
+                     reinterpret_cast<uintptr_t>(guard), page_size, &result);
+      ASSERT_TRUE(result.faulted);
+      ASSERT_TRUE(result.invoked_handler);
+
+      // The unwound context must hold the caller's callee-saved registers.
+      const CONTEXT &ctx = unwound;
+      abi_test::internal::CallerState actual;
+      actual.rbx = ctx.Rbx;
+      actual.rbp = ctx.Rbp;
+      actual.rdi = ctx.Rdi;
+      actual.rsi = ctx.Rsi;
+      actual.r12 = ctx.R12;
+      actual.r13 = ctx.R13;
+      actual.r14 = ctx.R14;
+      actual.r15 = ctx.R15;
+      OPENSSL_memcpy(&actual.xmm6, &ctx.Xmm6, sizeof(actual.xmm6));
+      OPENSSL_memcpy(&actual.xmm7, &ctx.Xmm7, sizeof(actual.xmm7));
+      OPENSSL_memcpy(&actual.xmm8, &ctx.Xmm8, sizeof(actual.xmm8));
+      OPENSSL_memcpy(&actual.xmm9, &ctx.Xmm9, sizeof(actual.xmm9));
+      OPENSSL_memcpy(&actual.xmm10, &ctx.Xmm10, sizeof(actual.xmm10));
+      OPENSSL_memcpy(&actual.xmm11, &ctx.Xmm11, sizeof(actual.xmm11));
+      OPENSSL_memcpy(&actual.xmm12, &ctx.Xmm12, sizeof(actual.xmm12));
+      OPENSSL_memcpy(&actual.xmm13, &ctx.Xmm13, sizeof(actual.xmm13));
+      OPENSSL_memcpy(&actual.xmm14, &ctx.Xmm14, sizeof(actual.xmm14));
+      OPENSSL_memcpy(&actual.xmm15, &ctx.Xmm15, sizeof(actual.xmm15));
+#define CALLER_STATE_REGISTER(type, name)                                   \
+  EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t *>(&expected.name),       \
+                  sizeof(expected.name)),                                  \
+            Bytes(reinterpret_cast<const uint8_t *>(&actual.name),         \
+                  sizeof(expected.name)))                                 \
+      << #name;
+      LOOP_CALLER_STATE_REGISTERS()
+#undef CALLER_STATE_REGISTER
+    }
+  }
+}
+#endif  // SUPPORTS_ABI_TEST && X86_64 && WINDOWS && _MSC_VER
