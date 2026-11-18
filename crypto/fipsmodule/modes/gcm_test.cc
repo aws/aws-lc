@@ -326,45 +326,47 @@ TEST(GCMTest, ABI) {
 
 #if defined(OPENSSL_AARCH64) && defined(HW_GCM)
   if (hwaes_capable() && gcm_pmull_capable()) {
-    static const uint8_t kKey[256/8] = {0};
+    static const uint8_t kKey[256 / 8] = {0};
     uint8_t iv[16] = {0};
+    AES_KEY aes_key128, aes_key192, aes_key256;
+    aes_hw_set_encrypt_key(kKey, 128, &aes_key128);
+    aes_hw_set_encrypt_key(kKey, 192, &aes_key192);
+    aes_hw_set_encrypt_key(kKey, 256, &aes_key256);
+    const s2n_bignum_AES_KEY *s2n_key128 =
+        (const s2n_bignum_AES_KEY *)&aes_key128;
+    const s2n_bignum_AES_KEY *s2n_key256 =
+        (const s2n_bignum_AES_KEY *)&aes_key256;
 
-    {
-      AES_KEY aes_key;
-      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
-      CHECK_ABI(aes128_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
-                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
-      CHECK_ABI(aes128_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
-                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+    // The kernels take whole blocks; the length is in bits.
+    for (size_t blocks : kBlockCounts) {
+      const uint64_t bits = blocks * 16 * 8;
+      CHECK_ABI(aes128_gcm_enc, buf, bits, buf, (uint64_t *)X, iv, s2n_key128,
+                (const uint64_t *)Htable);
+      CHECK_ABI(aes128_gcm_dec, buf, bits, buf, (uint64_t *)X, iv, s2n_key128,
+                (const uint64_t *)Htable);
       // |aes192_gcm_{enc,dec}_kernel| handle AES-192 only.
-      aes_hw_set_encrypt_key(kKey, 192, &aes_key);
-      CHECK_ABI(aes192_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv,
-                &aes_key, Htable);
-      CHECK_ABI(aes192_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv,
-                &aes_key, Htable);
-      aes_hw_set_encrypt_key(kKey, 256, &aes_key);
-      CHECK_ABI(aes256_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
-                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
-      CHECK_ABI(aes256_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
-                (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
+      CHECK_ABI(aes192_gcm_enc_kernel, buf, bits, buf, X, iv, &aes_key192,
+                Htable);
+      CHECK_ABI(aes192_gcm_dec_kernel, buf, bits, buf, X, iv, &aes_key192,
+                Htable);
+      CHECK_ABI(aes256_gcm_enc, buf, bits, buf, (uint64_t *)X, iv, s2n_key256,
+                (const uint64_t *)Htable);
+      CHECK_ABI(aes256_gcm_dec, buf, bits, buf, (uint64_t *)X, iv, s2n_key256,
+                (const uint64_t *)Htable);
     }
 #if defined(HW_GCM_S2N_BIGNUM_8X)
     if (CRYPTO_is_ARMv8_SHA3_capable()) {
-      AES_KEY aes_key;
-      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
-      CHECK_ABI(aes128_gcm_enc_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
-                iv, (const s2n_bignum_AES_KEY *)&aes_key,
-                (const uint64_t *)Htable);
-      CHECK_ABI(aes128_gcm_dec_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
-                iv, (const s2n_bignum_AES_KEY *)&aes_key,
-                (const uint64_t *)Htable);
-      aes_hw_set_encrypt_key(kKey, 256, &aes_key);
-      CHECK_ABI(aes256_gcm_enc_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
-                iv, (const s2n_bignum_AES_KEY *)&aes_key,
-                (const uint64_t *)Htable);
-      CHECK_ABI(aes256_gcm_dec_alt, buf, sizeof(buf) * 8, buf, (uint64_t *)X,
-                iv, (const s2n_bignum_AES_KEY *)&aes_key,
-                (const uint64_t *)Htable);
+      for (size_t blocks : kBlockCounts) {
+        const uint64_t bits = blocks * 16 * 8;
+        CHECK_ABI(aes128_gcm_enc_alt, buf, bits, buf, (uint64_t *)X, iv,
+                  s2n_key128, (const uint64_t *)Htable);
+        CHECK_ABI(aes128_gcm_dec_alt, buf, bits, buf, (uint64_t *)X, iv,
+                  s2n_key128, (const uint64_t *)Htable);
+        CHECK_ABI(aes256_gcm_enc_alt, buf, bits, buf, (uint64_t *)X, iv,
+                  s2n_key256, (const uint64_t *)Htable);
+        CHECK_ABI(aes256_gcm_dec_alt, buf, bits, buf, (uint64_t *)X, iv,
+                  s2n_key256, (const uint64_t *)Htable);
+      }
     }
 #endif  // HW_GCM_S2N_BIGNUM_8X
   }
