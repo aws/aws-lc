@@ -270,7 +270,7 @@ my $rk4v="v22";
 my $rk4d="d22";
 
 ################################################################################
-# size_t aes_gcm_enc_kernel(const uint8_t *in,
+# size_t aes192_gcm_enc_kernel(const uint8_t *in,
 #                           size_t len_bits,
 #                           uint8_t *out,
 #                           u64 *Xi,
@@ -279,10 +279,10 @@ my $rk4d="d22";
 #                           const void *Htable);
 #
 $code.=<<___;
-.global aes_gcm_enc_kernel
-.type   aes_gcm_enc_kernel,%function
+.global aes192_gcm_enc_kernel
+.type   aes192_gcm_enc_kernel,%function
 .align  4
-aes_gcm_enc_kernel:
+aes192_gcm_enc_kernel:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
 	adrp	x9,:pg_hi21:BORINGSSL_function_hit
@@ -836,7 +836,7 @@ aes_gcm_enc_kernel:
 	ldp     x29, x30, [sp], #128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size aes_gcm_enc_kernel,.-aes_gcm_enc_kernel
+.size aes192_gcm_enc_kernel,.-aes192_gcm_enc_kernel
 ___
 
 {
@@ -845,7 +845,7 @@ my $t8d="d4";
 my $t9="v6";
 my $t9d="d6";
 ################################################################################
-# size_t aes_gcm_dec_kernel(const uint8_t *in,
+# size_t aes192_gcm_dec_kernel(const uint8_t *in,
 #                           size_t len_bits,
 #                           uint8_t *out,
 #                           u64 *Xi,
@@ -853,10 +853,10 @@ my $t9d="d6";
 #                           const void *key);
 #
 $code.=<<___;
-.global aes_gcm_dec_kernel
-.type   aes_gcm_dec_kernel,%function
+.global aes192_gcm_dec_kernel
+.type   aes192_gcm_dec_kernel,%function
 .align  4
-aes_gcm_dec_kernel:
+aes192_gcm_dec_kernel:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp
@@ -1404,7 +1404,7 @@ aes_gcm_dec_kernel:
 	ldp     x29, x30, [sp], #128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size aes_gcm_dec_kernel,.-aes_gcm_dec_kernel
+.size aes192_gcm_dec_kernel,.-aes192_gcm_dec_kernel
 ___
 }
 }

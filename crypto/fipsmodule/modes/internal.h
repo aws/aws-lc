@@ -312,12 +312,12 @@ void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 // - the order of arguments is different from that of |aesni_gcm_encrypt|.
 
 // These functions are defined in aesv8-gcm-armv8.pl. They handle AES-192 only.
-void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key,
-                        const u128 Htable[16]);
-void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key,
-                        const u128 Htable[16]);
+void aes192_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                           void *Xi, uint8_t *ivec, const AES_KEY *key,
+                           const u128 Htable[16]);
+void aes192_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                           void *Xi, uint8_t *ivec, const AES_KEY *key,
+                           const u128 Htable[16]);
 
 // These functions are defined in aesv8-gcm-armv8-unroll8.pl.
 // They take input length in BITS and return number of BYTES processed.

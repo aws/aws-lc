@@ -9,11 +9,11 @@
 
 .arch	armv8-a+crypto
 .text
-.globl	aes_gcm_enc_kernel
-.hidden	aes_gcm_enc_kernel
-.type	aes_gcm_enc_kernel,%function
+.globl	aes192_gcm_enc_kernel
+.hidden	aes192_gcm_enc_kernel
+.type	aes192_gcm_enc_kernel,%function
 .align	4
-aes_gcm_enc_kernel:
+aes192_gcm_enc_kernel:
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -699,12 +699,12 @@ aes_gcm_enc_kernel:
 	ldp	x29, x30, [sp], #128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	aes_gcm_enc_kernel,.-aes_gcm_enc_kernel
-.globl	aes_gcm_dec_kernel
-.hidden	aes_gcm_dec_kernel
-.type	aes_gcm_dec_kernel,%function
+.size	aes192_gcm_enc_kernel,.-aes192_gcm_enc_kernel
+.globl	aes192_gcm_dec_kernel
+.hidden	aes192_gcm_dec_kernel
+.type	aes192_gcm_dec_kernel,%function
 .align	4
-aes_gcm_dec_kernel:
+aes192_gcm_dec_kernel:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp
@@ -1384,6 +1384,6 @@ aes_gcm_dec_kernel:
 	ldp	x29, x30, [sp], #128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	aes_gcm_dec_kernel,.-aes_gcm_dec_kernel
+.size	aes192_gcm_dec_kernel,.-aes192_gcm_dec_kernel
 #endif
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(__ELF__)

@@ -9,11 +9,11 @@
 
 
 .text
-.globl	_aes_gcm_enc_kernel
-.private_extern	_aes_gcm_enc_kernel
+.globl	_aes192_gcm_enc_kernel
+.private_extern	_aes192_gcm_enc_kernel
 
 .align	4
-_aes_gcm_enc_kernel:
+_aes192_gcm_enc_kernel:
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,_BORINGSSL_function_hit@PAGE
@@ -700,11 +700,11 @@ Lenc_blocks_1_remaining:	//	blocks_left = 1
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_aes_gcm_dec_kernel
-.private_extern	_aes_gcm_dec_kernel
+.globl	_aes192_gcm_dec_kernel
+.private_extern	_aes192_gcm_dec_kernel
 
 .align	4
-_aes_gcm_dec_kernel:
+_aes192_gcm_dec_kernel:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp

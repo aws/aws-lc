@@ -9,13 +9,13 @@
 
 .arch	armv8-a+crypto
 .text
-.globl	aes_gcm_enc_kernel
+.globl	aes192_gcm_enc_kernel
 
-.def aes_gcm_enc_kernel
+.def aes192_gcm_enc_kernel
    .type 32
 .endef
 .align	4
-aes_gcm_enc_kernel:
+aes192_gcm_enc_kernel:
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -702,13 +702,13 @@ Lenc_blocks_1_remaining:	//	blocks_left = 1
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	aes_gcm_dec_kernel
+.globl	aes192_gcm_dec_kernel
 
-.def aes_gcm_dec_kernel
+.def aes192_gcm_dec_kernel
    .type 32
 .endef
 .align	4
-aes_gcm_dec_kernel:
+aes192_gcm_dec_kernel:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp

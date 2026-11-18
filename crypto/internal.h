@@ -1306,7 +1306,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 // On AARCH64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
-//   2: aes_gcm_enc_kernel
+//   2: aes192_gcm_enc_kernel, aes128_gcm_enc (4x AES-GCM encryption)
 //   3: aes_hw_set_encrypt_key
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key

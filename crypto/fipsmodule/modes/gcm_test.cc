@@ -336,12 +336,12 @@ TEST(GCMTest, ABI) {
                 (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
       CHECK_ABI(aes128_gcm_dec, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
                 (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
-      // |aes_gcm_enc_kernel| and |aes_gcm_dec_kernel| handle AES-192 only.
+      // |aes192_gcm_{enc,dec}_kernel| handle AES-192 only.
       aes_hw_set_encrypt_key(kKey, 192, &aes_key);
-      CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
-                Htable);
-      CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
-                Htable);
+      CHECK_ABI(aes192_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv,
+                &aes_key, Htable);
+      CHECK_ABI(aes192_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv,
+                &aes_key, Htable);
       aes_hw_set_encrypt_key(kKey, 256, &aes_key);
       CHECK_ABI(aes256_gcm_enc, buf, sizeof(buf) * 8, buf, (uint64_t *)X, iv,
                 (const s2n_bignum_AES_KEY *)&aes_key, (const uint64_t *)Htable);
