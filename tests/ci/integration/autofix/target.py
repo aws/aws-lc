@@ -9,6 +9,7 @@ from .git import Repo
 
 # Allow only characters that cannot break out of a shell word, because downstream tests can rewrite the report.
 ShellSafe = Annotated[str, Field(pattern=r"^[A-Za-z0-9._:-]*$")]
+_RUN_AS_USER = "./.github/actions/codebuild-docker-run/run-as-user.sh"
 
 
 class Environment(BaseModel, frozen=True):
@@ -29,8 +30,7 @@ class Environment(BaseModel, frozen=True):
 class IntegrationTarget(BaseModel):
     """One integration and version to fix, with every CI job that failed for it.
 
-    The workflow passes it as JSON in TARGET to the reason and review jobs. It finds the runner script and its
-    patch folders, and it builds the script that reruns each failed job.
+    The workflow passes it as JSON in TARGET to the reason and review jobs.
     """
     name: str = Field(pattern=r"^[a-z0-9_]+$")
     version: str = Field(pattern=r"^[A-Za-z0-9._/-]*$")
@@ -91,12 +91,8 @@ class IntegrationTarget(BaseModel):
         if not env.user:
             return script
 
-        home = f"/home/{env.user}"
-        script = f'export HOME={home} PATH="$CONTAINER_PATH"; {script}'
         return "; ".join([
-            f"mkdir -p {home}",
-            f"chown -R {env.user} {home} . 2>/dev/null",
+            f"chown -R {env.user} . 2>/dev/null",
             "git config --system --add safe.directory '*'",
-            'export CONTAINER_PATH="$PATH"',
-            f"su -p {env.user} -c {shlex.quote(script)}",
+            f"{_RUN_AS_USER} {env.user} {shlex.quote(script)}",
         ])

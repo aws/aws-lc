@@ -7,7 +7,7 @@ import unicodedata
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel
 from strands import ModelRetryStrategy, ToolContext, tool
@@ -49,6 +49,11 @@ _SECRET_PATTERNS = (
     re.compile(r"\b(?:Bearer|Authorization:)\s+[A-Za-z0-9._\-]{20,}"),
     re.compile(r"https?://\S*\.(?:amazon|a2z|aws\.dev|corp)\b\S*"),
 )
+_DESCRIPTION_PATTERNS = (
+    re.compile(r"https?://|www\.", re.I),
+    re.compile(r"(?<![\w@])@[A-Za-z0-9]"),
+    re.compile(r"!\[|<img\b", re.I),
+)
 _INVISIBLE_CATEGORIES = {"Cc", "Cf", "Cn", "Zl", "Zp"}
 
 
@@ -73,11 +78,13 @@ class Outcome(StrEnum):
     INCONCLUSIVE = "inconclusive"
 
 
-class ReviewVerdict(BaseModel):
-    """The reviewer agent's verdict, which Strands makes it return as structured output.
+class _AgentVerdict(BaseModel):
+    """The reviewer agent's verdict, which Strands makes it return as structured output."""
+    outcome: Literal[Outcome.SAFE, Outcome.UNRELATED, Outcome.UNSAFE, Outcome.INCONCLUSIVE]
 
-    Only a safe outcome opens a PR.
-    """
+
+class ReviewVerdict(BaseModel):
+    """The review job's verdict. Only a safe outcome opens a PR."""
     outcome: Outcome
 
     @property
@@ -247,14 +254,15 @@ class Harness:
             message = (f"<logs>\n{logs}\n</logs>\n\n<diff>\n{diff}\n</diff>\n\n"
                        f"<description>\n{description}\n</description>")
 
-            verdict = self._run_agent(
+            agent_verdict = self._run_agent(
                 "review",
                 (_PROMPTS / "review-agent.md").read_text(),
                 message,
                 _TIMEOUT,
-                structured_output_model=ReviewVerdict,
+                structured_output_model=_AgentVerdict,
                 tools=[self.read_log],
             ).structured_output
+            verdict = ReviewVerdict(outcome=agent_verdict.outcome)
 
         (self.out / "review.json").write_text(verdict.model_dump_json(indent=2))
         if verdict.safe:
@@ -264,7 +272,10 @@ class Harness:
         return verdict
 
     def _follows_rules(self, diff: str, description: str) -> bool:
-        """Return whether the diff edits only the runner and its .patch files, with no secrets or hidden text."""
+        """Return whether the diff edits only the runner and its .patch files, with no secrets or hidden text.
+
+        The description also may not hold links, @-mentions, or images.
+        """
         if not diff:
             return False
         runner = self.target.runner
@@ -274,5 +285,6 @@ class Harness:
             all(path == runner or (path.suffix == ".patch" and path.is_relative_to(runner.parent))
                 for path in Git.changed_paths(diff))
             and not any(pattern.search(text) for pattern in _SECRET_PATTERNS)
+            and not any(pattern.search(description) for pattern in _DESCRIPTION_PATTERNS)
             and not any(unicodedata.category(char) in _INVISIBLE_CATEGORIES and char not in "\t\n\r" for char in text)
         )

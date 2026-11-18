@@ -77,7 +77,6 @@ class AwsLcGitHubOidcStack(Stack):
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                  "token.actions.githubusercontent.com:event_name": "workflow_run",
                                               },
                                               "StringLike": {
                                                   "token.actions.githubusercontent.com:sub": f"repo:{repo}:*",

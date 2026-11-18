@@ -23,11 +23,7 @@ class ReplayResult(BaseModel):
 
 
 class Sandbox:
-    """Give the harness separate methods to set up, run, and check the fix for one failed integration target.
-
-    The constructor clones aws-lc and the downstream repos. agent_container starts the container that the agent's
-    tools run in. replay reruns the failed CI jobs with a diff applied.
-    """
+    """Give the harness separate methods to set up, run, and check the fix for one failed integration target."""
 
     def __init__(self, root: Path, target: IntegrationTarget, registry: str):
         """Clone aws-lc and the downstream repos at their failing commits, and set what the agent may edit.
