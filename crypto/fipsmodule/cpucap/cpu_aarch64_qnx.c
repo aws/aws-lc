@@ -78,6 +78,40 @@ void OPENSSL_cpuid_setup(void) {
   }
 #endif
 
+  // The startup program also records each core's MIDR_EL1 in the |cpu| field
+  // of its |cpuinfo| entry, so the Neoverse checks done in
+  // cpu_aarch64_linux.c can be made here without reading the register. As
+  // with |flags| above, only set them if every core is the same model.
+  uint64_t midr = SYSPAGE_ARRAY_IDX(cpuinfo, 0)->cpu;
+  int same_model = 1;
+  for (unsigned i = 1; i < num_cpu; i++) {
+    uint64_t other = SYSPAGE_ARRAY_IDX(cpuinfo, i)->cpu;
+    if ((other & MIDR_CPU_MODEL_MASK) != (midr & MIDR_CPU_MODEL_MASK)) {
+      same_model = 0;
+      break;
+    }
+  }
+  if (same_model) {
+    if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_N1)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+    if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_V1;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V1
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+    if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_V2;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V2
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+    if (MIDR_IS_CPU_MODEL(midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V3)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_V3;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V3
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
+  }
+
   // See the comment in cpu_aarch64_linux.c about OPENSSL_armcap.
   const char *env = getenv("OPENSSL_armcap");
   if (env != NULL) {
