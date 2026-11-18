@@ -88,6 +88,12 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif
+    s2n_bignum_gcm_8x_ =
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+        true;
+#else
+        false;
+#endif
 #endif
     have_s2n_bignum_asm_ =
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
@@ -143,6 +149,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool neoverse_v2_ = false;
   bool neoverse_v3_ = false;
   bool assembler_has_neon_sha3_extension_ = false;
+  bool s2n_bignum_gcm_8x_ = false;
 #endif
 
 };
@@ -197,12 +204,9 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            !aes_gcm_pmull_ && !aes_gcm_8x_},
           {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
-           aes_gcm_pmull_ &&
-           !(aes_gcm_8x_ &&
-             (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_))},
+           aes_gcm_pmull_ && !(aes_gcm_8x_ && s2n_bignum_gcm_8x_)},
           {kFlag_aes_gcm_enc_alt, aes_hw_ &&
-           aes_gcm_pmull_ && aes_gcm_8x_ &&
-           (have_s2n_bignum_asm_ && assembler_has_neon_sha3_extension_)}
+           aes_gcm_pmull_ && aes_gcm_8x_ && s2n_bignum_gcm_8x_}
 #endif
       },
       [] {
