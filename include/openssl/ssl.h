@@ -306,8 +306,8 @@ OPENSSL_EXPORT int SSL_has_pending(const SSL *ssl);
 //
 // If |num| is zero, |SSL_write| writes no application data but still writes any
 // pending handshake data, such as TLS 1.3 NewSessionTicket messages deferred
-// from the handshake (see |SSL_CTX_set_num_tickets|) or a KeyUpdate queued by
-// |SSL_key_update|. On success, it returns zero. |SSL_get_error| reports this
+// from the handshake (see |SSL_MODE_FLUSH_TLS13_TICKETS|) or a KeyUpdate queued
+// by |SSL_key_update|. On success, it returns zero. |SSL_get_error| reports this
 // successful zero return as |SSL_ERROR_SYSCALL|, so callers must handle zero
 // as the success result when |num| is zero. However, an underlying BIO may
 // also return zero on write failure, so zero alone cannot distinguish success
@@ -2778,17 +2778,12 @@ OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
 // each TLS 1.3 server handshake. It returns one. Large values of |num_tickets|
 // will be capped within the library.
 //
-// Normally, tickets wait for the server's next |SSL_write| unless
-// |SSL_MODE_FLUSH_TLS13_TICKETS| is set. QUIC and accepted 0-RTT already send
-// tickets during the handshake. A server that does not otherwise write may
-// flush them with a zero-length |SSL_write|; see |SSL_write| for details.
-//
-// By default, AWS-LC sends two tickets.
+// By default, AWS-LC sends two tickets. See |SSL_MODE_FLUSH_TLS13_TICKETS|
+// for when tickets are written.
 OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 
 // SSL_CTX_get_num_tickets returns the number of tickets |ctx| is configured to
-// send for a TLS 1.3 handshake as a server. See |SSL_CTX_set_num_tickets| for
-// when the tickets are written.
+// send for a TLS 1.3 handshake as a server.
 OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 
 

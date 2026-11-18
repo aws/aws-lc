@@ -1720,107 +1720,88 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsSmallBuffer) {
     return;
   }
 
-  for (bool fail_write : {false, true}) {
-    SCOPED_TRACE(fail_write);
-    ASSERT_NO_FATAL_FAILURE(ResetContexts());
-    g_last_session = nullptr;
-    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
-    SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
-    SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
-    ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
-                                      server_ctx_.get()));
-    BIO *bio1 = nullptr, *bio2 = nullptr;
-    ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
-    SSL_set_bio(client_.get(), bio1, bio1);
-    SSL_set_bio(server_.get(), bio2, bio2);
+  g_last_session = nullptr;
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+  SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+  SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+  BIO *bio1 = nullptr, *bio2 = nullptr;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
+  SSL_set_bio(client_.get(), bio1, bio1);
+  SSL_set_bio(server_.get(), bio2, bio2);
 
-    // Stop driving the client's handshake once it completes. Calling
-    // |CompleteHandshakes| would spin forever without draining the tickets.
-    int client_ret = -1, server_ret = -1;
-    for (size_t i = 0; client_ret != 1; i++) {
-      ASSERT_LT(i, 100000u);
-      client_ret = SSL_do_handshake(client_.get());
-      if (client_ret != 1) {
-        ASSERT_EQ(-1, client_ret);
-        int err = SSL_get_error(client_.get(), client_ret);
-        ASSERT_TRUE(err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE);
-      }
-      server_ret = SSL_do_handshake(server_.get());
-      ASSERT_EQ(-1, server_ret);
-      int err = SSL_get_error(server_.get(), server_ret);
+  // Stop driving the client's handshake once it completes. Calling
+  // |CompleteHandshakes| would spin forever without draining the tickets.
+  int client_ret = -1, server_ret = -1;
+  for (size_t i = 0; client_ret != 1; i++) {
+    ASSERT_LT(i, 100000u);
+    client_ret = SSL_do_handshake(client_.get());
+    if (client_ret != 1) {
+      ASSERT_EQ(-1, client_ret);
+      int err = SSL_get_error(client_.get(), client_ret);
       ASSERT_TRUE(err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE);
     }
-    ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
-    ASSERT_TRUE(SSL_in_init(server_.get()));
-    EXPECT_FALSE(g_last_session);
-
-    // Without a client read, the server must still be blocked on its tickets.
     server_ret = SSL_do_handshake(server_.get());
     ASSERT_EQ(-1, server_ret);
-    ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+    int err = SSL_get_error(server_.get(), server_ret);
+    ASSERT_TRUE(err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE);
+  }
+  ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+  ASSERT_TRUE(SSL_in_init(server_.get()));
+  EXPECT_FALSE(g_last_session);
+
+  // Without a client read, the server must still be blocked on its tickets.
+  server_ret = SSL_do_handshake(server_.get());
+  ASSERT_EQ(-1, server_ret);
+  ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+  ASSERT_TRUE(SSL_in_init(server_.get()));
+
+  char buf = 0;
+  for (size_t i = 0; server_ret != 1; i++) {
+    ASSERT_LT(i, 100000u);
     ASSERT_TRUE(SSL_in_init(server_.get()));
-
-    if (fail_write) {
-      // A fatal transport error after a partial ticket write must not turn into
-      // a successful handshake with an incompletely flushed flight. The BIO
-      // pair reports a broken pipe through the error queue rather than as a
-      // system error, so it is not ignored as a closed connection.
-      ASSERT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server_.get())));
-      server_ret = SSL_do_handshake(server_.get());
-      EXPECT_EQ(-1, server_ret);
-      EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), server_ret));
-      EXPECT_TRUE(SSL_in_init(server_.get()));
-      ERR_clear_error();
-      continue;
-    }
-
-    char buf = 0;
-    for (size_t i = 0; server_ret != 1; i++) {
-      ASSERT_LT(i, 100000u);
-      ASSERT_TRUE(SSL_in_init(server_.get()));
-      client_ret = SSL_read(client_.get(), &buf, 1);
-      ASSERT_EQ(-1, client_ret);
-      ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), client_ret));
-      server_ret = SSL_do_handshake(server_.get());
-      if (server_ret != 1) {
-        ASSERT_EQ(-1, server_ret);
-        ASSERT_EQ(SSL_ERROR_WANT_WRITE,
-                  SSL_get_error(server_.get(), server_ret));
-        EXPECT_TRUE(SSL_in_init(server_.get()));
-      }
-    }
-    EXPECT_FALSE(SSL_in_init(server_.get()));
-    // Consume the final byte written by the successful handshake call.
     client_ret = SSL_read(client_.get(), &buf, 1);
     ASSERT_EQ(-1, client_ret);
     ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), client_ret));
-    ASSERT_TRUE(g_last_session);
-    ASSERT_NO_FATAL_FAILURE(TransferServerSSL());
-    EXPECT_NE(0u, SSL_get_mode(server_.get()) & SSL_MODE_FLUSH_TLS13_TICKETS);
+    server_ret = SSL_do_handshake(server_.get());
+    if (server_ret != 1) {
+      ASSERT_EQ(-1, server_ret);
+      ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(server_.get(), server_ret));
+      EXPECT_TRUE(SSL_in_init(server_.get()));
+    }
+  }
+  EXPECT_FALSE(SSL_in_init(server_.get()));
+  // Consume the final byte written by the successful handshake call.
+  client_ret = SSL_read(client_.get(), &buf, 1);
+  ASSERT_EQ(-1, client_ret);
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), client_ret));
+  ASSERT_TRUE(g_last_session);
+  ASSERT_NO_FATAL_FAILURE(TransferServerSSL());
+  EXPECT_NE(0u, SSL_get_mode(server_.get()) & SSL_MODE_FLUSH_TLS13_TICKETS);
 
-    // Application data must still flow in both directions after flushing.
-    for (bool from_server : {false, true}) {
-      SCOPED_TRACE(from_server);
-      SSL *writer = from_server ? server_.get() : client_.get();
-      SSL *reader = from_server ? client_.get() : server_.get();
-      static const char kMessage[] = "hello world";
-      char received[sizeof(kMessage)];
-      for (size_t i = 0;; i++) {
-        ASSERT_LT(i, 100000u);
-        int write_ret = SSL_write(writer, kMessage, sizeof(kMessage));
-        int write_err = SSL_get_error(writer, write_ret);
-        int read_ret = SSL_read(reader, received, sizeof(received));
-        if (write_ret > 0) {
-          EXPECT_EQ(static_cast<int>(sizeof(kMessage)), write_ret);
-          ASSERT_EQ(static_cast<int>(sizeof(kMessage)), read_ret);
-          EXPECT_EQ(Bytes(kMessage), Bytes(received));
-          break;
-        }
-        ASSERT_EQ(-1, write_ret);
-        ASSERT_EQ(SSL_ERROR_WANT_WRITE, write_err);
-        ASSERT_EQ(-1, read_ret);
-        ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(reader, read_ret));
+  // Application data must still flow in both directions after flushing.
+  for (bool from_server : {false, true}) {
+    SCOPED_TRACE(from_server);
+    SSL *writer = from_server ? server_.get() : client_.get();
+    SSL *reader = from_server ? client_.get() : server_.get();
+    static const char kMessage[] = "hello world";
+    char received[sizeof(kMessage)];
+    for (size_t i = 0;; i++) {
+      ASSERT_LT(i, 100000u);
+      int write_ret = SSL_write(writer, kMessage, sizeof(kMessage));
+      int write_err = SSL_get_error(writer, write_ret);
+      int read_ret = SSL_read(reader, received, sizeof(received));
+      if (write_ret > 0) {
+        EXPECT_EQ(static_cast<int>(sizeof(kMessage)), write_ret);
+        ASSERT_EQ(static_cast<int>(sizeof(kMessage)), read_ret);
+        EXPECT_EQ(Bytes(kMessage), Bytes(received));
+        break;
       }
+      ASSERT_EQ(-1, write_ret);
+      ASSERT_EQ(SSL_ERROR_WANT_WRITE, write_err);
+      ASSERT_EQ(-1, read_ret);
+      ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(reader, read_ret));
     }
   }
 }
@@ -1862,7 +1843,9 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
       // Some other system error.
       {ETIMEDOUT, false, false},
 #endif
-      // No system error.
+      // A BIO pair reports a broken pipe only on the error queue.
+      {0, true, false},
+      // No error on either channel.
       {0, false, false},
   };
 

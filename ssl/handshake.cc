@@ -548,6 +548,9 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
           if (!closed || SSL_get_error(ssl, ret) != SSL_ERROR_SYSCALL) {
             return ret;
           }
+          // Early application writes require accepted 0-RTT, which sends its
+          // tickets in the first flight and never reaches this state.
+          assert(ssl->s3->write_buffer.empty());
           // Drop the flight so the handshake does not complete with a
           // partially-written one. The dropped records were already sealed,
           // which leaves a gap in the write sequence numbers, so the peer
