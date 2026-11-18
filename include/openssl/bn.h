@@ -250,8 +250,8 @@ OPENSSL_EXPORT int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn);
 // Certain BIGNUM operations need to use many temporary variables and
 // allocating and freeing them can be quite slow. Thus such operations typically
 // take a |BN_CTX| parameter, which contains a pool of |BIGNUMs|. The |ctx|
-// argument to a public function may be NULL, in which case a local |BN_CTX|
-// will be created just for the lifetime of that call.
+// argument to a public function must not be NULL unless that function's
+// documentation says otherwise.
 //
 // A function must call |BN_CTX_start| first. Then, |BN_CTX_get| may be called
 // repeatedly to obtain temporary |BIGNUM|s. All |BN_CTX_get| calls must be made
@@ -693,6 +693,9 @@ OPENSSL_EXPORT int BN_enhanced_miller_rabin_primality_test(
 // If |cb| is not NULL then it is called during the checking process. See the
 // comment above |BN_GENCB|.
 //
+// |ctx| may be NULL, in which case a local |BN_CTX| is created just for the
+// lifetime of the call.
+//
 // The function returns one on success and zero on error.
 OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
                                      const BIGNUM *candidate, int checks,
@@ -710,6 +713,9 @@ OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
 //
 // If |cb| is not NULL then it is called during the checking process. See the
 // comment above |BN_GENCB|.
+//
+// |ctx| may be NULL, in which case a local |BN_CTX| is created just for the
+// lifetime of the call.
 //
 // WARNING: deprecated. Use |BN_primality_test|.
 OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
@@ -776,12 +782,15 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 // Montgomery domain.
 
 // BN_MONT_CTX_new_for_modulus returns a fresh |BN_MONT_CTX| given the modulus,
-// |mod| or NULL on error. Note this function assumes |mod| is public.
+// |mod| or NULL on error. Note this function assumes |mod| is public. |ctx| may
+// be NULL, in which case a local |BN_CTX| is created just for the lifetime of
+// the call.
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod,
                                                         BN_CTX *ctx);
 
 // BN_MONT_CTX_new_consttime behaves like |BN_MONT_CTX_new_for_modulus| but
-// treats |mod| as secret.
+// treats |mod| as secret. Unlike |BN_MONT_CTX_new_for_modulus|, |ctx| must not
+// be NULL.
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod,
                                                       BN_CTX *ctx);
 
@@ -892,8 +901,9 @@ OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new(void);
 
 // BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
-// returns one on success and zero on error. Use |BN_MONT_CTX_new_for_modulus|
-// instead.
+// returns one on success and zero on error. |ctx| may be NULL, in which case a
+// local |BN_CTX| is created just for the lifetime of the call. Use
+// |BN_MONT_CTX_new_for_modulus| instead.
 OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
                                    BN_CTX *ctx);
 
