@@ -167,6 +167,10 @@
     "cmd": ["crypto/tree_drbg_jitter_entropy_isolated_test"]
   },
   {
+    "comment": "Run ML-KEM private key parsing tests in isolated process",
+    "cmd": ["crypto/kem_isolated_test"]
+  },
+  {
     "cmd": [
       "crypto/rwlock_static_init"
     ]
