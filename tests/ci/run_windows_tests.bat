@@ -39,6 +39,11 @@ if not exist "%MSVC_PATH%" (
 echo Using Visual Studio environment: "%MSVC_PATH%"
 call "%MSVC_PATH%" %ARCH_OPTION% || goto error
 
+@rem rust-phase1 CI probe: Rust and its llvm-tools component, so ENABLE_RUST=AUTO
+@rem builds Rust. install_rust.ps1 only warns if it can't install them.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SRC_ROOT%\tests\ci\install_rust.ps1"
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+
 if /i "%ARCH_OPTION%" == "arm64" (
   set "CC=clang-cl"
   set "CXX=clang-cl"
