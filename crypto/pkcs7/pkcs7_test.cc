@@ -1591,6 +1591,41 @@ TEST(PKCS7Test, SetTypeChangeType) {
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
 }
 
+TEST(PKCS7Test, AbsentContent) {
+  // ContentInfo's content is OPTIONAL so that a detached signature can omit
+  // its inner data. The other PKCS #7 content types must be present.
+  for (uint8_t type : {2, 3, 4, 5, 6}) {
+    SCOPED_TRACE(type);
+    // SEQUENCE { OBJECT IDENTIFIER 1.2.840.113549.1.7.|type| }
+    const uint8_t der[] = {0x30, 0x0b, 0x06, 0x09, 0x2a, 0x86, 0x48,
+                           0x86, 0xf7, 0x0d, 0x01, 0x07, type};
+    const uint8_t *ptr = der;
+    bssl::UniquePtr<PKCS7> p7(d2i_PKCS7(nullptr, &ptr, sizeof(der)));
+    EXPECT_FALSE(p7);
+  }
+  static const uint8_t kDataNoContent[] = {0x30, 0x0b, 0x06, 0x09, 0x2a,
+                                           0x86, 0x48, 0x86, 0xf7, 0x0d,
+                                           0x01, 0x07, 0x01};
+  const uint8_t *ptr = kDataNoContent;
+  bssl::UniquePtr<PKCS7> p7(d2i_PKCS7(nullptr, &ptr, sizeof(kDataNoContent)));
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_data(p7.get()));
+
+  // A failed |PKCS7_set_type| leaves |p7| as it was.
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_FALSE(PKCS7_set_type(p7.get(), NID_sha256));
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  ASSERT_TRUE(crl);
+  EXPECT_TRUE(PKCS7_add_crl(p7.get(), crl.get()));
+
+  // A signedData's inner ContentInfo is required.
+  EXPECT_FALSE(PKCS7_set_content(p7.get(), nullptr));
+  EXPECT_TRUE(PKCS7_is_detached(p7.get()));
+}
+
 TEST(PKCS7Test, DataInitFinal) {
   bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio, bio_in;

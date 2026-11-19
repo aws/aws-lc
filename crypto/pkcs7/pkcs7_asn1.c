@@ -4,6 +4,8 @@
 #include <openssl/pkcs7.h>
 
 #include <openssl/asn1t.h>
+#include <openssl/err.h>
+#include <openssl/obj.h>
 #include <openssl/pem.h>
 
 #include "../internal.h"
@@ -26,8 +28,34 @@ ASN1_ADB(PKCS7) = {
         ASN1_EXP_OPT(PKCS7, d.encrypted, PKCS7_ENCRYPT,
                      0))} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, &p7default_tt);
 
-ASN1_SEQUENCE(PKCS7) = {ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
-                        ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END(PKCS7)
+// ContentInfo's content is OPTIONAL so that a detached signature can omit its
+// inner data, but the structured content types are required, and code that
+// accepts them assumes |p7->d| is set. Reject them without content.
+static int pkcs7_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
+                    void *exarg) {
+  if (operation == ASN1_OP_D2I_POST) {
+    PKCS7 *p7 = (PKCS7 *)*pval;
+    switch (OBJ_obj2nid(p7->type)) {
+      case NID_pkcs7_signed:
+      case NID_pkcs7_enveloped:
+      case NID_pkcs7_signedAndEnveloped:
+      case NID_pkcs7_digest:
+      case NID_pkcs7_encrypted:
+        if (p7->d.ptr == NULL) {
+          OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
+          return 0;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return 1;
+}
+
+ASN1_SEQUENCE_cb(PKCS7, pkcs7_cb) = {
+    ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
+    ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END_cb(PKCS7, PKCS7)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
 
