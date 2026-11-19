@@ -7,6 +7,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   resolve:
     name: resolve (${{ matrix.name }})
@@ -37,19 +41,31 @@ jobs:
         with:
           name: autofix-${{ matrix.name }}
           path: ${{ env.OUT }}
+      - name: Check the reviewer judged the fix safe
+        run: |
+          jq -e '.outcome == "safe"' "$OUT/review.json" ||
+            { echo "::error::The reviewer did not judge the fix safe, so no PR is opened."; exit 1; }
+          test -f "$OUT/pr.md"
       - name: Apply the fix
         working-directory: aws-lc-fix
-        run: |
-          test -f "$OUT/pr.md"
-          git apply --index "$OUT/changes.diff"
+        run: git apply --index "$OUT/changes.diff"
       - name: Check the fix edits only the runner and its patch files
         working-directory: aws-lc-fix
         env:
-          RUNNER: tests/ci/integration/run_${{ matrix.target.name }}_integration.sh
+          NAME: ${{ matrix.target.name }}
         run: |
-          git diff --cached --name-only --no-renames --exit-code -- \
-            ":(exclude)$RUNNER" ":(exclude,glob)tests/ci/integration/**/*.patch" ||
-            { echo "::error::The fix edits the files above, outside the runner and its patch files."; exit 1; }
+          runner="tests/ci/integration/run_${NAME}_integration.sh"
+          runner_text=$(git show "HEAD:$runner")
+          allowed=(":(exclude)$runner" ":(exclude,glob)tests/ci/integration/${NAME}_patch/**/*.patch")
+          for dir in tests/ci/integration/*_patch; do
+            if [[ "$runner_text" == *"${dir##*/}"* ]]; then
+              allowed+=(":(exclude,glob)$dir/**/*.patch")
+            fi
+          done
+          git diff --cached --name-only --no-renames --exit-code -- "${allowed[@]}" ||
+            { echo "::error::The fix edits the files above, outside the runner and its patch folders."; exit 1; }
+          ! git diff --cached --summary | grep -E '(mode|=>) (120000|160000) ' ||
+            { echo "::error::The fix adds the symlinks or submodules above."; exit 1; }
       - name: Commit the fix
         working-directory: aws-lc-fix
         run: |

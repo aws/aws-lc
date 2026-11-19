@@ -54,7 +54,8 @@ jobs:
             mkdir -p "autofix/$target"
             # Drop ANSI color codes, then every byte that is not tab, newline, or printable ASCII.
             gh api --allow-escape-sequences "repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
-              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | tr -cd '\t\n -~' > "autofix/$log.log"
+              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | tr -cd '\t\n -~' > "autofix/$log.log" ||
+              { echo "::warning::Could not download the log of job $job_id for $target."; rm -f "autofix/$log.log"; }
           done
       - uses: actions/upload-artifact@v7
         if: always()
@@ -122,6 +123,16 @@ jobs:
           done
           sudo iptables -I DOCKER-USER -i docker0 -p udp --dport 53 -j ACCEPT
           sudo iptables -I DOCKER-USER -i docker0 -p tcp --dport 53 -j ACCEPT
+          if sudo ip6tables -n -L DOCKER-USER >/dev/null 2>&1; then
+            sudo ip6tables -I DOCKER-USER -d fd00:ec2::254 -j DROP
+            for net in fc00::/7 fe80::/10; do
+              sudo ip6tables -I DOCKER-USER -i docker0 -d "$net" -j DROP
+            done
+            sudo ip6tables -I DOCKER-USER -i docker0 -p udp --dport 53 -j ACCEPT
+            sudo ip6tables -I DOCKER-USER -i docker0 -p tcp --dport 53 -j ACCEPT
+          else
+            echo "::notice::ip6tables has no DOCKER-USER chain, so no IPv6 rules were added."
+          fi
       - name: Fix the integration and replay the fix
         working-directory: tests/ci/integration
         env:

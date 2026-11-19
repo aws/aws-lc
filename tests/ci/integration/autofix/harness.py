@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 import json
 import os
 import re
@@ -22,7 +25,8 @@ from .sandbox import Sandbox, ReplayResult
 from .session import Session
 from .target import IntegrationTarget
 
-_MODEL = f"bedrock/{json.loads((Path(__file__).parents[4] / '.github/workflows/ai-config.json').read_text())['opus']}"
+_AWSLC = Path(__file__).parents[4]
+_MODEL = f"bedrock/{json.loads((_AWSLC / '.github/workflows/ai-config.json').read_text())['opus']}"
 _LIMITS = Limits(turns=150, total_tokens=6_000_000)
 _TIMEOUT = 45 * 60
 _REASON_TIMEOUT = 60 * 60
@@ -55,6 +59,7 @@ _DESCRIPTION_PATTERNS = (
     re.compile(r"!\[|<img\b", re.I),
 )
 _INVISIBLE_CATEGORIES = {"Cc", "Cf", "Cn", "Zl", "Zp"}
+_NON_REGULAR_MODE = re.compile(r"^(?:new file |deleted file |old |new )mode (?!100644$|100755$)", re.M)
 
 
 def _runs_or_writes(arg: str) -> bool:
@@ -272,18 +277,21 @@ class Harness:
         return verdict
 
     def _follows_rules(self, diff: str, description: str) -> bool:
-        """Return whether the diff edits only the runner and its .patch files, with no secrets or hidden text.
+        """Return whether the diff edits only the runner and its patch files, with no secrets or hidden text.
 
-        The description also may not hold links, @-mentions, or images.
+        Every file must be a regular file, and patch files must be in the target's patch folders.
+        The description may not hold links, @-mentions, or images.
         """
         if not diff:
             return False
         runner = self.target.runner
+        patch_dirs = self.target.patch_dirs(_AWSLC)
         added = [line[1:] for line in diff.splitlines() if line.startswith("+")]
         text = "\n".join([*added, description])
         return (
-            all(path == runner or (path.suffix == ".patch" and path.is_relative_to(runner.parent))
+            all(path == runner or (path.suffix == ".patch" and any(path.is_relative_to(d) for d in patch_dirs))
                 for path in Git.changed_paths(diff))
+            and not _NON_REGULAR_MODE.search(diff)
             and not any(pattern.search(text) for pattern in _SECRET_PATTERNS)
             and not any(pattern.search(description) for pattern in _DESCRIPTION_PATTERNS)
             and not any(unicodedata.category(char) in _INVISIBLE_CATEGORIES and char not in "\t\n\r" for char in text)

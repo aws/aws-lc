@@ -72,16 +72,14 @@ class AwsLcGitHubOidcStack(Stack):
                                           }))
 
         autofix_oidc_role_name = "AwsLcGitHubActionsAutofixOidcRole"
-        # autofix_integration_failures.yml is triggered only by workflow_run.
         self.autofix_oidc_role = iam.Role(self, id=autofix_oidc_role_name, role_name=autofix_oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                              },
-                                              "StringLike": {
-                                                  "token.actions.githubusercontent.com:sub": f"repo:{repo}:*",
+                                                  "token.actions.githubusercontent.com:sub":
+                                                      f"repo:{repo}:ref:refs/heads/main",
                                                   "token.actions.githubusercontent.com:job_workflow_ref":
-                                                      f"{repo}/.github/workflows/autofix_integration_failures.yml@*",
+                                                      f"{repo}/.github/workflows/autofix_integration_failures.yml@refs/heads/main",
                                               },
                                           }))
 
