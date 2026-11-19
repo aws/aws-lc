@@ -2800,3 +2800,105 @@ TEST(PKCS7Test, SignatureBypassWithMalformedAuthAttr) {
   EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
                              out_bio.get(), /*flags*/ 0));
 }
+
+// Replaces the encapsulated content of the signedData |p7| with |content|
+// under the content type id-smime-ct-TSTInfo, and returns the result encoded
+// and parsed back.
+static bssl::UniquePtr<PKCS7> ReplaceSignedContent(
+    PKCS7 *p7, bssl::UniquePtr<ASN1_TYPE> content) {
+  bssl::UniquePtr<PKCS7> inner(PKCS7_new());
+  if (!inner) {
+    return nullptr;
+  }
+  inner->type = OBJ_nid2obj(NID_id_smime_ct_TSTInfo);
+  inner->d.other = content.release();
+  if (!PKCS7_set_content(p7, inner.get())) {
+    return nullptr;
+  }
+  inner.release();
+
+  uint8_t *der = nullptr;
+  int der_len = i2d_PKCS7(p7, &der);
+  if (der_len <= 0) {
+    return nullptr;
+  }
+  bssl::UniquePtr<uint8_t> free_der(der);
+  const uint8_t *ptr = der;
+  return bssl::UniquePtr<PKCS7>(d2i_PKCS7(nullptr, &ptr, der_len));
+}
+
+static bssl::UniquePtr<ASN1_TYPE> MakeASN1Type(int type, const uint8_t *data,
+                                               size_t len) {
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(type));
+  bssl::UniquePtr<ASN1_TYPE> ret(ASN1_TYPE_new());
+  if (!str || !ret || !ASN1_STRING_set(str.get(), data, len)) {
+    return nullptr;
+  }
+  ASN1_TYPE_set(ret.get(), type, str.release());
+  return ret;
+}
+
+TEST(PKCS7Test, VerifyNonDataContent) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(
+      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> key(raw);
+  bssl::UniquePtr<X509> cert =
+      MakeTestCert("Signer", "Signer", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(X509_sign(cert.get(), key.get(), EVP_sha256()));
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  auto sign = [&](const char *text) {
+    bssl::UniquePtr<BIO> in(BIO_new_mem_buf(text, strlen(text)));
+    return bssl::UniquePtr<PKCS7>(in ? PKCS7_sign(cert.get(), key.get(),
+                                                  /*certs=*/nullptr, in.get(),
+                                                  PKCS7_BINARY | PKCS7_NOATTR)
+                                     : nullptr);
+  };
+  bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out);
+  auto verify = [&](PKCS7 *p7) {
+    return PKCS7_verify(p7, /*certs=*/nullptr, store.get(), /*indata=*/nullptr,
+                        out.get(), PKCS7_NOVERIFY);
+  };
+
+  // A signature over content of a type other than data verifies, and that
+  // content is what is written out.
+  static const uint8_t kHello[] = {'h', 'e', 'l', 'l', 'o'};
+  bssl::UniquePtr<PKCS7> p7 = sign("hello");
+  ASSERT_TRUE(p7);
+  p7 = ReplaceSignedContent(
+      p7.get(), MakeASN1Type(V_ASN1_OCTET_STRING, kHello, sizeof(kHello)));
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(verify(p7.get()));
+  const uint8_t *out_data;
+  size_t out_len;
+  ASSERT_TRUE(BIO_mem_contents(out.get(), &out_data, &out_len));
+  EXPECT_EQ(Bytes(out_data, out_len), Bytes(kHello));
+
+  // A signature over the empty string does not verify other content.
+  static const uint8_t kAttacker[] = {'a', 't', 't', 'a', 'c', 'k'};
+  p7 = sign("");
+  ASSERT_TRUE(p7);
+  p7 = ReplaceSignedContent(
+      p7.get(),
+      MakeASN1Type(V_ASN1_OCTET_STRING, kAttacker, sizeof(kAttacker)));
+  ASSERT_TRUE(p7);
+  EXPECT_FALSE(verify(p7.get()));
+
+  // Attached content that isn't an OCTET STRING can't be hashed, so it is an
+  // error rather than being verified as the empty string.
+  static const uint8_t kSequence[] = {0x30, 0x03, 0x02, 0x01, 0x01};
+  p7 = sign("");
+  ASSERT_TRUE(p7);
+  p7 = ReplaceSignedContent(
+      p7.get(), MakeASN1Type(V_ASN1_SEQUENCE, kSequence, sizeof(kSequence)));
+  ASSERT_TRUE(p7);
+  EXPECT_FALSE(verify(p7.get()));
+}
