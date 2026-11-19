@@ -1,0 +1,31 @@
+# Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+# Rust code in libcrypto. CMake builds it when configured with
+# -DENABLE_RUST=ON; see cmake/cargo.cmake.
+
+[package]
+name = "caracal"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR ISC"
+publish = false
+
+# A workspace of its own, so Cargo doesn't count the crate as a member of an
+# enclosing workspace, such as aws-lc-rs's, which holds AWS-LC as a submodule.
+[workspace]
+
+[lib]
+crate-type = ["staticlib"]
+
+# CMake sets the awslc_prefix cfg in BORINGSSL_PREFIX builds (src/lib.rs).
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(awslc_prefix)"] }
+
+# The staticlib is linked into libcrypto, which has no Rust runtime to unwind
+# into. Unwinding across the C ABI is undefined behaviour, so abort instead.
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
