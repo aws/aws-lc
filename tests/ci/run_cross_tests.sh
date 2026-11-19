@@ -34,6 +34,25 @@ pushd "${SCRATCH_FOLDER}"
 wget -q https://aws-libcrypto.s3.us-west-2.amazonaws.com/cross-compile-toolchains/host-x86_64-pc-linux-gnu/${TARGET_CPU}-x-tools.tar.xz
 tar Jxf ${TARGET_CPU}-x-tools.tar.xz --no-same-owner --no-same-permissions
 
+# rust-phase1 CI probe (not for merge): CROSS_BINUTILS_VERSION builds that
+# binutils release over the toolchain's own. loongarch64's 2.39 rejects the
+# relocations rustc emits (R_LARCH_32_PCREL, R_LARCH_RELAX, R_LARCH_CALL36).
+if [ -n "${CROSS_BINUTILS_VERSION:-}" ]; then
+  chmod -R u+w "${TARGET_PLATFORM}"
+  wget -q "https://sourceware.org/pub/binutils/releases/binutils-${CROSS_BINUTILS_VERSION}.tar.xz"
+  tar xf "binutils-${CROSS_BINUTILS_VERSION}.tar.xz"
+  mkdir binutils-build
+  pushd binutils-build
+  "../binutils-${CROSS_BINUTILS_VERSION}/configure" --target="${TARGET_PLATFORM}" \
+    --prefix="${SCRATCH_FOLDER}/${TARGET_PLATFORM}" \
+    --with-sysroot="${SCRATCH_FOLDER}/${TARGET_PLATFORM}/${TARGET_PLATFORM}/sysroot" \
+    --disable-nls --disable-werror --disable-gdb --disable-gdbserver --disable-sim --disable-gprofng > /dev/null
+  make -j"$(nproc)" > /dev/null
+  make install > /dev/null
+  popd
+  "${SCRATCH_FOLDER}/${TARGET_PLATFORM}/bin/${TARGET_PLATFORM}-ld" --version | head -1
+fi
+
 cat <<EOF > ${TARGET_CPU}.cmake
 # Specify the target system
 set(CMAKE_SYSTEM_NAME Linux)

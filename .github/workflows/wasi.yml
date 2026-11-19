@@ -29,6 +29,9 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake ninja-build
 
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh wasm32-wasip2
+
       - name: Setup WASI SDK
         run: |
           # wasi-sdk names its assets x86_64 / arm64

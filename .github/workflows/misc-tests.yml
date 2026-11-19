@@ -111,6 +111,10 @@ jobs:
         with:
           path: "path has spaces/aws-lc"
       - uses: ilammy/msvc-dev-cmd@v1
+      - name: Install Rust
+        shell: bash
+        working-directory: path has spaces/aws-lc
+        run: ./tests/ci/install_rust.sh
       - name: Setup CMake (Ninja)
         if:  ${{ matrix.ninja == '1' }}
         uses: threeal/cmake-action@v2.1.0

@@ -72,7 +72,9 @@ jobs:
       - name: Install dependencies
         run: |
           source tests/ci/retry_util.sh
-          retry_with_backoff sudo pkg install -y git gmake cmake go ninja
+          retry_with_backoff sudo pkg install -y git gmake cmake go ninja rust curl
+          # FreeBSD 15.0's rust package can need a newer libc than the VM image.
+          rustc -vV > /dev/null 2>&1 || tests/ci/install_rust.sh
       - name: Run tests
         run: tests/ci/run_bsd_tests.sh
 

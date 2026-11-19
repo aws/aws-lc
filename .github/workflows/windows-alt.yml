@@ -148,6 +148,9 @@ jobs:
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Install Rust
+        shell: bash
+        run: tests/ci/install_rust.sh ${{ matrix.target == 'x64_arm64' && 'aarch64-pc-windows-msvc' || '' }}
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.target }}
@@ -188,6 +191,9 @@ jobs:
         run:  rm "C:/Program Files/LLVM/bin/clang-cl.exe"
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Install Rust
+        shell: bash
+        run: tests/ci/install_rust.sh ${{ matrix.target == 'x64_arm64' && 'aarch64-pc-windows-msvc' || '' }}
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.target }}
@@ -255,6 +261,8 @@ jobs:
           sudo update-binfmts --display
           sudo rm -rf /tmp/*
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh x86_64-pc-windows-gnu
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
@@ -267,6 +275,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh x86_64-pc-windows-msvc
       - name: Setup toolchain
         run: |
           set -ex
