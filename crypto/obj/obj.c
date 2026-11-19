@@ -34,20 +34,11 @@ static LHASH_OF(ASN1_OBJECT) *global_added_by_data = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_nid = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_short_name = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_long_name = NULL;
-
-static struct CRYPTO_STATIC_MUTEX global_next_nid_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
 static unsigned global_next_nid = NUM_NID;
 
-static int obj_next_nid(void) {
-  int ret;
-
-  CRYPTO_STATIC_MUTEX_lock_write(&global_next_nid_lock);
-  ret = global_next_nid++;
-  CRYPTO_STATIC_MUTEX_unlock_write(&global_next_nid_lock);
-
-  return ret;
-}
+// obj_next_nid returns a new NID for a run-time added object. The caller must
+// hold |global_added_lock| for writing.
+static int obj_next_nid(void) { return global_next_nid++; }
 
 ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   ASN1_OBJECT *r;
@@ -492,7 +483,8 @@ static int cmp_long_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
 static int obj_registered_data2nid(const ASN1_OBJECT *obj) {
   int nid = obj_builtin_data2nid(obj);
   if (nid == NID_undef && global_added_by_data != NULL) {
-    const ASN1_OBJECT *match = lh_ASN1_OBJECT_retrieve(global_added_by_data, obj);
+    const ASN1_OBJECT *match =
+        lh_ASN1_OBJECT_retrieve(global_added_by_data, obj);
     if (match != NULL) {
       nid = match->nid;
     }
@@ -615,7 +607,8 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
   } else {
     // Remove whichever inserts succeeded, so |obj| is not published and the
     // caller can free it. Each table had no entry equal to |obj|, so these
-    // remove |obj| itself or nothing. Deletion does not allocate.
+    // remove |obj| itself or nothing. Deletion cannot fail: it may try to
+    // shrink the table, but a failed shrink is ignored.
     lh_ASN1_OBJECT_delete(global_added_by_nid, obj);
     if (obj->length != 0 && obj->data != NULL) {
       lh_ASN1_OBJECT_delete(global_added_by_data, obj);
