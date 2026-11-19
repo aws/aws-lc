@@ -62,7 +62,11 @@ int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert) {
 int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer, EVP_PKEY *key,
                       const EVP_MD *dgst, STACK_OF(X509) *certs,
                       unsigned long flags) {
-  if (req->optionalSignature != NULL) {
+  // |OCSP_request_add1_cert| creates |req->optionalSignature| to hold
+  // certificates before |req| is signed, so only a non-empty signature value
+  // means |req| is already signed.
+  OCSP_SIGNATURE *old_sig = req->optionalSignature;
+  if (old_sig != NULL && ASN1_STRING_length(old_sig->signature) > 0) {
     // OpenSSL lets an |OCSP_REQUEST| be signed twice, regardless of whether
     // an |optionalSignature| exists. Signing an OCSP Request twice creates
     // a dangling |OCSP_SIGNATURE| pointer with no clear way of recovering
@@ -71,16 +75,25 @@ int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer, EVP_PKEY *key,
     // that the OCSP request can or should be signed twice.
     // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.2
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE);
-    goto err;
+    return 0;
   }
 
   if (!OCSP_request_set1_name(req, X509_get_subject_name(signer))) {
-    goto err;
+    return 0;
   }
-  req->optionalSignature = OCSP_SIGNATURE_new();
-  if (req->optionalSignature == NULL) {
-    goto err;
+  OCSP_SIGNATURE *sig = OCSP_SIGNATURE_new();
+  if (sig == NULL) {
+    return 0;
   }
+  // Keep the certificates added with |OCSP_request_add1_cert|. |old_sig| is
+  // only replaced once signing succeeds.
+  if (old_sig != NULL && old_sig->certs != NULL) {
+    sig->certs = X509_chain_up_ref(old_sig->certs);
+    if (sig->certs == NULL) {
+      goto err;
+    }
+  }
+  req->optionalSignature = sig;
   if (key != NULL) {
     if (!X509_check_private_key(signer, key)) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
@@ -111,10 +124,11 @@ int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer, EVP_PKEY *key,
     }
   }
 
+  OCSP_SIGNATURE_free(old_sig);
   return 1;
 err:
-  OCSP_SIGNATURE_free(req->optionalSignature);
-  req->optionalSignature = NULL;
+  OCSP_SIGNATURE_free(sig);
+  req->optionalSignature = old_sig;
   return 0;
 }
 
