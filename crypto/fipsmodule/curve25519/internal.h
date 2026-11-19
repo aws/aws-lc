@@ -93,16 +93,18 @@ int ED25519ph_verify_digest_no_self_test(
     const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
     const uint8_t *context, size_t context_len);
 
-// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
-// set, s2n-bignum path is capable. On x86_64 this needs BMI2/ADX, not
-// AVX-512, so it is gated on MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather
-// than MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. OPENSSL_SMALL implies only the
-// latter, so this path remains available under OPENSSL_SMALL (#3355).
+// If (1) x86_64 or aarch64, (2) linux or apple (or Windows x86_64 when the
+// build assembles s2n-bignum, see OPENSSL_S2N_BIGNUM_WINDOWS_X86_64), and
+// (3) OPENSSL_NO_ASM is not set, s2n-bignum path is capable. On x86_64 this
+// needs BMI2/ADX, not AVX-512, so it is gated on
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather than
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX. OPENSSL_SMALL implies only the latter,
+// so this path remains available under OPENSSL_SMALL (#3355).
 #if ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)) || \
      defined(OPENSSL_AARCH64)) &&                                              \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
      defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD) || \
-     defined(OPENSSL_NETBSD)) &&                  \
+     defined(OPENSSL_NETBSD) || defined(OPENSSL_S2N_BIGNUM_WINDOWS_X86_64)) && \
     !defined(OPENSSL_NO_ASM)
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif

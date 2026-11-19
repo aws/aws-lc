@@ -13,12 +13,15 @@
 // Both Fiat-crypto and s2n-bignum implementations are formally verified.
 // Fiat-crypto implementation is fully portable C code, while s2n-bignum
 // implements the operations in assembly for x86_64 and aarch64 platforms.
-// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
-// set, s2n-bignum path is capable. On x86_64 this needs BMI2/ADX, not
-// AVX-512, so it is gated on MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather
-// than MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX.
+// If (1) x86_64 or aarch64, (2) linux or apple (or Windows x86_64 when the
+// build assembles s2n-bignum, see OPENSSL_S2N_BIGNUM_WINDOWS_X86_64), and
+// (3) OPENSSL_NO_ASM is not set, s2n-bignum path is capable. On x86_64 this
+// needs BMI2/ADX, not AVX-512, so it is gated on
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2 rather than
+// MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
+     defined(OPENSSL_S2N_BIGNUM_WINDOWS_X86_64)) &&                            \
     ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)) || \
      defined(OPENSSL_AARCH64))
 #  define EC_NISTP_USE_S2N_BIGNUM

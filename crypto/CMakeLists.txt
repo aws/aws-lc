@@ -1,6 +1,8 @@
 
-# Function to handle assembly files for ARM64 targets when using MSBuild (the "Visual Studio" generator)
-# This function is necessary because MSBuild ignores ARM64 assembly file dependencies
+# Function to handle GNU-syntax assembly files (.S) when using MSBuild (the "Visual Studio" generator): for ARM64
+# targets, and for x86_64 targets that build s2n-bignum with clang-cl
+# This function is necessary because MSBuild ignores ARM64 assembly file dependencies and does not assemble .S files
+# for x86_64 at all; the x86_64 .asm files stay with the NASM integration
 include(CMakeParseArguments)
 function(msbuild_aarch64_asm)
   set(options "")
@@ -12,10 +14,22 @@ function(msbuild_aarch64_asm)
   # Set the output directory for object files
   set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
 
+  if(ARCH STREQUAL "x86_64")
+    set(ASM_TARGET_TRIPLE x86_64-pc-windows-msvc)
+    list(FILTER MSBUILD_AARCH64_ASM_ASM_FILES INCLUDE REGEX "\\.S$")
+  else()
+    set(ASM_TARGET_TRIPLE arm64-pc-windows-msvc)
+  endif()
+
   # Initialize list to store assembled object files
   set(ASSEMBLED_OBJECTS "")
 
   foreach(ASM_FILE ${MSBUILD_AARCH64_ASM_ASM_FILES})
+    # The command runs in the binary directory, where generated files are; a checked-in one needs its full path
+    if(NOT IS_ABSOLUTE "${ASM_FILE}" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${ASM_FILE}")
+      set(ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${ASM_FILE}")
+    endif()
+
     # Get the filename without extension
     get_filename_component(ASM_NAME ${ASM_FILE} NAME_WE)
     set(OBJ_FILE "${OBJ_DIR}/${ASM_NAME}.obj")
@@ -23,7 +37,7 @@ function(msbuild_aarch64_asm)
     add_custom_command(
       OUTPUT ${OBJ_FILE}
       COMMAND "${CMAKE_ASM_COMPILER}"
-              --target=arm64-pc-windows-msvc
+              --target=${ASM_TARGET_TRIPLE}
               /c
               /I "${AWSLC_BINARY_DIR}/symbol_prefix_include"
               /I "${AWSLC_SOURCE_DIR}/include"
@@ -123,6 +137,17 @@ if(NOT OPENSSL_NO_ASM)
               "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
         # Provide debug in the default format
         set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -g")
+      endif()
+
+      # s2n-bignum's x86_64 assembly is in GNU syntax. clang-cl assembles it
+      # alongside the NASM output, so with clang-cl Windows x86_64 gets the
+      # same s2n-bignum code as Linux and macOS. ASM is enabled before
+      # ASM_NASM so that .asm files stay NASM's.
+      if(ARCH STREQUAL "x86_64" AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND
+         NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2)
+        enable_language(ASM)
+        set(S2N_BIGNUM_WINDOWS_X86_64 ON)
+        add_definitions(-DOPENSSL_S2N_BIGNUM_WINDOWS_X86_64)
       endif()
 
       # On Windows, we use the NASM output.
@@ -317,7 +342,7 @@ else()
 endif()
 
 set(CRYPTO_ARCH_OBJECTS "")
-if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+if ((ARCH STREQUAL "aarch64" OR S2N_BIGNUM_WINDOWS_X86_64) AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
 endif()
 

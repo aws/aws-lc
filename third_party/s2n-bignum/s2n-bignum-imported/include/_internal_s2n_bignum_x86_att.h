@@ -12,6 +12,8 @@
 #ifdef S2N_BN_HIDE_SYMBOLS
 #   ifdef __APPLE__
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .private_extern S2N_BN_SYMBOL(name)
+#   elif defined(_WIN32)
+#      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) /* No symbol visibility in COFF */
 #   else
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .hidden S2N_BN_SYMBOL(name)
 #   endif
@@ -19,16 +21,21 @@
 #   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) .type name, %function
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_SIZE_DIRECTIVE(name) .size S2N_BN_SYMBOL(name), .-S2N_BN_SYMBOL(name)
+#endif
+
+// Windows x64 passes arguments in rcx, rdx, r8, r9 and has rdi/rsi callee-saved
+#if defined(_WIN32) && !defined(WINDOWS_ABI)
+#   define WINDOWS_ABI 1
 #endif
 
 // Enable indirect branch tracking support unless explicitly disabled
