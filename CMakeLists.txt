@@ -37,6 +37,7 @@ option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for sh
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
 option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
+option(ENABLE_RUST "Build the Rust components under crypto/rust into libcrypto (experimental; requires cargo)" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
 option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires OpenSSL 3.5+ headers; set OPENSSL_ROOT_DIR if they are not in system paths" OFF)
@@ -331,6 +332,15 @@ if(GENERATE_RUST_BINDINGS)
     message(STATUS "rustfmt not found; generated Rust bindings will not be formatted. "
                    "Install it with: rustup component add rustfmt")
   endif()
+endif()
+
+# Validate Rust component prerequisites. FIPS is not yet supported: the FIPS
+# module boundary has not been defined for Rust code.
+if(ENABLE_RUST)
+  if(FIPS)
+    message(FATAL_ERROR "ENABLE_RUST is not yet supported with FIPS")
+  endif()
+  include(cmake/cargo.cmake)
 endif()
 
 if(DISABLE_CPU_JITTER_ENTROPY)

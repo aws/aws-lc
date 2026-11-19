@@ -683,6 +683,7 @@ AWS_LC_1.0 {
     CRYPTO_realloc;
     CRYPTO_refcount_dec_and_test_zero;
     CRYPTO_refcount_inc;
+    CRYPTO_rust_byte_sum;
     CRYPTO_secure_malloc_init;
     CRYPTO_secure_malloc_initialized;
     CRYPTO_secure_used;

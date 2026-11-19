@@ -676,6 +676,7 @@ CRYPTO_pre_sandbox_init AWS_LC_1.0 PUBLIC
 CRYPTO_realloc AWS_LC_1.0 PUBLIC
 CRYPTO_refcount_dec_and_test_zero AWS_LC_1.0 PRIVATE
 CRYPTO_refcount_inc AWS_LC_1.0 PRIVATE
+CRYPTO_rust_byte_sum AWS_LC_1.0 PRIVATE
 CRYPTO_secure_malloc_init AWS_LC_1.0 PUBLIC
 CRYPTO_secure_malloc_initialized AWS_LC_1.0 PUBLIC
 CRYPTO_secure_used AWS_LC_1.0 PUBLIC

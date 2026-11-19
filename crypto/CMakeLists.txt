@@ -217,6 +217,18 @@ else()
 endif()
 add_subdirectory(fipsmodule)
 
+if(ENABLE_RUST)
+  # rust-phase0: one relocatable object holding all library Rust code, entered
+  # into build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
+  # global, and internal.h declares them hidden.
+  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/rust${CMAKE_C_OUTPUT_EXTENSION}")
+  cargo_add_rust_object(
+    OUTPUT "${RUST_OBJECT}"
+    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/Cargo.toml"
+    LIB_NAME caracal
+    EXPORTS caracal_byte_sum)
+endif()
+
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES GENERATED true)
@@ -581,6 +593,13 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
+if(ENABLE_RUST)
+  # C side of the Rust integration; the Rust code itself is linked in
+  # build_libcrypto(). AWSLC_RUST is deliberately not visible to fipsmodule.
+  target_sources(crypto_objects PRIVATE rust/rust.c)
+  target_compile_definitions(crypto_objects PRIVATE AWSLC_RUST)
+endif()
+
 function(build_libcrypto)
   set(options SET_OUTPUT_NAME)
   set(oneValueArgs NAME)
@@ -628,6 +647,10 @@ function(build_libcrypto)
     target_link_libraries(${arg_NAME} PUBLIC Threads::Threads)
   endif()
   target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
+
+  if(ENABLE_RUST)
+    target_sources(${arg_NAME} PRIVATE "${RUST_OBJECT}")
+  endif()
 
   if(arg_SET_OUTPUT_NAME)
     set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
@@ -873,6 +896,9 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:crypto_test_data>
   )
   set_test_location(${CRYPTO_TEST_EXEC})
+  if(ENABLE_RUST)
+    target_sources(${CRYPTO_TEST_EXEC} PRIVATE rust/rust_test.cc)
+  endif()
 
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_add_awslc_include_paths(TARGET ${CRYPTO_TEST_EXEC} SCOPE PRIVATE)
