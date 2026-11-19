@@ -40,8 +40,8 @@ option(GENERATE_RUST_BINDINGS "Generate Rust bindings using bindgen-cli" OFF)
 option(ENABLE_DIST_PKG "Enables a set of packaging that take highest precedence to any other packaging configuration i.e. ENABLE_PRE_SONAME_BUILD" OFF)
 option(ENABLE_DIST_PKG_OPENSSL_SHIM "Controls whether the OpenSSL shim components are installed when ENABLE_DIST_PKG is enabled" OFF)
 option(BUILD_AWSLC_PROVIDER "Build the OpenSSL provider backed by AWS-LC. Requires OpenSSL 3.5+ headers; set OPENSSL_ROOT_DIR if they are not in system paths" OFF)
-option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies OpenSSL back-end (Linux, e.g. Amazon Linux 2023 and Fedora; OFF by default)" OFF)
-set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies OpenSSL back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
+option(ENABLE_CRYPTO_POLICIES "Build support for honoring the system crypto-policies AWS-LC back-end (Linux, e.g. Amazon Linux and Fedora; OFF by default)" OFF)
+set(AWSLC_CRYPTO_POLICY_FILE "" CACHE PATH "Compile-time location of the crypto-policies AWS-LC back-end file ENABLE_CRYPTO_POLICIES reads, overriding the distribution default")
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -439,9 +439,10 @@ if(ENABLE_CRYPTO_POLICIES)
   message(STATUS "Setting AWSLC_CRYPTO_POLICIES")
   add_definitions(-DAWSLC_CRYPTO_POLICIES)
   # Optional override of the compile-time default policy file. Packagers can set
-  # this to relocate the system crypto-policies OpenSSL back-end file; tests use
-  # it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment variable
-  # overrides it at run time.
+  # this to relocate the system crypto-policies AWS-LC back-end file, or to point
+  # at another back-end on an installation that renders none for AWS-LC; tests
+  # use it to point at a fixture. The AWSLC_CRYPTO_POLICY_FILE environment
+  # variable overrides it at run time.
   if(AWSLC_CRYPTO_POLICY_FILE)
     message(STATUS "Setting AWSLC_CRYPTO_POLICY_FILE=${AWSLC_CRYPTO_POLICY_FILE}")
     add_definitions(

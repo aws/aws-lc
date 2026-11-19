@@ -615,8 +615,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # AmazonLinux 2023 ships the crypto-policies OpenSSL back-end that this
-          # feature reads, so it is the meaningful platform to test on.
+          # AmazonLinux 2023 ships a crypto-policies installation whose rendered
+          # back-end this feature can read, so it is the meaningful platform to
+          # test on.
           - image: amazonlinux:2023
             arch: x86_64
             compiler: gcc-11

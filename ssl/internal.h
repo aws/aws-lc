@@ -3683,22 +3683,22 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 
 #if defined(AWSLC_CRYPTO_POLICIES)
 
-// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). On
-// Amazon Linux 2023 and Fedora the system-wide crypto-policies framework
-// renders an OpenSSL back-end file describing the OS TLS posture. When enabled,
-// |SSL_CTX_new| seeds each new |SSL_CTX| from that file after its built-in
-// defaults. This is best-effort: consumers may override afterward, and any
-// failure leaves the built-in defaults in place.
+// System crypto-policies seeding (opt-in via -DENABLE_CRYPTO_POLICIES). The
+// system-wide crypto-policies framework renders one back-end file per library,
+// each describing the OS TLS posture in the names that library understands.
+// When enabled, |SSL_CTX_new| seeds each new |SSL_CTX| from AWS-LC's back-end
+// file after its built-in defaults. This is best-effort: consumers may override
+// afterward, and any failure leaves the built-in defaults in place.
 
 // AWSLC_CRYPTO_POLICY_DEFAULT_FILE is the compile-time default location of the
-// crypto-policies OpenSSL back-end file. Packagers set it with
+// crypto-policies AWS-LC back-end file. Packagers set it with
 // -DAWSLC_CRYPTO_POLICY_FILE=..., which is also the name of the environment
 // variable that overrides it at run time (see |ssl_crypto_policy_default_path|).
 // The macro spells "DEFAULT" so the name a caller sets and the value it falls
 // back to are not the same identifier.
 #if !defined(AWSLC_CRYPTO_POLICY_DEFAULT_FILE)
 #define AWSLC_CRYPTO_POLICY_DEFAULT_FILE \
-  "/etc/crypto-policies/back-ends/opensslcnf.config"
+  "/etc/crypto-policies/back-ends/aws-lc.config"
 #endif
 
 // AWSLC_CRYPTO_POLICY_MAX_VALUE is the longest directive value, excluding the
@@ -3715,7 +3715,7 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock
 #define AWSLC_CRYPTO_POLICY_MAX_TOKEN 31
 
 // CryptoPolicyConfig holds the recognized directives parsed from a
-// crypto-policies OpenSSL back-end file. Each field is a NUL-terminated string;
+// crypto-policies back-end file. Each field is a NUL-terminated string;
 // an absent directive is the empty string, so callers must zero-initialize
 // (|CryptoPolicyConfig cfg = {};|).
 //
@@ -3761,7 +3761,7 @@ struct CryptoPolicyConfig {
 OPENSSL_EXPORT bool ssl_crypto_policy_parse_file(const char *path,
                                                  CryptoPolicyConfig *out);
 
-// ssl_crypto_policy_default_path returns the path of the crypto-policies OpenSSL
+// ssl_crypto_policy_default_path returns the path of the crypto-policies AWS-LC
 // back-end file to read: the value of the AWSLC_CRYPTO_POLICY_FILE environment
 // variable if set and non-empty, otherwise the compile-time
 // |AWSLC_CRYPTO_POLICY_DEFAULT_FILE|. Mirrors the SSL_CERT_FILE override idiom.

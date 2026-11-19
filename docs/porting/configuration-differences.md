@@ -38,11 +38,12 @@ The following table contains the differences in libssl configuration options AWS
 
 By default AWS-LC ignores all system configuration files. When built with
 `-DENABLE_CRYPTO_POLICIES=ON` (off by default), AWS-LC seeds each newly created
-`SSL_CTX` from the system-wide `crypto-policies` OpenSSL back-end file at
-`/etc/crypto-policies/back-ends/opensslcnf.config`, which is shipped by Amazon
-Linux 2023 and Fedora. Seeding happens inside `SSL_CTX_new`, after the built-in
-defaults are applied and before the context is returned, so a consumer that
-subsequently calls the relevant setters overrides the seeded values.
+`SSL_CTX` from the system-wide `crypto-policies` AWS-LC back-end file at
+`/etc/crypto-policies/back-ends/aws-lc.config`, which the framework renders
+wherever it carries an AWS-LC generator. Seeding happens inside `SSL_CTX_new`,
+after the built-in defaults are applied and before the context is returned, so a
+consumer that subsequently calls the relevant setters overrides the seeded
+values.
 
 The directives applied are `CipherString`, `Ciphersuites`, `TLS.MinProtocol`,
 `TLS.MaxProtocol`, `DTLS.MinProtocol`, `DTLS.MaxProtocol`, `Groups`, and
