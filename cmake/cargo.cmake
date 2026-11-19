@@ -6,6 +6,21 @@
 # adds the way the FIPS build adds bcm.o. Consumers still link only libcrypto.
 # Cargo discovery comes from the caracal PoC's cmake/cargo.cmake.
 
+# With ENABLE_RUST=AUTO, the default, a failed check below logs why and builds
+# without Rust, where ENABLE_RUST=ON fails configure. message() with no mode
+# prints the GitHub Actions annotation without "-- ", so it shows on the job's
+# summary page. return() leaves this included file, not the caller.
+macro(rust_unsupported)
+  if(ENABLE_RUST STREQUAL "AUTO")
+    string(CONCAT rust_reason ${ARGN})
+    message(STATUS "ENABLE_RUST=AUTO: building without Rust: ${rust_reason}")
+    message("::warning title=ENABLE_RUST::building without Rust: ${rust_reason}")
+    set(ENABLE_RUST OFF)
+    return()
+  endif()
+  message(FATAL_ERROR ${ARGN})
+endmacro()
+
 # Multi-config generators build one rust.o per configuration. The build tool
 # expands ${CMAKE_CFG_INTDIR} in custom command outputs on every CMake
 # version; $<CONFIG> there needs CMake 3.20.
@@ -16,7 +31,7 @@ else()
 endif()
 # Cargo builds one target per run, so rust.o holds one architecture.
 if(APPLE AND CMAKE_OSX_ARCHITECTURES MATCHES ";")
-  message(FATAL_ERROR "ENABLE_RUST does not support universal binaries")
+  rust_unsupported("ENABLE_RUST does not support universal binaries")
 endif()
 
 find_program(CARGO_EXECUTABLE NAMES cargo
@@ -24,14 +39,14 @@ find_program(CARGO_EXECUTABLE NAMES cargo
 find_program(RUSTC_EXECUTABLE NAMES rustc
              HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
 if(NOT CARGO_EXECUTABLE OR NOT RUSTC_EXECUTABLE)
-  message(FATAL_ERROR "ENABLE_RUST is set but cargo/rustc was not found. Install a "
+  rust_unsupported("ENABLE_RUST is set but cargo/rustc was not found. Install a "
                       "Rust toolchain or set CARGO_EXECUTABLE and RUSTC_EXECUTABLE.")
 endif()
 execute_process(COMMAND ${RUSTC_EXECUTABLE} -vV
   RESULT_VARIABLE rustc_result OUTPUT_VARIABLE rustc_vv ERROR_VARIABLE rustc_err
   OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE)
 if(NOT rustc_result EQUAL 0 OR NOT rustc_vv)
-  message(FATAL_ERROR "ENABLE_RUST: '${RUSTC_EXECUTABLE} -vV' failed: ${rustc_err}")
+  rust_unsupported("ENABLE_RUST: '${RUSTC_EXECUTABLE} -vV' failed: ${rustc_err}")
 endif()
 string(REGEX MATCH "^[^\n]*" RUSTC_VERSION_OUTPUT "${rustc_vv}")
 string(REGEX MATCH "\nhost: ([^\r\n]+)" rust_host "${rustc_vv}")
@@ -40,7 +55,7 @@ message(STATUS "Found cargo: ${CARGO_EXECUTABLE}; rustc: ${RUSTC_EXECUTABLE} (${
 # The crate uses the 2024 edition, which needs rustc 1.85.
 string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" RUSTC_VERSION "${RUSTC_VERSION_OUTPUT}")
 if(RUSTC_VERSION VERSION_LESS 1.85)
-  message(FATAL_ERROR "ENABLE_RUST needs rustc 1.85 or newer, for the 2024 edition; "
+  rust_unsupported("ENABLE_RUST needs rustc 1.85 or newer, for the 2024 edition; "
                       "found '${RUSTC_VERSION_OUTPUT}'")
 endif()
 
@@ -172,12 +187,12 @@ if(CMAKE_CROSSCOMPILING AND NOT RUST_TARGET)
     # A Cargo build script runs CMake (aws-lc-sys): build for Cargo's target.
     set(RUST_CARGO_TARGET "$ENV{TARGET}")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-    message(FATAL_ERROR "ENABLE_RUST does not support Emscripten: its -pthread build "
+    rust_unsupported("ENABLE_RUST does not support Emscripten: its -pthread build "
                         "needs Rust's std rebuilt with -Zbuild-std")
   else()
     rust_target_from_c(RUST_CARGO_TARGET)
     if(NOT RUST_CARGO_TARGET)
-      message(FATAL_ERROR "ENABLE_RUST can't derive a Rust target for ${CMAKE_SYSTEM_NAME} "
+      rust_unsupported("ENABLE_RUST can't derive a Rust target for ${CMAKE_SYSTEM_NAME} "
                           "${CMAKE_SYSTEM_PROCESSOR}; set RUST_TARGET")
     endif()
   endif()
@@ -195,7 +210,7 @@ if(RUST_CARGO_TARGET)
     file(GLOB libcore "${target_libdir}/libcore-*.rlib")
   endif()
   if(NOT libcore)
-    message(FATAL_ERROR "ENABLE_RUST: no Rust standard library for ${RUST_CARGO_TARGET}: "
+    rust_unsupported("ENABLE_RUST: no Rust standard library for ${RUST_CARGO_TARGET}: "
                         "rustup target add ${RUST_CARGO_TARGET}")
   endif()
   message(STATUS "Rust target: ${RUST_CARGO_TARGET}")
@@ -241,12 +256,25 @@ if(rust_triple MATCHES "-windows-(msvc|gnullvm)$|^wasm")
     find_program(RUST_LLVM_${TOOL} NAMES llvm-${tool} NO_DEFAULT_PATH
                  HINTS "${rust_libdir}/../bin" "${c_compiler_dir}" "${c_compiler_real_dir}")
     if(NOT RUST_LLVM_${TOOL})
-      message(FATAL_ERROR "ENABLE_RUST for ${rust_triple} needs llvm-${tool}: "
+      rust_unsupported("ENABLE_RUST for ${rust_triple} needs llvm-${tool}: "
                           "rustup component add llvm-tools")
     endif()
   endforeach()
 elseif(NOT APPLE AND NOT CMAKE_OBJCOPY)
-  message(FATAL_ERROR "ENABLE_RUST needs objcopy")
+  rust_unsupported("ENABLE_RUST needs objcopy")
+endif()
+if(ENABLE_RUST STREQUAL "AUTO")
+  message(STATUS "ENABLE_RUST=AUTO: building with Rust")
+  message("::notice title=ENABLE_RUST::building with Rust")
+endif()
+
+# Rust code in a FIPS build has to be FIPS module code, or it would break the
+# build's validation. No FIPS module holds Rust yet, so a FIPS build that finds
+# Rust fails, even with AUTO. -DENABLE_RUST=OFF builds C only.
+if(FIPS)
+  message(FATAL_ERROR "ENABLE_RUST: FIPS builds can't use Rust yet: no FIPS "
+                      "module holds Rust code. Configure with -DENABLE_RUST=OFF "
+                      "to build C only.")
 endif()
 
 # cargo_add_rust_object(OUTPUT <rust.o> MANIFEST_PATH <Cargo.toml>
