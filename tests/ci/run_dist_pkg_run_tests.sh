@@ -10,4 +10,7 @@ echo "Testing ENABLE_DIST_PKG shared library build in Release mode."
 build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_DIST_PKG=ON
 
 echo "Testing ENABLE_DIST_PKG shared library FIPS build in Release mode."
+# In an ENABLE_DIST_PKG build FIPS_mode() follows the host's FIPS switch, which
+# CI runners do not have set. Force it on so the module status check passes.
+export AWSLC_FORCE_FIPS_MODE=1
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_DIST_PKG=ON

@@ -103,7 +103,10 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // FIPS monitoring
 
 // FIPS_mode returns zero unless BoringSSL is built with BORINGSSL_FIPS, in
-// which case it returns one.
+// which case it returns one. When additionally built with ENABLE_DIST_PKG on
+// Linux, a FIPS build returns one only if the AWSLC_FORCE_FIPS_MODE
+// environment variable is set or the kernel's /proc/sys/crypto/fips_enabled
+// switch reads "1". The result is computed once per process.
 OPENSSL_EXPORT int FIPS_mode(void);
 
 // FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
@@ -202,8 +205,8 @@ OPENSSL_EXPORT void OPENSSL_init(void);
 // OPENSSL_cleanup does nothing.
 OPENSSL_EXPORT void OPENSSL_cleanup(void);
 
-// FIPS_mode_set returns one if |on| matches whether BoringSSL was built with
-// |BORINGSSL_FIPS| and zero otherwise.
+// FIPS_mode_set returns one if |on| matches the value returned by |FIPS_mode|
+// and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
 
 // CRYPTO_mem_ctrl intentionally does nothing and returns 0.
