@@ -291,18 +291,22 @@ OCSP_SINGLERESP *OCSP_basic_add1_status(OCSP_BASICRESP *resp, OCSP_CERTID *cid,
       if (!ASN1_TIME_to_generalizedtime(revoked_time, &info->revocationTime)) {
         goto err;
       }
-      // https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1 specifies the only
-      // valid reason codes are 0-10. Value 7 is not used.
-      if (revoked_reason < OCSP_REVOKED_STATUS_UNSPECIFIED ||
-          revoked_reason > OCSP_REVOKED_STATUS_AACOMPROMISE ||
-          revoked_reason == OCSP_UNASSIGNED_REVOKED_STATUS) {
-        OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
-        goto err;
-      }
-      info->revocationReason = ASN1_ENUMERATED_new();
-      if (info->revocationReason == NULL ||
-          !ASN1_ENUMERATED_set(info->revocationReason, revoked_reason)) {
-        goto err;
+      // |revocationReason| is optional in RFC 6960 section 4.2.1.
+      // |OCSP_REVOKED_STATUS_NOSTATUS| leaves it out.
+      if (revoked_reason != OCSP_REVOKED_STATUS_NOSTATUS) {
+        // https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1 specifies the
+        // only valid reason codes are 0-10. Value 7 is not used.
+        if (revoked_reason < OCSP_REVOKED_STATUS_UNSPECIFIED ||
+            revoked_reason > OCSP_REVOKED_STATUS_AACOMPROMISE ||
+            revoked_reason == OCSP_UNASSIGNED_REVOKED_STATUS) {
+          OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
+          goto err;
+        }
+        info->revocationReason = ASN1_ENUMERATED_new();
+        if (info->revocationReason == NULL ||
+            !ASN1_ENUMERATED_set(info->revocationReason, revoked_reason)) {
+          goto err;
+        }
       }
 
       break;

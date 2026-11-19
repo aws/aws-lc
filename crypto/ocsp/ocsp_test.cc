@@ -750,15 +750,34 @@ TEST(OCSPTest, BasicAddStatus) {
       OCSP_REVOKED_STATUS_UNSPECIFIED, revoked_time.get(), this_update.get(),
       nullptr));
 
+  // |revocationReason| is optional, and |OCSP_REVOKED_STATUS_NOSTATUS| omits
+  // it.
+  OCSP_SINGLERESP *single = OCSP_basic_add1_status(
+      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_REVOKED,
+      OCSP_REVOKED_STATUS_NOSTATUS, revoked_time.get(), this_update.get(),
+      nullptr);
+  ASSERT_TRUE(single);
+  EXPECT_FALSE(single->certStatus->value.revoked->revocationReason);
+  int reason = 0;
+  EXPECT_EQ(OCSP_single_get0_status(single, &reason, nullptr, nullptr, nullptr),
+            V_OCSP_CERTSTATUS_REVOKED);
+  EXPECT_EQ(reason, OCSP_REVOKED_STATUS_NOSTATUS);
+
+  // Try setting a revoked response with a negative reason other than
+  // |OCSP_REVOKED_STATUS_NOSTATUS|.
+  EXPECT_FALSE(OCSP_basic_add1_status(
+      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_REVOKED, -2,
+      revoked_time.get(), this_update.get(), nullptr));
+
   // Try setting an invalid status to the response.
   EXPECT_FALSE(OCSP_basic_add1_status(basicResponse.get(), certId.get(), 4, 0,
                                       nullptr, this_update.get(), nullptr));
 
-  // |OCSP_basic_add1_status| has succeeded 5 times at this point, so the
-  // |basicResponse| should have 5 |OCSP_SINGLERESP|s in the internal stack.
+  // |OCSP_basic_add1_status| has succeeded 6 times at this point, so the
+  // |basicResponse| should have 6 |OCSP_SINGLERESP|s in the internal stack.
   EXPECT_EQ((int)sk_OCSP_SINGLERESP_num(
                 basicResponse.get()->tbsResponseData->responses),
-            5);
+            6);
 }
 
 TEST(OCSPTest, OCSPResponseRecreate) {
