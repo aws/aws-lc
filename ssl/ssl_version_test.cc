@@ -12,7 +12,13 @@
 #include "internal.h"
 #include "ssl_common_test.h"
 
+#include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
+
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <sys/socket.h>
+#endif
 
 BSSL_NAMESPACE_BEGIN
 
@@ -1814,6 +1820,28 @@ static void SetSystemError(int error) {
 #endif
 }
 
+// CompleteClientHandshake runs the handshake until |client| completes it. In
+// TLS 1.3, |server| has then not yet processed the client's Finished, so it has
+// not sent its tickets.
+static void CompleteClientHandshake(SSL *client, SSL *server) {
+  for (size_t i = 0;; i++) {
+    ASSERT_LT(i, 100000u);
+    int client_ret = SSL_do_handshake(client);
+    if (client_ret == 1) {
+      break;
+    }
+    ASSERT_EQ(-1, client_ret);
+    int client_err = SSL_get_error(client, client_ret);
+    ASSERT_TRUE(client_err == SSL_ERROR_WANT_READ ||
+                client_err == SSL_ERROR_WANT_WRITE);
+    int server_ret = SSL_do_handshake(server);
+    ASSERT_EQ(-1, server_ret);
+    int server_err = SSL_get_error(server, server_ret);
+    ASSERT_TRUE(server_err == SSL_ERROR_WANT_READ ||
+                server_err == SSL_ERROR_WANT_WRITE);
+  }
+}
+
 // Test that, like OpenSSL, |SSL_MODE_FLUSH_TLS13_TICKETS| ignores the peer
 // closing the connection while the tickets are written, and only that.
 TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
@@ -1849,8 +1877,18 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
       {0, false, false},
   };
 
+  // Every failure runs with a closed-connection error left over from an
+  // earlier call. A write that fails without setting a system error leaves it
+  // in place, and must not be taken for a closed connection.
+#if defined(OPENSSL_WINDOWS)
+  static const int kStaleError = WSAECONNRESET;
+#else
+  static const int kStaleError = EPIPE;
+#endif
+
   // Make a filter |BIO| whose writes, once |write_failure| is set, fail like a
-  // socket's: with a system error and no retry flags.
+  // socket's: with a system error and no retry flags. A zero |system_error|
+  // leaves the system error as it was.
   static const WriteFailure *write_failure = nullptr;
   UniquePtr<BIO_METHOD> method(BIO_meth_new(BIO_TYPE_FILTER, nullptr));
   ASSERT_TRUE(method);
@@ -1862,6 +1900,12 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
       BIO_meth_set_read(method.get(), [](BIO *bio, char *out, int len) -> int {
         int ret = BIO_read(BIO_next(bio), out, len);
         BIO_copy_next_retry(bio);
+        if (write_failure != nullptr) {
+          // |SSL_do_handshake| clears |errno| on entry, so leave the stale
+          // error here, between reading the client's Finished and writing the
+          // tickets.
+          SetSystemError(kStaleError);
+        }
         return ret;
       }));
   ASSERT_TRUE(BIO_meth_set_write(
@@ -1871,7 +1915,9 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
           if (write_failure->queue_error) {
             OPENSSL_PUT_ERROR(BIO, BIO_R_BROKEN_PIPE);
           }
-          SetSystemError(write_failure->system_error);
+          if (write_failure->system_error != 0) {
+            SetSystemError(write_failure->system_error);
+          }
           return -1;
         }
         int ret = BIO_write(BIO_next(bio), in, len);
@@ -1912,24 +1958,8 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
       SSL_set_bio(server.get(), filter.get(), filter.get());
       filter.release();  // |SSL_set_bio| takes ownership.
 
-      // Run the handshake until the client completes it. The server has not
-      // yet processed the client's Finished, so it has not sent its tickets.
-      for (size_t i = 0;; i++) {
-        ASSERT_LT(i, 100000u);
-        int client_ret = SSL_do_handshake(client.get());
-        if (client_ret == 1) {
-          break;
-        }
-        ASSERT_EQ(-1, client_ret);
-        int client_err = SSL_get_error(client.get(), client_ret);
-        ASSERT_TRUE(client_err == SSL_ERROR_WANT_READ ||
-                    client_err == SSL_ERROR_WANT_WRITE);
-        int server_ret = SSL_do_handshake(server.get());
-        ASSERT_EQ(-1, server_ret);
-        int server_err = SSL_get_error(server.get(), server_ret);
-        ASSERT_TRUE(server_err == SSL_ERROR_WANT_READ ||
-                    server_err == SSL_ERROR_WANT_WRITE);
-      }
+      ASSERT_NO_FATAL_FAILURE(
+          CompleteClientHandshake(client.get(), server.get()));
 
       static const char kData[] = "hello";
       if (partial_write) {
@@ -1947,6 +1977,9 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
       ASSERT_TRUE(SSL_in_init(server.get()));
 
       write_failure = &failure;
+      // Unlike |errno|, the Winsock error is not cleared on entry, so it may
+      // also be left over from before the call.
+      SetSystemError(kStaleError);
       int server_ret = SSL_do_handshake(server.get());
       if (!failure.ignored) {
         EXPECT_EQ(-1, server_ret);
@@ -1980,6 +2013,68 @@ TEST_P(SSLVersionTest, FlushTLS13TicketsConnectionClosed) {
     }
   }
 }
+
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+// Test that a socket |BIO| reports a closed connection in the form that
+// |SSL_MODE_FLUSH_TLS13_TICKETS| ignores, using a real socket whose peer closes
+// before the server writes its tickets.
+TEST_P(SSLVersionTest, FlushTLS13TicketsSocketClosed) {
+  if (is_dtls() || version() != TLS1_3_VERSION) {
+    return;
+  }
+
+  // Unlike with TCP, a write to a socket pair fails as soon as the peer has
+  // closed, so there is no need to wait for the close to arrive. The failed
+  // write also raises |SIGPIPE|, which the test runner ignores.
+  int fds[2];
+  ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  ScopedFD client_fd(fds[0]), server_fd(fds[1]);
+  for (int fd : fds) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    ASSERT_GE(flags, 0);
+    ASSERT_EQ(0, fcntl(fd, F_SETFL, flags | O_NONBLOCK));
+  }
+
+  SSL_CTX_set_mode(server_ctx_.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
+  UniquePtr<SSL> client(SSL_new(client_ctx_.get()));
+  UniquePtr<SSL> server(SSL_new(server_ctx_.get()));
+  ASSERT_TRUE(client);
+  ASSERT_TRUE(server);
+  SSL_set_connect_state(client.get());
+  SSL_set_accept_state(server.get());
+  ASSERT_TRUE(SSL_set_fd(client.get(), client_fd.get()));
+  ASSERT_TRUE(SSL_set_fd(server.get(), server_fd.get()));
+  ASSERT_NO_FATAL_FAILURE(CompleteClientHandshake(client.get(), server.get()));
+
+  // The client sends data, then closes the connection without reading.
+  static const char kData[] = "hello";
+  ASSERT_EQ(static_cast<int>(sizeof(kData)),
+            SSL_write(client.get(), kData, sizeof(kData)));
+  client.reset();
+  client_fd.reset();
+
+  // The server cannot write its tickets, so it drops them, rather than
+  // deferring them, and completes the handshake.
+  ASSERT_TRUE(SSL_in_init(server.get()));
+  ASSERT_EQ(1, SSL_do_handshake(server.get()));
+  EXPECT_FALSE(SSL_in_init(server.get()));
+  EXPECT_EQ(0u, ERR_peek_error());
+  EXPECT_FALSE(server->s3->pending_hs_data);
+  EXPECT_FALSE(server->s3->pending_flight);
+  if (getVersionParam().transfer_ssl) {
+    ASSERT_NO_FATAL_FAILURE(TransferSSL(&server, server_ctx_.get(), nullptr));
+  }
+
+  // The server can read what the client sent, but cannot write.
+  char buf[sizeof(kData)];
+  ASSERT_EQ(static_cast<int>(sizeof(kData)),
+            SSL_read(server.get(), buf, sizeof(buf)));
+  EXPECT_EQ(Bytes(kData), Bytes(buf));
+  int ret = SSL_write(server.get(), kData, sizeof(kData));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SYSCALL, SSL_get_error(server.get(), ret));
+}
+#endif  // !OPENSSL_NO_SOCK && !OPENSSL_WINDOWS
 
 TEST_P(SSLVersionTest, SessionVersion) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
