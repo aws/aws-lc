@@ -133,6 +133,15 @@ if(BUILD_TESTING)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
   endif()
   add_dependencies(all_tests ${SSL_TEST_EXEC})
+
+  # ssl_mem_test.cc replaces the allocator with strong symbols, as
+  # crypto/mem_test.cc does, so it is an executable of its own.
+  add_executable(${SSL_MEM_TEST_EXEC} ssl_mem_test.cc)
+  target_compile_definitions(${SSL_MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
+  target_link_libraries(${SSL_MEM_TEST_EXEC} boringssl_gtest_main ssl)
+  target_add_awslc_include_paths(TARGET ${SSL_MEM_TEST_EXEC} SCOPE PRIVATE)
+  set_test_location(${SSL_MEM_TEST_EXEC})
+  add_dependencies(all_tests ${SSL_MEM_TEST_EXEC})
   add_subdirectory(test)
 endif()
 

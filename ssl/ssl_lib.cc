@@ -474,8 +474,13 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->cert = MakeUnique<CERT>(method->x509_method);
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
   ret->client_CA.reset(sk_CRYPTO_BUFFER_new_null());
-  if (ret->cert == nullptr || ret->sessions == nullptr ||
-      ret->client_CA == nullptr || !ret->x509_method->ssl_ctx_new(ret.get())) {
+  // |CERT|'s constructor cannot report a failure to allocate its certificate
+  // slots, and a context without them fails every |SSL_new|, so check them
+  // here.
+  if (ret->cert == nullptr ||
+      !ssl_cert_check_cert_private_keys_usage(ret->cert.get()) ||
+      ret->sessions == nullptr || ret->client_CA == nullptr ||
+      !ret->x509_method->ssl_ctx_new(ret.get())) {
     return nullptr;
   }
 

@@ -300,6 +300,11 @@ void *OPENSSL_sk_shift(OPENSSL_STACK *sk) {
 }
 
 size_t OPENSSL_sk_push(OPENSSL_STACK *sk, void *p) {
+  // A NULL stack, such as one whose allocation failed, takes nothing, as
+  // |OPENSSL_sk_insert| does.
+  if (sk == NULL) {
+    return 0;
+  }
   return OPENSSL_sk_insert(sk, p, sk->num);
 }
 
