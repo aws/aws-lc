@@ -1708,6 +1708,38 @@ TEST(PKCS7Test, DataInitFinal) {
   EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 }
 
+TEST(PKCS7Test, DataFinalParsedDigest) {
+  // A parsed digestedData only has its encoded |digestAlgorithm|, so
+  // |PKCS7_dataFinal| must find the digest from that.
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+  ASSERT_TRUE(PKCS7_set_digest(p7.get(), EVP_sha256()));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  uint8_t *der = nullptr;
+  int der_len = i2d_PKCS7(p7.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  const uint8_t *ptr = der;
+  p7.reset(d2i_PKCS7(nullptr, &ptr, der_len));
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_type_is_digest(p7.get()));
+
+  static const uint8_t kData[] = {'h', 'e', 'l', 'l', 'o'};
+  bssl::UniquePtr<BIO> bio(PKCS7_dataInit(p7.get(), nullptr));
+  ASSERT_TRUE(bio);
+  ASSERT_EQ(BIO_write(bio.get(), kData, sizeof(kData)),
+            static_cast<int>(sizeof(kData)));
+  ASSERT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
+
+  uint8_t expected[SHA256_DIGEST_LENGTH];
+  SHA256(kData, sizeof(kData), expected);
+  const ASN1_OCTET_STRING *digest = p7->d.digest->digest;
+  EXPECT_EQ(Bytes(ASN1_STRING_get0_data(digest), ASN1_STRING_length(digest)),
+            Bytes(expected));
+}
+
 TEST(PKCS7Test, TestEnveloped) {
   bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio;

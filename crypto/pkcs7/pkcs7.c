@@ -977,7 +977,6 @@ int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
         return 0;
       }
-      p7->d.digest->md = md;
       p7->d.digest->digest_alg->parameter->type = V_ASN1_NULL;
       p7->d.digest->digest_alg->algorithm = OBJ_nid2obj(EVP_MD_nid(md));
       return 1;
@@ -1113,7 +1112,8 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
   } else if (OBJ_obj2nid(p7->type) == NID_pkcs7_digest) {
     unsigned char md_data[EVP_MAX_MD_SIZE];
     unsigned int md_len;
-    if (!pkcs7_find_digest(&md_ctx, bio, EVP_MD_nid(p7->d.digest->md)) ||
+    int md_nid = OBJ_obj2nid(p7->d.digest->digest_alg->algorithm);
+    if (!pkcs7_find_digest(&md_ctx, bio, md_nid) ||
         !EVP_DigestFinal_ex(md_ctx, md_data, &md_len) ||
         !ASN1_OCTET_STRING_set(p7->d.digest->digest, md_data, md_len)) {
       goto err;
