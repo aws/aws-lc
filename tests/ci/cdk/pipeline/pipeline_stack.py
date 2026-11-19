@@ -140,6 +140,11 @@ class AwsLcCiPipeline(Stack):
                 primary_output_directory="tests/ci/cdk/cdk.out",
             ),
             self_mutation=True,
+            asset_publishing_code_build_defaults=pipelines.CodeBuildOptions(
+                build_environment=codebuild.BuildEnvironment(
+                    compute_type=codebuild.ComputeType.LARGE,
+                ),
+            ),
             code_build_defaults=pipelines.CodeBuildOptions(
                 build_environment=codebuild.BuildEnvironment(
                     compute_type=codebuild.ComputeType.MEDIUM,
