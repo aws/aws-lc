@@ -147,6 +147,17 @@ may incorrectly report renegotiation as being supported possibly with a message 
 "Secure Renegotiation IS supported". This is inaccurate, and any attempt by a client will result in a TLS protocol alert
 as previously described.
 
+### TLS 1.3 session ticket timing
+
+OpenSSL normally writes TLS 1.3 session tickets during `SSL_accept`. AWS-LC
+normally defers them until the server's next `SSL_write`. Set
+`SSL_MODE_FLUSH_TLS13_TICKETS` on the server to match OpenSSL's timing.
+
+The mode does not change how many tickets AWS-LC sends. With `SSL_OP_NO_TICKET`,
+OpenSSL sends stateful TLS 1.3 tickets, while AWS-LC sends none. After a
+resumption, OpenSSL sends at most one ticket, while AWS-LC sends the configured
+number.
+
 ### Lowercase hexadecimal
 
 BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of

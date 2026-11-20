@@ -513,6 +513,14 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         break;
       }
 
+      case ssl_hs_flush_tickets: {
+        int ret = tls_flush_ticket_flight(ssl);
+        if (ret <= 0) {
+          return ret;
+        }
+        break;
+      }
+
       case ssl_hs_read_server_hello:
       case ssl_hs_read_message:
       case ssl_hs_read_change_cipher_spec: {
