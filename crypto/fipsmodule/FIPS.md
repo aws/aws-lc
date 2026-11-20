@@ -55,6 +55,11 @@ When building AWS-LC in FIPS mode, please be aware of the following platform lim
 - Shared library FIPS builds are supported on both Linux and Windows
 - Windows Debug builds are not supported with FIPS
 
+### Modules in Process
+
+The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
+* AWS-LC 5 Cryptographic Module (dynamic): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+* AWS-LC 5 Cryptographic Module (static): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
 
 ## Randomness generation design AWS-LC-FIPS v4.0
 
