@@ -11,9 +11,7 @@ from strands.agent import Agent
 from strands.types.content import Messages
 from strands.types.event_loop import Usage
 
-# Bedrock prices for Claude Opus 5.5, in USD per million tokens.
-_USD_PER_MTOK = {"inputTokens": 4.00, "outputTokens": 20.00, "cacheReadInputTokens": 0.20,
-                 "cacheWriteInputTokens": 5.00}
+_USD_PER_MTOK = json.loads((Path(__file__).parents[4] / ".github/workflows/ai-config.json").read_text())["opus_usd_per_mtok"]
 
 
 class Session(BaseModel):

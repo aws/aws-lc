@@ -78,7 +78,7 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'aarch64' && 'arm-3.0' || 'linux-5.0' }}
         instance-size:${{ matrix.size }}
-    timeout-minutes: 180
+    timeout-minutes: 120
     permissions: &oidc
       contents: read
       id-token: write
