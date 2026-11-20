@@ -94,11 +94,11 @@ static thread_local_destructor_t g_destructors[NUM_OPENSSL_THREAD_LOCALS];
 
 static CRYPTO_once_t g_thread_local_init_once = CRYPTO_ONCE_INIT;
 static DWORD g_thread_local_key;
-static int g_thread_local_failed;
+static int g_thread_local_key_created;
 
 static void thread_local_init(void) {
   g_thread_local_key = TlsAlloc();
-  g_thread_local_failed = (g_thread_local_key == TLS_OUT_OF_INDEXES);
+  g_thread_local_key_created = (g_thread_local_key != TLS_OUT_OF_INDEXES);
 }
 
 static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
@@ -112,29 +112,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
     return;
   }
 
-  CRYPTO_once(&g_thread_local_init_once, thread_local_init);
-  if (g_thread_local_failed) {
-    return;
-  }
-
-  void **pointers = (void**) TlsGetValue(g_thread_local_key);
-  if (pointers == NULL) {
-    return;
-  }
-
-  thread_local_destructor_t destructors[NUM_OPENSSL_THREAD_LOCALS];
-
-  AcquireSRWLockExclusive(&g_destructors_lock);
-  OPENSSL_memcpy(destructors, g_destructors, sizeof(destructors));
-  ReleaseSRWLockExclusive(&g_destructors_lock);
-
-  for (unsigned i = 0; i < NUM_OPENSSL_THREAD_LOCALS; i++) {
-    if (destructors[i] != NULL) {
-      destructors[i](pointers[i]);
-    }
-  }
-
-  free(pointers);
+  AWSLC_thread_local_clear();
 }
 
 // Thread Termination Callbacks.
@@ -239,7 +217,7 @@ static void **get_thread_locals(void) {
 
 void *CRYPTO_get_thread_local(thread_local_data_t index) {
   CRYPTO_once(&g_thread_local_init_once, thread_local_init);
-  if (g_thread_local_failed) {
+  if (!g_thread_local_key_created) {
     return NULL;
   }
 
@@ -253,7 +231,7 @@ void *CRYPTO_get_thread_local(thread_local_data_t index) {
 int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
                             thread_local_destructor_t destructor) {
   CRYPTO_once(&g_thread_local_init_once, thread_local_init);
-  if (g_thread_local_failed) {
+  if (!g_thread_local_key_created) {
     destructor(value);
     return 0;
   }
@@ -278,6 +256,57 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
   ReleaseSRWLockExclusive(&g_destructors_lock);
 
   pointers[index] = value;
+  return 1;
+}
+
+int AWSLC_thread_local_clear(void) {
+  CRYPTO_once(&g_thread_local_init_once, thread_local_init);
+  // A cleared thread may still receive a loader callback during shutdown.
+  // Serialize its TLS access with deletion of the key.
+  AcquireSRWLockExclusive(&g_destructors_lock);
+  if (!g_thread_local_key_created) {
+    ReleaseSRWLockExclusive(&g_destructors_lock);
+    return 1;
+  }
+
+  void **pointers = get_thread_locals();
+  if (pointers == NULL) {
+    ReleaseSRWLockExclusive(&g_destructors_lock);
+    return 1;
+  }
+
+  // Detach the data before freeing it, so repeated cleanup or thread exit
+  // cannot run the destructors again on the same data.
+  if (!TlsSetValue(g_thread_local_key, NULL)) {
+    ReleaseSRWLockExclusive(&g_destructors_lock);
+    return 0;
+  }
+
+  thread_local_destructor_t destructors[NUM_OPENSSL_THREAD_LOCALS];
+  OPENSSL_memcpy(destructors, g_destructors, sizeof(destructors));
+  ReleaseSRWLockExclusive(&g_destructors_lock);
+
+  for (unsigned i = 0; i < NUM_OPENSSL_THREAD_LOCALS; i++) {
+    if (destructors[i] != NULL) {
+      destructors[i](pointers[i]);
+    }
+  }
+  free(pointers);
+  return 1;
+}
+
+int AWSLC_thread_local_shutdown(void) {
+  CRYPTO_once(&g_thread_local_init_once, thread_local_init);
+  AcquireSRWLockExclusive(&g_destructors_lock);
+  if (g_thread_local_key_created && !TlsFree(g_thread_local_key)) {
+    ReleaseSRWLockExclusive(&g_destructors_lock);
+    return 0;
+  }
+
+  // The once guard stays initialized. Later thread-exit callbacks must not
+  // access this index, which Windows may have reassigned to another library.
+  g_thread_local_key_created = 0;
+  ReleaseSRWLockExclusive(&g_destructors_lock);
   return 1;
 }
 

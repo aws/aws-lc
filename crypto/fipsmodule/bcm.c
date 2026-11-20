@@ -15,8 +15,10 @@
 
 // On Windows place the bcm code in a specific section that uses Grouped Sections
 // to control the order. $b section will place bcm in between the start/end markers
-// which are in $a and $z.
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+// which are in $a and $z. These #pragma directives are MSVC-specific, so this is
+// gated on _MSC_VER (matches fips_shared_library_marker.c); the MinGW FIPS build
+// instead brackets the module via marker objects partial-linked with `ld -r`.
+#if defined(BORINGSSL_FIPS) && defined(_MSC_VER)
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")

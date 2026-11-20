@@ -34,9 +34,7 @@
 #endif
 #endif
 
-#if defined(OPENSSL_THREADS) && \
-    (!defined(OPENSSL_WINDOWS) || \
-        (defined(__MINGW32__) && !defined(__clang__)))
+#if defined(OPENSSL_THREADS) && !defined(OPENSSL_WINDOWS)
 #include <pthread.h>
 #define OPENSSL_PTHREADS
 #endif
