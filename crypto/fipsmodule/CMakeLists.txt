@@ -23,6 +23,12 @@ if(ANDROID)
   endif()
 endif()
 
+if(ENABLE_RUST)
+  # In Rust builds bcm.c gives its copy of C's SHA-256 private names
+  # (sha/sha256_private_names.h).
+  add_definitions(-DAWSLC_RUST)
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES

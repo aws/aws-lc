@@ -34,6 +34,12 @@
 
 #include "../internal.h"
 
+#if defined(AWSLC_RUST)
+// Rust builds: libcrypto's SHA-224 and SHA-256 functions are Rust's, so this
+// copy of C's takes private names.
+#include "sha/sha256_private_names.h"
+#endif
+
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"

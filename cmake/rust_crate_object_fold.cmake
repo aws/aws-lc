@@ -1,21 +1,23 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# rust-phase0: the crate object fold for windows-msvc, windows-gnullvm and
-# wasm, run by cargo.cmake with `cmake -P`. llvm-objcopy can't make COFF or
-# wasm symbols local, but fat LTO already makes `core` internal to the crate
-# object, so OUTPUT is that object, taken out of the staticlib. The build fails
+# The crate object fold for windows-msvc, windows-gnullvm and wasm, run by
+# cargo.cmake with `cmake -P`. llvm-objcopy can't make COFF or wasm symbols
+# local, but fat LTO already makes `core` internal to the crate object, so
+# OUTPUT is that object, taken out of the staticlib. The build fails
 # if it defines an external symbol other than the exports, needs a symbol from
 # another member (compiler_builtins), or carries linker directives (.drectve).
-# With LLVM_OBJCOPY (windows-gnullvm), the fold renames caracal's
+# With LLVM_OBJCOPY (windows-gnullvm), the fold renames the crate's
 # rust_eh_personality to PERSONALITY, which no consumer's Rust defines.
 #
 # Inputs (-D): LLVM_AR LLVM_NM LLVM_OBJDUMP STATICLIB EXPORTS_FILE OUTPUT,
 # and optionally LLVM_OBJCOPY PERSONALITY
 
 # MSVC names float and vector constants __real@<hex>, __xmm@<hex> and so on,
-# in COMDAT sections, exactly as MSVC's C compiler does. Duplicates fold.
-set(comdat_constant "^__(real|xmm|ymm|zmm)@[0-9a-f]+$")
+# in COMDAT sections, exactly as MSVC's C compiler does. MinGW reaches C data,
+# such as OPENSSL_ia32cap_P, through a pointer named .refptr.<symbol>, in a
+# COMDAT section, as MinGW's C compiler does. Duplicates fold.
+set(comdat_constant "^(__(real|xmm|ymm|zmm)@[0-9a-f]+|\\.refptr\\..+)$")
 
 function(run)
   execute_process(COMMAND ${ARGN} RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
