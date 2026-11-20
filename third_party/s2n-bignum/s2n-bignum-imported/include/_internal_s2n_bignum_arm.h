@@ -18,21 +18,23 @@
 #ifdef S2N_BN_HIDE_SYMBOLS
 #   ifdef __APPLE__
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .private_extern S2N_BN_SYMBOL(name)
-#   else
+#   elif !defined(_WIN32)
 #      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .hidden S2N_BN_SYMBOL(name)
+#   else
+#      define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)
 #   endif
 #else
 #   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_FUNCTION_TYPE_DIRECTIVE(name) .type name, %function
 #endif
 
-#ifdef __APPLE__
-#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O */
+#if defined(__APPLE__) || defined(_WIN32)
+#   define S2N_BN_SIZE_DIRECTIVE(name) /* Not used in Mach-O or COFF */
 #else
 #   define S2N_BN_SIZE_DIRECTIVE(name) .size S2N_BN_SYMBOL(name), .-S2N_BN_SYMBOL(name)
 #endif
@@ -45,6 +47,7 @@
 // the x86 side defers to <cet.h>. Unlike CET, BTI also needs a .note.gnu.property
 // section: it has GNU_PROPERTY_AARCH64_FEATURE_1_AND semantics, so one object
 // without the note silently disables BTI program-wide, hence emitting it here.
+// The note is ELF-only, so it is left out for Mach-O and COFF (Windows).
 
 #if NO_IBT
 #   if defined(AARCH64_VALID_CALL_TARGET)
@@ -53,7 +56,7 @@
 #   define AARCH64_VALID_CALL_TARGET
 #elif !defined(AARCH64_VALID_CALL_TARGET)
 #   define AARCH64_VALID_CALL_TARGET hint #34 /* BTI c */
-#   ifndef __APPLE__
+#   if !defined(__APPLE__) && !defined(_WIN32)
         .pushsection .note.gnu.property, "a"
         .balign 8
         .long 4                   /* n_namesz: sizeof "GNU\0" */
@@ -80,6 +83,14 @@
 
 #define CFI_POP2(lo,hi) ldp     lo, hi, [sp], #16 __LF .cfi_adjust_cfa_offset -16 __LF .cfi_restore lo __LF .cfi_restore hi
 #define CFI_POP1Z(reg) ldp     reg, xzr, [sp], #16 __LF .cfi_adjust_cfa_offset -16 __LF .cfi_restore reg
+
+// Pre/post-index push and pop of a register pair with an arbitrary frame size,
+// for functions whose first save also establishes the whole frame. The size
+// must be a plain numeral. The push writes #-size, which expands to a plain
+// negative literal as in CFI_PUSH2; the AWS-LC FIPS delocator does not parse
+// a parenthesized negative offset such as #(-80 +0).
+#define CFI_PUSH2N(lo,hi,size) stp     lo, hi, [sp, #-size]! __LF .cfi_adjust_cfa_offset size __LF .cfi_rel_offset lo, 0 __LF .cfi_rel_offset hi, 8
+#define CFI_POP2N(lo,hi,size) ldp     lo, hi, [sp], #(size+0) __LF .cfi_adjust_cfa_offset -size __LF .cfi_restore lo __LF .cfi_restore hi
 
 #define CFI_STACKSAVE2(lo,hi,offset) stp     lo, hi, [sp, #(offset)] __LF .cfi_rel_offset lo, offset __LF .cfi_rel_offset hi, offset+8
 

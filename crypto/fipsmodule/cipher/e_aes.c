@@ -1106,8 +1106,9 @@ static int aead_aes_gcm_seal_scatter_impl(
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
+  // |CRYPTO_gcm128_setiv| initializes all per-message state, so |gcm| does not
+  // need to be zeroed first. See |GCM128_CONTEXT|.
   GCM128_CONTEXT gcm;
-  OPENSSL_memset(&gcm, 0, sizeof(gcm));
   OPENSSL_memcpy(&gcm.gcm_key, &gcm_ctx->gcm_key, sizeof(gcm.gcm_key));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 
@@ -1177,8 +1178,9 @@ static int aead_aes_gcm_open_gather_impl(const struct aead_aes_gcm_ctx *gcm_ctx,
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
+  // |CRYPTO_gcm128_setiv| initializes all per-message state, so |gcm| does not
+  // need to be zeroed first. See |GCM128_CONTEXT|.
   GCM128_CONTEXT gcm;
-  OPENSSL_memset(&gcm, 0, sizeof(gcm));
   OPENSSL_memcpy(&gcm.gcm_key, &gcm_ctx->gcm_key, sizeof(gcm.gcm_key));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 

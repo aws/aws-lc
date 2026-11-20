@@ -100,7 +100,8 @@
 - [ ] **Specifications list** (`specifications.txt`)
   - [ ] All subroutine correctness theorems listed
   - [ ] Entries in strict alphabetical order (the `make proofs` target sorts and compares — non-alphabetical entries will fail)
-  - [ ] For ARM: 1 variant per function (BTI variants may come in the future)
+  - [ ] For ARM: 1 variant per function, or 2 (with and without the `bti c` landing pad, `_NOIBT_` names) for
+        functions that start with `AARCH64_VALID_CALL_TARGET`, as the AES-GCM kernels do
   - [ ] For x86: 4 variants per function (standard ABI, Windows ABI, with/without `endbr64`)
   - [ ] This file is intentionally manual as a human sanity check ("I expect to see a correctness proof for this")
 

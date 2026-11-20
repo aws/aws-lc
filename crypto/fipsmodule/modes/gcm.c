@@ -103,6 +103,13 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 #if defined(HW_GCM) && defined(OPENSSL_AARCH64)
 
+// The s2n-bignum AES-GCM kernels take the |AES_KEY| as an |s2n_bignum_AES_KEY|
+// and read only its round keys, the first member of both structs, so these
+// must have the same size.
+OPENSSL_STATIC_ASSERT(sizeof(((AES_KEY *)NULL)->rd_key) ==
+                          sizeof(((s2n_bignum_AES_KEY *)NULL)->rd_key),
+                      aes_key_round_key_sizes_differ);
+
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
                              uint8_t Xi[16], const u128 Htable[16]) {
@@ -111,30 +118,53 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  // The 8x-unrolled assembly implementation starts outperforming
-  // the 4x-unrolled one starting around input length of 256 bytes
-  // in the case of the EVP API.
-  // In the case of the AEAD API, it can be used for all input lengths
-  // but we are not identifying which API calls the code below.
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
-    switch(key->rounds) {
+  // The 8x-unrolled kernels are used on CPUs that support them: for all input
+  // lengths for AES-128 and AES-256, and from 256 bytes for AES-192, whose
+  // OpenSSL 8x kernel is only faster from there. The 8x path is only taken on
+  // Linux and Apple, the only platforms whose CPU detection sets the CPU-model
+  // bits it needs; elsewhere, e.g. on Windows, the 4x kernels are used.
+  switch (key->rounds) {
     case 10:
-      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+      if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
+#if defined(BORINGSSL_DISPATCH_TEST)
+        BORINGSSL_function_hit[7] = 1;  // 8x AES-GCM encryption
+#endif
+        aes128_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+#if defined(BORINGSSL_DISPATCH_TEST)
+      BORINGSSL_function_hit[2] = 1;  // 4x AES-GCM encryption
+#endif
+      aes128_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
     case 12:
-      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+        aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      } else {
+        aes192_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      }
       break;
     case 14:
-      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+      if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
+        aes256_gcm_enc_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes256_gcm_enc(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
     default:
       // The subsequent logic after returning can process
       // the input or return an error.
       return 0;
-      break;
-    }
-  } else {
-    aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
   }
 
   return len_blocks;
@@ -148,30 +178,47 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  // The 8x-unrolled assembly implementation starts outperforming
-  // the 4x-unrolled one starting around input length of 256 bytes
-  // in the case of the EVP API.
-  // In the case of the AEAD API, it can be used for all input lengths
-  // but we are not identifying which API calls the code below.
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
-    switch(key->rounds) {
+  // The 8x-unrolled kernels are used on CPUs that support them: for all input
+  // lengths for AES-128 and AES-256, and from 256 bytes for AES-192, whose
+  // OpenSSL 8x kernel is only faster from there. The 8x path is only taken on
+  // Linux and Apple, the only platforms whose CPU detection sets the CPU-model
+  // bits it needs; elsewhere, e.g. on Windows, the 4x kernels are used.
+  switch (key->rounds) {
     case 10:
-      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+      if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
+        aes128_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes128_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
     case 12:
-      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+        aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      } else {
+        aes192_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+      }
       break;
     case 14:
-      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+#if defined(HW_GCM_S2N_BIGNUM_8X)
+      if (CRYPTO_is_ARMv8_GCM_8x_capable()) {
+        aes256_gcm_dec_alt(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                           (const s2n_bignum_AES_KEY *)key,
+                           (const uint64_t *)Htable);
+        break;
+      }
+#endif
+      aes256_gcm_dec(in, len_blocks * 8, out, (uint64_t *)Xi, ivec,
+                     (const s2n_bignum_AES_KEY *)key, (const uint64_t *)Htable);
       break;
     default:
       // The subsequent logic after returning can process
       // the input or return an error.
       return 0;
-      break;
-    }
-  } else {
-    aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
   }
 
   return len_blocks;
