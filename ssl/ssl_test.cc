@@ -22,6 +22,7 @@
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/hpke.h>
@@ -34,6 +35,7 @@
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "../crypto/internal.h"
+#include "../crypto/pkcs7/internal.h"
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
@@ -2782,6 +2784,393 @@ TEST(SSLTest, BIO_2) {
   ASSERT_TRUE(CompleteHandshakes(client_ssl_ptr, server_ssl_ptr));
 }
 #endif  // !OPENSSL_NO_SOCK
+
+static testing::AssertionResult CompleteBIOHandshakes(BIO *client,
+                                                      BIO *server) {
+  bool client_done = false, server_done = false;
+  for (int i = 0; i < 20 && !(client_done && server_done); i++) {
+    for (BIO *bio : {client, server}) {
+      bool &done = bio == client ? client_done : server_done;
+      if (done) {
+        continue;
+      }
+      // Every attempt must discard retry state from the previous operation.
+      BIO_set_flags(bio, BIO_FLAGS_RWS | BIO_FLAGS_SHOULD_RETRY);
+      BIO_set_retry_reason(bio, BIO_RR_ACCEPT);
+      long ret = BIO_do_handshake(bio);
+      if (ret == 1) {
+        if (BIO_get_retry_flags(bio) != 0 || BIO_get_retry_reason(bio) != 0) {
+          return testing::AssertionFailure()
+                 << "Stale retry state after success";
+        }
+        done = true;
+      } else if (!BIO_should_retry(bio) || !BIO_should_read(bio) ||
+                 BIO_should_write(bio) || BIO_should_io_special(bio) ||
+                 BIO_get_retry_reason(bio) != 0) {
+        return testing::AssertionFailure()
+               << "Unexpected handshake result " << ret << ", retry flags "
+               << BIO_get_retry_flags(bio) << ", reason "
+               << BIO_get_retry_reason(bio);
+      }
+    }
+  }
+  if (!client_done || !server_done) {
+    return testing::AssertionFailure() << "BIO handshake did not complete";
+  }
+  return testing::AssertionSuccess();
+}
+
+TEST(SSLTest, BIOChainHandshake) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(version);
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+    bssl::UniquePtr<BIO> client(BIO_new_ssl(client_ctx.get(), 1));
+    bssl::UniquePtr<BIO> server(BIO_new_ssl(server_ctx.get(), 0));
+    ASSERT_TRUE(client);
+    ASSERT_TRUE(server);
+    BIO *raw_client = nullptr, *raw_server = nullptr;
+    ASSERT_TRUE(BIO_new_bio_pair(&raw_client, 0, &raw_server, 0));
+    bssl::UniquePtr<BIO> client_transport(raw_client),
+        server_transport(raw_server);
+    SSL *client_ssl = nullptr, *server_ssl = nullptr;
+    ASSERT_EQ(1, BIO_get_ssl(client.get(), &client_ssl));
+    ASSERT_EQ(1, BIO_get_ssl(server.get(), &server_ssl));
+    ASSERT_EQ(client.get(), BIO_push(client.get(), client_transport.release()));
+    ASSERT_EQ(server.get(), BIO_push(server.get(), server_transport.release()));
+    EXPECT_EQ(raw_client, SSL_get_rbio(client_ssl));
+    EXPECT_EQ(raw_client, SSL_get_wbio(client_ssl));
+    EXPECT_EQ(raw_server, SSL_get_rbio(server_ssl));
+    EXPECT_EQ(raw_server, SSL_get_wbio(server_ssl));
+    ASSERT_TRUE(CompleteBIOHandshakes(client.get(), server.get()));
+    EXPECT_TRUE(SSL_is_init_finished(client_ssl));
+    EXPECT_TRUE(SSL_is_init_finished(server_ssl));
+
+    uint8_t buf[5];
+    ASSERT_EQ(5, BIO_puts(client.get(), "hello"));
+    ASSERT_EQ(5, BIO_read(server.get(), buf, sizeof(buf)));
+    EXPECT_EQ(Bytes("hello"), Bytes(buf));
+    ASSERT_EQ(5, BIO_write(server.get(), "world", 5));
+    ASSERT_EQ(5, BIO_read(client.get(), buf, sizeof(buf)));
+    EXPECT_EQ(Bytes("world"), Bytes(buf));
+    EXPECT_EQ(-1, BIO_read(client.get(), buf, sizeof(buf)));
+    EXPECT_TRUE(BIO_should_retry(client.get()));
+    EXPECT_TRUE(BIO_should_read(client.get()));
+
+    // Destroying either half of a BIO pair discards unread data. Retain the
+    // transport until the peer has consumed the close_notify from BIO_free_all.
+    ASSERT_TRUE(BIO_up_ref(raw_client));
+    bssl::UniquePtr<BIO> keep_alive(raw_client);
+    BIO_free_all(client.release());
+    int ret = SSL_read(server_ssl, buf, sizeof(buf));
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(SSL_ERROR_ZERO_RETURN, SSL_get_error(server_ssl, ret));
+    EXPECT_EQ(0u, ERR_peek_error());
+    server.reset();
+  }
+}
+
+static bssl::UniquePtr<BIO> NewBIOWithFreeCount(int *count) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (bio) {
+    BIO_set_callback_arg(bio.get(), reinterpret_cast<char *>(count));
+    BIO_set_callback_ex(bio.get(),
+                        [](BIO *b, int oper, const char *, size_t, int, long,
+                           int ret, size_t *) -> long {
+                          if (oper == BIO_CB_FREE) {
+                            ++*reinterpret_cast<int *>(BIO_get_callback_arg(b));
+                          }
+                          return ret;
+                        });
+  }
+  return bio;
+}
+
+TEST(SSLTest, BIOChainOwnership) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  for (const BIO_METHOD *filter :
+       {BIO_f_base64(), BIO_f_md(), BIO_f_cipher()}) {
+    for (bool pop : {false, true}) {
+      SCOPED_TRACE(pop);
+      int transport_freed = 0, tail_freed = 0;
+      bssl::UniquePtr<BIO> head(BIO_new(filter));
+      bssl::UniquePtr<BIO> middle(BIO_new_ssl(ctx.get(), 1));
+      bssl::UniquePtr<BIO> transport(NewBIOWithFreeCount(&transport_freed));
+      bssl::UniquePtr<BIO> tail(NewBIOWithFreeCount(&tail_freed));
+      ASSERT_TRUE(head);
+      ASSERT_TRUE(middle);
+      ASSERT_TRUE(transport);
+      ASSERT_TRUE(tail);
+      SCOPED_TRACE(BIO_method_name(head.get()));
+      SSL *ssl = nullptr;
+      ASSERT_EQ(1, BIO_get_ssl(middle.get(), &ssl));
+      BIO *middle_ptr = middle.get();
+      BIO *transport_ptr = transport.get();
+      ERR_clear_error();
+      ASSERT_EQ(head.get(), BIO_push(head.get(), middle.release()));
+      ASSERT_EQ(head.get(), BIO_push(head.get(), transport.release()));
+      EXPECT_EQ(transport_ptr, SSL_get_rbio(ssl));
+      EXPECT_EQ(transport_ptr, SSL_get_wbio(ssl));
+      // Extending the tail again must not take another SSL transport reference.
+      ASSERT_EQ(head.get(), BIO_push(head.get(), tail.release()));
+      EXPECT_EQ(transport_ptr, SSL_get_rbio(ssl));
+      EXPECT_EQ(transport_ptr, SSL_get_wbio(ssl));
+      EXPECT_EQ(0u, ERR_peek_error());
+
+      if (pop) {
+        bssl::UniquePtr<BIO> ssl_bio(BIO_pop(head.get()));
+        ASSERT_EQ(middle_ptr, ssl_bio.get());
+        EXPECT_EQ(transport_ptr, SSL_get_rbio(ssl));
+        EXPECT_EQ(transport_ptr, SSL_get_wbio(ssl));
+        head.reset();
+        bssl::UniquePtr<BIO> detached(BIO_pop(ssl_bio.get()));
+        ASSERT_EQ(transport_ptr, detached.get());
+        EXPECT_EQ(nullptr, SSL_get_rbio(ssl));
+        EXPECT_EQ(nullptr, SSL_get_wbio(ssl));
+        EXPECT_EQ(nullptr, BIO_next(ssl_bio.get()));
+        ssl_bio.reset();
+        EXPECT_EQ(0, transport_freed);
+        EXPECT_EQ(0, tail_freed);
+        EXPECT_EQ(5, BIO_write(detached.get(), "hello", 5));
+        detached.reset();
+      } else {
+        BIO_free_all(head.release());
+      }
+      EXPECT_EQ(1, transport_freed);
+      EXPECT_EQ(1, tail_freed);
+      EXPECT_EQ(0u, ERR_peek_error());
+    }
+  }
+
+  for (bool pop : {false, true}) {
+    SCOPED_TRACE("pushing the existing split write BIO");
+    SCOPED_TRACE(pop);
+    int read_freed = 0, write_freed = 0;
+    bssl::UniquePtr<BIO> bio(BIO_new_ssl(ctx.get(), 1));
+    bssl::UniquePtr<BIO> read_bio(NewBIOWithFreeCount(&read_freed));
+    bssl::UniquePtr<BIO> write_bio(NewBIOWithFreeCount(&write_freed));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(read_bio);
+    ASSERT_TRUE(write_bio);
+    SSL *ssl = nullptr;
+    ASSERT_EQ(1, BIO_get_ssl(bio.get(), &ssl));
+    BIO *write_ptr = write_bio.get();
+    ASSERT_TRUE(BIO_up_ref(write_ptr));
+    SSL_set_bio(ssl, read_bio.release(), write_ptr);
+    EXPECT_EQ(2u, write_ptr->references);
+
+    ASSERT_EQ(bio.get(), BIO_push(bio.get(), write_bio.release()));
+    EXPECT_EQ(write_ptr, SSL_get_rbio(ssl));
+    EXPECT_EQ(write_ptr, SSL_get_wbio(ssl));
+    EXPECT_EQ(1, read_freed);
+    // One chain reference and one each for SSL's rbio and wbio.
+    EXPECT_EQ(3u, write_ptr->references);
+    if (pop) {
+      bssl::UniquePtr<BIO> detached(BIO_pop(bio.get()));
+      ASSERT_EQ(write_ptr, detached.get());
+      EXPECT_EQ(nullptr, SSL_get_rbio(ssl));
+      EXPECT_EQ(nullptr, SSL_get_wbio(ssl));
+      EXPECT_EQ(1u, write_ptr->references);
+      bio.reset();
+      EXPECT_EQ(0, write_freed);
+      detached.reset();
+    } else {
+      BIO_free_all(bio.release());
+    }
+    EXPECT_EQ(1, read_freed);
+    EXPECT_EQ(1, write_freed);
+    // Clean up the leaked reference if the ownership assertions failed.
+    if (write_freed == 0) {
+      BIO_free(write_ptr);
+    }
+    EXPECT_EQ(0u, ERR_peek_error());
+  }
+}
+
+TEST(SSLTest, BIOPopUnchainedTransport) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  int freed = 0;
+  bssl::UniquePtr<BIO> bio(BIO_new_ssl(ctx.get(), 1));
+  bssl::UniquePtr<BIO> transport(NewBIOWithFreeCount(&freed));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(transport);
+  SSL *ssl = nullptr;
+  ASSERT_EQ(1, BIO_get_ssl(bio.get(), &ssl));
+  BIO *transport_ptr = transport.release();
+  SSL_set_bio(ssl, transport_ptr, transport_ptr);
+  EXPECT_EQ(nullptr, BIO_next(bio.get()));
+  EXPECT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_POP, 0, transport_ptr));
+  EXPECT_EQ(transport_ptr, SSL_get_rbio(ssl));
+  EXPECT_EQ(transport_ptr, SSL_get_wbio(ssl));
+  EXPECT_EQ(0, freed);
+  EXPECT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_POP, 0, bio.get()));
+  EXPECT_EQ(nullptr, SSL_get_rbio(ssl));
+  EXPECT_EQ(nullptr, SSL_get_wbio(ssl));
+  EXPECT_EQ(1, freed);
+}
+
+struct BIOHandshakeRetryState {
+  BIO *ssl_bio;
+  int transport_flags;
+  int transport_reason;
+  int shim_flags;
+  int shim_reason;
+  int calls;
+};
+
+static int RetryBIOHandshake(BIO *bio) {
+  auto *state = static_cast<BIOHandshakeRetryState *>(BIO_get_data(bio));
+  state->calls++;
+  EXPECT_EQ(0, BIO_get_retry_flags(state->ssl_bio));
+  EXPECT_EQ(0, BIO_get_retry_reason(state->ssl_bio));
+  BIO_clear_retry_flags(bio);
+  BIO_set_flags(bio, state->transport_flags);
+  BIO_set_retry_reason(bio, state->transport_reason);
+  // mongo-c-driver's transport shim may set retry state on the upper SSL BIO.
+  BIO_set_flags(state->ssl_bio, state->shim_flags);
+  BIO_set_retry_reason(state->ssl_bio, state->shim_reason);
+  return -1;
+}
+
+TEST(SSLTest, BIOHandshakeRetries) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<BIO_METHOD> method(
+      BIO_meth_new(BIO_TYPE_SOURCE_SINK, "handshake retry"));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *bio) -> int {
+    BIO_set_init(bio, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(), [](BIO *bio, char *, int) -> int {
+    return RetryBIOHandshake(bio);
+  }));
+  ASSERT_TRUE(
+      BIO_meth_set_write(method.get(), [](BIO *bio, const char *, int) -> int {
+        return RetryBIOHandshake(bio);
+      }));
+  ASSERT_TRUE(
+      BIO_meth_set_ctrl(method.get(), [](BIO *, int cmd, long, void *) -> long {
+        return cmd == BIO_CTRL_FLUSH ? 1 : 0;
+      }));
+  const struct {
+    int transport_flags;
+    int transport_reason;
+    int shim_flags;
+    int shim_reason;
+    int ssl_error;
+    int flags;
+    int reason;
+  } kTests[] = {
+      {BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY, 0, 0, 0, SSL_ERROR_WANT_READ,
+       BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY, 0},
+      {BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY, 0, 0, 0, SSL_ERROR_WANT_WRITE,
+       BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY, 0},
+      {BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY, BIO_RR_CONNECT, 0, 0,
+       SSL_ERROR_WANT_CONNECT, BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY,
+       BIO_RR_CONNECT},
+      {BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY, 0,
+       BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY, 1234, SSL_ERROR_WANT_READ,
+       BIO_FLAGS_READ | BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY, 1234},
+      {0, 0, BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY, 1234, SSL_ERROR_SYSCALL,
+       BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY, 1234},
+  };
+  for (bool push : {false, true}) {
+    SCOPED_TRACE(push);
+    for (const auto &test : kTests) {
+      SCOPED_TRACE(test.ssl_error);
+      SCOPED_TRACE(test.shim_flags);
+      BIOHandshakeRetryState state = {
+          nullptr,         test.transport_flags, test.transport_reason,
+          test.shim_flags, test.shim_reason,     0};
+      bssl::UniquePtr<BIO> bio(BIO_new_ssl(ctx.get(), 1));
+      bssl::UniquePtr<BIO> transport(BIO_new(method.get()));
+      ASSERT_TRUE(bio);
+      ASSERT_TRUE(transport);
+      state.ssl_bio = bio.get();
+      BIO_set_data(transport.get(), &state);
+      SSL *ssl = nullptr;
+      ASSERT_EQ(1, BIO_get_ssl(bio.get(), &ssl));
+      if (push) {
+        ASSERT_EQ(bio.get(), BIO_push(bio.get(), transport.release()));
+      } else {
+        BIO *ptr = transport.release();
+        SSL_set_bio(ssl, ptr, ptr);
+      }
+      BIO_set_flags(bio.get(), BIO_FLAGS_RWS | BIO_FLAGS_SHOULD_RETRY);
+      BIO_set_retry_reason(bio.get(), BIO_RR_ACCEPT);
+      ERR_clear_error();
+      long ret = BIO_do_handshake(bio.get());
+      EXPECT_EQ(-1, ret);
+      EXPECT_EQ(test.ssl_error, SSL_get_error(ssl, static_cast<int>(ret)));
+      EXPECT_EQ(1, state.calls);
+      EXPECT_EQ(test.flags, BIO_get_retry_flags(bio.get()));
+      EXPECT_EQ(test.reason, BIO_get_retry_reason(bio.get()));
+      EXPECT_EQ(0u, ERR_peek_error());
+    }
+  }
+}
+
+TEST(SSLTest, BIOHandshakeX509Lookup) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  struct State {
+    BIO *bio = nullptr;
+    bool ready = false;
+    int calls = 0;
+  } state;
+  SSL_CTX_set_cert_cb(
+      server_ctx.get(),
+      [](SSL *, void *arg) -> int {
+        auto *s = static_cast<State *>(arg);
+        EXPECT_EQ(0, BIO_get_retry_flags(s->bio));
+        EXPECT_EQ(0, BIO_get_retry_reason(s->bio));
+        s->calls++;
+        return s->ready ? 1 : -1;
+      },
+      &state);
+  bssl::UniquePtr<BIO> client(BIO_new_ssl(client_ctx.get(), 1));
+  bssl::UniquePtr<BIO> server(BIO_new_ssl(server_ctx.get(), 0));
+  ASSERT_TRUE(client);
+  ASSERT_TRUE(server);
+  state.bio = server.get();
+  BIO *raw_client = nullptr, *raw_server = nullptr;
+  ASSERT_TRUE(BIO_new_bio_pair(&raw_client, 0, &raw_server, 0));
+  bssl::UniquePtr<BIO> client_transport(raw_client),
+      server_transport(raw_server);
+  ASSERT_EQ(client.get(), BIO_push(client.get(), client_transport.release()));
+  ASSERT_EQ(server.get(), BIO_push(server.get(), server_transport.release()));
+  ASSERT_EQ(-1, BIO_do_handshake(client.get()));
+  ASSERT_TRUE(BIO_should_retry(client.get()));
+  ASSERT_TRUE(BIO_should_read(client.get()));
+  BIO_set_flags(server.get(), BIO_FLAGS_RWS | BIO_FLAGS_SHOULD_RETRY);
+  BIO_set_retry_reason(server.get(), BIO_RR_CONNECT);
+  long ret = BIO_do_handshake(server.get());
+  SSL *ssl = nullptr;
+  ASSERT_EQ(1, BIO_get_ssl(server.get(), &ssl));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_WANT_X509_LOOKUP,
+            SSL_get_error(ssl, static_cast<int>(ret)));
+  EXPECT_EQ(BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY,
+            BIO_get_retry_flags(server.get()));
+  EXPECT_EQ(BIO_RR_SSL_X509_LOOKUP, BIO_get_retry_reason(server.get()));
+  EXPECT_EQ(1, state.calls);
+  state.ready = true;
+  ASSERT_TRUE(CompleteBIOHandshakes(client.get(), server.get()));
+  EXPECT_GT(state.calls, 1);
+}
 
 TEST(SSLTest, ALPNConfig) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
