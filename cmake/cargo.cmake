@@ -248,7 +248,7 @@ if(rust_triple MATCHES "-windows-(msvc|gnullvm)$|^wasm")
   get_filename_component(c_compiler_real "${CMAKE_C_COMPILER}" REALPATH)
   get_filename_component(c_compiler_real_dir "${c_compiler_real}" DIRECTORY)
   set(llvm_tools ar nm objdump)
-  if(rust_triple MATCHES "-windows-gnullvm$")
+  if(rust_triple MATCHES "-windows-")
     list(APPEND llvm_tools objcopy)
   endif()
   foreach(tool IN LISTS llvm_tools)
@@ -268,25 +268,29 @@ if(ENABLE_RUST STREQUAL "AUTO")
   message("::notice title=ENABLE_RUST::building with Rust")
 endif()
 
-# Rust code in a FIPS build has to be FIPS module code, or it would break the
-# build's validation. No FIPS module holds Rust yet, so a FIPS build that finds
-# Rust fails, even with AUTO. -DENABLE_RUST=OFF builds C only.
-if(FIPS)
-  message(FATAL_ERROR "ENABLE_RUST: FIPS builds can't use Rust yet: no FIPS "
-                      "module holds Rust code. Configure with -DENABLE_RUST=OFF "
-                      "to build C only.")
-endif()
-
 # cargo_add_rust_object(OUTPUT <object> MANIFEST_PATH <Cargo.toml>
-#                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...)
+#                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...
+#                       [ASM <target> [ASM_OUTPUT <object>]]
+#                       [FIPS_MODULE [INJECT_HASH <inject_hash>]
+#                        [COFF_SECTIONS <coff_sections>]])
 #
 # Adds a custom command producing OUTPUT, built with each of CFGS set as a
 # Rust cfg, in which only EXPORTS stay global, and hidden where the object
 # format has visibility, so libcrypto doesn't export them. With
 # BORINGSSL_PREFIX, EXPORTS carry the prefix in both the Rust and the C code.
 # Use OUTPUT as a source file of a target in the same directory.
+#
+# ASM names a static library of assembly that the partial link takes into
+# OUTPUT, as the crate's own copy. The crate object fold has no partial link,
+# so it writes the copy to ASM_OUTPUT. With FIPS_MODULE, OUTPUT is a FIPS
+# module of its own: the crate gets the awslc_fips cfg, and the partial link
+# puts all its code and constants in one section, the module region, or
+# COFF_SECTIONS does in the crate object fold. INJECT_HASH, for static FIPS
+# builds, embeds the HMAC-SHA256 of that region in OUTPUT. Shared FIPS builds
+# hash it in the final library instead.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME" "CFGS;EXPORTS" ${ARGN})
+  cmake_parse_arguments(arg "FIPS_MODULE" "OUTPUT;MANIFEST_PATH;LIB_NAME;ASM;ASM_OUTPUT;INJECT_HASH;COFF_SECTIONS"
+                        "CFGS;EXPORTS" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
 
@@ -333,6 +337,18 @@ function(cargo_add_rust_object)
   foreach(cfg IN LISTS arg_CFGS)
     list(APPEND rustflags "--cfg=${cfg}")
   endforeach()
+  # Partial RELRO makes rustc call functions with C names directly, not
+  # through the GOT, as FIPS module code has to (src/fips.rs). It only changes
+  # x86_64 ELF code.
+  list(APPEND rustflags -Crelro-level=partial)
+  if(arg_FIPS_MODULE)
+    list(APPEND rustflags --cfg=awslc_fips)
+  endif()
+  if(arg_INJECT_HASH AND ARCH STREQUAL "aarch64")
+    # Hashed before the final link, the module needs the tiny code model
+    # (src/fips.rs).
+    list(APPEND rustflags -Ccode-model=tiny)
+  endif()
   set(symbol_prefix "")
   set(export_prefix "")
   if(BORINGSSL_PREFIX)
@@ -409,6 +425,12 @@ function(cargo_add_rust_object)
     set(link_driver "${CMAKE_C_COMPILER}")
   endif()
   set(partial_link ${link_driver} -r -nostdlib ${RUST_LINK_C_FLAGS})
+  # The crate's own copy of its assembly goes after the staticlib, which refers
+  # to it.
+  set(asm_lib "")
+  if(arg_ASM)
+    set(asm_lib "$<TARGET_FILE:${arg_ASM}>")
+  endif()
   if(APPLE)
     # Same -arch, -platform_version and SDK as the C code. Pass 1 makes every
     # symbol but the exports local: hidden but global would still clash with
@@ -422,18 +444,39 @@ function(cargo_add_rust_object)
     if(CMAKE_OSX_DEPLOYMENT_TARGET)
       list(APPEND partial_link "${CMAKE_C_OSX_DEPLOYMENT_TARGET_FLAG}${CMAKE_OSX_DEPLOYMENT_TARGET}")
     endif()
+    # A FIPS module's code and constants go in one section, the module region,
+    # as bcm-rust.lds does on ELF. These are all the sections ld64 puts code
+    # and constants in, not only the ones rustc and the assembly use today: one
+    # left out would stay outside the region without failing the build. A
+    # constant that needs a rebase can't move into __TEXT, so it fails the link.
+    set(module_args "")
+    if(arg_FIPS_MODULE)
+      foreach(section __TEXT,__text __TEXT,__const __TEXT,__literal4 __TEXT,__literal8
+                      __TEXT,__literal16 __TEXT,__cstring __DATA,__const)
+        list(APPEND module_args "-Wl,-rename_section,${section},__TEXT,__bcm_rust")
+      endforeach()
+    endif()
     set(fold_commands
-      COMMAND ${partial_link} ${undefined_args}
-        "-Wl,-exported_symbols_list,${exports_file}" -o "${linked_obj}" "${staticlib}"
+      COMMAND ${partial_link} ${undefined_args} ${module_args}
+        "-Wl,-exported_symbols_list,${exports_file}" -o "${linked_obj}" "${staticlib}" ${asm_lib}
       COMMAND ${partial_link} -Wl,-keep_private_externs
         "-Wl,-unexported_symbols_list,${exports_file}" -o "${arg_OUTPUT}" "${linked_obj}")
   elseif(RUST_CRATE_OBJECT_FOLD)
+    set(fold_args "")
+    if(rust_triple MATCHES "-windows-gnullvm$")
+      list(APPEND fold_args "-DPERSONALITY=${export_prefix}awslc_rust_eh_personality")
+    endif()
+    if(arg_ASM)
+      list(APPEND fold_args "-DASM_LIB=${asm_lib}" "-DASM_OUTPUT=${arg_ASM_OUTPUT}")
+    endif()
+    if(arg_FIPS_MODULE)
+      list(APPEND fold_args "-DCOFF_SECTIONS=${arg_COFF_SECTIONS}")
+    endif()
     set(fold_commands
       COMMAND ${CMAKE_COMMAND} "-DLLVM_AR=${RUST_LLVM_AR}" "-DLLVM_NM=${RUST_LLVM_NM}"
         "-DLLVM_OBJDUMP=${RUST_LLVM_OBJDUMP}" "-DLLVM_OBJCOPY=${RUST_LLVM_OBJCOPY}"
-        "-DPERSONALITY=${export_prefix}awslc_rust_eh_personality" "-DSTATICLIB=${staticlib}"
-        "-DEXPORTS_FILE=${exports_file}" "-DOUTPUT=${arg_OUTPUT}"
-        -P "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake")
+        "-DSTATICLIB=${staticlib}" "-DEXPORTS_FILE=${exports_file}" "-DOUTPUT=${arg_OUTPUT}"
+        ${fold_args} -P "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake")
   else()
     # On ELF, a stub of .hidden directives makes the exports hidden in the
     # object itself, whether or not C calls them. COFF (MinGW) has no
@@ -452,20 +495,47 @@ function(cargo_add_rust_object)
     if(WIN32)
       set(keep_refptr --wildcard "--keep-global-symbol=.refptr.*")
     endif()
+    # A FIPS module's partial link puts everything in one section. In static
+    # FIPS builds, inject_hash then checks the region and embeds its hash.
+    set(lds_args "")
+    if(arg_FIPS_MODULE)
+      set(lds_args "-Wl,-T,${crate_dir}/bcm-rust.lds")
+    endif()
+    set(localized_obj "${arg_OUTPUT}")
+    set(hash_commands "")
+    if(arg_INJECT_HASH)
+      set(localized_obj "${output_dir}/${output_name}_hashunset.o")
+      set(hash_commands
+        COMMAND "${arg_INJECT_HASH}" -rust -in-object "${localized_obj}" -o "${arg_OUTPUT}")
+    endif()
     # Code that keeps core's unwind paths (opt-level 1 does) puts
     # DW.ref.rust_eh_personality in a COMDAT group. A consumer's own Rust has a
     # group of the same name, so its linker would keep one and reject our
     # references into the dropped copy. The rename gives ours a name no
     # consumer's Rust uses.
     set(fold_commands
-      COMMAND ${partial_link} ${undefined_args} -o "${linked_obj}" ${hidden_stub} "${staticlib}"
+      COMMAND ${partial_link} ${undefined_args} ${lds_args} -o "${linked_obj}"
+        ${hidden_stub} "${staticlib}" ${asm_lib}
       COMMAND ${CMAKE_OBJCOPY} "--keep-global-symbols=${exports_file}" ${keep_refptr}
         "--redefine-sym=DW.ref.rust_eh_personality=${export_prefix}awslc_DW.ref.rust_eh_personality"
-        "${linked_obj}" "${arg_OUTPUT}")
+        "${linked_obj}" "${localized_obj}"
+      ${hash_commands})
+  endif()
+
+  set(fold_depends "")
+  if(arg_ASM)
+    list(APPEND fold_depends ${arg_ASM} "$<TARGET_FILE:${arg_ASM}>")
+  endif()
+  if(arg_FIPS_MODULE)
+    list(APPEND fold_depends "${crate_dir}/bcm-rust.lds" ${arg_COFF_SECTIONS})
+  endif()
+  if(arg_INJECT_HASH)
+    # inject_hash is built for bcm.o, by bcm_o_target.
+    list(APPEND fold_depends bcm_o_target)
   endif()
 
   add_custom_command(
-    OUTPUT "${arg_OUTPUT}"
+    OUTPUT "${arg_OUTPUT}" ${arg_ASM_OUTPUT}
     COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
     COMMAND ${cargo_env} ${CARGO_EXECUTABLE} rustc --lib
       --locked --offline
@@ -477,6 +547,7 @@ function(cargo_add_rust_object)
       -- ${rustflags}
     ${fold_commands}
     DEPENDS ${rust_sources} "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"
+      ${fold_depends}
     COMMENT "Building Rust staticlib ${arg_LIB_NAME} into ${output_name}"
     USES_TERMINAL
     VERBATIM)

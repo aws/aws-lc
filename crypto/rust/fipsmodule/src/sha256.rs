@@ -9,7 +9,7 @@
 use core::ffi::{c_int, c_uint};
 use core::mem::offset_of;
 
-use crate::slice_from_c;
+use crate::{copy_bytes, slice_from_c, zero_bytes};
 use block::block_data_order;
 
 const BLOCK_LEN: usize = 64;
@@ -195,7 +195,7 @@ mod block {
 }
 
 impl Sha256Ctx {
-    fn new(h: [u32; 8], md_len: usize) -> Self {
+    pub(crate) fn new(h: [u32; 8], md_len: usize) -> Self {
         Sha256Ctx {
             h,
             nl: 0,
@@ -222,12 +222,12 @@ impl Sha256Ctx {
         if num != 0 {
             let free = BLOCK_LEN - num;
             if input.len() < free {
-                self.data[num..num + input.len()].copy_from_slice(input);
+                copy_bytes(&mut self.data[num..num + input.len()], input);
                 self.num += input.len() as c_uint;
                 return;
             }
             let (head, rest) = input.split_at(free);
-            self.data[num..].copy_from_slice(head);
+            copy_bytes(&mut self.data[num..], head);
             block_data_order(&mut self.h, &self.data);
             self.data = [0; BLOCK_LEN];
             input = rest;
@@ -237,7 +237,7 @@ impl Sha256Ctx {
         if !whole.is_empty() {
             block_data_order(&mut self.h, whole);
         }
-        self.data[..tail.len()].copy_from_slice(tail);
+        copy_bytes(&mut self.data[..tail.len()], tail);
         self.num = tail.len() as c_uint;
     }
 
@@ -249,11 +249,11 @@ impl Sha256Ctx {
         n += 1;
         // Fill the block with zeros if there isn't room for the length.
         if n > BLOCK_LEN - 8 {
-            self.data[n..].fill(0);
+            zero_bytes(&mut self.data[n..]);
             block_data_order(&mut self.h, &self.data);
             n = 0;
         }
-        self.data[n..BLOCK_LEN - 8].fill(0);
+        zero_bytes(&mut self.data[n..BLOCK_LEN - 8]);
         self.data[BLOCK_LEN - 8..BLOCK_LEN - 4].copy_from_slice(&self.nh.to_be_bytes());
         self.data[BLOCK_LEN - 4..].copy_from_slice(&self.nl.to_be_bytes());
         block_data_order(&mut self.h, &self.data);
@@ -275,7 +275,7 @@ impl Sha256Ctx {
     /// Finishes the hash and writes its digest to `out`. Returns false, with
     /// the hash still finished, if the context was set up for a digest of
     /// another length than `out`'s.
-    fn finish_into(&mut self, out: &mut [u8]) -> bool {
+    pub(crate) fn finish_into(&mut self, out: &mut [u8]) -> bool {
         self.finish();
         if self.md_len as usize != out.len() {
             return false;
@@ -291,7 +291,7 @@ const SHA224_IV: [u32; 8] = [
     0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939, 0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4,
 ];
 
-const SHA256_IV: [u32; 8] = [
+pub(crate) const SHA256_IV: [u32; 8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 

@@ -814,3 +814,68 @@ else()
   target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
   target_include_directories(fipsmodule PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 endif()
+
+# bcm-rust.o's own copy of the SHA-256 assembly, which its Rust calls
+# (crypto/rust/fipsmodule/src/sha256.rs). A FIPS module's code has to be inside
+# it, so bcm-rust.o has its own copy in every build, the same way. In static
+# FIPS builds delocate makes the copy fit bcm-rust.o's hashed region, as for
+# bcm.o: on aarch64 it turns adrp+add into adr. As a fragment it writes no
+# markers or hash, which bcm-rust.o has of its own, and puts its helpers in
+# .bcm_rust_outside, which bcm-rust.lds places after the region. Windows MSVC
+# and gnullvm toolchains have no partial link, so there the copy is an object
+# of its own (cmake/rust_crate_object_fold.cmake).
+set(BCM_RUST_ASM_SOURCES "")
+if(RUST_ASM)
+  if(ARCH STREQUAL "x86_64")
+    set(BCM_RUST_ASM_SOURCES sha256-x86_64.${ASM_EXT})
+  elseif(ARCH STREQUAL "x86")
+    set(BCM_RUST_ASM_SOURCES sha256-586.${ASM_EXT})
+  elseif(ARCH STREQUAL "aarch64")
+    set(BCM_RUST_ASM_SOURCES sha256-armv8.${ASM_EXT})
+  elseif(ARCH STREQUAL "arm")
+    set(BCM_RUST_ASM_SOURCES sha256-armv4.${ASM_EXT})
+  endif()
+endif()
+if(BCM_RUST_ASM_SOURCES)
+  if(RUST_FIPS_MODULE AND FIPS_DELOCATE)
+    add_custom_command(
+      OUTPUT bcm-rust-delocated.S
+      COMMAND
+      ./delocate
+      -o bcm-rust-delocated.S
+      -cc ${CMAKE_ASM_COMPILER}
+      -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
+      -fragment-helpers-section .bcm_rust_outside
+      ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
+      ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
+      ${AWSLC_SOURCE_DIR}/include/openssl/target.h
+      ${BCM_RUST_ASM_SOURCES}
+      DEPENDS
+      delocate
+      ${BCM_RUST_ASM_SOURCES}
+      ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
+      ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
+      ${AWSLC_SOURCE_DIR}/include/openssl/target.h
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set(BCM_RUST_ASM_SOURCES bcm-rust-delocated.S)
+  endif()
+  set(BCM_RUST_ASM_OBJECTS "")
+  if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    msbuild_aarch64_asm(TARGET bcm_rust_asm ASM_FILES ${BCM_RUST_ASM_SOURCES} OUTPUT_OBJECTS BCM_RUST_ASM_OBJECTS)
+  endif()
+  add_library(bcm_rust_asm STATIC ${BCM_RUST_ASM_SOURCES} ${BCM_RUST_ASM_OBJECTS})
+  target_compile_definitions(bcm_rust_asm PRIVATE BORINGSSL_IMPLEMENTATION)
+  target_add_awslc_include_paths(TARGET bcm_rust_asm SCOPE PRIVATE)
+  set_target_properties(bcm_rust_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(bcm_rust_asm PROPERTIES LINKER_LANGUAGE C)
+  # bcm.o's build generates the same assembly source. Makefile generators
+  # would run the generator for both targets at once, so build bcm.o's first.
+  if(FIPS_DELOCATE)
+    add_dependencies(bcm_rust_asm bcm_hashunset)
+  elseif(FIPS_SHARED)
+    add_dependencies(bcm_rust_asm bcm_library)
+  else()
+    add_dependencies(bcm_rust_asm fipsmodule)
+  endif()
+endif()

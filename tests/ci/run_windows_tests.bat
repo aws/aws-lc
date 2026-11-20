@@ -105,9 +105,18 @@ call :build_and_test %1 %2 || goto error
 
 @rem Negative test: corrupt the FIPS module in crypto.dll and verify the integrity
 @rem check detects it. This proves the check actually runs on DLL load.
+call :fips_negative_test "" || goto error
+@rem With Rust, bcm-rust.o is a second module, with a region and check of its own.
+if exist %BUILD_DIR%\crypto\bcm-rust.obj call :fips_negative_test -rust || goto error
+
+@echo  LOG: %date%-%time% %1 %2 FIPS validation complete
+exit /b 0
+
+@rem %1 is empty to corrupt bcm.o's module, or -rust for bcm-rust.o's
+:fips_negative_test
 copy /y %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto.dll.bak || goto error
 cd /d %SRC_ROOT%
-go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
+go run util/fipstools/break-hash.go -map %BUILD_DIR%\crypto\fips_crypto.map %~1 %BUILD_DIR%\crypto\crypto.dll %BUILD_DIR%\crypto\crypto_corrupted.dll || goto error
 copy /y %BUILD_DIR%\crypto\crypto_corrupted.dll %BUILD_DIR%\crypto\crypto.dll || goto error
 %BUILD_DIR%\util\fipstools\test_fips.exe 2>nul
 set FIPS_NEGATIVE_RC=%ERRORLEVEL%
@@ -121,8 +130,6 @@ if %FIPS_NEGATIVE_RC% equ 0 (
     echo FIPS integrity negative test failed: test_fips should have failed with corrupted crypto.dll
     goto error
 )
-
-@echo  LOG: %date%-%time% %1 %2 FIPS validation complete
 exit /b 0
 
 :run_sde_tests

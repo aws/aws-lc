@@ -7,11 +7,25 @@
 # OUTPUT is that object, taken out of the staticlib. The build fails
 # if it defines an external symbol other than the exports, needs a symbol from
 # another member (compiler_builtins), or carries linker directives (.drectve).
-# With LLVM_OBJCOPY (windows-gnullvm), the fold renames the crate's
+# With PERSONALITY (windows-gnullvm), the fold renames the crate's
 # rust_eh_personality to PERSONALITY, which no consumer's Rust defines.
 #
-# Inputs (-D): LLVM_AR LLVM_NM LLVM_OBJDUMP STATICLIB EXPORTS_FILE OUTPUT,
-# and optionally LLVM_OBJCOPY PERSONALITY
+# With ASM_LIB, a static library holding one object, the crate's own copy of
+# its assembly, the fold writes that object to ASM_OUTPUT. COFF symbols can't
+# be made local, so it renames the copy's symbols, and the crate object's
+# references to them, by adding _bcm_rust: libcrypto has its own copy.
+#
+# With COFF_SECTIONS, OUTPUT is a FIPS module (crypto/rust/fipsmodule/src/
+# fips.rs). Where ELF has bcm-rust.lds, COFF_SECTIONS renames both objects'
+# code and constants into one group of sections, which the linker sorts by
+# their $ suffix and merges into one section, .bcmrs: the start marker in
+# $a, the module in $m and the end marker in $z. The hash goes to .rdata,
+# outside the region. Sections not named here, such as .data, .pdata and
+# .xdata, stay outside the region. The crate's COMDAT constants get names of
+# their own, so that none folds with an identical constant outside the module.
+#
+# Inputs (-D): LLVM_AR LLVM_NM LLVM_OBJDUMP STATICLIB EXPORTS_FILE OUTPUT, and
+# optionally LLVM_OBJCOPY PERSONALITY ASM_LIB ASM_OUTPUT COFF_SECTIONS
 
 # MSVC names float and vector constants __real@<hex>, __xmm@<hex> and so on,
 # in COMDAT sections, exactly as MSVC's C compiler does. MinGW reaches C data,
@@ -41,6 +55,7 @@ set(crate "${CMAKE_MATCH_1}")
 string(REPLACE "\n" ";" nm_lines "${run_out}")
 
 set(crate_defined "")
+set(crate_constants "")
 set(crate_undefined "")
 set(others_defined "")
 foreach(line IN LISTS nm_lines)
@@ -56,11 +71,17 @@ foreach(line IN LISTS nm_lines)
       list(APPEND crate_undefined "${sym}")
     elseif(NOT sym MATCHES "${comdat_constant}")
       list(APPEND crate_defined "${sym}")
+    else()
+      list(APPEND crate_constants "${sym}")
     endif()
   endif()
 endforeach()
-if(LLVM_OBJCOPY)
+if(PERSONALITY)
   list(REMOVE_ITEM crate_defined rust_eh_personality)
+endif()
+if(COFF_SECTIONS)
+  # The module region's markers, which inject_hash finds in the linker's map.
+  list(REMOVE_ITEM crate_defined BORINGSSL_bcm_rust_text_start BORINGSSL_bcm_rust_text_end)
 endif()
 list(SORT crate_defined)
 list(SORT exports)
@@ -77,18 +98,62 @@ foreach(sym IN LISTS crate_undefined)
   endif()
 endforeach()
 
-# Extract to a temporary file and rename it only after the checks pass, so a
+# Extract to temporary files and rename them only after the checks pass, so a
 # failed check leaves no OUTPUT that a later build would treat as up to date.
+function(extract lib member out)
+  execute_process(COMMAND ${LLVM_AR} p "${lib}" "${member}" OUTPUT_FILE "${out}" RESULT_VARIABLE rc)
+  if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "rust crate object fold: can't extract ${member} from ${lib}")
+  endif()
+endfunction()
 set(tmp "${OUTPUT}.tmp")
-execute_process(COMMAND ${LLVM_AR} p "${STATICLIB}" "${crate}" OUTPUT_FILE "${tmp}" RESULT_VARIABLE rc)
-if(NOT rc EQUAL 0)
-  message(FATAL_ERROR "rust crate object fold: can't extract ${crate} from ${STATICLIB}")
-endif()
+extract("${STATICLIB}" "${crate}" "${tmp}")
 run(${LLVM_OBJDUMP} -h "${tmp}")
 if(run_out MATCHES "\\.drectve")
   message(FATAL_ERROR "rust crate object fold: the crate object has linker directives (.drectve)")
 endif()
-if(LLVM_OBJCOPY)
-  run(${LLVM_OBJCOPY} "--redefine-sym=rust_eh_personality=${PERSONALITY}" "${tmp}")
+set(renames "")
+if(PERSONALITY)
+  list(APPEND renames "--redefine-sym=rust_eh_personality=${PERSONALITY}")
+endif()
+set(objects "${tmp}")
+if(ASM_LIB)
+  run(${LLVM_AR} t "${ASM_LIB}")
+  string(STRIP "${run_out}" asm_members)
+  string(REPLACE "\n" ";" asm_members "${asm_members}")
+  list(LENGTH asm_members n)
+  if(NOT n EQUAL 1)
+    message(FATAL_ERROR "rust crate object fold: ${ASM_LIB} holds ${n} objects, expected one")
+  endif()
+  set(asm_tmp "${ASM_OUTPUT}.tmp")
+  extract("${ASM_LIB}" "${asm_members}" "${asm_tmp}")
+  run(${LLVM_NM} --extern-only --defined-only --format=just-symbols "${asm_tmp}")
+  string(REPLACE "\n" ";" asm_symbols "${run_out}")
+  foreach(sym IN LISTS asm_symbols)
+    if(sym)
+      list(APPEND renames "--redefine-sym=${sym}=${sym}_bcm_rust")
+    endif()
+  endforeach()
+  run(${LLVM_OBJCOPY} ${renames} "${asm_tmp}")
+  list(APPEND objects "${asm_tmp}")
+endif()
+if(COFF_SECTIONS)
+  foreach(sym IN LISTS crate_constants)
+    list(APPEND renames "--redefine-sym=${sym}=${sym}_bcm_rust")
+  endforeach()
+endif()
+if(renames)
+  run(${LLVM_OBJCOPY} ${renames} "${tmp}")
+endif()
+if(COFF_SECTIONS)
+  foreach(obj IN LISTS objects)
+    run("${COFF_SECTIONS}" -o "${obj}" "${obj}"
+      ".bcm_rust_text_start=.bcmrs$a,code" ".bcm_rust_text_end=.bcmrs$z,code"
+      ".bcm_rust_text_hash=.rdata" ".text*=.bcmrs$m" ".rdata*=.bcmrs$m,code"
+      ".rodata*=.bcmrs$m,code")
+  endforeach()
+endif()
+if(ASM_LIB)
+  file(RENAME "${asm_tmp}" "${ASM_OUTPUT}")
 endif()
 file(RENAME "${tmp}" "${OUTPUT}")

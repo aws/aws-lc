@@ -66,7 +66,7 @@ func TestDelocate(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			if err := transform(&buf, test.includes, inputs, test.startEndDebugDirectives); err != nil {
+			if err := transform(&buf, test.includes, inputs, test.startEndDebugDirectives, ""); err != nil {
 				t.Fatalf("transform failed: %s", err)
 			}
 
@@ -126,7 +126,7 @@ func TestRelroSet(t *testing.T) {
 			t.Fatalf("failed to parse %q: %s", contents, err)
 		}
 		inputs := []inputFile{{path: "test.s", contents: contents, ast: asm.AST()}}
-		err := transform(&bytes.Buffer{}, nil, inputs, true)
+		err := transform(&bytes.Buffer{}, nil, inputs, true, "")
 		if (err == nil) != test.ok {
 			t.Errorf("transform with %q: got error %v, want ok=%t", test.set, err, test.ok)
 		}
