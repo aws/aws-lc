@@ -123,12 +123,12 @@ jobs:
         id: env
         run: echo "aws_account_id=${AWS_ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
       - name: Retrieve OIDC Role Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Retrieve Image Build Role Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImageBuildRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
