@@ -36,6 +36,8 @@ function build_and_test_socat() {
   # test 310 OPENSSLRENEG2: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode
   # but that has caveats. See PORTING.md 'TLS renegotiation'
   # test 399 OPENSSL_DTLS_CLIENT: Unknown issue running openssl s_server
+  # test 410 VSOCK_ECHO: the ubuntu-26.04 GHA runner image has no vsock loopback transport, so connecting to
+  # VMADDR_CID_LOCAL fails with ENETUNREACH. The test is plain socat<->socat with no TLS involved.
   # test 467 EXEC_FDS: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
   # test 468 EXEC_SNIFF: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
   # test 478 SIGUSR1_STATISTICS: GHA does not support tty
@@ -49,7 +51,7 @@ function build_and_test_socat() {
   # test 506 CHDIR_ON_SHELL: GHA does not specify expected shell environment variables
   # test 508 UMASK_ON_SYSTEM: GHA does not specify expected shell environment variables
   # test 528 PROCAN_CTTY: GHA does not support tty
-  ./test.sh -d --expect-fail 146,216,309,310,399,467,468,478,492,498,499,500,501,502,503,506,508,528
+  ./test.sh -d --expect-fail 146,216,309,310,399,410,467,468,478,492,498,499,500,501,502,503,506,508,528
   popd
 }
 
