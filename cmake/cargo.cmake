@@ -1,9 +1,9 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# rust-phase0 experiment: build the crypto/rust staticlib with CMake-forced
-# Cargo settings and fold it into one object, rust.o, that build_libcrypto()
-# adds the way the FIPS build adds bcm.o. Consumers still link only libcrypto.
+# Builds the Rust crate as a staticlib with CMake-forced Cargo settings and
+# folds it into one object, bcm-rust.o, that build_libcrypto() adds the way the
+# FIPS build adds bcm.o. Consumers still link only libcrypto.
 # Cargo discovery comes from the caracal PoC's cmake/cargo.cmake.
 
 # With ENABLE_RUST=AUTO, the default, a failed check below logs why and builds
@@ -21,7 +21,7 @@ macro(rust_unsupported)
   message(FATAL_ERROR ${ARGN})
 endmacro()
 
-# Multi-config generators build one rust.o per configuration. The build tool
+# Multi-config generators build one bcm-rust.o per configuration. The build tool
 # expands ${CMAKE_CFG_INTDIR} in custom command outputs on every CMake
 # version; $<CONFIG> there needs CMake 3.20.
 if(CMAKE_CONFIGURATION_TYPES)
@@ -29,7 +29,7 @@ if(CMAKE_CONFIGURATION_TYPES)
 else()
   set(RUST_CONFIG_DIR "")
 endif()
-# Cargo builds one target per run, so rust.o holds one architecture.
+# Cargo builds one target per run, so bcm-rust.o holds one architecture.
 if(APPLE AND CMAKE_OSX_ARCHITECTURES MATCHES ";")
   rust_unsupported("ENABLE_RUST does not support universal binaries")
 endif()
@@ -62,7 +62,7 @@ endif()
 # The C library check and the partial link get the C flags from the toolchain
 # file or the user, such as -m32, and the compiler target. AWS-LC adds its own
 # flags after this file runs: with -fsanitize, clang links a sanitizer runtime
-# into rust.o even with -nostdlib. -fno-sanitize=all, which GCC 4.8 lacks,
+# into bcm-rust.o even with -nostdlib. -fno-sanitize=all, which GCC 4.8 lacks,
 # keeps out one passed in CFLAGS.
 if(CMAKE_HOST_WIN32)
   separate_arguments(RUST_LINK_C_FLAGS WINDOWS_COMMAND "${CMAKE_C_FLAGS}")
@@ -219,8 +219,8 @@ else()
   set(rust_triple "${rust_host}")
 endif()
 
-# Consumer-supplied rustc flags, the Rust analogue of CMAKE_C_FLAGS. Becomes
-# CARGO_ENCODED_RUSTFLAGS, which replaces RUSTFLAGS and config-file rustflags.
+# Consumer-supplied rustc flags, the Rust analogue of CMAKE_C_FLAGS. They reach
+# rustc with ours, as `cargo rustc` arguments (cargo_add_rust_object).
 set(RUST_FLAGS "" CACHE STRING "Extra rustc flags (semicolon-separated list)")
 # Cargo passes RUST_FLAGS after the profile settings forced below, and rustc
 # keeps the last of a repeated -C option: -Copt-level=0 brought panic data back.
@@ -277,16 +277,16 @@ if(FIPS)
                       "to build C only.")
 endif()
 
-# cargo_add_rust_object(OUTPUT <rust.o> MANIFEST_PATH <Cargo.toml>
-#                       LIB_NAME <name> EXPORTS <sym>...)
+# cargo_add_rust_object(OUTPUT <object> MANIFEST_PATH <Cargo.toml>
+#                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...)
 #
-# Adds a custom command producing OUTPUT, in which only EXPORTS stay global.
-# C code must declare EXPORTS with hidden visibility (crypto/rust/internal.h),
-# which keeps them out of libcrypto's exports. With BORINGSSL_PREFIX, EXPORTS
-# carry the prefix in both the Rust and the C code. Use OUTPUT as a source file
-# of a target in the same directory.
+# Adds a custom command producing OUTPUT, built with each of CFGS set as a
+# Rust cfg, in which only EXPORTS stay global, and hidden where the object
+# format has visibility, so libcrypto doesn't export them. With
+# BORINGSSL_PREFIX, EXPORTS carry the prefix in both the Rust and the C code.
+# Use OUTPUT as a source file of a target in the same directory.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME" "EXPORTS" ${ARGN})
+  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME" "CFGS;EXPORTS" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
 
@@ -309,13 +309,14 @@ function(cargo_add_rust_object)
   else()
     set(is_debug 0)
   endif()
-  # Debug uses opt-level 1, not 0. At 0, core's unwinding code keeps a
-  # reference to rust_eh_personality, which the Apple fold makes local, and
-  # pass 2 of the Xcode 16 and 26 linkers turns that into an undefined symbol.
-  set(rust_opt "$<${is_debug}:1>$<$<NOT:${is_debug}>:3>")
+  # Debug uses opt-level 2. Below it, core's unwinding code keeps references
+  # to rust_eh_personality: pass 2 of the Xcode 16 and 26 linkers turns the
+  # Apple fold's local copy into an undefined symbol, and ELF objects get a
+  # COMDAT group (see the ELF fold).
+  set(rust_opt "$<${is_debug}:2>$<$<NOT:${is_debug}>:3>")
   set(rust_debug "$<${is_debug}:true>$<$<NOT:${is_debug}>:false>")
 
-  # Forced settings (doc 3.2.1). --config outranks Cargo.toml and config files.
+  # Forced settings. --config outranks Cargo.toml and config files.
   set(P "profile.release")
   set(forced_config
     --config "${P}.opt-level=${rust_opt}"
@@ -329,6 +330,9 @@ function(cargo_add_rust_object)
     --config "build.rustc-wrapper=\"\""
     --config "build.rustc-workspace-wrapper=\"\"")
   set(rustflags ${RUST_FLAGS})
+  foreach(cfg IN LISTS arg_CFGS)
+    list(APPEND rustflags "--cfg=${cfg}")
+  endforeach()
   set(symbol_prefix "")
   set(export_prefix "")
   if(BORINGSSL_PREFIX)
@@ -348,15 +352,16 @@ function(cargo_add_rust_object)
     list(APPEND rustflags --cfg=awslc_prefix)
     set(export_prefix "${symbol_prefix}_")
   endif()
-  # CARGO_ENCODED_RUSTFLAGS separates flags with 0x1f.
-  string(ASCII 31 unit_sep)
-  string(REPLACE ";" "${unit_sep}" encoded_rustflags "${rustflags}")
+  # The rustflags go to rustc as `cargo rustc` arguments, not in
+  # CARGO_ENCODED_RUSTFLAGS: its 0x1f separator can't be written into a Visual
+  # Studio project, which is XML. An empty CARGO_ENCODED_RUSTFLAGS still
+  # outranks RUSTFLAGS and config-file rustflags, so none of those reach rustc.
   # RUSTC and RUSTC_WRAPPER env vars are read by Cargo directly, so pin them too.
   set(cargo_env ${CMAKE_COMMAND} -E env
     "RUSTC=${RUSTC_EXECUTABLE}"
     "RUSTC_WRAPPER="
     "RUSTC_WORKSPACE_WRAPPER="
-    "CARGO_ENCODED_RUSTFLAGS=${encoded_rustflags}"
+    "CARGO_ENCODED_RUSTFLAGS="
     "BORINGSSL_PREFIX=${symbol_prefix}"
     --unset=RUSTFLAGS)
   if(APPLE)
@@ -377,7 +382,8 @@ function(cargo_add_rust_object)
   # staticlib, plus only the members it needs (compiler_builtins helpers).
   # Every other symbol then becomes local.
   get_filename_component(output_dir "${arg_OUTPUT}" DIRECTORY)
-  set(linked_obj "${output_dir}/rust_full.o")
+  get_filename_component(output_name "${arg_OUTPUT}" NAME_WE)
+  set(linked_obj "${output_dir}/${output_name}_full.o")
   set(exports_file "${CMAKE_CURRENT_BINARY_DIR}/rust_exports.txt")
   set(export_syms "")
   set(undefined_args "")
@@ -406,8 +412,7 @@ function(cargo_add_rust_object)
   if(APPLE)
     # Same -arch, -platform_version and SDK as the C code. Pass 1 makes every
     # symbol but the exports local: hidden but global would still clash with
-    # a consumer's own Rust in a static link. Pass 2 hides the exports, because
-    # a Mach-O reference doesn't carry internal.h's hidden declaration.
+    # a consumer's own Rust in a static link. Pass 2 hides the exports.
     # Apple's compilers call aarch64 arm64.
     string(REPLACE aarch64 arm64 osx_arch "${CMAKE_SYSTEM_PROCESSOR}")
     list(APPEND partial_link -arch ${osx_arch})
@@ -430,24 +435,49 @@ function(cargo_add_rust_object)
         "-DEXPORTS_FILE=${exports_file}" "-DOUTPUT=${arg_OUTPUT}"
         -P "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake")
   else()
+    # On ELF, a stub of .hidden directives makes the exports hidden in the
+    # object itself, whether or not C calls them. COFF (MinGW) has no
+    # visibility, and Windows exports only functions marked for export.
+    set(hidden_stub "")
+    if(NOT WIN32)
+      set(hidden_stub "${CMAKE_CURRENT_BINARY_DIR}/rust_exports_hidden.s")
+      string(REPLACE ";" "\n.hidden " hidden_text "${export_syms}")
+      # Without the note, the linker would give the stub an executable stack.
+      file(WRITE "${hidden_stub}" ".hidden ${hidden_text}\n.section .note.GNU-stack,\"\",%progbits\n")
+    endif()
+    # MinGW reaches C data through a pointer, .refptr.<symbol>, in a COMDAT
+    # that C's objects define too. It stays global: the linker keeps one copy
+    # and resolves every object's references to it.
+    set(keep_refptr "")
+    if(WIN32)
+      set(keep_refptr --wildcard "--keep-global-symbol=.refptr.*")
+    endif()
+    # Code that keeps core's unwind paths (opt-level 1 does) puts
+    # DW.ref.rust_eh_personality in a COMDAT group. A consumer's own Rust has a
+    # group of the same name, so its linker would keep one and reject our
+    # references into the dropped copy. The rename gives ours a name no
+    # consumer's Rust uses.
     set(fold_commands
-      COMMAND ${partial_link} ${undefined_args} -o "${linked_obj}" "${staticlib}"
-      COMMAND ${CMAKE_OBJCOPY} "--keep-global-symbols=${exports_file}" "${linked_obj}" "${arg_OUTPUT}")
+      COMMAND ${partial_link} ${undefined_args} -o "${linked_obj}" ${hidden_stub} "${staticlib}"
+      COMMAND ${CMAKE_OBJCOPY} "--keep-global-symbols=${exports_file}" ${keep_refptr}
+        "--redefine-sym=DW.ref.rust_eh_personality=${export_prefix}awslc_DW.ref.rust_eh_personality"
+        "${linked_obj}" "${arg_OUTPUT}")
   endif()
 
   add_custom_command(
     OUTPUT "${arg_OUTPUT}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
-    COMMAND ${cargo_env} ${CARGO_EXECUTABLE} build
+    COMMAND ${cargo_env} ${CARGO_EXECUTABLE} rustc --lib
       --locked --offline
       --manifest-path "${arg_MANIFEST_PATH}"
       --target-dir "${target_dir}"
       --release
       ${cargo_target_args}
       ${forced_config}
+      -- ${rustflags}
     ${fold_commands}
     DEPENDS ${rust_sources} "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"
-    COMMENT "Building Rust staticlib ${arg_LIB_NAME} into rust.o"
+    COMMENT "Building Rust staticlib ${arg_LIB_NAME} into ${output_name}"
     USES_TERMINAL
     VERBATIM)
 endfunction()

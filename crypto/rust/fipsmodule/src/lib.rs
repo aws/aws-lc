@@ -1,20 +1,37 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-//! Rust code folded into libcrypto as `rust.o` (cmake/cargo.cmake). Its C-ABI
-//! functions, declared in `internal.h`, are internal to libcrypto. They return
-//! 1 on success and 0 on failure, and never panic across the boundary.
+//! Rust code folded into libcrypto as `bcm-rust.o` (cmake/cargo.cmake). Its
+//! C-ABI functions, declared in `internal.h`, are internal to libcrypto. Those
+//! that can fail return 1 on success and 0 on failure.
+//!
+//! CMake sets the `awslc_asm` cfg where AWS-LC builds its assembly, as
+//! `OPENSSL_NO_ASM` and `ARCH` decide for C, and `awslc_no_avx` with
+//! `MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX`. Rust then calls the same assembly C
+//! does. If the cfgs disagree with C, the link fails on a missing function.
 
 #![no_std]
 
-use core::ffi::c_int;
-
-/// Returns the sum of all bytes in `input`, wrapping on overflow.
-fn byte_sum(input: &[u8]) -> u64 {
-    input
-        .iter()
-        .fold(0u64, |acc, &b| acc.wrapping_add(u64::from(b)))
+/// The C name of `name`, for `export_name` and `link_name`. rustc doesn't see
+/// the BORINGSSL_PREFIX headers, so in a prefix build CMake sets the
+/// `awslc_prefix` cfg and the BORINGSSL_PREFIX environment variable, and the
+/// name takes the prefix, as `internal.h` and the C code give it.
+#[cfg(not(awslc_prefix))]
+macro_rules! c_name {
+    ($name:expr) => {
+        $name
+    };
 }
+#[cfg(awslc_prefix)]
+macro_rules! c_name {
+    ($name:expr) => {
+        concat!(env!("BORINGSSL_PREFIX"), "_", $name)
+    };
+}
+
+#[cfg(awslc_asm)]
+mod cpu;
+mod sha256;
 
 /// Builds a byte slice from a C pointer and length.
 ///
@@ -38,40 +55,6 @@ unsafe fn slice_from_c<'a>(ptr: *const u8, len: usize) -> Option<&'a [u8]> {
     // SAFETY: `ptr` is non-NULL, `len` is in range, and the caller guarantees
     // `ptr` is valid for reads of `len` bytes for `'a`.
     Some(unsafe { core::slice::from_raw_parts(ptr, len) })
-}
-
-/// Writes the sum of the `input_len` bytes at `input` to `*out`.
-///
-/// Returns 1 on success, or 0 if `out` is NULL or `input` is NULL with a
-/// non-zero `input_len`.
-///
-/// # Safety
-///
-/// `input` must be NULL or valid for reads of `input_len` bytes. `out` must be
-/// NULL or valid for writing a `uint64_t`.
-// rustc doesn't see the BORINGSSL_PREFIX headers, so in a prefix build CMake
-// sets the `awslc_prefix` cfg and the BORINGSSL_PREFIX environment variable,
-// and the function takes the prefixed name internal.h gives it.
-#[cfg_attr(not(awslc_prefix), unsafe(no_mangle))]
-#[cfg_attr(
-    awslc_prefix,
-    unsafe(export_name = concat!(env!("BORINGSSL_PREFIX"), "_caracal_byte_sum"))
-)]
-pub unsafe extern "C" fn caracal_byte_sum(
-    input: *const u8,
-    input_len: usize,
-    out: *mut u64,
-) -> c_int {
-    if out.is_null() {
-        return 0;
-    }
-    // SAFETY: forwarded from this function's contract.
-    let Some(input) = (unsafe { slice_from_c(input, input_len) }) else {
-        return 0;
-    };
-    // SAFETY: `out` is non-NULL and the caller guarantees it is writable.
-    unsafe { out.write(byte_sum(input)) };
-    1
 }
 
 /// Runtime support a `no_std` staticlib must provide.

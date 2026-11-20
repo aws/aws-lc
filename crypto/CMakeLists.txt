@@ -218,15 +218,37 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(ENABLE_RUST)
-  # rust-phase0: one relocatable object holding all library Rust code, entered
-  # into build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
-  # global, and internal.h declares them hidden.
-  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/rust${CMAKE_C_OUTPUT_EXTENSION}")
+  # One relocatable object holding all library Rust code, entered into
+  # build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
+  # global, and hidden, so libcrypto doesn't export them.
+  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
+  # Rust calls the assembly C builds (src/lib.rs). C builds it unless
+  # OPENSSL_NO_ASM made ARCH generic, or target.h turns it off: under MSan,
+  # and for 32-bit Arm on Apple.
+  set(rust_cfgs "")
+  if(NOT ARCH STREQUAL "generic" AND NOT MSAN AND NOT (APPLE AND ARCH STREQUAL "arm"))
+    list(APPEND rust_cfgs awslc_asm)
+  endif()
+  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    list(APPEND rust_cfgs awslc_no_avx)
+  endif()
+  # The exports are the Rust functions internal.h declares, one per line that
+  # starts with the return type.
+  set(rust_header "${CMAKE_CURRENT_SOURCE_DIR}/rust/fipsmodule/internal.h")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rust_header}")
+  file(STRINGS "${rust_header}" rust_decls REGEX "^[a-z].*[ *]bcm_rust_[a-z0-9_]+\\(")
+  set(rust_exports "")
+  foreach(decl IN LISTS rust_decls)
+    string(REGEX MATCH "bcm_rust_[a-z0-9_]+\\(" name "${decl}")
+    string(REPLACE "(" "" name "${name}")
+    list(APPEND rust_exports ${name})
+  endforeach()
   cargo_add_rust_object(
     OUTPUT "${RUST_OBJECT}"
-    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/Cargo.toml"
-    LIB_NAME caracal
-    EXPORTS caracal_byte_sum)
+    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+    LIB_NAME bcm_rust
+    CFGS ${rust_cfgs}
+    EXPORTS ${rust_exports})
 endif()
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
@@ -594,10 +616,8 @@ target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
 if(ENABLE_RUST)
-  # C side of the Rust integration; the Rust code itself is linked in
-  # build_libcrypto(). AWSLC_RUST is deliberately not visible to fipsmodule.
-  target_sources(crypto_objects PRIVATE rust/rust.c)
-  target_compile_definitions(crypto_objects PRIVATE AWSLC_RUST)
+  # The public SHA-224 and SHA-256 functions, as calls into Rust.
+  target_sources(crypto_objects PRIVATE rust/sha256.c)
 endif()
 
 function(build_libcrypto)
@@ -896,9 +916,6 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:crypto_test_data>
   )
   set_test_location(${CRYPTO_TEST_EXEC})
-  if(ENABLE_RUST)
-    target_sources(${CRYPTO_TEST_EXEC} PRIVATE rust/rust_test.cc)
-  endif()
 
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_add_awslc_include_paths(TARGET ${CRYPTO_TEST_EXEC} SCOPE PRIVATE)
