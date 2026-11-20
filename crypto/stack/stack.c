@@ -80,6 +80,7 @@ void *OPENSSL_sk_set(OPENSSL_STACK *sk, size_t i, void *value) {
   if (!sk || i >= sk->num) {
     return NULL;
   }
+  sk->sorted = 0;
   return sk->data[i] = value;
 }
 
