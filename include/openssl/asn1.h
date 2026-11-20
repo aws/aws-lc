@@ -1351,6 +1351,14 @@ DECLARE_ASN1_ITEM(ASN1_TIME)
 OPENSSL_EXPORT int ASN1_TIME_diff(int *out_days, int *out_seconds,
                                   const ASN1_TIME *from, const ASN1_TIME *to);
 
+// ASN1_TIME_compare returns -1 if |a| is before |b|, zero if they are equal,
+// 1 if |a| is after |b|, and -2 if either time cannot be decoded or the
+// difference overflows.
+//
+// It uses the parsing rules of |ASN1_TIME_diff|. If either input is NULL, that
+// input is interpreted as the current time.
+OPENSSL_EXPORT int ASN1_TIME_compare(const ASN1_TIME *a, const ASN1_TIME *b);
+
 // ASN1_TIME_set_posix represents |posix_time| as a GeneralizedTime or UTCTime
 // and writes the result to |s|. As in RFC 5280, section 4.1.2.5, it uses
 // UTCTime when the time fits and GeneralizedTime otherwise. It returns |s| on

@@ -5783,15 +5783,24 @@ OPENSSL_EXPORT int SSL_get_tlsext_status_type(const SSL *ssl);
 OPENSSL_EXPORT int SSL_set_tlsext_status_ocsp_resp(SSL *ssl, uint8_t *resp,
                                                    size_t resp_len);
 
-// SSL_get_tlsext_status_ocsp_resp sets |*out| to point to the OCSP response
-// from the server. It returns the length of the response. If there was no
-// response, it sets |*out| to NULL and returns zero.
+// SSL_get_tlsext_status_ocsp_resp writes the server's OCSP response pointer
+// to |out| and returns its length. If there was no response, it writes NULL to
+// |out| and returns zero.
 //
-// Use |SSL_get0_ocsp_response| instead.
+// |out| must be non-NULL and point to a writable |unsigned char *| or
+// |const uint8_t *| variable. It is typed as |void *| for compatibility with
+// OpenSSL's untyped control macro, so this requirement is not checked by the
+// compiler.
+//
+// The returned data is borrowed and must not be modified or freed, even when
+// using an |unsigned char *|. The pointer is valid until |ssl| is freed or its
+// current session is replaced.
+//
+// Use |SSL_get0_ocsp_response| instead for a const-correct, type-checked API.
 //
 // WARNING: the returned data is not guaranteed to be well formed.
 OPENSSL_EXPORT size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl,
-                                                      const uint8_t **out);
+                                                      void *out);
 
 // SSL_CTX_set_tlsext_status_cb configures the legacy OpenSSL OCSP callback and
 // returns one. Though the type signature is the same, this callback has
