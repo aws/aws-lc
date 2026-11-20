@@ -125,9 +125,9 @@ die "can't locate x86_64-xlate.pl";
 # output, so this isn't useful anyway.
 #
 # This file also has an AVX2 implementation, controlled by setting $avx to 2.
-# For now, we intentionally disable it. While it gives a 13-16% perf boost, the
-# CFI annotations are wrong. It allocates stack in a loop and should be
-# rewritten to avoid this.
+# It is enabled below for SHA-512 only. Its main loop moves %rsp down within
+# the frame reserved by the prologue, so its CFA is described relative to the
+# aligned frame base, not to the current %rsp.
 $avx = 1;
 $shaext=1;
 for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
@@ -160,6 +160,11 @@ if ($output =~ /512/) {
 	@sigma1=(17,19,10);
 	$rounds=64;
 }
+
+# Enable the AVX2+BMI code path for SHA-512. It uses RORX rather than SHRD,
+# which is slow on AMD CPUs, so unlike the AVX path it is not limited to Intel.
+# SHA-256 keeps $avx = 1: CPUs with AVX2 increasingly have the SHA extensions.
+$avx = 2 if ($avx && $SZ == 8);
 
 $ctx="%rdi";	# 1st arg, zapped by $a3
 $inp="%rsi";	# 2nd arg
@@ -1480,10 +1485,12 @@ sub bodyx_00_15 () {
 }
 
 $code.=<<___;
+.globl	${func}_avx2
 .type	${func}_avx2,\@function,3
 .align	64
 ${func}_avx2:
 .cfi_startproc
+	_CET_ENDBR
 .Lavx2_shortcut:
 	mov	%rsp,%rax		# copy %rsp
 .cfi_def_cfa_register	%rax
@@ -1508,7 +1515,14 @@ ${func}_avx2:
 	mov	$inp,$_inp		# save inp, 2nd arh
 	mov	%rdx,$_end		# save end pointer, "3rd" arg
 	mov	%rax,$_rsp		# save copy of %rsp
-.cfi_cfa_expression	$_rsp,deref,+8
+___
+# From here until .Ldone_avx2, the loop moves %rsp down by up to
+# 2*$SZ*($rounds-8) bytes from where it is now, and never below the frame base
+# that the "and" above aligned to 256*$SZ bytes. Locate $_rsp relative to that
+# frame base, as se_handler does on Windows, rather than to the current %rsp:
+# CFA = *((%rsp & -256*$SZ) + 2*$SZ*($rounds-8) + 16*$SZ+3*8) + 8.
+$code.=<<___;
+.cfi_cfa_expression	%rsp,`-256*$SZ`,and,+`2*$SZ*($rounds-8)+16*$SZ+3*8`,deref,+8
 ___
 $code.=<<___ if ($win64);
 	movaps	%xmm6,16*$SZ+32(%rsp)
