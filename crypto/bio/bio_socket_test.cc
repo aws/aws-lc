@@ -15,6 +15,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "../test/file_util.h"
 #include "../test/test_util.h"
 #include "./internal.h"
 
@@ -603,9 +604,11 @@ TEST(BIOTest, SocketNonBlocking) {
 
   // Reading from |accept_bio| should not block.
   char buf[sizeof(kTestMessage)];
+  EXPECT_FALSE(BIO_eof(accept_bio.get()));
   int ret = BIO_read(accept_bio.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, -1);
   EXPECT_TRUE(BIO_should_read(accept_bio.get())) << LastSocketError();
+  EXPECT_FALSE(BIO_eof(accept_bio.get()));
 
   // Writing to |connect_bio| should eventually overflow the transport buffers
   // and also give a retryable error.
@@ -653,7 +656,191 @@ TEST(BIOTest, SocketNonBlocking) {
   ret = BIO_read(accept_bio.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0) << LastSocketError();
   EXPECT_FALSE(BIO_should_read(accept_bio.get()));
+  EXPECT_TRUE(BIO_eof(accept_bio.get()));
 }
+
+static void TestStreamBIOEOF(const BIO_METHOD *method) {
+  OwnedSocket listening_sock = ListenLoopback(SOCK_STREAM, AF_INET);
+  ASSERT_TRUE(listening_sock.is_valid()) << LastSocketError();
+  SockaddrStorage addr = listening_sock.storage();
+
+  OwnedSocket connect_sock;
+  bssl::UniquePtr<BIO> bio;
+  if (method == BIO_s_connect()) {
+    char hostname[80];
+    snprintf(hostname, sizeof(hostname), "127.0.0.1:%d",
+             ntohs(addr.ToIPv4().sin_port));
+    bio.reset(BIO_new_connect(hostname));
+    ASSERT_TRUE(bio);
+    ASSERT_EQ(BIO_do_connect(bio.get()), 1) << LastSocketError();
+  } else {
+    connect_sock.reset(socket(addr.family(), SOCK_STREAM, 0));
+    ASSERT_TRUE(connect_sock.is_valid()) << LastSocketError();
+    ASSERT_EQ(connect(connect_sock.get(), addr.addr(), addr.len), 0)
+        << LastSocketError();
+    bio.reset(BIO_new(method));
+    ASSERT_TRUE(bio);
+    ASSERT_EQ(BIO_set_fd(bio.get(), connect_sock.get(), BIO_NOCLOSE), 1);
+  }
+
+  OwnedSocket peer(accept(listening_sock.get(), nullptr, nullptr));
+  ASSERT_TRUE(peer.is_valid()) << LastSocketError();
+  Socket fd = BIO_get_fd(bio.get(), nullptr);
+  ASSERT_TRUE(SocketSetNonBlocking(fd)) << LastSocketError();
+
+  char byte;
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+  ASSERT_EQ(BIO_read(bio.get(), &byte, 1), -1);
+  EXPECT_TRUE(BIO_should_read(bio.get()));
+  EXPECT_TRUE(BIO_should_retry(bio.get()));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  ASSERT_EQ(send(peer.get(), "x", 1, 0), 1) << LastSocketError();
+  peer.reset();
+
+  // EOF is not reported until a read returns zero, even after the peer closes.
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+  ASSERT_TRUE(WaitForSocket(fd, WaitType::kRead)) << LastSocketError();
+  ASSERT_EQ(BIO_read(bio.get(), &byte, 1), 1);
+  EXPECT_EQ(byte, 'x');
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  ASSERT_TRUE(WaitForSocket(fd, WaitType::kRead)) << LastSocketError();
+  for (int attempt = 0; attempt < 3; attempt++) {
+    SCOPED_TRACE(attempt);
+    ASSERT_EQ(BIO_read(bio.get(), &byte, 1), 0);
+    EXPECT_FALSE(BIO_should_retry(bio.get()));
+    EXPECT_EQ(BIO_ctrl(bio.get(), BIO_CTRL_EOF, 0, nullptr), 1);
+    EXPECT_EQ(BIO_eof(bio.get()), 1);
+    EXPECT_EQ(BIO_test_flags(bio.get(), BIO_FLAGS_IN_EOF), BIO_FLAGS_IN_EOF);
+  }
+}
+
+TEST(BIOTest, SocketEOF) { TestStreamBIOEOF(BIO_s_socket()); }
+
+TEST(BIOTest, ConnectEOF) { TestStreamBIOEOF(BIO_s_connect()); }
+
+static constexpr int kNonEOFFlags =
+    BIO_FLAGS_BASE64_NO_NL | BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY;
+
+static void TestStreamBIOEOFReassign(const BIO_METHOD *method) {
+  for (int old_close : {BIO_CLOSE, BIO_NOCLOSE}) {
+    SCOPED_TRACE(old_close);
+    for (int new_close : {BIO_CLOSE, BIO_NOCLOSE}) {
+      SCOPED_TRACE(new_close);
+      OwnedSocket listener = ListenLoopback(SOCK_STREAM, AF_INET);
+      ASSERT_TRUE(listener.is_valid()) << LastSocketError();
+      SockaddrStorage addr = listener.storage();
+      OwnedSocket readers[2];
+      bssl::UniquePtr<BIO> bio(BIO_new(method));
+      ASSERT_TRUE(bio);
+
+      for (int phase = 0; phase < 2; phase++) {
+        SCOPED_TRACE(phase);
+        readers[phase].reset(socket(addr.family(), SOCK_STREAM, 0));
+        ASSERT_TRUE(readers[phase].is_valid()) << LastSocketError();
+        ASSERT_EQ(connect(readers[phase].get(), addr.addr(), addr.len), 0)
+            << LastSocketError();
+        OwnedSocket peer(accept(listener.get(), nullptr, nullptr));
+        ASSERT_TRUE(peer.is_valid()) << LastSocketError();
+        Socket fd = readers[phase].get();
+        ASSERT_TRUE(SocketSetNonBlocking(fd)) << LastSocketError();
+        int close_flag = phase == 0 ? old_close : new_close;
+        ASSERT_EQ(BIO_set_fd(bio.get(), fd, close_flag), 1);
+        if (close_flag == BIO_CLOSE) {
+          readers[phase].release();  // Ownership transferred to |bio|.
+        }
+
+        char byte;
+        if (phase == 0) {
+          peer.reset();
+          ASSERT_TRUE(WaitForSocket(fd, WaitType::kRead)) << LastSocketError();
+          ASSERT_EQ(BIO_read(bio.get(), &byte, 1), 0);
+          ASSERT_EQ(BIO_eof(bio.get()), 1);
+          BIO_set_flags(bio.get(), kNonEOFFlags);
+          if (BIO_method_type(bio.get()) == BIO_TYPE_FD) {
+            // A socket is not seekable. Failed seeks/resets keep its EOF bit.
+            EXPECT_EQ(BIO_seek(bio.get(), 0), -1);
+            EXPECT_EQ(BIO_reset(bio.get()), -1);
+            EXPECT_EQ(BIO_eof(bio.get()), 1);
+            EXPECT_EQ(BIO_test_flags(bio.get(), kNonEOFFlags), kNonEOFFlags);
+          }
+        } else {
+          EXPECT_EQ(BIO_eof(bio.get()), 0);
+          EXPECT_EQ(BIO_test_flags(bio.get(), kNonEOFFlags),
+                    old_close == BIO_CLOSE ? 0 : kNonEOFFlags);
+          if (old_close == BIO_NOCLOSE) {
+            EXPECT_TRUE(SocketSetNonBlocking(readers[0].get()));
+          }
+          ASSERT_EQ(BIO_read(bio.get(), &byte, 1), -1);
+          EXPECT_TRUE(BIO_should_read(bio.get()));
+          EXPECT_EQ(BIO_eof(bio.get()), 0);
+          ASSERT_EQ(send(peer.get(), "x", 1, 0), 1) << LastSocketError();
+          ASSERT_TRUE(WaitForSocket(fd, WaitType::kRead)) << LastSocketError();
+          ASSERT_EQ(BIO_read(bio.get(), &byte, 1), 1);
+          EXPECT_EQ(byte, 'x');
+          EXPECT_EQ(BIO_eof(bio.get()), 0);
+        }
+      }
+    }
+  }
+}
+
+TEST(BIOTest, SocketEOFReassign) { TestStreamBIOEOFReassign(BIO_s_socket()); }
+
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_NO_POSIX_IO)
+TEST(BIOTest, FDEOF) { TestStreamBIOEOF(BIO_s_fd()); }
+
+TEST(BIOTest, FDEOFReassign) { TestStreamBIOEOFReassign(BIO_s_fd()); }
+
+TEST(BIOTest, FDEOFRewind) {
+  if (SkipTempFileTests()) {
+    GTEST_SKIP();
+  }
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init("xy"));
+  for (int close_flag : {BIO_CLOSE, BIO_NOCLOSE}) {
+    SCOPED_TRACE(close_flag);
+    for (bool reset : {false, true}) {
+      SCOPED_TRACE(reset);
+      ScopedFD fd = file.OpenFD(O_RDONLY);
+      ASSERT_TRUE(fd.is_valid());
+      bssl::UniquePtr<BIO> bio(BIO_new_fd(fd.get(), close_flag));
+      ASSERT_TRUE(bio);
+      if (close_flag == BIO_CLOSE) {
+        fd.release();  // Ownership transferred to |bio|.
+      }
+
+      char buf[2];
+      ASSERT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), 2);
+      ASSERT_EQ(BIO_read(bio.get(), buf, 1), 0);
+      ASSERT_EQ(BIO_eof(bio.get()), 1);
+      BIO_set_flags(bio.get(), kNonEOFFlags);
+      EXPECT_EQ(BIO_seek(bio.get(), -1), -1);
+      EXPECT_EQ(BIO_tell(bio.get()), 2);
+      EXPECT_EQ(BIO_eof(bio.get()), 1);
+      EXPECT_EQ(BIO_test_flags(bio.get(), kNonEOFFlags), kNonEOFFlags);
+
+      ASSERT_EQ(reset ? BIO_reset(bio.get()) : BIO_seek(bio.get(), 0), 0);
+      EXPECT_EQ(BIO_eof(bio.get()), 0);
+      EXPECT_EQ(BIO_test_flags(bio.get(), kNonEOFFlags), kNonEOFFlags);
+      ASSERT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), 2);
+      EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes("xy"));
+      ASSERT_EQ(BIO_read(bio.get(), buf, 1), 0);
+      ASSERT_EQ(BIO_eof(bio.get()), 1);
+
+      // Successful seeks to a nonzero offset also clear only EOF.
+      BIO_set_flags(bio.get(), kNonEOFFlags);
+      ASSERT_EQ(BIO_seek(bio.get(), 1), 1);
+      EXPECT_EQ(BIO_eof(bio.get()), 0);
+      EXPECT_EQ(BIO_test_flags(bio.get(), kNonEOFFlags), kNonEOFFlags);
+      ASSERT_EQ(BIO_read(bio.get(), buf, 1), 1);
+      EXPECT_EQ(buf[0], 'y');
+    }
+  }
+}
+#endif
 
 static bssl::UniquePtr<BIO> create_server_bio(int addr_family, int type) {
   // Create a server socket.
