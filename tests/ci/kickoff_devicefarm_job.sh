@@ -33,8 +33,13 @@ Options:
     --fips                          If we're compiling for FIPS or not. Will always compile for the FIPS, shared, release build.
     --release                       If we're compiling for Release or Debug.
     --shared                        If we're compiling for Shared or Static.
+    --max-wait-minutes              How long to upload the APKs and wait for the device farm run to finish. Default to 60.
+    --resumable                     If the run has not finished after --max-wait-minutes, leave it running and
+                                    exit successfully so that 'devicefarm_job.py wait' can resume it later.
     --action                        Required. The value can be:
-	                                   'start-job': kicks off a device farm job.
+	                                   'build': compiles the test APKs.
+	                                   'run-job': kicks off a device farm job using APKs compiled by 'build'.
+	                                   'start-job': compiles the test APKs and kicks off a device farm job.
 EOF
 }
 
@@ -67,14 +72,41 @@ function export_global_variables() {
   if [[ -z "${AWS_REGION+x}" || -z "${AWS_REGION}" ]]; then
     export AWS_REGION='us-west-2'
   fi
+  if [[ -z "${MAX_WAIT_MINUTES+x}" || -z "${MAX_WAIT_MINUTES}" ]]; then
+    export MAX_WAIT_MINUTES=60
+  fi
+  if [[ -z "${RESUMABLE+x}" || -z "${RESUMABLE}" ]]; then
+    export RESUMABLE=false
+  fi
+}
+
+function export_apk_paths() {
+  # |ANDROID_APK| and |ANDROID_TEST_APK| are apk names corresponding to the settings in the test runner gradle file.
+  local apk_location='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
+  local apk_name
+  if [[ "${FIPS}" = true ]]; then
+    apk_name='awslc_fips'
+  elif [[ "${RELEASE}" = true ]]; then
+    if [[ "${SHARED}" = true ]]; then
+      apk_name='awslc_shared_rel'
+    else
+      apk_name='awslc_static_rel'
+    fi
+  else
+    if [[ "${SHARED}" = true ]]; then
+      apk_name='awslc_shared_dbg'
+    else
+      apk_name='awslc_static_dbg'
+    fi
+  fi
+  export ANDROID_APK="${apk_location}/debug/${apk_name}.apk"
+  export ANDROID_TEST_APK="${apk_location}/androidTest/debug/${apk_name}-androidTest.apk"
 }
 
 function compile_for_android() {
-  # |ANDROID_APK| and |ANDROID_TEST_APK| are apk names corresponding to the settings in the test runner gradle file.
   # The working directory of this script should under `tests/ci`. 
   # AWSLCAndroidTestRunner should be at `tests/ci/android/AWSLCAndroidTestRunner`.
   pushd android/AWSLCAndroidTestRunner
-  export ANDROID_APK_LOCATION='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
   if [[ "${FIPS}" = true ]]; then
     if [[ "${SHARED}" = true ]]; then
       # FIPS (Release Shared)
@@ -87,36 +119,35 @@ function compile_for_android() {
       cp -r ../../../../go.sum app/src/main/cpp/go.sum
       ./gradlew assembleDebug assembleAndroidTest -PFIPS --offline
     fi
-    export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_fips.apk"
-    export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_fips-androidTest.apk"
   else
     if [[ "${RELEASE}" = true ]]; then
       if [[ "${SHARED}" = true ]]; then
         # Release Shared
         ./gradlew assembleDebug assembleAndroidTest -PRelease -PShared --offline
-        export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_rel.apk"
-        export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_rel-androidTest.apk"
       else
         # Release Static
         ./gradlew assembleDebug assembleAndroidTest -PRelease --offline
-        export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_rel.apk"
-        export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_rel-androidTest.apk"
       fi
     else
       if [[ "${SHARED}" = true ]]; then
         # Debug Shared
         ./gradlew assembleDebug assembleAndroidTest -PShared --offline
-        export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_dbg.apk"
-        export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_dbg-androidTest.apk"
       else
         # Debug Static
         ./gradlew assembleDebug assembleAndroidTest --offline
-        export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_dbg.apk"
-        export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_dbg-androidTest.apk"
       fi
     fi
   fi
   popd
+}
+
+function run_devicefarm_job() {
+  export_apk_paths
+  local args=(start --max-wait-minutes "${MAX_WAIT_MINUTES}")
+  if [[ "${RESUMABLE}" = true ]]; then
+    args+=(--resumable)
+  fi
+  python3 -u ./devicefarm_job.py "${args[@]}"
 }
 
 function main() {
@@ -151,6 +182,13 @@ function main() {
       export SHARED="${2}"
       shift
       ;;
+    --max-wait-minutes)
+      export MAX_WAIT_MINUTES="${2}"
+      shift
+      ;;
+    --resumable)
+      export RESUMABLE=true
+      ;;
     --action)
       export ACTION="${2}"
       shift
@@ -175,9 +213,15 @@ function main() {
 
   # Execute the action.
   case ${ACTION} in
+  build)
+    compile_for_android
+    ;;
+  run-job)
+    run_devicefarm_job
+    ;;
   start-job)
     compile_for_android
-    python3 -u ./devicefarm_job.py
+    run_devicefarm_job
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."

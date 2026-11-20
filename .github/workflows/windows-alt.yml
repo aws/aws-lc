@@ -318,13 +318,14 @@ jobs:
         with:
           msystem: ${{ matrix.sys }}
           update: true
-          # The MSYS Makefiles generator needs a Unix `make` (/usr/bin/make);
-          # the `toolchain` group only provides mingw32-make.
+          # MSYS Makefiles needs Unix make (/usr/bin/make); MinGW Makefiles
+          # needs mingw32-make, which the `toolchain` group no longer provides.
           install: >-
             make
           pacboy: >-
             cmake
             toolchain
+            make
             llvm
             rust
             rust-bindgen
