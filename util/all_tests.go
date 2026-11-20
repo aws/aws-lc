@@ -54,11 +54,9 @@ var (
 // contiguous block of numWorkers shards. Non-sharded tests are distributed
 // round-robin across jobs.
 //
-// The AWS_LC_VALGRIND_* names are retained as aliases for existing non-SDE
-// callers. SDE sharding requires the generic names so legacy environments do
-// not change behavior. This is distinct from numWorkers, which controls
-// per-machine parallelism (goroutines within a single job). ciJobCount controls
-// how many separate CI machines share the overall test workload.
+// This is distinct from numWorkers, which controls per-machine parallelism
+// (goroutines within a single job). ciJobCount controls how many separate
+// CI machines share the overall test workload.
 var (
 	ciJobIndex int
 	ciJobCount int
@@ -84,25 +82,13 @@ func getEnvInt(name string, defaultVal int) int {
 }
 
 func initJobSharding() {
-	indexEnv := "AWS_LC_TEST_SHARD_INDEX"
-	totalEnv := "AWS_LC_TEST_TOTAL_SHARDS"
-	if os.Getenv(indexEnv) == "" && os.Getenv(totalEnv) == "" {
-		if *useSDE {
-			ciJobIndex = 0
-			ciJobCount = 0
-			return
-		}
-		indexEnv = "AWS_LC_VALGRIND_SHARD_INDEX"
-		totalEnv = "AWS_LC_VALGRIND_TOTAL_SHARDS"
-	}
-
-	ciJobIndex = getEnvInt(indexEnv, 0)
-	ciJobCount = getEnvInt(totalEnv, 0)
+	ciJobIndex = getEnvInt("AWS_LC_TEST_SHARD_INDEX", 0)
+	ciJobCount = getEnvInt("AWS_LC_TEST_TOTAL_SHARDS", 0)
 
 	if ciJobCount > 1 {
 		if ciJobIndex < 0 || ciJobIndex >= ciJobCount {
-			fmt.Printf("Invalid job shard config: %s=%d, %s=%d\n",
-				indexEnv, ciJobIndex, totalEnv, ciJobCount)
+			fmt.Printf("Invalid job shard config: AWS_LC_TEST_SHARD_INDEX=%d, AWS_LC_TEST_TOTAL_SHARDS=%d\n",
+				ciJobIndex, ciJobCount)
 			os.Exit(1)
 		}
 		fmt.Printf("Job-level sharding enabled: job %d of %d\n", ciJobIndex, ciJobCount)
