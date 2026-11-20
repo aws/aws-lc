@@ -268,25 +268,23 @@ if(ENABLE_RUST STREQUAL "AUTO")
   message("::notice title=ENABLE_RUST::building with Rust")
 endif()
 
-# Rust code in a FIPS build has to be FIPS module code, or it would break the
-# build's validation. No FIPS module holds Rust yet, so a FIPS build that finds
-# Rust fails, even with AUTO. -DENABLE_RUST=OFF builds C only.
-if(FIPS)
-  message(FATAL_ERROR "ENABLE_RUST: FIPS builds can't use Rust yet: no FIPS "
-                      "module holds Rust code. Configure with -DENABLE_RUST=OFF "
-                      "to build C only.")
-endif()
-
 # cargo_add_rust_object(OUTPUT <object> MANIFEST_PATH <Cargo.toml>
-#                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...)
+#                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...
+#                       [ASM <target>] [INJECT_HASH <inject_hash>])
 #
 # Adds a custom command producing OUTPUT, built with each of CFGS set as a
 # Rust cfg, in which only EXPORTS stay global, and hidden where the object
 # format has visibility, so libcrypto doesn't export them. With
 # BORINGSSL_PREFIX, EXPORTS carry the prefix in both the Rust and the C code.
 # Use OUTPUT as a source file of a target in the same directory.
+#
+# ASM names a static library of assembly that the partial link takes into
+# OUTPUT, as the crate's own copy. With INJECT_HASH, OUTPUT is a FIPS module
+# of its own, for static FIPS builds on ELF: the crate gets the awslc_fips
+# cfg, the partial link puts all its code and constants in one section
+# (bcm-rust.lds), and INJECT_HASH embeds the HMAC-SHA256 of that region.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME" "CFGS;EXPORTS" ${ARGN})
+  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME;ASM;INJECT_HASH" "CFGS;EXPORTS" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
 
@@ -333,6 +331,20 @@ function(cargo_add_rust_object)
   foreach(cfg IN LISTS arg_CFGS)
     list(APPEND rustflags "--cfg=${cfg}")
   endforeach()
+  # Partial RELRO makes rustc call functions with C names directly, not
+  # through the GOT, as FIPS module code has to (src/fips.rs). It only changes
+  # x86_64 ELF code.
+  list(APPEND rustflags -Crelro-level=partial)
+  if(arg_INJECT_HASH)
+    list(APPEND rustflags --cfg=awslc_fips)
+    if(ARCH STREQUAL "aarch64")
+      # Every reference in the module has to reach its target with adr, not
+      # adrp, so within 1 MiB, the limit delocate gives bcm.o (src/fips.rs).
+      # adr reaches the module's constants only because bcm-rust.lds puts
+      # them in its one section, so other builds can't use the tiny model.
+      list(APPEND rustflags -Ccode-model=tiny)
+    endif()
+  endif()
   set(symbol_prefix "")
   set(export_prefix "")
   if(BORINGSSL_PREFIX)
@@ -408,6 +420,13 @@ function(cargo_add_rust_object)
     set(link_driver "${CMAKE_C_COMPILER}")
   endif()
   set(partial_link ${link_driver} -r -nostdlib ${RUST_LINK_C_FLAGS})
+  # The crate's own copy of its assembly goes after the staticlib, which refers
+  # to it. The crate object fold can't take it in, so there the crate calls
+  # libcrypto's copy.
+  set(asm_lib "")
+  if(arg_ASM)
+    set(asm_lib "$<TARGET_FILE:${arg_ASM}>")
+  endif()
   if(APPLE)
     # Same -arch, -platform_version and SDK as the C code. Pass 1 makes every
     # symbol but the exports local: hidden but global would still clash with
@@ -423,7 +442,7 @@ function(cargo_add_rust_object)
     endif()
     set(fold_commands
       COMMAND ${partial_link} ${undefined_args}
-        "-Wl,-exported_symbols_list,${exports_file}" -o "${linked_obj}" "${staticlib}"
+        "-Wl,-exported_symbols_list,${exports_file}" -o "${linked_obj}" "${staticlib}" ${asm_lib}
       COMMAND ${partial_link} -Wl,-keep_private_externs
         "-Wl,-unexported_symbols_list,${exports_file}" -o "${arg_OUTPUT}" "${linked_obj}")
   elseif(RUST_CRATE_OBJECT_FOLD)
@@ -451,16 +470,38 @@ function(cargo_add_rust_object)
     if(WIN32)
       set(keep_refptr --wildcard "--keep-global-symbol=.refptr.*")
     endif()
+    # A FIPS module's partial link puts everything in one section, and
+    # inject_hash then checks the region and embeds its hash.
+    set(lds_args "")
+    set(localized_obj "${arg_OUTPUT}")
+    set(hash_commands "")
+    if(arg_INJECT_HASH)
+      set(lds_args "-Wl,-T,${crate_dir}/bcm-rust.lds")
+      set(localized_obj "${output_dir}/${output_name}_hashunset.o")
+      set(hash_commands
+        COMMAND "${arg_INJECT_HASH}" -rust -in-object "${localized_obj}" -o "${arg_OUTPUT}")
+    endif()
     # Code that keeps core's unwind paths (opt-level 1 does) puts
     # DW.ref.rust_eh_personality in a COMDAT group. A consumer's own Rust has a
     # group of the same name, so its linker would keep one and reject our
     # references into the dropped copy. The rename gives ours a name no
     # consumer's Rust uses.
     set(fold_commands
-      COMMAND ${partial_link} ${undefined_args} -o "${linked_obj}" ${hidden_stub} "${staticlib}"
+      COMMAND ${partial_link} ${undefined_args} ${lds_args} -o "${linked_obj}"
+        ${hidden_stub} "${staticlib}" ${asm_lib}
       COMMAND ${CMAKE_OBJCOPY} "--keep-global-symbols=${exports_file}" ${keep_refptr}
         "--redefine-sym=DW.ref.rust_eh_personality=${export_prefix}awslc_DW.ref.rust_eh_personality"
-        "${linked_obj}" "${arg_OUTPUT}")
+        "${linked_obj}" "${localized_obj}"
+      ${hash_commands})
+  endif()
+
+  set(fold_depends "")
+  if(arg_ASM)
+    list(APPEND fold_depends ${arg_ASM} "$<TARGET_FILE:${arg_ASM}>")
+  endif()
+  if(arg_INJECT_HASH)
+    # inject_hash is built for bcm.o, by bcm_o_target.
+    list(APPEND fold_depends "${crate_dir}/bcm-rust.lds" bcm_o_target)
   endif()
 
   add_custom_command(
@@ -475,6 +516,7 @@ function(cargo_add_rust_object)
       ${forced_config}
     ${fold_commands}
     DEPENDS ${rust_sources} "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"
+      ${fold_depends}
     COMMENT "Building Rust staticlib ${arg_LIB_NAME} into ${output_name}"
     USES_TERMINAL
     VERBATIM)

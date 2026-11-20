@@ -21,9 +21,10 @@ publish = false
 [lib]
 crate-type = ["staticlib"]
 
-# CMake sets these cfgs (src/lib.rs).
+# CMake sets these cfgs (src/lib.rs). awslc_fips makes the crate a FIPS
+# module of its own, in static FIPS builds.
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(awslc_prefix)", "cfg(awslc_asm)", "cfg(awslc_no_avx)"] }
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(awslc_prefix)", "cfg(awslc_asm)", "cfg(awslc_no_avx)", "cfg(awslc_fips)"] }
 
 # The staticlib is linked into libcrypto, which has no Rust runtime to unwind
 # into. Unwinding across the C ABI is undefined behaviour, so abort instead.

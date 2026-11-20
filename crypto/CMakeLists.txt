@@ -215,6 +215,40 @@ else()
   endif()
 
 endif()
+
+# Rust in a FIPS build has to be FIPS module code, or Rust being found would
+# break the build's validation. bcm-rust.o is a FIPS module of its own only in
+# static FIPS builds on x86_64 and aarch64 so far (rust/fipsmodule/src/fips.rs).
+# Any other FIPS build that finds Rust fails configure, with AUTO too.
+set(RUST_FIPS_MODULE OFF)
+if(ENABLE_RUST AND FIPS)
+  if(FIPS_DELOCATE AND ARCH MATCHES "^(x86_64|aarch64)$")
+    set(RUST_FIPS_MODULE ON)
+  else()
+    if(FIPS_DELOCATE AND ARCH STREQUAL "ppc64le")
+      set(rust_fips_gap "rustc's ppc64le code reaches data through the TOC, which only the final link places, so bcm-rust.o can't be hashed before it. C's bcm.o gets past this with delocate")
+    elseif(FIPS_DELOCATE)
+      set(rust_fips_gap "bcm-rust.o is a FIPS module only on x86_64 and aarch64")
+    elseif(FIPS_SHARED)
+      set(rust_fips_gap "bcm-rust.o isn't a FIPS module in shared FIPS builds yet")
+    else()
+      set(rust_fips_gap "FIPS builds with ASan or MSan have no integrity check, and bcm-rust.o has no such mode")
+    endif()
+    message(FATAL_ERROR "ENABLE_RUST: this FIPS build can't use Rust: ${rust_fips_gap}. "
+                        "Rust in a FIPS build has to be FIPS module code. "
+                        "Configure with -DENABLE_RUST=OFF to build C only.")
+  endif()
+endif()
+
+# Rust calls the assembly C builds (rust/fipsmodule/src/lib.rs). C builds it
+# unless OPENSSL_NO_ASM made ARCH generic, or target.h turns it off: under
+# MSan, and for 32-bit Arm on Apple. fipsmodule builds bcm-rust.o's copy.
+set(RUST_ASM OFF)
+if(ENABLE_RUST AND NOT ARCH STREQUAL "generic" AND NOT MSAN AND
+   NOT (APPLE AND ARCH STREQUAL "arm"))
+  set(RUST_ASM ON)
+endif()
+
 add_subdirectory(fipsmodule)
 
 if(ENABLE_RUST)
@@ -222,11 +256,8 @@ if(ENABLE_RUST)
   # build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
   # global, and hidden, so libcrypto doesn't export them.
   set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
-  # Rust calls the assembly C builds (src/lib.rs). C builds it unless
-  # OPENSSL_NO_ASM made ARCH generic, or target.h turns it off: under MSan,
-  # and for 32-bit Arm on Apple.
   set(rust_cfgs "")
-  if(NOT ARCH STREQUAL "generic" AND NOT MSAN AND NOT (APPLE AND ARCH STREQUAL "arm"))
+  if(RUST_ASM)
     list(APPEND rust_cfgs awslc_asm)
   endif()
   if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
@@ -243,12 +274,20 @@ if(ENABLE_RUST)
     string(REPLACE "(" "" name "${name}")
     list(APPEND rust_exports ${name})
   endforeach()
+  set(rust_object_args "")
+  if(TARGET bcm_rust_asm)
+    list(APPEND rust_object_args ASM bcm_rust_asm)
+  endif()
+  if(RUST_FIPS_MODULE)
+    list(APPEND rust_object_args INJECT_HASH "${CMAKE_CURRENT_BINARY_DIR}/fipsmodule/inject_hash")
+  endif()
   cargo_add_rust_object(
     OUTPUT "${RUST_OBJECT}"
     MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
     LIB_NAME bcm_rust
     CFGS ${rust_cfgs}
-    EXPORTS ${rust_exports})
+    EXPORTS ${rust_exports}
+    ${rust_object_args})
 endif()
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
