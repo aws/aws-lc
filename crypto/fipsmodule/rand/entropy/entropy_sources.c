@@ -122,9 +122,52 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, opt_out_cpu_jitter_entropy_sour
   out->id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
 }
 
+static int entropy_deterministic_initialize(
+  struct entropy_source_t *entropy_source) {
+  return 1;
+}
+
+static void entropy_deterministic_zeroize_thread(struct entropy_source_t *entropy_source) {}
+
+static void entropy_deterministic_free_thread(struct entropy_source_t *entropy_source) {}
+
+static int entropy_deterministic_get(
+  const struct entropy_source_t *entropy_source,
+  uint8_t entropy[CTR_DRBG_ENTROPY_LEN]) {
+  CRYPTO_sysrand(entropy, CTR_DRBG_ENTROPY_LEN);
+  return 1;
+}
+
+static int use_deterministic_entropy(void) {
+#if defined(OPENSSL_RAND_DETERMINISTIC)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+// Deterministic configuration.
+// - When OPENSSL_RAND_DETERMINISTIC is defined, the expectation is that
+//   generated randomness is deterministic. Typically to support fuzzing.
+// - Using |CRYPTO_sysrand| is deterministic under the
+//   |OPENSSL_RAND_DETERMINISTIC| mode.
+DEFINE_LOCAL_DATA(struct entropy_source_methods, deterministic_entropy_source_methods) {
+  out->initialize = entropy_deterministic_initialize;
+  out->zeroize_thread = entropy_deterministic_zeroize_thread;
+  out->free_thread = entropy_deterministic_free_thread;
+  out->get_seed = entropy_deterministic_get;
+  out->get_extra_entropy = entropy_deterministic_get;
+  out->get_prediction_resistance = NULL;
+  out->id = DETERMINISTIC_ENTROPY_SOURCE;
+}
+
 static const struct entropy_source_methods * get_entropy_source_methods(void) {
   if (*allow_entropy_source_methods_override_bss_get() == 1) {
     return *entropy_source_methods_override_bss_get();
+  }
+
+  if (use_deterministic_entropy()) {
+    return deterministic_entropy_source_methods();
   }
 
   if (use_opt_out_cpu_jitter_entropy()) {
