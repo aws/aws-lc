@@ -177,10 +177,10 @@ err:
  *
  * The function performs the following steps:
  * 1. Generates a keypair from the provided seed.
- * 2. Derives a public key from the provided expanded private key.
- * 3. Compares the public keys from steps 1 and 2 to ensure consistency.
- * 4. If consistent, stores the seed, expanded private key, and derived public key
- *    in the PQDSA_KEY structure.
+ * 2. Compares the regenerated private key bytewise against the provided
+ *    expanded key.
+ * 3. If consistent, stores the seed, private key, and public key in the
+ *    PQDSA_KEY structure.
  */
 int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed,
                                         CBS *expanded_key) {
@@ -194,8 +194,6 @@ int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed,
   int ret = 0;
   uint8_t *seed_public_key = NULL;
   uint8_t *seed_private_key = NULL;
-  uint8_t *expanded_public_key = NULL;
-  uint8_t *new_private_key = NULL;
   uint8_t *new_seed = NULL;
 
   // Allocate temp buffers for seed-derived keypair.
@@ -213,30 +211,17 @@ int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed,
     goto err;
   }
 
-  // Derive public key from the expanded private key.
-  expanded_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-  if (expanded_public_key == NULL) {
-    goto err;
-  }
-
-  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(expanded_public_key,
-                                                 CBS_data(expanded_key))) {
+  // Section 8.2 of draft-ietf-lamps-dilithium-certificates: the expanded key
+  // regenerated from the seed must equal the presented expandedKey bytewise.
+  // Comparing only the derived public keys would miss a mismatch in |K|.
+  if (CRYPTO_memcmp(seed_private_key, CBS_data(expanded_key),
+                    key->pqdsa->private_key_len) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
-  // Compare public keys for consistency.
-  if (CRYPTO_memcmp(seed_public_key, expanded_public_key,
-                    key->pqdsa->public_key_len) != 0) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    goto err;
-  }
-
-  // Allocate final copies of private key and seed.
-  new_private_key = OPENSSL_memdup(CBS_data(expanded_key),
-                                   key->pqdsa->private_key_len);
   new_seed = OPENSSL_memdup(CBS_data(seed), key->pqdsa->keygen_seed_len);
-  if (new_private_key == NULL || new_seed == NULL) {
+  if (new_seed == NULL) {
     goto err;
   }
 
@@ -244,19 +229,17 @@ int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed,
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->private_key);
   OPENSSL_free(key->seed);
-  key->public_key = expanded_public_key;
-  key->private_key = new_private_key;
+  key->public_key = seed_public_key;
+  key->private_key = seed_private_key;
   key->seed = new_seed;
-  expanded_public_key = NULL;
-  new_private_key = NULL;
+  seed_public_key = NULL;
+  seed_private_key = NULL;
   new_seed = NULL;
   ret = 1;
 
 err:
   OPENSSL_free(seed_public_key);
   OPENSSL_free(seed_private_key);
-  OPENSSL_free(expanded_public_key);
-  OPENSSL_free(new_private_key);
   OPENSSL_free(new_seed);
   return ret;
 }
