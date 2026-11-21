@@ -36,7 +36,7 @@ None yet.
 
 | Family | Variants |
 |---|---|
-| RSA | `RSA` |
+| RSA | `RSA`, `RSA-PSS` |
 
 ## Message Authentication Codes (`OSSL_OP_MAC`)
 

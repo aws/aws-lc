@@ -129,7 +129,7 @@ TEST(BackendBnTest, ProbesSizeAndRefusesUndersizedOutput) {
 class BackendRsaTest : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
-    key_ = awslc_prov_rsa_generate(2048);
+    key_ = awslc_prov_rsa_generate(2048, nullptr);
     if (key_ == nullptr) {
       return;
     }
@@ -179,14 +179,15 @@ constexpr AWSLC_PROV_RSA_COMPONENT kAll[] = {
     AWSLC_PROV_RSA_DMQ1, AWSLC_PROV_RSA_IQMP};
 
 TEST_F(BackendRsaTest, BuildsEachSupportedShape) {
-  ProviderRsaPtr pub(
-      awslc_prov_rsa_new(Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E}).data()));
+  ProviderRsaPtr pub(awslc_prov_rsa_new(
+      Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E}).data(), nullptr));
   ASSERT_TRUE(pub);
   EXPECT_TRUE(Has(pub.get(), AWSLC_PROV_RSA_N));
   EXPECT_FALSE(Has(pub.get(), AWSLC_PROV_RSA_D));
 
   ProviderRsaPtr no_crt(awslc_prov_rsa_new(
-      Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E, AWSLC_PROV_RSA_D}).data()));
+      Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E, AWSLC_PROV_RSA_D}).data(),
+      nullptr));
   ASSERT_TRUE(no_crt);
   EXPECT_TRUE(Has(no_crt.get(), AWSLC_PROV_RSA_D));
   EXPECT_FALSE(Has(no_crt.get(), AWSLC_PROV_RSA_P));
@@ -195,13 +196,13 @@ TEST_F(BackendRsaTest, BuildsEachSupportedShape) {
   for (AWSLC_PROV_RSA_COMPONENT c : kAll) {
     all[c] = View(encoded_[c]);
   }
-  ProviderRsaPtr full(awslc_prov_rsa_new(all.data()));
+  ProviderRsaPtr full(awslc_prov_rsa_new(all.data(), nullptr));
   ASSERT_TRUE(full);
   for (AWSLC_PROV_RSA_COMPONENT c : kAll) {
     EXPECT_EQ(encoded_[c], Encode(awslc_prov_rsa_get0(full.get(), c)))
         << "component " << c;
   }
-  ProviderRsaPtr public_copy(awslc_prov_rsa_new_public(full.get()));
+  ProviderRsaPtr public_copy(awslc_prov_rsa_new_public(full.get(), nullptr));
   ASSERT_TRUE(public_copy);
   EXPECT_FALSE(Has(public_copy.get(), AWSLC_PROV_RSA_D));
   EXPECT_TRUE(awslc_prov_bn_equal(
@@ -210,18 +211,22 @@ TEST_F(BackendRsaTest, BuildsEachSupportedShape) {
 }
 
 TEST_F(BackendRsaTest, RefusesShapesWithoutAConstructor) {
-  EXPECT_EQ(nullptr, awslc_prov_rsa_new(Shape({AWSLC_PROV_RSA_N}).data()));
-  EXPECT_EQ(nullptr, awslc_prov_rsa_new(
-                         Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_D}).data()));
+  EXPECT_EQ(nullptr,
+            awslc_prov_rsa_new(Shape({AWSLC_PROV_RSA_N}).data(), nullptr));
+  EXPECT_EQ(nullptr,
+            awslc_prov_rsa_new(
+                Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_D}).data(), nullptr));
   EXPECT_EQ(nullptr,
             awslc_prov_rsa_new(Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E,
                                       AWSLC_PROV_RSA_P, AWSLC_PROV_RSA_Q})
-                                   .data()));
+                                   .data(),
+                               nullptr));
   EXPECT_EQ(nullptr,
             awslc_prov_rsa_new(
                 Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E, AWSLC_PROV_RSA_D,
                        AWSLC_PROV_RSA_P, AWSLC_PROV_RSA_Q})
-                    .data()));
+                    .data(),
+                nullptr));
 }
 
 // A 35-bit e is past AWS-LC's default bound, so it takes the _large_e
@@ -235,12 +240,12 @@ TEST_F(BackendRsaTest, AcceptsLargePublicExponentWhereAwslcCan) {
   std::vector<AWSLC_PROV_BN_BYTES> pub =
       Shape({AWSLC_PROV_RSA_N, AWSLC_PROV_RSA_E});
   pub[AWSLC_PROV_RSA_E] = View(large_e);
-  ProviderRsaPtr rsa(awslc_prov_rsa_new(pub.data()));
+  ProviderRsaPtr rsa(awslc_prov_rsa_new(pub.data(), nullptr));
   ASSERT_TRUE(rsa);
   EXPECT_TRUE(awslc_prov_bn_equal(
       large.get(), awslc_prov_rsa_get0(rsa.get(), AWSLC_PROV_RSA_E)));
 
-  ProviderRsaPtr public_copy(awslc_prov_rsa_new_public(rsa.get()));
+  ProviderRsaPtr public_copy(awslc_prov_rsa_new_public(rsa.get(), nullptr));
   EXPECT_TRUE(public_copy);
 }
 
@@ -262,7 +267,7 @@ TEST_F(BackendRsaTest, TranslatesAwslcImportFailure) {
   }
   components[AWSLC_PROV_RSA_Q] = View(wrong_q);
   ERR_clear_error();
-  EXPECT_EQ(nullptr, awslc_prov_rsa_new(components.data()));
+  EXPECT_EQ(nullptr, awslc_prov_rsa_new(components.data(), nullptr));
 
   AWSLC_PROV_ERROR record;
   ASSERT_TRUE(awslc_prov_error_shift(&record));
