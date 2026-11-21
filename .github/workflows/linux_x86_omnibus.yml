@@ -221,5 +221,6 @@ jobs:
             AWSLC_32BIT
           run: |
             source /opt/compiler-env/setup-${{ matrix.config.compiler }}.sh
+            ./tests/ci/install_rust.sh ${{ matrix.config.build32 && 'i686-unknown-linux-gnu' || '' }}
             ./tests/ci/run_legacy_avx_tests.sh ${{ matrix.avx_config.flag }}
           options: --privileged

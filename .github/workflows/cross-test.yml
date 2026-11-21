@@ -20,6 +20,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh powerpc64-unknown-linux-gnu
       - name: PPC64 Build/Test
         run: tests/ci/run_cross_tests.sh ppc64 powerpc64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc32-non-fips-build-test:
@@ -31,6 +33,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh powerpc-unknown-linux-gnu
       - name: PPC32 Build/Test
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   ppc32-fips-build-test:
@@ -42,6 +46,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh powerpc-unknown-linux-gnu
       - name: PPC32 Build/Test
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc64le-build-test:
@@ -53,6 +59,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh powerpc64le-unknown-linux-gnu
       - name: PPC64LE Build/Test
         run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-DOPENSSL_GETAUXVAL_FORCE_PROC_FALLBACK"
   riscv64-non-fips-build-test:
@@ -64,6 +72,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh riscv64gc-unknown-linux-gnu
       - name: RISC-V 64 Build/Test
         # The flag below is set to avoid the following error with GCC 11.4.0:
         #
@@ -82,6 +92,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh arm-unknown-linux-gnueabi
       - name: armv6 Build/Test
         run: tests/ci/run_cross_tests.sh armv6 armv6-unknown-linux-gnueabi "-DCMAKE_BUILD_TYPE=Release"
   armv7-uclibc-build-test:
@@ -121,7 +133,11 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh loongarch64-unknown-linux-gnu
       - name: loongarch64 Build/Test
+        env:
+          CROSS_BINUTILS_VERSION: "2.44"
         run: tests/ci/run_cross_tests.sh loongarch64 loongarch64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   s390x-non-fips-build-test:
     if: github.repository_owner == 'aws'
@@ -132,6 +148,8 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh s390x-unknown-linux-gnu
       - name: s390x Build/Test
         # The flag below is set to avoid the following error with GCC 11.4.0:
         #
@@ -147,6 +165,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: tests/ci/install_rust.sh aarch64-apple-ios-sim
       - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
@@ -174,5 +194,7 @@ jobs:
       CXX: /x-tools/powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-g++
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh powerpc-unknown-linux-gnu
       - name: Perform Build
         run: ./util/build_and_test.sh --build-only -G "Unix Makefiles" -DDISABLE_GO=ON -DDISABLE_PERL=ON -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_FIND_ROOT_PATH=/x-tools/powerpc-unknown-linux-gnu/powerpc-unknown-linux-gnu/

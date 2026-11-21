@@ -387,7 +387,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: 'rustfmt'
+          components: ${{ runner.os == 'Windows' && 'rustfmt, llvm-tools' || 'rustfmt' }}
       - uses: ilammy/setup-nasm@v1
         if: runner.os == 'Windows'
       - uses: actions/setup-go@v7
