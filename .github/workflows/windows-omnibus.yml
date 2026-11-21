@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
     windows2022_mscvc_compilers:
-      name: windows-${{ matrix.image }}-x86_64
+      name: windows-${{ matrix.image }}-x86_64${{ matrix.shardSuffix || '' }}
       runs-on:
         - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
           image:windows-ec2-2022
@@ -30,9 +30,33 @@ jobs:
               envPath: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
             - image: ltsc2022_vs2022
               envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+            # SDE tests are much slower than the builds, so each shard builds
+            # independently and runs one quarter of every emulated CPU's tests.
+            # Keep totalShards synchronized across all SDE entries.
             - image: ltsc2022_sde
               envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
               runSDE: true
+              shardIndex: 0
+              totalShards: 4
+              shardSuffix: -shard-0
+            - image: ltsc2022_sde
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+              runSDE: true
+              shardIndex: 1
+              totalShards: 4
+              shardSuffix: -shard-1
+            - image: ltsc2022_sde
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+              runSDE: true
+              shardIndex: 2
+              totalShards: 4
+              shardSuffix: -shard-2
+            - image: ltsc2022_sde
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+              runSDE: true
+              shardIndex: 3
+              totalShards: 4
+              shardSuffix: -shard-3
       steps:
         - uses: actions/checkout@v7
         - name: Login to Amazon ECR
@@ -41,6 +65,8 @@ jobs:
         - shell: pwsh
           run: >
             docker run
+            -e AWS_LC_TEST_SHARD_INDEX=${{ matrix.shardIndex || 0 }}
+            -e AWS_LC_TEST_TOTAL_SHARDS=${{ matrix.totalShards || 1 }}
             -v ${{ github.workspace }}:${{ github.workspace }}
             -w ${{ github.workspace }}
             ${{ steps.login-ecr.outputs.registry }}/aws-lc/windows:${{ matrix.image }}

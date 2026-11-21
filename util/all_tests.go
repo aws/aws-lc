@@ -46,17 +46,19 @@ var (
 	noUnwindTests   = flag.Bool("no-unwind-tests", false, "If true, pass --no_unwind_tests to test binaries to disable unwind testing")
 )
 
-// CI job-level sharding support. When AWS_LC_VALGRIND_TOTAL_SHARDS > 1 and
-// AWS_LC_VALGRIND_SHARD_INDEX is set, the expanded test list is partitioned
-// across multiple CI jobs so that each job completes in a fraction of the
-// original wall-clock time. For GTest-sharded tests (shard: true in
-// all_tests.json), the total number of GTest shards is multiplied by
-// ciJobCount, and each job runs a contiguous block of numWorkers shards.
-// Non-sharded tests are distributed round-robin across jobs.
+// CI job-level sharding support. When AWS_LC_TEST_TOTAL_SHARDS > 1 and
+// AWS_LC_TEST_SHARD_INDEX is set, the expanded test list is partitioned across
+// multiple CI jobs so that each job completes in a fraction of the original
+// wall-clock time. For GTest-sharded tests (shard: true in all_tests.json), the
+// total number of GTest shards is multiplied by ciJobCount, and each job runs a
+// contiguous block of numWorkers shards. Non-sharded tests are distributed
+// round-robin across jobs.
 //
-// This is distinct from numWorkers, which controls per-machine parallelism
-// (goroutines within a single job). ciJobCount controls how many separate
-// CI machines share the overall test workload.
+// The AWS_LC_VALGRIND_* names are retained as aliases for existing non-SDE
+// callers. SDE sharding requires the generic names so legacy environments do
+// not change behavior. This is distinct from numWorkers, which controls
+// per-machine parallelism (goroutines within a single job). ciJobCount controls
+// how many separate CI machines share the overall test workload.
 var (
 	ciJobIndex int
 	ciJobCount int
@@ -82,13 +84,25 @@ func getEnvInt(name string, defaultVal int) int {
 }
 
 func initJobSharding() {
-	ciJobIndex = getEnvInt("AWS_LC_VALGRIND_SHARD_INDEX", 0)
-	ciJobCount = getEnvInt("AWS_LC_VALGRIND_TOTAL_SHARDS", 0)
+	indexEnv := "AWS_LC_TEST_SHARD_INDEX"
+	totalEnv := "AWS_LC_TEST_TOTAL_SHARDS"
+	if os.Getenv(indexEnv) == "" && os.Getenv(totalEnv) == "" {
+		if *useSDE {
+			ciJobIndex = 0
+			ciJobCount = 0
+			return
+		}
+		indexEnv = "AWS_LC_VALGRIND_SHARD_INDEX"
+		totalEnv = "AWS_LC_VALGRIND_TOTAL_SHARDS"
+	}
+
+	ciJobIndex = getEnvInt(indexEnv, 0)
+	ciJobCount = getEnvInt(totalEnv, 0)
 
 	if ciJobCount > 1 {
 		if ciJobIndex < 0 || ciJobIndex >= ciJobCount {
-			fmt.Printf("Invalid job shard config: AWS_LC_VALGRIND_SHARD_INDEX=%d, AWS_LC_VALGRIND_TOTAL_SHARDS=%d\n",
-				ciJobIndex, ciJobCount)
+			fmt.Printf("Invalid job shard config: %s=%d, %s=%d\n",
+				indexEnv, ciJobIndex, totalEnv, ciJobCount)
 			os.Exit(1)
 		}
 		fmt.Printf("Job-level sharding enabled: job %d of %d\n", ciJobIndex, ciJobCount)
@@ -278,12 +292,12 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		// detected.
 		args = append(args, "--no_unwind_tests")
 		ctx, cancel, cmd = sdeOf(ctx, test.cpu, prog, args...)
-		cmd.Env = append(cmd.Env, "RUNTIME_EMULATION_SDE=1")
+		cmd.Env = append(os.Environ(), "RUNTIME_EMULATION_SDE=1")
 		defer cancel()
 	} else {
 		cmd = exec.CommandContext(ctx, prog, args...)
 	}
-	if test.Env != nil || test.numShards != 0 {
+	if cmd.Env == nil && (test.Env != nil || test.numShards != 0) {
 		cmd.Env = make([]string, len(os.Environ()))
 		copy(cmd.Env, os.Environ())
 	}
@@ -457,7 +471,7 @@ func (t test) envMsg() string {
 }
 
 func (t test) getGTestShards() ([]test, error) {
-	if *numWorkers == 1 || !t.Shard {
+	if !t.Shard || (*numWorkers == 1 && ciJobCount <= 1) {
 		return []test{t}, nil
 	}
 
@@ -558,12 +572,29 @@ func main() {
 				if test.SkipSDE {
 					continue
 				}
-				// SDE generates plenty of tasks and gets slower
-				// with additional sharding.
 				for _, cpu := range sdeCPUs {
 					testForCPU := test
 					testForCPU.cpu = cpu
-					tests <- testForCPU
+
+					// Preserve the existing SDE behavior unless job-level
+					// sharding is explicitly enabled. SDE process startup is
+					// expensive, so local GTest sharding is otherwise slower.
+					if ciJobCount <= 1 {
+						tests <- testForCPU
+						continue
+					}
+
+					shards, err := testForCPU.getGTestShards()
+					if err != nil {
+						fmt.Printf("Error listing tests: %s\n", err)
+						os.Exit(1)
+					}
+					for _, shard := range shards {
+						if !shouldRunInThisJob(shard, &nonShardedTestIdx) {
+							continue
+						}
+						tests <- shard
+					}
 				}
 			} else {
 				shards, err := test.getGTestShards()
@@ -645,7 +676,7 @@ func main() {
 		fmt.Printf("\nTo reproduce this failure locally, run with:\n")
 		fmt.Printf("  AWS_LC_NUM_TEST_WORKERS=%d", *numWorkers)
 		if ciJobCount > 1 {
-			fmt.Printf(" AWS_LC_VALGRIND_SHARD_INDEX=%d AWS_LC_VALGRIND_TOTAL_SHARDS=%d", ciJobIndex, ciJobCount)
+			fmt.Printf(" AWS_LC_TEST_SHARD_INDEX=%d AWS_LC_TEST_TOTAL_SHARDS=%d", ciJobIndex, ciJobCount)
 		}
 		fmt.Printf(" go run util/all_tests.go -build-dir <build-dir>")
 		if *useValgrind {
