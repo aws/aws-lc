@@ -25,12 +25,12 @@ make && make install_sw
 cd aws-lc
 cmake -GNinja -Bbuild -DBUILD_SHARED_LIBS=ON \
   -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
-cd build
-ninja
+ninja -C build
 
-# Build with symbol versioning via ENABLE_DIST_PKG in AWS-LC (Linux only)
+# Build with AWS-LC's distribution layout and ELF symbol versioning (Linux only)
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DENABLE_SYMBOL_VERSIONING=ON -DSYMBOL_VERSION_NAMESPACE=AWS_LC \
   -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 ```
 
@@ -50,6 +50,7 @@ satisfy the requirements of that validation:
 # Building AWS-LC-FIPS with aws-lc-provider
 cmake -GNinja -S . -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DFIPS=1 -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DENABLE_SYMBOL_VERSIONING=ON -DSYMBOL_VERSION_NAMESPACE=AWS_LC \
   -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}"
 ```
 
@@ -87,9 +88,9 @@ testable through EVP belongs in the frontend binary instead.
 ### Installing the module
 
 The module links AWS-LC's libcrypto rather than containing it, so installing it means installing
-both. This needs the `ENABLE_DIST_PKG` build, whose suffixed soname and symbol versioning are what
-keep the module's AWS-LC references off OpenSSL's libcrypto. Linux only; elsewhere, run out of the
-build tree.
+both. This needs `ENABLE_DIST_PKG` which supplies the suffixed soname and
+`ENABLE_SYMBOL_VERSIONING` for the `AWS_LC_1.0` version node, which together keep the module's AWS-LC
+references off OpenSSL's libcrypto. Linux only; elsewhere, run out of the build tree.
 
 ```bash
 # Determine where your openssl searches for providers.
@@ -99,6 +100,7 @@ MODULES_DIR="$("${OPENSSL_ROOT}/bin/openssl" version -m | sed 's/^MODULESDIR: //
 export AWSLC_ROOT="${PWD}/build/install"
 cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON -DENABLE_DIST_PKG=ON \
+  -DENABLE_SYMBOL_VERSIONING=ON -DSYMBOL_VERSION_NAMESPACE=AWS_LC \
   -DBUILD_AWSLC_PROVIDER=ON -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT}" \
   -DAWSLC_PROVIDER_MODULESDIR="${MODULES_DIR}" \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_ROOT}"
