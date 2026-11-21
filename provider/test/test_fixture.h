@@ -17,12 +17,15 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/params.h>
 #include <openssl/provider.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -50,6 +53,16 @@ static const char *const kProviderName = AWSLC_TEST_PROVIDER_NAME;
 static const char *const kPreferAwslc = AWSLC_TEST_PREFER;
 static const char *const kRequireAwslc = AWSLC_TEST_REQUIRE;
 
+// Pins the other leg of an interop test, so a future awslc implementation
+// cannot silently take it over.
+static const char *const kRequireDefault = "provider=default";
+
+#if defined(AWSLC_FIPS)
+static constexpr int kFipsBuild = 1;
+#else
+static constexpr int kFipsBuild = 0;
+#endif
+
 struct LibCtxDeleter {
   void operator()(OSSL_LIB_CTX *ctx) const { OSSL_LIB_CTX_free(ctx); }
 };
@@ -62,11 +75,45 @@ struct MdDeleter {
 struct MdCtxDeleter {
   void operator()(EVP_MD_CTX *ctx) const { EVP_MD_CTX_free(ctx); }
 };
+struct PkeyDeleter {
+  void operator()(EVP_PKEY *pkey) const { EVP_PKEY_free(pkey); }
+};
+struct PkeyCtxDeleter {
+  void operator()(EVP_PKEY_CTX *ctx) const { EVP_PKEY_CTX_free(ctx); }
+};
+struct ParamsDeleter {
+  void operator()(OSSL_PARAM *params) const { OSSL_PARAM_free(params); }
+};
+struct BioDeleter {
+  void operator()(BIO *bio) const { BIO_free(bio); }
+};
 
 using LibCtxPtr = std::unique_ptr<OSSL_LIB_CTX, LibCtxDeleter>;
 using ProviderPtr = std::unique_ptr<OSSL_PROVIDER, ProviderDeleter>;
 using MdPtr = std::unique_ptr<EVP_MD, MdDeleter>;
 using MdCtxPtr = std::unique_ptr<EVP_MD_CTX, MdCtxDeleter>;
+using PkeyPtr = std::unique_ptr<EVP_PKEY, PkeyDeleter>;
+using PkeyCtxPtr = std::unique_ptr<EVP_PKEY_CTX, PkeyCtxDeleter>;
+using ParamsPtr = std::unique_ptr<OSSL_PARAM, ParamsDeleter>;
+using BioPtr = std::unique_ptr<BIO, BioDeleter>;
+
+inline std::string ProviderOf(const EVP_PKEY *pkey) {
+  const OSSL_PROVIDER *provider = EVP_PKEY_get0_provider(pkey);
+  return provider == nullptr ? "<none>" : OSSL_PROVIDER_get0_name(provider);
+}
+
+inline std::string ProviderOf(const EVP_PKEY_CTX *ctx) {
+  const OSSL_PROVIDER *provider = EVP_PKEY_CTX_get0_provider(ctx);
+  return provider == nullptr ? "<none>" : OSSL_PROVIDER_get0_name(provider);
+}
+
+inline std::set<std::string> Names(const OSSL_PARAM *params) {
+  std::set<std::string> names;
+  for (const OSSL_PARAM *p = params; p != nullptr && p->key != nullptr; p++) {
+    names.insert(p->key);
+  }
+  return names;
+}
 
 // One drained OpenSSL error record. In the shared fixture because any operation
 // with a failure path owes the queue an explanation.
