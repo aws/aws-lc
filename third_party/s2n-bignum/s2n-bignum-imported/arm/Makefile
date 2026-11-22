@@ -622,7 +622,12 @@ build_proofs: $(UNOPT_OBJ) $(PROOF_BINS) $(SPEC_CHECK_PROOFS:.ml=.native)
 # '-I' excludes binary files (*.native).
 	! grep -RI "check_axioms" . ../common/ --exclude="Makefile"
 build_tutorial: $(TUTORIAL_OBJ) $(TUTORIAL_PROOF_BINS);
-run_proofs: build_proofs $(PROOF_LOGS) $(SPEC_CHECK_PROOFS:.ml=.correct);
+ALL_PROOF_LOGS = $(PROOF_LOGS) $(SPEC_CHECK_PROOFS:.ml=.correct)
+run_proofs: build_proofs $(ALL_PROOF_LOGS);
+
+.PHONY: proof_timing_targets
+proof_timing_targets:
+	@printf '%s\n' $(ALL_PROOF_LOGS)
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
 tutorial: build_tutorial $(TUTORIAL_PROOF_LOGS);

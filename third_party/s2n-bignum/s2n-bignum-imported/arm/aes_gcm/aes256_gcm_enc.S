@@ -1638,6 +1638,13 @@ Laes256_gcm_enc_loop_1x_end:
         rev ctr_tmp_w, ctr
         str ctr_tmp_w, [ivec, #12]
 
+        // Clear the counter-block slots, which also held plaintext XOR
+        // the last round key.
+        stp xzr, xzr, [sp, #(STACK_BASE_AES_ST)]
+        stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+16)]
+        stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+32)]
+        stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+48)]
+
         CFI_STACKLOAD2(d8,d9,96)
         CFI_STACKLOAD2(d10,d11,112)
         CFI_STACKLOAD2(d12,d13,128)
