@@ -216,13 +216,16 @@ else()
 
 endif()
 
-# The Rust crate is FIPS module code, beside bcm.c. Shared FIPS builds link it
-# into bcm.o (fipsmodule/CMakeLists.txt). Static FIPS builds, and Windows
-# shared ones, don't hold it yet, so one that finds Rust fails configure, with
-# AUTO too.
-if(ENABLE_RUST AND (FIPS_DELOCATE OR (FIPS_SHARED AND WIN32)))
-  message(FATAL_ERROR "ENABLE_RUST: static FIPS builds, and Windows shared ones, can't use Rust yet: "
-                      "Rust in a FIPS build has to be FIPS module code. "
+# The Rust crate is FIPS module code, beside bcm.c. FIPS builds take it into
+# bcm.o (fipsmodule/CMakeLists.txt): static ones with delocate, shared ones in
+# bcm.o's partial link. Windows shared FIPS builds can't yet: their module is
+# what bcm.c's pragmas put in the .fipstx and .fipsco sections, rustc can't
+# name its sections, and llvm-objcopy (LLVM 23) can't rename sections in
+# Windows (COFF) objects. One that finds Rust fails configure, with AUTO too.
+if(ENABLE_RUST AND FIPS_SHARED AND WIN32)
+  message(FATAL_ERROR "ENABLE_RUST: Windows shared FIPS builds can't use Rust yet: "
+                      "rustc's code would land outside the FIPS module's sections, "
+                      "and llvm-objcopy can't rename sections in Windows object files. "
                       "Configure with -DENABLE_RUST=OFF to build C only.")
 endif()
 

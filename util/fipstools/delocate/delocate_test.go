@@ -47,6 +47,7 @@ var delocateTests = []delocateTest{
 	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s", true},
 	{"x86_64-FourArg", nil, []string{"in.s"}, "out.s", true},
 	{"x86_64-Relro", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-Rust", nil, []string{"in.s", "rust.s"}, "out.s", true},
 	{"aarch64-Basic", nil, []string{"in.s"}, "out.s", true},
 }
 
@@ -55,9 +56,12 @@ func TestDelocate(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var inputs []inputFile
 			for i, in := range test.inputs {
+				// rust.s stands for rustc's output, which delocate
+				// takes through -rust.
 				inputs = append(inputs, inputFile{
-					index: i,
-					path:  test.Path(in),
+					index:  i,
+					path:   test.Path(in),
+					isRust: in == "rust.s",
 				})
 			}
 

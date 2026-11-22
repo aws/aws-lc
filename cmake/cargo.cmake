@@ -1,10 +1,10 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# Builds the Rust crate as a staticlib with CMake-forced Cargo settings and
-# folds it into one object, bcm-rust.o. Shared FIPS builds link it into bcm.o,
-# and other builds add it in build_libcrypto() the way the FIPS build adds
-# bcm.o. Consumers still link only libcrypto.
+# Builds the Rust crate with CMake-forced Cargo settings. Static FIPS builds
+# take its assembly into bcm.o, with bcm.c's. Other builds fold its staticlib
+# into one object, bcm-rust.o, that build_libcrypto() adds the way the FIPS
+# build adds bcm.o. Consumers still link only libcrypto.
 # Cargo discovery comes from the caracal PoC's cmake/cargo.cmake.
 
 # With ENABLE_RUST=AUTO, the default, a failed check below logs why and builds
@@ -269,16 +269,20 @@ if(ENABLE_RUST STREQUAL "AUTO")
   message("::notice title=ENABLE_RUST::building with Rust")
 endif()
 
-# cargo_add_rust_object(OUTPUT <object> MANIFEST_PATH <Cargo.toml>
-#                       LIB_NAME <name>)
+# cargo_add_rust_object(OUTPUT <file> MANIFEST_PATH <Cargo.toml>
+#                       LIB_NAME <name> [ASM])
 #
 # Adds a custom command producing OUTPUT, an object in which only the exports
 # stay global, and hidden where the object format has visibility, so libcrypto
 # doesn't export them. The exports are the functions the crate's internal.h
 # declares. With BORINGSSL_PREFIX, they carry the prefix in both the Rust and
 # the C code. Use OUTPUT as a source file or dependency in the same directory.
+#
+# With ASM, OUTPUT is instead rustc's assembly for the crate, after LTO, which
+# static FIPS builds give delocate with bcm.c's. The crate is built the same
+# way otherwise.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "" "OUTPUT;MANIFEST_PATH;LIB_NAME" "" ${ARGN})
+  cmake_parse_arguments(arg "ASM" "OUTPUT;MANIFEST_PATH;LIB_NAME" "" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
   # The exports: internal.h declares each on a line that starts with its
@@ -333,6 +337,12 @@ function(cargo_add_rust_object)
     --config "build.rustc-wrapper=\"\""
     --config "build.rustc-workspace-wrapper=\"\"")
   set(rustflags ${RUST_FLAGS})
+  # On ppc64le, LLVM's global merging writes aliases (.Lx = .L_MergedGlobals+8)
+  # that delocate can't parse, in rustc's code as in clang's. AWS-LC's CI has
+  # no ppc64le static FIPS job, so only local runs under qemu test this.
+  if(ARCH STREQUAL "ppc64le")
+    list(APPEND rustflags -Cllvm-args=-enable-global-merge=false)
+  endif()
   set(symbol_prefix "")
   set(export_prefix "")
   if(BORINGSSL_PREFIX)
@@ -409,7 +419,12 @@ function(cargo_add_rust_object)
     set(link_driver "${CMAKE_C_COMPILER}")
   endif()
   set(partial_link ${link_driver} -r -nostdlib ${RUST_LINK_C_FLAGS})
-  if(APPLE)
+  set(cargo_emit "")
+  if(arg_ASM)
+    # One codegen unit after fat LTO, so one file, core's code included.
+    set(cargo_emit "--emit=asm=${arg_OUTPUT}")
+    set(fold_commands "")
+  elseif(APPLE)
     # Same -arch, -platform_version and SDK as the C code. Pass 1 makes every
     # symbol but the exports local: hidden but global would still clash with
     # a consumer's own Rust in a static link. Pass 2 hides the exports.
@@ -471,7 +486,7 @@ function(cargo_add_rust_object)
       --release
       ${cargo_target_args}
       ${forced_config}
-      -- ${rustflags}
+      -- ${rustflags} ${cargo_emit}
     ${fold_commands}
     DEPENDS ${rust_sources} "${crate_dir}/sections.lds"
       "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"

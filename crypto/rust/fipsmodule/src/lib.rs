@@ -6,8 +6,20 @@
 //! are internal to libcrypto. Those that can fail return 1 on success and 0 on
 //! failure.
 //!
-//! Shared FIPS builds link its object into `bcm.o`, and other builds fold it
-//! into libcrypto as `bcm-rust.o`, beside `bcm.c`'s object.
+//! Static FIPS builds compile the crate to assembly, which delocate takes into
+//! `bcm.o` with `bcm.c`'s. Shared FIPS builds link its object into `bcm.o`,
+//! and other builds fold it into libcrypto as `bcm-rust.o`, beside `bcm.c`'s
+//! object. Module code follows C's module rules in every build, because
+//! delocate enforces them in static FIPS builds:
+//!
+//! - mutable statics start zeroed and are reached only through
+//!   `<name>_bss_get()`, which delocate writes, as with C's `DEFINE_BSS_GET`
+//! - no statics holding pointers, such as function tables or the vtables of
+//!   trait objects: delocate can't move them into the module, so it rejects
+//!   them
+//!
+//! Calls the compiler inserts, such as `memcpy`, need no rule: delocate sends
+//! them through its redirectors, as it does C's.
 
 #![no_std]
 

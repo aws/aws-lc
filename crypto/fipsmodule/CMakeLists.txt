@@ -570,6 +570,22 @@ if(FIPS_DELOCATE)
     set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
   endif()
 
+  # The Rust crate's assembly goes into the module with bcm.c's. delocate
+  # handles rustc's code as it does the C compiler's: calls out of the module go
+  # through redirectors, constants move into the module, and module data is
+  # reached through accessors. Its debug info is dropped.
+  set(BCM_RUST_ASM "")
+  set(DELOCATE_RUST_ARGS "")
+  if(ENABLE_RUST)
+    set(BCM_RUST_ASM "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust.s")
+    cargo_add_rust_object(
+      OUTPUT "${BCM_RUST_ASM}"
+      MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+      LIB_NAME bcm_rust
+      ASM)
+    set(DELOCATE_RUST_ARGS -rust "${BCM_RUST_ASM}")
+  endif()
+
   go_executable(delocate github.com/aws/aws-lc/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
@@ -577,6 +593,9 @@ if(FIPS_DELOCATE)
     ./delocate
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
+    # Before -s2n-bignum-include, which takes the next argument as its value
+    # where S2N_BIGNUM_INCLUDE_DIR is empty, as on ppc64le.
+    ${DELOCATE_RUST_ARGS}
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
     -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
@@ -588,6 +607,7 @@ if(FIPS_DELOCATE)
     DEPENDS
     bcm_c_generated_asm
     delocate
+    ${BCM_RUST_ASM}
     ${BCM_ASM_SOURCES}
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
     ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
