@@ -215,18 +215,29 @@ else()
   endif()
 
 endif()
+
+# The Rust crate is FIPS module code, beside bcm.c. Shared FIPS builds link it
+# into bcm.o (fipsmodule/CMakeLists.txt). Static FIPS builds, and Windows
+# shared ones, don't hold it yet, so one that finds Rust fails configure, with
+# AUTO too.
+if(ENABLE_RUST AND (FIPS_DELOCATE OR (FIPS_SHARED AND WIN32)))
+  message(FATAL_ERROR "ENABLE_RUST: static FIPS builds, and Windows shared ones, can't use Rust yet: "
+                      "Rust in a FIPS build has to be FIPS module code. "
+                      "Configure with -DENABLE_RUST=OFF to build C only.")
+endif()
+
 add_subdirectory(fipsmodule)
 
-if(ENABLE_RUST)
-  # rust-phase0: one relocatable object holding all library Rust code, entered
-  # into build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
-  # global, and internal.h declares them hidden.
-  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/rust${CMAKE_C_OUTPUT_EXTENSION}")
+set(RUST_OBJECT "")
+if(ENABLE_RUST AND NOT FIPS_DELOCATE AND NOT FIPS_SHARED)
+  # One relocatable object holding all library Rust code, entered into
+  # build_libcrypto() like bcm.o. Only the C-ABI entry points that bcm.c calls
+  # stay global, and hidden, so libcrypto doesn't export them.
+  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
   cargo_add_rust_object(
     OUTPUT "${RUST_OBJECT}"
-    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/Cargo.toml"
-    LIB_NAME caracal
-    EXPORTS caracal_byte_sum)
+    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+    LIB_NAME bcm_rust)
 endif()
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
@@ -593,13 +604,6 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
-if(ENABLE_RUST)
-  # C side of the Rust integration; the Rust code itself is linked in
-  # build_libcrypto(). AWSLC_RUST is deliberately not visible to fipsmodule.
-  target_sources(crypto_objects PRIVATE rust/rust.c)
-  target_compile_definitions(crypto_objects PRIVATE AWSLC_RUST)
-endif()
-
 function(build_libcrypto)
   set(options SET_OUTPUT_NAME)
   set(oneValueArgs NAME)
@@ -648,7 +652,7 @@ function(build_libcrypto)
   endif()
   target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
 
-  if(ENABLE_RUST)
+  if(RUST_OBJECT)
     target_sources(${arg_NAME} PRIVATE "${RUST_OBJECT}")
   endif()
 
@@ -896,9 +900,6 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:crypto_test_data>
   )
   set_test_location(${CRYPTO_TEST_EXEC})
-  if(ENABLE_RUST)
-    target_sources(${CRYPTO_TEST_EXEC} PRIVATE rust/rust_test.cc)
-  endif()
 
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_add_awslc_include_paths(TARGET ${CRYPTO_TEST_EXEC} SCOPE PRIVATE)

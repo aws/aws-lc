@@ -23,6 +23,11 @@ if(ANDROID)
   endif()
 endif()
 
+if(ENABLE_RUST)
+  # In Rust builds the module's SHA-256 is Rust's (sha/sha256.c).
+  add_definitions(-DAWSLC_RUST)
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
@@ -686,6 +691,17 @@ elseif(FIPS_SHARED)
     target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
   endif()
 
+  # The Rust crate's object joins the module's partial link, which takes its
+  # code and constants into the hashed regions.
+  set(BCM_RUST_OBJECT "")
+  if(ENABLE_RUST)
+    set(BCM_RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust.o")
+    cargo_add_rust_object(
+      OUTPUT "${BCM_RUST_OBJECT}"
+      MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+      LIB_NAME bcm_rust)
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -719,8 +735,8 @@ elseif(FIPS_SHARED)
     )
     add_custom_command(
       OUTPUT bcm.o
-      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> fips_apple_end.o -keep_private_externs -o bcm.o
-      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
+      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> ${BCM_RUST_OBJECT} fips_apple_end.o -keep_private_externs -o bcm.o
+      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   elseif(MSVC)
@@ -775,10 +791,14 @@ elseif(FIPS_SHARED)
       set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
     endif()
 
+    set(bcm_rust_link_args "")
+    if(BCM_RUST_OBJECT)
+      set(bcm_rust_link_args --no-whole-archive "${BCM_RUST_OBJECT}")
+    endif()
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
-      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library> ${bcm_rust_link_args}
+      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT} ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   endif()

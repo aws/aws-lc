@@ -1,13 +1,16 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# Rust code in libcrypto. CMake builds it when configured with
-# -DENABLE_RUST=ON; see cmake/cargo.cmake.
+# Rust code in the FIPS module, bcm.o, written as FIPS module code. CMake
+# builds it when it finds Rust, unless configured with -DENABLE_RUST=OFF; see
+# cmake/cargo.cmake.
 
 [package]
-name = "caracal"
+name = "bcm-rust"
 version = "0.1.0"
 edition = "2024"
+# cmake/cargo.cmake checks the same minimum.
+rust-version = "1.85"
 license = "Apache-2.0 OR ISC"
 publish = false
 

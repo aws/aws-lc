@@ -53,4 +53,4 @@ util/backport/.backport-runs/
 util/backport/.backport-worktrees/
 
 .duvet/reports/*
-crypto/rust/target/
+crypto/rust/fipsmodule/target/

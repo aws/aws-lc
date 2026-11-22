@@ -11,6 +11,61 @@
 #include "../digest/md32_common.h"
 #include "internal.h"
 
+// Rust builds use the Rust code in crypto/rust/fipsmodule/src/sha256.rs, so
+// every SHA-256 user in the module runs it.
+#if defined(AWSLC_RUST)
+#include "../../rust/fipsmodule/internal.h"
+
+#if defined(OPENSSL_MSAN)
+#include <sanitizer/msan_interface.h>
+#endif
+
+// Init, Update and Final wrap the Rust code. C and Rust both use |SHA256_CTX|,
+// so both assert its layout.
+OPENSSL_STATIC_ASSERT(sizeof(SHA256_CTX) == 112, sha256_ctx_size_matches_rust)
+OPENSSL_STATIC_ASSERT(alignof(SHA256_CTX) == 4, sha256_ctx_align_matches_rust)
+OPENSSL_STATIC_ASSERT(offsetof(SHA256_CTX, h) == 0 &&
+                          offsetof(SHA256_CTX, Nl) == 32 &&
+                          offsetof(SHA256_CTX, Nh) == 36 &&
+                          offsetof(SHA256_CTX, data) == 40 &&
+                          offsetof(SHA256_CTX, num) == 104 &&
+                          offsetof(SHA256_CTX, md_len) == 108,
+                      sha256_ctx_offsets_match_rust)
+
+// Stable Rust can't be built with MSan's instrumentation, so MSan doesn't see
+// Rust's reads and writes. |rust_reads| checks that the bytes Rust will read
+// are initialized, and |rust_wrote| marks the bytes it wrote initialized.
+static void rust_reads(const void *p, size_t len) {
+#if defined(OPENSSL_MSAN)
+  if (p != NULL) {
+    __msan_check_mem_is_initialized(p, len);
+  }
+#endif
+}
+
+static void rust_wrote(const void *p, size_t len) {
+#if defined(OPENSSL_MSAN)
+  if (p != NULL) {
+    __msan_unpoison(p, len);
+  }
+#endif
+}
+
+static int sha256_init_rust(SHA256_CTX *sha, size_t md_len) {
+  int ok = bcm_rust_sha256_init(sha, md_len);
+  rust_wrote(sha, sizeof(*sha));
+  return ok;
+}
+
+int SHA224_Init(SHA256_CTX *sha) {
+  return sha256_init_rust(sha, SHA224_DIGEST_LENGTH);
+}
+
+int SHA256_Init(SHA256_CTX *sha) {
+  return sha256_init_rust(sha, SHA256_DIGEST_LENGTH);
+}
+
+#else
 
 int SHA224_Init(SHA256_CTX *sha) {
   OPENSSL_memset(sha, 0, sizeof(SHA256_CTX));
@@ -39,6 +94,8 @@ int SHA256_Init(SHA256_CTX *sha) {
   sha->md_len = SHA256_DIGEST_LENGTH;
   return 1;
 }
+
+#endif  // AWSLC_RUST
 
 OPENSSL_STATIC_ASSERT(SHA256_CHAINING_LENGTH==SHA224_CHAINING_LENGTH,
                       sha256_and_sha224_have_same_chaining_length)
@@ -125,9 +182,17 @@ void SHA256_Transform(SHA256_CTX *c, const uint8_t data[SHA256_CBLOCK]) {
 }
 
 int SHA256_Update(SHA256_CTX *c, const void *data, size_t len) {
+#if defined(AWSLC_RUST)
+  rust_reads(c, sizeof(*c));
+  rust_reads(data, len);
+  int ok = bcm_rust_sha256_update(c, data, len);
+  rust_wrote(c, sizeof(*c));
+  return ok;
+#else
   crypto_md32_update(&sha256_block_data_order, c->h, c->data, SHA256_CBLOCK,
                      &c->num, &c->Nh, &c->Nl, data, len);
   return 1;
+#endif
 }
 
 int SHA224_Update(SHA256_CTX *ctx, const void *data, size_t len) {
@@ -135,6 +200,15 @@ int SHA224_Update(SHA256_CTX *ctx, const void *data, size_t len) {
 }
 
 static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
+#if defined(AWSLC_RUST)
+  rust_reads(c, sizeof(*c));
+  int ok = bcm_rust_sha256_final(out, md_len, c);
+  rust_wrote(c, sizeof(*c));
+  if (!ok) {
+    return 0;
+  }
+  rust_wrote(out, md_len);
+#else
   crypto_md32_final(&sha256_block_data_order, c->h, c->data, SHA256_CBLOCK,
                     &c->num, c->Nh, c->Nl, /*is_big_endian=*/1);
   if (c->md_len != md_len) {
@@ -147,6 +221,7 @@ static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
     CRYPTO_store_u32_be(out, c->h[i]);
     out += 4;
   }
+#endif
   FIPS_service_indicator_update_state();
   return 1;
 }
@@ -193,7 +268,16 @@ int SHA256_get_state(SHA256_CTX *ctx, uint8_t out_h[SHA256_CHAINING_LENGTH],
 
 #if !defined(SHA256_ASM)
 
-#if !defined(SHA256_ASM_NOHW)
+#if !defined(SHA256_ASM_NOHW) && defined(AWSLC_RUST)
+// Rust builds: the portable block function is Rust's.
+static void sha256_block_data_order_nohw(uint32_t state[8], const uint8_t *data,
+                                         size_t num) {
+  rust_reads(state, 8 * sizeof(uint32_t));
+  rust_reads(data, num * SHA256_CBLOCK);
+  bcm_rust_sha256_block_data_order(state, data, num);
+  rust_wrote(state, 8 * sizeof(uint32_t));
+}
+#elif !defined(SHA256_ASM_NOHW)
 static const uint32_t K256[64] = {
     0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL, 0x3956c25bUL,
     0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL, 0xd807aa98UL, 0x12835b01UL,
