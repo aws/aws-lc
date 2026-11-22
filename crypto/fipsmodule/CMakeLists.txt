@@ -332,6 +332,14 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
     # Note: Scalar Keccak-x1 and Batched Neoverse N1 Keccak-x4 assembly from s2n-bignum
     # are included in the common s2n-bignum block above
 
+    # AES-GCM 8x kernels encode EOR3 with .inst, so they do not require an
+    # assembler that recognizes the SHA3 extension. Dispatch checks CPU support.
+    list(APPEND BCM_ASM_SOURCES
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_enc_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_dec_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_enc_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_dec_alt.S)
+
     if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
         list(APPEND BCM_ASM_SOURCES
            # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native, using SHA3 extension
@@ -340,13 +348,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
            # SIMD versions using SHA3 extension
            ${S2N_BIGNUM_DIR}/sha3/sha3_keccak2_f1600.S
            ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt2.S)
-
-        # AES-GCM 8x-unrolled kernels (use EOR3 from the SHA3 extension)
-        list(APPEND BCM_ASM_SOURCES
-           ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_enc_alt.S
-           ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_dec_alt.S
-           ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_enc_alt.S
-           ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_dec_alt.S)
 
         set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
                                     PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
