@@ -78,6 +78,23 @@ void OPENSSL_cpuid_setup(void) {
   }
 #endif
 
+  // The startup program also records each core's MIDR_EL1 in the |cpu| field
+  // of its |cpuinfo| entry, so the Neoverse bits can be set here without
+  // reading the register. As with |flags| above, only set them if every core
+  // is the same model.
+  uint64_t midr = SYSPAGE_ARRAY_IDX(cpuinfo, 0)->cpu;
+  int same_model = 1;
+  for (unsigned i = 1; i < num_cpu; i++) {
+    uint64_t other = SYSPAGE_ARRAY_IDX(cpuinfo, i)->cpu;
+    if ((other & MIDR_CPU_MODEL_MASK) != (midr & MIDR_CPU_MODEL_MASK)) {
+      same_model = 0;
+      break;
+    }
+  }
+  if (same_model) {
+    armv8_set_neoverse_caps(&OPENSSL_armcap_P, midr);
+  }
+
   // See the comment in cpu_aarch64_linux.c about OPENSSL_armcap.
   const char *env = getenv("OPENSSL_armcap");
   if (env != NULL) {
