@@ -44,21 +44,10 @@ class AwsLcGitHubOidcStack(Stack):
 
         oidc_role_name = "AwsLcGitHubActionsOidcRole"
         # This role should only be granted necessary permissions to assume other roles
-        #
-        # No job assumes this role from a pull_request event, so the event name
-        # is restricted to exclude it. pull_request_target remains because the
-        # security-review, android-omnibus device-farm and image-build-android
-        # jobs run on it behind their maintainer approval gates.
         self.minimal_oidc_role = iam.Role(self, id=oidc_role_name, role_name=oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                  "token.actions.githubusercontent.com:event_name": [
-                                                      "push",
-                                                      "workflow_dispatch",
-                                                      "schedule",
-                                                      "pull_request_target",
-                                                  ],
                                               },
                                               "StringLike": {
                                                   # Check the subject claim is from our repository VERY IMPORTANT!
@@ -66,6 +55,9 @@ class AwsLcGitHubOidcStack(Stack):
                                                   "token.actions.githubusercontent.com:sub": f"repo:{repo}:*",
                                               },
                                               "StringNotLike": {
+                                                  # Rejects pull_request runs, whose ref is refs/pull/<n>/merge.
+                                                  # pull_request_target runs use the default branch ref and pass.
+                                                  "token.actions.githubusercontent.com:ref": "refs/pull/*",
                                                   "token.actions.githubusercontent.com:job_workflow_ref":
                                                       f"{repo}/.github/workflows/autofix_integration_failures.yml@*",
                                               },
@@ -84,33 +76,16 @@ class AwsLcGitHubOidcStack(Stack):
                                           }))
 
         image_promotion_oidc_role_name = "AwsLcGitHubActionsImagePromotionOidcRole"
-        # Writing to a production CI image repository is restricted two ways.
-        #
-        # The subject claim must be a branch or tag ref. A pull_request event
-        # produces a ":pull_request" subject instead and so cannot match. Note
-        # that GitHub does not document the subject format for
-        # pull_request_target, which is also a pull request event but runs in the
-        # base ref's context, so do not rely on the subject claim alone to
-        # exclude it.
-        #
-        # The event name must therefore also be one that only a trusted ref can
-        # raise. GitHub recommends constraining trust policies this way, and it
-        # holds regardless of how pull_request_target renders its subject.
-        # workflow_call does not appear here on purpose: a reusable workflow
-        # reports the event that triggered the top level run.
-        # See https://docs.github.com/en/actions/reference/security/oidc
         self.image_promotion_oidc_role = iam.Role(self, id=image_promotion_oidc_role_name,
                                                   role_name=image_promotion_oidc_role_name,
                                                   assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                                       "StringEquals": {
                                                           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                          "token.actions.githubusercontent.com:event_name": [
-                                                              "push",
-                                                              "workflow_dispatch",
-                                                              "schedule",
-                                                          ],
                                                       },
                                                       "StringLike": {
+                                                          # Accepts only branch and tag runs. pull_request and
+                                                          # pull_request_target runs have a ":pull_request" subject.
+                                                          # See https://docs.github.com/en/actions/reference/security/oidc
                                                           "token.actions.githubusercontent.com:sub": [
                                                               "repo:{}/{}:ref:refs/heads/*".format(
                                                                   GITHUB_REPO_OWNER, (
