@@ -3,9 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include <atomic>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include <openssl/asn1.h>
@@ -13,6 +11,11 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
+
+#if defined(OPENSSL_THREADS)
+#include <atomic>
+#include <thread>
+#endif
 
 #include "../internal.h"
 

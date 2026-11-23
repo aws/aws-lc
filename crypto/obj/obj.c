@@ -36,10 +36,6 @@ static LHASH_OF(ASN1_OBJECT) *global_added_by_short_name = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_long_name = NULL;
 static unsigned global_next_nid = NUM_NID;
 
-// obj_next_nid returns a new NID for a run-time added object. The caller must
-// hold |global_added_lock| for writing.
-static int obj_next_nid(void) { return global_next_nid++; }
-
 ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   ASN1_OBJECT *r;
   unsigned char *data = NULL;
@@ -528,6 +524,31 @@ enum obj_add_result {
   obj_add_error,
 };
 
+// obj_find_registered looks up |obj|'s OID and names in the built-in and
+// run-time added tables. If none of them is registered, it returns zero.
+// Otherwise it returns one and sets |*out_result|: to |obj_add_existing|, with
+// |*out_nid| set to the existing NID, if |obj| repeats a registered object, or
+// to |obj_add_conflict| if its OID or a name is registered to a different
+// object. The caller must hold |global_added_lock| for reading or writing.
+static int obj_find_registered(const ASN1_OBJECT *obj,
+                               enum obj_add_result *out_result, int *out_nid) {
+  int data_nid = obj_registered_data2nid(obj);
+  int sn_nid = obj->sn != NULL ? obj_registered_sn2nid(obj) : NID_undef;
+  int ln_nid = obj->ln != NULL ? obj_registered_ln2nid(obj) : NID_undef;
+  if (data_nid == NID_undef && sn_nid == NID_undef && ln_nid == NID_undef) {
+    return 0;
+  }
+  if (data_nid != NID_undef &&
+      (obj->sn == NULL || sn_nid == data_nid) &&
+      (obj->ln == NULL || ln_nid == data_nid)) {
+    *out_nid = data_nid;
+    *out_result = obj_add_existing;
+  } else {
+    *out_result = obj_add_conflict;
+  }
+  return 1;
+}
+
 // obj_add_object registers |obj|, which must have an OID, in the global hashes
 // for run-time added objects, assigning it a new NID.
 //
@@ -535,33 +556,33 @@ enum obj_add_result {
 // the added tables must never shadow a built-in OID or name. If |obj|'s OID is
 // already registered and each of its non-NULL names maps to that same object,
 // |obj| is a repeat registration: it is not inserted, |*out_nid| is set to the
-// existing NID and |obj_add_existing| is returned. Callers commonly register
-// the same private OID more than once, for example from a function that runs
-// per certificate or from several libraries in one process. If the OID or a
-// name is registered to anything else, |obj_add_conflict| is returned.
+// existing NID and |obj_add_existing| is returned. Some callers register the
+// same private OID more than once, for example from a function that runs on
+// every use of the OID, or from several libraries in one process. If the OID
+// or a name is registered to anything else, |obj_add_conflict| is returned.
 static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
   *out_nid = NID_undef;
-  // Checking under the write lock stops two racing callers from both
-  // registering the same value.
-  CRYPTO_STATIC_MUTEX_lock_write(&global_added_lock);
-  int data_nid = obj_registered_data2nid(obj);
-  int sn_nid = obj->sn != NULL ? obj_registered_sn2nid(obj) : NID_undef;
-  int ln_nid = obj->ln != NULL ? obj_registered_ln2nid(obj) : NID_undef;
-  if (data_nid != NID_undef || sn_nid != NID_undef || ln_nid != NID_undef) {
-    enum obj_add_result result = obj_add_conflict;
-    if (data_nid != NID_undef &&
-        (obj->sn == NULL || sn_nid == data_nid) &&
-        (obj->ln == NULL || ln_nid == data_nid)) {
-      *out_nid = data_nid;
-      result = obj_add_existing;
-    }
-    CRYPTO_STATIC_MUTEX_unlock_write(&global_added_lock);
+  enum obj_add_result result = obj_add_error;
+
+  // The built-in table is constant, and an added object is never removed once
+  // the write lock is released, so an OID or name stays registered to the same
+  // object for good. A repeat or conflict found under the read lock is
+  // therefore final, and repeated registrations do not serialize on the write
+  // lock or block lookups.
+  CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
+  int found = obj_find_registered(obj, &result, out_nid);
+  CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
+  if (found) {
     return result;
   }
 
-  // Only allocate a NID once |obj| is going to be inserted, so that repeated
-  // or refused calls do not consume NIDs.
-  obj->nid = obj_next_nid();
+  // Check again under the write lock, which stops two racing callers from
+  // both registering the same value.
+  CRYPTO_STATIC_MUTEX_lock_write(&global_added_lock);
+  if (obj_find_registered(obj, &result, out_nid)) {
+    CRYPTO_STATIC_MUTEX_unlock_write(&global_added_lock);
+    return result;
+  }
 
   if (global_added_by_nid == NULL) {
     global_added_by_nid = lh_ASN1_OBJECT_new(hash_nid, cmp_nid);
@@ -585,6 +606,10 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
     goto err;
   }
 
+  // |obj| takes the next NID, but |global_next_nid| only advances once every
+  // insert has succeeded, so a call that fails does not use up a NID.
+  obj->nid = global_next_nid;
+
   // The checks above, and the fresh NID, mean no table holds an entry equal to
   // |obj|, so these inserts never evict anything and |old_object| is unused.
   ASN1_OBJECT *old_object;
@@ -600,6 +625,7 @@ static enum obj_add_result obj_add_object(ASN1_OBJECT *obj, int *out_nid) {
   }
 
   if (ok) {
+    global_next_nid++;
     // |obj| is now owned by the tables and must never be freed.
     obj->flags &=
         ~(ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
