@@ -1945,6 +1945,34 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
 
+  // A poisoned store must stay poisoned through |X509_STORE_CTX_init|, which
+  // inherits parameters from the store and then from the defaults. Callers that
+  // ignore a failed setter rely on this to fail closed.
+  ASSERT_EQ(X509_V_ERR_INVALID_CALL, ([&] {
+              bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+              bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+              if (!store || !ctx ||
+                  !X509_STORE_add_cert(store.get(), root.get())) {
+                return X509_V_ERR_UNSPECIFIED;
+              }
+              // An embedded NUL fails and poisons the store's parameters.
+              if (X509_VERIFY_PARAM_set1_host(X509_STORE_get0_param(store.get()),
+                                              "a", 2)) {
+                return X509_V_ERR_UNSPECIFIED;
+              }
+              if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                                       nullptr)) {
+                return X509_V_ERR_UNSPECIFIED;
+              }
+              X509_VERIFY_PARAM_set_time_posix(
+                  X509_STORE_CTX_get0_param(ctx.get()), kReferenceTime);
+              ERR_clear_error();
+              if (X509_verify_cert(ctx.get()) == 1) {
+                return X509_V_OK;
+              }
+              return X509_STORE_CTX_get_error(ctx.get());
+            })());
+
   // Zero bytes in an IP address are, of course, fine. This is tested above
   // because |kIP| contains zeros.
 }

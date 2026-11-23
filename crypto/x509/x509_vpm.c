@@ -168,7 +168,10 @@ static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
     }
   }
 
-  dest->poison = src->poison;
+  // Poison is sticky. |X509_STORE_CTX_init| inherits twice, from the store and
+  // then from the defaults, so a clearing copy would discard the fail-closed
+  // state a failed identity setter left on the store.
+  dest->poison |= src->poison;
   return 1;
 }
 
