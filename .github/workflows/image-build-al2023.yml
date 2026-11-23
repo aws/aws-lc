@@ -49,7 +49,7 @@ jobs:
           roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         run: |
@@ -60,8 +60,8 @@ jobs:
           echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
           echo x509=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -104,7 +104,7 @@ jobs:
             source /opt/compiler-env/setup-clang-19.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 19.1
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 19.1
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -145,7 +145,7 @@ jobs:
           roleName: AwsLcGitHubActionDockerImageBuildRole
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         run: |
@@ -155,8 +155,8 @@ jobs:
         run: |
           echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
           context: ./.github/docker_images/aws-lc/amazonlinux
@@ -221,7 +221,7 @@ jobs:
           roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         run: |
@@ -266,7 +266,7 @@ jobs:
           roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         run: |
@@ -306,7 +306,7 @@ jobs:
           roleName: AwsLcGitHubActionDockerImagePromotionRole
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         run: |
