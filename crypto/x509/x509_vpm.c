@@ -388,6 +388,7 @@ int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param, const char *ipasc) {
 
   iplen = (size_t)x509v3_a2i_ipadd(ipout, ipasc);
   if (iplen == 0) {
+    param->poison = 1;
     return 0;
   }
   return X509_VERIFY_PARAM_set1_ip(param, ipout, iplen);

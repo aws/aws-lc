@@ -1945,6 +1945,17 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
 
+  // A malformed address fails the same way as |X509_VERIFY_PARAM_set1_ip|. The
+  // parse failure happens before that function is reached, so it has to poison
+  // the parameters itself.
+  ASSERT_EQ(X509_V_ERR_INVALID_CALL,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                   [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     ASSERT_FALSE(
+                         X509_VERIFY_PARAM_set1_ip_asc(param, "example.com"));
+                   }));
+
   // A poisoned store must stay poisoned through |X509_STORE_CTX_init|, which
   // inherits parameters from the store and then from the defaults. Callers that
   // ignore a failed setter rely on this to fail closed.
