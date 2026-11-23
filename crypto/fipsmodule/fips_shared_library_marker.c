@@ -50,6 +50,10 @@ const uint8_t BORINGSSL_bcm_rodata_start[16] =
 
 // Dummy but not empty function and array to avoid the compiler completely
 // optimizing out the symbols.
+#if defined(__APPLE__)
+// Apple's linker moves cold functions last, so make the end marker cold too.
+__attribute__((cold))
+#endif
 const uint8_t *BORINGSSL_bcm_text_end(void){
   return NULL;
 }
