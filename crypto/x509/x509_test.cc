@@ -1705,6 +1705,52 @@ TEST(X509Test, PartialChain) {
   }
 }
 
+// |X509_STORE_CTX_set0_trusted_stack| replaces the |X509_STORE| as the source
+// of trust anchors, including under |X509_V_FLAG_PARTIAL_CHAIN|.
+TEST(X509Test, PartialChainTrustedStackIgnoresStore) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+
+  auto verify = [&](const std::vector<X509 *> &store_certs,
+                    const std::vector<X509 *> &trusted_certs) {
+    bssl::UniquePtr<STACK_OF(X509)> trusted_stack(CertsToStack(trusted_certs));
+    bssl::UniquePtr<STACK_OF(X509)> untrusted(sk_X509_new_null());
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    if (!trusted_stack || !untrusted || !store || !ctx) {
+      return X509_V_ERR_UNSPECIFIED;
+    }
+    for (X509 *cert : store_certs) {
+      if (!X509_STORE_add_cert(store.get(), cert)) {
+        return X509_V_ERR_UNSPECIFIED;
+      }
+    }
+    if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                             untrusted.get())) {
+      return X509_V_ERR_UNSPECIFIED;
+    }
+    X509_STORE_CTX_set0_trusted_stack(ctx.get(), trusted_stack.get());
+    X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+    X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
+    X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
+    if (X509_verify_cert(ctx.get()) != 1) {
+      return X509_STORE_CTX_get_error(ctx.get());
+    }
+    return X509_V_OK;
+  };
+
+  const std::vector<X509 *> none;
+  const std::vector<X509 *> leaf_only = {leaf.get()};
+
+  // The target certificate matches a store entry exactly, but the store is not
+  // the trust source, so the chain has no anchor.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            verify(leaf_only, none));
+
+  // The same match against the trusted stack supplies the anchor.
+  EXPECT_EQ(X509_V_OK, verify(none, leaf_only));
+}
+
 #if defined(OPENSSL_THREADS)
 // Verifying the same |X509| objects on two threads should be safe.
 TEST(X509Test, VerifyThreads) {
