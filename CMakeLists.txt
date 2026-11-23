@@ -260,7 +260,7 @@ else()
 endif()
 
 function(target_add_awslc_include_paths)
-  set(options EXCLUDE_PREFIX_HEADERS)
+  set(options)
   set(oneValueArgs TARGET SCOPE)
   set(multiValueArgs)
 
@@ -278,15 +278,9 @@ function(target_add_awslc_include_paths)
     message(FATAL_ERROR "Missing value(s) for keyword(s) to target_add_awslc_include_paths: ${arg_KEYWORDS_MISSING_VALUES}")
   endif()
 
-  if(EXCLUDE_PREFIX_HEADERS)
-    set(INCLUDE_PREFIX_HEADERS 0)
-  else()
-    set(INCLUDE_PREFIX_HEADERS 1)
-  endif()
-
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
-    $<$<BOOL:${INCLUDE_PREFIX_HEADERS}>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${AWSLC_INSTALL_INCLUDEDIR}>)
 endfunction()
