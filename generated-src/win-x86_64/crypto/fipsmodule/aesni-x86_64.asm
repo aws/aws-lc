@@ -1898,24 +1898,26 @@ $L$xts_enc_ret:
 	pxor	xmm4,xmm4
 	pxor	xmm5,xmm5
 	movaps	xmm6,XMMWORD[((-168))+r11]
-	movaps	XMMWORD[(-168)+r11],xmm0
 	movaps	xmm7,XMMWORD[((-152))+r11]
-	movaps	XMMWORD[(-152)+r11],xmm0
 	movaps	xmm8,XMMWORD[((-136))+r11]
-	movaps	XMMWORD[(-136)+r11],xmm0
 	movaps	xmm9,XMMWORD[((-120))+r11]
-	movaps	XMMWORD[(-120)+r11],xmm0
 	movaps	xmm10,XMMWORD[((-104))+r11]
-	movaps	XMMWORD[(-104)+r11],xmm0
 	movaps	xmm11,XMMWORD[((-88))+r11]
-	movaps	XMMWORD[(-88)+r11],xmm0
 	movaps	xmm12,XMMWORD[((-72))+r11]
-	movaps	XMMWORD[(-72)+r11],xmm0
 	movaps	xmm13,XMMWORD[((-56))+r11]
-	movaps	XMMWORD[(-56)+r11],xmm0
 	movaps	xmm14,XMMWORD[((-40))+r11]
-	movaps	XMMWORD[(-40)+r11],xmm0
 	movaps	xmm15,XMMWORD[((-24))+r11]
+$L$xts_enc_xmm_restored:
+
+	movaps	XMMWORD[(-168)+r11],xmm0
+	movaps	XMMWORD[(-152)+r11],xmm0
+	movaps	XMMWORD[(-136)+r11],xmm0
+	movaps	XMMWORD[(-120)+r11],xmm0
+	movaps	XMMWORD[(-104)+r11],xmm0
+	movaps	XMMWORD[(-88)+r11],xmm0
+	movaps	XMMWORD[(-72)+r11],xmm0
+	movaps	XMMWORD[(-56)+r11],xmm0
+	movaps	XMMWORD[(-40)+r11],xmm0
 	movaps	XMMWORD[(-24)+r11],xmm0
 	movaps	XMMWORD[rsp],xmm0
 	movaps	XMMWORD[16+rsp],xmm0
@@ -2441,24 +2443,26 @@ $L$xts_dec_ret:
 	pxor	xmm4,xmm4
 	pxor	xmm5,xmm5
 	movaps	xmm6,XMMWORD[((-168))+r11]
-	movaps	XMMWORD[(-168)+r11],xmm0
 	movaps	xmm7,XMMWORD[((-152))+r11]
-	movaps	XMMWORD[(-152)+r11],xmm0
 	movaps	xmm8,XMMWORD[((-136))+r11]
-	movaps	XMMWORD[(-136)+r11],xmm0
 	movaps	xmm9,XMMWORD[((-120))+r11]
-	movaps	XMMWORD[(-120)+r11],xmm0
 	movaps	xmm10,XMMWORD[((-104))+r11]
-	movaps	XMMWORD[(-104)+r11],xmm0
 	movaps	xmm11,XMMWORD[((-88))+r11]
-	movaps	XMMWORD[(-88)+r11],xmm0
 	movaps	xmm12,XMMWORD[((-72))+r11]
-	movaps	XMMWORD[(-72)+r11],xmm0
 	movaps	xmm13,XMMWORD[((-56))+r11]
-	movaps	XMMWORD[(-56)+r11],xmm0
 	movaps	xmm14,XMMWORD[((-40))+r11]
-	movaps	XMMWORD[(-40)+r11],xmm0
 	movaps	xmm15,XMMWORD[((-24))+r11]
+$L$xts_dec_xmm_restored:
+
+	movaps	XMMWORD[(-168)+r11],xmm0
+	movaps	XMMWORD[(-152)+r11],xmm0
+	movaps	XMMWORD[(-136)+r11],xmm0
+	movaps	XMMWORD[(-120)+r11],xmm0
+	movaps	XMMWORD[(-104)+r11],xmm0
+	movaps	XMMWORD[(-88)+r11],xmm0
+	movaps	XMMWORD[(-72)+r11],xmm0
+	movaps	XMMWORD[(-56)+r11],xmm0
+	movaps	XMMWORD[(-40)+r11],xmm0
 	movaps	XMMWORD[(-24)+r11],xmm0
 	movaps	XMMWORD[rsp],xmm0
 	movaps	XMMWORD[16+rsp],xmm0
@@ -3600,6 +3604,55 @@ ctr_xts_se_handler:
 
 
 
+
+
+
+ALIGN	16
+xts_se_handler:
+	push	rsi
+	push	rdi
+	push	rbx
+	push	rbp
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	pushfq
+	sub	rsp,64
+
+	mov	rax,QWORD[120+r8]
+	mov	rbx,QWORD[248+r8]
+	mov	rsi,QWORD[8+r9]
+	mov	r11,QWORD[56+r9]
+	mov	r10d,DWORD[r11]
+	lea	r10,[r10*1+rsi]
+	cmp	rbx,r10
+	jb	NEAR $L$common_seh_tail
+
+	mov	rax,QWORD[152+r8]
+	mov	r10d,DWORD[8+r11]
+	lea	r10,[r10*1+rsi]
+	cmp	rbx,r10
+	jae	NEAR $L$common_seh_tail
+
+	mov	r10d,DWORD[4+r11]
+	lea	r10,[r10*1+rsi]
+	mov	rax,QWORD[208+r8]
+	cmp	rbx,r10
+	jae	NEAR $L$xts_seh_no_xmm
+
+	lea	rsi,[((-168))+rax]
+	lea	rdi,[512+r8]
+	mov	ecx,20
+	DD	0xa548f3fc
+
+$L$xts_seh_no_xmm:
+	mov	rbp,QWORD[((-8))+rax]
+	mov	QWORD[160+r8],rbp
+	jmp	NEAR $L$common_seh_tail
+
+
+
 ALIGN	16
 cbc_se_handler:
 	push	rsi
@@ -3691,6 +3744,14 @@ ALIGN	4
 	DD	$L$SEH_begin_aes_hw_ctr32_encrypt_blocks wrt ..imagebase
 	DD	$L$SEH_end_aes_hw_ctr32_encrypt_blocks wrt ..imagebase
 	DD	$L$SEH_info_ctr32 wrt ..imagebase
+
+	DD	$L$SEH_begin_aes_hw_xts_encrypt wrt ..imagebase
+	DD	$L$SEH_end_aes_hw_xts_encrypt wrt ..imagebase
+	DD	$L$SEH_info_xts_enc wrt ..imagebase
+
+	DD	$L$SEH_begin_aes_hw_xts_decrypt wrt ..imagebase
+	DD	$L$SEH_end_aes_hw_xts_decrypt wrt ..imagebase
+	DD	$L$SEH_info_xts_dec wrt ..imagebase
 	DD	$L$SEH_begin_aes_hw_cbc_encrypt wrt ..imagebase
 	DD	$L$SEH_end_aes_hw_cbc_encrypt wrt ..imagebase
 	DD	$L$SEH_info_cbc wrt ..imagebase
@@ -3713,6 +3774,16 @@ $L$SEH_info_ctr32:
 	DB	9,0,0,0
 	DD	ctr_xts_se_handler wrt ..imagebase
 	DD	$L$ctr32_body wrt ..imagebase,$L$ctr32_epilogue wrt ..imagebase
+ALIGN	4
+$L$SEH_info_xts_enc:
+	DB	9,0,0,0
+	DD	xts_se_handler wrt ..imagebase
+	DD	$L$xts_enc_body wrt ..imagebase,$L$xts_enc_xmm_restored wrt ..imagebase,$L$xts_enc_epilogue wrt ..imagebase
+ALIGN	4
+$L$SEH_info_xts_dec:
+	DB	9,0,0,0
+	DD	xts_se_handler wrt ..imagebase
+	DD	$L$xts_dec_body wrt ..imagebase,$L$xts_dec_xmm_restored wrt ..imagebase,$L$xts_dec_epilogue wrt ..imagebase
 ALIGN	4
 $L$SEH_info_cbc:
 	DB	9,0,0,0

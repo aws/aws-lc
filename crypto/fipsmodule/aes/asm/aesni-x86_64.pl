@@ -2126,24 +2126,26 @@ $code.=<<___ if (!$win64);
 ___
 $code.=<<___ if ($win64);
 	movaps	-0xa8(%r11),%xmm6
-	movaps	%xmm0,-0xa8(%r11)		# clear stack
 	movaps	-0x98(%r11),%xmm7
-	movaps	%xmm0,-0x98(%r11)
 	movaps	-0x88(%r11),%xmm8
-	movaps	%xmm0,-0x88(%r11)
 	movaps	-0x78(%r11),%xmm9
-	movaps	%xmm0,-0x78(%r11)
 	movaps	-0x68(%r11),%xmm10
-	movaps	%xmm0,-0x68(%r11)
 	movaps	-0x58(%r11),%xmm11
-	movaps	%xmm0,-0x58(%r11)
 	movaps	-0x48(%r11),%xmm12
-	movaps	%xmm0,-0x48(%r11)
 	movaps	-0x38(%r11),%xmm13
-	movaps	%xmm0,-0x38(%r11)
 	movaps	-0x28(%r11),%xmm14
-	movaps	%xmm0,-0x28(%r11)
 	movaps	-0x18(%r11),%xmm15
+.Lxts_enc_xmm_restored:
+	# Keep every saved register intact until all restores have completed.
+	movaps	%xmm0,-0xa8(%r11)		# clear stack
+	movaps	%xmm0,-0x98(%r11)
+	movaps	%xmm0,-0x88(%r11)
+	movaps	%xmm0,-0x78(%r11)
+	movaps	%xmm0,-0x68(%r11)
+	movaps	%xmm0,-0x58(%r11)
+	movaps	%xmm0,-0x48(%r11)
+	movaps	%xmm0,-0x38(%r11)
+	movaps	%xmm0,-0x28(%r11)
 	movaps	%xmm0,-0x18(%r11)
 	movaps	%xmm0,0x00(%rsp)
 	movaps	%xmm0,0x10(%rsp)
@@ -2636,24 +2638,26 @@ $code.=<<___ if (!$win64);
 ___
 $code.=<<___ if ($win64);
 	movaps	-0xa8(%r11),%xmm6
-	movaps	%xmm0,-0xa8(%r11)		# clear stack
 	movaps	-0x98(%r11),%xmm7
-	movaps	%xmm0,-0x98(%r11)
 	movaps	-0x88(%r11),%xmm8
-	movaps	%xmm0,-0x88(%r11)
 	movaps	-0x78(%r11),%xmm9
-	movaps	%xmm0,-0x78(%r11)
 	movaps	-0x68(%r11),%xmm10
-	movaps	%xmm0,-0x68(%r11)
 	movaps	-0x58(%r11),%xmm11
-	movaps	%xmm0,-0x58(%r11)
 	movaps	-0x48(%r11),%xmm12
-	movaps	%xmm0,-0x48(%r11)
 	movaps	-0x38(%r11),%xmm13
-	movaps	%xmm0,-0x38(%r11)
 	movaps	-0x28(%r11),%xmm14
-	movaps	%xmm0,-0x28(%r11)
 	movaps	-0x18(%r11),%xmm15
+.Lxts_dec_xmm_restored:
+	# Keep every saved register intact until all restores have completed.
+	movaps	%xmm0,-0xa8(%r11)		# clear stack
+	movaps	%xmm0,-0x98(%r11)
+	movaps	%xmm0,-0x88(%r11)
+	movaps	%xmm0,-0x78(%r11)
+	movaps	%xmm0,-0x68(%r11)
+	movaps	%xmm0,-0x58(%r11)
+	movaps	%xmm0,-0x48(%r11)
+	movaps	%xmm0,-0x38(%r11)
+	movaps	%xmm0,-0x28(%r11)
 	movaps	%xmm0,-0x18(%r11)
 	movaps	%xmm0,0x00(%rsp)
 	movaps	%xmm0,0x10(%rsp)
@@ -3762,6 +3766,55 @@ ctr_xts_se_handler:
 	jmp	.Lcommon_seh_tail
 .size	ctr_xts_se_handler,.-ctr_xts_se_handler
 
+# XTS clears its save area after restoring the non-volatile vector registers.
+# HandlerData distinguishes that cleanup from the body, where all saves remain
+# intact, and from the final epilogue, where Rsp has already been restored.
+.type	xts_se_handler,\@abi-omnipotent
+.align	16
+xts_se_handler:
+	push	%rsi
+	push	%rdi
+	push	%rbx
+	push	%rbp
+	push	%r12
+	push	%r13
+	push	%r14
+	push	%r15
+	pushfq
+	sub	\$64,%rsp
+
+	mov	120($context),%rax	# original Rsp before the body
+	mov	248($context),%rbx	# context->Rip
+	mov	8($disp),%rsi		# disp->ImageBase
+	mov	56($disp),%r11		# disp->HandlerData
+	mov	0(%r11),%r10d		# HandlerData[0]: body
+	lea	(%rsi,%r10),%r10
+	cmp	%r10,%rbx
+	jb	.Lcommon_seh_tail
+
+	mov	152($context),%rax	# current Rsp in the final epilogue
+	mov	8(%r11),%r10d		# HandlerData[2]: epilogue
+	lea	(%rsi,%r10),%r10
+	cmp	%r10,%rbx
+	jae	.Lcommon_seh_tail
+
+	mov	4(%r11),%r10d		# HandlerData[1]: XMM restores complete
+	lea	(%rsi,%r10),%r10
+	mov	208($context),%rax	# original Rsp from context->R11
+	cmp	%r10,%rbx
+	jae	.Lxts_seh_no_xmm		# preserve the already restored registers
+
+	lea	-0xa8(%rax),%rsi	# intact XMM save area
+	lea	512($context),%rdi	# &context.Xmm6
+	mov	\$20,%ecx		# ten 16-byte registers
+	.long	0xa548f3fc		# cld; rep movsq
+
+.Lxts_seh_no_xmm:
+	mov	-8(%rax),%rbp
+	mov	%rbp,160($context)
+	jmp	.Lcommon_seh_tail
+.size	xts_se_handler,.-xts_se_handler
+
 ___
 # BoringSSL omits the OCB functions.
 $code.=<<___ if (0);
@@ -3919,6 +3972,14 @@ $code.=<<___ if ($PREFIX eq "aes_hw");
 	.rva	.LSEH_begin_${PREFIX}_ctr32_encrypt_blocks
 	.rva	.LSEH_end_${PREFIX}_ctr32_encrypt_blocks
 	.rva	.LSEH_info_ctr32
+
+	.rva	.LSEH_begin_${PREFIX}_xts_encrypt
+	.rva	.LSEH_end_${PREFIX}_xts_encrypt
+	.rva	.LSEH_info_xts_enc
+
+	.rva	.LSEH_begin_${PREFIX}_xts_decrypt
+	.rva	.LSEH_end_${PREFIX}_xts_decrypt
+	.rva	.LSEH_info_xts_dec
 ___
 $code.=<<___;
 	.rva	.LSEH_begin_${PREFIX}_cbc_encrypt
@@ -3945,6 +4006,16 @@ $code.=<<___ if ($PREFIX eq "aes_hw");
 	.byte	9,0,0,0
 	.rva	ctr_xts_se_handler
 	.rva	.Lctr32_body,.Lctr32_epilogue		# HandlerData[]
+.align	4
+.LSEH_info_xts_enc:
+	.byte	9,0,0,0
+	.rva	xts_se_handler
+	.rva	.Lxts_enc_body,.Lxts_enc_xmm_restored,.Lxts_enc_epilogue
+.align	4
+.LSEH_info_xts_dec:
+	.byte	9,0,0,0
+	.rva	xts_se_handler
+	.rva	.Lxts_dec_body,.Lxts_dec_xmm_restored,.Lxts_dec_epilogue
 ___
 $code.=<<___;
 .align	4
