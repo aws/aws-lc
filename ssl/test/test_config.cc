@@ -236,6 +236,7 @@ std::vector<Flag> SortedFlags() {
                &TestConfig::write_different_record_sizes),
       BoolFlag("-cbc-record-splitting", &TestConfig::cbc_record_splitting),
       BoolFlag("-partial-write", &TestConfig::partial_write),
+      BoolFlag("-flush-tls13-tickets", &TestConfig::flush_tls13_tickets),
       BoolFlag("-no-tls13", &TestConfig::no_tls13),
       BoolFlag("-no-tls12", &TestConfig::no_tls12),
       BoolFlag("-no-tls11", &TestConfig::no_tls11),
@@ -1889,6 +1890,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (partial_write) {
     SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
+  }
+  if (flush_tls13_tickets) {
+    SSL_set_mode(ssl.get(), SSL_MODE_FLUSH_TLS13_TICKETS);
   }
   if (reverify_on_resume) {
     SSL_CTX_set_reverify_on_resume(ssl_ctx, 1);

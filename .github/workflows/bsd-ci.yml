@@ -179,8 +179,13 @@ jobs:
         run: |
           set -x
           source tests/ci/retry_util.sh
-          export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
-          retry_with_backoff sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+          # pkgin resolves package names through the repository's pkg_summary.gz, a static file the
+          # CDN caches. pkg_add given a URL in PKG_PATH instead globs the HTML index of All/, which
+          # the origin generates per request from ~27k entries and has failed to serve (HTTP 503)
+          # for hours at a time, outlasting retry_with_backoff.
+          export PKG_REPOS="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
+          retry_with_backoff sudo -E pkgin -y update
+          retry_with_backoff sudo -E pkgin -y install curl cmake gmake perl mozilla-rootcerts
           ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
           export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
           retry_with_backoff curl -fL -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz

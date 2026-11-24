@@ -44,7 +44,12 @@ else
   if lcov --version | grep --silent 'LCOV version 1.'; then
     LCOV_IGNORE_ERRORS="gcov,source,graph"
   else
-    LCOV_IGNORE_ERRORS="negative,mismatch,unused"
+    # The DEFINE_DATA family of macros in crypto/fipsmodule/delocate.h defines
+    # several functions on one source line. lcov keys functions by their start
+    # line, so it reports a "mismatched end line" for each of them. lcov 2.0
+    # classified this as 'mismatch'; lcov 2.1 and later classify it as
+    # 'inconsistent', so ignore both.
+    LCOV_IGNORE_ERRORS="negative,mismatch,unused,inconsistent"
   fi
   GENHTML_IGNORE_ERRORS="inconsistent,unmapped"
 fi

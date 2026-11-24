@@ -79,17 +79,71 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container
+        name: Build Test APKs
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/android:latest
-          withCredentials: true
           run: |
             chmod +x ./tests/ci/android/AWSLCAndroidTestRunner/gradlew
             cd ./tests/ci
             python3 -m venv .env && . .env/bin/activate && pip install -r requirements.txt
             ./kickoff_devicefarm_job.sh \
+            --fips ${{ matrix.fips }} \
+            --release ${{ matrix.release }} \
+            --shared ${{ matrix.shared }} \
+            --action build
+      # The Device Farm role is assumed by role chaining, which caps its credentials at one hour, while
+      # a run can take longer than that when devices are busy. So credentials are refreshed before each
+      # step that talks to Device Farm, and each such step is limited to 50 minutes. A Device Farm run that
+      # may still be in progress is recorded in tests/ci/devicefarm-run.json.
+      - name: Refresh Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDeviceFarmRole
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Device Farm Tests
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/android:latest
+          withCredentials: true
+          run: |
+            cd ./tests/ci
+            . .env/bin/activate
+            ./kickoff_devicefarm_job.sh \
             --test-name "AWS-LC Android GitHub Action ${{ github.run_id }}-${{ github.run_attempt }}" \
             --fips ${{ matrix.fips }} \
             --release ${{ matrix.release }} \
             --shared ${{ matrix.shared }} \
-            --action start-job
+            --max-wait-minutes 50 \
+            --resumable \
+            --action run-job
+      - name: Refresh Credentials to Continue Waiting
+        if: hashFiles('tests/ci/devicefarm-run.json') != ''
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDeviceFarmRole
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Continue Waiting for Device Farm Tests
+        if: hashFiles('tests/ci/devicefarm-run.json') != ''
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/android:latest
+          withCredentials: true
+          run: |
+            cd ./tests/ci
+            . .env/bin/activate
+            python3 -u ./devicefarm_job.py wait --max-wait-minutes 50
+      # Nothing else stops a Device Farm run when this job fails or is cancelled (for example by a newer
+      # push to the same pull request), and an abandoned run keeps holding devices that later runs wait for.
+      - name: Refresh Credentials to Stop Device Farm Run
+        if: (failure() || cancelled()) && hashFiles('tests/ci/devicefarm-run.json') != ''
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDeviceFarmRole
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Stop Device Farm Run
+        if: (failure() || cancelled()) && hashFiles('tests/ci/devicefarm-run.json') != ''
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/android:latest
+          withCredentials: true
+          run: |
+            cd ./tests/ci
+            . .env/bin/activate
+            python3 -u ./devicefarm_job.py stop

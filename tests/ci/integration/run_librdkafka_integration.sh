@@ -6,6 +6,17 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
+# Optional first argument: the librdkafka git ref (tag or branch) to test
+# against. Defaults to the default branch when unset so local runs keep
+# working.
+LIBRDKAFKA_REF="${1:-}"
+
+# Optional second argument: comma-separated librdkafka test numbers to skip
+# during `make quick`. The upstream runner treats TESTS_SKIP as a substring
+# match on the test number (for example "0151,0182"). Unset runs the full
+# quick suite.
+LIBRDKAFKA_TESTS_SKIP="${2:-}"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -57,8 +68,13 @@ function kafka_run_tests() {
     --output "${KAFKA_ARCHIVE}" "${KAFKA_DOWNLOAD_URL}"
   tar -tzf "${KAFKA_ARCHIVE}" > /dev/null
   export KAFKA_URL="file://${KAFKA_ARCHIVE}"
+  # Export TESTS_SKIP inside the trivup shell so `make quick` actually sees it.
+  local quick_cmd="make -j quick"
+  if [[ -n "${LIBRDKAFKA_TESTS_SKIP}" ]]; then
+    quick_cmd="export TESTS_SKIP=${LIBRDKAFKA_TESTS_SKIP}; ${quick_cmd}"
+  fi
   python3 -m trivup.clusters.KafkaCluster --version "${KAFKA_VERSION}" << EOF
-  make -j quick
+  ${quick_cmd}
   exit
 EOF
 }
@@ -71,7 +87,13 @@ function kafka_patch_test() {
   patch -p1 --quiet -i "$patchfile"
 }
 
-git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
+# Clone librdkafka. When LIBRDKAFKA_REF is set (e.g. a release tag), check out
+# that ref; otherwise track the default branch.
+if [[ -n "${LIBRDKAFKA_REF}" ]]; then
+  git clone --depth 1 --branch "${LIBRDKAFKA_REF}" https://github.com/confluentinc/librdkafka.git "${KAFKA_SRC_FOLDER}"
+else
+  git clone https://github.com/confluentinc/librdkafka.git "${KAFKA_SRC_FOLDER}"
+fi
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 

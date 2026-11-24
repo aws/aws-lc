@@ -1710,6 +1710,16 @@ TEST_P(ECCurveTest, GenerateFIPS) {
   ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
 }
 
+TEST_P(ECCurveTest, CheckFIPSAffinePublicKey) {
+  // An affine public key takes the coordinate range check, which allocates
+  // temporary BIGNUMs. Malloc-failure test builds exercise their failure path.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(
+      EC_KEY_set_public_key(key.get(), EC_GROUP_get0_generator(group())));
+  EXPECT_TRUE(EC_KEY_check_fips(key.get()));
+}
+
 TEST_P(ECCurveTest, AddingEqualPoints) {
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
