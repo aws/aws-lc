@@ -1034,7 +1034,10 @@ void SSL_certs_clear(SSL *ssl) {
   CERT *cert = ssl->config->cert.get();
   cert->x509_method->cert_clear(cert);
 
-  cert->cert_private_key_idx = -1;
+  // The index a new |CERT| starts with. With -1,
+  // |ssl_cert_check_cert_private_keys_usage| refused every later
+  // |SSL_use_certificate| and |SSL_use_PrivateKey| on this |SSL|.
+  cert->cert_private_key_idx = SSL_PKEY_RSA;
   for (auto &cert_private_key : cert->cert_private_keys) {
     cert_private_key.chain.reset();
     cert_private_key.privatekey.reset();
