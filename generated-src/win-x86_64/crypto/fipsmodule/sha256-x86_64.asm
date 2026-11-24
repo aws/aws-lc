@@ -4301,7 +4301,7 @@ se_handler:
 	mov	QWORD[240+r8],r15
 
 	lea	r10,[$L$epilogue]
-	cmp	rbx,r10
+	cmp	QWORD[248+r8],r10
 	jb	NEAR $L$in_prologue
 
 	lea	rsi,[((64+32))+rsi]
