@@ -120,6 +120,12 @@ int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed, size_t seed_len,
   EVP_MD_CTX_init(&ctx);
 
   size_t md_len = EVP_MD_size(md);
+  // MGF1 must produce bytes on each iteration. In particular, EVP_md_null
+  // successfully hashes to zero bytes and would otherwise prevent progress.
+  if (md_len == 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
+    goto err;
+  }
 
   for (uint32_t i = 0; len > 0; i++) {
     uint8_t counter[4];

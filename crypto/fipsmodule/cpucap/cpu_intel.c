@@ -107,7 +107,7 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
     sscanf_result = sscanf(in + skip_first_byte, "%" PRIu64, &v);
   }
 
-  if (!sscanf_result) {
+  if (sscanf_result != 1) {
     return;
   }
 

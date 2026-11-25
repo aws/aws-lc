@@ -34,6 +34,15 @@ setuptools.setup(
         "urllib3==2.8.0"
     ],
 
+    extras_require={
+        "autofix": [
+            "docker==7.2.0",
+            "pydantic==2.14.0",
+            "strands-agents==1.59.0",
+            "strands-harness==0.2.0",
+        ],
+    },
+
     python_requires=">=3.6",
 
     classifiers=[

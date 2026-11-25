@@ -76,12 +76,12 @@ class CiStage(Stage):
                 commands=[
                     "env",
                     'curl -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/user',
-                    "git clone https://${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
+                    "git clone https://x-access-token:${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
                     "git remote add upstream https://github.com/aws/aws-lc.git",
                     "git fetch upstream",
                     "git checkout main",
                     "git merge --ff-only upstream/main",
-                    "git remote set-url origin https://${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
+                    "git remote set-url origin https://x-access-token:${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
                     "git push origin main",
                 ],
                 env={

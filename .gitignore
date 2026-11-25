@@ -32,6 +32,7 @@ util/bot/win_toolchain.json
 util/bot/yasm-win32.exe
 
 tests/ci/.env
+tests/ci/devicefarm-run.json
 tests/ci/cdk/cdk.context.json
 tests/ci/lambda/target
 test_build_dir/

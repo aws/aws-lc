@@ -7,6 +7,7 @@ from aws_cdk import (
     aws_ecr as ecr,
     aws_iam as iam,
     aws_s3 as s3,
+    aws_secretsmanager as sm,
     Stack,
     Environment,
 )
@@ -38,102 +39,53 @@ class AwsLcGitHubOidcStack(Stack):
                                                      "sts.amazonaws.com"],
                                                  url="https://token.actions.githubusercontent.com")
 
+        repo = "{}/{}".format(
+            GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME if env.account == PRE_PROD_ACCOUNT else GITHUB_REPO_NAME)
+
         oidc_role_name = "AwsLcGitHubActionsOidcRole"
         # This role should only be granted necessary permissions to assume other roles
-        #
-        # No job assumes this role from a pull_request event, so the event name
-        # is restricted to exclude it. pull_request_target remains because the
-        # security-review, android-omnibus device-farm and image-build-android
-        # jobs run on it behind their maintainer approval gates.
         self.minimal_oidc_role = iam.Role(self, id=oidc_role_name, role_name=oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                  "token.actions.githubusercontent.com:event_name": [
-                                                      "push",
-                                                      "workflow_dispatch",
-                                                      "schedule",
-                                                      "pull_request_target",
-                                                  ],
                                               },
                                               "StringLike": {
                                                   # Check the subject claim is from our repository VERY IMPORTANT!
                                                   # See https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims
-                                                  "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
-                                                      GITHUB_REPO_OWNER, (
-                                                          STAGING_GITHUB_REPO_NAME
-                                                          if (env.account == PRE_PROD_ACCOUNT)
-                                                          else GITHUB_REPO_NAME
-                                                      )
-                                                  )
+                                                  "token.actions.githubusercontent.com:sub": f"repo:{repo}:*",
                                               },
                                               "StringNotLike": {
+                                                  # Rejects pull_request runs, whose ref is refs/pull/<n>/merge.
+                                                  # pull_request_target runs use the default branch ref and pass.
+                                                  "token.actions.githubusercontent.com:ref": "refs/pull/*",
                                                   "token.actions.githubusercontent.com:job_workflow_ref":
-                                                      "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
-                                                          GITHUB_REPO_OWNER, (
-                                                              STAGING_GITHUB_REPO_NAME
-                                                              if (env.account == PRE_PROD_ACCOUNT)
-                                                              else GITHUB_REPO_NAME
-                                                          )
-                                                      )
+                                                      f"{repo}/.github/workflows/autofix_integration_failures.yml@*",
                                               },
                                           }))
 
         autofix_oidc_role_name = "AwsLcGitHubActionsAutofixOidcRole"
-        # autofix_integration_failures.yml is triggered only by workflow_run.
         self.autofix_oidc_role = iam.Role(self, id=autofix_oidc_role_name, role_name=autofix_oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                               "StringEquals": {
                                                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                  "token.actions.githubusercontent.com:event_name": "workflow_run",
-                                              },
-                                              "StringLike": {
-                                                  "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
-                                                      GITHUB_REPO_OWNER, (
-                                                          STAGING_GITHUB_REPO_NAME
-                                                          if (env.account == PRE_PROD_ACCOUNT)
-                                                          else GITHUB_REPO_NAME
-                                                      )
-                                                  ),
+                                                  "token.actions.githubusercontent.com:sub":
+                                                      f"repo:{repo}:ref:refs/heads/main",
                                                   "token.actions.githubusercontent.com:job_workflow_ref":
-                                                      "{}/{}/.github/workflows/autofix_integration_failures.yml@*".format(
-                                                          GITHUB_REPO_OWNER, (
-                                                              STAGING_GITHUB_REPO_NAME
-                                                              if (env.account == PRE_PROD_ACCOUNT)
-                                                              else GITHUB_REPO_NAME
-                                                          )
-                                                      ),
+                                                      f"{repo}/.github/workflows/autofix_integration_failures.yml@refs/heads/main",
                                               },
                                           }))
 
         image_promotion_oidc_role_name = "AwsLcGitHubActionsImagePromotionOidcRole"
-        # Writing to a production CI image repository is restricted two ways.
-        #
-        # The subject claim must be a branch or tag ref. A pull_request event
-        # produces a ":pull_request" subject instead and so cannot match. Note
-        # that GitHub does not document the subject format for
-        # pull_request_target, which is also a pull request event but runs in the
-        # base ref's context, so do not rely on the subject claim alone to
-        # exclude it.
-        #
-        # The event name must therefore also be one that only a trusted ref can
-        # raise. GitHub recommends constraining trust policies this way, and it
-        # holds regardless of how pull_request_target renders its subject.
-        # workflow_call does not appear here on purpose: a reusable workflow
-        # reports the event that triggered the top level run.
-        # See https://docs.github.com/en/actions/reference/security/oidc
         self.image_promotion_oidc_role = iam.Role(self, id=image_promotion_oidc_role_name,
                                                   role_name=image_promotion_oidc_role_name,
                                                   assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
                                                       "StringEquals": {
                                                           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                                          "token.actions.githubusercontent.com:event_name": [
-                                                              "push",
-                                                              "workflow_dispatch",
-                                                              "schedule",
-                                                          ],
                                                       },
                                                       "StringLike": {
+                                                          # Accepts only branch and tag runs. pull_request and
+                                                          # pull_request_target runs have a ":pull_request" subject.
+                                                          # See https://docs.github.com/en/actions/reference/security/oidc
                                                           "token.actions.githubusercontent.com:sub": [
                                                               "repo:{}/{}:ref:refs/heads/*".format(
                                                                   GITHUB_REPO_OWNER, (
@@ -150,6 +102,19 @@ class AwsLcGitHubOidcStack(Stack):
                                                                   )
                                                               ),
                                                           ]
+                                                      },
+                                                  }))
+
+        autofix_resolve_oidc_role_name = "AwsLcGitHubActionsAutofixResolveOidcRole"
+        self.autofix_resolve_oidc_role = iam.Role(self, id=autofix_resolve_oidc_role_name,
+                                                  role_name=autofix_resolve_oidc_role_name,
+                                                  assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
+                                                      "StringEquals": {
+                                                          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                                          "token.actions.githubusercontent.com:sub":
+                                                              f"repo:{repo}:ref:refs/heads/main",
+                                                          "token.actions.githubusercontent.com:job_workflow_ref":
+                                                              f"{repo}/.github/workflows/autofix_resolve.yml@refs/heads/main",
                                                       },
                                                   }))
 
@@ -193,6 +158,10 @@ class AwsLcGitHubOidcStack(Stack):
             self, "AwsLcGitHubActionAutofixUploadRole", self.autofix_oidc_role,
             self.autofix_bucket)
         self.autofix_upload_role.grant_assume_role(self.autofix_oidc_role)
+
+        self.autofix_secrets_role = create_autofix_secrets_role(
+            self, "AwsLcGitHubActionAutofixSecretsRole", self.autofix_resolve_oidc_role)
+        self.autofix_secrets_role.grant_assume_role(self.autofix_resolve_oidc_role)
 
 
 def create_device_farm_role(scope: Construct, id: str,
@@ -508,3 +477,12 @@ def create_autofix_upload_role(scope: Construct, id: str,
                             ]
                         ),
                     })
+
+
+def create_autofix_secrets_role(scope: Construct, id: str,
+                                principal: iam.IPrincipal) -> iam.Role:
+    role = iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal))
+    sm.Secret.from_secret_name_v2(scope, "autofix-push-app", "aws-lc/ci/autofix-push-app").grant_read(role)
+    sm.Secret.from_secret_name_v2(scope, "acl-ci-credentials", "acl-ci/credentials").grant_read(role)
+    return role

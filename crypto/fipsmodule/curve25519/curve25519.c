@@ -64,6 +64,9 @@ void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH], const void *input1,
     SHA512_Update(&hash_ctx, input4, len4);
   }
   SHA512_Final(out, &hash_ctx);
+  // On the signing path the context holds the nonce hash in hash_ctx.h and the
+  // hashed prefix in hash_ctx.p, so it outlives the az and r cleanses below.
+  OPENSSL_cleanse(&hash_ctx, sizeof(hash_ctx));
 }
 
 // Public interface functions
