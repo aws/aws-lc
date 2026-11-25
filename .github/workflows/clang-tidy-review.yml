@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'
-      - uses: ZedThree/clang-tidy-review@v0.23.1
+      - uses: ZedThree/clang-tidy-review@438014136def4cb6242e9d0ef3da1a1cd48fa7ce # v0.23.1
         with:
           apt_packages: libssl-dev
           split_workflow: true
@@ -24,4 +24,4 @@ jobs:
           config_file: '/github/workspace/.clang-tidy'
           # Generated table fragment included only by obj.c; not self-contained.
           exclude: 'crypto/obj/obj_dat.h'
-      - uses: ZedThree/clang-tidy-review/upload@v0.23.1
+      - uses: ZedThree/clang-tidy-review/upload@438014136def4cb6242e9d0ef3da1a1cd48fa7ce # v0.23.1

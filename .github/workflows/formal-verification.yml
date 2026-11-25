@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: Login to Amazon ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Define Matrix
         id: matrix
         run: |
@@ -91,7 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:

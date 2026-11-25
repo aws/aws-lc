@@ -63,13 +63,13 @@ jobs:
           "aws_account_id=$env:AWS_ACCOUNT_ID" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Retrieve OIDC Role Credentials
         if: ${{ github.event_name != 'pull_request' }}
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Retrieve Image Build Role Credentials
         if: ${{ github.event_name != 'pull_request' }}
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImageBuildRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
@@ -82,7 +82,7 @@ jobs:
             | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Get ECR Registry & Repository Details
         id: ecr
         shell: pwsh
@@ -203,19 +203,19 @@ jobs:
         run: |
           "aws_account_id=$env:AWS_ACCOUNT_ID" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Retrieve OIDC Role Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsImagePromotionOidcRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Retrieve Image Promotion Role Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionDockerImagePromotionRole
           role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
           role-chaining: true
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Pull Docker Images
         run: |
           docker pull ${{ needs.x86_64_build.outputs.ltsc2022 }}
