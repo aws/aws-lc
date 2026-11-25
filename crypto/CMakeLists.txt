@@ -227,7 +227,7 @@ if(ENABLE_RUST AND FIPS)
     set(RUST_FIPS_MODULE ON)
   else()
     if(FIPS_DELOCATE)
-      set(rust_fips_gap "bcm-rust.o is a static FIPS module only on x86_64 and aarch64. On ppc64le, rustc's code reaches data through the TOC, which only the final link places, so bcm-rust.o can't be hashed before it. C's bcm.o gets past this with delocate")
+      set(rust_fips_gap "bcm-rust.o is a static FIPS module only on x86_64 and aarch64, where delocate's handling of rustc's assembly is tested")
     else()
       set(rust_fips_gap "FIPS builds with ASan or MSan have no integrity check, and bcm-rust.o has no such mode")
     endif()
@@ -246,6 +246,29 @@ if(ENABLE_RUST AND NOT ARCH STREQUAL "generic" AND NOT MSAN AND
   set(RUST_ASM ON)
 endif()
 
+# The crate's cfgs and exports, which fipsmodule needs too: static FIPS builds
+# take rustc's assembly into the module's delocate run.
+set(RUST_CFGS "")
+set(RUST_EXPORTS "")
+if(ENABLE_RUST)
+  if(RUST_ASM)
+    list(APPEND RUST_CFGS awslc_asm)
+  endif()
+  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    list(APPEND RUST_CFGS awslc_no_avx)
+  endif()
+  # The exports are the Rust functions internal.h declares, one per line that
+  # starts with the return type.
+  set(rust_header "${CMAKE_CURRENT_SOURCE_DIR}/rust/fipsmodule/internal.h")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rust_header}")
+  file(STRINGS "${rust_header}" rust_decls REGEX "^[a-z].*[ *]bcm_rust_[a-z0-9_]+\\(")
+  foreach(decl IN LISTS rust_decls)
+    string(REGEX MATCH "bcm_rust_[a-z0-9_]+\\(" name "${decl}")
+    string(REPLACE "(" "" name "${name}")
+    list(APPEND RUST_EXPORTS ${name})
+  endforeach()
+endif()
+
 add_subdirectory(fipsmodule)
 
 if(ENABLE_RUST)
@@ -253,24 +276,6 @@ if(ENABLE_RUST)
   # build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
   # global, and hidden, so libcrypto doesn't export them.
   set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
-  set(rust_cfgs "")
-  if(RUST_ASM)
-    list(APPEND rust_cfgs awslc_asm)
-  endif()
-  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-    list(APPEND rust_cfgs awslc_no_avx)
-  endif()
-  # The exports are the Rust functions internal.h declares, one per line that
-  # starts with the return type.
-  set(rust_header "${CMAKE_CURRENT_SOURCE_DIR}/rust/fipsmodule/internal.h")
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rust_header}")
-  file(STRINGS "${rust_header}" rust_decls REGEX "^[a-z].*[ *]bcm_rust_[a-z0-9_]+\\(")
-  set(rust_exports "")
-  foreach(decl IN LISTS rust_decls)
-    string(REGEX MATCH "bcm_rust_[a-z0-9_]+\\(" name "${decl}")
-    string(REPLACE "(" "" name "${name}")
-    list(APPEND rust_exports ${name})
-  endforeach()
   set(rust_object_args "")
   set(RUST_ASM_OBJECT "")
   if(TARGET bcm_rust_asm)
@@ -285,9 +290,10 @@ if(ENABLE_RUST)
   if(RUST_FIPS_MODULE)
     list(APPEND rust_object_args FIPS_MODULE)
     # Static FIPS builds hash bcm-rust.o before the final link, and shared ones
-    # in libcrypto, as for bcm.o.
+    # in libcrypto, as for bcm.o. In static ones, bcm_rust_asm holds the crate's
+    # code too, through delocate (fipsmodule/CMakeLists.txt).
     if(FIPS_DELOCATE)
-      list(APPEND rust_object_args INJECT_HASH "${CMAKE_CURRENT_BINARY_DIR}/fipsmodule/inject_hash")
+      list(APPEND rust_object_args DELOCATED INJECT_HASH "${CMAKE_CURRENT_BINARY_DIR}/fipsmodule/inject_hash")
     endif()
     if(RUST_CRATE_OBJECT_FOLD)
       # Run on the build host, which finds programs only by their .exe on Windows.
@@ -303,8 +309,8 @@ if(ENABLE_RUST)
     OUTPUT "${RUST_OBJECT}"
     MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
     LIB_NAME bcm_rust
-    CFGS ${rust_cfgs}
-    EXPORTS ${rust_exports}
+    CFGS ${RUST_CFGS}
+    EXPORTS ${RUST_EXPORTS}
     ${rust_object_args})
 endif()
 

@@ -270,7 +270,7 @@ endif()
 
 # cargo_add_rust_object(OUTPUT <object> MANIFEST_PATH <Cargo.toml>
 #                       LIB_NAME <name> [CFGS <cfg>...] EXPORTS <sym>...
-#                       [ASM <target> [ASM_OUTPUT <object>]]
+#                       [EMIT_ASM | ASM <target> [ASM_OUTPUT <object>] [DELOCATED]]
 #                       [FIPS_MODULE [INJECT_HASH <inject_hash>]
 #                        [COFF_SECTIONS <coff_sections>]])
 #
@@ -288,8 +288,15 @@ endif()
 # COFF_SECTIONS does in the crate object fold. INJECT_HASH, for static FIPS
 # builds, embeds the HMAC-SHA256 of that region in OUTPUT. Shared FIPS builds
 # hash it in the final library instead.
+#
+# Static FIPS builds take the crate through delocate. With EMIT_ASM, OUTPUT is
+# rustc's assembly for the crate, after LTO, which delocate takes with the
+# module's copy of its assembly (crypto/fipsmodule/CMakeLists.txt). With
+# DELOCATED, the ASM library holds delocate's output, the whole module with
+# its markers, and the partial link takes only that, without running Cargo or
+# bcm-rust.lds.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "FIPS_MODULE" "OUTPUT;MANIFEST_PATH;LIB_NAME;ASM;ASM_OUTPUT;INJECT_HASH;COFF_SECTIONS"
+  cmake_parse_arguments(arg "FIPS_MODULE;EMIT_ASM;DELOCATED" "OUTPUT;MANIFEST_PATH;LIB_NAME;ASM;ASM_OUTPUT;INJECT_HASH;COFF_SECTIONS"
                         "CFGS;EXPORTS" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
@@ -337,17 +344,8 @@ function(cargo_add_rust_object)
   foreach(cfg IN LISTS arg_CFGS)
     list(APPEND rustflags "--cfg=${cfg}")
   endforeach()
-  # Partial RELRO makes rustc call functions with C names directly, not
-  # through the GOT, as FIPS module code has to (src/fips.rs). It only changes
-  # x86_64 ELF code.
-  list(APPEND rustflags -Crelro-level=partial)
   if(arg_FIPS_MODULE)
     list(APPEND rustflags --cfg=awslc_fips)
-  endif()
-  if(arg_INJECT_HASH AND ARCH STREQUAL "aarch64")
-    # Hashed before the final link, the module needs the tiny code model
-    # (src/fips.rs).
-    list(APPEND rustflags -Ccode-model=tiny)
   endif()
   set(symbol_prefix "")
   set(export_prefix "")
@@ -431,7 +429,15 @@ function(cargo_add_rust_object)
   if(arg_ASM)
     set(asm_lib "$<TARGET_FILE:${arg_ASM}>")
   endif()
-  if(APPLE)
+  if(arg_DELOCATED)
+    set(staticlib "")
+  endif()
+  if(arg_EMIT_ASM)
+    # One codegen unit after fat LTO, so one file, core's code included.
+    # delocate writes the module's markers and hash (src/fips.rs).
+    list(APPEND rustflags "--emit=asm=${arg_OUTPUT}" --cfg=awslc_delocate)
+    set(fold_commands "")
+  elseif(APPLE)
     # Same -arch, -platform_version and SDK as the C code. Pass 1 makes every
     # symbol but the exports local: hidden but global would still clash with
     # a consumer's own Rust in a static link. Pass 2 hides the exports.
@@ -498,7 +504,7 @@ function(cargo_add_rust_object)
     # A FIPS module's partial link puts everything in one section. In static
     # FIPS builds, inject_hash then checks the region and embeds its hash.
     set(lds_args "")
-    if(arg_FIPS_MODULE)
+    if(arg_FIPS_MODULE AND NOT arg_DELOCATED)
       set(lds_args "-Wl,-T,${crate_dir}/bcm-rust.lds")
     endif()
     set(localized_obj "${arg_OUTPUT}")
@@ -515,7 +521,7 @@ function(cargo_add_rust_object)
     # consumer's Rust uses.
     set(fold_commands
       COMMAND ${partial_link} ${undefined_args} ${lds_args} -o "${linked_obj}"
-        ${hidden_stub} "${staticlib}" ${asm_lib}
+        ${hidden_stub} ${staticlib} ${asm_lib}
       COMMAND ${CMAKE_OBJCOPY} "--keep-global-symbols=${exports_file}" ${keep_refptr}
         "--redefine-sym=DW.ref.rust_eh_personality=${export_prefix}awslc_DW.ref.rust_eh_personality"
         "${linked_obj}" "${localized_obj}"
@@ -534,9 +540,7 @@ function(cargo_add_rust_object)
     list(APPEND fold_depends bcm_o_target)
   endif()
 
-  add_custom_command(
-    OUTPUT "${arg_OUTPUT}" ${arg_ASM_OUTPUT}
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
+  set(cargo_command
     COMMAND ${cargo_env} ${CARGO_EXECUTABLE} rustc --lib
       --locked --offline
       --manifest-path "${arg_MANIFEST_PATH}"
@@ -544,7 +548,15 @@ function(cargo_add_rust_object)
       --release
       ${cargo_target_args}
       ${forced_config}
-      -- ${rustflags}
+      -- ${rustflags})
+  if(arg_DELOCATED)
+    set(cargo_command "")
+    set(rust_sources "")
+  endif()
+  add_custom_command(
+    OUTPUT "${arg_OUTPUT}" ${arg_ASM_OUTPUT}
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
+    ${cargo_command}
     ${fold_commands}
     DEPENDS ${rust_sources} "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"
       ${fold_depends}

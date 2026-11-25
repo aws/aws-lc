@@ -7,83 +7,52 @@
 //! prototype. The check works the way bcm.o's does, but the module isn't
 //! validated and its hash isn't FIPS-valid.
 //!
-//! The fold (cmake/cargo.cmake) puts the crate's code and constants in one
-//! section, from `TEXT_START` to `TEXT_END`. `inject_hash -rust` writes that
-//! region's HMAC-SHA256 into `TEXT_HASH`, and at load time the module
-//! recomputes the HMAC and compares. Shared FIPS builds hash the region in
-//! the final library, as they hash bcm.o's, once the link has fixed every
-//! reference. Static FIPS builds hash it in `bcm-rust.o`, before the
-//! consumer's final link, so that link has to write the same bytes into the
-//! region: every reference made from it has to be PC-relative to a target in
-//! the same section. bcm.o and the module's own copy of the SHA-256 assembly
-//! get that from delocate, which rewrites the compiler's assembly. Nothing
-//! rewrites rustc's output, so module code follows the rules below, which
-//! inject_hash's relocation check enforces in static FIPS builds. Only those
-//! builds need them, but the crate is built the same way in every build, so
-//! they apply to all of it, now and as it grows:
+//! The module region holds the crate's code and constants, from `TEXT_START`
+//! to `TEXT_END`. `inject_hash -rust` writes the region's HMAC-SHA256 into
+//! `TEXT_HASH`, and at load time the module recomputes the HMAC and compares.
+//! Shared FIPS builds hash the region in the final library, once the link has
+//! fixed every reference, as they hash bcm.o's. There the fold's linker script
+//! makes the region (cmake/cargo.cmake).
 //!
-//! - **No calls out of the module, not even to libc.** Under fat LTO, rustc
-//!   on x86_64 calls memcpy, memset, bcmp and abort through the GOT, which
-//!   only the final link lays out. `-Zplt=yes` doesn't change that for those
-//!   calls, because the prebuilt `core` sets it for the whole LTO module. So:
-//!   - copies and fills whose length isn't a constant go through
-//!     `copy_bytes` and `zero_bytes`, with `#![no_builtins]` so LLVM doesn't
-//!     turn them back into calls
-//!   - no `==` on byte slices or arrays (bcmp); compare with a loop, as
-//!     `equal` does
-//!   - no large struct copies or zeroing: above an inline size that depends
-//!     on the target and the optimization level, LLVM calls memcpy or memset
-//!     for those too. Code can pass in Release and fail in Debug
-//!   - panics and self-test failures execute an undefined instruction
-//!     (`rt::die`) instead of calling abort, so a failure prints nothing
+//! Static FIPS builds hash the region in `bcm-rust.o`, before the consumer's
+//! final link, so that link has to write the same bytes into it. There,
+//! delocate writes the module from rustc's assembly for the crate and the
+//! module's copy of the SHA-256 assembly, as it writes bcm.o
+//! (crypto/fipsmodule/CMakeLists.txt). It puts the markers, the hash
+//! placeholder, the code and the constants in one section, sends calls out of
+//! the module through stubs after the region, rustc's own memcpy, memset and
+//! abort calls included, and reaches data outside the module through
+//! accessors. inject_hash then checks the region's relocations. These builds
+//! exist only on x86_64 and aarch64, where delocate's handling of rustc's
+//! assembly is tested.
 //!
-//!   Calls to functions with C names are direct with `-Crelro-level=partial`.
-//!   Module code calls its copy of the SHA-256 assembly that way, and the
-//!   CPU-flag accessors in `cpu.rs`, which sit after the region and reach the
-//!   flags outside the module, as delocate's accessors do for bcm.o.
-//! - **Static aarch64 module builds use `-Ccode-model=tiny`.** Every reference
-//!   then reaches its target with `adr`, within 1 MiB. The default `adrp` can't
-//!   be used: lld rewrites `adrp`+`add` pairs into `adr` when the target is
-//!   near, so the bytes would depend on the consumer's linker. bcm.o has the
-//!   same 1 MiB limit, because delocate turns `adrp` into `adr`. It's a ceiling
-//!   for all static FIPS code on aarch64, C or Rust, and neither rustc nor
-//!   delocate has a way past it today. Shared builds don't need the tiny model,
-//!   and builds without `bcm-rust.lds` can't use it: the module's constants can
-//!   end up farther than 1 MiB from its code.
-//! - **No calls to the module's own C-ABI functions** from Rust. rustc
-//!   treats exported functions as replaceable at link time and reaches them
-//!   through the GOT on x86_64. Rust code calls an internal function instead,
-//!   as `self_test` calls `Sha256Ctx::update`, not `bcm_rust_sha256_update`.
+//! So module code follows C's module rules. The crate is built the same way in
+//! every build, so they bind all of it:
+//!
+//! - **Mutable statics start zeroed and are reached only through an accessor,
+//!   `<name>_bss_get()`**, as with C's `DEFINE_BSS_GET`. In static FIPS builds
+//!   delocate writes the accessor and rejects a static that doesn't start
+//!   zeroed, and inject_hash rejects a direct reference to one. Other builds
+//!   have to define the accessor in Rust. The crate has no mutable statics yet.
 //! - **No data the loader patches** in module code: no statics holding
-//!   pointers, no trait objects, no panic messages or locations. Such data
-//!   lives in sections outside the region, so a reference to it fails the
-//!   build too. Windows shared builds check this rule as well: COFF has no
+//!   pointers, no trait objects, no panic messages or locations. delocate
+//!   rejects them. Windows shared builds check this rule as well: COFF has no
 //!   `.data.rel.ro`, so a constant that holds a pointer stays in the region,
 //!   and inject_hash fails on the fix-up the loader would make to it.
-//!
-//! These rules work only because rustc's x86_64 and aarch64 code can be made
-//! to need no fix-ups inside one section. On other CPUs it can't: ppc64le
-//! reaches data through the TOC and 32-bit x86 through the GOT's base, and
-//! only the final link places either. So the static module exists only on
-//! x86_64 and aarch64. C builds static FIPS for ppc64le too, through delocate,
-//! so a ppc64le static FIPS build that finds Rust fails configure. Supporting
-//! it in Rust needs rustc to change, or delocate to rewrite rustc's output as
-//! well. Shared FIPS builds need neither.
 
-use crate::copy_bytes;
 use crate::sha256::{SHA256_IV, Sha256Ctx};
 
-// The module region's bounds. On ELF, bcm-rust.lds puts these sections first
-// and last in the module's one section, and module code reads their addresses
-// PC-relative, from inside it. On COFF the fold does the same by renaming
-// sections (cmake/rust_crate_object_fold.cmake), and inject_hash finds the
-// bounds by these names in the linker's map file.
-#[cfg(not(target_vendor = "apple"))]
+// The module region's bounds outside static FIPS builds. On ELF, bcm-rust.lds
+// puts these sections first and last in the module's one section, and module
+// code reads their addresses PC-relative, from inside it. On COFF the fold
+// does the same by renaming sections (cmake/rust_crate_object_fold.cmake), and
+// inject_hash finds the bounds by these names in the linker's map file.
+#[cfg(not(any(target_vendor = "apple", awslc_delocate)))]
 #[cfg_attr(windows, unsafe(export_name = "BORINGSSL_bcm_rust_text_start"))]
 #[unsafe(link_section = ".bcm_rust_text_start")]
 static TEXT_START: u8 = 0;
 
-#[cfg(not(target_vendor = "apple"))]
+#[cfg(not(any(target_vendor = "apple", awslc_delocate)))]
 #[cfg_attr(windows, unsafe(export_name = "BORINGSSL_bcm_rust_text_end"))]
 #[unsafe(link_section = ".bcm_rust_text_end")]
 static TEXT_END: u8 = 0;
@@ -99,8 +68,22 @@ unsafe extern "C" {
     static TEXT_END: u8;
 }
 
+// In static FIPS builds, delocate writes the module's markers and hash
+// placeholder, as it does bcm.o's, in the one section it writes the module's
+// code and constants to (crypto/fipsmodule/CMakeLists.txt).
+#[cfg(awslc_delocate)]
+unsafe extern "C" {
+    #[link_name = "BORINGSSL_bcm_rust_text_start"]
+    static TEXT_START: u8;
+    #[link_name = "BORINGSSL_bcm_rust_text_end"]
+    static TEXT_END: u8;
+    #[link_name = "BORINGSSL_bcm_rust_text_hash"]
+    static TEXT_HASH: [u8; 32];
+}
+
 /// inject_hash replaces this placeholder (`RustUninitHashValue`) with the
 /// region's HMAC-SHA256. Its section comes after the module region.
+#[cfg(not(awslc_delocate))]
 #[cfg_attr(
     not(target_vendor = "apple"),
     unsafe(link_section = ".bcm_rust_text_hash")
@@ -113,11 +96,6 @@ static TEXT_HASH: [u8; 32] = [
     0xeb, 0xa0, 0xdc, 0x87, 0x3f, 0x90, 0x5a, 0x73, 0xae, 0x32, 0xd8, 0xb2, 0x74, 0xd9, 0x4c, 0x7c,
     0x50, 0x48, 0x00, 0xe1, 0xb2, 0xee, 0x1c, 0x96, 0x64, 0x35, 0x99, 0x82, 0xae, 0xfc, 0x2d, 0xd8,
 ];
-
-/// Compares two byte strings without a memcmp call.
-fn equal(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).fold(0, |acc, (x, y)| acc | (x ^ y)) == 0
-}
 
 /// The SHA-256 digest of the concatenation of `parts`.
 fn sha256(parts: &[&[u8]]) -> [u8; 32] {
@@ -133,7 +111,7 @@ fn sha256(parts: &[&[u8]]) -> [u8; 32] {
 /// HMAC-SHA256 (FIPS 198-1) with a key of at most 64 bytes.
 fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     let mut padded_key = [0u8; 64];
-    copy_bytes(&mut padded_key[..key.len()], key);
+    padded_key[..key.len()].copy_from_slice(key);
     let mut pad = [0u8; 64];
     for (pad, key) in pad.iter_mut().zip(padded_key) {
         *pad = key ^ 0x36;
@@ -158,7 +136,7 @@ fn sha256_kat() -> bool {
         0x6a, 0x6d, 0x26, 0x32, 0x14, 0x95, 0xeb, 0x67, 0xeb, 0x24, 0x98, 0xd5, 0xa6, 0x29, 0x85,
         0xdb, 0x1c,
     ];
-    equal(&sha256(&[&INPUT]), &DIGEST)
+    sha256(&[&INPUT]) == DIGEST
 }
 
 /// The HMAC-SHA256 known-answer test, with the input as both key and
@@ -173,7 +151,7 @@ fn hmac_sha256_kat() -> bool {
         0xdc, 0x3c, 0xf0, 0x21, 0x85, 0x18, 0x7d, 0xac, 0xec, 0x48, 0x29, 0xcc, 0xfd, 0x9f, 0x16,
         0x88, 0x7f,
     ];
-    equal(&hmac_sha256(&INPUT, &INPUT), &MAC)
+    hmac_sha256(&INPUT, &INPUT) == MAC
 }
 
 /// Checks the module's code and constants against the HMAC-SHA256 that
@@ -184,8 +162,8 @@ fn integrity_check() -> bool {
     let Some(len) = end.checked_sub(start) else {
         return false;
     };
-    // SAFETY: bcm-rust.lds puts TEXT_START and TEXT_END at the start and end
-    // of one section, so the `len` bytes from TEXT_START are mapped and never
+    // SAFETY: TEXT_START and TEXT_END are the start and end of the region,
+    // in one section, so the `len` bytes from TEXT_START are mapped and never
     // written: they are the module's own code and constants. Like bcm.o's
     // check, this reads machine code, which Rust's memory model doesn't
     // describe; the exposed address keeps the optimizer from assuming the
@@ -193,14 +171,15 @@ fn integrity_check() -> bool {
     let text = unsafe {
         core::slice::from_raw_parts(core::ptr::with_exposed_provenance::<u8>(start), len)
     };
+    let hash = (&raw const TEXT_HASH).cast::<u8>();
     let mut expected = [0u8; 32];
-    for (expected, byte) in expected.iter_mut().zip(&TEXT_HASH) {
+    for (i, expected) in expected.iter_mut().enumerate() {
         // A volatile read, so the compiler can't use the placeholder's value,
         // which inject_hash replaces after compilation.
-        // SAFETY: `byte` is a reference into TEXT_HASH.
-        *expected = unsafe { core::ptr::read_volatile(byte) };
+        // SAFETY: TEXT_HASH is 32 bytes.
+        *expected = unsafe { core::ptr::read_volatile(hash.add(i)) };
     }
-    equal(&hmac_sha256(&[0; 64], text), &expected)
+    hmac_sha256(&[0; 64], text) == expected
 }
 
 /// The module's power-on self-tests, in bcm.o's order: the SHA-256 and

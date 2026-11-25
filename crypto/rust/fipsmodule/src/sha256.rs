@@ -9,7 +9,7 @@
 use core::ffi::{c_int, c_uint};
 use core::mem::offset_of;
 
-use crate::{copy_bytes, slice_from_c, zero_bytes};
+use crate::slice_from_c;
 use block::block_data_order;
 
 const BLOCK_LEN: usize = 64;
@@ -222,12 +222,12 @@ impl Sha256Ctx {
         if num != 0 {
             let free = BLOCK_LEN - num;
             if input.len() < free {
-                copy_bytes(&mut self.data[num..num + input.len()], input);
+                self.data[num..num + input.len()].copy_from_slice(input);
                 self.num += input.len() as c_uint;
                 return;
             }
             let (head, rest) = input.split_at(free);
-            copy_bytes(&mut self.data[num..], head);
+            self.data[num..].copy_from_slice(head);
             block_data_order(&mut self.h, &self.data);
             self.data = [0; BLOCK_LEN];
             input = rest;
@@ -237,7 +237,7 @@ impl Sha256Ctx {
         if !whole.is_empty() {
             block_data_order(&mut self.h, whole);
         }
-        copy_bytes(&mut self.data[..tail.len()], tail);
+        self.data[..tail.len()].copy_from_slice(tail);
         self.num = tail.len() as c_uint;
     }
 
@@ -249,11 +249,11 @@ impl Sha256Ctx {
         n += 1;
         // Fill the block with zeros if there isn't room for the length.
         if n > BLOCK_LEN - 8 {
-            zero_bytes(&mut self.data[n..]);
+            self.data[n..].fill(0);
             block_data_order(&mut self.h, &self.data);
             n = 0;
         }
-        zero_bytes(&mut self.data[n..BLOCK_LEN - 8]);
+        self.data[n..BLOCK_LEN - 8].fill(0);
         self.data[BLOCK_LEN - 8..BLOCK_LEN - 4].copy_from_slice(&self.nh.to_be_bytes());
         self.data[BLOCK_LEN - 4..].copy_from_slice(&self.nl.to_be_bytes());
         block_data_order(&mut self.h, &self.data);

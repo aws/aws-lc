@@ -6,11 +6,9 @@
  * section of its own, and the consumer's linker could separate or reorder
  * those. This puts all of them in one .text section, with the module region
  * from TEXT_START to TEXT_END and the expected hash after it (src/fips.rs).
- * inject_hash -rust reads the two symbols. Code that reaches outside the
- * module, such as the CPU-flag accessors and delocate's helpers for the
- * module's assembly, goes in .bcm_rust_outside, after the hash. Sections not
- * named here, such as .data, .init_array and .eh_frame, stay outside the
- * region (src/fips.rs). */
+ * inject_hash -rust reads the two symbols. Sections not named here, such as
+ * .data, .init_array and .eh_frame, stay outside the region (src/fips.rs).
+ * Static FIPS builds don't use it: delocate writes the module there. */
 SECTIONS
 {
   .text : {
@@ -20,6 +18,5 @@ SECTIONS
     BORINGSSL_bcm_rust_text_end = .;
     *(.bcm_rust_text_end)
     *(.bcm_rust_text_hash)
-    *(.bcm_rust_outside)
   }
 }

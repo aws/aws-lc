@@ -2393,12 +2393,8 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 
 // transform writes the delocated module to w. module names its markers and
 // hash, BORINGSSL_<module>_text_*: "bcm" for bcm.o, or "bcm_rust" for
-// bcm-rust.o, whose hash placeholder differs from bcm.o's. If helpersSection
-// isn't empty, it writes a fragment of another module instead: no markers or
-// hash, because that module defines its own, and the helpers that follow the
-// end marker (redirectors, accessors) go in helpersSection, which that
-// module's linker script places after its hashed region.
-func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool, module, helpersSection string) error {
+// bcm-rust.o, whose hash placeholder differs from bcm.o's.
+func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool, module string) error {
 	markers := "BORINGSSL_" + module + "_text_"
 	uninitHash := fipscommon.UninitHashValue
 	if module != "bcm" {
@@ -2406,10 +2402,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		// markers get no .file or .loc directives either.
 		startEndDebugDirectives = false
 		uninitHash = fipscommon.RustUninitHashValue
-	}
-	fragment := len(helpersSection) > 0
-	if fragment {
-		startEndDebugDirectives = false
 	}
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
@@ -2544,31 +2536,29 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
 
-	if !fragment {
-		if d.processor == aarch64 {
-			// Grab the address of BORINGSSL_bcm_text_hash via a relocation
-			// from a redirector function. For this to work, need to add the markers
-			// to the symbol table.
-			w.WriteString(".global " + markers + "hash\n")
-			w.WriteString(".type " + markers + "hash, @function\n")
-		} else {
-			w.WriteString(".type " + markers + "hash, @object\n")
-			w.WriteString(".size " + markers + "hash, 32\n")
-		}
-		w.WriteString(markers + "hash:\n")
-		for _, b := range uninitHash {
-			w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
-		}
-
-		if d.processor == aarch64 {
-			// Grab the address of BORINGSSL_bcm_text_[start,end] via a relocation
-			// from a redirector function. For this to work, need to add the markers
-			// to the symbol table.
-			w.WriteString(".global " + markers + "start\n")
-			w.WriteString(".type " + markers + "start, @function\n")
-		}
-		w.WriteString(markers + "start:\n")
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_text_hash via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(".global " + markers + "hash\n")
+		w.WriteString(".type " + markers + "hash, @function\n")
+	} else {
+		w.WriteString(".type " + markers + "hash, @object\n")
+		w.WriteString(".size " + markers + "hash, 32\n")
 	}
+	w.WriteString(markers + "hash:\n")
+	for _, b := range uninitHash {
+		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
+	}
+
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_text_[start,end] via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(".global " + markers + "start\n")
+		w.WriteString(".type " + markers + "start, @function\n")
+	}
+	w.WriteString(markers + "start:\n")
 
 	for _, input := range inputs {
 		if err := d.processInput(input); err != nil {
@@ -2585,15 +2575,11 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	// symbol into one to its section, at an offset, and GNU ld resolves that to
 	// the section's start. bcm.o's end marker is global only with the debug
 	// directives.
-	if fragment {
-		w.WriteString(".section " + helpersSection + ", \"ax\", %progbits\n")
-	} else {
-		if d.processor == aarch64 && (startEndDebugDirectives || module != "bcm") {
-			w.WriteString(".global " + markers + "end\n")
-			w.WriteString(".type " + markers + "end, @function\n")
-		}
-		w.WriteString(markers + "end:\n")
+	if d.processor == aarch64 && (startEndDebugDirectives || module != "bcm") {
+		w.WriteString(".global " + markers + "end\n")
+		w.WriteString(".type " + markers + "end, @function\n")
 	}
+	w.WriteString(markers + "end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
 	var redirectorNames []string
@@ -2873,7 +2859,6 @@ func main() {
 	s2nBignumInclude := flag.String("s2n-bignum-include", "", "Directory with s2n-bignum header files used by the C compiler when preprocessing")
 	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 	module := flag.String("module", "bcm", "Names the module's markers and hash, BORINGSSL_<module>_text_*: bcm, or bcm_rust for bcm-rust.o")
-	helpersSection := flag.String("fragment-helpers-section", "", "Writes a fragment of another FIPS module instead of bcm.o: no markers or hash, and helpers in this section")
 	rustInput := flag.String("rust", "", "Path to rustc's assembly output for the module")
 
 	flag.Parse()
@@ -2959,7 +2944,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives, *module, *helpersSection); err != nil {
+	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives, *module); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

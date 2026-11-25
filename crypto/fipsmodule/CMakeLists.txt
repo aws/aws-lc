@@ -818,10 +818,9 @@ endif()
 # bcm-rust.o's own copy of the SHA-256 assembly, which its Rust calls
 # (crypto/rust/fipsmodule/src/sha256.rs). A FIPS module's code has to be inside
 # it, so bcm-rust.o has its own copy in every build, the same way. In static
-# FIPS builds delocate makes the copy fit bcm-rust.o's hashed region, as for
-# bcm.o: on aarch64 it turns adrp+add into adr. As a fragment it writes no
-# markers or hash, which bcm-rust.o has of its own, and puts its helpers in
-# .bcm_rust_outside, which bcm-rust.lds places after the region. Windows MSVC
+# FIPS builds delocate takes the copy and rustc's assembly for the crate, and
+# writes bcm-rust.o's module as it writes bcm.o's: markers, hash placeholder
+# and code in one section, and its helpers after the end marker. Windows MSVC
 # and gnullvm toolchains have no partial link, so there the copy is an object
 # of its own (cmake/rust_crate_object_fold.cmake).
 set(BCM_RUST_ASM_SOURCES "")
@@ -838,20 +837,31 @@ if(RUST_ASM)
 endif()
 if(BCM_RUST_ASM_SOURCES)
   if(RUST_FIPS_MODULE AND FIPS_DELOCATE)
+    set(BCM_RUST_RUSTC_ASM "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust-rustc.s")
+    cargo_add_rust_object(
+      OUTPUT "${BCM_RUST_RUSTC_ASM}"
+      MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+      LIB_NAME bcm_rust
+      CFGS ${RUST_CFGS}
+      EXPORTS ${RUST_EXPORTS}
+      FIPS_MODULE
+      EMIT_ASM)
     add_custom_command(
       OUTPUT bcm-rust-delocated.S
       COMMAND
       ./delocate
       -o bcm-rust-delocated.S
+      -rust "${BCM_RUST_RUSTC_ASM}"
       -cc ${CMAKE_ASM_COMPILER}
       -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
-      -fragment-helpers-section .bcm_rust_outside
+      -module bcm_rust
       ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
       ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
       ${AWSLC_SOURCE_DIR}/include/openssl/target.h
       ${BCM_RUST_ASM_SOURCES}
       DEPENDS
       delocate
+      "${BCM_RUST_RUSTC_ASM}"
       ${BCM_RUST_ASM_SOURCES}
       ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
       ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h

@@ -12,16 +12,11 @@
 //! disagree with C, the link fails on a missing function.
 //!
 //! The crate is FIPS module code, built the same way in every build, so all
-//! of it follows the module rules in `fips.rs`, which restrict how Rust code
-//! can be written. They apply to every algorithm added later, not just
-//! SHA-256. Only the integrity check and self-tests are FIPS-only: in FIPS
-//! builds, CMake sets the `awslc_fips` cfg, and `bcm-rust.o` becomes a FIPS
-//! module of its own.
+//! of it follows C's module rules, which `fips.rs` lists. Only the integrity
+//! check and self-tests are FIPS-only: in FIPS builds, CMake sets the
+//! `awslc_fips` cfg, and `bcm-rust.o` becomes a FIPS module of its own.
 
 #![no_std]
-// Module code can't call memcpy or memset (fips.rs). Without no_builtins,
-// LLVM turns the loops in `copy_bytes` and `zero_bytes` back into those calls.
-#![no_builtins]
 
 /// The C name of `name`, for `export_name` and `link_name`. rustc doesn't see
 /// the BORINGSSL_PREFIX headers, so in a prefix build CMake sets the
@@ -70,51 +65,16 @@ unsafe fn slice_from_c<'a>(ptr: *const u8, len: usize) -> Option<&'a [u8]> {
     Some(unsafe { core::slice::from_raw_parts(ptr, len) })
 }
 
-/// Copies `src` into `dst`, which has the same length. Use it instead of
-/// `copy_from_slice` wherever the length isn't a constant: that compiles to a
-/// memcpy call, which FIPS module code can't make (fips.rs).
-fn copy_bytes(dst: &mut [u8], src: &[u8]) {
-    for (d, s) in dst.iter_mut().zip(src) {
-        *d = *s;
-    }
-}
-
-/// Zeroes `dst`. Use it instead of `fill(0)` wherever the length isn't a
-/// constant: that compiles to a memset call (fips.rs).
-fn zero_bytes(dst: &mut [u8]) {
-    for d in dst {
-        *d = 0;
-    }
-}
-
 /// Runtime support a `no_std` staticlib must provide.
 mod rt {
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     unsafe extern "C" {
         fn abort() -> !;
     }
 
-    /// Stops the process. Module code can't call `abort` (fips.rs), so on the
-    /// CPUs the module exists on, x86_64 and aarch64, this executes an
-    /// undefined instruction instead. Stable Rust has no such instruction for
-    /// every CPU, so other CPUs call `abort`.
+    /// Stops the process.
     pub(crate) fn die() -> ! {
-        #[cfg(target_arch = "x86_64")]
-        // SAFETY: `ud2` raises an invalid-opcode exception and doesn't return.
-        unsafe {
-            core::arch::asm!("ud2", options(noreturn, nomem, nostack))
-        }
-        #[cfg(target_arch = "aarch64")]
-        // SAFETY: `udf` raises an undefined-instruction exception and doesn't
-        // return.
-        unsafe {
-            core::arch::asm!("udf #0", options(noreturn, nomem, nostack))
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
         // SAFETY: `abort` takes no arguments and never returns.
-        unsafe {
-            abort()
-        }
+        unsafe { abort() }
     }
 
     #[panic_handler]
