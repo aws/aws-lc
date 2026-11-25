@@ -1945,10 +1945,10 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
 
-  // A malformed address fails the same way as |X509_VERIFY_PARAM_set1_ip|. The
-  // parse failure happens before that function is reached, so it has to poison
-  // the parameters itself.
-  ASSERT_EQ(X509_V_ERR_INVALID_CALL,
+  // A malformed address leaves the parameters alone, so the OpenSSL idiom of
+  // trying |X509_VERIFY_PARAM_set1_ip_asc| before
+  // |X509_VERIFY_PARAM_set1_host| still verifies.
+  ASSERT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_STORE_CTX *ctx) {
                      X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
@@ -1956,33 +1956,25 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                          X509_VERIFY_PARAM_set1_ip_asc(param, "example.com"));
                    }));
 
-  // A poisoned store must stay poisoned through |X509_STORE_CTX_init|, which
-  // inherits parameters from the store and then from the defaults. Callers that
-  // ignore a failed setter rely on this to fail closed.
-  ASSERT_EQ(X509_V_ERR_INVALID_CALL, ([&] {
-              bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
-              bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-              if (!store || !ctx ||
-                  !X509_STORE_add_cert(store.get(), root.get())) {
-                return X509_V_ERR_UNSPECIFIED;
-              }
-              // An embedded NUL fails and poisons the store's parameters.
-              if (X509_VERIFY_PARAM_set1_host(X509_STORE_get0_param(store.get()),
-                                              "a", 2)) {
-                return X509_V_ERR_UNSPECIFIED;
-              }
-              if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
-                                       nullptr)) {
-                return X509_V_ERR_UNSPECIFIED;
-              }
-              X509_VERIFY_PARAM_set_time_posix(
-                  X509_STORE_CTX_get0_param(ctx.get()), kReferenceTime);
-              ERR_clear_error();
-              if (X509_verify_cert(ctx.get()) == 1) {
-                return X509_V_OK;
-              }
-              return X509_STORE_CTX_get_error(ctx.get());
-            })());
+  // A NULL parameter is rejected before the address is parsed.
+  ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip_asc(nullptr, "127.0.0.1"));
+  ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip_asc(nullptr, "example.com"));
+
+  // A poisoned store fails |X509_STORE_CTX_init|, so a caller that ignores a
+  // failed setter cannot reach |X509_verify_cert|.
+  {
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    ASSERT_TRUE(store);
+    ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+    // An embedded NUL fails and poisons the store's parameters.
+    ASSERT_FALSE(X509_VERIFY_PARAM_set1_host(X509_STORE_get0_param(store.get()),
+                                             "a", 2));
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_FALSE(
+        X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+    ERR_clear_error();
+  }
 
   // Zero bytes in an IP address are, of course, fine. This is tested above
   // because |kIP| contains zeros.
@@ -9776,6 +9768,21 @@ TEST(X509Test, ParamInheritance) {
     ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
     // The new value is used.
     EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 10);
+  }
+
+  // Poison fails the copy in either direction, for both functions.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> poisoned(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(poisoned);
+    bssl::UniquePtr<X509_VERIFY_PARAM> clean(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(clean);
+    // An embedded NUL fails and poisons the parameters.
+    ASSERT_FALSE(X509_VERIFY_PARAM_set1_host(poisoned.get(), "a", 2));
+    EXPECT_FALSE(X509_VERIFY_PARAM_inherit(clean.get(), poisoned.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_inherit(poisoned.get(), clean.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_set1(clean.get(), poisoned.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_set1(poisoned.get(), clean.get()));
+    ERR_clear_error();
   }
 }
 
