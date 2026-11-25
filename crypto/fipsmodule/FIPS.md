@@ -1,6 +1,6 @@
 # FIPS 140-3
 
-A submodule of AWS-LC, referred to here as the “FIPS module”, is periodically submitted for FIPS validation from the National Institute for Standards and Technology (NIST). This document contains notes about the design of our FIPS module and documentation on performing certain FIPS-related tasks. This document is not a substitute for reading our latest official [FIPS Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf). Please note that we cannot answer questions about FIPS, nor about using AWS-LC in a FIPS-compliant manner. Please consult with an [accredited CMVP lab](http://csrc.nist.gov/groups/STM/testing_labs/) or a compliance specialist on these topics.
+A submodule of AWS-LC, referred to here as the “FIPS module”, is periodically submitted for FIPS validation from the National Institute for Standards and Technology (NIST). This document contains notes about the design of our FIPS module and documentation on performing certain FIPS-related tasks. This document is not a substitute for reading the latest official FIPS Security Policies for the [dynamic module](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5595.pdf) and [static module](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5596.pdf). Please note that we cannot answer questions about FIPS, nor about using AWS-LC in a FIPS-compliant manner. Please consult with an [accredited CMVP lab](http://csrc.nist.gov/groups/STM/testing_labs/) or a compliance specialist on these topics.
 
 ## Validations
 
@@ -12,6 +12,8 @@ NIST has awarded the FIPS module of AWS-LC the following validation certificates
 * AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf)
 * AWS-LC-FIPS v3.1 (dynamic library): certificate [#5298](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5298) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5298.pdf)
 * AWS-LC-FIPS v3.1 (static library): certificate [#5314](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5314) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5314.pdf)
+* AWS-LC-FIPS v4.0 (dynamic library): certificate [#5595](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5595) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5595.pdf)
+* AWS-LC-FIPS v4.0 (static library): certificate [#5596](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5596) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5596.pdf)
 
 NIST has also awarded SP 800-90B validation certificates for our CPU Jitter Entropy Source.
 
@@ -56,8 +58,8 @@ When building AWS-LC in FIPS mode, please be aware of the following platform lim
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
-* AWS-LC-FIPS v4.0 (static): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
-* AWS-LC-FIPS v4.0 (dynamic): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+* AWS-LC 5 Cryptographic Module (dynamic): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+* AWS-LC 5 Cryptographic Module (static): [Review](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
 
 ## Randomness generation design AWS-LC-FIPS v4.0
 
