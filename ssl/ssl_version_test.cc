@@ -2419,6 +2419,34 @@ TEST_P(SSLVersionTest, SimpleVerifiedChain) {
   EXPECT_EQ(X509_cmp(sk_X509_value(verified_client_chain, 0), cert_.get()), 0);
 }
 
+// A poisoned SSL_CTX parameter must still fail closed on a connection that
+// inherited it. |ssl_crypto_x509_ssl_new| inherits without checking the return
+// value, so the poison has to survive the copy itself.
+TEST_P(SSLVersionTest, PoisonedContextParamFailsConnection) {
+  ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
+                                  cert_.get()));
+  SSL_CTX_set_verify(client_ctx_.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx_.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+
+  // An embedded NUL is rejected and poisons the parameter. Callers that ignore
+  // this return value are the case the poison exists to catch.
+  static const char kHostWithNUL[] = "evil.example\0localhost";
+  EXPECT_FALSE(
+      X509_VERIFY_PARAM_set1_host(SSL_CTX_get0_param(client_ctx_.get()),
+                                  kHostWithNUL, sizeof(kHostWithNUL) - 1));
+  ERR_clear_error();
+
+  UniquePtr<SSL> client_ssl, server_ssl;
+  ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(),
+                                    server_ctx_.get()));
+  EXPECT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));
+  EXPECT_EQ(SSL_get_verify_result(client_ssl.get()), X509_V_ERR_INVALID_CALL);
+}
+
 TEST_P(SSLVersionTest, VerifiedChain) {
   ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
                                   cert_.get()));

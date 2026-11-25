@@ -120,8 +120,11 @@ static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
   }
 
   // Poisoned parameters fail the copy, so |X509_STORE_CTX_init| fails before
-  // the verify callback can suppress the error.
+  // the verify callback can suppress the error. Poison also spreads to |dest|,
+  // so that a caller which ignores this return value still fails closed later.
+  // |ssl_crypto_x509_ssl_new| inherits this way for every new connection.
   if (src->poison || dest->poison) {
+    dest->poison = 1;
     OPENSSL_PUT_ERROR(X509, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
