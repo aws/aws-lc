@@ -229,6 +229,8 @@ jobs:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
@@ -393,6 +395,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y cmake ninja-build
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - name: GCC 14 hack
         if: matrix.gcc_version == '14'
         # Suppress false positive stringop-overflow and array-bounds warnings w/ GCC-14
@@ -469,9 +473,11 @@ jobs:
           MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          apt-get install -y build-essential cmake ninja-build curl "clang-${MATRIX_CLANG_VERSION}"
           echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
         env:
           MATRIX_FIPS: ${{ matrix.fips }}
@@ -508,9 +514,11 @@ jobs:
           MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          apt-get install -y build-essential cmake ninja-build curl "clang-${MATRIX_CLANG_VERSION}"
           echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
         env:
           MATRIX_FIPS: ${{ matrix.fips }}
@@ -550,9 +558,11 @@ jobs:
           MATRIX_CLANG_VERSION: ${{ matrix.clang_version }}
         run: |
           apt-get update
-          apt-get install -y build-essential cmake ninja-build "clang-${MATRIX_CLANG_VERSION}"
+          apt-get install -y build-essential cmake ninja-build curl "clang-${MATRIX_CLANG_VERSION}"
           echo "CC=/usr/bin/clang-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${MATRIX_CLANG_VERSION}" >> $GITHUB_ENV
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
         env:
           MATRIX_FIPS: ${{ matrix.fips }}
@@ -578,6 +588,8 @@ jobs:
     container: gcc:14.4
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
@@ -625,6 +637,8 @@ jobs:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust
+        run: ./tests/ci/install_rust.sh
       - uses: actions/setup-go@v7
         with:
           go-version: ">=1.18"
