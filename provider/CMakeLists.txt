@@ -58,6 +58,7 @@ add_library(awslc_provider_back OBJECT
   backend/info.c
   backend/errors.c
   backend/utils.c
+  backend/operations/rsa.c
   backend/operations/digests/sha2.c
   backend/operations/keymgmt/rsa.c)
 set_target_properties(awslc_provider_back PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -173,6 +174,7 @@ if(BUILD_TESTING AND NOT ANDROID)
     test/backend/errors_test.cc
     test/backend/operations/digests/sha2_test.cc
     test/backend/operations/keymgmt/rsa_test.cc
+    test/backend/utils_test.cc
     $<TARGET_OBJECTS:awslc_provider_back>)
 
   target_include_directories(awslc_provider_backend_test PRIVATE
