@@ -76,11 +76,18 @@ jobs:
           options: --privileged
 
   asan_sde_tests:
-    name: asan-sde-tests
+    name: asan-sde-tests-shard-${{ matrix.shard }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:2xlarge
+    env:
+      AWS_LC_TEST_SHARD_INDEX: ${{ matrix.shard }}
+      AWS_LC_TEST_TOTAL_SHARDS: 3
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
     steps:
       - uses: actions/checkout@v7
       - name: Login to Amazon ECR
@@ -90,6 +97,9 @@ jobs:
         name: Run Container
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04_sde
+          env: |
+            AWS_LC_TEST_SHARD_INDEX
+            AWS_LC_TEST_TOTAL_SHARDS
           run: |
             source /opt/compiler-env/setup-clang-14.sh
             ./tests/ci/run_tests_with_sde_asan.sh
