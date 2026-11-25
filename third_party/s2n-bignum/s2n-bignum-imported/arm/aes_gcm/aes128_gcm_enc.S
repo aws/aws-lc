@@ -67,6 +67,10 @@
 // s2n-bignum house style.
 // Proofs: arm/proofs/aes128_gcm_enc.ml.
 
+// This leaf routine leaves the frame pointer x29 and return address x30
+// untouched. After loading the round keys, x5 is free for scratch;
+// the otherwise unused x9 replaces x29 scratch. The IV pointer stays in x4.
+
 #include "_internal_s2n_bignum_arm.h"
 
         .arch armv8-a+crypto
@@ -539,7 +543,6 @@ Laes128_gcm_enc_preamble_start:
         CFI_STACKSAVE2X(x23,x24,32,40)
         CFI_STACKSAVE2X(x25,x26,48,56)
         CFI_STACKSAVE2X(x27,x28,64,72)
-        CFI_STACKSAVE2X(x29,x30,80,88)
         CFI_STACKSAVE2X(d8,d9,96,104)
         CFI_STACKSAVE2X(d10,d11,112,120)
         CFI_STACKSAVE2X(d12,d13,128,136)
@@ -562,18 +565,18 @@ Laes128_gcm_enc_preamble_end:
                 add w14, w13, #3
                 add w19, w13, #0
                 add w24, w13, #2
-                add w30, w13, #1
+                add w5, w13, #1
                 add w13, w13, #UNROLL
                 rev w22, w24
-                rev w30, w30
+                rev w5, w5
                 orr x26, x12, x22, lsl   #32
-                orr x25, x12, x30, lsl   #32
+                orr x25, x12, x5, lsl   #32
                 stp x11, x26, [sp, #(STACK_BASE_AES_ST+32)]
                 stp x11, x25, [sp, #(STACK_BASE_AES_ST+16)]
-                rev w29, w19
+                rev w9, w19
                 ldr q9, [sp, #(STACK_BASE_AES_ST+32)]
                 ldp x10, x22, [x0, #16]
-                orr x17, x12, x29, lsl   #32
+                orr x17, x12, x9, lsl   #32
                 rev w27, w14
                 orr x8, x12, x27, lsl   #32
                 stp x11, x17, [sp, #STACK_BASE_AES_ST]
@@ -581,14 +584,14 @@ Laes128_gcm_enc_preamble_end:
                 ldp x28, x22, [x0, #32]
                 aesr(v9.16b, v18.16b)
                 stp x11, x8, [sp, #(STACK_BASE_AES_ST+48)]
-                ldp x29, x24, [x0, #48]
+                ldp x9, x24, [x0, #48]
                 aesr(v9.16b, v19.16b)
                 eor x26, x22, x21
                 eor x14, x28, x20
                 eor x28, x10, x20
                 stp x14, x26, [sp, #(STACK_BASE_AES_ST+32)]
                 eor x8, x24, x21
-                eor x7, x29, x20
+                eor x7, x9, x20
                 aesr(v9.16b, v20.16b)
                 ldr q28, [sp, #(STACK_BASE_AES_ST+48)]
                 stp x7, x8, [sp, #(STACK_BASE_AES_ST+48)]
@@ -635,7 +638,7 @@ Laes128_gcm_enc_loop_unrolled_start:
         stp x28, x23, [sp, #(STACK_BASE_AES_ST+16)]
         aesr(v9.16b, v26.16b)
         ldr q11, [x6, #80]
-        add w30, w13, #1
+        add w5, w13, #1
         add w13, w13, #UNROLL
         rev64 v16.16B, v15.16B
         aese v12.16b, v27.16b
@@ -643,16 +646,16 @@ Laes128_gcm_enc_loop_unrolled_start:
         ldp x17, x7, [x0], #(4*16)
         ldr q13, [sp, #(STACK_BASE_AES_ST+16)]
         aese v9.16b, v27.16b
-        rev w30, w30
+        rev w5, w5
         orr x26, x12, x22, lsl   #32
         mov d1, v16.d[1]
         aesr(v0.16b, v18.16b)
-        orr x25, x12, x30, lsl   #32
+        orr x25, x12, x5, lsl   #32
         stp x11, x26, [sp, #(STACK_BASE_AES_ST+32)]
         pmull v14.1q, v16.1d, v5.1d
         eor v28.16B, v10.16B, v9.16B
         stp x11, x25, [sp, #(STACK_BASE_AES_ST+16)]
-        rev w29, w19
+        rev w9, w19
         ldr q9, [sp, #(STACK_BASE_AES_ST+32)]
         aesr(v0.16b, v19.16b)
         eor x7, x7, x21
@@ -663,7 +666,7 @@ Laes128_gcm_enc_loop_unrolled_start:
         stp x8, x7, [sp, #STACK_BASE_AES_ST]
         aesr(v0.16b, v20.16b)
         eor v4.8B, v1.8B, v16.8B
-        orr x17, x12, x29, lsl   #32
+        orr x17, x12, x9, lsl   #32
         rev w27, w14
         pmull v1.1q, v8.1d, v17.1d
         ldr q16, [sp, #STACK_BASE_AES_ST]
@@ -682,7 +685,7 @@ Laes128_gcm_enc_loop_unrolled_start:
         stp x11, x8, [sp, #(STACK_BASE_AES_ST+48)]
         aesr(v0.16b, v22.16b)
         rev64 v2.16B, v13.16B
-        ldp x29, x24, [x0, #48]
+        ldp x9, x24, [x0, #48]
         aesr(v9.16b, v19.16b)
         eor x26, x22, x21
         eor x14, x28, x20
@@ -697,7 +700,7 @@ Laes128_gcm_enc_loop_unrolled_start:
         eor x8, x24, x21
         pmull2 v13.1q, v2.2d, v1.2d
         eor v17.16B, v17.16B, v29.16B
-        eor x7, x29, x20
+        eor x7, x9, x20
         eor v2.8B, v28.8B, v2.8B
         aesr(v0.16b, v25.16b)
         ext v10.16B, v8.16B, v8.16B, #8
@@ -894,7 +897,6 @@ Laes128_gcm_enc_loop_1x_end:
         CFI_STACKLOAD2(x23,x24,32)
         CFI_STACKLOAD2(x25,x26,48)
         CFI_STACKLOAD2(x27,x28,64)
-        CFI_STACKLOAD2(x29,x30,80)
 
 Laes128_gcm_enc_postamble_end:
         CFI_INC_SP(STACK_SIZE)
