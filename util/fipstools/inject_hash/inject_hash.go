@@ -5,8 +5,9 @@
 // module inside that object, calculates its hash and replaces the default hash
 // value in the object with the calculated value. With -rust, it does the same
 // for the module region of bcm-rust.o, bcm.o's Rust counterpart: in static
-// FIPS builds in bcm-rust.o, after applying the relocations in the region
-// (relocateModule), and in shared ones in the final library, as for bcm.o.
+// FIPS builds in bcm-rust.o, after checking that no relocation is left in the
+// region (checkNoRelocations), and in shared ones in the final library, as for
+// bcm.o.
 package main
 
 import (
@@ -154,7 +155,7 @@ func doLinux(objectBytes []byte, isStatic bool, rust bool) ([]byte, []byte, erro
 	}
 	// A shared library's final link has applied every relocation already.
 	if rust && isStatic {
-		if err := relocateModule(object, textSectionIndex, *textStart, *textEnd, moduleText); err != nil {
+		if err := checkNoRelocations(object, textSectionIndex, *textStart, *textEnd); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -175,21 +176,13 @@ func doLinux(objectBytes []byte, isStatic bool, rust bool) ([]byte, []byte, erro
 	return moduleText, moduleROData, nil
 }
 
-// relocateModule applies the relocations inside bcm-rust.o's module region,
-// [start, end) of its text section, to text, the region's bytes, as the
-// consumer's final link will.
-//
-// bcm.o needs no such step: delocate's assembly leaves no relocation in its
-// region. bcm-rust.o is rustc output that a partial link merged into one
-// section (crypto/rust/fipsmodule/bcm-rust.lds), and a partial link keeps
-// every relocation. A PC-relative relocation whose target is in the same
-// section has the same value wherever the final link puts that section, so
-// those are applied here. Any other relocation, such as a call out of the
-// module, a GOT reference or aarch64's page-relative adrp, would make the
-// final link write bytes that differ from the ones hashed here, so it fails
-// the build. crypto/rust/fipsmodule/src/fips.rs lists the module code rules
-// that avoid them.
-func relocateModule(object *elf.File, textIndex elf.SectionIndex, start, end uint64, text []byte) error {
+// checkNoRelocations fails if a relocation is left inside bcm-rust.o's module
+// region, [start, end) of its text section. delocate resolves every reference
+// module code makes, as it does bcm.o's, so a relocation left there means the
+// consumer's final link would write bytes that differ from the ones hashed
+// here, such as for a direct reference to a mutable static
+// (crypto/rust/fipsmodule/src/fips.rs).
+func checkNoRelocations(object *elf.File, textIndex elf.SectionIndex, start, end uint64) error {
 	if object.Class != elf.ELFCLASS64 {
 		return errors.New("-rust supports only 64-bit ELF objects")
 	}
@@ -201,110 +194,31 @@ func relocateModule(object *elf.File, textIndex elf.SectionIndex, start, end uin
 		if elf.SectionIndex(section.Info) != textIndex || (section.Type != elf.SHT_RELA && section.Type != elf.SHT_REL) {
 			continue
 		}
-		if section.Type == elf.SHT_REL {
-			return fmt.Errorf("%s: relocations without addends aren't supported", section.Name)
-		}
 		data, err := section.Data()
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %s", section.Name, err)
 		}
-		for ; len(data) >= 24; data = data[24:] {
+		size := 24
+		if section.Type == elf.SHT_REL {
+			size = 16
+		}
+		for ; len(data) >= size; data = data[size:] {
 			off := object.ByteOrder.Uint64(data[0:8])
-			info := object.ByteOrder.Uint64(data[8:16])
-			addend := int64(object.ByteOrder.Uint64(data[16:24]))
 			if off < start || off >= end {
 				continue
 			}
-			symIndex := elf.R_SYM64(info)
-			if symIndex == 0 || int(symIndex) > len(symbols) {
-				return fmt.Errorf("relocation at .text+%#x has symbol index %d", off, symIndex)
+			name := "?"
+			if i := elf.R_SYM64(object.ByteOrder.Uint64(data[8:16])); i > 0 && int(i) <= len(symbols) {
+				// Symbols omits the null symbol at index 0.
+				name = symbols[i-1].Name
+				if sym := symbols[i-1]; elf.ST_TYPE(sym.Info) == elf.STT_SECTION && int(sym.Section) < len(object.Sections) {
+					name = object.Sections[sym.Section].Name
+				}
 			}
-			// Symbols omits the null symbol at index 0.
-			sym := symbols[symIndex-1]
-			name := sym.Name
-			if elf.ST_TYPE(sym.Info) == elf.STT_SECTION && int(sym.Section) < len(object.Sections) {
-				name = object.Sections[sym.Section].Name
-			}
-			if sym.Section != textIndex {
-				return fmt.Errorf("module code at .text+%#x refers to %q, outside the module", off, name)
-			}
-			value := int64(sym.Value) + addend - int64(off)
-			if err := applyRelocation(object, elf.R_TYPE64(info), value, text[off-start:]); err != nil {
-				return fmt.Errorf("module code at .text+%#x, referring to %q: %s", off, name, err)
-			}
+			return fmt.Errorf("module code at .text+%#x refers to %q through a relocation, which the final link would fill in", off, name)
 		}
 	}
 	return nil
-}
-
-// applyRelocation writes value, the distance from a relocation's place to its
-// target, into field, the bytes at that place, for the relocation types rustc
-// emits for references inside the module.
-func applyRelocation(object *elf.File, typ uint32, value int64, field []byte) error {
-	order := object.ByteOrder
-	put32 := func(v uint32) error {
-		if len(field) < 4 {
-			return errors.New("relocation runs past the module")
-		}
-		order.PutUint32(field, v)
-		return nil
-	}
-	// insn sets the bits-wide immediate at bit lsb of an aarch64 instruction
-	// to value >> shift.
-	insn := func(shift, bits, lsb uint) error {
-		if value&(1<<shift-1) != 0 {
-			return errors.New("misaligned target")
-		}
-		imm := value >> shift
-		if imm < -(1<<(bits-1)) || imm >= 1<<(bits-1) {
-			return fmt.Errorf("target out of range (%d bytes away)", value)
-		}
-		if len(field) < 4 {
-			return errors.New("relocation runs past the module")
-		}
-		mask := uint32(1<<bits-1) << lsb
-		order.PutUint32(field, order.Uint32(field)&^mask|uint32(imm)<<lsb&mask)
-		return nil
-	}
-
-	switch object.Machine {
-	case elf.EM_X86_64:
-		switch r := elf.R_X86_64(typ); r {
-		case elf.R_X86_64_PC32, elf.R_X86_64_PLT32:
-			if value != int64(int32(value)) {
-				return errors.New("target out of range")
-			}
-			return put32(uint32(value))
-		default:
-			return fmt.Errorf("%v isn't PC-relative within the module", r)
-		}
-	case elf.EM_AARCH64:
-		switch r := elf.R_AARCH64(typ); r {
-		case elf.R_AARCH64_CALL26, elf.R_AARCH64_JUMP26:
-			return insn(2, 26, 0)
-		case elf.R_AARCH64_CONDBR19, elf.R_AARCH64_LD_PREL_LO19:
-			return insn(2, 19, 5)
-		case elf.R_AARCH64_ADR_PREL_LO21:
-			// adr reaches 1 MiB, which limits the whole module on aarch64,
-			// as delocate's adr limits bcm.o.
-			if value < -(1<<20) || value >= 1<<20 {
-				return fmt.Errorf("target out of adr's 1 MiB range (%d bytes away)", value)
-			}
-			if len(field) < 4 {
-				return errors.New("relocation runs past the module")
-			}
-			const mask = 3<<29 | 0x7ffff<<5
-			imm := uint32(value)
-			order.PutUint32(field, order.Uint32(field)&^mask|(imm&3)<<29|(imm>>2&0x7ffff)<<5)
-			return nil
-		case elf.R_AARCH64_ADR_PREL_PG_HI21, elf.R_AARCH64_ADD_ABS_LO12_NC:
-			return fmt.Errorf("%v is page-relative, and lld can rewrite adrp: build with -Ccode-model=tiny", r)
-		default:
-			return fmt.Errorf("%v isn't PC-relative within the module", r)
-		}
-	default:
-		return fmt.Errorf("-rust doesn't support %v", object.Machine)
-	}
 }
 
 func doAppleOS(objectBytes []byte, rust bool) ([]byte, []byte, error) {

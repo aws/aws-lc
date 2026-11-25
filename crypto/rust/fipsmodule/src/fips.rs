@@ -22,9 +22,9 @@
 //! placeholder, the code and the constants in one section, sends calls out of
 //! the module through stubs after the region, rustc's own memcpy, memset and
 //! abort calls included, and reaches data outside the module through
-//! accessors. inject_hash then checks the region's relocations. These builds
-//! exist only on x86_64 and aarch64, where delocate's handling of rustc's
-//! assembly is tested.
+//! accessors. inject_hash then checks that no relocation is left in the
+//! region. These builds exist only on x86_64 and aarch64, where delocate's
+//! handling of rustc's assembly is tested.
 //!
 //! So module code follows C's module rules. The crate is built the same way in
 //! every build, so they bind all of it:
