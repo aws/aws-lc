@@ -28,13 +28,6 @@ import (
 	"github.com/aws/aws-lc/util/fipstools/fipscommon"
 )
 
-// rustUninitHashValue is bcm-rust.o's placeholder for its hash
-// (crypto/rust/fipsmodule/src/fips.rs). It differs from bcm.o's, so each
-// appears once in a shared library that holds both modules.
-var rustUninitHashValue = [32]byte{
-	0xeb, 0xa0, 0xdc, 0x87, 0x3f, 0x90, 0x5a, 0x73, 0xae, 0x32, 0xd8, 0xb2, 0x74, 0xd9, 0x4c, 0x7c, 0x50, 0x48, 0x00, 0xe1, 0xb2, 0xee, 0x1c, 0x96, 0x64, 0x35, 0x99, 0x82, 0xae, 0xfc, 0x2d, 0xd8,
-}
-
 func doLinux(objectBytes []byte, isStatic bool, rust bool) ([]byte, []byte, error) {
 
 	object, err := elf.NewFile(bytes.NewReader(objectBytes))
@@ -718,7 +711,7 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 
 	uninitHashValue := fipscommon.UninitHashValue
 	if rust {
-		uninitHashValue = rustUninitHashValue
+		uninitHashValue = fipscommon.RustUninitHashValue
 	}
 	offset := bytes.Index(objectBytes, uninitHashValue[:])
 	if offset < 0 {

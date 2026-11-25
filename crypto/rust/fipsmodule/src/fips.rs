@@ -99,7 +99,7 @@ unsafe extern "C" {
     static TEXT_END: u8;
 }
 
-/// inject_hash replaces this placeholder (`rustUninitHashValue`) with the
+/// inject_hash replaces this placeholder (`RustUninitHashValue`) with the
 /// region's HMAC-SHA256. Its section comes after the module region.
 #[cfg_attr(
     not(target_vendor = "apple"),

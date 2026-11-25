@@ -47,17 +47,27 @@ var delocateTests = []delocateTest{
 	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s", true},
 	{"x86_64-FourArg", nil, []string{"in.s"}, "out.s", true},
 	{"x86_64-Relro", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-Rust", nil, []string{"in.s", "rust.s"}, "out.s", true},
 	{"aarch64-Basic", nil, []string{"in.s"}, "out.s", true},
+	{"aarch64-Rust", nil, []string{"in.s", "rust.s"}, "out.s", true},
 }
 
 func TestDelocate(t *testing.T) {
 	for _, test := range delocateTests {
 		t.Run(test.name, func(t *testing.T) {
 			var inputs []inputFile
+			module := "bcm"
 			for i, in := range test.inputs {
+				// rust.s stands for rustc's output, which delocate
+				// takes through -rust, for bcm-rust.o.
+				isRust := in == "rust.s"
+				if isRust {
+					module = "bcm_rust"
+				}
 				inputs = append(inputs, inputFile{
-					index: i,
-					path:  test.Path(in),
+					index:  i,
+					path:   test.Path(in),
+					isRust: isRust,
 				})
 			}
 
@@ -66,7 +76,7 @@ func TestDelocate(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			if err := transform(&buf, test.includes, inputs, test.startEndDebugDirectives, ""); err != nil {
+			if err := transform(&buf, test.includes, inputs, test.startEndDebugDirectives, module, ""); err != nil {
 				t.Fatalf("transform failed: %s", err)
 			}
 
@@ -126,7 +136,7 @@ func TestRelroSet(t *testing.T) {
 			t.Fatalf("failed to parse %q: %s", contents, err)
 		}
 		inputs := []inputFile{{path: "test.s", contents: contents, ast: asm.AST()}}
-		err := transform(&bytes.Buffer{}, nil, inputs, true, "")
+		err := transform(&bytes.Buffer{}, nil, inputs, true, "bcm", "")
 		if (err == nil) != test.ok {
 			t.Errorf("transform with %q: got error %v, want ok=%t", test.set, err, test.ok)
 		}
