@@ -12,6 +12,7 @@
 #include "../test/test_util.h"
 
 #include <vector>
+#include "../fipsmodule/cpucap/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
 #include "../fipsmodule/ml_dsa/ml_dsa.h"
@@ -3068,3 +3069,28 @@ TEST(PQDSAParameterTest, ParsePrivateKeyInconsistentExamples) {
   ERR_clear_error();
   OPENSSL_free(der_inconsistent);
 }
+
+// Writing |OPENSSL_ia32cap_P| from outside the module is not supported in
+// shared library or FIPS builds.
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
+    !defined(BORINGSSL_SHARED_LIBRARY) && !defined(BORINGSSL_FIPS)
+// The AVX2 backend's rejection samplers use POPCNT, which CPUID reports
+// separately from AVX2. KATs pass on any CPU with POPCNT even if the
+// capability callback does not check it, so check the callback directly with
+// only the POPCNT bit (CPUID.1:ECX bit 23) cleared.
+TEST(PQDSAParameterTest, MLDSAAVX2BackendRequiresPOPCNT) {
+  if (!CRYPTO_is_AVX2_capable() || !CRYPTO_is_POPCNT_capable()) {
+    GTEST_SKIP() << "Test requires AVX2 and POPCNT";
+  }
+  EXPECT_TRUE(mldsa_avx2_capability_for_testing());
+
+  const uint32_t saved = OPENSSL_ia32cap_P[1];
+  OPENSSL_ia32cap_P[1] &= ~(UINT32_C(1) << 23);
+  EXPECT_FALSE(CRYPTO_is_POPCNT_capable());
+  EXPECT_TRUE(CRYPTO_is_AVX2_capable());
+  EXPECT_FALSE(mldsa_avx2_capability_for_testing());
+  OPENSSL_ia32cap_P[1] = saved;
+
+  EXPECT_TRUE(mldsa_avx2_capability_for_testing());
+}
+#endif

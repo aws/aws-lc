@@ -202,6 +202,13 @@ OPENSSL_EXPORT int ml_kem_1024_check_pk(const uint8_t *public_key /* IN */,
 OPENSSL_EXPORT int ml_kem_1024_check_sk(const uint8_t *secret_key /* IN */,
                                         size_t secret_key_len /* IN  */);
 
+#if defined(OPENSSL_X86_64)
+// mlkem_avx2_capability_for_testing returns the result of the CPU capability
+// callback that mlkem-native uses to select its x86_64 AVX2 backend. It is
+// exposed only for tests.
+int mlkem_avx2_capability_for_testing(void);
+#endif
+
 #if defined(__cplusplus)
 }
 #endif

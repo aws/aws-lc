@@ -26,6 +26,12 @@
 
 #include "./ml_kem.h"
 
+#if defined(OPENSSL_X86_64)
+int mlkem_avx2_capability_for_testing(void) {
+  return mlk_sys_check_capability(MLK_SYS_CAP_X86_64_AVX2);
+}
+#endif
+
 // Converts an mlkem-native return code (0 on success, negative MLK_ERR_* on
 // failure) to the ml_kem.h convention: ML_KEM_SUCCESS (0) or ML_KEM_FAILURE
 // (1). The specific upstream failure condition is currently not retained.
