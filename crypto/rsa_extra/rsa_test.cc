@@ -1739,6 +1739,57 @@ TEST(RSATest, LargeE) {
   EXPECT_FALSE(RSA_new_public_key_large_e(n, bad_e.get()));
 }
 
+TEST(RSATest, MGF1DigestLength) {
+  static const uint8_t kSeed[] = {'s', 'e', 'e', 'd'};
+  // SHA-256(seed || I2OSP(0, 4)) followed by the first byte for counter 1.
+  static const uint8_t kExpected[] = {
+      0x33, 0x6f, 0x28, 0xa0, 0x22, 0x19, 0x39, 0x39, 0x58, 0x5a, 0x1b,
+      0x4e, 0xdc, 0x98, 0x9f, 0x87, 0x09, 0x17, 0xf3, 0xa5, 0xf6, 0xdd,
+      0xd1, 0x6e, 0x4f, 0xb3, 0x57, 0x08, 0x4a, 0x6b, 0xdf, 0xc2, 0x73,
+  };
+  uint8_t out[sizeof(kExpected)];
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  ASSERT_TRUE(PKCS1_MGF1(out, sizeof(out), kSeed, sizeof(kSeed), EVP_sha256()));
+  EXPECT_EQ(Bytes(kExpected), Bytes(out));
+  EXPECT_TRUE(PKCS1_MGF1(nullptr, 0, kSeed, sizeof(kSeed), EVP_sha256()));
+
+  // The exported null digest succeeds while producing no bytes. Reject it
+  // before entering the MGF1 loop, including for an empty output request.
+  for (size_t len : {size_t{0}, size_t{1}, sizeof(out)}) {
+    SCOPED_TRACE(len);
+    OPENSSL_memset(out, 0xa5, sizeof(out));
+    EXPECT_FALSE(PKCS1_MGF1(out, len, kSeed, sizeof(kSeed), EVP_md_null()));
+    for (uint8_t byte : out) {
+      EXPECT_EQ(0xa5, byte);
+    }
+    ERR_clear_error();
+  }
+  OPENSSL_END_ALLOW_DEPRECATED
+}
+
+TEST(RSATest, OAEPRejectsZeroLengthMGF1Digest) {
+  bssl::UniquePtr<RSA> rsa(
+      RSA_public_key_from_bytes(kFIPSPublicKey, sizeof(kFIPSPublicKey) - 1));
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<EVP_PKEY> key(EVP_PKEY_new());
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(key.get(), rsa.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_encrypt_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), EVP_sha256()));
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), EVP_md_null()));
+  OPENSSL_END_ALLOW_DEPRECATED
+
+  std::vector<uint8_t> out(RSA_size(rsa.get()));
+  size_t out_len = out.size();
+  EXPECT_FALSE(EVP_PKEY_encrypt(ctx.get(), out.data(), &out_len, kPlaintext,
+                                kPlaintextLen));
+  ERR_clear_error();
+}
+
 // PSSWithVariousDigests proves that RSASSA-PSS works with a range of digest
 // and MGF1 hash functions (currently the SHA-2 and SHA-3 families). It
 // exercises the low-level padding functions (|RSA_padding_add_PKCS1_PSS_mgf1| /

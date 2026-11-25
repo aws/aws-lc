@@ -75,7 +75,37 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # Pinned to a librdkafka release for a stable required check. 0151 and
+      # 0182 are upstream mock-broker races (exact broker-cache counts and a
+      # ShareFetch sleep window). They do not exercise the AWS-LC TLS path, so
+      # the required job skips them. If you bump the ref, confirm
+      # librdkafka-testing.patch still applies: it rewrites the `quick:` target
+      # in tests/Makefile. Omit both arguments to track the default branch and
+      # run the full quick suite.
       - name: Run librdkafka build
+        run: |
+          ./tests/ci/integration/run_librdkafka_integration.sh 'v2.16.0' '0151,0182'
+  # Tracks librdkafka's default branch to catch upstream breakages early.
+  # Non-blocking: master can fail for reasons outside our control (new tests,
+  # the races skipped above), so this job is allowed to fail without failing CI.
+  librdkafka-main:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang
+      - uses: actions/checkout@v7
+      # Kafka 3.9 predates Java 25 support, while ubuntu-26.04 defaults to
+      # Java 25. Pin the broker cluster to a supported LTS release.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run librdkafka build (main)
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
   socat:
@@ -124,7 +154,7 @@ jobs:
         with:
           repository: sfackler/rust-openssl
           path: rust-openssl
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable branch, 2026-11-15
         id: toolchain
       - name: Set Rust toolchain override
         run: rustup override set ${{ steps.toolchain.outputs.name }}

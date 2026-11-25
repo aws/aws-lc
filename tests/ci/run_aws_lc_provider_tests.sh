@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Build the AWS-LC OpenSSL provider in its shipping configuration and run its
-# two unit suites. Linux only, deliberately: ENABLE_DIST_PKG is a FATAL_ERROR
-# elsewhere, and without it the two-libcrypto linkage checks below have nothing
-# to assert against, so a green run on another platform would claim more than it
-# proved. Other platforms are for development; see provider/README.md.
+# two unit suites. Linux only, deliberately: ENABLE_DIST_PKG and
+# ENABLE_SYMBOL_VERSIONING are a FATAL_ERROR on macOS and Windows, the linkage
+# checks below use Linux tooling, and without both a green run elsewhere would
+# claim more than it proved. Other platforms are for development; see
+# provider/README.md.
 #
 # The provider is off by default and needs OpenSSL's provider headers, which
 # AWS-LC's own tree does not carry, so this script builds the pinned OpenSSL from
@@ -85,14 +86,18 @@ echo "OpenSSL prefix: ${OPENSSL_ROOT}"
 
 banner "Building AWS-LC and the provider"
 
-# ENABLE_DIST_PKG is the shipping configuration: ELF symbol versioning binds
-# every AWS-LC export to an AWS_LC_1.0 node and suffixes the soname, which is
-# what keeps the provider's AWS-LC references from being satisfied by OpenSSL's
-# libcrypto.
+# ENABLE_DIST_PKG suffixes the soname and installs AWS-LC to cohabit with
+# OpenSSL. ENABLE_SYMBOL_VERSIONING binds every AWS-LC export to an AWS_LC_1.0
+# node; it defaults from ENABLE_DIST_PKG but is stated so a configuration that
+# cannot carry it fails rather than dropping it, with the namespace the linkage
+# check expects. Together they keep the provider's AWS-LC references from being
+# satisfied by OpenSSL's libcrypto.
 cmake_args=(
   -DCMAKE_BUILD_TYPE=RelWithAsserts
   -DBUILD_SHARED_LIBS=1
   -DENABLE_DIST_PKG=ON
+  -DENABLE_SYMBOL_VERSIONING=ON
+  -DSYMBOL_VERSION_NAMESPACE=AWS_LC
   -DBUILD_AWSLC_PROVIDER=ON
   "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT}"
 )
@@ -147,7 +152,7 @@ echo "exports OSSL_provider_init"
 # --------------------------------------------------------------------------
 #
 # This is the one failure the unit suites cannot see, and the reason this script
-# runs where ENABLE_DIST_PKG can be built. Both libcryptos export ~2100
+# runs where both options can be built. Both libcryptos export ~2100
 # identically-named symbols, so if the provider's SHA256_Init binds to OpenSSL's,
 # nothing fails: OpenSSL's SHA-256 is also correct, every known-answer test
 # passes, and the provider quietly delegates to the library it exists to replace.
@@ -171,7 +176,8 @@ fi
 echo "OK: depends on AWS-LC's suffixed libcrypto and not on OpenSSL's"
 
 # Rejects frontend overlap with AWS-LC, then requires the final module's AWS-LC
-# imports to match the backend object inventory and crypto/libcrypto.txt.
+# imports to match the backend object inventory and crypto/libcrypto.txt,
+# version node included, so an unversioned build fails here.
 run_cmake_custom_target awslc_provider_linkage_test
 
 # --------------------------------------------------------------------------

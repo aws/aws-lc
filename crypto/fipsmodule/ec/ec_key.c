@@ -345,7 +345,10 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     BIGNUM *x = BN_new();
     BIGNUM *y = BN_new();
     int check_ret = 1;
-    if (group->meth->felem_to_bytes == NULL) {
+    if (x == NULL || y == NULL) {
+      // BN_new already reported the allocation failure.
+      check_ret = 0;
+    } else if (group->meth->felem_to_bytes == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       check_ret = 0;
     } else if (!ec_felem_to_bignum(group, x, &pub_key->raw.X) ||

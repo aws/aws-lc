@@ -23,7 +23,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Rust and Cargo
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable branch, 2026-11-15
 
       - name: Install duvet
         run: cargo install duvet --locked

@@ -38,11 +38,11 @@ jobs:
     steps:
       - name: Install NASM
         if: matrix.config.target_arch == 'x86_64'
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install ninja-build tool
-        uses: seanmiddleditch/gha-setup-ninja@v6
+        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
       - uses: actions/setup-go@v7
         with:
           go-version: '>= 1.18'

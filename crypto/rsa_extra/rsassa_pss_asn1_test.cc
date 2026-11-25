@@ -3,6 +3,8 @@
 
 #include <openssl/base.h>
 
+#include <limits.h>
+
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
@@ -623,4 +625,25 @@ TEST(PssGetTest, AllParamsAbsent) {
       nullptr,
   };
   test_RSASSA_PSS_PARAMS_get(&pss, EVP_sha1(), PSS_DEFAULT_SALT_LEN);
+}
+
+TEST(PssGetTest, SaltLengthIntRange) {
+  RSA_INTEGER salt = {0};
+  RSASSA_PSS_PARAMS pss = {nullptr, nullptr, &salt, nullptr};
+  for (int supported : {0, 1, PSS_DEFAULT_SALT_LEN, INT_MAX}) {
+    SCOPED_TRACE(supported);
+    salt.value = supported;
+    test_RSASSA_PSS_PARAMS_get(&pss, EVP_sha1(), supported);
+  }
+
+  for (int64_t unsupported : {int64_t{-1}, int64_t{INT_MAX} + 1, INT64_MAX}) {
+    SCOPED_TRACE(unsupported);
+    salt.value = unsupported;
+    const EVP_MD *md = nullptr;
+    const EVP_MD *mgf1md = nullptr;
+    int saltlen = 123;
+    EXPECT_FALSE(RSASSA_PSS_PARAMS_get(&pss, &md, &mgf1md, &saltlen));
+    EXPECT_EQ(123, saltlen);
+    ERR_clear_error();
+  }
 }

@@ -10,6 +10,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <string.h>
 
@@ -178,7 +179,49 @@ bool tls_add_change_cipher_spec(SSL *ssl) {
   return true;
 }
 
-int tls_flush_flight(SSL *ssl) {
+static void clear_system_error() {
+#if defined(OPENSSL_WINDOWS)
+  WSASetLastError(0);
+#else
+  errno = 0;
+#endif
+}
+
+// is_connection_closed_error returns whether the calling thread's system error
+// indicates that the peer closed or reset the connection. These are the errors
+// OpenSSL ignores when sending TLS 1.3 NewSessionTickets.
+static bool is_connection_closed_error() {
+#if defined(OPENSSL_WINDOWS)
+  return WSAGetLastError() == WSAECONNRESET;
+#else
+  return errno == EPIPE || errno == ECONNRESET;
+#endif
+}
+
+static int write_pending_flight(SSL *ssl, bool is_ticket_flight) {
+  while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
+    // A successful short write may leave a stale system error, so clear it
+    // before each BIO operation whose failure we might treat as a peer close.
+    if (is_ticket_flight) {
+      clear_system_error();
+    }
+    int ret = BIO_write(
+        ssl->wbio.get(),
+        ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
+        ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset);
+    if (ret <= 0) {
+      return ret;
+    }
+    ssl->s3->pending_flight_offset += ret;
+  }
+
+  if (is_ticket_flight) {
+    clear_system_error();
+  }
+  return BIO_flush(ssl->wbio.get()) > 0 ? 1 : -1;
+}
+
+static int flush_flight(SSL *ssl, bool is_ticket_flight) {
   if (!tls_flush_pending_hs_data(ssl)) {
     return -1;
   }
@@ -225,28 +268,36 @@ int tls_flush_flight(SSL *ssl) {
     return -1;
   }
 
-  // Write the pending flight.
-  while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
-    int ret = BIO_write(
-        ssl->wbio.get(),
-        ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
-        ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset);
-    if (ret <= 0) {
+  int ret = write_pending_flight(ssl, is_ticket_flight);
+  if (ret <= 0) {
+    // Check the system error before another call can overwrite it. A queued
+    // error (even ERR_LIB_SYS) or a retry request must be left to the caller.
+    // |SSL_get_error| honors the individual retry flags, which a BIO may set
+    // without |BIO_FLAGS_SHOULD_RETRY|, so test them all.
+    if (!is_ticket_flight || !is_connection_closed_error() ||
+        BIO_test_flags(ssl->wbio.get(),
+                       BIO_FLAGS_RWS | BIO_FLAGS_SHOULD_RETRY) ||
+        ERR_peek_error() != 0) {
       ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
       return ret;
     }
-
-    ssl->s3->pending_flight_offset += ret;
-  }
-
-  if (BIO_flush(ssl->wbio.get()) <= 0) {
-    ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
-    return -1;
+    // Dropping sealed tickets leaves a gap in the write sequence numbers, but
+    // the transport is no longer writable. The caller can still read from it.
+    ssl->s3->rwstate = SSL_ERROR_NONE;
   }
 
   ssl->s3->pending_flight.reset();
   ssl->s3->pending_flight_offset = 0;
   return 1;
+}
+
+int tls_flush_flight(SSL *ssl) { return flush_flight(ssl, false); }
+
+int tls_flush_ticket_flight(SSL *ssl) {
+  // Early application writes require accepted 0-RTT, which sends its tickets
+  // in the first flight and never reaches this state.
+  assert(ssl->quic_method == nullptr && ssl->s3->write_buffer.empty());
+  return flush_flight(ssl, true);
 }
 
 static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
