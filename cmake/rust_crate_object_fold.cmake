@@ -10,8 +10,17 @@
 # With LLVM_OBJCOPY (windows-gnullvm), the fold renames the crate's
 # rust_eh_personality to PERSONALITY, which no consumer's Rust defines.
 #
+# With COFF_SECTIONS (windows-msvc shared FIPS builds), OUTPUT joins bcm.c in
+# bcm.lib. The module is what bcm.c's pragmas put in .fipstx$b and .fipsco$b:
+# the linker sorts sections by their $ suffix, so those land between the
+# markers' $a and $z. COFF_SECTIONS gives the crate's code and constant
+# sections the same names. Its unwind tables (.pdata, .xdata), .data, .bss and
+# debug info stay outside the module, as bcm.c's do. The linker keeps one copy
+# of each COMDAT constant, such as __xmm@<hex>, and may keep one from outside
+# the module, where clang-cl puts bcm.c's own.
+#
 # Inputs (-D): LLVM_AR LLVM_NM LLVM_OBJDUMP STATICLIB EXPORTS_FILE OUTPUT,
-# and optionally LLVM_OBJCOPY PERSONALITY
+# and optionally LLVM_OBJCOPY PERSONALITY COFF_SECTIONS
 
 # MSVC names float and vector constants __real@<hex>, __xmm@<hex> and so on,
 # in COMDAT sections, exactly as MSVC's C compiler does. Duplicates fold.
@@ -88,5 +97,18 @@ if(run_out MATCHES "\\.drectve")
 endif()
 if(LLVM_OBJCOPY)
   run(${LLVM_OBJCOPY} "--redefine-sym=rust_eh_personality=${PERSONALITY}" "${tmp}")
+endif()
+if(COFF_SECTIONS)
+  run("${COFF_SECTIONS}" -o "${tmp}" "${tmp}" ".text*=.fipstx$b" ".rdata*=.fipsco$b")
+  # Code in a section of any other name would land outside the module.
+  run(${LLVM_OBJDUMP} -h "${tmp}")
+  string(REGEX MATCHALL "[^ \n]+ +[0-9a-f]+ [0-9a-f]+ TEXT" code_sections "${run_out}")
+  foreach(section IN LISTS code_sections)
+    string(REGEX MATCH "^[^ ]+" section "${section}")
+    if(NOT section STREQUAL ".fipstx$b")
+      message(FATAL_ERROR "rust crate object fold: the crate object has code in ${section}, "
+                          "outside the module's sections")
+    endif()
+  endforeach()
 endif()
 file(RENAME "${tmp}" "${OUTPUT}")

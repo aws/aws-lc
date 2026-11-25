@@ -280,9 +280,10 @@ endif()
 #
 # With ASM, OUTPUT is instead rustc's assembly for the crate, after LTO, which
 # static FIPS builds give delocate with bcm.c's. The crate is built the same
-# way otherwise.
+# way otherwise. COFF_SECTIONS, the coff_sections tool, has the crate object
+# fold give the crate's code and constant sections bcm.c's names.
 function(cargo_add_rust_object)
-  cmake_parse_arguments(arg "ASM" "OUTPUT;MANIFEST_PATH;LIB_NAME" "" ${ARGN})
+  cmake_parse_arguments(arg "ASM" "OUTPUT;MANIFEST_PATH;LIB_NAME;COFF_SECTIONS" "" ${ARGN})
   get_filename_component(crate_dir "${arg_MANIFEST_PATH}" DIRECTORY)
   file(GLOB_RECURSE rust_sources "${crate_dir}/*.rs" "${crate_dir}/Cargo.toml" "${crate_dir}/Cargo.lock")
   # The exports: internal.h declares each on a line that starts with its
@@ -448,6 +449,7 @@ function(cargo_add_rust_object)
         "-DLLVM_OBJDUMP=${RUST_LLVM_OBJDUMP}" "-DLLVM_OBJCOPY=${RUST_LLVM_OBJCOPY}"
         "-DPERSONALITY=${export_prefix}awslc_rust_eh_personality" "-DSTATICLIB=${staticlib}"
         "-DEXPORTS_FILE=${exports_file}" "-DOUTPUT=${arg_OUTPUT}"
+        "-DCOFF_SECTIONS=${arg_COFF_SECTIONS}"
         -P "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake")
   else()
     # On ELF, a stub of .hidden directives makes the exports hidden in the
@@ -489,7 +491,7 @@ function(cargo_add_rust_object)
       -- ${rustflags} ${cargo_emit}
     ${fold_commands}
     DEPENDS ${rust_sources} "${crate_dir}/sections.lds"
-      "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake"
+      "${AWSLC_SOURCE_DIR}/cmake/rust_crate_object_fold.cmake" ${arg_COFF_SECTIONS}
     COMMENT "Building Rust staticlib ${arg_LIB_NAME} into ${output_name}"
     USES_TERMINAL
     VERBATIM)

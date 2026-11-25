@@ -712,14 +712,27 @@ elseif(FIPS_SHARED)
   endif()
 
   # The Rust crate's object joins the module's partial link, which takes its
-  # code and constants into the hashed regions.
+  # code and constants into the hashed regions. Windows has no partial link:
+  # coff_sections gives the object's code and constant sections bcm.c's names
+  # (cmake/rust_crate_object_fold.cmake).
   set(BCM_RUST_OBJECT "")
   if(ENABLE_RUST)
-    set(BCM_RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust.o")
+    set(BCM_RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
+    set(rust_object_args "")
+    if(MSVC)
+      # Run on the build host, which finds programs only by their .exe on Windows.
+      set(coff_sections coff_sections)
+      if(CMAKE_HOST_WIN32)
+        set(coff_sections coff_sections.exe)
+      endif()
+      go_executable(${coff_sections} github.com/aws/aws-lc/util/fipstools/coff_sections)
+      set(rust_object_args COFF_SECTIONS "${CMAKE_CURRENT_BINARY_DIR}/${coff_sections}")
+    endif()
     cargo_add_rust_object(
       OUTPUT "${BCM_RUST_OBJECT}"
       MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
-      LIB_NAME bcm_rust)
+      LIB_NAME bcm_rust
+      ${rust_object_args})
   endif()
 
   if (APPLE)
@@ -797,8 +810,8 @@ elseif(FIPS_SHARED)
          CONTENT "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\"\n\">\"")
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp fips_msvc_end.obj /OUT:${BCM_NAME}
-      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp ${BCM_RUST_OBJECT} fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()
