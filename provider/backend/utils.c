@@ -98,8 +98,7 @@ static const struct {
     {AWSLC_PROV_NAMES_KECCAK_256, EVP_keccak256},
 };
 
-#define AWSLC_PROV_DIGEST_NAME_COUNT \
-  (sizeof(awslc_prov_digest_names) / sizeof(awslc_prov_digest_names[0]))
+#define AWSLC_PROV_DIGEST_NAME_COUNT AWSLC_PROV_COUNT(awslc_prov_digest_names)
 
 // Room for the longest canonical name in the table and its NUL.
 #define AWSLC_PROV_DIGEST_CANONICAL_SIZE 16
@@ -156,9 +155,8 @@ const EVP_MD *awslc_prov_digest_md(const char *name) {
                                           : NULL;
 }
 
-const char *awslc_prov_digest_canonical_name(const char *name) {
-  const size_t i = awslc_prov_digest_index(name);
-
+// Row |i|'s canonical name, or NULL for no row.
+static const char *awslc_prov_digest_canonical_at(size_t i) {
   if (i == AWSLC_PROV_DIGEST_NAME_COUNT ||
       pthread_once(&awslc_prov_digest_canonical_once,
                    awslc_prov_digest_canonical_init) != 0 ||
@@ -166,4 +164,18 @@ const char *awslc_prov_digest_canonical_name(const char *name) {
     return NULL;
   }
   return awslc_prov_digest_canonical[i];
+}
+
+const char *awslc_prov_digest_canonical_name(const char *name) {
+  return awslc_prov_digest_canonical_at(awslc_prov_digest_index(name));
+}
+
+const char *awslc_prov_digest_md_name(const EVP_MD *md) {
+  // AWS-LC's EVP_MDs are static, so identity is pointer equality.
+  for (size_t i = 0; md != NULL && i < AWSLC_PROV_DIGEST_NAME_COUNT; i++) {
+    if (awslc_prov_digest_names[i].md() == md) {
+      return awslc_prov_digest_canonical_at(i);
+    }
+  }
+  return NULL;
 }

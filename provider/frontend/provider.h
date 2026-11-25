@@ -106,22 +106,30 @@ void awslc_prov_error_raise(const AWSLC_PROV_CTX *ctx, uint32_t reason,
 // One bracket per dispatch call, never nested: begin empties AWS-LC's queue, so
 // an inner bracket would destroy the outer call's records.
 //
-// A dispatch call crosses into AWS-LC in one of two ways, and closes its
-// bracket to match:
+// Close the bracket with one of three macros, chosen by what the dispatch call
+// does:
 //
-//   AWSLC_PROV_CALL_END          Setup and intermediate steps: context
-//                                allocation, init, update, copy, self-test.
-//                                AWS-LC attests nothing here.
-//   AWSLC_PROV_CALL_END_CHECK_APPROVED
-//                                The step that completes an AWS-LC approved
-//                                service and produces its result: digest
-//                                final, keygen, sign, verify, derive. AWS-LC
-//                                bumps its FIPS service-indicator counter only
-//                                here, and only when the service ran approved.
+//   1. It does not finish an operation: context allocation, init, update,
+//      copy, parameter get or set. Use AWSLC_PROV_CALL_END. Nothing is
+//      reported to the application's FIPS indicator.
 //
-// AWS-LC's service indicator tests
-// (crypto/fipsmodule/service_indicator/service_indicator_test.cc) are the
-// authority on which calls increment the indicator.
+//   2. It finishes an operation and hands back its result: digest final,
+//      keygen, sign, verify, derive. Use AWSLC_PROV_CALL_END_CHECK_APPROVED.
+//      It asks AWS-LC whether the operation ran FIPS approved and reports
+//      AWS-LC's answer. This is the default for anything that returns a
+//      result.
+//
+//   3. As 2, but the AWS-LC function called never reports approval. Use
+//      AWSLC_PROV_CALL_END_UNAPPROVED, which reports the result unapproved
+//      without asking. Asking would be wrong, not just redundant: AWS-LC runs
+//      a self-test on the first use of some algorithms, and that self-test can
+//      make the check answer yes for an operation that was not approved.
+//      Example: RSA sign over a caller's digest goes through EVP_PKEY_sign,
+//      and only EVP_DigestSign* reports approval.
+//
+// For an unapproved result, 2 and 3 do the same thing: clear the context's
+// approved flag and, on a FIPS provider, call the application's indicator
+// callback if it set one. If the callback returns 0, the call fails.
 typedef struct {
   const AWSLC_PROV_CTX *provctx;
   uint64_t indicator;
@@ -154,6 +162,12 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
                                        const char *description, int *approved,
                                        const char *file, int line);
 
+// As awslc_prov_call_end_check_approved, but reports every successful result
+// unapproved without asking AWS-LC. Case 3 above.
+int awslc_prov_call_end_unapproved(AWSLC_PROV_CALL *call, int succeeded,
+                                   const char *type, const char *description,
+                                   int *approved, const char *file, int line);
+
 #define AWSLC_PROV_CALL_END(call, succeeded, detail) \
   awslc_prov_call_end((call), (succeeded), (detail), __FILE__, __LINE__)
 
@@ -162,6 +176,11 @@ int awslc_prov_call_end_check_approved(AWSLC_PROV_CALL *call, int succeeded,
   awslc_prov_call_end_check_approved((call), (succeeded), (type),              \
                                      (description), (approved), __FILE__,      \
                                      __LINE__)
+
+#define AWSLC_PROV_CALL_END_UNAPPROVED(call, succeeded, type, description, \
+                                       approved)                           \
+  awslc_prov_call_end_unapproved((call), (succeeded), (type), (description), \
+                                 (approved), __FILE__, __LINE__)
 
 #if defined(__cplusplus)
 }  // extern "C"
