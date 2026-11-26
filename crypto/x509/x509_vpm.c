@@ -56,6 +56,7 @@
 
 #include <string.h>
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/stack.h>
@@ -170,6 +171,16 @@ static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
     return 1;
   }
 
+  // Poisoned parameters fail the copy, so |X509_STORE_CTX_init| fails before
+  // the verify callback can suppress the error. Poison also spreads to |dest|,
+  // so that a caller which ignores this return value still fails closed later.
+  // |ssl_crypto_x509_ssl_new| inherits this way for every new connection.
+  if (src->poison || dest->poison) {
+    dest->poison = 1;
+    OPENSSL_PUT_ERROR(X509, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   copy_int_param(&dest->purpose, &src->purpose, /*default_val=*/0, prefer_src);
   copy_int_param(&dest->trust, &src->trust, /*default_val=*/0, prefer_src);
   copy_int_param(&dest->depth, &src->depth, /*default_val=*/-1, prefer_src);
@@ -220,7 +231,6 @@ static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
     }
   }
 
-  dest->poison = src->poison;
   return 1;
 }
 
@@ -434,6 +444,10 @@ int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param, const unsigned char *ip,
 int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param, const char *ipasc) {
   unsigned char ipout[16];
   size_t iplen;
+
+  if (param == NULL) {
+    return 0;
+  }
 
   iplen = (size_t)x509v3_a2i_ipadd(ipout, ipasc);
   if (iplen == 0) {
