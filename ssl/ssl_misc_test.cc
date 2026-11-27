@@ -5,6 +5,13 @@
 
 #include <tuple>
 
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/socket.h>
+#endif
+
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
@@ -469,6 +476,29 @@ TEST(SSLTest, QuietShutdown) {
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
 
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+// ListenOnLoopback sets |*out_listener| to a listening TCP socket and
+// |*out_hostname| to its address, in the form used by connect BIOs.
+static void ListenOnLoopback(ScopedFD *out_listener,
+                             std::string *out_hostname) {
+  ScopedFD listener(socket(AF_INET, SOCK_STREAM, 0));
+  ASSERT_TRUE(listener.is_valid());
+  sockaddr_in addr = {};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  ASSERT_EQ(
+      bind(listener.get(), reinterpret_cast<sockaddr *>(&addr), sizeof(addr)),
+      0);
+  ASSERT_EQ(listen(listener.get(), 1), 0);
+  socklen_t addr_len = sizeof(addr);
+  ASSERT_EQ(getsockname(listener.get(), reinterpret_cast<sockaddr *>(&addr),
+                        &addr_len),
+            0);
+  *out_hostname = "127.0.0.1:" + std::to_string(ntohs(addr.sin_port));
+  *out_listener = std::move(listener);
+}
+#endif
+
 class SSLUnexpectedEOFTest
     : public testing::TestWithParam<std::tuple<int, bool>> {
  protected:
@@ -485,8 +515,8 @@ class SSLUnexpectedEOFTest
     ASSERT_TRUE(ConnectClientAndServer(&client_, &server_, client_ctx.get(),
                                        server_ctx.get()));
 
-    // Like a socket BIO, this reports EOF through a zero read return, not
-    // BIO_eof. Retry flags allow the same BIO to model temporary failures.
+    // Like a socket BIO, this reports EOF after a zero read return without
+    // retry flags. Retry flags also let it model temporary failures.
     bio_method_.reset(BIO_meth_new(0, nullptr));
     ASSERT_TRUE(bio_method_);
     ASSERT_TRUE(BIO_meth_set_create(bio_method_.get(), [](BIO *bio) -> int {
@@ -496,11 +526,18 @@ class SSLUnexpectedEOFTest
     ASSERT_TRUE(
         BIO_meth_set_read(bio_method_.get(), [](BIO *bio, char *, int) -> int {
           BIO_clear_retry_flags(bio);
+          BIO_clear_flags(bio, BIO_FLAGS_IN_EOF);
           BIO_set_flags(bio, *static_cast<const int *>(BIO_get_data(bio)));
+          if (!BIO_should_retry(bio)) {
+            BIO_set_flags(bio, BIO_FLAGS_IN_EOF);
+          }
           return 0;
         }));
     ASSERT_TRUE(BIO_meth_set_ctrl(
-        bio_method_.get(), [](BIO *, int, long, void *) -> long { return 0; }));
+        bio_method_.get(), [](BIO *bio, int cmd, long, void *) -> long {
+          return cmd == BIO_CTRL_EOF &&
+                 BIO_test_flags(bio, BIO_FLAGS_IN_EOF) != 0;
+        }));
 
     for (SSL *ssl : {client_.get(), server_.get()}) {
       bssl::UniquePtr<BIO> bio(BIO_new(bio_method_.get()));
@@ -555,6 +592,7 @@ class SSLUnexpectedEOFTest
           int ret = Read(ssl);
           ASSERT_EQ(ret, 0);
           EXPECT_EQ(SSL_get_error(ssl, ret), expected_error);
+          EXPECT_EQ(BIO_eof(SSL_get_rbio(ssl)), 0);
           EXPECT_EQ(ERR_peek_error(), 0u);
           EXPECT_EQ(SSL_get_shutdown(ssl), 0);
           EXPECT_EQ(SSL_is_init_finished(ssl), 1);
@@ -563,6 +601,72 @@ class SSLUnexpectedEOFTest
       }
     }
   }
+
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+  void CheckTransportEOF(SSL *ssl, bssl::UniquePtr<BIO> bio, ScopedFD peer,
+                         bool ignore_eof) {
+    int fd = BIO_get_fd(bio.get(), nullptr);
+    ASSERT_GE(fd, 0);
+    int flags = fcntl(fd, F_GETFL, 0);
+    ASSERT_GE(flags, 0);
+    ASSERT_EQ(fcntl(fd, F_SETFL, flags | O_NONBLOCK), 0);
+    if (ignore_eof) {
+      SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+    }
+    SSL_set0_rbio(ssl, bio.release());
+
+    // An open but empty socket remains retryable, not EOF.
+    ERR_clear_error();
+    int ret = Read(ssl);
+    ASSERT_EQ(ret, -1);
+    EXPECT_EQ(SSL_get_error(ssl, ret), SSL_ERROR_WANT_READ);
+    EXPECT_EQ(BIO_eof(SSL_get_rbio(ssl)), 0);
+    EXPECT_EQ(ERR_peek_error(), 0u);
+    EXPECT_EQ(SSL_get_shutdown(ssl), 0);
+    EXPECT_EQ(SSL_is_init_finished(ssl), 1);
+
+    peer.reset();
+    pollfd pfd = {fd, POLLIN, 0};
+    ASSERT_EQ(poll(&pfd, 1, 5000), 1);
+    ASSERT_NO_FATAL_FAILURE(CheckEOF(ssl, ignore_eof));
+    EXPECT_EQ(BIO_eof(SSL_get_rbio(ssl)), 1);
+  }
+
+#if defined(AF_UNIX)
+  void CheckSocketEOF(const BIO_METHOD *method) {
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      int fds[2];
+      ASSERT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, fds), 0);
+      ScopedFD reader(fds[0]), peer(fds[1]);
+      bssl::UniquePtr<BIO> bio(BIO_new(method));
+      ASSERT_TRUE(bio);
+      ASSERT_EQ(BIO_set_fd(bio.get(), reader.get(), BIO_CLOSE), 1);
+      reader.release();  // Ownership transferred to |bio|.
+      ASSERT_NO_FATAL_FAILURE(
+          CheckTransportEOF(ignore_eof ? server_.get() : client_.get(),
+                            std::move(bio), std::move(peer), ignore_eof));
+    }
+  }
+#endif
+
+  void CheckConnectEOF() {
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      ScopedFD listener;
+      std::string hostname;
+      ASSERT_NO_FATAL_FAILURE(ListenOnLoopback(&listener, &hostname));
+      bssl::UniquePtr<BIO> bio(BIO_new_connect(hostname.c_str()));
+      ASSERT_TRUE(bio);
+      ASSERT_EQ(BIO_do_connect(bio.get()), 1);
+      ScopedFD peer(accept(listener.get(), nullptr, nullptr));
+      ASSERT_TRUE(peer.is_valid());
+      ASSERT_NO_FATAL_FAILURE(
+          CheckTransportEOF(ignore_eof ? server_.get() : client_.get(),
+                            std::move(bio), std::move(peer), ignore_eof));
+    }
+  }
+#endif
 
   int retry_flags_ = 0;
   // The method and retry flags must outlive the SSL objects using their BIOs.
@@ -596,12 +700,77 @@ TEST_P(SSLUnexpectedEOFTest, IgnoreUnexpectedEOF) {
 }
 
 TEST_P(SSLUnexpectedEOFTest, RetryReadIsNotEOF) {
-  CheckRetry(BIO_FLAGS_READ, SSL_ERROR_WANT_READ);
+  ASSERT_NO_FATAL_FAILURE(CheckRetry(BIO_FLAGS_READ, SSL_ERROR_WANT_READ));
+
+  ASSERT_TRUE(
+      BIO_meth_set_read(bio_method_.get(), [](BIO *bio, char *, int) -> int {
+        BIO_clear_retry_flags(bio);
+        return -1;
+      }));
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    // Even a BIO with a latched EOF flag must not turn a negative return into
+    // an unexpected-EOF error.
+    BIO_set_flags(SSL_get_rbio(ssl), BIO_FLAGS_IN_EOF);
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      if (ignore_eof) {
+        SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+      } else {
+        SSL_clear_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+      }
+      ERR_clear_error();
+      int ret = Read(ssl);
+      ASSERT_EQ(ret, -1);
+      EXPECT_EQ(SSL_get_error(ssl, ret), SSL_ERROR_SYSCALL);
+      EXPECT_EQ(ERR_peek_error(), 0u);
+      EXPECT_EQ(SSL_get_shutdown(ssl), 0);
+      EXPECT_EQ(SSL_is_init_finished(ssl), 1);
+    }
+  }
 }
 
 TEST_P(SSLUnexpectedEOFTest, RetryWriteIsNotEOF) {
   CheckRetry(BIO_FLAGS_WRITE, SSL_ERROR_WANT_WRITE);
 }
+
+TEST_P(SSLUnexpectedEOFTest, ReadBIOWithoutCtrlIsNotEOF) {
+  // A BIO with no ctrl hook cannot report EOF. |BIO_eof| itself fails on it
+  // and queues an error, which must not leak into the result of a read.
+  ASSERT_TRUE(BIO_meth_set_ctrl(bio_method_.get(), nullptr));
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    EXPECT_LT(BIO_eof(SSL_get_rbio(ssl)), 0);
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      if (ignore_eof) {
+        SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+      }
+      for (int attempt = 0; attempt < 2; attempt++) {
+        SCOPED_TRACE(attempt);
+        ERR_clear_error();
+        int ret = Read(ssl);
+        ASSERT_EQ(ret, 0);
+        EXPECT_EQ(SSL_get_error(ssl, ret), SSL_ERROR_SYSCALL);
+        EXPECT_EQ(ERR_peek_error(), 0u);
+        EXPECT_EQ(SSL_get_shutdown(ssl), 0);
+        EXPECT_EQ(SSL_is_init_finished(ssl), 1);
+        EXPECT_EQ(SSL_in_init(ssl), 0);
+      }
+    }
+  }
+}
+
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+#if defined(AF_UNIX)
+TEST_P(SSLUnexpectedEOFTest, SocketEOF) { CheckSocketEOF(BIO_s_socket()); }
+
+#if !defined(OPENSSL_NO_POSIX_IO)
+TEST_P(SSLUnexpectedEOFTest, FDEOF) { CheckSocketEOF(BIO_s_fd()); }
+#endif
+#endif
+
+TEST_P(SSLUnexpectedEOFTest, ConnectEOF) { CheckConnectEOF(); }
+#endif
 
 TEST_P(SSLUnexpectedEOFTest, QuietShutdownAfterUnexpectedEOF) {
   for (SSL *ssl : {client_.get(), server_.get()}) {
@@ -623,6 +792,103 @@ TEST_P(SSLUnexpectedEOFTest, QuietShutdownAfterUnexpectedEOF) {
   }
 }
 
+
+TEST(SSLTest, ZeroReturnShimReadIsNotEOF) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(GetVersionName(version));
+    for (bool ignore_eof : {false, true}) {
+      SCOPED_TRACE(ignore_eof);
+      struct ShimData {
+        BIO *ssl_bio = nullptr;
+        bssl::UniquePtr<BIO> transport;
+      } data;
+      // The method and callback data must outlive the SSL using the shim.
+      bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+      ASSERT_TRUE(method);
+      ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *bio) -> int {
+        BIO_set_init(bio, 1);
+        return 1;
+      }));
+      ASSERT_TRUE(BIO_meth_set_read(
+          method.get(), [](BIO *bio, char *out, int len) -> int {
+            auto *data = static_cast<ShimData *>(BIO_get_data(bio));
+            BIO_clear_retry_flags(bio);
+            int ret = BIO_read(data->transport.get(), out, len);
+            if (ret < 0 && BIO_should_read(data->transport.get())) {
+              // mongo-c-driver marks the SSL BIO above it as retryable, not
+              // the transport that libssl reads, and returns zero.
+              BIO_set_retry_read(data->ssl_bio);
+              return 0;
+            }
+            return ret;
+          }));
+      ASSERT_TRUE(BIO_meth_set_write(
+          method.get(), [](BIO *bio, const char *in, int len) -> int {
+            auto *data = static_cast<ShimData *>(BIO_get_data(bio));
+            return BIO_write(data->transport.get(), in, len);
+          }));
+      ASSERT_TRUE(BIO_meth_set_ctrl(
+          method.get(), [](BIO *bio, int cmd, long num, void *ptr) -> long {
+            if (cmd == BIO_CTRL_EOF) {
+              return 0;
+            }
+            auto *data = static_cast<ShimData *>(BIO_get_data(bio));
+            return BIO_ctrl(data->transport.get(), cmd, num, ptr);
+          }));
+
+      bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+      bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+      ASSERT_TRUE(client_ctx);
+      ASSERT_TRUE(server_ctx);
+      for (SSL_CTX *ctx : {client_ctx.get(), server_ctx.get()}) {
+        ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx, version));
+        ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx, version));
+      }
+      bssl::UniquePtr<SSL> client, server;
+      ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                         server_ctx.get()));
+      ASSERT_TRUE(FlushNewSessionTickets(client.get(), server.get()));
+      if (ignore_eof) {
+        SSL_set_options(client.get(), SSL_OP_IGNORE_UNEXPECTED_EOF);
+      }
+      bssl::UniquePtr<BIO> ssl_bio(BIO_new(BIO_f_ssl()));
+      ASSERT_TRUE(ssl_bio);
+      ASSERT_EQ(BIO_set_ssl(ssl_bio.get(), client.get(), BIO_NOCLOSE), 1);
+      data.ssl_bio = ssl_bio.get();
+      ASSERT_TRUE(BIO_up_ref(SSL_get_rbio(client.get())));
+      data.transport.reset(SSL_get_rbio(client.get()));
+      bssl::UniquePtr<BIO> shim(BIO_new(method.get()));
+      ASSERT_TRUE(shim);
+      BIO_set_data(shim.get(), &data);
+      // Attach explicitly so this regression does not depend on BIO_push.
+      BIO *transport = shim.release();
+      SSL_set_bio(client.get(), transport, transport);
+
+      char buf[5];
+      for (int attempt = 0; attempt < 2; attempt++) {
+        SCOPED_TRACE(attempt);
+        ERR_clear_error();
+        ASSERT_EQ(BIO_read(ssl_bio.get(), buf, sizeof(buf)), 0);
+        EXPECT_TRUE(BIO_should_read(ssl_bio.get()));
+        EXPECT_TRUE(BIO_should_retry(ssl_bio.get()));
+        EXPECT_FALSE(BIO_should_retry(transport));
+        EXPECT_EQ(BIO_eof(transport), 0);
+        EXPECT_EQ(ERR_peek_error(), 0u);
+        EXPECT_EQ(SSL_get_shutdown(client.get()), 0);
+        EXPECT_EQ(SSL_is_init_finished(client.get()), 1);
+      }
+
+      ASSERT_EQ(SSL_write(server.get(), "hello", 5), 5);
+      ASSERT_EQ(BIO_read(ssl_bio.get(), buf, sizeof(buf)), 5);
+      EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes("hello"));
+      EXPECT_FALSE(BIO_should_retry(ssl_bio.get()));
+      EXPECT_EQ(ERR_peek_error(), 0u);
+      EXPECT_EQ(SSL_get_shutdown(client.get()), 0);
+      EXPECT_EQ(SSL_is_init_finished(client.get()), 1);
+    }
+  }
+}
 
 TEST(SSLTest, InvalidSignatureAlgorithm) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));

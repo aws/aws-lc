@@ -54,6 +54,7 @@ static int fd_free(BIO *bio) {
       BORINGSSL_CLOSE(bio->num);
     }
     bio->init = 0;
+    bio->flags = 0;
   }
   return 1;
 }
@@ -66,6 +67,8 @@ static int fd_read(BIO *b, char *out, int outl) {
   if (ret <= 0) {
     if (bio_errno_should_retry(ret)) {
       BIO_set_retry_read(b);
+    } else if (ret == 0) {
+      BIO_set_flags(b, BIO_FLAGS_IN_EOF);
     }
   }
 
@@ -96,6 +99,9 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
       ret = 0;
       if (b->init) {
         ret = (long)BORINGSSL_LSEEK(b->num, num, SEEK_SET);
+        if (ret >= 0) {
+          BIO_clear_flags(b, BIO_FLAGS_IN_EOF);
+        }
       }
       break;
     case BIO_C_FILE_TELL:
@@ -107,6 +113,7 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
       break;
     case BIO_C_SET_FD:
       fd_free(b);
+      BIO_clear_flags(b, BIO_FLAGS_IN_EOF);
       b->num = *((int *)ptr);
       b->shutdown = (int)num;
       b->init = 1;
@@ -121,6 +128,9 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
       } else {
         ret = -1;
       }
+      break;
+    case BIO_CTRL_EOF:
+      ret = (b->flags & BIO_FLAGS_IN_EOF) != 0;
       break;
     case BIO_CTRL_GET_CLOSE:
       ret = b->shutdown;

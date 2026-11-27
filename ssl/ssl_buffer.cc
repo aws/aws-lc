@@ -530,6 +530,15 @@ static int dtls_read_buffer_next_packet(SSL *ssl) {
   return 1;
 }
 
+// bio_reports_eof returns whether |bio| reports EOF through |BIO_CTRL_EOF|. A
+// BIO with no ctrl hook cannot report EOF. It is not queried, because
+// |BIO_ctrl| would fail and queue an error which |SSL_get_error| would then
+// mistake for a TLS failure.
+static bool bio_reports_eof(BIO *bio) {
+  return bio->method != nullptr && bio->method->ctrl != nullptr &&
+         BIO_eof(bio) > 0;
+}
+
 static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
   SSLBuffer *buf = &ssl->s3->read_buffer;
 
@@ -554,8 +563,11 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
                        static_cast<int>(read_amount));
     if (ret <= 0) {
+      // Query the BIO last, so it only sees |BIO_CTRL_EOF| when a zero return
+      // could otherwise be an unexpected EOF.
       if (ret == 0 && !BIO_should_retry(ssl->rbio.get()) &&
-          ssl->s3->read_shutdown == ssl_shutdown_none && !SSL_in_init(ssl)) {
+          ssl->s3->read_shutdown == ssl_shutdown_none && !SSL_in_init(ssl) &&
+          bio_reports_eof(ssl->rbio.get())) {
         if (ssl->options & SSL_OP_IGNORE_UNEXPECTED_EOF) {
           ssl->s3->read_shutdown = ssl_shutdown_close_notify;
           ssl->s3->rwstate = SSL_ERROR_ZERO_RETURN;
