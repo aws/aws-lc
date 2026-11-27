@@ -722,12 +722,6 @@ if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
-if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX AND NOT PERL_EXECUTABLE)
-  message(WARNING "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX is only partially effective "
-                  "without Perl: the AVX/AVX2 code in generated-src/ has no "
-                  "#ifndef guard and is retained.")
-endif()
-
 if (GCC)
   # All versions of GCC that AWS-LC supports has this warning
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wredundant-decls")

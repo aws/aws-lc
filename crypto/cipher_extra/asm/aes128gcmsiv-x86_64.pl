@@ -26,7 +26,7 @@ for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
-$code.=<<___;
+$code.=<<___ if ($avx);
 .section .rodata
 
 .align 16
@@ -63,9 +63,13 @@ and_mask:
 .long 0,0xffffffff, 0xffffffff, 0xffffffff
 ___
 
+# Emit .text unconditionally; NASM rejects objects with no sections
+# (nasm.us 3392738).
 $code.=<<___;
 .text
 ___
+
+if ($avx) {
 
 sub gfmul {
   #########################
@@ -2264,12 +2268,8 @@ ___
 }
 aes256gcmsiv_kdf();
 
-# Emit .text when AVX is disabled; NASM rejects objects with no sections
-# (nasm.us 3392738).
-if ($avx) {
-  print $code;
-} else {
-  print ".text\n";
-}
+}  # if ($avx)
+
+print $code;
 
 close STDOUT or die "error closing STDOUT: $!";
