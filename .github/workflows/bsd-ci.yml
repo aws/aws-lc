@@ -42,7 +42,7 @@ jobs:
         with:
           submodules: "recursive"
       - name: Prepare VM
-        uses: cross-platform-actions/action@v1.2.0
+        uses: cross-platform-actions/action@be3d7e9ff5c8770b9c51b1a8c8c5446e1cad7cf9 # v1.2.0
         env:
           AWS_LC_GO_TEST_TIMEOUT: 90m
           AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
