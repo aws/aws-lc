@@ -617,17 +617,11 @@ tutorial/rel_reordertac.native: tutorial/rel_reordertac2.o
 
 unopt: $(UNOPT_OBJ)
 
-build_proofs: $(UNOPT_OBJ) $(PROOF_BINS) $(SPEC_CHECK_PROOFS:.ml=.native)
-# Conservatively check that there is no redefinition of "check_axioms"
-# '-I' excludes binary files (*.native).
-	! grep -RI "check_axioms" . ../common/ --exclude="Makefile"
+# check-axioms is defined in ../tools/proof_batch/proofs.mk.
+build_proofs: check-axioms $(UNOPT_OBJ) $(PROOF_BINS) $(SPEC_CHECK_PROOFS:.ml=.native);
 build_tutorial: $(TUTORIAL_OBJ) $(TUTORIAL_PROOF_BINS);
 ALL_PROOF_LOGS = $(PROOF_LOGS) $(SPEC_CHECK_PROOFS:.ml=.correct)
 run_proofs: build_proofs $(ALL_PROOF_LOGS);
-
-.PHONY: proof_timing_targets
-proof_timing_targets:
-	@printf '%s\n' $(ALL_PROOF_LOGS)
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
 tutorial: build_tutorial $(TUTORIAL_PROOF_LOGS);
@@ -640,3 +634,5 @@ FORCE: ;
 NUM_CORES_FOR_SEMATEST = $(shell getconf _NPROCESSORS_ONLN)
 sematest: FORCE $(OBJ) proofs/simulator_iclasses.ml proofs/simulator.native
 	../tools/run-sematest.sh arm $(NUM_CORES_FOR_SEMATEST)
+
+include ../tools/proof_batch/proofs.mk

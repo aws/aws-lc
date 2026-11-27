@@ -883,7 +883,7 @@ Laes128_gcm_enc_loop_1x_end:
 
         // Clear the counter-block slots, which also held plaintext XOR
         // the last round key.
-        stp xzr, xzr, [sp, #(STACK_BASE_AES_ST)]
+        stp xzr, xzr, [sp, #STACK_BASE_AES_ST]
         stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+16)]
         stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+32)]
         stp xzr, xzr, [sp, #(STACK_BASE_AES_ST+48)]

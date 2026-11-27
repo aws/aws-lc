@@ -342,6 +342,19 @@ hence better executed with some parallelism, e.g.
 
     nohup make -j 16 proofs &
 
+The ARM and x86 CI jobs use `hol-d` to check proof modules in forked sessions.
+To check selected proofs locally with the same Make target, run:
+
+    make -C arm fork-proofs PROOFS="generic/word_min generic/bignum_add"
+
+Omit `PROOFS` to check the full architecture suite, including tutorials.
+[Batch runner details](tools/proof_batch/README.md)
+
+To build the architecture and proof modules for an interactive session, run
+`make -C arm proof-modules PROOFS=proofs/word_min.ml`. Make prints the paths
+to pass to `hol-d load` or `hol-d run` and writes their session parents in
+`plan.json`. Use `SESSIONS=/arm/ecc` to build an ECC parent on demand. [Using hol-d](tools/hol-d/README.md)
+
 The proof process is controlled by a corresponding "proof script" in the
 `proofs` subdirectory with corresponding name `proofs/function_name.ml`
 The technical details of how the machine is modeled and how the proof is
