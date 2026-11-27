@@ -186,7 +186,7 @@ jobs:
           - { name: "perlasm, AVX disabled", build_type: "Release", disable_perl: "OFF", disable_avx: "ON" }
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
         with:
           version: "2.16.01"
       - uses: actions/setup-go@v7

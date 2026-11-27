@@ -102,7 +102,7 @@ jobs:
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - uses: actions/setup-go@v7
         with:
           go-version: '>=1.18'

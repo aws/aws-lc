@@ -77,13 +77,13 @@ jobs:
         with:
           oidcRole: AwsLcGitHubActionsAutofixResolveOidcRole
           roleName: AwsLcGitHubActionAutofixSecretsRole
-      - uses: aws-actions/aws-secretsmanager-get-secrets@v2
+      - uses: aws-actions/aws-secretsmanager-get-secrets@v4
         with:
           secret-ids: |
             PUSH_APP_PRIVATE_KEY,aws-lc/ci/autofix-push-app
             ACL_CI,acl-ci/credentials
           parse-json-secrets: true
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: push-token
         with:
           app-id: ${{ vars.AUTOFIX_PUSH_APP_ID }}
@@ -92,7 +92,7 @@ jobs:
           repositories: aws-lc
           permission-contents: write
           permission-workflows: write
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: pr-token
         with:
           app-id: ${{ env.ACL_CI_APP_ID }}
