@@ -44,8 +44,8 @@ jobs:
           - "x86-64"
         version:
           - "14.2"
-          - "15.0"
-        include: ${{ github.event_name == 'schedule' && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.0"}]') || fromJSON('[]') }}
+          - "15.1"
+        include: ${{ github.event_name == 'schedule' && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.1"}]') || fromJSON('[]') }}
     defaults:
       run:
         shell: cpa.sh {0}
