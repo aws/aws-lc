@@ -41,6 +41,10 @@ jobs:
         uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Install Rust
+        if: matrix.config.target_system == 'Windows'
+        shell: bash
+        run: tests/ci/install_rust.sh ${{ matrix.config.target_arch }}-pc-windows-gnullvm
       - name: Install ninja-build tool
         uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
       - uses: actions/setup-go@v7

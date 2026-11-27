@@ -215,7 +215,24 @@ else()
   endif()
 
 endif()
+
+# The Rust crate is FIPS module code, beside bcm.c. FIPS builds take it into
+# bcm.o (fipsmodule/CMakeLists.txt): static ones with delocate, shared ones in
+# bcm.o's partial link, and Windows shared ones in bcm.lib, in bcm.c's
+# sections.
 add_subdirectory(fipsmodule)
+
+set(RUST_OBJECT "")
+if(ENABLE_RUST AND NOT FIPS_DELOCATE AND NOT FIPS_SHARED)
+  # One relocatable object holding all library Rust code, entered into
+  # build_libcrypto() like bcm.o. Only the C-ABI entry points that bcm.c calls
+  # stay global, and hidden, so libcrypto doesn't export them.
+  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
+  cargo_add_rust_object(
+    OUTPUT "${RUST_OBJECT}"
+    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+    LIB_NAME bcm_rust)
+endif()
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
@@ -628,6 +645,10 @@ function(build_libcrypto)
     target_link_libraries(${arg_NAME} PUBLIC Threads::Threads)
   endif()
   target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
+
+  if(RUST_OBJECT)
+    target_sources(${arg_NAME} PRIVATE "${RUST_OBJECT}")
+  endif()
 
   if(arg_SET_OUTPUT_NAME)
     set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")

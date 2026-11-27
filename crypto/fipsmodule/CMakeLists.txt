@@ -23,6 +23,11 @@ if(ANDROID)
   endif()
 endif()
 
+if(ENABLE_RUST)
+  # In Rust builds the module's SHA-256 is Rust's (sha/sha256.c).
+  add_definitions(-DAWSLC_RUST)
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
@@ -565,6 +570,22 @@ if(FIPS_DELOCATE)
     set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
   endif()
 
+  # The Rust crate's assembly goes into the module with bcm.c's. delocate
+  # handles rustc's code as it does the C compiler's: calls out of the module go
+  # through redirectors, constants move into the module, and module data is
+  # reached through accessors. Its debug info is dropped.
+  set(BCM_RUST_ASM "")
+  set(DELOCATE_RUST_ARGS "")
+  if(ENABLE_RUST)
+    set(BCM_RUST_ASM "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust.s")
+    cargo_add_rust_object(
+      OUTPUT "${BCM_RUST_ASM}"
+      MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+      LIB_NAME bcm_rust
+      ASM)
+    set(DELOCATE_RUST_ARGS -rust "${BCM_RUST_ASM}")
+  endif()
+
   go_executable(delocate github.com/aws/aws-lc/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
@@ -572,6 +593,9 @@ if(FIPS_DELOCATE)
     ./delocate
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
+    # Before -s2n-bignum-include, which takes the next argument as its value
+    # where S2N_BIGNUM_INCLUDE_DIR is empty, as on ppc64le.
+    ${DELOCATE_RUST_ARGS}
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
     -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
@@ -583,6 +607,7 @@ if(FIPS_DELOCATE)
     DEPENDS
     bcm_c_generated_asm
     delocate
+    ${BCM_RUST_ASM}
     ${BCM_ASM_SOURCES}
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
     ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
@@ -686,6 +711,30 @@ elseif(FIPS_SHARED)
     target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
   endif()
 
+  # The Rust crate's object joins the module's partial link, which takes its
+  # code and constants into the hashed regions. Windows has no partial link:
+  # coff_sections gives the object's code and constant sections bcm.c's names
+  # (cmake/rust_crate_object_fold.cmake).
+  set(BCM_RUST_OBJECT "")
+  if(ENABLE_RUST)
+    set(BCM_RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
+    set(rust_object_args "")
+    if(MSVC)
+      # Run on the build host, which finds programs only by their .exe on Windows.
+      set(coff_sections coff_sections)
+      if(CMAKE_HOST_WIN32)
+        set(coff_sections coff_sections.exe)
+      endif()
+      go_executable(${coff_sections} github.com/aws/aws-lc/util/fipstools/coff_sections)
+      set(rust_object_args COFF_SECTIONS "${CMAKE_CURRENT_BINARY_DIR}/${coff_sections}")
+    endif()
+    cargo_add_rust_object(
+      OUTPUT "${BCM_RUST_OBJECT}"
+      MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+      LIB_NAME bcm_rust
+      ${rust_object_args})
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -719,8 +768,8 @@ elseif(FIPS_SHARED)
     )
     add_custom_command(
       OUTPUT bcm.o
-      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> fips_apple_end.o -keep_private_externs -o bcm.o
-      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
+      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> ${BCM_RUST_OBJECT} fips_apple_end.o -keep_private_externs -o bcm.o
+      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   elseif(MSVC)
@@ -761,8 +810,8 @@ elseif(FIPS_SHARED)
          CONTENT "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\"\n\">\"")
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp fips_msvc_end.obj /OUT:${BCM_NAME}
-      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj @bcm_objects.rsp ${BCM_RUST_OBJECT} fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS fips_msvc_start.obj fips_msvc_end.obj bcm_library ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()
@@ -775,10 +824,14 @@ elseif(FIPS_SHARED)
       set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
     endif()
 
+    set(bcm_rust_link_args "")
+    if(BCM_RUST_OBJECT)
+      set(bcm_rust_link_args --no-whole-archive "${BCM_RUST_OBJECT}")
+    endif()
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
-      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library> ${bcm_rust_link_args}
+      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT} ${BCM_RUST_OBJECT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   endif()

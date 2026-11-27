@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
+	"debug/pe"
 	"encoding/binary"
 	"errors"
 	"flag"
@@ -320,6 +321,9 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 		if startOff >= endOff || endOff > uint64(len(objectBytes)) {
 			return nil, fmt.Errorf("invalid boundaries: start=0x%x end=0x%x filesize=%d", startOff, endOff, len(objectBytes))
 		}
+		if err := checkNoBaseRelocations(peInfo, symbolAddrs[startSym]-peInfo.ImageBase, symbolAddrs[endSym]-peInfo.ImageBase); err != nil {
+			return nil, err
+		}
 		buf := make([]byte, endOff-startOff)
 		copy(buf, objectBytes[startOff:endOff])
 		return buf, nil
@@ -347,6 +351,65 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 	}
 
 	return moduleText, moduleROData, nil
+}
+
+// checkNoBaseRelocations fails if the loader would patch any byte from RVA
+// start to end, which happens to an absolute address in a DLL that doesn't
+// load at its preferred base. COFF has no .data.rel.ro, so a constant that
+// holds a pointer stays in the module region, and only this catches it.
+func checkNoBaseRelocations(peInfo *fipscommon.PEInfo, start, end uint64) error {
+	var dir pe.DataDirectory
+	switch oh := peInfo.File.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		if len(oh.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	case *pe.OptionalHeader32:
+		if len(oh.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	}
+	if dir.Size == 0 {
+		return nil
+	}
+	var relocs []byte
+	for _, section := range peInfo.File.Sections {
+		if dir.VirtualAddress >= section.VirtualAddress && dir.VirtualAddress < section.VirtualAddress+section.VirtualSize {
+			data, err := section.Data()
+			if err != nil {
+				return err
+			}
+			offset := dir.VirtualAddress - section.VirtualAddress
+			if uint64(offset)+uint64(dir.Size) > uint64(len(data)) {
+				return errors.New("base relocation table runs past its section")
+			}
+			relocs = data[offset : offset+dir.Size]
+			break
+		}
+	}
+	if relocs == nil {
+		return errors.New("base relocation table not found in any section")
+	}
+	for len(relocs) >= 8 {
+		page := uint64(binary.LittleEndian.Uint32(relocs))
+		size := binary.LittleEndian.Uint32(relocs[4:])
+		if size < 8 || uint64(size) > uint64(len(relocs)) {
+			return errors.New("malformed base relocation block")
+		}
+		for entries := relocs[8:size]; len(entries) >= 2; entries = entries[2:] {
+			entry := binary.LittleEndian.Uint16(entries)
+			if entry>>12 == 0 { // IMAGE_REL_BASED_ABSOLUTE, padding
+				continue
+			}
+			rva := page + uint64(entry&0xfff)
+			// The widest field a base relocation patches is 8 bytes.
+			if rva+8 > start && rva < end {
+				return fmt.Errorf("the loader patches RVA 0x%x, in the module region 0x%x-0x%x", rva, start, end)
+			}
+		}
+		relocs = relocs[size:]
+	}
+	return nil
 }
 
 func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string) error {

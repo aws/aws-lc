@@ -31,6 +31,9 @@ type inputFile struct {
 	// isArchive indicates that the input should be processed as an ar
 	// file.
 	isArchive bool
+	// isRust indicates rustc's assembly output, which isn't preprocessed.
+	// See |skipRustStatement| for what delocate drops from it.
+	isRust bool
 	// contents contains the contents of the file.
 	contents string
 	// ast points to the head of the syntax tree.
@@ -157,13 +160,21 @@ func (d *delocation) processInput(input inputFile) (err error) {
 		}
 	}()
 
+	inDebugSection := false
+
 	for statement := input.ast.up; statement != nil; statement = statement.next {
 		assertNodeType(statement, ruleStatement)
 		origStatement = statement
 
 		node := skipWS(statement.up)
 		if node == nil {
-			d.writeNode(statement)
+			if !inDebugSection {
+				d.writeNode(statement)
+			}
+			continue
+		}
+
+		if input.isRust && d.skipRustStatement(node, &inDebugSection) {
 			continue
 		}
 
@@ -197,6 +208,32 @@ func (d *delocation) processInput(input inputFile) (err error) {
 	}
 
 	return nil
+}
+
+// skipRustStatement reports whether delocate drops a statement of rustc's
+// output, and tracks in |*inDebugSection| whether it's in a debug section.
+// rustc's symbols become local: the module's C code reaches them through
+// local labels anyway, and a global rust_eh_personality would clash with a
+// consumer's own Rust. Its debug info goes too: GNU as rejects LLVM's
+// directory form of .file, and its file numbers would clash with bcm.c's.
+func (d *delocation) skipRustStatement(node *node32, inDebugSection *bool) bool {
+	text := d.contents(node)
+	switch node.pegRule {
+	case ruleGlobalDirective:
+		return true
+	case ruleLocationDirective:
+		// .loc, and .file with a number. A bare `.file "name"` stays.
+		if strings.HasPrefix(text, ".loc") || len(strings.Fields(text)) > 2 {
+			return true
+		}
+	case ruleDirective:
+		switch d.contents(node.up) {
+		case "section", "text", "data", "bss", "previous", "pushsection", "popsection":
+			fields := strings.FieldsFunc(text, func(r rune) bool { return r == ' ' || r == '\t' || r == ',' })
+			*inDebugSection = fields[0] == ".section" && len(fields) > 1 && strings.HasPrefix(fields[1], ".debug_")
+		}
+	}
+	return *inDebugSection
 }
 
 // skippedLine writes skipped line transform information to the output file.
@@ -337,6 +374,16 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 	}, ruleArgs, ruleArg)
 
 	switch directiveName {
+	case "prefalign":
+		// LLVM 23 gives functions a preferred alignment, which GNU as
+		// doesn't know, so rustc's code gets the alignment older LLVM wrote.
+		if d.currentInput.isRust && len(args) > 0 {
+			d.writeCommentedNode(statement)
+			d.output.WriteString("\t.p2align " + args[0] + "\n")
+			break
+		}
+		d.writeNode(statement)
+
 	case "comm", "lcomm":
 		if len(args) < 1 {
 			return nil, errors.New("comm directive has no arguments")
@@ -354,6 +401,12 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 		section := args[0]
 
 		if strings.HasPrefix(section, ".data.rel.ro") {
+			// |skipRelroSection| fits only the pointer tables C compilers
+			// emit for bcm.c, so Rust module code may not have any
+			// (crypto/rust/fipsmodule/src/lib.rs).
+			if d.currentInput.isRust {
+				return nil, errors.New("Rust static holding pointers found in module")
+			}
 			d.skippedLine(statement)
 			var err error
 			statement, err = d.skipRelroSection(statement.next)
@@ -1342,7 +1395,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrConditionalMove
 		}
 
-	case "call", "callq", "jmp", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
+	case "call", "callq", "jmp", "jmpq", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
 		if len(args) == 1 {
 			return instrJump
 		}
@@ -1663,6 +1716,25 @@ Args:
 					return nil, errors.New("GOT access must be IP-relative")
 				}
 
+				// A call or jump through the GOT, which rustc emits under
+				// LTO for the calls LLVM inserts (memcpy, memset, abort),
+				// goes where foo@PLT would.
+				if isIndirect && classifyInstruction(instructionName, argNodes) == instrJump {
+					if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+						symbol = localTargetName(symbol)
+					} else {
+						d.redirectors[symbol+"@PLT"] = redirectorName(symbol)
+						symbol = redirectorName(symbol)
+					}
+					if instructionName == "jmpq" {
+						instructionName = "jmp"
+					}
+					isIndirect = false
+					memRef = nil
+					changed = true
+					break
+				}
+
 				useGOT := false
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
@@ -1929,7 +2001,10 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 
 		switch node.pegRule {
 		case ruleGlobalDirective, ruleComment, ruleInstruction, ruleLocationDirective, ruleZeroDirective:
-			d.writeNode(statement)
+			// rustc's symbols become local (|skipRustStatement|).
+			if !(d.currentInput.isRust && node.pegRule == ruleGlobalDirective) {
+				d.writeNode(statement)
+			}
 
 		case ruleDirective:
 			directive := node.up
@@ -1942,7 +2017,14 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 
 		case ruleLabel:
 			label := node.up
-			d.writeNode(statement)
+			if label.pegRule == ruleLocalSymbol {
+				// Local labels get the per-input name that references
+				// to them do, such as rustc's section-end labels in
+				// debug info.
+				d.output.WriteString(d.mapLocalSymbol(d.contents(label)) + ":")
+			} else {
+				d.writeNode(statement)
+			}
 
 			if label.pegRule != ruleLocalSymbol {
 				symbol := d.contents(label)
@@ -2345,7 +2427,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		forEachPath(input.ast.up, func(node *node32) {
 			assertNodeType(node, ruleLocationDirective)
 			directive := input.contents[node.begin:node.end]
-			if !strings.HasPrefix(directive, ".file") {
+			if input.isRust || !strings.HasPrefix(directive, ".file") {
 				return
 			}
 			parts := strings.Fields(directive)
@@ -2377,7 +2459,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 			}
 		}, ruleStatement, ruleLocationDirective)
 
-		if processor == x86_64 {
+		if processor == x86_64 && !input.isRust {
 			if err := relroLocalLabelToFuncMapping(input, relroLocalLabelToFuncMap); err != nil {
 				return err
 			}
@@ -2658,7 +2740,7 @@ func parseInputs(inputs []inputFile, cppCommand []string) error {
 			var inBytes []byte
 			var err error
 
-			if len(cppCommand) > 0 {
+			if len(cppCommand) > 0 && !input.isRust {
 				inBytes, err = preprocess(cppCommand, input.path)
 			} else {
 				inBytes, err = os.ReadFile(input.path)
@@ -2732,6 +2814,7 @@ func main() {
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
 	s2nBignumInclude := flag.String("s2n-bignum-include", "", "Directory with s2n-bignum header files used by the C compiler when preprocessing")
 	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
+	rustInput := flag.String("rust", "", "Path to rustc's assembly output for the module")
 
 	flag.Parse()
 
@@ -2773,6 +2856,14 @@ func main() {
 		inputs = append(inputs, inputFile{
 			path:  path,
 			index: i + 1,
+		})
+	}
+
+	if len(*rustInput) > 0 {
+		inputs = append(inputs, inputFile{
+			path:   *rustInput,
+			index:  len(flag.Args()) + 1,
+			isRust: true,
 		})
 	}
 
