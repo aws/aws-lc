@@ -21,8 +21,24 @@ function static_openbsd_supported() {
   return 1
 }
 
+# Fails if a function in bcm.o is outside the module markers in libcrypto.dylib.
+# The build-time and runtime hashes use the same markers, so they'd still agree.
+function check_apple_module_markers() {
+  # bcm.o's functions. ltmp labels are assembler-generated and don't reach the dylib.
+  nm -s __TEXT __text "${BUILD_ROOT}/crypto/fipsmodule/bcm.o" | awk '{print $3}' | grep -v '^ltmp' | sort -u > "${BUILD_ROOT}/module_functions.txt"
+  # The functions from the start marker to the end marker in libcrypto.dylib.
+  nm -n "${BUILD_ROOT}/crypto/libcrypto.dylib" | sed -n '/_BORINGSSL_bcm_text_start$/,/_BORINGSSL_bcm_text_end$/p' | awk '{print $3}' | sort -u > "${BUILD_ROOT}/hashed_functions.txt"
+  if comm -23 "${BUILD_ROOT}/module_functions.txt" "${BUILD_ROOT}/hashed_functions.txt" | grep .; then
+    echo "These bcm.o functions are outside the module markers in libcrypto.dylib."
+    return 1
+  fi
+}
+
 echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+if [[ "$(uname -s)" == 'Darwin' ]]; then
+  check_apple_module_markers
+fi
 
 echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
