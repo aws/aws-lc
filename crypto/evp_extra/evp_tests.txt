@@ -1745,7 +1745,7 @@ Output = 304502204c66004635c267394bd6857c1e0b53b22a2bab1ca7dff9d5c1b42143858b3ea
 SignMessage = P-256
 Digest = SHA512/256
 Input = "Hello world"
-Output = ""
+CheckVerify
 
 VerifyMessage = P-256
 Digest = SHA512/256
@@ -1755,7 +1755,7 @@ Output = 3046022100e410d8f0fac6d7ed59d1d447d7b87ad1b01d9b1d87232d40e5052267d4e9f
 SignMessage = P-256
 Digest = SHA3-224
 Input = "Hello world"
-Output = ""
+CheckVerify
 
 VerifyMessage = P-256
 Digest = SHA3-224
@@ -1765,7 +1765,7 @@ Output = 304502207bb34d40c1618f0ff8457934f575a4ba5ca4b53f96bed60e71e36940d6438c1
 SignMessage = P-256
 Digest = SHA3-256
 Input = "Hello world"
-Output = ""
+CheckVerify
 
 VerifyMessage = P-256
 Digest = SHA3-256
@@ -1775,7 +1775,7 @@ Output = 3046022100f5530d0a7450e8bc4951e37b21d390dbfa7bb48e08e450b146baa8569e13d
 SignMessage = P-256
 Digest = SHA3-384
 Input = "Hello world"
-Output = ""
+CheckVerify
 
 VerifyMessage = P-256
 Digest = SHA3-384
@@ -1785,7 +1785,7 @@ Output = 3043021f1c8d2c3ccbca8cc48f14dc0534f1bc9d0571967a4ee7f1eaeaea6d7e281c0c0
 SignMessage = P-256
 Digest = SHA3-512
 Input = "Hello world"
-Output = ""
+CheckVerify
 
 VerifyMessage = P-256
 Digest = SHA3-512
