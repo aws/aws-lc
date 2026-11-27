@@ -120,10 +120,9 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         return 0;
       }
 
-      // Note this differs from upstream OpenSSL, which synchronizes
-      // |bio->next_bio| with |ssl|'s rbio here, and on |BIO_CTRL_PUSH|. We call
-      // into the corresponding |BIO| directly. (We can implement the upstream
-      // behavior if it ends up necessary.)
+      // Unlike OpenSSL, setting |ssl| does not insert its existing rbio into
+      // |bio|'s chain. |BIO_CTRL_PUSH| attaches a transport added later;
+      // otherwise, I/O uses |ssl|'s BIOs directly.
       bio->shutdown = static_cast<int>(num);
       bio->ptr = ptr;
       bio->init = 1;
@@ -167,8 +166,56 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       return ret;
     }
 
-    case BIO_CTRL_PUSH:
+    case BIO_C_DO_STATE_MACHINE: {
+      BIO_clear_retry_flags(bio);
+      BIO_set_retry_reason(bio, 0);
+      const int ret = SSL_do_handshake(ssl);
+      switch (SSL_get_error(ssl, ret)) {
+        case SSL_ERROR_WANT_READ:
+          BIO_set_retry_read(bio);
+          break;
+
+        case SSL_ERROR_WANT_WRITE:
+          BIO_set_retry_write(bio);
+          break;
+
+        case SSL_ERROR_WANT_CONNECT:
+          BIO_set_retry_special(bio);
+          BIO_set_retry_reason(bio, BIO_RR_CONNECT);
+          break;
+
+        case SSL_ERROR_WANT_X509_LOOKUP:
+          BIO_set_retry_special(bio);
+          BIO_set_retry_reason(bio, BIO_RR_SSL_X509_LOOKUP);
+          break;
+
+        default:
+          break;
+      }
+      return ret;
+    }
+
+    case BIO_CTRL_PUSH: {
+      BIO *next = BIO_next(bio);
+      if (next != nullptr && next != SSL_get_rbio(ssl)) {
+        // Usually |SSL_set_bio| takes another reference, separate from the
+        // chain. Its historical split-BIO case, when only rbio changes to the
+        // existing wbio, supplies that reference internally instead.
+        if (next != SSL_get_wbio(ssl)) {
+          BIO_up_ref(next);
+        }
+        SSL_set_bio(ssl, next, next);
+      }
+      return 1;
+    }
+
     case BIO_CTRL_POP:
+      // An earlier filter may forward its own POP through this SSL BIO.
+      if (ptr == bio) {
+        SSL_set_bio(ssl, nullptr, nullptr);
+      }
+      return 1;
+
     case BIO_CTRL_DUP:
       return -1;
 

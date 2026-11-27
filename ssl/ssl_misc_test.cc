@@ -890,6 +890,141 @@ TEST(SSLTest, ZeroReturnShimReadIsNotEOF) {
   }
 }
 
+#if !defined(OPENSSL_NO_SOCK) && !defined(OPENSSL_WINDOWS)
+// WaitForSocket waits, with a timeout, until the socket of |bio| is ready for
+// |events|.
+static bool WaitForSocket(BIO *bio, short events) {
+  pollfd pfd = {BIO_get_fd(bio, nullptr), events, 0};
+  return poll(&pfd, 1, 5000) == 1;
+}
+
+// As in OpenSSL, |BIO_new_ssl_connect| returns an SSL BIO whose transport is
+// the connect BIO chained after it, so |BIO_do_connect| establishes the
+// connection and then completes the TLS handshake.
+TEST(SSLTest, BIOConnectHandshake) {
+  for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
+    SCOPED_TRACE(GetVersionName(version));
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx =
+        CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx);
+    ASSERT_TRUE(server_ctx);
+    for (SSL_CTX *ctx : {client_ctx.get(), server_ctx.get()}) {
+      ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx, version));
+      ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx, version));
+    }
+
+    ScopedFD listener;
+    std::string hostname;
+    ASSERT_NO_FATAL_FAILURE(ListenOnLoopback(&listener, &hostname));
+
+    bssl::UniquePtr<BIO> client(BIO_new_ssl_connect(client_ctx.get()));
+    ASSERT_TRUE(client);
+    SSL *client_ssl = nullptr;
+    ASSERT_EQ(BIO_get_ssl(client.get(), &client_ssl), 1);
+    ASSERT_TRUE(BIO_next(client.get()));
+    EXPECT_EQ(SSL_get_rbio(client_ssl), BIO_next(client.get()));
+    EXPECT_EQ(SSL_get_wbio(client_ssl), BIO_next(client.get()));
+    // Controls on the SSL BIO reach the connect BIO.
+    ASSERT_EQ(BIO_set_conn_hostname(client.get(), hostname.c_str()), 1);
+    ASSERT_EQ(BIO_set_nbio(client.get(), 1), 1);
+
+    // Run one handshake attempt. Unless it completes, |bio| must be waiting
+    // for its peer. A connection still in progress is retried first.
+    auto handshake = [&](BIO *bio, bool *out_done) {
+      for (int attempt = 0; attempt < 10; attempt++) {
+        long ret =
+            bio == client.get() ? BIO_do_connect(bio) : BIO_do_handshake(bio);
+        if (ret == 1) {
+          *out_done = true;
+          return;
+        }
+        ASSERT_EQ(ret, -1);
+        ASSERT_TRUE(BIO_should_retry(bio));
+        if (!BIO_should_io_special(bio)) {
+          ASSERT_TRUE(BIO_should_read(bio));
+          return;
+        }
+        ASSERT_EQ(BIO_get_retry_reason(bio), BIO_RR_CONNECT);
+        ASSERT_TRUE(WaitForSocket(bio, POLLOUT));
+      }
+      FAIL() << "Connection did not complete";
+    };
+
+    // The server has not accepted the connection, so the client cannot finish.
+    bool client_done = false, server_done = false;
+    ASSERT_NO_FATAL_FAILURE(handshake(client.get(), &client_done));
+    ASSERT_FALSE(client_done);
+
+    pollfd accept_pfd = {listener.get(), POLLIN, 0};
+    ASSERT_EQ(poll(&accept_pfd, 1, 5000), 1);
+    ScopedFD server_fd(accept(listener.get(), nullptr, nullptr));
+    ASSERT_TRUE(server_fd.is_valid());
+    int flags = fcntl(server_fd.get(), F_GETFL, 0);
+    ASSERT_GE(flags, 0);
+    ASSERT_EQ(fcntl(server_fd.get(), F_SETFL, flags | O_NONBLOCK), 0);
+    bssl::UniquePtr<BIO> server(BIO_new_ssl(server_ctx.get(), 0));
+    ASSERT_TRUE(server);
+    SSL *server_ssl = nullptr;
+    ASSERT_EQ(BIO_get_ssl(server.get(), &server_ssl), 1);
+    BIO *server_socket = BIO_new_socket(server_fd.get(), BIO_NOCLOSE);
+    ASSERT_TRUE(server_socket);
+    ASSERT_EQ(BIO_push(server.get(), server_socket), server.get());
+
+    for (int round = 0; round < 20 && !(client_done && server_done); round++) {
+      for (BIO *bio : {client.get(), server.get()}) {
+        bool &done = bio == client.get() ? client_done : server_done;
+        if (!done) {
+          ASSERT_NO_FATAL_FAILURE(handshake(bio, &done));
+        }
+      }
+      if (!(client_done && server_done)) {
+        // Wait for the next flight to reach a side which still expects one.
+        // |poll| ignores negative descriptors.
+        pollfd pfds[] = {
+            {client_done ? -1 : BIO_get_fd(client.get(), nullptr), POLLIN, 0},
+            {server_done ? -1 : BIO_get_fd(server.get(), nullptr), POLLIN, 0}};
+        ASSERT_GT(poll(pfds, 2, 5000), 0);
+      }
+    }
+    ASSERT_TRUE(client_done);
+    ASSERT_TRUE(server_done);
+    EXPECT_TRUE(SSL_is_init_finished(client_ssl));
+    EXPECT_TRUE(SSL_is_init_finished(server_ssl));
+    EXPECT_EQ(BIO_do_handshake(client.get()), 1);
+
+    // Retry |BIO_read| while |bio| waits for data from its peer.
+    auto read_bio = [](BIO *bio, char *out, int len) -> int {
+      for (int attempt = 0; attempt < 10; attempt++) {
+        int ret = BIO_read(bio, out, len);
+        if (ret >= 0 || !BIO_should_read(bio) || !WaitForSocket(bio, POLLIN)) {
+          return ret;
+        }
+      }
+      return -1;
+    };
+
+    char buf[5];
+    ASSERT_EQ(BIO_write(client.get(), "hello", 5), 5);
+    ASSERT_EQ(read_bio(server.get(), buf, sizeof(buf)), 5);
+    EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes("hello"));
+    ASSERT_EQ(BIO_write(server.get(), "world", 5), 5);
+    ASSERT_EQ(read_bio(client.get(), buf, sizeof(buf)), 5);
+    EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes("world"));
+
+    // Freeing the chain sends close_notify through the connect BIO before the
+    // socket is closed.
+    client.reset();
+    ERR_clear_error();
+    EXPECT_EQ(read_bio(server.get(), buf, sizeof(buf)), 0);
+    EXPECT_EQ(SSL_get_error(server_ssl, 0), SSL_ERROR_ZERO_RETURN);
+    EXPECT_EQ(ERR_peek_error(), 0u);
+    // The peer is gone, so do not write a close_notify back to it.
+    SSL_set_quiet_shutdown(server_ssl, 1);
+  }
+}
+#endif
+
 TEST(SSLTest, InvalidSignatureAlgorithm) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);

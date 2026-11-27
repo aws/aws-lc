@@ -222,6 +222,7 @@ BIO_dgram_recv_timedout AWS_LC_1.0 PUBLIC
 BIO_dgram_send_timedout AWS_LC_1.0 PUBLIC
 BIO_dgram_set_peer AWS_LC_1.0 PUBLIC
 BIO_do_connect AWS_LC_1.0 PUBLIC
+BIO_do_handshake AWS_LC_1.0 PUBLIC
 BIO_dump AWS_LC_1.0 PUBLIC
 BIO_eof AWS_LC_1.0 PUBLIC
 BIO_f_base64 AWS_LC_1.0 PUBLIC

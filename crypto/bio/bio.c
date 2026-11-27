@@ -158,7 +158,11 @@ int BIO_free(BIO *bio) {
       return 0;
     }
 
-    next_bio = BIO_pop(bio);
+    // Destruction must not send |BIO_CTRL_POP|: the destroy hook may still
+    // need the transport attached by |BIO_CTRL_PUSH|, e.g. to send
+    // close_notify.
+    next_bio = bio->next_bio;
+    bio->next_bio = NULL;
 
     if (bio->method != NULL && bio->method->destroy != NULL) {
       bio->method->destroy(bio);
@@ -389,12 +393,21 @@ int BIO_flush(BIO *bio) {
   return (int)BIO_ctrl(bio, BIO_CTRL_FLUSH, 0, NULL);
 }
 
+long BIO_do_handshake(BIO *bio) {
+  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, NULL);
+}
+
 long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
   if (bio == NULL) {
     return 0;
   }
 
   if (bio->method == NULL || bio->method->ctrl == NULL) {
+    // Filters may forward advisory chain notifications to a ctrl-less BIO.
+    // Unlike an unsupported explicit operation, this is not an error.
+    if (cmd == BIO_CTRL_PUSH || cmd == BIO_CTRL_POP) {
+      return 0;
+    }
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
@@ -558,6 +571,13 @@ OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio) {
   return bio->num_write;
 }
 
+static void bio_chain_notify(BIO *bio, int cmd, void *ptr) {
+  // Notification results are advisory, including for methods which do not
+  // implement these controls. |BIO_ctrl| ignores them for ctrl-less methods.
+  long ret = BIO_ctrl(bio, cmd, 0, ptr);
+  (void)ret;
+}
+
 BIO *BIO_push(BIO *bio, BIO *appended_bio) {
   BIO *last_bio;
 
@@ -571,6 +591,7 @@ BIO *BIO_push(BIO *bio, BIO *appended_bio) {
   }
 
   last_bio->next_bio = appended_bio;
+  bio_chain_notify(bio, BIO_CTRL_PUSH, last_bio);
   return bio;
 }
 
@@ -581,6 +602,7 @@ BIO *BIO_pop(BIO *bio) {
     return NULL;
   }
   ret = bio->next_bio;
+  bio_chain_notify(bio, BIO_CTRL_POP, bio);
   bio->next_bio = NULL;
   return ret;
 }
@@ -858,7 +880,7 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
 }
 
 void BIO_set_retry_special(BIO *bio) {
-  bio->flags |= BIO_FLAGS_READ | BIO_FLAGS_IO_SPECIAL;
+  bio->flags |= BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY;
 }
 
 int BIO_set_write_buffer_size(BIO *bio, int buffer_size) { return 0; }
