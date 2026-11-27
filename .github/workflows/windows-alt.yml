@@ -16,7 +16,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -60,7 +60,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup MinGW
@@ -100,7 +100,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install LLVM and Clang
@@ -145,7 +145,7 @@ jobs:
     steps:
       - if: ${{ matrix.target  == 'x64' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - name: Checkout
         uses: actions/checkout@v7
       - uses: TheMrMilchmann/setup-msvc-dev@b01428496a7be6ea8716337c299ffccc9fadc0c8 # v4.1.1
@@ -183,7 +183,7 @@ jobs:
     steps:
       - if: ${{ matrix.target  == 'x64' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - name: Remove wrong clang-cl.exe
         run:  rm "C:/Program Files/LLVM/bin/clang-cl.exe"
       - name: Checkout
