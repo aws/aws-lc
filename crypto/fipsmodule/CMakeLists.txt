@@ -538,9 +538,8 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
 
-  # Important: We do not want to add the generated prefix symbols to the include path here!
-  # Delocator expects symbols to not be prefixed.
-  target_add_awslc_include_paths(TARGET bcm_c_generated_asm SCOPE PRIVATE EXCLUDE_PREFIX_HEADERS)
+  # In BORINGSSL_PREFIX builds, this assembly has prefixed names.
+  target_add_awslc_include_paths(TARGET bcm_c_generated_asm SCOPE PRIVATE)
   target_include_directories(bcm_c_generated_asm PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -574,7 +573,7 @@ if(FIPS_DELOCATE)
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
-    -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
+    "-s2n-bignum-include=${S2N_BIGNUM_INCLUDE_DIR}"
     ${DELOCATE_EXTRA_ARGS}
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
     ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
