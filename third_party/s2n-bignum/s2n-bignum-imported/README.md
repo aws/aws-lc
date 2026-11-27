@@ -342,6 +342,19 @@ hence better executed with some parallelism, e.g.
 
     nohup make -j 16 proofs &
 
+The ARM and x86 CI jobs use `hol-d` to check proof modules in forked sessions.
+To check selected proofs locally with the same Make target, run:
+
+    make -C arm fork-proofs PROOFS="generic/word_min generic/bignum_add"
+
+Omit `PROOFS` to check the full architecture suite, including tutorials.
+[Batch runner details](tools/proof_batch/README.md)
+
+To build the architecture and proof modules for an interactive session, run
+`make -C arm proof-modules PROOFS=proofs/word_min.ml`. Make prints the paths
+to pass to `hol-d load` or `hol-d run` and writes their session parents in
+`plan.json`. Use `SESSIONS=/arm/ecc` to build an ECC parent on demand. [Using hol-d](tools/hol-d/README.md)
+
 The proof process is controlled by a corresponding "proof script" in the
 `proofs` subdirectory with corresponding name `proofs/function_name.ml`
 The technical details of how the machine is modeled and how the proof is
@@ -539,6 +552,35 @@ for s2n-bignum described above are as follows:
 
  * One function, and *only* one at present, is not constant-time; this fact is
    explicitly telegraphed in its name `mlkem_rej_uniform_VARIABLE_TIME`.
+
+## AES code
+
+The code in the following two subdirectories also breaks with some of the
+general patterns for s2n-bignum:
+
+    arm/aes-xts
+    arm/aes_gcm
+
+ * This code exists only for ARM, with no x86 counterpart.
+
+ * It relies on the ARM instruction set extensions for AES and polynomial
+   multiplication (FEAT_AES and FEAT_PMULL), and the "_alt" AES-GCM kernels
+   also on `sha3`, so it will not work on every ARM8 platform. For AES-GCM
+   the "_alt" forms are 8-way interleaved kernels with a stricter length
+   contract (see include/s2n-bignum.h), rather than the variants for
+   machines with higher multiplier throughput described above.
+
+ * The AES-GCM kernels are bulk routines with the interface of the AWS-LC
+   assembler they derive from: they process whole 16-byte blocks, updating
+   the counter block and the GHASH accumulator, and leave the additional
+   data, a partial final block, the length block and the final tag to the
+   caller. The round keys and the table of powers of the hash key are in the
+   layouts of AWS-LC's AES_KEY and gcm_init_v8. They may be called in place,
+   with the output buffer the same as the input buffer.
+
+ * The four "_alt" AES-GCM kernels derive from OpenSSL code, so their
+   licensing is Apache-2.0, with the OpenSSL copyright notice, rather than
+   the usual s2n-bignum licensing.
 
 ## Security
 

@@ -332,6 +332,14 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_ADX_AVX2) OR
     # Note: Scalar Keccak-x1 and Batched Neoverse N1 Keccak-x4 assembly from s2n-bignum
     # are included in the common s2n-bignum block above
 
+    # AES-GCM 8x kernels encode EOR3 with .inst, so they do not require an
+    # assembler that recognizes the SHA3 extension. Dispatch checks CPU support.
+    list(APPEND BCM_ASM_SOURCES
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_enc_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes128_gcm_dec_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_enc_alt.S
+       ${S2N_BIGNUM_DIR}/aes_gcm/aes256_gcm_dec_alt.S)
+
     if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
         list(APPEND BCM_ASM_SOURCES
            # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native, using SHA3 extension
@@ -455,6 +463,12 @@ if(ARCH STREQUAL "aarch64")
   list(APPEND BCM_ASM_SOURCES
           ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-enc.S
           ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-dec.S
+
+          # AES-128/256-GCM 4x-unrolled kernels
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes_gcm/aes128_gcm_enc.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes_gcm/aes128_gcm_dec.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes_gcm/aes256_gcm_enc.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes_gcm/aes256_gcm_dec.S
   )
 endif()
 
