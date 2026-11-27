@@ -215,7 +215,104 @@ else()
   endif()
 
 endif()
+
+# Rust in a FIPS build has to be FIPS module code, or Rust being found would
+# break the build's validation. bcm-rust.o is a FIPS module of its own in
+# static FIPS builds on x86_64 and aarch64, and in shared ones, which hash it
+# after the final link on any CPU (rust/fipsmodule/src/fips.rs). Any other
+# FIPS build that finds Rust fails configure, with AUTO too.
+set(RUST_FIPS_MODULE OFF)
+if(ENABLE_RUST AND FIPS)
+  if((FIPS_DELOCATE AND ARCH MATCHES "^(x86_64|aarch64)$") OR FIPS_SHARED)
+    set(RUST_FIPS_MODULE ON)
+  else()
+    if(FIPS_DELOCATE)
+      set(rust_fips_gap "bcm-rust.o is a static FIPS module only on x86_64 and aarch64, where delocate's handling of rustc's assembly is tested")
+    else()
+      set(rust_fips_gap "FIPS builds with ASan or MSan have no integrity check, and bcm-rust.o has no such mode")
+    endif()
+    message(FATAL_ERROR "ENABLE_RUST: this FIPS build can't use Rust: ${rust_fips_gap}. "
+                        "Rust in a FIPS build has to be FIPS module code. "
+                        "Configure with -DENABLE_RUST=OFF to build C only.")
+  endif()
+endif()
+
+# Rust calls the assembly C builds (rust/fipsmodule/src/lib.rs). C builds it
+# unless OPENSSL_NO_ASM made ARCH generic, or target.h turns it off: under
+# MSan, and for 32-bit Arm on Apple. fipsmodule builds bcm-rust.o's copy.
+set(RUST_ASM OFF)
+if(ENABLE_RUST AND NOT ARCH STREQUAL "generic" AND NOT MSAN AND
+   NOT (APPLE AND ARCH STREQUAL "arm"))
+  set(RUST_ASM ON)
+endif()
+
+# The crate's cfgs and exports, which fipsmodule needs too: static FIPS builds
+# take rustc's assembly into the module's delocate run.
+set(RUST_CFGS "")
+set(RUST_EXPORTS "")
+if(ENABLE_RUST)
+  if(RUST_ASM)
+    list(APPEND RUST_CFGS awslc_asm)
+  endif()
+  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    list(APPEND RUST_CFGS awslc_no_avx)
+  endif()
+  # The exports are the Rust functions internal.h declares, one per line that
+  # starts with the return type.
+  set(rust_header "${CMAKE_CURRENT_SOURCE_DIR}/rust/fipsmodule/internal.h")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rust_header}")
+  file(STRINGS "${rust_header}" rust_decls REGEX "^[a-z].*[ *]bcm_rust_[a-z0-9_]+\\(")
+  foreach(decl IN LISTS rust_decls)
+    string(REGEX MATCH "bcm_rust_[a-z0-9_]+\\(" name "${decl}")
+    string(REPLACE "(" "" name "${name}")
+    list(APPEND RUST_EXPORTS ${name})
+  endforeach()
+endif()
+
 add_subdirectory(fipsmodule)
+
+if(ENABLE_RUST)
+  # One relocatable object holding all library Rust code, entered into
+  # build_libcrypto() like bcm.o. Only the listed C-ABI entry points stay
+  # global, and hidden, so libcrypto doesn't export them.
+  set(RUST_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust${CMAKE_C_OUTPUT_EXTENSION}")
+  set(rust_object_args "")
+  set(RUST_ASM_OBJECT "")
+  if(TARGET bcm_rust_asm)
+    list(APPEND rust_object_args ASM bcm_rust_asm)
+    if(RUST_CRATE_OBJECT_FOLD)
+      # Without a partial link, bcm-rust.o's copy of its assembly is an object
+      # of its own (cmake/rust_crate_object_fold.cmake).
+      set(RUST_ASM_OBJECT "${CMAKE_CURRENT_BINARY_DIR}${RUST_CONFIG_DIR}/bcm-rust-asm${CMAKE_C_OUTPUT_EXTENSION}")
+      list(APPEND rust_object_args ASM_OUTPUT "${RUST_ASM_OBJECT}")
+    endif()
+  endif()
+  if(RUST_FIPS_MODULE)
+    list(APPEND rust_object_args FIPS_MODULE)
+    # Static FIPS builds hash bcm-rust.o before the final link, and shared ones
+    # in libcrypto, as for bcm.o. In static ones, bcm_rust_asm holds the crate's
+    # code too, through delocate (fipsmodule/CMakeLists.txt).
+    if(FIPS_DELOCATE)
+      list(APPEND rust_object_args DELOCATED INJECT_HASH "${CMAKE_CURRENT_BINARY_DIR}/fipsmodule/inject_hash")
+    endif()
+    if(RUST_CRATE_OBJECT_FOLD)
+      # Run on the build host, which finds programs only by their .exe on Windows.
+      set(coff_sections coff_sections)
+      if(CMAKE_HOST_WIN32)
+        set(coff_sections coff_sections.exe)
+      endif()
+      go_executable(${coff_sections} github.com/aws/aws-lc/util/fipstools/coff_sections)
+      list(APPEND rust_object_args COFF_SECTIONS "${CMAKE_CURRENT_BINARY_DIR}/${coff_sections}")
+    endif()
+  endif()
+  cargo_add_rust_object(
+    OUTPUT "${RUST_OBJECT}"
+    MANIFEST_PATH "${AWSLC_SOURCE_DIR}/crypto/rust/fipsmodule/Cargo.toml"
+    LIB_NAME bcm_rust
+    CFGS ${RUST_CFGS}
+    EXPORTS ${RUST_EXPORTS}
+    ${rust_object_args})
+endif()
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
@@ -581,6 +678,11 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
+if(ENABLE_RUST)
+  # The public SHA-224 and SHA-256 functions, as calls into Rust.
+  target_sources(crypto_objects PRIVATE rust/sha256.c)
+endif()
+
 function(build_libcrypto)
   set(options SET_OUTPUT_NAME)
   set(oneValueArgs NAME)
@@ -629,6 +731,10 @@ function(build_libcrypto)
   endif()
   target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
 
+  if(ENABLE_RUST)
+    target_sources(${arg_NAME} PRIVATE "${RUST_OBJECT}" ${RUST_ASM_OBJECT})
+  endif()
+
   if(arg_SET_OUTPUT_NAME)
     set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
   endif()
@@ -672,6 +778,18 @@ if(FIPS_SHARED)
       -map ${CRYPTO_MAP_FILE} -windows
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
+    if(RUST_FIPS_MODULE)
+      # bcm-rust.o's module region, with a hash of its own
+      # (rust/fipsmodule/src/fips.rs).
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${GO_EXECUTABLE} run
+        ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+        -rust -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+        -map ${CRYPTO_MAP_FILE} -windows
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+      )
+    endif()
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
@@ -687,6 +805,17 @@ if(FIPS_SHARED)
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
+    if(RUST_FIPS_MODULE)
+      # bcm-rust.o's module region, with a hash of its own
+      # (rust/fipsmodule/src/fips.rs).
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${GO_EXECUTABLE} run
+        ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+        -rust -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+      )
+    endif()
 
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
     # binaries to run. This applies to both executables and dylibs. An ad-hoc

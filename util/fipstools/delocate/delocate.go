@@ -31,6 +31,9 @@ type inputFile struct {
 	// isArchive indicates that the input should be processed as an ar
 	// file.
 	isArchive bool
+	// isRust indicates rustc's assembly output, which isn't preprocessed.
+	// See |skipRustStatement| for what delocate drops from it.
+	isRust bool
 	// contents contains the contents of the file.
 	contents string
 	// ast points to the head of the syntax tree.
@@ -157,13 +160,21 @@ func (d *delocation) processInput(input inputFile) (err error) {
 		}
 	}()
 
+	inDebugSection := false
+
 	for statement := input.ast.up; statement != nil; statement = statement.next {
 		assertNodeType(statement, ruleStatement)
 		origStatement = statement
 
 		node := skipWS(statement.up)
 		if node == nil {
-			d.writeNode(statement)
+			if !inDebugSection {
+				d.writeNode(statement)
+			}
+			continue
+		}
+
+		if input.isRust && d.skipRustStatement(node, &inDebugSection) {
 			continue
 		}
 
@@ -197,6 +208,28 @@ func (d *delocation) processInput(input inputFile) (err error) {
 	}
 
 	return nil
+}
+
+// skipRustStatement reports whether delocate drops a statement of rustc's
+// output, and tracks in |*inDebugSection| whether it's in a debug section.
+// rustc's debug info goes: GNU as rejects LLVM's directory form of .file, and
+// its file numbers would clash with the other inputs'.
+func (d *delocation) skipRustStatement(node *node32, inDebugSection *bool) bool {
+	text := d.contents(node)
+	switch node.pegRule {
+	case ruleLocationDirective:
+		// .loc, and .file with a number. A bare `.file "name"` stays.
+		if strings.HasPrefix(text, ".loc") || len(strings.Fields(text)) > 2 {
+			return true
+		}
+	case ruleDirective:
+		switch d.contents(node.up) {
+		case "section", "text", "data", "bss", "previous", "pushsection", "popsection":
+			fields := strings.FieldsFunc(text, func(r rune) bool { return r == ' ' || r == '\t' || r == ',' })
+			*inDebugSection = fields[0] == ".section" && len(fields) > 1 && strings.HasPrefix(fields[1], ".debug_")
+		}
+	}
+	return *inDebugSection
 }
 
 // skippedLine writes skipped line transform information to the output file.
@@ -337,6 +370,16 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 	}, ruleArgs, ruleArg)
 
 	switch directiveName {
+	case "prefalign":
+		// LLVM 23 gives functions a preferred alignment, which GNU as
+		// doesn't know, so rustc's code gets the alignment older LLVM wrote.
+		if d.currentInput.isRust && len(args) > 0 {
+			d.writeCommentedNode(statement)
+			d.output.WriteString("\t.p2align " + args[0] + "\n")
+			break
+		}
+		d.writeNode(statement)
+
 	case "comm", "lcomm":
 		if len(args) < 1 {
 			return nil, errors.New("comm directive has no arguments")
@@ -354,6 +397,12 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 		section := args[0]
 
 		if strings.HasPrefix(section, ".data.rel.ro") {
+			// |skipRelroSection| fits only the pointer tables C compilers
+			// emit for bcm.c, so Rust module code may not have any
+			// (crypto/rust/fipsmodule/src/fips.rs).
+			if d.currentInput.isRust {
+				return nil, errors.New("Rust static holding pointers found in module")
+			}
 			d.skippedLine(statement)
 			var err error
 			statement, err = d.skipRelroSection(statement.next)
@@ -393,16 +442,24 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 			// pointers to constructor/destructor
 			// functions. These contain relocations, but
 			// they're in a different section anyway.
-			d.writeNode(statement)
+			d.writeSectionDirective(statement, args)
 			break
 
 		case ".debug", ".note", ".toc":
-			d.writeNode(statement)
+			d.writeSectionDirective(statement, args)
 			break
 
 		case ".bss":
-			d.writeNode(statement)
+			d.writeSectionDirective(statement, args)
 			return d.handleBSS(statement)
+
+		default:
+			// C module code has no other sections, so delocate drops
+			// the directive, and a Rust section's contents would land
+			// in the previous section.
+			if d.currentInput.isRust {
+				return nil, fmt.Errorf("section %q in Rust module code", section)
+			}
 		}
 
 	default:
@@ -410,6 +467,33 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 	}
 
 	return statement, nil
+}
+
+// writeSectionDirective writes a .section directive that delocate keeps. From
+// rustc's output it drops what GNU as before 2.36 and clang before 13 reject:
+// the retain flag (R), which LLVM writes for #[used] statics such as the
+// module's constructor, and the ",unique,<id>" that comes with it. The
+// linker keeps .init_array without the flag, and delocate's output is one
+// object, where sections of the same name merge anyway.
+func (d *delocation) writeSectionDirective(statement *node32, args []string) {
+	if !d.currentInput.isRust || len(args) < 2 {
+		d.writeNode(statement)
+		return
+	}
+	kept := []string{args[0], "\"" + strings.ReplaceAll(args[1], "R", "") + "\""}
+	for i := 2; i < len(args); i++ {
+		if args[i] == "unique" {
+			i++
+			continue
+		}
+		kept = append(kept, args[i])
+	}
+	if len(kept) == len(args) && !strings.Contains(args[1], "R") {
+		d.writeNode(statement)
+		return
+	}
+	d.writeCommentedNode(statement)
+	d.output.WriteString("\t.section " + strings.Join(kept, ",") + "\n")
 }
 
 func (d *delocation) processSymbolExpr(expr *node32, b *strings.Builder) bool {
@@ -1342,7 +1426,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrConditionalMove
 		}
 
-	case "call", "callq", "jmp", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
+	case "call", "callq", "jmp", "jmpq", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
 		if len(args) == 1 {
 			return instrJump
 		}
@@ -1663,6 +1747,25 @@ Args:
 					return nil, errors.New("GOT access must be IP-relative")
 				}
 
+				// A call or jump through the GOT, which rustc emits under
+				// LTO for the calls LLVM inserts (memcpy, memset, abort),
+				// goes where foo@PLT would.
+				if isIndirect && classifyInstruction(instructionName, argNodes) == instrJump {
+					if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+						symbol = localTargetName(symbol)
+					} else {
+						d.redirectors[symbol+"@PLT"] = redirectorName(symbol)
+						symbol = redirectorName(symbol)
+					}
+					if instructionName == "jmpq" {
+						instructionName = "jmp"
+					}
+					isIndirect = false
+					memRef = nil
+					changed = true
+					break
+				}
+
 				useGOT := false
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
@@ -1942,7 +2045,14 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 
 		case ruleLabel:
 			label := node.up
-			d.writeNode(statement)
+			if label.pegRule == ruleLocalSymbol {
+				// Local labels get the per-input name that references
+				// to them do, such as rustc's section-end labels in
+				// debug info.
+				d.output.WriteString(d.mapLocalSymbol(d.contents(label)) + ":")
+			} else {
+				d.writeNode(statement)
+			}
 
 			if label.pegRule != ruleLocalSymbol {
 				symbol := d.contents(label)
@@ -2281,7 +2391,18 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 	return nil
 }
 
-func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool) error {
+// transform writes the delocated module to w. module names its markers and
+// hash, BORINGSSL_<module>_text_*: "bcm" for bcm.o, or "bcm_rust" for
+// bcm-rust.o, whose hash placeholder differs from bcm.o's.
+func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool, module string) error {
+	markers := "BORINGSSL_" + module + "_text_"
+	uninitHash := fipscommon.UninitHashValue
+	if module != "bcm" {
+		// bcm-rust.o keeps no debug info (|skipRustStatement|), so its
+		// markers get no .file or .loc directives either.
+		startEndDebugDirectives = false
+		uninitHash = fipscommon.RustUninitHashValue
+	}
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -2345,7 +2466,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		forEachPath(input.ast.up, func(node *node32) {
 			assertNodeType(node, ruleLocationDirective)
 			directive := input.contents[node.begin:node.end]
-			if !strings.HasPrefix(directive, ".file") {
+			if input.isRust || !strings.HasPrefix(directive, ".file") {
 				return
 			}
 			parts := strings.Fields(directive)
@@ -2377,7 +2498,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 			}
 		}, ruleStatement, ruleLocationDirective)
 
-		if processor == x86_64 {
+		if processor == x86_64 && !input.isRust {
 			if err := relroLocalLabelToFuncMapping(input, relroLocalLabelToFuncMap); err != nil {
 				return err
 			}
@@ -2419,14 +2540,14 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		// Grab the address of BORINGSSL_bcm_text_hash via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
-		w.WriteString(".global BORINGSSL_bcm_text_hash\n")
-		w.WriteString(".type BORINGSSL_bcm_text_hash, @function\n")
+		w.WriteString(".global " + markers + "hash\n")
+		w.WriteString(".type " + markers + "hash, @function\n")
 	} else {
-		w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
-		w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
+		w.WriteString(".type " + markers + "hash, @object\n")
+		w.WriteString(".size " + markers + "hash, 32\n")
 	}
-	w.WriteString("BORINGSSL_bcm_text_hash:\n")
-	for _, b := range fipscommon.UninitHashValue {
+	w.WriteString(markers + "hash:\n")
+	for _, b := range uninitHash {
 		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
 	}
 
@@ -2434,10 +2555,10 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		// Grab the address of BORINGSSL_bcm_text_[start,end] via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
-		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
-		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_start, @function\n"))
+		w.WriteString(".global " + markers + "start\n")
+		w.WriteString(".type " + markers + "start, @function\n")
 	}
-	w.WriteString("BORINGSSL_bcm_text_start:\n")
+	w.WriteString(markers + "start:\n")
 
 	for _, input := range inputs {
 		if err := d.processInput(input); err != nil {
@@ -2448,12 +2569,17 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	w.WriteString(".text\n")
 	if startEndDebugDirectives {
 		w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
-		if d.processor == aarch64 {
-			w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
-			w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
-		}
 	}
-	w.WriteString("BORINGSSL_bcm_text_end:\n")
+	// The end marker is global on aarch64, like the start marker. A local one
+	// breaks bcm-rust.o, because GNU as 2.42 turns the GOT reference to a local
+	// symbol into one to its section, at an offset, and GNU ld resolves that to
+	// the section's start. bcm.o's end marker is global only with the debug
+	// directives.
+	if d.processor == aarch64 && (startEndDebugDirectives || module != "bcm") {
+		w.WriteString(".global " + markers + "end\n")
+		w.WriteString(".type " + markers + "end, @function\n")
+	}
+	w.WriteString(markers + "end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
 	var redirectorNames []string
@@ -2658,7 +2784,7 @@ func parseInputs(inputs []inputFile, cppCommand []string) error {
 			var inBytes []byte
 			var err error
 
-			if len(cppCommand) > 0 {
+			if len(cppCommand) > 0 && !input.isRust {
 				inBytes, err = preprocess(cppCommand, input.path)
 			} else {
 				inBytes, err = os.ReadFile(input.path)
@@ -2732,6 +2858,8 @@ func main() {
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
 	s2nBignumInclude := flag.String("s2n-bignum-include", "", "Directory with s2n-bignum header files used by the C compiler when preprocessing")
 	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
+	module := flag.String("module", "bcm", "Names the module's markers and hash, BORINGSSL_<module>_text_*: bcm, or bcm_rust for bcm-rust.o")
+	rustInput := flag.String("rust", "", "Path to rustc's assembly output for the module")
 
 	flag.Parse()
 
@@ -2776,6 +2904,14 @@ func main() {
 		})
 	}
 
+	if len(*rustInput) > 0 {
+		inputs = append(inputs, inputFile{
+			path:   *rustInput,
+			index:  len(flag.Args()) + 1,
+			isRust: true,
+		})
+	}
+
 	if len(*s2nBignumInclude) > 0 {
 		includePaths[*s2nBignumInclude] = struct{}{}
 	}
@@ -2808,7 +2944,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives); err != nil {
+	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives, *module); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
@@ -2932,7 +3068,8 @@ func isSynthesized(symbol string, processor processorType) bool {
 	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.
 	if processor != aarch64 {
-		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_") ||
+			strings.HasPrefix(symbol, "BORINGSSL_bcm_rust_text_")
 	}
 
 	return SymbolisSynthesized

@@ -106,6 +106,9 @@ function export_apk_paths() {
 function compile_for_android() {
   # The working directory of this script should under `tests/ci`. 
   # AWSLCAndroidTestRunner should be at `tests/ci/android/AWSLCAndroidTestRunner`.
+  # rust-phase1 CI probe (not for merge): Rust for the test runner's ABIs.
+  # android-omnibus.yml runs from main, so the install can't go there.
+  ./install_rust.sh aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
   pushd android/AWSLCAndroidTestRunner
   if [[ "${FIPS}" = true ]]; then
     if [[ "${SHARED}" = true ]]; then

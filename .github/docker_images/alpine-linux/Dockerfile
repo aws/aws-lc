@@ -10,6 +10,7 @@ ARG CXX=g++
 VOLUME ["awslc"]
 
 RUN apk --no-cache add bash  \
+                       curl \
                        clang \
                        build-base \
                        cmake \
@@ -17,6 +18,10 @@ RUN apk --no-cache add bash  \
                        go \
                        perl \
                        linux-headers
+
+# rust-phase1 CI probe: Rust for ENABLE_RUST=AUTO.
+RUN curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+ENV PATH="${PATH}:/root/.cargo/bin"
 
 WORKDIR /awslc
 

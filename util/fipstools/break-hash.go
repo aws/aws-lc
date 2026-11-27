@@ -5,6 +5,7 @@
 
 // break-hash parses an ELF or PE binary containing the FIPS module and corrupts
 // the first byte of the module. This should cause the integrity check to fail.
+// With -rust, it corrupts bcm-rust.o's module region in a PE binary instead.
 package main
 
 import (
@@ -103,7 +104,7 @@ func doELF(objectBytes []byte) (int, []byte, error) {
 	return fileOffset, moduleText, nil
 }
 
-func doPE(objectBytes []byte, mapPath string) (int, []byte, error) {
+func doPE(objectBytes []byte, mapPath, markers string) (int, []byte, error) {
 	// Unlike doELF, we do not need to search the raw file for a unique
 	// 256-byte prefix of the module text to find its file offset: the map
 	// file gives us the exact virtual address of BORINGSSL_bcm_text_start,
@@ -121,11 +122,11 @@ func doPE(objectBytes []byte, mapPath string) (int, []byte, error) {
 		return 0, nil, err
 	}
 
-	startOffset, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, "BORINGSSL_bcm_text_start")
+	startOffset, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, markers+"_text_start")
 	if err != nil {
 		return 0, nil, err
 	}
-	endOffset, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, "BORINGSSL_bcm_text_end")
+	endOffset, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, markers+"_text_end")
 	if err != nil {
 		return 0, nil, err
 	}
@@ -140,7 +141,7 @@ func doPE(objectBytes []byte, mapPath string) (int, []byte, error) {
 	return int(startOffset), moduleText, nil
 }
 
-func do(outPath, inPath, mapPath string) error {
+func do(outPath, inPath, mapPath string, rust bool) error {
 	objectBytes, err := os.ReadFile(inPath)
 	if err != nil {
 		return err
@@ -149,8 +150,15 @@ func do(outPath, inPath, mapPath string) error {
 	var fileOffset int
 	var moduleText []byte
 
+	if rust && mapPath == "" {
+		return errors.New("-rust needs -map")
+	}
 	if mapPath != "" {
-		fileOffset, moduleText, err = doPE(objectBytes, mapPath)
+		markers := "BORINGSSL_bcm"
+		if rust {
+			markers = "BORINGSSL_bcm_rust"
+		}
+		fileOffset, moduleText, err = doPE(objectBytes, mapPath, markers)
 	} else {
 		fileOffset, moduleText, err = doELF(objectBytes)
 	}
@@ -183,8 +191,9 @@ func do(outPath, inPath, mapPath string) error {
 
 func main() {
 	mapPath := flag.String("map", "", "Path to linker .map file (required for Windows PE/DLL)")
+	rust := flag.Bool("rust", false, "Corrupt bcm-rust.o's module region (with -map)")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-map mapfile] <input binary> <output path>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [-map mapfile [-rust]] <input binary> <output path>\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -195,7 +204,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := do(args[1], args[0], *mapPath); err != nil {
+	if err := do(args[1], args[0], *mapPath, *rust); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

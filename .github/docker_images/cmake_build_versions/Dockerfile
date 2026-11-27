@@ -30,4 +30,8 @@ RUN /cmake_build.sh
 
 WORKDIR /
 
+# rust-phase1 CI probe: Rust for ENABLE_RUST=AUTO.
+RUN curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+ENV PATH="${PATH}:/root/.cargo/bin"
+
 ENTRYPOINT ["/entry.sh"]

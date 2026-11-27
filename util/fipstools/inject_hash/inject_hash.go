@@ -3,7 +3,11 @@
 
 // inject_hash parses an archive containing a file object file. It finds a FIPS
 // module inside that object, calculates its hash and replaces the default hash
-// value in the object with the calculated value.
+// value in the object with the calculated value. With -rust, it does the same
+// for the module region of bcm-rust.o, bcm.o's Rust counterpart: in static
+// FIPS builds in bcm-rust.o, after checking that no relocation is left in the
+// region (checkNoRelocations), and in shared ones in the final library, as for
+// bcm.o.
 package main
 
 import (
@@ -12,6 +16,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
+	"debug/pe"
 	"encoding/binary"
 	"errors"
 	"flag"
@@ -24,7 +29,7 @@ import (
 	"github.com/aws/aws-lc/util/fipstools/fipscommon"
 )
 
-func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
+func doLinux(objectBytes []byte, isStatic bool, rust bool) ([]byte, []byte, error) {
 
 	object, err := elf.NewFile(bytes.NewReader(objectBytes))
 	if err != nil {
@@ -41,8 +46,11 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 			textSectionIndex = elf.SectionIndex(i)
 			textSection = section
 		case ".rodata":
-			rodataSectionIndex = elf.SectionIndex(i)
-			rodataSection = section
+			// bcm-rust.o's region holds its constants too, in .text.
+			if !rust {
+				rodataSectionIndex = elf.SectionIndex(i)
+				rodataSection = section
+			}
 		}
 	}
 
@@ -50,9 +58,14 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 		return nil, nil, errors.New("failed to find .text section in object")
 	}
 
-	// Find the starting and ending symbols for the module.
+	// Find the starting and ending symbols for the module. bcm-rust.o's are
+	// defined by crypto/rust/fipsmodule/bcm-rust.lds.
 
 	var textStart, textEnd, rodataStart, rodataEnd *uint64
+	markers := "BORINGSSL_bcm"
+	if rust {
+		markers = "BORINGSSL_bcm_rust"
+	}
 
 	symbols, err := object.Symbols()
 	if err != nil {
@@ -83,22 +96,22 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 
 		value := symbol.Value - base
 		switch symbol.Name {
-		case "BORINGSSL_bcm_text_start":
+		case markers + "_text_start":
 			if textStart != nil {
 				return nil, nil, errors.New("duplicate start symbol found")
 			}
 			textStart = &value
-		case "BORINGSSL_bcm_text_end":
+		case markers + "_text_end":
 			if textEnd != nil {
 				return nil, nil, errors.New("duplicate end symbol found")
 			}
 			textEnd = &value
-		case "BORINGSSL_bcm_rodata_start":
+		case markers + "_rodata_start":
 			if rodataStart != nil {
 				return nil, nil, errors.New("duplicate rodata start symbol found")
 			}
 			rodataStart = &value
-		case "BORINGSSL_bcm_rodata_end":
+		case markers + "_rodata_end":
 			if rodataEnd != nil {
 				return nil, nil, errors.New("duplicate rodata end symbol found")
 			}
@@ -140,6 +153,12 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 	if _, err := io.ReadFull(text, moduleText); err != nil {
 		return nil, nil, errors.New("failed to read .text: " + err.Error())
 	}
+	// A shared library's final link has applied every relocation already.
+	if rust && isStatic {
+		if err := checkNoRelocations(object, textSectionIndex, *textStart, *textEnd); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	// Maybe extract the module's read-only data too
 	var moduleROData []byte
@@ -157,11 +176,70 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
+// checkNoRelocations fails if a relocation is left inside bcm-rust.o's module
+// region, [start, end) of its text section. delocate resolves every reference
+// module code makes, as it does bcm.o's, so a relocation left there means the
+// consumer's final link would write bytes that differ from the ones hashed
+// here, such as for a direct reference to a mutable static
+// (crypto/rust/fipsmodule/src/fips.rs).
+func checkNoRelocations(object *elf.File, textIndex elf.SectionIndex, start, end uint64) error {
+	if object.Class != elf.ELFCLASS64 {
+		return errors.New("-rust supports only 64-bit ELF objects")
+	}
+	symbols, err := object.Symbols()
+	if err != nil {
+		return errors.New("failed to parse symbols: " + err.Error())
+	}
+	for _, section := range object.Sections {
+		if elf.SectionIndex(section.Info) != textIndex || (section.Type != elf.SHT_RELA && section.Type != elf.SHT_REL) {
+			continue
+		}
+		data, err := section.Data()
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %s", section.Name, err)
+		}
+		size := 24
+		if section.Type == elf.SHT_REL {
+			size = 16
+		}
+		for ; len(data) >= size; data = data[size:] {
+			off := object.ByteOrder.Uint64(data[0:8])
+			if off < start || off >= end {
+				continue
+			}
+			name := "?"
+			if i := elf.R_SYM64(object.ByteOrder.Uint64(data[8:16])); i > 0 && int(i) <= len(symbols) {
+				// Symbols omits the null symbol at index 0.
+				name = symbols[i-1].Name
+				if sym := symbols[i-1]; elf.ST_TYPE(sym.Info) == elf.STT_SECTION && int(sym.Section) < len(object.Sections) {
+					name = object.Sections[sym.Section].Name
+				}
+			}
+			return fmt.Errorf("module code at .text+%#x refers to %q through a relocation, which the final link would fill in", off, name)
+		}
+	}
+	return nil
+}
+
+func doAppleOS(objectBytes []byte, rust bool) ([]byte, []byte, error) {
 
 	object, err := macho.NewFile(bytes.NewReader(objectBytes))
 	if err != nil {
 		return nil, nil, errors.New("failed to parse object: " + err.Error())
+	}
+
+	// bcm-rust.o's module region is a section of its own, which its partial
+	// link makes from its code and constants (cmake/cargo.cmake).
+	if rust {
+		section := object.Section("__bcm_rust")
+		if section == nil || section.Seg != "__TEXT" {
+			return nil, nil, errors.New("failed to find __TEXT,__bcm_rust section in object")
+		}
+		moduleText, err := section.Data()
+		if err != nil {
+			return nil, nil, errors.New("failed to read __bcm_rust: " + err.Error())
+		}
+		return moduleText, nil, nil
 	}
 
 	// Find the __text and, optionally, __const sections.
@@ -349,7 +427,96 @@ func doWindows(objectBytes []byte, mapPath string) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string) error {
+// doWindowsRust finds bcm-rust.o's module region in a DLL, from its markers in
+// the linker map file (cmake/rust_crate_object_fold.cmake). The module has no
+// separate rodata region: its constants are in the region too.
+func doWindowsRust(objectBytes []byte, mapPath string) ([]byte, error) {
+	symbolAddrs, err := fipscommon.ParseMapFile(mapPath)
+	if err != nil {
+		return nil, err
+	}
+	peInfo, err := fipscommon.ParsePE(objectBytes)
+	if err != nil {
+		return nil, err
+	}
+	const startSym, endSym = "BORINGSSL_bcm_rust_text_start", "BORINGSSL_bcm_rust_text_end"
+	startOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, startSym)
+	if err != nil {
+		return nil, err
+	}
+	endOff, err := peInfo.ResolveSymbolFileOffset(symbolAddrs, endSym)
+	if err != nil {
+		return nil, err
+	}
+	if startOff >= endOff || endOff > uint64(len(objectBytes)) {
+		return nil, fmt.Errorf("invalid boundaries: start=0x%x end=0x%x filesize=%d", startOff, endOff, len(objectBytes))
+	}
+	if err := checkNoBaseRelocations(peInfo, symbolAddrs[startSym]-peInfo.ImageBase, symbolAddrs[endSym]-peInfo.ImageBase); err != nil {
+		return nil, err
+	}
+	return objectBytes[startOff:endOff], nil
+}
+
+// checkNoBaseRelocations fails if the loader would patch any byte from RVA
+// start to end, which happens to an absolute address in a DLL that doesn't
+// load at its preferred base. COFF has no .data.rel.ro, so a constant that
+// holds a pointer stays in the module region, and only this catches it.
+func checkNoBaseRelocations(peInfo *fipscommon.PEInfo, start, end uint64) error {
+	var dir pe.DataDirectory
+	switch oh := peInfo.File.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		if len(oh.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	case *pe.OptionalHeader32:
+		if len(oh.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_BASERELOC {
+			dir = oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_BASERELOC]
+		}
+	}
+	if dir.Size == 0 {
+		return nil
+	}
+	var relocs []byte
+	for _, section := range peInfo.File.Sections {
+		if dir.VirtualAddress >= section.VirtualAddress && dir.VirtualAddress < section.VirtualAddress+section.VirtualSize {
+			data, err := section.Data()
+			if err != nil {
+				return err
+			}
+			offset := dir.VirtualAddress - section.VirtualAddress
+			if uint64(offset)+uint64(dir.Size) > uint64(len(data)) {
+				return errors.New("base relocation table runs past its section")
+			}
+			relocs = data[offset : offset+dir.Size]
+			break
+		}
+	}
+	if relocs == nil {
+		return errors.New("base relocation table not found in any section")
+	}
+	for len(relocs) >= 8 {
+		page := uint64(binary.LittleEndian.Uint32(relocs))
+		size := binary.LittleEndian.Uint32(relocs[4:])
+		if size < 8 || uint64(size) > uint64(len(relocs)) {
+			return errors.New("malformed base relocation block")
+		}
+		for entries := relocs[8:size]; len(entries) >= 2; entries = entries[2:] {
+			entry := binary.LittleEndian.Uint16(entries)
+			if entry>>12 == 0 { // IMAGE_REL_BASED_ABSOLUTE, padding
+				continue
+			}
+			rva := page + uint64(entry&0xfff)
+			// The widest field a base relocation patches is 8 bytes.
+			if rva+8 > start && rva < end {
+				return fmt.Errorf("the loader patches RVA 0x%x, in bcm-rust.o's module region 0x%x-0x%x", rva, start, end)
+			}
+		}
+		relocs = relocs[size:]
+	}
+	return nil
+}
+
+func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, mapFile string, rust bool) error {
 	var objectBytes []byte
 	var isStatic bool
 	var perm os.FileMode
@@ -360,6 +527,10 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 
 	if windowsOS && len(mapFile) == 0 {
 		return fmt.Errorf("-map is required when -windows is set")
+	}
+
+	if rust && len(oInput) == 0 {
+		return fmt.Errorf("-rust takes an object with -in-object")
 	}
 
 	if len(arInput) > 0 {
@@ -418,12 +589,14 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 
 	var moduleText, moduleROData []byte
 	var err error
-	if windowsOS {
+	if windowsOS && rust {
+		moduleText, err = doWindowsRust(objectBytes, mapFile)
+	} else if windowsOS {
 		moduleText, moduleROData, err = doWindows(objectBytes, mapFile)
 	} else if appleOS {
-		moduleText, moduleROData, err = doAppleOS(objectBytes)
+		moduleText, moduleROData, err = doAppleOS(objectBytes, rust)
 	} else {
-		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
+		moduleText, moduleROData, err = doLinux(objectBytes, isStatic, rust)
 	}
 
 	if err != nil {
@@ -450,12 +623,16 @@ func do(outPath, oInput string, arInput string, appleOS bool, windowsOS bool, ma
 	// Replace the default hash value in the object with the calculated
 	// value and write it out.
 
-	offset := bytes.Index(objectBytes, fipscommon.UninitHashValue[:])
+	uninitHashValue := fipscommon.UninitHashValue
+	if rust {
+		uninitHashValue = fipscommon.RustUninitHashValue
+	}
+	offset := bytes.Index(objectBytes, uninitHashValue[:])
 	if offset < 0 {
 		return errors.New("did not find uninitialised hash value in object file")
 	}
 
-	if bytes.Index(objectBytes[offset+1:], fipscommon.UninitHashValue[:]) >= 0 {
+	if bytes.Index(objectBytes[offset+1:], uninitHashValue[:]) >= 0 {
 		return errors.New("found two occurrences of uninitialised hash value in object file")
 	}
 
@@ -471,10 +648,11 @@ func main() {
 	appleOS := flag.Bool("apple", false, "Whether the FIPS module is built for macOS/iOS or not.")
 	windowsOS := flag.Bool("windows", false, "Whether the FIPS module is built for Windows or not.")
 	mapFile := flag.String("map", "", "Path to linker .map file (required for Windows)")
+	rust := flag.Bool("rust", false, "Whether the object is bcm-rust.o, the Rust FIPS module.")
 
 	flag.Parse()
 
-	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile); err != nil {
+	if err := do(*outPath, *oInput, *arInput, *appleOS, *windowsOS, *mapFile, *rust); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
