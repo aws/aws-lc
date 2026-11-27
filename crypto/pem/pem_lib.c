@@ -56,6 +56,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -608,6 +609,11 @@ int PEM_read(FILE *fp, char **name, char **header, unsigned char **data,
   return ret;
 }
 
+// PEM_READ_BIO_BUF_SLACK is the extra slack |PEM_read_bio| requests on top of
+// the name/header/data it has actually buffered so far, when growing
+// |nameB|/|headerB|/|dataB|.
+#define PEM_READ_BIO_BUF_SLACK 9
+
 int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
                  long *len) {
   EVP_ENCODE_CTX ctx;
@@ -648,7 +654,7 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
       if (strncmp(&(buf[11 + i - 6]), "-----\n", 6) != 0) {
         continue;
       }
-      if (!BUF_MEM_grow(nameB, i + 9)) {
+      if (!BUF_MEM_grow(nameB, i + PEM_READ_BIO_BUF_SLACK)) {
         goto err;
       }
       OPENSSL_memcpy(nameB->data, &(buf[11]), i - 6);
@@ -676,7 +682,11 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
     if (buf[0] == '\n') {
       break;
     }
-    if (!BUF_MEM_grow(headerB, hl + i + 9)) {
+    if (i > INT_MAX - PEM_READ_BIO_BUF_SLACK - hl) {
+      OPENSSL_PUT_ERROR(PEM, ERR_R_OVERFLOW);
+      goto err;
+    }
+    if (!BUF_MEM_grow(headerB, hl + i + PEM_READ_BIO_BUF_SLACK)) {
       goto err;
     }
     if (strncmp(buf, "-----END ", 9) == 0) {
@@ -715,7 +725,11 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
       if (i > 65) {
         break;
       }
-      if (!BUF_MEM_grow_clean(dataB, i + bl + 9)) {
+      if (i > INT_MAX - PEM_READ_BIO_BUF_SLACK - bl) {
+        OPENSSL_PUT_ERROR(PEM, ERR_R_OVERFLOW);
+        goto err;
+      }
+      if (!BUF_MEM_grow_clean(dataB, i + bl + PEM_READ_BIO_BUF_SLACK)) {
         goto err;
       }
       OPENSSL_memcpy(&(dataB->data[bl]), buf, i);

@@ -185,7 +185,7 @@ jobs:
           env DEBIAN_FRONTEND=noninteractive sudo apt-get update
           env DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-${{ matrix.clangversion }}
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           generator: Ninja
           c-compiler: clang-${{ matrix.clangversion }}
@@ -277,7 +277,7 @@ jobs:
           go version
           perl --version
       - name: Setup CMake
-        uses: threeal/cmake-action@v2.1.0
+        uses: threeal/cmake-action@725d1314ccf9ea922805d7e3f9d9bcbca892b406 # v2.1.0
         with:
           generator: Ninja
           c-compiler: gcc

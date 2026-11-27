@@ -96,7 +96,7 @@ jobs:
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
@@ -104,17 +104,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: "path has spaces/aws-lc"
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
       - name: Setup CMake (Ninja)
         if:  ${{ matrix.ninja == '1' }}
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
       - name: Setup CMake
         if:  ${{ matrix.ninja != '1' }}
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
@@ -123,7 +123,7 @@ jobs:
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
       - name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build-fips'

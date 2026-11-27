@@ -15,18 +15,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Checkout
         uses: actions/checkout@v4
         with:
           path: "path has spaces/aws-lc"
       - name: Setup MinGW
-        uses: egor-tensin/setup-mingw@v2.2.0
+        uses: egor-tensin/setup-mingw@84c781b557efd538dec66bde06988d81cd3138cf # v2.2.0
         id: setup_mingw
         with:
           static: 0
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           generator: Ninja
           source-dir: 'path has spaces/aws-lc'
@@ -51,17 +51,17 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2
+        uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2
         id: clang
         with:
           version: 19
           env: true
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           generator: Ninja
           c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
@@ -89,21 +89,21 @@ jobs:
     steps:
       - if: ${{ matrix.target  == 'x64' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
+      - uses: TheMrMilchmann/setup-msvc-dev@ced9887c29958f18f71b18c99d9eb0837859434c # v3
         with:
           arch: ${{ matrix.target }}
       - if: ${{ matrix.target  == 'x64' }}
         name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           options: |
             CMAKE_BUILD_TYPE=Release \
       - if: ${{ matrix.target  == 'x64_arm64' }}
         name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           options: |
             CMAKE_GENERATOR_PLATFORM=ARM64 \
@@ -127,17 +127,17 @@ jobs:
     steps:
       - if: ${{ matrix.target  == 'x64' }}
         name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Remove wrong clang-cl.exe
         run:  rm "C:/Program Files/LLVM/bin/clang-cl.exe"
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
+      - uses: TheMrMilchmann/setup-msvc-dev@ced9887c29958f18f71b18c99d9eb0837859434c # v3
         with:
           arch: ${{ matrix.target }}
       - if: ${{ matrix.target  == 'x64' }}
         name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           generator: Ninja
           c-compiler: clang-cl
@@ -146,7 +146,7 @@ jobs:
             CMAKE_BUILD_TYPE=Release \
       - if: ${{ matrix.target  == 'x64_arm64' }}
         name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           generator: Ninja
           c-compiler: clang-cl
@@ -206,7 +206,7 @@ jobs:
           - 'MSYS Makefiles'
     steps:
       - name: Install MSYS2
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2
         id: setup_msys2
         with:
           msystem: ${{ matrix.sys }}
@@ -232,7 +232,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
+        uses: threeal/cmake-action@b684818e3104c3151285e9001e7652b717f11bcd # v1.3.0
         with:
           build-dir: ./build
           options: |

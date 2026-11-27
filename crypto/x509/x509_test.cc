@@ -1666,6 +1666,52 @@ TEST(X509Test, PartialChain) {
   }
 }
 
+// |X509_STORE_CTX_set0_trusted_stack| replaces the |X509_STORE| as the source
+// of trust anchors, including under |X509_V_FLAG_PARTIAL_CHAIN|.
+TEST(X509Test, PartialChainTrustedStackIgnoresStore) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+
+  auto verify = [&](const std::vector<X509 *> &store_certs,
+                    const std::vector<X509 *> &trusted_certs) {
+    bssl::UniquePtr<STACK_OF(X509)> trusted_stack(CertsToStack(trusted_certs));
+    bssl::UniquePtr<STACK_OF(X509)> untrusted(sk_X509_new_null());
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    if (!trusted_stack || !untrusted || !store || !ctx) {
+      return X509_V_ERR_UNSPECIFIED;
+    }
+    for (X509 *cert : store_certs) {
+      if (!X509_STORE_add_cert(store.get(), cert)) {
+        return X509_V_ERR_UNSPECIFIED;
+      }
+    }
+    if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                             untrusted.get())) {
+      return X509_V_ERR_UNSPECIFIED;
+    }
+    X509_STORE_CTX_set0_trusted_stack(ctx.get(), trusted_stack.get());
+    X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+    X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
+    X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
+    if (X509_verify_cert(ctx.get()) != 1) {
+      return X509_STORE_CTX_get_error(ctx.get());
+    }
+    return X509_V_OK;
+  };
+
+  const std::vector<X509 *> none;
+  const std::vector<X509 *> leaf_only = {leaf.get()};
+
+  // The target certificate matches a store entry exactly, but the store is not
+  // the trust source, so the chain has no anchor.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            verify(leaf_only, none));
+
+  // The same match against the trusted stack supplies the anchor.
+  EXPECT_EQ(X509_V_OK, verify(none, leaf_only));
+}
+
 #if defined(OPENSSL_THREADS)
 // Verifying the same |X509| objects on two threads should be safe.
 TEST(X509Test, VerifyThreads) {
@@ -1905,6 +1951,37 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                      X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
+
+  // A malformed address leaves the parameters alone, so the OpenSSL idiom of
+  // trying |X509_VERIFY_PARAM_set1_ip_asc| before
+  // |X509_VERIFY_PARAM_set1_host| still verifies.
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                   [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     ASSERT_FALSE(
+                         X509_VERIFY_PARAM_set1_ip_asc(param, "example.com"));
+                   }));
+
+  // A NULL parameter is rejected before the address is parsed.
+  ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip_asc(nullptr, "127.0.0.1"));
+  ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip_asc(nullptr, "example.com"));
+
+  // A poisoned store fails |X509_STORE_CTX_init|, so a caller that ignores a
+  // failed setter cannot reach |X509_verify_cert|.
+  {
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    ASSERT_TRUE(store);
+    ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+    // An embedded NUL fails and poisons the store's parameters.
+    ASSERT_FALSE(X509_VERIFY_PARAM_set1_host(X509_STORE_get0_param(store.get()),
+                                             "a", 2));
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_FALSE(
+        X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+    ERR_clear_error();
+  }
 
   // Zero bytes in an IP address are, of course, fine. This is tested above
   // because |kIP| contains zeros.
@@ -2787,6 +2864,69 @@ TEST(X509Test, NameConstraints) {
           << "\"";
     }
   }
+}
+
+TEST(X509Test, NameConstraintsIntermediateCN) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<NAME_CONSTRAINTS> nc =
+      MakeNameConstraint(GEN_DNS, ".example.com", /*excluded=*/false);
+  ASSERT_TRUE(nc);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // An intermediate CA whose CN is an organization name with an internal dot
+  // and spaces, and no SAN. The CN fallback is a hostname heuristic and only
+  // applies to the end-entity certificate, so this must not be treated as a
+  // DNS name.
+  static const char kIntermediateCN[] = "ACME Corp. Issuing CA G2";
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", kIntermediateCN, key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf = MakeTestCert(kIntermediateCN, "www.example.com",
+                                            key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The end-entity CN is still checked through the same intermediate.
+  bssl::UniquePtr<X509> leaf_bad =
+      MakeTestCert(kIntermediateCN, "www.evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_bad);
+  ASSERT_TRUE(X509_sign(leaf_bad.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf_bad.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  bssl::UniquePtr<X509> leaf_space = MakeTestCert(
+      kIntermediateCN, "foo .evil.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_space);
+  ASSERT_TRUE(X509_sign(leaf_space.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(
+      X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+      Verify(leaf_space.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // The same for an intermediate CN that is a well-formed DNS name outside
+  // the permitted subtree.
+  bssl::UniquePtr<X509> intermediate_dns =
+      MakeTestCert("Root", "issuing.evil.com", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate_dns);
+  ASSERT_TRUE(X509_sign(intermediate_dns.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf_dns = MakeTestCert(
+      "issuing.evil.com", "www.example.com", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf_dns);
+  ASSERT_TRUE(X509_sign(leaf_dns.get(), key.get(), EVP_sha256()));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_dns.get(), {root.get()},
+                              {intermediate_dns.get()}, {}, 0));
 }
 
 // Test that wildcard CNs are checked against name constraints when no
@@ -6568,6 +6708,130 @@ TEST(X509Test, NamePrint) {
   }
 }
 
+TEST(X509Test, NamePrintMissingAttributeName) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid_no_ln =
+      OBJ_create("1.2.840.113554.4.1.72585.1010", "short name only", nullptr);
+  ASSERT_NE(NID_undef, nid_no_ln);
+  int nid_no_sn =
+      OBJ_create("1.2.840.113554.4.1.72585.1011", nullptr, "long name only");
+  ASSERT_NE(NID_undef, nid_no_sn);
+
+  const struct {
+    int nid;
+    unsigned long flags;
+  } kTests[] = {
+      {nid_no_ln, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_LN},
+      {nid_no_sn, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.nid);
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+        name.get(), t.nid, V_ASN1_PRINTABLESTRING,
+        reinterpret_cast<const uint8_t *>("value"), 5, /*loc=*/-1, /*set=*/0));
+
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    EXPECT_EQ(X509_NAME_print_ex(bio.get(), name.get(), /*indent=*/0, t.flags),
+              -1);
+    EXPECT_EQ(X509_NAME_print_ex(nullptr, name.get(), /*indent=*/0, t.flags),
+              -1);
+  }
+}
+
+TEST(X509Test, NamePrintLargeOutputOverflow) {
+  // Each value dumps as '#' plus two hex digits per byte. Exercise overflow
+  // when adding each part of the printed name, as well as exact-fit outputs.
+  const struct {
+    int value_lengths[2];
+    int second_set;
+    int indent;
+    unsigned long flags;
+    int expected_len;
+  } kTests[] = {
+      // Two values of |INT_MAX / 2| characters and a comma fit exactly.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE,
+       INT_MAX},
+      // A two-character separator overflows when adding the second value.
+      {{INT_MAX / 4, INT_MAX / 4},
+       0,
+       0,
+       XN_FLAG_SEP_CPLUS_SPC | XN_FLAG_FN_NONE,
+       -1},
+      // The first value reaches |INT_MAX|, so the ',' or '+' overflows.
+      {{INT_MAX / 2, 0}, 0, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      {{INT_MAX / 2, 0}, -1, 0, XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_NONE, -1},
+      // Initial indentation, the first value, and '\n' reach |INT_MAX|.
+      // Indenting the second line overflows.
+      {{(INT_MAX - 3) / 2, 0},
+       0,
+       1,
+       XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_NONE,
+       -1},
+      // "CN=", the first value, and ',' reach |INT_MAX|. The second "CN"
+      // overflows.
+      {{(INT_MAX - 5) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN", but not its '='.
+      {{(INT_MAX - 7) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       -1},
+      // Leave room for the second "CN=#", reaching |INT_MAX| exactly.
+      {{(INT_MAX - 9) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN,
+       INT_MAX},
+      // The padded first "CN=", value, and ',' reach |INT_MAX|. Alignment
+      // padding for the second field overflows.
+      {{(INT_MAX - 13) / 2, 0},
+       0,
+       0,
+       XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_FN_SN | XN_FLAG_FN_ALIGN,
+       -1},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.value_lengths[0]);
+    SCOPED_TRACE(t.second_set);
+    SCOPED_TRACE(t.flags);
+    // Parsed names are bounded, but a caller-constructed name may print more
+    // than |INT_MAX| characters in total. As in
+    // |ASN1Test.PrintExLargeStringOverflow|, fake each value's length. With a
+    // NULL |BIO| and |ASN1_STRFLGS_DUMP_ALL|, the values are only measured and
+    // never read.
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    for (int i = 0; i < 2; i++) {
+      ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+          name.get(), NID_commonName, V_ASN1_UTF8STRING,
+          reinterpret_cast<const uint8_t *>("x"), 1, /*loc=*/-1,
+          /*set=*/i == 0 ? 0 : t.second_set));
+      ASN1_STRING *val =
+          X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name.get(), i));
+      ASSERT_TRUE(val);
+      val->length = t.value_lengths[i];
+    }
+
+    EXPECT_EQ(t.expected_len,
+              X509_NAME_print_ex(nullptr, name.get(), t.indent,
+                                 t.flags | ASN1_STRFLGS_DUMP_ALL));
+    if (t.expected_len < 0) {
+      EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509, ERR_R_OVERFLOW));
+    }
+  }
+}
+
 // kRareRSAPEM is a certificate with the rare |nid_rsa|.
 static const char kRareRSAPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -8446,6 +8710,21 @@ TEST(X509Test, ParamInheritance) {
     ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
     // The new value is used.
     EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 10);
+  }
+
+  // Poison fails the copy in either direction, for both functions.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> poisoned(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(poisoned);
+    bssl::UniquePtr<X509_VERIFY_PARAM> clean(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(clean);
+    // An embedded NUL fails and poisons the parameters.
+    ASSERT_FALSE(X509_VERIFY_PARAM_set1_host(poisoned.get(), "a", 2));
+    EXPECT_FALSE(X509_VERIFY_PARAM_inherit(clean.get(), poisoned.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_inherit(poisoned.get(), clean.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_set1(clean.get(), poisoned.get()));
+    EXPECT_FALSE(X509_VERIFY_PARAM_set1(poisoned.get(), clean.get()));
+    ERR_clear_error();
   }
 }
 
