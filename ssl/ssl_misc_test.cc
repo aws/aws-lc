@@ -1887,6 +1887,33 @@ static const InvalidTransferEncodingTestParam kInvalidTransferEncodings[] = {
      "ab482315b8d92421d601c602b50f2041bbba2330210201010204030013013016020101020"
      "117040e300c0201010201000201000101ffbb233021020101020403001301301602010102"
      "0117040e300c0201010201000201000101ffbc03020101020108020100a203020100"},
+    // Regression tests for the v1/v2 (serde_version < 3) previous-Finished
+    // out-of-bounds read. These are derived from the valid v1 (serde_version=1,
+    // TLS 1.2) round-trip blob in kEncodeDecodeKATs by leaving the 12-byte
+    // previous_client/server_finished OCTET STRING intact while inflating the
+    // separately-encoded length field to 0x40 (PREV_FINISHED_MAX_SIZE). Such a
+    // blob passes every pre-existing check (declared length <=
+    // PREV_FINISHED_MAX_SIZE and octet length <= PREV_FINISHED_MAX_SIZE) yet the
+    // declared length exceeds the bytes actually present, which previously fed
+    // an over-long OPENSSL_memcpy. Deserialization must now reject them.
+    // previous_client_finished_len (64) > CBS_len(&previous_client_finished) (12)
+    {"308201173082011302010102020303020240003081fa02010104080000000000000001040"
+     "800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f"
+     "574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e"
+     "99e42a604020000020100020103040cb9b409f5129440622f87f844020140040c1f49e2e9"
+     "89c66a263e9c227502010c020100020100020100a05b3059020101020203030402cca8040"
+     "0043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd809"
+     "8dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb20"
+     "302011da206040474657374a7030101ff020108020100a0030101ff"},
+    // previous_server_finished_len (64) > CBS_len(&previous_server_finished) (12)
+    {"308201173082011302010102020303020240003081fa02010104080000000000000001040"
+     "800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f"
+     "574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e"
+     "99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49e2e9"
+     "89c66a263e9c2275020140020100020100020100a05b3059020101020203030402cca8040"
+     "0043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd809"
+     "8dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb20"
+     "302011da206040474657374a7030101ff020108020100a0030101ff"},
 };
 
 class InvalidTransferEncoding

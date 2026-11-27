@@ -1949,6 +1949,34 @@ TEST_P(SSLVersionTest, SimpleVerifiedChain) {
   EXPECT_EQ(X509_cmp(sk_X509_value(verified_client_chain, 0), cert_.get()), 0);
 }
 
+// A poisoned SSL_CTX parameter must still fail closed on a connection that
+// inherited it. |ssl_crypto_x509_ssl_new| inherits without checking the return
+// value, so the poison has to survive the copy itself.
+TEST_P(SSLVersionTest, PoisonedContextParamFailsConnection) {
+  ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
+                                  cert_.get()));
+  SSL_CTX_set_verify(client_ctx_.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx_.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+
+  // An embedded NUL is rejected and poisons the parameter. Callers that ignore
+  // this return value are the case the poison exists to catch.
+  static const char kHostWithNUL[] = "evil.example\0localhost";
+  EXPECT_FALSE(
+      X509_VERIFY_PARAM_set1_host(SSL_CTX_get0_param(client_ctx_.get()),
+                                  kHostWithNUL, sizeof(kHostWithNUL) - 1));
+  ERR_clear_error();
+
+  UniquePtr<SSL> client_ssl, server_ssl;
+  ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(),
+                                    server_ctx_.get()));
+  EXPECT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));
+  EXPECT_EQ(SSL_get_verify_result(client_ssl.get()), X509_V_ERR_INVALID_CALL);
+}
+
 TEST_P(SSLVersionTest, VerifiedChain) {
   ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
                                   cert_.get()));
@@ -2459,6 +2487,170 @@ TEST(SSLBufferSizeFailureTest, SerDeLargeBuffer) {
   // Verify the data integrity
   EXPECT_EQ(0, OPENSSL_memcmp(deserialized_buffer.data(), test_data.data(),
                               large_capacity));
+}
+
+// Regression test for the V1 buffer-view deserializer
+// (deserialize_buffer_view_from_buf_ptr_offset). The bounds are validated on
+// the integer offset/size before any pointer arithmetic. Previously the checks
+// were performed on the computed pointers (buf_ptr() + offset and
+// view_ptr + size), which can wrap around the address space and let an
+// out-of-bounds view slip through, yielding an oversized Span.
+TEST(SSLBufferSizeFailureTest, DeserializeBufferViewRejectsWraparound) {
+  SSLBuffer buffer;
+  ASSERT_TRUE(buffer.EnsureCap(0, 4096));
+  const size_t buf_size = buffer.buf_size();
+  ASSERT_GT(buf_size, 0u);
+
+  // Encodes a V1-format buffer view: SEQUENCE { INTEGER offset, INTEGER size }.
+  // A leading INTEGER selects the buf_ptr()-relative (legacy) decode path in
+  // DeserializeBufferView.
+  auto make_v1_view = [](uint64_t offset, uint64_t size,
+                         std::vector<uint8_t> *out) {
+    bssl::ScopedCBB cbb;
+    CBB seq;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
+    ASSERT_TRUE(CBB_add_asn1_uint64(&seq, offset));
+    ASSERT_TRUE(CBB_add_asn1_uint64(&seq, size));
+    uint8_t *data = nullptr;
+    size_t len = 0;
+    ASSERT_TRUE(CBB_finish(cbb.get(), &data, &len));
+    out->assign(data, data + len);
+    OPENSSL_free(data);
+  };
+
+  auto deserialize = [&](uint64_t offset, uint64_t size,
+                         Span<uint8_t> *view) -> bool {
+    std::vector<uint8_t> blob;
+    make_v1_view(offset, size, &blob);
+    CBS cbs;
+    CBS_init(&cbs, blob.data(), blob.size());
+    return buffer.DeserializeBufferView(cbs, *view);
+  };
+
+  Span<uint8_t> view;
+
+  // The exploit: anchor the view one-past-the-end (offset == buf_size) and pick
+  // a size so that (buf_ptr() + offset) + size wraps around and lands back
+  // inside the buffer, defeating the old pointer comparisons. Must be rejected.
+  EXPECT_FALSE(deserialize(buf_size, UINT64_MAX, &view));
+
+  // An offset past the end of the buffer is rejected regardless of size.
+  EXPECT_FALSE(deserialize(buf_size + 1, 0, &view));
+
+  // A size that runs off the end of the buffer is rejected.
+  EXPECT_FALSE(deserialize(0, static_cast<uint64_t>(buf_size) + 1, &view));
+  EXPECT_FALSE(deserialize(buf_size / 2, buf_size, &view));
+
+  // Valid views are still accepted and produce the expected span.
+  ASSERT_TRUE(deserialize(0, buf_size, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr());
+  EXPECT_EQ(view.size(), buf_size);
+
+  // Nonempty interior view.
+  ASSERT_TRUE(deserialize(1, buf_size - 2, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr() + 1);
+  EXPECT_EQ(view.size(), buf_size - 2);
+
+  // Nonempty view ending exactly at the buffer boundary.
+  ASSERT_TRUE(deserialize(buf_size / 2, buf_size - buf_size / 2, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr() + buf_size / 2);
+  EXPECT_EQ(view.size(), buf_size - buf_size / 2);
+
+  // An empty view one-past-the-end is the boundary case and is allowed.
+  ASSERT_TRUE(deserialize(buf_size, 0, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr() + buf_size);
+  EXPECT_EQ(view.size(), 0u);
+}
+
+// Regression test for the V2 buffer-view deserializer. Same integer-validation
+// fix as V1, but the offset is signed and measured from data().
+TEST(SSLBufferSizeFailureTest,
+     DeserializeBufferViewDataOffsetRejectsWraparound) {
+  // [0] CONSTRUCTED CONTEXT-SPECIFIC, matching kBufferViewOffsetFromDataPtr in
+  // ssl_buffer.cc.
+  const unsigned kOffsetFromDataPtr =
+      CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
+
+  SSLBuffer buffer;
+  ASSERT_TRUE(buffer.EnsureCap(0, 4096));
+  const size_t buf_size = buffer.buf_size();
+  ASSERT_GT(buf_size, 0u);
+
+  const size_t data_off = 128;
+  ASSERT_LT(data_off, buf_size);
+  buffer.DidWrite(data_off);
+  buffer.Consume(data_off);
+  ASSERT_EQ(buffer.data(), buffer.buf_ptr() + data_off);
+  
+  auto make_v2_view = [&](int64_t offset, uint64_t size,
+                          std::vector<uint8_t> *out) {
+    bssl::ScopedCBB cbb;
+    CBB seq, child;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
+    ASSERT_TRUE(CBB_add_asn1(&seq, &child, kOffsetFromDataPtr));
+    ASSERT_TRUE(CBB_add_asn1_int64(&child, offset));
+    ASSERT_TRUE(CBB_add_asn1_uint64(&seq, size));
+    uint8_t *data = nullptr;
+    size_t len = 0;
+    ASSERT_TRUE(CBB_finish(cbb.get(), &data, &len));
+    out->assign(data, data + len);
+    OPENSSL_free(data);
+  };
+
+  auto deserialize = [&](int64_t offset, uint64_t size,
+                         Span<uint8_t> *view) -> bool {
+    std::vector<uint8_t> blob;
+    make_v2_view(offset, size, &blob);
+    CBS cbs;
+    CBS_init(&cbs, blob.data(), blob.size());
+    return buffer.DeserializeBufferView(cbs, *view);
+  };
+
+  Span<uint8_t> view;
+
+  // Offsets, relative to data(), that place the view start at buf_ptr() and at
+  // the end of the buffer respectively.
+  const int64_t to_start = -static_cast<int64_t>(data_off);
+  const int64_t to_end = static_cast<int64_t>(buf_size - data_off);
+
+  // Wraparound exploit: anchor at a valid start and choose a size so that
+  // view_ptr + size wraps around and lands back inside the buffer. Rejected.
+  EXPECT_FALSE(deserialize(to_end, UINT64_MAX, &view));
+  EXPECT_FALSE(deserialize(to_start, UINT64_MAX, &view));
+
+  // A start before buf_ptr() is rejected regardless of size.
+  EXPECT_FALSE(deserialize(to_start - 1, 0, &view));
+
+  // A start past the end of the buffer is rejected.
+  EXPECT_FALSE(deserialize(to_end + 1, 0, &view));
+
+  // A size that runs off the end of the buffer is rejected.
+  EXPECT_FALSE(
+      deserialize(to_start, static_cast<uint64_t>(buf_size) + 1, &view));
+
+  // A valid negative offset that references the whole buffer is accepted and
+  // yields the exact pointer and length. This data-relative case must not
+  // regress.
+  ASSERT_TRUE(deserialize(to_start, buf_size, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr());
+  EXPECT_EQ(view.size(), buf_size);
+
+  // A nonempty view from data() to the end of the buffer.
+  ASSERT_TRUE(deserialize(0, buf_size - data_off, &view));
+  EXPECT_EQ(view.data(), buffer.data());
+  EXPECT_EQ(view.size(), buf_size - data_off);
+
+  // A nonempty interior view straddling data().
+  ASSERT_TRUE(deserialize(-1, 2, &view));
+  EXPECT_EQ(view.data(), buffer.data() - 1);
+  EXPECT_EQ(view.size(), 2u);
+
+  // An empty view one-past-the-end is allowed.
+  ASSERT_TRUE(deserialize(to_end, 0, &view));
+  EXPECT_EQ(view.data(), buffer.buf_ptr() + buf_size);
+  EXPECT_EQ(view.size(), 0u);
 }
 
 // Test that specifically targets the internal buffer allocation logic

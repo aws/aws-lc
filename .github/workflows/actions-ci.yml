@@ -107,7 +107,7 @@ jobs:
           go-version: ">=1.18"
       - name: Install NASM
         if: "!endsWith(matrix.os, '-arm')"
-        uses: ilammy/setup-nasm@v1.5.1
+        uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
       - name: Build/Test (x64)
         if: "!endsWith(matrix.os, '-arm')"
         run: |
@@ -499,7 +499,7 @@ jobs:
         with:
           go-version: ">=1.18"
       - name: Setup CMake
-        uses: threeal/cmake-action@v2.1.0
+        uses: threeal/cmake-action@725d1314ccf9ea922805d7e3f9d9bcbca892b406 # v2.1.0
         with:
           generator: Ninja
           c-compiler: gcc-${{ matrix.gccversion }}

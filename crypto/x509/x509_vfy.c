@@ -126,6 +126,19 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   STACK_OF(X509) *certs;
   X509 *xtmp = NULL;
   size_t i;
+
+  if (ctx->trusted_stack != NULL) {
+    // Ignore the store and use the configured stack instead.
+    for (i = 0; i < sk_X509_num(ctx->trusted_stack); i++) {
+      xtmp = sk_X509_value(ctx->trusted_stack, i);
+      if (!X509_cmp(xtmp, x)) {
+        X509_up_ref(xtmp);
+        return xtmp;
+      }
+    }
+    return NULL;
+  }
+
   // Lookup all certs with matching subject name
   certs = X509_STORE_CTX_get1_certs(ctx, X509_get_subject_name(x));
   if (certs == NULL) {
