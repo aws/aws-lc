@@ -1,0 +1,6 @@
+name: slhdsa-c
+source: pq-code-package/slhdsa-c.git
+branch: main
+commit: 47451432bb04faf8217ffe8a961a75b542bf88e8
+ported-at: 2026-11-17
+# Hand port, not an import: see README.md for the changes from upstream.

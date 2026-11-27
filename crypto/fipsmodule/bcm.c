@@ -152,6 +152,11 @@
 #include "sha/sha256.c"
 #include "sha/sha3.c"
 #include "sha/sha512.c"
+#include "slh_dsa/fors.c"
+#include "slh_dsa/merkle.c"
+#include "slh_dsa/slh_dsa.c"
+#include "slh_dsa/thash.c"
+#include "slh_dsa/wots.c"
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
 

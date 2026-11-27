@@ -88,6 +88,18 @@ SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
 ```
 
 ================================================================================
+slhdsa-c
+================================================================================
+
+The SLH-DSA implementation in crypto/fipsmodule/slh_dsa is a port of the
+slhdsa-c project, which is licensed under Apache License 2.0 or MIT or ISC.
+
+```
+Copyright (c) The slhdsa-c project authors.
+SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+```
+
+================================================================================
 Third-Party Libraries (compiled into libcrypto/libssl)
 ================================================================================
 
