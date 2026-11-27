@@ -81,7 +81,8 @@ jobs:
         with:
           secret-ids: |
             PUSH_APP_PRIVATE_KEY,aws-lc/ci/autofix-push-app
-            APP_PRIVATE_KEY,acl-ci/credentials
+            ACL_CI,acl-ci/credentials
+          parse-json-secrets: true
       - uses: actions/create-github-app-token@v2
         id: push-token
         with:
@@ -94,8 +95,8 @@ jobs:
       - uses: actions/create-github-app-token@v2
         id: pr-token
         with:
-          app-id: ${{ vars.ACL_CI_APP_ID }}
-          private-key: ${{ env.APP_PRIVATE_KEY }}
+          app-id: ${{ env.ACL_CI_APP_ID }}
+          private-key: ${{ env.ACL_CI_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-pull-requests: write
