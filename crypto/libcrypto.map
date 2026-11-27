@@ -121,6 +121,7 @@ AWS_LC_1.0 {
     ASN1_TBOOLEAN_it;
     ASN1_TIME_adj;
     ASN1_TIME_check;
+    ASN1_TIME_compare;
     ASN1_TIME_diff;
     ASN1_TIME_free;
     ASN1_TIME_it;
