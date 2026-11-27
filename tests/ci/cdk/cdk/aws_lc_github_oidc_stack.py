@@ -159,6 +159,10 @@ class AwsLcGitHubOidcStack(Stack):
             self.autofix_bucket)
         self.autofix_upload_role.grant_assume_role(self.autofix_oidc_role)
 
+        self.autofix_metrics_role = create_autofix_metrics_role(
+            self, "AwsLcGitHubActionAutofixMetricsRole", env, self.autofix_oidc_role)
+        self.autofix_metrics_role.grant_assume_role(self.autofix_oidc_role)
+
         self.autofix_secrets_role = create_autofix_secrets_role(
             self, "AwsLcGitHubActionAutofixSecretsRole", self.autofix_resolve_oidc_role)
         self.autofix_secrets_role.grant_assume_role(self.autofix_resolve_oidc_role)
@@ -473,6 +477,30 @@ def create_autofix_upload_role(scope: Construct, id: str,
                                     effect=iam.Effect.ALLOW,
                                     actions=["s3:PutObject"],
                                     resources=[bucket.arn_for_objects("*")],
+                                ),
+                            ]
+                        ),
+                    })
+
+
+def create_autofix_metrics_role(scope: Construct, id: str,
+                                env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                                principal: iam.IPrincipal) -> iam.Role:
+    return iam.Role(scope, id, role_name=id,
+                    assumed_by=iam.SessionTagsPrincipal(principal),
+                    inline_policies={
+                        "metrics_policy": iam.PolicyDocument(
+                            statements=[
+                                iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=["cloudwatch:PutMetricData"],
+                                    resources=["*"],
+                                    conditions={
+                                        "StringEquals": {
+                                            "aws:RequestedRegion": [env.region],
+                                            "cloudwatch:namespace": [AWS_LC_METRIC_NS],
+                                        }
+                                    }
                                 ),
                             ]
                         ),

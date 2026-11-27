@@ -18,7 +18,7 @@ jobs:
     if: >-
       github.event.workflow_run.event == 'schedule' &&
       github.event.workflow_run.conclusion == 'failure'
-    runs-on:
+    runs-on: &small
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:small
@@ -188,3 +188,18 @@ jobs:
     uses: ./.github/workflows/autofix_resolve.yml
     with:
       targets: ${{ needs.get-failing-integrations.outputs.targets }}
+
+  report-failures:
+    needs: [get-failing-integrations, reason, review, resolve]
+    if: ${{ always() && needs.get-failing-integrations.result != 'skipped' }}
+    permissions: { contents: read, actions: read, id-token: write }
+    runs-on: *small
+    steps:
+      - *checkout
+      - uses: ./.github/actions/configure-aws-credentials
+        with:
+          oidcRole: AwsLcGitHubActionsAutofixOidcRole
+          roleName: AwsLcGitHubActionAutofixMetricsRole
+      - uses: ./.github/actions/report-workflow-failures
+        with:
+          metric-name: AutofixFailure
