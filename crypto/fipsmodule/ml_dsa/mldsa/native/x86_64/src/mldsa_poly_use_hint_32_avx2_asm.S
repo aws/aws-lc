@@ -103,6 +103,7 @@ Lmld_poly_use_hint_32_avx2_asm_loop:
         addq $0x20, %rax
         cmpq $0x400, %rax            # imm = 0x400
         jne Lmld_poly_use_hint_32_avx2_asm_loop
+        vzeroupper
         retq
         .cfi_endproc
 

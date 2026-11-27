@@ -394,6 +394,7 @@ S2N_BN_SYMBOL(mlkem_poly_compress_d10_avx2_asm):
         vpblendw $0xe0, %xmm9, %xmm8, %xmm8 # xmm8 = xmm8[0,1,2,3,4],xmm9[5,6,7]
         vmovdqu %xmm8, 0x12c(%rdi)
         vmovd %xmm9, 0x13c(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

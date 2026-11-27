@@ -334,6 +334,7 @@ S2N_BN_SYMBOL(mldsa_polyz_unpack_17_avx2_asm):
         vpand %ymm3, %ymm0, %ymm0
         vpsubd %ymm0, %ymm4, %ymm0
         vmovdqa %ymm0, 0x3e0(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

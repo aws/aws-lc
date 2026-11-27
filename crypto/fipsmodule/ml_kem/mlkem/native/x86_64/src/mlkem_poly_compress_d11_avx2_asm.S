@@ -461,6 +461,7 @@ S2N_BN_SYMBOL(mlkem_poly_compress_d11_avx2_asm):
         vmovdqu %xmm9, 0x14a(%rdi)
         vmovd %xmm10, 0x15a(%rdi)
         vpextrw $0x2, %xmm10, 0x15e(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

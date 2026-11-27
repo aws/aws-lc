@@ -163,6 +163,7 @@ Lmld_rej_uniform_eta4_avx2_asm_high_nibble:
         jmp Lmld_rej_uniform_eta4_avx2_asm_scalar
 
 Lmld_rej_uniform_eta4_avx2_asm_done:
+        vzeroupper
         retq
         .cfi_endproc
 

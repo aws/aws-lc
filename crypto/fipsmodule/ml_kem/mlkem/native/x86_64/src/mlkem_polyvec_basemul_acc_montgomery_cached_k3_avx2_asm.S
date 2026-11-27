@@ -769,6 +769,7 @@ S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_k3_avx2_asm):
         vpaddw %ymm9, %ymm10, %ymm9
         vmovdqa %ymm7, 0x1c0(%rdi)
         vmovdqa %ymm9, 0x1e0(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

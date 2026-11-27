@@ -176,6 +176,7 @@ S2N_BN_SYMBOL(mlkem_nttunpack_avx2_asm):
         vmovdqa %ymm3, 0x1a0(%rdi)
         vmovdqa %ymm7, 0x1c0(%rdi)
         vmovdqa %ymm11, 0x1e0(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

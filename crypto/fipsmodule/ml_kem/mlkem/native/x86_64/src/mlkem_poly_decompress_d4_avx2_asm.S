@@ -192,6 +192,7 @@ S2N_BN_SYMBOL(mlkem_poly_decompress_d4_avx2_asm):
         vpmullw %ymm2, %ymm4, %ymm4
         vpmulhrsw %ymm0, %ymm4, %ymm4
         vmovdqu %ymm4, 0x1e0(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 
