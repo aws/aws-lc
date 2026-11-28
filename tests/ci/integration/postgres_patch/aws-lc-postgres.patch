@@ -17,6 +17,30 @@
 # Note: The diff in 006_transfer_modes.pl has nothing to do with AWS-LC.
 #       It's just to account for a specific error message on Codebuild ARM.
 
+diff --git a/src/backend/libpq/be-secure-openssl.c b/src/backend/libpq/be-secure-openssl.c
+--- a/src/backend/libpq/be-secure-openssl.c
++++ b/src/backend/libpq/be-secure-openssl.c
+@@ -2139,14 +2139,20 @@ initialize_dh(SSL_CTX *context, bool isServerStart)
+ 	{
+ 		/* If ssl_dh_params_file is not set, let OpenSSL pick a default. */
+ 
++		/*
++		 * AWS-LC does not support DHE cipher suites in libssl, so
++		 * SSL_CTX_set_dh_auto() is a no-op that always returns 0.
++		 */
++#ifndef OPENSSL_IS_AWSLC
+ 		if (SSL_CTX_set_dh_auto(context, 1) != 1)
+ 		{
+ 			ereport(isServerStart ? FATAL : LOG,
+ 					(errcode(ERRCODE_INTERNAL_ERROR),
+ 					 errmsg("DH: could not set DH parameters: %s",
+ 							SSLerrmessage(ERR_get_error()))));
+ 			return false;
+ 		}
++#endif
+ 	}
+ 
+ 	return true;
 diff --git a/src/bin/pg_upgrade/t/006_transfer_modes.pl b/src/bin/pg_upgrade/t/006_transfer_modes.pl
 index 550a63fdf7d..41975ee1c56 100644
 --- a/src/bin/pg_upgrade/t/006_transfer_modes.pl
