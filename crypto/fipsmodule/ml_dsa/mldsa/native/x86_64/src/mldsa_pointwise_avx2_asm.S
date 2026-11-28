@@ -144,6 +144,7 @@ Lmld_pointwise_avx2_looptop1:
         vpblendd $0x55, %ymm4, %ymm5, %ymm4 # ymm4 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
         vmovdqa %ymm2, (%rdi)
         vmovdqa %ymm4, 0x20(%rdi)
+        vzeroupper
         retq
         .cfi_endproc
 

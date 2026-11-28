@@ -174,6 +174,7 @@ Lmld_pointwise_acc_l5_avx2_looptop2:
         addl $0x1, %eax
         cmpl $0x10, %eax
         jb Lmld_pointwise_acc_l5_avx2_looptop2
+        vzeroupper
         retq
         .cfi_endproc
 

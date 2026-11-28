@@ -465,6 +465,7 @@ S2N_BN_SYMBOL(mldsa_poly_decompose_88_avx2_asm):
         vpaddd %ymm3, %ymm2, %ymm2
         vmovdqa %ymm1, 0x3e0(%rdi)
         vmovdqa %ymm2, 0x3e0(%rsi)
+        vzeroupper
         retq
         .cfi_endproc
 
